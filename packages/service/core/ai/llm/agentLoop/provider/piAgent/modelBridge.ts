@@ -27,8 +27,8 @@ export function resolvePiReasoningEffort(
   modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ReasoningEffortLevel | undefined {
-  const supportedLevels = getSupportedReasoningEfforts(modelData.config);
-  if (!modelData.config.reasoning || supportedLevels.length === 0) {
+  const supportedLevels = getSupportedReasoningEfforts(modelData);
+  if (supportedLevels.length === 0) {
     return undefined;
   }
 
@@ -116,7 +116,7 @@ export function buildPiModel(
     compat: {
       supportsDeveloperRole: false,
       supportsStore: false,
-      supportsReasoningEffort: getSupportedReasoningEfforts(modelData.config).length > 0,
+      supportsReasoningEffort: getSupportedReasoningEfforts(modelData).length > 0,
       maxTokensField: 'max_tokens'
     }
   };

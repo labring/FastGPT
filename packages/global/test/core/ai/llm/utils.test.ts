@@ -113,42 +113,72 @@ describe('reasoning effort level helpers', () => {
   });
 
   it('resolves supported reasoning efforts with legacy compatibility and explicit overrides', () => {
+    const baseConfig = {
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 64000
+    };
+
     // 历史数据：仅开启 reasoningEffort 时回退为全部 6 个等级
-    expect(getSupportedReasoningEfforts({ reasoning: true, reasoningEffort: true })).toEqual([
-      ...REASONING_EFFORT_LEVELS
-    ]);
+    expect(
+      getSupportedReasoningEfforts({
+        config: { ...baseConfig, reasoning: true, reasoningEffort: true }
+      })
+    ).toEqual([...REASONING_EFFORT_LEVELS]);
 
     // 显式配置了等级列表时按列表返回
     expect(
       getSupportedReasoningEfforts({
-        reasoning: true,
-        reasoningEffort: true,
-        reasoningEffortList: ['high', 'low']
+        config: {
+          ...baseConfig,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: ['high', 'low']
+        }
       })
     ).toEqual(['low', 'high']);
 
-    // 显式空数组、关闭 reasoning 或关闭 reasoningEffort 均返回空
+    // 显式空数组、未开启/关闭 reasoning 或关闭 reasoningEffort 均返回空
     expect(
       getSupportedReasoningEfforts({
-        reasoning: true,
-        reasoningEffort: true,
-        reasoningEffortList: []
+        config: {
+          ...baseConfig,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: []
+        }
       })
     ).toEqual([]);
     expect(
       getSupportedReasoningEfforts({
-        reasoning: false,
-        reasoningEffort: true,
-        reasoningEffortList: ['low', 'high']
+        config: {
+          ...baseConfig,
+          reasoning: false,
+          reasoningEffort: true,
+          reasoningEffortList: ['low', 'high']
+        }
       })
     ).toEqual([]);
     expect(
       getSupportedReasoningEfforts({
-        reasoning: true,
-        reasoningEffort: false,
-        reasoningEffortList: ['low', 'high']
+        config: {
+          ...baseConfig,
+          reasoningEffort: true,
+          reasoningEffortList: ['low', 'high']
+        }
       })
     ).toEqual([]);
+    expect(
+      getSupportedReasoningEfforts({
+        config: {
+          ...baseConfig,
+          reasoning: true,
+          reasoningEffort: false,
+          reasoningEffortList: ['low', 'high']
+        }
+      })
+    ).toEqual([]);
+    expect(getSupportedReasoningEfforts(undefined)).toEqual([]);
   });
 
   it('exposes reasoningEffort boolean and reasoningEffortList from getLLMSupportParams', () => {

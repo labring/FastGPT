@@ -60,6 +60,8 @@ vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
     multimodal: false,
     temperature: true,
     reasoning: false,
+    reasoningEffort: false,
+    reasoningEffortList: [],
     topP: true,
     stop: true,
     responseFormat: false,
@@ -120,6 +122,7 @@ const defaultSupportParams = {
   temperature: true,
   reasoning: false,
   reasoningEffort: false,
+  reasoningEffortList: [] as ('none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh')[],
   topP: true,
   stop: true,
   responseFormat: false,
@@ -2271,7 +2274,8 @@ describe('createLLMResponse', () => {
       mockGetLLMSupportParams.mockReturnValueOnce({
         ...defaultSupportParams,
         reasoning: true,
-        reasoningEffort: true
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'medium', 'high']
       });
 
       const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());

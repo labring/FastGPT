@@ -489,9 +489,7 @@ const ModelConfigForm = ({
         (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokensK !== undefined)
       )
         tiers.push(emptyPriceTier);
-      const initialReasoningEffortList = initialModelData.config.reasoning
-        ? getSupportedReasoningEfforts(initialModelData.config)
-        : [];
+      const initialReasoningEffortList = getSupportedReasoningEfforts(initialModelData);
       const initialReasoningEffort = initialReasoningEffortList.length > 0;
       return {
         ...initialModelData,
@@ -501,7 +499,7 @@ const ModelConfigForm = ({
             ? undefined
             : initialModelData.config.quoteMaxToken,
           reasoningEffort: initialReasoningEffort,
-          ...(initialReasoningEffort ? { reasoningEffortList: initialReasoningEffortList } : {})
+          reasoningEffortList: initialReasoningEffort ? initialReasoningEffortList : undefined
         },
         pricing: { tiers }
       };

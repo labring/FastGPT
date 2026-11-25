@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { filterModelMultimodalSettings } from '@/components/core/ai/SettingLLMModel/utils';
+import {
+  filterModelMultimodalSettings,
+  normalizeModelReasoningEffort
+} from '@/components/core/ai/SettingLLMModel/utils';
 
 describe('filterModelMultimodalSettings', () => {
   it('clears unsupported options without mutating the original settings', () => {
@@ -68,5 +71,15 @@ describe('filterModelMultimodalSettings', () => {
       aiChatVideo: false,
       aiChatExtractFiles: true
     });
+  });
+});
+
+describe('normalizeModelReasoningEffort', () => {
+  it('keeps supported reasoning efforts and falls back to null when unsupported or empty', () => {
+    expect(normalizeModelReasoningEffort('high', ['low', 'high'])).toBe('high');
+    expect(normalizeModelReasoningEffort('none', ['low', 'high'])).toBeNull();
+    expect(normalizeModelReasoningEffort('high', [])).toBeNull();
+    expect(normalizeModelReasoningEffort(null, ['low', 'high'])).toBeNull();
+    expect(normalizeModelReasoningEffort(undefined, ['low', 'high'])).toBeNull();
   });
 });

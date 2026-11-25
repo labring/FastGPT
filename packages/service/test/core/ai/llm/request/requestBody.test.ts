@@ -150,7 +150,7 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).not.toHaveProperty('tools');
   });
 
-  it('should preserve allowed reasoning_effort and strip levels outside reasoningEffortList', async () => {
+  it('should preserve allowed reasoning_effort, strip unsupported caller levels, and keep defaultConfig/fieldMap precedence', async () => {
     const model = createModel({
       config: {
         reasoning: true,
@@ -174,79 +174,27 @@ describe('llmCompletionsBodyFormat', () => {
       reasoning_effort: 'none'
     });
     expect(disallowedResult.requestBody).not.toHaveProperty('reasoning_effort');
-  });
 
-  it('validates defaultConfig reasoning_effort against reasoningEffortList while keeping precedence and fieldMap', async () => {
-    // 非法 defaultConfig.reasoning_effort 不得绕过模型能力限制，也不得覆盖调用方合法档位
-    const modelWithDisallowedDefault = createModel({
-      config: {
-        reasoning: true,
-        reasoningEffort: true,
-        reasoningEffortList: ['low', 'high'],
-        defaultConfig: {
-          reasoning_effort: 'none',
-          frequency_penalty: 0.3
-        }
-      }
-    });
-    const originalDefaultConfig = structuredClone(modelWithDisallowedDefault.config.defaultConfig);
-
-    const callerAllowed = await llmCompletionsBodyFormat({
-      model: modelWithDisallowedDefault,
-      messages,
-      stream: false,
-      reasoning_effort: 'low'
-    });
-    expect(callerAllowed.requestBody).toMatchObject({
-      reasoning_effort: 'low',
-      frequency_penalty: 0.3
-    });
-    expect(modelWithDisallowedDefault.config.defaultConfig).toEqual(originalDefaultConfig);
-
-    const callerOmitted = await llmCompletionsBodyFormat({
-      model: modelWithDisallowedDefault,
-      messages,
-      stream: false
-    });
-    expect(callerOmitted.requestBody).not.toHaveProperty('reasoning_effort');
-    expect(callerOmitted.requestBody).toHaveProperty('frequency_penalty', 0.3);
-
-    // 合法 defaultConfig.reasoning_effort 保持优先级并正确走 fieldMap 映射
-    const modelWithValidDefaultAndMap = createModel({
+    // fieldMap 映射已通过能力裁剪的调用方参数，defaultConfig 始终保持最高优先级原样覆盖
+    const overrideModel = createModel({
       config: {
         reasoning: true,
         reasoningEffort: true,
         reasoningEffortList: ['low', 'high'],
         fieldMap: { reasoning_effort: 'effort_level' },
-        defaultConfig: { reasoning_effort: 'high' }
+        defaultConfig: { reasoning_effort: 'none' }
       }
     });
-    const mappedValidDefault = await llmCompletionsBodyFormat({
-      model: modelWithValidDefaultAndMap,
+    const overrideResult = await llmCompletionsBodyFormat({
+      model: overrideModel,
       messages,
       stream: false,
       reasoning_effort: 'low'
     });
-    expect(mappedValidDefault.requestBody).toHaveProperty('effort_level', 'high');
-    expect(mappedValidDefault.requestBody).not.toHaveProperty('reasoning_effort');
-
-    // defaultConfig 直接覆盖映射目标键时同样受 reasoningEffortList 约束
-    const modelWithMappedTargetDefault = createModel({
-      config: {
-        reasoning: true,
-        reasoningEffort: true,
-        reasoningEffortList: ['low', 'high'],
-        fieldMap: { reasoning_effort: 'effort_level' },
-        defaultConfig: { effort_level: 'none' }
-      }
+    expect(overrideResult.requestBody).toMatchObject({
+      effort_level: 'low',
+      reasoning_effort: 'none'
     });
-    const blockedMappedTarget = await llmCompletionsBodyFormat({
-      model: modelWithMappedTargetDefault,
-      messages,
-      stream: false,
-      reasoning_effort: 'low'
-    });
-    expect(blockedMappedTarget.requestBody).toHaveProperty('effort_level', 'low');
   });
 
   it('should remove FastGPT private tool schema fields before sending tools to model', async () => {

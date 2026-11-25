@@ -2,7 +2,6 @@ import type {
   ChatCompletionCreateParams,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { ReasoningEffortLevel } from '@fastgpt/global/core/ai/model/schema';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 import json5 from 'json5';
@@ -127,34 +126,12 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   if (!supportParams.responseFormat) {
     delete requestBody.response_format;
   }
-  const isAllowedReasoningEffort = (value: unknown): value is ReasoningEffortLevel =>
-    supportParams.reasoningEffort &&
-    typeof value === 'string' &&
-    supportParams.reasoningEffortList.includes(value as ReasoningEffortLevel);
-
-  const defaultConfig = modelData.config.defaultConfig
-    ? { ...modelData.config.defaultConfig }
-    : undefined;
-  const mappedReasoningEffortKey = modelData.config.fieldMap?.reasoning_effort;
-
-  // defaultConfig 中的合法 reasoning_effort 仍优先于调用方入参，并复用后续 fieldMap 映射；
-  // 不在模型支持列表内的思考等级（含映射目标键）直接忽略，避免绕过模型能力限制。
-  if (defaultConfig && Object.hasOwn(defaultConfig, 'reasoning_effort')) {
-    if (isAllowedReasoningEffort(defaultConfig.reasoning_effort)) {
-      requestBody.reasoning_effort = defaultConfig.reasoning_effort;
-    }
-    delete defaultConfig.reasoning_effort;
-  }
   if (
-    defaultConfig &&
-    mappedReasoningEffortKey &&
-    Object.hasOwn(defaultConfig, mappedReasoningEffortKey) &&
-    !isAllowedReasoningEffort(defaultConfig[mappedReasoningEffortKey])
+    !supportParams.reasoningEffort ||
+    (requestBody.reasoning_effort &&
+      supportParams.reasoningEffortList &&
+      !supportParams.reasoningEffortList.includes(requestBody.reasoning_effort))
   ) {
-    delete defaultConfig[mappedReasoningEffortKey];
-  }
-
-  if (!isAllowedReasoningEffort(requestBody.reasoning_effort)) {
     delete requestBody.reasoning_effort;
   }
 
@@ -182,7 +159,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   // defaultConfig 作为模型配置的最终兜底，允许覆盖上面计算出的默认值。
   requestBody = {
     ...requestBody,
-    ...defaultConfig
+    ...modelData.config.defaultConfig
   };
 
   return {

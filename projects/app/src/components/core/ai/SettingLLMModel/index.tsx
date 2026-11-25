@@ -10,7 +10,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { filterModelMultimodalSettings } from './utils';
+import { filterModelMultimodalSettings, normalizeModelReasoningEffort } from './utils';
 
 type Props = {
   defaultData: SettingAIDataType;
@@ -77,22 +77,23 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
               )
                 return;
               const currentData = latestData.current;
-              const settings = (() => {
+              const support = getLLMSupportParams(modelData);
+              const settings =
                 // 只清理有显式开关的工作流配置，隐藏配置的表单交给后端判断模型能力。
-                if (
-                  props.showMultimodalConfig === false ||
-                  currentData.aiChatVision === undefined ||
-                  !modelData
-                ) {
-                  return currentData;
-                }
-                return filterModelMultimodalSettings({
-                  settings: currentData,
-                  support: getLLMSupportParams(modelData)
-                });
-              })();
+                props.showMultimodalConfig === false || currentData.aiChatVision === undefined
+                  ? currentData
+                  : filterModelMultimodalSettings({
+                      settings: currentData,
+                      support
+                    });
               onChange({
                 ...settings,
+                ...(currentData.aiChatReasoningEffort !== undefined && {
+                  aiChatReasoningEffort: normalizeModelReasoningEffort(
+                    currentData.aiChatReasoningEffort,
+                    support.reasoningEffortList
+                  )
+                }),
                 modelId: e
               });
             }}

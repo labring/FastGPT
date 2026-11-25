@@ -1,4 +1,4 @@
-import type { LLMModelConfigType, LLMModelDataType, ReasoningEffortLevel } from '../model/schema';
+import type { LLMModelDataType, ReasoningEffortLevel } from '../model/schema';
 import { ChatCompletionRequestMessageRoleEnum, REASONING_EFFORT_LEVELS } from '../constants';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
@@ -66,15 +66,15 @@ export const normalizeReasoningEffortList = (
 /**
  * 解析模型实际可用的思考等级列表（按 AI Proxy 标准顺序去重）。
  *
- * - 关闭思考或关闭思考配置时返回空数组；
+ * - 未开启深度思考或显式关闭思考配置时返回空数组；
  * - 显式配置了 reasoningEffortList 时以该列表为准（空数组代表无可用等级）；
  * - 兼容历史模型数据：仅开启 reasoningEffort: true 且未配置 reasoningEffortList 时，回退为全部等级。
  */
 export const getSupportedReasoningEfforts = (
-  config?: Pick<LLMModelConfigType, 'reasoning' | 'reasoningEffort' | 'reasoningEffortList'>
+  llm?: Pick<LLMModelDataType, 'config'>
 ): ReasoningEffortLevel[] => {
-  if (!config) return [];
-  if (config.reasoning === false || config.reasoningEffort === false) return [];
+  const config = llm?.config;
+  if (!config?.reasoning || config.reasoningEffort === false) return [];
 
   if (Array.isArray(config.reasoningEffortList)) {
     return normalizeReasoningEffortList(config.reasoningEffortList);
@@ -96,15 +96,11 @@ export const getSupportedReasoningEfforts = (
  */
 export const getLowestReasoningEffort = (
   llm?: Pick<LLMModelDataType, 'config'>
-): ReasoningEffortLevel | undefined => {
-  const config = llm?.config;
-  if (!config?.reasoning) return undefined;
-  return getSupportedReasoningEfforts(config)[0];
-};
+): ReasoningEffortLevel | undefined => getSupportedReasoningEfforts(llm)[0];
 
 export const getLLMSupportParams = (llm?: Pick<LLMModelDataType, 'config'>) => {
   const config = llm?.config;
-  const reasoningEffortList = getSupportedReasoningEfforts(config);
+  const reasoningEffortList = getSupportedReasoningEfforts(llm);
   return {
     vision: !!config?.vision,
     audio: !!config?.audio,

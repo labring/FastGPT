@@ -474,7 +474,7 @@ describe('system model management integration: MongoDB transactions and runtime 
       { type: ModelTypeEnum.llm }
     );
     expect(legacyModel?.config.reasoningEffortList).toBeUndefined();
-    expect(getSupportedReasoningEfforts(legacyModel?.config)).toEqual([
+    expect(getSupportedReasoningEfforts(legacyModel)).toEqual([
       'none',
       'minimal',
       'low',
