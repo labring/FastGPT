@@ -2,6 +2,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import NextLink from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Box,
   Input,
   NumberInput,
   NumberInputField,
@@ -111,6 +112,9 @@ const AuthSettingComponent = () => {
     effectiveConfig?.loginProviders?.email?.user?.trim() &&
     auth.isSecretConfigured('loginProviders.email.pass')
   );
+  // 历史库若在缺 SMTP 时已开启邮箱注册，保留开关以便管理员手动关闭；关闭保存后隐藏。
+  const showEmailRegisterSwitch =
+    isSmtpConfigured || Boolean(effectiveConfig?.loginProviders?.email?.register);
   const isPhoneSmsConfigured = Boolean(
     effectiveConfig?.loginProviders?.phone?.accessKeyId?.trim() &&
     effectiveConfig?.loginProviders?.phone?.signName?.trim() &&
@@ -465,7 +469,7 @@ const AuthSettingComponent = () => {
       {/* 4. 邮箱注册 */}
       {showEmail && (
         <AdminSettingSection id="emailLogin" title={t('admin:email_registration')} showDivider>
-          {isSmtpConfigured ? (
+          {showEmailRegisterSwitch && (
             <>
               <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
                 <Controller
@@ -483,18 +487,21 @@ const AuthSettingComponent = () => {
                 />
               </SimpleGrid>
 
-              {emailRegister && (
+              {isSmtpConfigured && emailRegister && (
                 <Text fontSize={'xs'} color={'myGray.500'} mt={2}>
                   {t('admin:ensure_the_smtp_configuration_is_complete_and_working_otherw')}
                 </Text>
               )}
             </>
-          ) : (
-            <ConfigPrerequisiteHint
-              text={t('admin:please_configure_smtp_first', { service: '__LINK__' })}
-              linkLabel={t('admin:smtp_service')}
-              href="/admin/settings/core#email"
-            />
+          )}
+          {!isSmtpConfigured && (
+            <Box mt={showEmailRegisterSwitch ? 2 : 0}>
+              <ConfigPrerequisiteHint
+                text={t('admin:please_configure_smtp_first', { service: '__LINK__' })}
+                linkLabel={t('admin:smtp_service')}
+                href="/admin/settings/core#email"
+              />
+            </Box>
           )}
         </AdminSettingSection>
       )}

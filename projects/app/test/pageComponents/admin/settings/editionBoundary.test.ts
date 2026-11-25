@@ -173,6 +173,12 @@ describe('configuration form edition boundary', () => {
     expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
 
     mocks.switchRows.clear();
+    mocks.authOverrides = { loginProviders: { email: { register: true } } };
+    const legacyEnabledWithoutSmtpHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(legacyEnabledWithoutSmtpHtml).toContain('href="/admin/settings/core#email"');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
+
+    mocks.switchRows.clear();
     mocks.formLabels = [];
     mocks.authOverrides = {
       loginProviders: {

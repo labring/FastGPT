@@ -279,13 +279,14 @@ const CoreSettingComponent = () => {
               preservedAuthOverrides,
               filterConfigData('auth', {
                 loginProviders: {
-                  // 核心页只保存 SMTP 字段，邮箱注册由账号与登录页维护。
+                  // 核心页只维护 SMTP 凭据；关闭/清空 SMTP 时同步关闭邮箱自助注册，避免留下无法发码的注册开关。
                   email: {
                     smtp: formData.email.smtp,
                     user: formData.email.user,
                     pass: formData.email.pass,
                     port: formData.email.port,
-                    secure: formData.email.secure
+                    secure: formData.email.secure,
+                    ...(!formData.email.smtp?.trim() ? { register: false } : {})
                   },
                   phone: formData.phone
                 }

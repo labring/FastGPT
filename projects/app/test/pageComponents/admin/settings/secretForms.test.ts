@@ -477,6 +477,13 @@ describe('system configuration secret forms', () => {
   });
 
   it('clears all SMTP and Aliyun SMS fields including configured secrets via section Clear buttons', async () => {
+    mocks.configs.auth = {
+      ...mocks.configs.auth,
+      loginProviders: {
+        ...mocks.configs.auth.loginProviders,
+        email: { ...mocks.configs.auth.loginProviders.email, register: true }
+      }
+    };
     await act(async () => root.render(React.createElement(CoreSettings)));
 
     const emailClear = container.querySelector<HTMLButtonElement>(
@@ -504,7 +511,7 @@ describe('system configuration secret forms', () => {
     await save();
     expect(mocks.update).toHaveBeenCalledOnce();
     expect(sentOverrides('auth').loginProviders).toMatchObject({
-      email: { smtp: '', user: '', pass: '', port: 465, secure: true },
+      email: { smtp: '', user: '', pass: '', port: 465, secure: true, register: false },
       phone: { accessKeyId: '', accessKeySecret: '', signName: '' }
     });
   });

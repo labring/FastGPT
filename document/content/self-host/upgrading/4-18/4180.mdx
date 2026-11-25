@@ -27,7 +27,7 @@ import { Alert } from '@/components/docs/Alert';
 - **日志 CSV**：基于「使用者」列解析团队成员的脚本需适配 `ID:name` 格式（旧版为成员名），成员缺少姓名时仅输出 ID；渠道列拆分为「调用渠道」与「渠道名」，按列名解析的脚本也需适配。
 - **集合删除接口**：定位参数统一为请求体中的 `id`、`collectionIds` 或 `datasetId + apiFileIds`，三种方式不可混用。旧版 `query.id` 继续兼容但已弃用，新接入应使用请求体。
 - **语音识别用量**：已有自建语音识别接入需核对上游用量返回；按时长计费读取 `usage.seconds`，缺失或无效值记为 `0`，不再用客户端录音时长或识别文本估算用量。
-- **Sealos Devbox 下线与沙盒路径变更**：4.18.0 起不再支持 `sealosdevbox` 运行时并移除对应管理台配置，存量部署需先通过升级脚本第 8、9 项迁移并清理后再切换至 OpenSandbox。沙盒工作区路径统一由 `/workspace` 调整为 `/home/sandbox/workspace`，初始化去重状态路径调整为 `/var/lib/fastgpt-runtime/state.json`，依赖旧路径的自定义启动脚本或派生镜像需同步适配。
+- **Sealos Devbox 下线与沙盒路径变更**：4.18.0 起不再支持 `sealosdevbox` 运行时并移除对应管理台配置，存量部署需先通过升级脚本第 8 项完成迁移、切换至 OpenSandbox 并验证冷恢复稳定，确认无需回滚后再手动执行第 9 项不可逆清理。沙盒工作区路径统一由 `/workspace` 调整为 `/home/sandbox/workspace`，初始化去重状态路径调整为 `/var/lib/fastgpt-runtime/state.json`，依赖旧路径的自定义启动脚本或派生镜像需同步适配。
 
 ## 升级指南
 
