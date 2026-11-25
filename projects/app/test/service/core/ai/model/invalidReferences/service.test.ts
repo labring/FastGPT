@@ -12,6 +12,7 @@ import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migrat
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
 import {
   createInvalidReferenceReplacer,
@@ -1209,5 +1210,123 @@ describe('replaceInvalidModelReferences', () => {
     ]);
     expect(first?.agentModelId).toBe('new-llm');
     expect(second?.agentModelId).toBe('old-llm');
+  });
+
+  it('replaces invalid selectLLMModel in Agent selectedTools configs across app and version while skipping agentGenerated and unavailable tools', async () => {
+    const getSystemToolDetailMock = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockImplementation(async ({ pluginId }) => {
+        if (pluginId === 'systemTool-modelInvokeTest') {
+          return {
+            id: pluginId,
+            inputSchema: {
+              type: 'object',
+              properties: {
+                model: { type: 'string', format: 'modelId' },
+                autoModel: { type: 'string', format: 'modelId' },
+                prompt: { type: 'string' }
+              }
+            }
+          } as never;
+        }
+        throw new Error('tool not found');
+      });
+
+    const buildAgentNode = () => ({
+      nodeId: 'agent-1',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-modelInvokeTest',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                { key: 'model', mode: 'manual' },
+                { key: 'autoModel', mode: 'agentGenerated' }
+              ],
+              config: {
+                model: 'old-llm',
+                autoModel: 'old-llm',
+                prompt: 'keep-prompt'
+              }
+            },
+            {
+              id: 'systemTool-missingPlugin',
+              source: 'system',
+              inputs: [{ key: 'model', mode: 'manual' }],
+              config: {
+                model: 'old-llm'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    });
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Agent With Model Tool',
+      type: 'workflow',
+      modules: [buildAgentNode()],
+      chatConfig: {}
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: ids.member,
+      nodes: [buildAgentNode()],
+      edges: [],
+      chatConfig: {},
+      resources: [{ type: 'model', id: 'old-llm' }]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    // 同一插件在 app 与 version 间复用缓存，仅查询一次。
+    expect(
+      getSystemToolDetailMock.mock.calls.filter(
+        ([args]) => args.pluginId === 'systemTool-modelInvokeTest'
+      )
+    ).toHaveLength(1);
+
+    const [savedApp, savedVersion] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+    const appTools = savedApp?.modules[0].inputs[1].value;
+    expect(appTools[0].config).toEqual({
+      model: 'new-llm',
+      autoModel: 'old-llm',
+      prompt: 'keep-prompt'
+    });
+    expect(appTools[1].config.model).toBe('old-llm');
+
+    const versionTools = savedVersion?.nodes[0].inputs[1].value;
+    expect(versionTools[0].config).toEqual({
+      model: 'new-llm',
+      autoModel: 'old-llm',
+      prompt: 'keep-prompt'
+    });
+    expect(savedVersion?.resources).toContainEqual({ type: 'model', id: 'new-llm' });
   });
 });

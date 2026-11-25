@@ -4025,6 +4025,97 @@ describe('workflow environment facts', () => {
     expect(editor.getWorkflow()).not.toBe(before);
     expect(editor.getWorkflowIssues().chatConfigIssues).toEqual([]);
   });
+
+  it('reports model_unavailable for invalid selectLLMModel inside Agent selectedTools and skips agentGenerated or empty values', () => {
+    const editor = createWorkflowEditor(
+      {
+        nodes: [
+          {
+            nodeId: 'start',
+            name: 'Start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiModelId,
+                label: 'Model',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                value: LLM_MODELS[0].modelId
+              },
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Tools',
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                value: [
+                  {
+                    id: 'systemTool-model-invoke',
+                    name: 'Model Invoke',
+                    inputs: [
+                      {
+                        key: 'model',
+                        label: 'Tool Model',
+                        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                        required: true,
+                        value: 'gone-model-id'
+                      },
+                      {
+                        key: 'autoModel',
+                        label: 'Auto Model',
+                        mode: 'agentGenerated',
+                        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                        value: 'also-gone'
+                      },
+                      {
+                        key: 'optionalModel',
+                        label: 'Optional Model',
+                        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                        value: ''
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'agent',
+            sourceHandle: 'start-source-right',
+            targetHandle: 'agent-target-left'
+          }
+        ],
+        chatConfig: {}
+      },
+      {
+        getEnvironment: () => ({
+          models: LLM_MODELS,
+          sandbox: { configured: true, planSupported: true }
+        })
+      }
+    );
+
+    const agentIssues = editor
+      .getWorkflowIssues()
+      .issues.filter((issue) => issue.nodeId === 'agent');
+    expect(agentIssues).toContainEqual(
+      expect.objectContaining({
+        code: 'model_unavailable',
+        inputKey: NodeInputKeyEnum.selectedTools,
+        params: expect.objectContaining({ model: 'gone-model-id' })
+      })
+    );
+    expect(agentIssues.filter((issue) => issue.code === 'model_unavailable')).toHaveLength(1);
+    editor.dispose();
+  });
 });
 
 describe('workflow reference option cache invalidation', () => {

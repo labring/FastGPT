@@ -19,6 +19,7 @@ import {
   workflowInputUsesSecretValues
 } from '../../reference';
 import {
+  collectAgentSelectedToolModelEntries,
   isWorkflowModelExpression,
   isWorkflowSystemModelInput,
   workflowModelReferenceIsAvailable
@@ -404,12 +405,25 @@ export const collectNodeIssues = (
     resourceKind: isAgentNode ? 'skill' : undefined
   });
   const selectedTools = inputMap.get(NodeInputKeyEnum.selectedTools)?.value;
-  if (
-    data.flowNodeType === FlowNodeTypeEnum.agent &&
-    Array.isArray(selectedTools) &&
-    getAbnormalWorkflowAgentTools(selectedTools).length > 0
-  ) {
-    addIssue({ code: 'agent_tool_abnormal', inputKey: NodeInputKeyEnum.selectedTools });
+  if (data.flowNodeType === FlowNodeTypeEnum.agent && Array.isArray(selectedTools)) {
+    if (getAbnormalWorkflowAgentTools(selectedTools).length > 0) {
+      addIssue({ code: 'agent_tool_abnormal', inputKey: NodeInputKeyEnum.selectedTools });
+    }
+    const selectedToolsInput = inputMap.get(NodeInputKeyEnum.selectedTools);
+    if (!selectedToolsInput || !nodeInputIsReference(selectedToolsInput)) {
+      for (const entry of collectAgentSelectedToolModelEntries({ selectedTools })) {
+        // 缺失必填项由 agent_tool_abnormal 统一提示；此处仅校验已配置但失效的模型。
+        if (isEmptyModelValue(entry.value)) continue;
+        addModelIssue({
+          modelId: entry.value,
+          type: ModelTypeEnum.llm,
+          featureEnabled: true,
+          inputKey: NodeInputKeyEnum.selectedTools,
+          modelInput: entry.input,
+          allowLegacyModelFallback: true
+        });
+      }
+    }
   }
 
   // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活；

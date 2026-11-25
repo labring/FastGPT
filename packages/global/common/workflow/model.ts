@@ -1,6 +1,7 @@
 import { ModelTypeEnum } from '../../core/ai/constants';
 import { getModelReferenceValue, isEmptyModelValue } from '../../core/ai/model/reference';
 import { isSystemModel } from '../../core/ai/model/utils';
+import { AgentToolInputModeEnum } from '../../core/app/tool/constants';
 import type { AppChatConfigType } from '../../core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../core/workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../core/workflow/node/constant';
@@ -16,7 +17,7 @@ import type {
   WorkflowModelReferenceStatus,
   WorkflowModelValidationIssue
 } from '../../core/workflow/model/type';
-import { nodeInputIsReference } from './reference';
+import { getSelectedInputRenderType, nodeInputIsReference } from './reference';
 
 const systemLLMNodeTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.chatNode,
@@ -121,6 +122,103 @@ export const getWorkflowNodeModelInputs = ({
   return { modelIdInputs, legacyInputs };
 };
 
+export type AgentSelectedToolModelEntry = {
+  tool: Record<string, unknown>;
+  toolIndex: number;
+  inputKey: string;
+  input?: FlowNodeInputItemType;
+  value: unknown;
+  required: boolean;
+  valueSource: 'input' | 'config';
+};
+
+export type SelectedToolModelKeysResolver = (tool: Record<string, unknown>) => readonly string[];
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * 枚举 Agent 节点 `selectedTools` 中由手工配置的 `selectLLMModel` 模型引用。
+ *
+ * - 编辑态（已展开 `tool.inputs` 含 `renderTypeList`）：同步识别 `selectLLMModel` 输入，跳过 `agentGenerated` 与变量引用；
+ * - 存储态（`tool.inputs` 为稀疏 `{ key, mode }`）：结合调用方传入的 `getSelectedToolModelKeys` 从 `tool.config` 读取显式配置值。
+ */
+export const collectAgentSelectedToolModelEntries = ({
+  selectedTools,
+  getSelectedToolModelKeys
+}: {
+  selectedTools: unknown;
+  getSelectedToolModelKeys?: SelectedToolModelKeysResolver;
+}): AgentSelectedToolModelEntry[] => {
+  if (!Array.isArray(selectedTools)) return [];
+
+  const entries: AgentSelectedToolModelEntry[] = [];
+
+  for (const [toolIndex, rawTool] of selectedTools.entries()) {
+    if (!isPlainRecord(rawTool)) continue;
+
+    const config = isPlainRecord(rawTool.config) ? rawTool.config : undefined;
+    const savedModeMap = new Map<string, string>();
+    const handledKeys = new Set<string>();
+
+    if (Array.isArray(rawTool.inputs)) {
+      for (const rawInput of rawTool.inputs) {
+        if (!isPlainRecord(rawInput) || typeof rawInput.key !== 'string') continue;
+
+        if (typeof rawInput.mode === 'string') {
+          savedModeMap.set(rawInput.key, rawInput.mode);
+        }
+
+        if (!Array.isArray(rawInput.renderTypeList)) continue;
+
+        const toolInput = rawInput as FlowNodeInputItemType;
+        if (
+          savedModeMap.get(toolInput.key) === AgentToolInputModeEnum.agentGenerated ||
+          nodeInputIsReference(toolInput) ||
+          getSelectedInputRenderType(toolInput) !== FlowNodeInputTypeEnum.selectLLMModel
+        ) {
+          continue;
+        }
+
+        handledKeys.add(toolInput.key);
+        const configValue =
+          config && Object.hasOwn(config, toolInput.key) ? config[toolInput.key] : undefined;
+        const value = toolInput.value ?? configValue ?? toolInput.defaultValue;
+
+        entries.push({
+          tool: rawTool,
+          toolIndex,
+          inputKey: toolInput.key,
+          input: toolInput,
+          value,
+          required: Boolean(toolInput.required),
+          valueSource: 'input'
+        });
+      }
+    }
+
+    if (!getSelectedToolModelKeys || !config) continue;
+
+    for (const key of getSelectedToolModelKeys(rawTool)) {
+      if (!key || handledKeys.has(key)) continue;
+      if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) continue;
+      if (!Object.hasOwn(config, key)) continue;
+
+      handledKeys.add(key);
+      entries.push({
+        tool: rawTool,
+        toolIndex,
+        inputKey: key,
+        value: config[key],
+        required: false,
+        valueSource: 'config'
+      });
+    }
+  }
+
+  return entries;
+};
+
 /**
  * 遍历工作流内所有可静态定位的系统模型引用。
  *
@@ -131,13 +229,15 @@ export const walkWorkflowModelReferences = ({
   nodes,
   chatConfig,
   referenceNodes,
+  getSelectedToolModelKeys,
   onReference
 }: {
   nodes?: unknown;
   chatConfig?: unknown;
   referenceNodes?: StoreNodeItemType[];
+  getSelectedToolModelKeys?: SelectedToolModelKeysResolver;
   onReference: (params: {
-    source: 'systemInput' | 'legacyConfig' | 'datasetConfig' | 'chatConfig';
+    source: 'systemInput' | 'legacyConfig' | 'datasetConfig' | 'chatConfig' | 'agentToolConfig';
     reference: { modelId?: unknown; model?: unknown };
     type: ModelTypeEnum;
     input?: FlowNodeInputItemType;
@@ -145,6 +245,7 @@ export const walkWorkflowModelReferences = ({
     config?: Record<string, unknown>;
     slot?: (typeof workflowSystemModelSlots)[number];
     legacyInputs?: FlowNodeInputItemType[];
+    agentTool?: AgentSelectedToolModelEntry;
     isReferenceInput: (input: FlowNodeInputItemType) => boolean;
   }) => boolean | void;
 }) => {
@@ -263,24 +364,58 @@ export const walkWorkflowModelReferences = ({
 
     if (node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
     const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-    if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) continue;
-    for (const slot of workflowDatasetParamModelSlots) {
-      if (
-        onReference({
-          source: 'datasetConfig',
-          reference: {
-            modelId: paramsInput.value[slot.modelIdKey],
-            model: paramsInput.value[slot.legacyKey]
-          },
-          type: slot.type,
-          input: paramsInput,
-          node,
-          config: paramsInput.value,
-          slot,
-          isReferenceInput
-        })
-      ) {
-        return;
+    if (paramsInput && !isReferenceInput(paramsInput) && isObject(paramsInput.value)) {
+      for (const slot of workflowDatasetParamModelSlots) {
+        if (
+          onReference({
+            source: 'datasetConfig',
+            reference: {
+              modelId: paramsInput.value[slot.modelIdKey],
+              model: paramsInput.value[slot.legacyKey]
+            },
+            type: slot.type,
+            input: paramsInput,
+            node,
+            config: paramsInput.value,
+            slot,
+            isReferenceInput
+          })
+        ) {
+          return;
+        }
+      }
+    }
+
+    const selectedToolsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    if (
+      selectedToolsInput &&
+      !isReferenceInput(selectedToolsInput) &&
+      Array.isArray(selectedToolsInput.value)
+    ) {
+      const toolModelEntries = collectAgentSelectedToolModelEntries({
+        selectedTools: selectedToolsInput.value,
+        getSelectedToolModelKeys
+      });
+      for (const entry of toolModelEntries) {
+        if (
+          onReference({
+            source: 'agentToolConfig',
+            reference: {
+              modelId: entry.value,
+              model: undefined
+            },
+            type: ModelTypeEnum.llm,
+            input: selectedToolsInput,
+            node,
+            config: isObject(entry.tool.config) ? entry.tool.config : undefined,
+            agentTool: entry,
+            isReferenceInput
+          })
+        ) {
+          return;
+        }
       }
     }
   }
