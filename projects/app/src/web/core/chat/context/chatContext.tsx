@@ -80,6 +80,10 @@ export const ChatContext = createContext<ChatContextType>({
 const isSameHistoryList = (a: ChatHistoryItemType[], b: ChatHistoryItemType[]) =>
   a.length === b.length && a.every((item, index) => item === b[index]);
 
+// 清理孤立乐观项需同时满足最小轮询次数与最小耗时，避免切窗/visibilitychange 高频触发 poll 在几秒内误删仍在首包前的会话。
+const PENDING_EXPIRE_MIN_POLLS = 6;
+const PENDING_EXPIRE_MIN_MS = 25_000;
+
 const ChatContextProvider = ({
   children,
   params,
@@ -154,7 +158,9 @@ const ChatContextProvider = ({
   const historyTargetParamsRef = useLatest(historyTargetParams);
   const pendingTargetRef = useRef(historyTargetParams);
   const pendingHistoriesRef = useRef<ChatHistoryItemType[]>([]);
-  const pendingMissedPollsRef = useRef<Map<string, number>>(new Map());
+  const pendingMissedPollsRef = useRef<Map<string, { count: number; firstMissedAt: number }>>(
+    new Map()
+  );
 
   const getScopedPendingHistories = useCallback(() => {
     if (pendingTargetRef.current !== historyTargetParamsRef.current) {
@@ -539,16 +545,19 @@ const ChatContextProvider = ({
         map.forEach((_status, id) => {
           pendingMissedPollsRef.current.delete(id);
         });
+        const now = Date.now();
         getScopedPendingHistories().forEach((item) => {
           if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return;
           if (map.has(item.chatId)) return;
-          const missedPolls = (pendingMissedPollsRef.current.get(item.chatId) ?? 0) + 1;
-          // 连续多轮轮询均未落库（如切走后入口审核拦截），清理孤立乐观项避免无限轮询。
-          if (missedPolls >= 6) {
+          const prevMiss = pendingMissedPollsRef.current.get(item.chatId);
+          const count = (prevMiss?.count ?? 0) + 1;
+          const firstMissedAt = prevMiss?.firstMissedAt ?? now;
+          // 连续多轮且持续超过最短窗口均未落库（如切走后入口审核拦截），清理孤立乐观项避免无限轮询。
+          if (count >= PENDING_EXPIRE_MIN_POLLS && now - firstMissedAt >= PENDING_EXPIRE_MIN_MS) {
             pendingMissedPollsRef.current.delete(item.chatId);
             expiredPendingIds.add(item.chatId);
           } else {
-            pendingMissedPollsRef.current.set(item.chatId, missedPolls);
+            pendingMissedPollsRef.current.set(item.chatId, { count, firstMissedAt });
           }
         });
         const hasCompletedGenerating = historiesRef.current.some((item) => {

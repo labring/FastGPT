@@ -336,5 +336,21 @@ describe('chat history lease polling lifecycle', () => {
         chatIds: expect.arrayContaining(['chat-a', 'chat-b'])
       })
     );
+
+    // 短时间内高频触发 visibilitychange 轮询（>6 次但未满最短过期窗口）不得误删未落库的乐观会话 A
+    for (let i = 0; i < 8; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+        document.dispatchEvent(new dom.window.Event('visibilitychange'));
+        await Promise.resolve();
+      });
+    }
+    expect(document.querySelector('output')?.textContent).toBe('chat-a:0,chat-b:1');
+
+    // 超过最短过期窗口后，始终未落库的孤立乐观项才被清理并停止轮询
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25000);
+    });
+    expect(document.querySelector('output')?.textContent).toBe('chat-b:1');
   });
 });
