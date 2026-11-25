@@ -96,7 +96,14 @@ describe('Mongo embedding initialization', () => {
     expect(mocks.create).toHaveBeenCalledWith({
       name: 'embedding_int8',
       type: 'vectorSearch',
-      definition: MongoEmbeddingSearchDefinition
+      definition: expect.objectContaining({
+        fields: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'vector',
+            hnswOptions: { maxEdges: 32, numEdgeCandidates: 256 }
+          })
+        ])
+      })
     });
     mocks.create.mockClear();
     await ensureMongoEmbeddingSearchIndex();
@@ -120,20 +127,35 @@ describe('Mongo embedding initialization', () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it('accepts the server default HNSW but rejects flat or non-INT8 definitions', async () => {
+  it('reuses HNSW indexes with default or explicit legacy build parameters', async () => {
     const fields = MongoEmbeddingSearchDefinition.fields.map((field) => {
-      if (!('indexingMethod' in field)) return field;
-      const { indexingMethod: _method, ...rest } = field;
+      if (!('hnswOptions' in field)) return field;
+      const { indexingMethod: _method, hnswOptions: _build, ...rest } = field;
       return rest;
     });
-    mocks.list.mockResolvedValue([{ ...ready(), latestDefinition: { fields } }]);
-    await ensureMongoEmbeddingSearchIndex();
-    for (const override of [{ indexingMethod: 'flat' }, { quantization: 'binary' }]) {
+    for (const override of [{}, { hnswOptions: { maxEdges: 16, numEdgeCandidates: 100 } }]) {
       mocks.list.mockResolvedValue([
         {
           ...ready(),
           latestDefinition: {
             fields: fields.map((field) =>
+              field.type === 'vector' ? { ...field, ...override } : field
+            )
+          }
+        }
+      ]);
+      await ensureMongoEmbeddingSearchIndex();
+    }
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects flat or non-INT8 definitions', async () => {
+    for (const override of [{ indexingMethod: 'flat' }, { quantization: 'binary' }]) {
+      mocks.list.mockResolvedValue([
+        {
+          ...ready(),
+          latestDefinition: {
+            fields: MongoEmbeddingSearchDefinition.fields.map((field) =>
               field.type === 'vector' ? { ...field, ...override } : field
             )
           }

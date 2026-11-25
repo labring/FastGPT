@@ -10,17 +10,23 @@ import z from 'zod';
 const SearchIndexFieldsSchema = z.array(z.record(z.string(), z.unknown()));
 
 export const MongoEmbeddingSearchIndexName = 'embedding_int8';
+const vectorField = {
+  type: 'vector',
+  path: 'vector',
+  numDimensions: DatasetEmbeddingDimensions,
+  similarity: 'dotProduct',
+  quantization: 'scalar',
+  indexingMethod: 'hnsw'
+};
+const filterFields = ['teamId', 'datasetId', 'collectionId'].map((path) => ({
+  type: 'filter',
+  path
+}));
+
 export const MongoEmbeddingSearchDefinition = {
   fields: [
-    {
-      type: 'vector',
-      path: 'vector',
-      numDimensions: DatasetEmbeddingDimensions,
-      similarity: 'dotProduct',
-      quantization: 'scalar',
-      indexingMethod: 'hnsw'
-    },
-    ...['teamId', 'datasetId', 'collectionId'].map((path) => ({ type: 'filter', path }))
+    { ...vectorField, hnswOptions: { maxEdges: 32, numEdgeCandidates: 256 } },
+    ...filterFields
   ]
 };
 
@@ -56,9 +62,11 @@ export const ensureMongoEmbeddingSearchIndex = () =>
     definition: MongoEmbeddingSearchDefinition,
     matchesDefinition: ({ fields }) => {
       const { data } = SearchIndexFieldsSchema.safeParse(fields);
+      // 建图参数只用于创建，旧索引即使使用不同参数也可以继续查询。
+      const requiredFields = [vectorField, ...filterFields];
       return (
-        data?.length === MongoEmbeddingSearchDefinition.fields.length &&
-        MongoEmbeddingSearchDefinition.fields.every((expected) =>
+        data?.length === requiredFields.length &&
+        requiredFields.every((expected) =>
           data.some((field) =>
             Object.entries(expected).every(
               ([key, value]) =>
