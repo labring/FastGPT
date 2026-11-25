@@ -577,6 +577,7 @@ const CoreSettingComponent = () => {
                     value={field.value}
                     onChange={field.onChange}
                     isConfigured={isSecretConfigured('documentParse.customPdf.somarkApiKey')}
+                    isRequired
                   />
                 )}
               />
@@ -609,6 +610,7 @@ const CoreSettingComponent = () => {
                     value={field.value}
                     onChange={field.onChange}
                     isConfigured={isSecretConfigured('documentParse.customPdf.doc2xKey')}
+                    isRequired
                   />
                 )}
               />
@@ -641,6 +643,7 @@ const CoreSettingComponent = () => {
                       value={field.value}
                       onChange={field.onChange}
                       isConfigured={isSecretConfigured('documentParse.customPdf.textinAppId')}
+                      isRequired
                     />
                   )}
                 />
@@ -661,6 +664,7 @@ const CoreSettingComponent = () => {
                       value={field.value}
                       onChange={field.onChange}
                       isConfigured={isSecretConfigured('documentParse.customPdf.textinSecretCode')}
+                      isRequired
                     />
                   )}
                 />

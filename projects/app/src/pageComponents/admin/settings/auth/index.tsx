@@ -222,6 +222,9 @@ const AuthSettingComponent = () => {
     }
   );
 
+  const isFastLoginDirty =
+    showFastLogin && fastLoginText !== JSON.stringify(effectiveConfig.fastLogin ?? [], null, 2);
+
   return (
     <AdminSettingPage
       form={form}
@@ -229,6 +232,7 @@ const AuthSettingComponent = () => {
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isSaving}
+      isUnsaved={isFastLoginDirty}
       onSave={handleSubmit(submitAuthConfig)}
     >
       {/* 密码安全 */}
@@ -834,14 +838,16 @@ const AuthSettingComponent = () => {
               label={t('admin:sso_auto_login')}
               tooltip={t('admin:sso_auto_login_tip')}
               isChecked={ssoAutoLogin}
-              onChange={(value) => setValue('sso.autoLogin', value)}
+              onChange={(value) => setValue('sso.autoLogin', value, { shouldDirty: true })}
             />
             <AdminSwitchRow
               name="sso.disablePasswordForSsoUsers"
               label={t('admin:disable_password_for_sso_users')}
               tooltip={t('admin:disable_password_for_sso_users_tip')}
               isChecked={ssoDisablePassword}
-              onChange={(value) => setValue('sso.disablePasswordForSsoUsers', value)}
+              onChange={(value) =>
+                setValue('sso.disablePasswordForSsoUsers', value, { shouldDirty: true })
+              }
             />
           </SimpleGrid>
         </AdminSettingSection>

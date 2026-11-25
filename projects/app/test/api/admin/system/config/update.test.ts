@@ -151,6 +151,43 @@ describe('instance config update API', () => {
     });
   });
 
+  it('awaits initSystemConfig before returning so immediate getInitData reads the refreshed snapshot', async () => {
+    let releaseReload!: () => void;
+    let reloaded = false;
+    mocks.initSystemConfig.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseReload = () => {
+            reloaded = true;
+            resolve();
+          };
+        })
+    );
+
+    let finished = false;
+    const pending = callUpdate({
+      body: {
+        items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'Refreshed name' } }]
+      }
+    } as any).then((res) => {
+      finished = true;
+      return res;
+    });
+
+    await vi.waitFor(() => expect(mocks.initSystemConfig).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(finished).toBe(false);
+
+    releaseReload();
+    const response = await pending;
+    expect(reloaded).toBe(true);
+    expect(response.results[0]).toMatchObject({
+      domain: 'site',
+      revision: 1,
+      effectiveConfig: { name: 'Refreshed name' }
+    });
+  });
+
   it('rejects the ENV-only proEnv scope at the admin API boundary', async () => {
     await expect(
       callUpdate({

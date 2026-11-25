@@ -372,5 +372,5 @@
   "model.stt_billing_tokens": "By tokens",
   "model.stt_input_price": "Input price (credits)",
   "model.stt_output_price": "Output price (credits)",
-  "model.cache_price_tip": "Prices are in points / M tokens, with up to 2 decimal places. Leave cache read or creation blank to use the input price for that tier; enter 0 for free caching."
+  "model.cache_price_tip": "Prices are in points / M tokens, with up to 2 decimal places."
 }

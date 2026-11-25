@@ -178,7 +178,8 @@ describe('cache price editing', () => {
     for (const key of ['inputPrice', 'outputPrice', 'cacheReadPrice', 'cacheCreationPrice']) {
       expect(input(key)).toBeDefined();
     }
-    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+    expect(input('cacheReadPrice').placeholder).toBe('');
+    expect(input('cacheCreationPrice').placeholder).toBe('');
     expect(input('cacheReadPrice').value).toBe('');
   });
 
@@ -200,7 +201,8 @@ describe('cache price editing', () => {
     await render([{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 }]);
     await fill('cacheReadPrice', '');
     expect(form.getValues('pricing.tiers.0.cacheReadPrice')).toBeUndefined();
-    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+    expect(input('cacheReadPrice').placeholder).toBe('');
+    expect(input('cacheReadPrice').value).toBe('');
   });
 
   it('rejects negative cache prices instead of rounding them into free caching', async () => {

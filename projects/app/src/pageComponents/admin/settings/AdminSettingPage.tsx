@@ -2,10 +2,12 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { throttle } from 'lodash-es';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import AdminHeader from '../AdminHeader';
+import { hasDirtyFields } from '../utils';
 import AdminSettingTOC, { type SettingTOCItem } from './AdminSettingTOC';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useFormState, type Control, type UseFormReturn } from 'react-hook-form';
 import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 
 type AdminSettingPageProps = {
@@ -15,12 +17,35 @@ type AdminSettingPageProps = {
   tocItems: SettingTOCItem[];
   isLoading?: boolean;
   isSaving?: boolean;
+  /** 表单外的额外未保存状态（如未托管在 form 中的本地草稿或子表单）；传入 form 时会与 form.isDirty 取并集。 */
+  isUnsaved?: boolean;
   onSave?: () => void | Promise<unknown>;
   form?: UseFormReturn<any>;
   fieldAliases?: Record<string, string>;
   onSaveError?: (error: unknown) => void;
   children: React.ReactNode;
   maxW?: string;
+};
+
+const UnsavedBadge = () => {
+  const { t } = useSafeTranslation();
+  return (
+    <MyTag py={0} px={1} showDot bg={'transparent'} colorSchema={'red'}>
+      {t('common:core.app.not_saved')}
+    </MyTag>
+  );
+};
+
+// 独立订阅 RHF dirtyFields，避免外层 React.memo 阻断非受控输入更新，也不引发整页重渲染。
+const FormUnsavedBadge = ({
+  control,
+  isUnsaved
+}: {
+  control: Control<any>;
+  isUnsaved?: boolean;
+}) => {
+  const { dirtyFields } = useFormState({ control });
+  return isUnsaved || hasDirtyFields(dirtyFields) ? <UnsavedBadge /> : null;
 };
 
 /**
@@ -36,6 +61,7 @@ const AdminSettingPage = ({
   tocItems,
   isLoading = false,
   isSaving = false,
+  isUnsaved = false,
   onSave,
   form,
   fieldAliases,
@@ -117,6 +143,12 @@ const AdminSettingPage = ({
       </Button>
     ));
 
+  const titleExtra = (() => {
+    if (isLoading) return null;
+    if (form) return <FormUnsavedBadge control={form.control} isUnsaved={isUnsaved} />;
+    return isUnsaved ? <UnsavedBadge /> : null;
+  })();
+
   const content = (
     <>
       {isLoading && <MyLoading />}
@@ -125,6 +157,7 @@ const AdminSettingPage = ({
         {headerTitle && (
           <AdminHeader
             title={headerTitle}
+            titleExtra={titleExtra}
             description={headerDescription}
             rightContent={headerActions}
           />

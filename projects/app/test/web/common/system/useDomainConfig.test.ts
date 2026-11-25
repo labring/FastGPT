@@ -3,12 +3,23 @@ import { JSDOM } from 'jsdom';
 import type { Root } from 'react-dom/client';
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), toast: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  toast: vi.fn(),
+  clientInitData: vi.fn().mockResolvedValue({ feConfigs: {} }),
+  subPlans: undefined as Record<string, unknown> | undefined
+}));
 vi.mock('@/web/common/api/request', () => ({ GET: mocks.get, POST: mocks.post }));
+vi.mock('@/web/common/system/staticData', () => ({
+  clientInitData: mocks.clientInitData
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ feConfigs: { isProService: false } })
+  useSystemStore: Object.assign(() => ({ feConfigs: { isProService: false } }), {
+    getState: () => ({ subPlans: mocks.subPlans })
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -89,6 +100,8 @@ describe('useDomainConfig', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const { createRoot } = await import('react-dom/client');
     vi.clearAllMocks();
+    mocks.subPlans = undefined;
+    mocks.clientInitData.mockResolvedValue({ feConfigs: {} });
     mocks.get.mockResolvedValue({
       revision: 3,
       overrides: { name: 'Original' },
@@ -293,5 +306,36 @@ describe('useDomainConfig', () => {
     });
     expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(false);
     expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+  });
+
+  it('triggers clientInitData after successful save and passes includeSubPlans when subPlans are updated or cached', async () => {
+    mocks.post.mockResolvedValue({ results: [] });
+
+    await updateDomainConfigApi({
+      items: [{ domain: 'site', expectedRevision: 1, overrides: { name: 'Updated' } }]
+    });
+    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0 });
+
+    await updateDomainConfigApi({
+      items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
+      subPlans: {},
+      subPlansExpectedRevision: 1
+    });
+    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+
+    mocks.subPlans = { standard: {} };
+    await updateDomainConfigApi({
+      items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Updated 2' } }]
+    });
+    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+
+    mocks.clientInitData.mockClear();
+    mocks.post.mockRejectedValueOnce(new Error('Save failed'));
+    await expect(
+      updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Fail' } }]
+      })
+    ).rejects.toThrow('Save failed');
+    expect(mocks.clientInitData).not.toHaveBeenCalled();
   });
 });

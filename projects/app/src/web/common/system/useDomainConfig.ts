@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useAdminConfigSaveRequest } from './useAdminConfigSaveRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { GET, POST } from '@/web/common/api/request';
+import { clientInitData } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
@@ -32,12 +33,20 @@ export const getDomainConfigApi = (
 
 /**
  * 客户端 API 请求函数：一次请求原子保存一个或多个 Domain 的稀疏配置。
- * 可附带 subPlans，与配置域在同一个数据库事务中提交。
+ * 可附带 subPlans，与配置域在同一个数据库事务中提交；保存成功后异步刷新客户端初始化缓存。
  */
-export const updateDomainConfigApi = (
+export const updateDomainConfigApi = async (
   data: UpdateDomainConfigBody
 ): Promise<UpdateDomainConfigResponse> => {
-  return POST<UpdateDomainConfigResponse>('/admin/system/config/update', data);
+  const res = await POST<UpdateDomainConfigResponse>('/admin/system/config/update', data);
+  const includeSubPlans =
+    data.subPlans !== undefined || Boolean(useSystemStore.getState?.()?.subPlans);
+  // 刷新客户端静态缓存（feConfigs / subPlans）；刷新失败不影响已提交保存。
+  void clientInitData({
+    retry: 0,
+    ...(includeSubPlans ? { includeSubPlans: true } : {})
+  }).catch(() => undefined);
+  return res;
 };
 
 const EMPTY_OBJECT: Record<string, never> = {};
