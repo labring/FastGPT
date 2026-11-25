@@ -1,7 +1,6 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import {
-  Badge,
   Box,
   Button,
   Flex,
@@ -26,6 +25,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
@@ -108,7 +108,9 @@ export default function DatasetSearchPerf(): JSX.Element {
     [t]
   );
 
-  const reasonLabelMap = useMemo<Record<OpsPerfEventReason, { label: string; color: string }>>(
+  const reasonLabelMap = useMemo<
+    Record<OpsPerfEventReason, { label: string; color: ColorSchemaType }>
+  >(
     () => ({
       error: { label: t('admin:ops_perf_reason_error'), color: 'red' },
       degraded: { label: t('admin:ops_perf_reason_degraded'), color: 'yellow' },
@@ -357,7 +359,7 @@ export default function DatasetSearchPerf(): JSX.Element {
         key: 'vector',
         title: t('admin:ops_perf_vector_perf_title'),
         sub: t('admin:ops_perf_vector_perf_sub'),
-        badgeColor: 'blue',
+        badgeColor: 'blue' as ColorSchemaType,
         accentColor: 'blue.600',
         data: overview?.vectorSearchPerf
       },
@@ -365,7 +367,7 @@ export default function DatasetSearchPerf(): JSX.Element {
         key: 'fulltext',
         title: t('admin:ops_perf_fulltext_perf_title'),
         sub: t('admin:ops_perf_fulltext_perf_sub'),
-        badgeColor: 'pink',
+        badgeColor: 'pink' as ColorSchemaType,
         accentColor: 'pink.600',
         data: overview?.fullTextSearchPerf
       }
@@ -401,12 +403,12 @@ export default function DatasetSearchPerf(): JSX.Element {
         <HStack spacing={2} flexWrap={'wrap'} fontSize={'xs'}>
           {overview?.meta && (
             <>
-              <Badge colorScheme={'blue'} variant={'subtle'} px={2} py={0.5} borderRadius={'md'}>
+              <MyTag type={'borderFill'} colorSchema={'blue'}>
                 {t('admin:ops_perf_vector_engine')}: {overview.meta.vectorEngine.toUpperCase()}
-              </Badge>
-              <Badge colorScheme={'purple'} variant={'subtle'} px={2} py={0.5} borderRadius={'md'}>
+              </MyTag>
+              <MyTag type={'borderFill'} colorSchema={'purple'}>
                 {t('admin:ops_perf_fulltext_engine')}: {overview.meta.fullTextEngine.toUpperCase()}
-              </Badge>
+              </MyTag>
             </>
           )}
         </HStack>
@@ -414,7 +416,7 @@ export default function DatasetSearchPerf(): JSX.Element {
         <HStack spacing={2.5} flexWrap={'wrap'}>
           <MySelect<number>
             size={'sm'}
-            width={'184px'}
+            width={'140px'}
             value={rangeHours}
             list={rangeOptions}
             onChange={(val) => {
@@ -607,14 +609,15 @@ export default function DatasetSearchPerf(): JSX.Element {
                             ({row.count.toLocaleString()} · {formatPct(row.ratio)})
                           </Text>
                           {row.pgHnswRate !== null && (
-                            <Badge
+                            <MyTag
+                              type={'borderFill'}
+                              colorSchema={row.pgHnswRate >= 0.9 ? 'green' : 'yellow'}
                               fontSize={'10px'}
-                              colorScheme={row.pgHnswRate >= 0.9 ? 'green' : 'orange'}
-                              variant={'subtle'}
-                              whiteSpace={'nowrap'}
+                              px={1.5}
+                              py={0.5}
                             >
                               HNSW {formatPct(row.pgHnswRate)}
-                            </Badge>
+                            </MyTag>
                           )}
                         </HStack>
                         <Text
@@ -707,9 +710,14 @@ export default function DatasetSearchPerf(): JSX.Element {
                         {card.sub}
                       </Text>
                     </Box>
-                    <Badge colorScheme={card.badgeColor} variant={'subtle'} fontFamily={'mono'}>
+                    <MyTag
+                      type={'borderFill'}
+                      colorSchema={card.badgeColor}
+                      fontFamily={'mono'}
+                      flexShrink={0}
+                    >
                       {t('admin:ops_perf_trigger_short')} {formatPct(stats?.triggerRate ?? 0)}
-                    </Badge>
+                    </MyTag>
                   </Flex>
 
                   <Grid templateColumns={['repeat(2, 1fr)', 'repeat(4, 1fr)']} gap={3}>
@@ -750,10 +758,10 @@ export default function DatasetSearchPerf(): JSX.Element {
                     : t('admin:ops_perf_rerank_sub')}
                 </Text>
               </Box>
-              <Badge colorScheme={'teal'} variant={'subtle'} fontFamily={'mono'}>
+              <MyTag type={'borderFill'} colorSchema={'green'} fontFamily={'mono'} flexShrink={0}>
                 {t('admin:ops_perf_model_scope_global')} · {rerankModelTotalCalls.toLocaleString()}{' '}
                 {t('admin:ops_perf_unit_calls')}
-              </Badge>
+              </MyTag>
             </Flex>
             <TableContainer>
               <Table size={'sm'} variant={'simple'} style={{ tableLayout: 'fixed' }}>
@@ -778,14 +786,16 @@ export default function DatasetSearchPerf(): JSX.Element {
                         <HStack spacing={2} minW={0}>
                           <Text isTruncated>{row.model}</Text>
                           {datasetSynonymEnabled && row.synonymRatio > 0 && (
-                            <Badge
+                            <MyTag
+                              type={'borderFill'}
+                              colorSchema={'purple'}
                               fontSize={'10px'}
-                              colorScheme={'purple'}
-                              variant={'subtle'}
+                              px={1.5}
+                              py={0.5}
                               flexShrink={0}
                             >
                               {t('admin:ops_perf_synonym_short')} {formatPct(row.synonymRatio)}
-                            </Badge>
+                            </MyTag>
                           )}
                         </HStack>
                       </Td>
@@ -833,10 +843,10 @@ export default function DatasetSearchPerf(): JSX.Element {
                   {t('admin:ops_perf_query_ext_sub')}
                 </Text>
               </Box>
-              <Badge colorScheme={'purple'} variant={'subtle'} fontFamily={'mono'}>
+              <MyTag type={'borderFill'} colorSchema={'purple'} fontFamily={'mono'} flexShrink={0}>
                 {t('admin:ops_perf_model_scope_global')} ·{' '}
                 {queryExtModelTotalCalls.toLocaleString()} {t('admin:ops_perf_unit_calls')}
-              </Badge>
+              </MyTag>
             </Flex>
             <TableContainer>
               <Table size={'sm'} variant={'simple'} style={{ tableLayout: 'fixed' }}>
@@ -985,14 +995,26 @@ export default function DatasetSearchPerf(): JSX.Element {
                               {stageLabelMap[st.key] ?? st.key}
                             </Text>
                             {st.group === 'parallel-vector' && (
-                              <Badge fontSize={'10px'} colorScheme={'blue'} variant={'subtle'}>
+                              <MyTag
+                                type={'borderFill'}
+                                colorSchema={'blue'}
+                                fontSize={'10px'}
+                                px={1.5}
+                                py={0.5}
+                              >
                                 {t('admin:ops_perf_parallel_vector')}
-                              </Badge>
+                              </MyTag>
                             )}
                             {st.group === 'parallel-fulltext' && (
-                              <Badge fontSize={'10px'} colorScheme={'pink'} variant={'subtle'}>
+                              <MyTag
+                                type={'borderFill'}
+                                colorSchema={'pink'}
+                                fontSize={'10px'}
+                                px={1.5}
+                                py={0.5}
+                              >
                                 {t('admin:ops_perf_parallel_fulltext')}
-                              </Badge>
+                              </MyTag>
                             )}
                           </HStack>
                         </Td>
@@ -1065,11 +1087,17 @@ export default function DatasetSearchPerf(): JSX.Element {
                     {t('admin:ops_perf_events_title')}
                   </Text>
                   {overview?.meta.eventWindowClamped && (
-                    <Badge colorScheme={'gray'} variant={'subtle'} fontSize={'11px'}>
+                    <MyTag
+                      type={'borderFill'}
+                      colorSchema={'gray'}
+                      fontSize={'11px'}
+                      px={2}
+                      py={0.5}
+                    >
                       {t('admin:ops_perf_events_retention_badge', {
                         days: overview.meta.eventRetentionDays
                       })}
-                    </Badge>
+                    </MyTag>
                   )}
                 </HStack>
                 <Text fontSize={'xs'} color={'myGray.500'}>
@@ -1156,13 +1184,15 @@ export default function DatasetSearchPerf(): JSX.Element {
                           {dayjs(item.createTime).format('MM-DD HH:mm:ss')}
                         </Td>
                         <Td>
-                          <Badge
-                            colorScheme={reasonMeta.color}
-                            variant={'subtle'}
+                          <MyTag
+                            type={'borderFill'}
+                            colorSchema={reasonMeta.color}
                             fontSize={'11px'}
+                            px={2}
+                            py={0.5}
                           >
                             {reasonMeta.label}
-                          </Badge>
+                          </MyTag>
                         </Td>
                         <Td>{modeLabelMap[item.dims.searchMode] ?? item.dims.searchMode}</Td>
                         <Td maxW={'260px'}>
@@ -1193,14 +1223,16 @@ export default function DatasetSearchPerf(): JSX.Element {
                                   </Box>
                                 }
                               >
-                                <Badge
-                                  colorScheme={'blue'}
-                                  variant={'subtle'}
+                                <MyTag
+                                  type={'borderFill'}
+                                  colorSchema={'blue'}
                                   fontSize={'10px'}
+                                  px={1.5}
+                                  py={0.5}
                                   flexShrink={0}
                                 >
                                   +{dsCount - 1}
-                                </Badge>
+                                </MyTag>
                               </MyTooltip>
                             )}
                           </Flex>
@@ -1237,19 +1269,37 @@ export default function DatasetSearchPerf(): JSX.Element {
                         <Td>
                           <HStack spacing={1.5}>
                             {item.detail.pgUsesHnsw === false && (
-                              <Badge colorScheme={'gray'} variant={'subtle'} fontSize={'10px'}>
+                              <MyTag
+                                type={'borderFill'}
+                                colorSchema={'gray'}
+                                fontSize={'10px'}
+                                px={1.5}
+                                py={0.5}
+                              >
                                 {t('admin:ops_perf_route_pg_exact_short')}
-                              </Badge>
+                              </MyTag>
                             )}
                             {item.detail.pgUsesHnsw === true && (
-                              <Badge colorScheme={'green'} variant={'subtle'} fontSize={'10px'}>
+                              <MyTag
+                                type={'borderFill'}
+                                colorSchema={'green'}
+                                fontSize={'10px'}
+                                px={1.5}
+                                py={0.5}
+                              >
                                 HNSW
-                              </Badge>
+                              </MyTag>
                             )}
                             {item.detail.rerankFallback && (
-                              <Badge colorScheme={'orange'} variant={'subtle'} fontSize={'10px'}>
+                              <MyTag
+                                type={'borderFill'}
+                                colorSchema={'yellow'}
+                                fontSize={'10px'}
+                                px={1.5}
+                                py={0.5}
+                              >
                                 {t('admin:ops_perf_reason_degraded')}
-                              </Badge>
+                              </MyTag>
                             )}
                             <Text color={'myGray.500'} fontFamily={'mono'}>
                               {item.detail.resultCount ?? '-'} {t('admin:ops_perf_unit_chunks')}
