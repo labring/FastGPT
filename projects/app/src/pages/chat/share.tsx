@@ -501,6 +501,8 @@ const OutLink = (props: Props & BrandingPageProps) => {
                         onChangeChatId(getNanoid());
                       }}
                       onStartChat={startChat}
+                      onMarkChatRead={postMarkChatRead}
+                      onChatGenerateStatusChange={onChatGenerateStatusChange}
                     />
                   ) : (
                     <ChatBox

@@ -258,6 +258,8 @@ const AppChatWindow = () => {
                 onChangeChatId(getNanoid());
               }}
               onStartChat={onStartChat}
+              onMarkChatRead={postMarkChatRead}
+              onChatGenerateStatusChange={onChatGenerateStatusChange}
             />
           ) : (
             <ChatBox
