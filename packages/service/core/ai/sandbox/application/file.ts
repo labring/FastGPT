@@ -10,7 +10,7 @@ import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 import type { SandboxClient } from './runtime/client';
 import { readExternalFileBuffer } from '../../../../common/file/read/external';
-import { assertSandboxWorkspaceWritable } from './quota';
+import { assertSandboxWorkspaceWritable, rethrowSandboxDiskQuotaExceededError } from './quota';
 
 export type SandboxUrlFile = {
   path: string;
@@ -74,16 +74,20 @@ export async function writeUrlFilesToSandbox({
   const writeEntries: WriteEntry[] = await Promise.all(
     validFiles.map(({ path, url }) => readInputFile(url).then((data) => ({ path, data })))
   );
-  await prepareSandboxFileParentDirectories(
-    sandbox,
-    writeEntries.map(({ path }) => path)
-  );
-  const results = await sandbox.writeFiles(writeEntries);
-  const failed = results.find((item) => item?.error);
-  if (failed?.error) {
-    throw new Error(`${errorPrefix} ${failed.path}: ${failed.error.message}`, {
-      cause: failed.error
-    });
+  try {
+    await prepareSandboxFileParentDirectories(
+      sandbox,
+      writeEntries.map(({ path }) => path)
+    );
+    const results = await sandbox.writeFiles(writeEntries);
+    const failed = results.find((item) => item?.error);
+    if (failed?.error) {
+      throw new Error(`${errorPrefix} ${failed.path}: ${failed.error.message}`, {
+        cause: failed.error
+      });
+    }
+  } catch (error) {
+    rethrowSandboxDiskQuotaExceededError(error);
   }
 }
 
