@@ -1,11 +1,6 @@
-import {
-  bundleOpenAPISchema,
-  parseOpenAPISchemaString
-} from '@fastgpt/global/common/string/swagger';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { axios } from '@fastgpt/service/common/api/axios';
-import { checkUrlSafety } from '@fastgpt/service/common/system/utils';
+import { fetchOpenAPISchemaByUrl } from '@fastgpt/service/core/app/httpTool/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -27,18 +22,7 @@ export async function handler(
 
   await authCert({ req, authToken: true });
 
-  await checkUrlSafety(url, 'OpenAPI Schema URL');
-
-  const { data } = await axios.get<string>(url, {
-    responseType: 'text',
-    maxRedirects: 0,
-    timeout: 30000,
-    transformResponse: (value) => value
-  });
-
-  return GetApiSchemaByUrlResponseSchema.parse(
-    await bundleOpenAPISchema(parseOpenAPISchemaString(data))
-  );
+  return GetApiSchemaByUrlResponseSchema.parse(await fetchOpenAPISchemaByUrl(url));
 }
 
 export default NextAPI(handler);

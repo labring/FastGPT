@@ -1,4 +1,6 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { getOpenTelemetrySink } from '@fastgpt-sdk/otel/logger';
+import { isServerConfigError } from '@fastgpt/global/common/error/utils';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import http from 'http';
@@ -34,9 +36,13 @@ describe('axios.ts', () => {
     'all_proxy',
     'no_proxy',
     'npm_config_http_proxy',
+    'NPM_CONFIG_HTTP_PROXY',
     'npm_config_https_proxy',
+    'NPM_CONFIG_HTTPS_PROXY',
     'npm_config_proxy',
-    'npm_config_no_proxy'
+    'NPM_CONFIG_PROXY',
+    'npm_config_no_proxy',
+    'NPM_CONFIG_NO_PROXY'
   ] as const;
   const originalProxyEnv = proxyEnvKeys.reduce(
     (acc, key) => {
@@ -791,6 +797,90 @@ describe('axios.ts', () => {
         for (const s of connectSockets) s.destroy();
         await Promise.all([closeServer(httpProxy), closeServer(selfSignedTarget)]);
       }
+    });
+
+    it('rejects invalid or unsupported outbound proxy configurations as ServerConfigError without leaking credentials', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      const adapter = vi.fn();
+      const client = createProxyAxios({ adapter });
+
+      const emitOtelError = (error: Error) => {
+        const emittedRecords: unknown[] = [];
+        const sink = getOpenTelemetrySink({
+          loggerProvider: {
+            getLogger: () => ({
+              emit: (record: unknown) => {
+                emittedRecords.push(record);
+              }
+            })
+          } as any
+        });
+        sink({
+          category: ['http', 'error'],
+          level: 'error',
+          timestamp: Date.now(),
+          message: ['System unexpected error'],
+          rawMessage: 'System unexpected error',
+          properties: {
+            url: '/api/core/app/httpTools/getApiSchemaByUrl',
+            message: error.message,
+            error
+          }
+        });
+        return JSON.stringify(emittedRecords);
+      };
+
+      process.env.HTTPS_PROXY = 'http://user:super-secret@bad host:8080';
+      let invalidProxyError: unknown;
+      try {
+        await client.get('https://example.com/openapi.json');
+      } catch (error) {
+        invalidProxyError = error;
+      }
+      expect(isServerConfigError(invalidProxyError)).toBe(true);
+      expect((invalidProxyError as { code?: string }).code).toBe('ERR_INVALID_URL');
+      expect((invalidProxyError as Error).cause).toBeUndefined();
+      expect(Object.prototype.hasOwnProperty.call(invalidProxyError, 'input')).toBe(false);
+      expect((invalidProxyError as Error).message).not.toContain('super-secret');
+      const serializedEnvLog = emitOtelError(invalidProxyError as Error);
+      expect(serializedEnvLog).toContain('ERR_INVALID_URL');
+      expect(serializedEnvLog).not.toContain('super-secret');
+      expect(serializedEnvLog).not.toContain('bad host');
+      expect(serializedEnvLog).not.toContain('"input"');
+
+      clearProxyEnv();
+      let explicitProxyError: unknown;
+      try {
+        await client.get('https://example.com/openapi.json', {
+          proxy: { host: 'user:explicit-secret@bad host', port: 8080 }
+        });
+      } catch (error) {
+        explicitProxyError = error;
+      }
+      expect(isServerConfigError(explicitProxyError)).toBe(true);
+      expect((explicitProxyError as { code?: string }).code).toBe('ERR_INVALID_URL');
+      expect((explicitProxyError as Error).cause).toBeUndefined();
+      expect(Object.prototype.hasOwnProperty.call(explicitProxyError, 'input')).toBe(false);
+      const serializedExplicitLog = emitOtelError(explicitProxyError as Error);
+      expect(serializedExplicitLog).toContain('ERR_INVALID_URL');
+      expect(serializedExplicitLog).not.toContain('explicit-secret');
+      expect(serializedExplicitLog).not.toContain('bad host');
+      expect(serializedExplicitLog).not.toContain('"input"');
+
+      clearProxyEnv();
+      process.env.ALL_PROXY = 'socks4://proxy.example.test:1080';
+      let unsupportedProtocolError: unknown;
+      try {
+        await client.get('https://example.com/openapi.json');
+      } catch (error) {
+        unsupportedProtocolError = error;
+      }
+      expect(isServerConfigError(unsupportedProtocolError)).toBe(true);
+      expect((unsupportedProtocolError as Error).message).toContain(
+        'Unsupported outbound proxy protocol: socks4:'
+      );
+      expect(adapter).not.toHaveBeenCalled();
     });
 
     it('HTTP 转发代理在 query 包含完整 URL 时仍应发送 RFC 9112 absolute-form 请求目标', async () => {

@@ -1083,7 +1083,7 @@ export class WorkflowQueue {
             eventName: 'workflow.step.end',
             nodeType: node.flowNodeType,
             mode,
-            status: 'error',
+            status: isUserConfigError(error) ? 'user_error' : 'error',
             durationMs: Date.now() - stepStartedAt
           });
           throw error;

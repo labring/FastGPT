@@ -1,4 +1,4 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   configureTracing as configureOtelTracing,
@@ -27,6 +27,7 @@ export type ActiveSpanOptions = {
   tracer?: TracerLike;
   tracerName?: string;
   attributes?: Record<string, unknown>;
+  shouldRecordError?: (error: unknown) => boolean;
 };
 
 const DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO = 0.01;
@@ -113,7 +114,10 @@ export async function withActiveSpan<T>(
       try {
         return await callback(span);
       } catch (error) {
-        setSpanError(span, error);
+        // 用户配置错误不写入 OTel 异常事件与 ERROR 状态，保留原异常向外传播。
+        if (options.shouldRecordError?.(error) ?? !isUserConfigError(error)) {
+          setSpanError(span, error);
+        }
         throw error;
       } finally {
         span.end();
