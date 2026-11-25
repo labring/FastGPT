@@ -84,6 +84,23 @@ const resolveAgentErrorNoticeText = (errorText?: string) => {
   return localizedFallback && !I18N_KEY_PATTERN.test(localizedFallback) ? localizedFallback : '';
 };
 
+/**
+ * 公开上下文（匿名分享 / 免登录外链）固定使用的失败提示 key。
+ * 分享历史会保留普通答复、SSE 的 `answer` 也对外可见，因此只能发送与内部错误无关的
+ * 静态本地化文案，不能拼接 `errorText`、URL 或状态码。
+ */
+const PUBLIC_AGENT_ERROR_NOTICE_I18N_KEY = 'chat:agent_run_failed_notice';
+
+/**
+ * 公开上下文的失败提示：只解析静态 key；解析失败（无请求翻译上下文）时返回空串，
+ * 宁可气泡无提示，也不能把 i18n key 或上游错误写进公开历史。
+ * 内部排查仍走 `nodeResponse.errorText` 与工作流异常分支。
+ */
+const resolvePublicAgentErrorNoticeText = () => {
+  const localized = translateApiMessage(PUBLIC_AGENT_ERROR_NOTICE_I18N_KEY);
+  return localized && !I18N_KEY_PATTERN.test(localized) ? localized : '';
+};
+
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
@@ -581,8 +598,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 正常结束：模型正文即回复正文。
     // 失败/中断：只在既有助手输出之后追加一条「独立的失败提示」，不再把模型正文与错误
     // 文本拼成整段再做前缀比较——历史/子工具正文会参与比较，导致父正文被重发。
+    // 公开上下文（匿名分享/免登录外链）只给可公开的通用本地化提示；内部上下文保留
+    // 上一轮「本地化错误原因、其次静态兜底」的行为，原始错误仍写入 nodeResponse.errorText。
     const errorNoticeText =
-      coreResult.status === 'error' ? resolveAgentErrorNoticeText(outputSummary.errorText) : '';
+      coreResult.status !== 'error'
+        ? ''
+        : props.isPublicShare === true
+          ? resolvePublicAgentErrorNoticeText()
+          : resolveAgentErrorNoticeText(outputSummary.errorText);
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputSummary.assistantResponses,
       previousAssistantResponses,

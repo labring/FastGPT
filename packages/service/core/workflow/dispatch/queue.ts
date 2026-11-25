@@ -693,6 +693,7 @@ export class WorkflowQueue {
           : undefined,
         histories: this.data.histories,
         retainDatasetCite: this.data.retainDatasetCite,
+        isPublicShare: this.data.isPublicShare,
         node,
         runtimeNodes: this.data.runtimeNodes,
         runtimeNodesMap: this.runtimeNodesMap,

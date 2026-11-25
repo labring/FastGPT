@@ -1455,6 +1455,162 @@ describe('dispatchRunAgent user context', () => {
     expect(streamedAnswers.at(-1)).toBe(textValues.at(-1));
   });
 
+  it.each(['zh-CN', 'en'] as const)(
+    'masks the failure detail with a public localized notice in public share runs (%s)',
+    async (locale) => {
+      const props = createProps();
+      delete props.params.agent_datasetParams;
+      // 匿名分享 / 免登录外链。
+      props.isPublicShare = true;
+      props.node.catchError = true;
+      const sensitiveError = 'OpenAI 401 invalid api key sk-test-123 (request id req_9f8e7d)';
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'error',
+        error: { message: sensitiveError },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      });
+
+      const result = await runWithLocale(locale, () => dispatchRunAgent(props));
+
+      const expectedNotice =
+        locale === 'en' ? enChat.agent_run_failed_notice : zhCNChat.agent_run_failed_notice;
+      // 进入 assistantResponses（公开历史会保留普通答复）的失败提示只能是通用文案。
+      const visibleText = result[DispatchNodeResponseKeyEnum.assistantResponses]
+        .map((item: any) => item.text?.content)
+        .filter(Boolean)
+        .join('');
+      expect(visibleText).toBe(expectedNotice);
+      expect(result.data.answerText).toBe(expectedNotice);
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+        textOutput: expectedNotice
+      });
+
+      // SSE answer 与聊天记录同源同文本。
+      const streamedAnswers = props.workflowStreamResponse.mock.calls
+        .map(([event]: any[]) => event)
+        .filter((event: any) => event?.event === 'answer')
+        .map((event: any) => event.data?.choices?.[0]?.delta?.content)
+        .filter(Boolean);
+      expect(streamedAnswers).toEqual([expectedNotice]);
+
+      // 公开可见文本不得包含任何上游错误原文、URL 或状态码。
+      expect(visibleText).not.toContain('sk-test-123');
+      expect(visibleText).not.toContain('req_9f8e7d');
+      expect(visibleText).not.toContain('401');
+      expect(streamedAnswers.join('')).not.toContain(sensitiveError);
+
+      // 内部排查信息与错误分支保持原样。
+      expect(result.error).toEqual({ system_error_text: sensitiveError });
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+        errorText: sensitiveError
+      });
+    }
+  );
+
+  it('uses the public notice for public share runs without any error text', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    props.isPublicShare = true;
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: undefined,
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    const result = await runWithLocale('zh-CN', () => dispatchRunAgent(props));
+
+    const visibleText = result[DispatchNodeResponseKeyEnum.assistantResponses]
+      .map((item: any) => item.text?.content)
+      .filter(Boolean)
+      .join('');
+    expect(visibleText).toBe(zhCNChat.agent_run_failed_notice);
+    expect(result.data.answerText).toBe(zhCNChat.agent_run_failed_notice);
+    // 公开上下文也不允许回落到内部兜底 key 的字面量。
+    expect(visibleText).not.toContain('chat:');
+  });
+
+  it('keeps the localized error visible but preserves the raw detail for non-share runs', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    const sensitiveError = 'OpenAI 401 invalid api key sk-test-123 (request id req_9f8e7d)';
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: { message: sensitiveError },
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    const result = await runWithLocale('zh-CN', () => dispatchRunAgent(props));
+
+    // 内部上下文沿用上一轮行为：可见文本是本地化后的错误原因，不泄漏 i18n key。
+    expect(result.data.answerText).toBe(sensitiveError);
+    expect(result.data.answerText).not.toContain('chat:');
+    // 原始错误仍保留在节点详情中，供权限受控的排查使用。
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      textOutput: sensitiveError,
+      errorText: sensitiveError
+    });
+  });
+
+  it('appends only the public notice after parent and child text in public share runs', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    props.isPublicShare = true;
+    const parentCall = {
+      id: 'call_child',
+      type: 'function' as const,
+      function: { name: 'child_tool', arguments: '{}' }
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({ type: 'llm_request_start', requestIndex: 1, modelName: 'gpt-5' });
+      runtime.emitEvent({ type: 'answer_delta', text: 'parent answer' });
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_parent',
+        finishReason: 'tool_calls',
+        toolCalls: [parentCall],
+        usages: [],
+        seconds: 0.1
+      });
+      runtime.emitEvent({
+        type: 'tool_run_end',
+        call: parentCall,
+        response: 'child result',
+        assistantResponses: [{ text: { content: 'child answer' } }],
+        seconds: 0.1
+      });
+      return {
+        status: 'error',
+        error: { message: 'upstream secret detail' },
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'parent answer' }],
+        requestIds: ['req_parent']
+      };
+    });
+
+    const result = await runWithLocale('zh-CN', () => dispatchRunAgent(props));
+
+    const textValues = result[DispatchNodeResponseKeyEnum.assistantResponses]
+      .map((item: any) => item.text?.content)
+      .filter(Boolean);
+    expect(textValues).toEqual(['parent answer', 'child answer', zhCNChat.agent_run_failed_notice]);
+
+    const streamedAnswers = props.workflowStreamResponse.mock.calls
+      .map(([event]: any[]) => event)
+      .filter((event: any) => event?.event === 'answer')
+      .map((event: any) => event.data?.choices?.[0]?.delta?.content)
+      .filter(Boolean);
+    expect(streamedAnswers).toEqual(['parent answer', zhCNChat.agent_run_failed_notice]);
+    expect(streamedAnswers.join('')).not.toContain('upstream secret detail');
+  });
+
   it.each([
     ['zh-CN', 'chat:LLM_model_response_empty', zhCNChat.LLM_model_response_empty],
     [

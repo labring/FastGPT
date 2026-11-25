@@ -60,6 +60,7 @@ type Props = Pick<
   | 'lastInteractive'
   | 'stream'
   | 'retainDatasetCite'
+  | 'isPublicShare'
   | 'nodeResponseParentId'
   | 'usageId'
 > & {

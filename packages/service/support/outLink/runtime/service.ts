@@ -424,6 +424,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       maxBytesPerFile: workflowFileLimits.maxBytesPerFile,
       chatConfig,
       stream: true,
+      // 发布渠道的终端用户是外部访问者，属于公开上下文：失败时只发送可公开的本地化提示。
+      isPublicShare: true,
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),

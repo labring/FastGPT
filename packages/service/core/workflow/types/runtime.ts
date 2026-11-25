@@ -77,6 +77,12 @@ export type WorkflowDispatchProps = {
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
+  /**
+   * 匿名分享 / 免登录外链运行（公开上下文）。
+   * 公开上下文下用户正文会被分享历史保留并对匿名访问者可见，节点必须使用可公开的
+   * 本地化提示，不能把上游错误详情写入答复；内部错误仍通过权限受控的详情排查。
+   */
+  isPublicShare?: boolean;
 
   nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
 
