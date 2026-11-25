@@ -60,6 +60,10 @@ import { checkModelContextModeration } from '../../../../plugin/moderation/model
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { translateApiMessage } from '../../../../../common/i18n/request';
+import {
+  resolveAgentRunFailedFallback,
+  resolveAgentRunFailedNotice
+} from '../../../../../common/i18n/notice';
 
 /** i18n key 的命名空间形态（`ns:key`）；解析失败时不允许把这种文本写进用户可见正文。 */
 const I18N_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*:/;
@@ -72,34 +76,24 @@ const I18N_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*:/;
 const localizeAgentErrorText = (text?: string) => (text ? translateApiMessage(text) : '');
 
 /**
- * 计算本轮要展示的失败提示：优先使用可翻译的错误原因，其次使用静态兜底 key。
- * 后台任务等没有请求翻译上下文时 `translateApiMessage` 会原样返回 key，这类值不能
- * 进入正文，因此直接跳过（此时节点仍通过 `errorText` 暴露失败原因）。
+ * 计算本轮要展示的失败提示：优先使用可本地化的错误原因，其次使用静态兜底文案。
+ * 后台任务等没有请求上下文时由统一下发入口按默认语言解析，不再跳过提示，
+ * 也不会把 `ns:key` 字面量写进正文（内部失败原因仍通过 `errorText` 暴露）。
  */
-const resolveAgentErrorNoticeText = (errorText?: string) => {
+const resolveAgentErrorNoticeText = async (errorText?: string): Promise<string> => {
   const localizedError = localizeAgentErrorText(errorText);
   if (localizedError && !I18N_KEY_PATTERN.test(localizedError)) return localizedError;
 
-  const localizedFallback = localizeAgentErrorText('chat:agent_run_failed_fallback');
-  return localizedFallback && !I18N_KEY_PATTERN.test(localizedFallback) ? localizedFallback : '';
+  return resolveAgentRunFailedFallback();
 };
 
 /**
- * 公开上下文（匿名分享 / 免登录外链）固定使用的失败提示 key。
+ * 公开上下文（匿名分享 / 免登录外链）固定使用的失败提示。
  * 分享历史会保留普通答复、SSE 的 `answer` 也对外可见，因此只能发送与内部错误无关的
- * 静态本地化文案，不能拼接 `errorText`、URL 或状态码。
- */
-const PUBLIC_AGENT_ERROR_NOTICE_I18N_KEY = 'chat:agent_run_failed_notice';
-
-/**
- * 公开上下文的失败提示：只解析静态 key；解析失败（无请求翻译上下文）时返回空串，
- * 宁可气泡无提示，也不能把 i18n key 或上游错误写进公开历史。
+ * 静态本地化文案，不能拼接 `errorText`、URL 或状态码；无请求上下文时按默认语言解析。
  * 内部排查仍走 `nodeResponse.errorText` 与工作流异常分支。
  */
-const resolvePublicAgentErrorNoticeText = () => {
-  const localized = translateApiMessage(PUBLIC_AGENT_ERROR_NOTICE_I18N_KEY);
-  return localized && !I18N_KEY_PATTERN.test(localized) ? localized : '';
-};
+const resolvePublicAgentErrorNoticeText = (): Promise<string> => resolveAgentRunFailedNotice();
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -604,8 +598,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       coreResult.status !== 'error'
         ? ''
         : props.isPublicShare === true
-          ? resolvePublicAgentErrorNoticeText()
-          : resolveAgentErrorNoticeText(outputSummary.errorText);
+          ? await resolvePublicAgentErrorNoticeText()
+          : await resolveAgentErrorNoticeText(outputSummary.errorText);
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputSummary.assistantResponses,
       previousAssistantResponses,

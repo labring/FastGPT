@@ -836,6 +836,101 @@ describe('dispatchWorkFlow entry context isolation', () => {
       res.emit('close');
     }
   });
+
+  it.each([
+    [true, true],
+    [false, true],
+    [true, undefined],
+    [false, undefined]
+  ] as const)(
+    'stream=%s isPublicShare=%s 时只把公开标记按需透传到 Agent 节点',
+    async (stream, publicShare) => {
+      const { teamId, tmbId } = await getUser('workflow-public-share-propagation');
+      const req = Object.assign(new EventEmitter(), {
+        aborted: false,
+        socket: new EventEmitter()
+      });
+      const res = Object.assign(new EventEmitter(), {
+        closed: false,
+        destroyed: false,
+        writableEnded: false,
+        writableFinished: false,
+        headersSent: false,
+        setHeader: vi.fn(),
+        end: vi.fn()
+      });
+      const workflowStreamResponse = getWorkflowResponseWrite({
+        res: res as any,
+        detail: true,
+        streamResponse: stream
+      });
+      initWorkflowSseResponse({ res: res as any, stream, responseWrite: workflowStreamResponse });
+
+      const node = createNode('public-share-node', FlowNodeTypeEnum.agent);
+      node.isEntry = true;
+      const executionContexts: Record<string, unknown>[] = [];
+      const callback = vi
+        .spyOn(callbackMap, FlowNodeTypeEnum.agent)
+        .mockImplementation(async (props) => {
+          executionContexts.push(props);
+          return {};
+        });
+      const previousConfig = global.systemInstanceConfig;
+
+      try {
+        global.systemInstanceConfig = resolveSystemInstanceConfig({
+          performance: { workflow: { maxRunTimes: 2 } }
+        });
+        await dispatchWorkFlow({
+          req: req as any,
+          res: res as any,
+          apiVersion: 'v1',
+          responseAllData: stream,
+          responseDetail: !stream,
+          mode: 'test',
+          uid: tmbId,
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: '507f1f77bcf86cd799439121',
+            teamId,
+            tmbId,
+            name: 'Public share propagation'
+          },
+          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+          chatId: 'public-share-chat',
+          responseChatItemId: 'public-share-response',
+          histories: [],
+          query: [],
+          variables: {},
+          runtimeNodes: [node],
+          runtimeEdges: [],
+          maxFileAmount: 5,
+          maxBytesPerFile: 1024,
+          stream,
+          workflowStreamResponse,
+          concatUsage: vi.fn(),
+          defaultSkipNodeQueue: [],
+          // 入口透传公开标记：undefined/false 不挂载键，true 挂载为 true。
+          isPublicShare: publicShare,
+          nodeResponseWriteConfig: { persistToDb: false, retainInMemory: false },
+          resourceContext: { teamId, isRoot: false, resourceMap: new Map() }
+        });
+
+        expect(executionContexts).toHaveLength(1);
+        if (publicShare === true) {
+          expect(executionContexts[0].isPublicShare).toBe(true);
+          expect(Object.keys(executionContexts[0])).toContain('isPublicShare');
+        } else {
+          // 节点入参保持精确键集：未开启公开上下文时不能出现 undefined 键。
+          expect(Object.keys(executionContexts[0])).not.toContain('isPublicShare');
+        }
+      } finally {
+        global.systemInstanceConfig = previousConfig;
+        callback.mockRestore();
+        res.emit('close');
+      }
+    }
+  );
 });
 
 describe('createClientAbortTracker', () => {

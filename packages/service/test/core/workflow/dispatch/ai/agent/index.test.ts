@@ -1533,6 +1533,53 @@ describe('dispatchRunAgent user context', () => {
     expect(visibleText).not.toContain('chat:');
   });
 
+  it('resolves the public notice with the default locale without a request context', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    props.isPublicShare = true;
+    const sensitiveError = 'upstream secret detail sk-test-123';
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: { message: sensitiveError },
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    // 后台/渠道等无请求翻译上下文：不能跳过提示，也不能输出 i18n key 字面量。
+    const result = await dispatchRunAgent(props);
+
+    const visibleText = result[DispatchNodeResponseKeyEnum.assistantResponses]
+      .map((item: any) => item.text?.content)
+      .filter(Boolean)
+      .join('');
+    expect(visibleText).toBe(enChat.agent_run_failed_notice);
+    expect(visibleText).not.toContain('chat:');
+    expect(visibleText).not.toContain(sensitiveError);
+    // 内部诊断字段仍保留原始错误。
+    expect(result.error).toEqual({ system_error_text: sensitiveError });
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      errorText: sensitiveError
+    });
+  });
+
+  it('resolves the internal fallback notice with the default locale without a request context', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: { message: 'chat:agent_run_failed_fallback' },
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    const result = await dispatchRunAgent(props);
+
+    expect(result.data.answerText).toBe(enChat.agent_run_failed_fallback);
+    expect(result.data.answerText).not.toContain('chat:');
+  });
+
   it('keeps the localized error visible but preserves the raw detail for non-share runs', async () => {
     const props = createProps();
     delete props.params.agent_datasetParams;

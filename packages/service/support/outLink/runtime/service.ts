@@ -41,6 +41,7 @@ import { MongoChatItem } from '../../../core/chat/chatItemSchema';
 import { getRunningUserInfoByTmbId, getUserIdByTmbId } from '../../../support/user/team/utils';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { resolveAppRunFailedNotice } from '../../../common/i18n/notice';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
@@ -444,9 +445,18 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       .trim();
 
     if (workflowRuntimeSummary.errorCount > 0) {
+      // 渠道终态面向外部访问者：只发送通用失败提示，内部错误摘要留在运行摘要与日志里，
+      // 不能拼进渠道消息（终端用户无法区分内部细节，也可能被平台留存）。
+      logger.warn('Outlink run finished with errors', {
+        shareId: outLinkConfig.shareId,
+        chatId,
+        messageId,
+        errorText: workflowRuntimeSummary.errorText,
+        errorCount: workflowRuntimeSummary.errorCount
+      });
       responseController.push({
         type: 'error',
-        content: `App run error: ${getErrText(workflowRuntimeSummary.errorText)}`
+        content: await resolveAppRunFailedNotice()
       });
     } else {
       responseController.push({ type: 'done', content: responseContent || DEFAULT_REPLY });
@@ -523,7 +533,11 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
 
     responseController ??= createResponseController(respond);
     if (!responseController.terminal) {
-      responseController.push({ type: 'error', content: `App run error: ${getErrText(error)}` });
+      // 兜底终态同样只给通用失败提示；`error` 已写入上面的错误日志与聊天轮次诊断字段。
+      responseController.push({
+        type: 'error',
+        content: await resolveAppRunFailedNotice()
+      });
     }
     const result = await responseController.result;
     if (!result.success) {

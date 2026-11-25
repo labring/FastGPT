@@ -28,6 +28,9 @@ import { getWorkflowFileLimits } from '@fastgpt/service/core/workflow/utils/file
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { assertTeamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
+import enChat from '@fastgpt/web/i18n/en/chat.json';
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   AppCollectionName: 'apps',
@@ -143,6 +146,10 @@ const createResponder = () => {
   return { events, respond };
 };
 
+// 渠道回调没有 HTTP 请求上下文：注册应用默认语言资源，验证终态提示会按默认语言解析。
+createApiI18n(generatedLoaders);
+const DEFAULT_ERROR_NOTICE = enChat.app_run_failed_notice;
+
 describe('runOutlinkRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -199,16 +206,24 @@ describe('runOutlinkRuntime', () => {
 
     await runOutlinkRuntime({ outLinkConfig, message, respond });
 
+    // 渠道终态只发送通用失败提示（默认语言解析），内部错误摘要不得进入渠道消息。
     expect(events).toEqual([
       { type: 'start' },
       {
         type: 'error',
-        content: 'App run error: model failed'
+        content: DEFAULT_ERROR_NOTICE
       }
     ]);
+    expect(events.map((event) => ('content' in event ? event.content : '')).join('')).not.toContain(
+      'model failed'
+    );
+    // 内部错误继续用于诊断：运行摘要与聊天轮次保留原始错误。
     expect(finalizeChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
-        workflowRuntimeSummary: expect.objectContaining({ errorCount: 1 })
+        workflowRuntimeSummary: expect.objectContaining({
+          errorCount: 1,
+          errorText: 'model failed'
+        })
       })
     );
   });
@@ -235,7 +250,7 @@ describe('runOutlinkRuntime', () => {
       { type: 'chunk', content: 'partial' },
       {
         type: 'error',
-        content: 'App run error: model failed'
+        content: DEFAULT_ERROR_NOTICE
       }
     ]);
   });
@@ -254,9 +269,10 @@ describe('runOutlinkRuntime', () => {
       { type: 'chunk', content: 'partial' },
       {
         type: 'error',
-        content: 'App run error: workflow failed'
+        content: DEFAULT_ERROR_NOTICE
       }
     ]);
+    expect(JSON.stringify(events)).not.toContain('workflow failed');
   });
 
   it('resolves the query after limits and start, then streams the final answer', async () => {
@@ -343,7 +359,8 @@ describe('runOutlinkRuntime', () => {
     });
 
     expect(resolveQuery).not.toHaveBeenCalled();
-    expect(events).toEqual([{ type: 'error', content: 'App run error: usage limit reached' }]);
+    expect(events).toEqual([{ type: 'error', content: DEFAULT_ERROR_NOTICE }]);
+    expect(JSON.stringify(events)).not.toContain('usage limit reached');
   });
 
   it('rejects before dispatch when the team chat QPM limit is exceeded', async () => {
@@ -364,7 +381,8 @@ describe('runOutlinkRuntime', () => {
     expect(resolveQuery).not.toHaveBeenCalled();
     expect(preChatRound).not.toHaveBeenCalled();
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
-    expect(events).toEqual([{ type: 'error', content: 'App run error: Rate limit exceeded' }]);
+    expect(events).toEqual([{ type: 'error', content: DEFAULT_ERROR_NOTICE }]);
+    expect(JSON.stringify(events)).not.toContain('Rate limit exceeded');
   });
 
   it('does not resolve media when the responder fails to handle start', async () => {
@@ -473,10 +491,9 @@ describe('runOutlinkRuntime', () => {
 
     await runOutlinkRuntime({ outLinkConfig, message, respond });
 
-    expect(events).toEqual([
-      { type: 'start' },
-      { type: 'error', content: 'App run error: workflow failed' }
-    ]);
+    expect(events).toEqual([{ type: 'start' }, { type: 'error', content: DEFAULT_ERROR_NOTICE }]);
+    expect(JSON.stringify(events)).not.toContain('workflow failed');
+    // 原始异常继续写入失败轮次，供后台诊断。
     expect(failChatRound).toHaveBeenCalledWith({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-id',

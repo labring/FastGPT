@@ -4,6 +4,7 @@
   "AI_input_is_empty": "AI 노드로 전달된 내용이 비어 있습니다",
   "agent_run_failed_fallback": "이번 실행에 실패했습니다. 다시 시도해 주세요.",
   "agent_run_failed_notice": "Agent 실행에 실패했습니다. 잠시 후 다시 시도하거나 앱 관리자에게 문의하세요.",
+  "app_run_failed_notice": "실행에 실패했습니다. 잠시 후 다시 시도하거나 앱 관리자에게 문의하세요.",
   "LLM_model_response_empty": "모델 응답이 비어 있습니다. 모델 상세 요청을 확인해 주세요",
   "Next": "다음",
   "Previous": "이전",

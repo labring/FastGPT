@@ -22,8 +22,32 @@ const requestI18n = new AsyncLocalStorage<RequestI18nContext>();
 // 响应对象同时绑定上下文，避免外部 SDK 的事件回调脱离 AsyncLocalStorage 后丢失语言。
 const responseI18n = new WeakMap<NodeHttpResponse, RequestI18nContext>();
 
+// 后台任务（渠道回调、定时任务）没有 HTTP 请求上下文，由应用入口注册默认语言翻译来源。
+let defaultTranslatorFactory: (() => Promise<RequestTranslator>) | undefined;
+
+/**
+ * 由 `createApiI18n` 注册默认语言（英文）翻译函数工厂。
+ * 后台路径与请求路径共用同一份资源缓存，避免重复加载 i18n 资源。
+ */
+export const registerDefaultTranslatorFactory = (
+  factory: () => Promise<RequestTranslator>
+): void => {
+  defaultTranslatorFactory = factory;
+};
+
 /** 读取当前 HTTP 请求语言；后台任务没有请求上下文时不向内部服务强加语言。 */
 export const getRequestLocale = (): localeType | undefined => requestI18n.getStore()?.locale;
+
+const translateWith = (message: string, translator: RequestTranslator): string => {
+  try {
+    return translator.exists(message)
+      ? translator.t(message, { returnEmptyString: false })
+      : message;
+  } catch {
+    // 展示层失败不能覆盖业务异常或中断已开始的流。
+    return message;
+  }
+};
 
 /**
  * 只翻译完整、已存在的 namespace:key，原文、未知 key 和加载失败均原样返回。
@@ -32,13 +56,24 @@ export const getRequestLocale = (): localeType | undefined => requestI18n.getSto
 export const translateApiMessage = (message: string, res?: NodeHttpResponse): string => {
   const context = (res && responseI18n.get(res)) || requestI18n.getStore();
   if (!context?.translator || !/^[A-Za-z][A-Za-z0-9_]*:/.test(message)) return message;
+  return translateWith(message, context.translator);
+};
+
+/**
+ * 与 `translateApiMessage` 相同的解析规则，但缺少请求上下文时回退到默认语言。
+ * 后台/渠道等无 locale 的出口必须使用它，才能得到可读文案而不是原样返回的 key。
+ */
+export const translateApiMessageWithDefaultLocale = async (
+  message: string,
+  res?: NodeHttpResponse
+): Promise<string> => {
+  const context = (res && responseI18n.get(res)) || requestI18n.getStore();
+  if (context?.translator) return translateWith(message, context.translator);
+  if (!defaultTranslatorFactory || !/^[A-Za-z][A-Za-z0-9_]*:/.test(message)) return message;
 
   try {
-    return context.translator.exists(message)
-      ? context.translator.t(message, { returnEmptyString: false })
-      : message;
+    return translateWith(message, await defaultTranslatorFactory());
   } catch {
-    // 展示层失败不能覆盖业务异常或中断已开始的流。
     return message;
   }
 };
@@ -50,10 +85,8 @@ export const translateApiMessage = (message: string, res?: NodeHttpResponse): st
 export const createApiI18n = (resourceLoaders: ResourceLoaders): ApiI18n => {
   const translators = new Map<localeType, Promise<RequestTranslator>>();
 
-  return async ({ req, res }, callback) => {
-    const locale = getLocale(req) ?? LangEnum.en;
-    const context: RequestI18nContext = { locale };
-
+  /** 按语言缓存翻译函数；失败从缓存移除，下一次请求可重试。 */
+  const getTranslator = (locale: localeType): Promise<RequestTranslator> => {
     let loading = translators.get(locale);
     if (!loading) {
       loading = import('./server')
@@ -70,9 +103,18 @@ export const createApiI18n = (resourceLoaders: ResourceLoaders): ApiI18n => {
         });
       translators.set(locale, loading);
     }
+    return loading;
+  };
+
+  // 后台出口（无请求上下文）使用默认语言；资源加载与请求链路共享同一份缓存。
+  registerDefaultTranslatorFactory(() => getTranslator(LangEnum.en));
+
+  return async ({ req, res }, callback) => {
+    const locale = getLocale(req) ?? LangEnum.en;
+    const context: RequestI18nContext = { locale };
 
     try {
-      context.translator = await loading;
+      context.translator = await getTranslator(locale);
     } catch (error) {
       getLogger(LogCategories.HTTP.ERROR).error('API translation resources failed to load', {
         locale,

@@ -693,7 +693,9 @@ export class WorkflowQueue {
           : undefined,
         histories: this.data.histories,
         retainDatasetCite: this.data.retainDatasetCite,
-        isPublicShare: this.data.isPublicShare,
+        // 仅在公开上下文时挂载：节点入参对象保持精确键集，`undefined` 不能以键的形式
+        // 出现在节点参数里（入口隔离测试会校验）。
+        ...(this.data.isPublicShare === true ? { isPublicShare: true } : {}),
         node,
         runtimeNodes: this.data.runtimeNodes,
         runtimeNodesMap: this.runtimeNodesMap,

@@ -4,6 +4,7 @@
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "agent_run_failed_fallback": "This run failed. Please try again.",
   "agent_run_failed_notice": "The agent run failed. Please try again later or contact the app administrator.",
+  "app_run_failed_notice": "The run failed. Please try again later or contact the app administrator.",
   "LLM_model_response_empty": "The model returned an empty response. Check the model request details.",
   "Next": "Next",
   "Previous": "Previous",
