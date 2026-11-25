@@ -874,6 +874,52 @@ describe('createApiDatasetCollection', () => {
     );
   });
 
+  it('重新勾选已有正文的暂停派生目录时触发 reEnableSyncFolderIds 鉴权、恢复 syncChildren=true 并补齐缺失子项', async () => {
+    setServerTree({
+      'doc-1': [apiFile('child-1', 'file')]
+    });
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: localId('DOC_DIR'),
+          apiFileId: 'doc-1#dir',
+          type: 'folder',
+          parentId: null,
+          syncChildren: false
+        },
+        {
+          _id: localId('DOC_BODY'),
+          apiFileId: 'doc-1',
+          type: 'apiFile',
+          parentId: localId('DOC_DIR'),
+          apiFileParentId: 'doc-1'
+        }
+      ])
+    });
+    const authorizeChanges = vi.fn();
+
+    await call({
+      apiFiles: [apiFile('doc-1', 'file', true)],
+      authorizeChanges
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reEnableSyncFolderIds: [localId('DOC_DIR')]
+      })
+    );
+    expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['child-1']);
+    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+      {
+        _id: { $in: [localId('DOC_DIR')] },
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        type: 'folder'
+      },
+      { $set: { syncChildren: true } }
+    );
+  });
+
   /**
    * 回归场景：目录骨架整体漏传 inheritPermission —— 文件走 `...body` 落成请求指定的独立态，
    * 目录却落成 schema default（继承态）。同一次导入里两者口径相反，而继承态目录的快照 =

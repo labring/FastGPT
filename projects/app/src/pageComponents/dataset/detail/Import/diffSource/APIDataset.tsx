@@ -19,6 +19,7 @@ import { useMount } from 'ahooks';
 import {
   buildApiDatasetSyncIndex,
   buildEnteredFolderPaths,
+  buildSelectionAfterDeselectAll,
   getApiDatasetItemState,
   resolveApiFileAncestorPath
 } from './apiDatasetUtils';
@@ -96,7 +97,7 @@ const CustomAPIFileInput = () => {
   );
 
   const syncIndex = useMemo(() => buildApiDatasetSyncIndex(syncState), [syncState]);
-  const { serverSyncAll, existingFileIds, syncingFolderIds, ancestorPathBySourceId } = syncIndex;
+  const { serverSyncAll, ancestorPathBySourceId } = syncIndex;
 
   const canSelectSyncAll = Boolean(datasetDetail.permission?.hasManagePer);
 
@@ -111,15 +112,6 @@ const CustomAPIFileInput = () => {
         ancestorPathBySourceId
       }),
     [ancestorPathBySourceId, parent?.parentId, paths, searchKey]
-  );
-
-  const resolveItemAncestorIds = useCallback(
-    (item: APIFileItemType): string[] | null => {
-      const ancestorPath = resolveItemAncestorPath(item);
-      if (!ancestorPath) return null;
-      return ancestorPath.map((entry) => entry.parentId).filter((id): id is string => Boolean(id));
-    },
-    [resolveItemAncestorPath]
   );
 
   // Init selected files
@@ -259,32 +251,26 @@ const CustomAPIFileInput = () => {
                     .filter((id): id is string => Boolean(id))
                 : null;
               const isSelected = selectFiles.some((entry) => entry.file.id === item.id);
-              const { isExists, canSelectItem, isChecked, canEnter } = getApiDatasetItemState({
-                item,
-                syncIndex,
-                isSelectAll,
-                isSelected,
-                resolvedAncestorPath
-              });
+              const { isExists, canSelectItem, isChecked, isIndeterminate, canEnter } =
+                getApiDatasetItemState({
+                  item,
+                  syncIndex,
+                  isSelectAll,
+                  isSelected,
+                  resolvedAncestorPath
+                });
 
               const toggleSelect = () => {
                 if (isExists || !canSelectItem || !resolvedAncestorIds) return;
                 if (isSelectAll) {
                   setIsSelectAll(false);
                   setSelectFiles(
-                    fileList
-                      .filter((file) => {
-                        if (file.id === item.id) return false;
-                        const fileExists =
-                          file.type === 'folder'
-                            ? syncingFolderIds.has(file.id)
-                            : existingFileIds.has(file.id);
-                        return !fileExists && resolveItemAncestorIds(file) !== null;
-                      })
-                      .map((file) => ({
-                        file,
-                        ancestorIds: resolveItemAncestorIds(file) ?? []
-                      }))
+                    buildSelectionAfterDeselectAll({
+                      fileList,
+                      excludeItemId: item.id,
+                      syncIndex,
+                      resolveAncestorPath: resolveItemAncestorPath
+                    })
                   );
                 } else if (isSelected) {
                   setSelectFiles((state) => state.filter((entry) => entry.file.id !== item.id));
@@ -331,6 +317,7 @@ const CustomAPIFileInput = () => {
                     className="checkbox"
                     mr={2.5}
                     isChecked={isChecked}
+                    isIndeterminate={isIndeterminate}
                     isDisabled={isExists || !canSelectItem}
                     onChange={(e) => {
                       e.stopPropagation();

@@ -96,7 +96,8 @@ export const resolveApiFileAncestorPath = ({
  * 计算导入列表中单条节点的勾选态与可导航态：
  * - 勾选与导航解耦：已同步父目录（或带子文档的已导入文件）仍允许展开下钻，以进入其下暂停子目录补选；
  * - 仅在整库同步、本次全选或本次已勾选该节点时禁止下钻；
- * - 派生目录暂停态按远端 sourceId 匹配，不限定 item.type === 'folder'。
+ * - 派生目录状态按远端 sourceId 匹配，不限定 item.type === 'folder'：带子文档的远端 file
+ *   若本地派生目录处于暂停态，即使正文已存在也视为未锁定（可选、半选态），允许重新勾选以恢复自动同步。
  */
 export const getApiDatasetItemState = ({
   item,
@@ -111,14 +112,19 @@ export const getApiDatasetItemState = ({
   isSelected: boolean;
   resolvedAncestorPath: ParentTreePathItemType[] | null;
 }) => {
-  const isPausedFolder = Boolean(item.hasChild) && syncIndex.pausedFolderIds.has(item.id);
+  const canHaveDerivedOrFolderState = item.type === 'folder' || Boolean(item.hasChild);
+  const isPausedFolder = canHaveDerivedOrFolderState && syncIndex.pausedFolderIds.has(item.id);
+  const isSyncedFolder = canHaveDerivedOrFolderState && syncIndex.syncingFolderIds.has(item.id);
   const isExists =
     syncIndex.serverSyncAll ||
     (item.type === 'folder'
-      ? syncIndex.syncingFolderIds.has(item.id)
-      : syncIndex.existingFileIds.has(item.id));
+      ? isSyncedFolder
+      : isPausedFolder
+        ? false
+        : isSyncedFolder || syncIndex.existingFileIds.has(item.id));
   const canSelectItem = resolvedAncestorPath !== null;
   const isChecked = isExists || isSelected || isSelectAll;
+  const isIndeterminate = isPausedFolder && !isChecked;
   const canEnter =
     Boolean(item.hasChild) &&
     !syncIndex.serverSyncAll &&
@@ -131,8 +137,48 @@ export const getApiDatasetItemState = ({
     isExists,
     canSelectItem,
     isChecked,
+    isIndeterminate,
     canEnter
   };
+};
+
+/**
+ * 取消“全选”并反向勾选当前列表中除目标项外的所有可选项。
+ * 复用 getApiDatasetItemState，保证普通暂停目录与已有正文的暂停派生目录和常规列表判定一致。
+ */
+export const buildSelectionAfterDeselectAll = ({
+  fileList,
+  excludeItemId,
+  syncIndex,
+  resolveAncestorPath
+}: {
+  fileList: APIFileItemType[];
+  excludeItemId: string;
+  syncIndex: ApiDatasetSyncIndex;
+  resolveAncestorPath: (item: APIFileItemType) => ParentTreePathItemType[] | null;
+}): { file: APIFileItemType; ancestorIds: string[] }[] => {
+  const result: { file: APIFileItemType; ancestorIds: string[] }[] = [];
+
+  for (const file of fileList) {
+    if (file.id === excludeItemId) continue;
+    const resolvedAncestorPath = resolveAncestorPath(file);
+    const { isExists, canSelectItem } = getApiDatasetItemState({
+      item: file,
+      syncIndex,
+      isSelectAll: false,
+      isSelected: false,
+      resolvedAncestorPath
+    });
+    if (isExists || !canSelectItem || !resolvedAncestorPath) continue;
+    result.push({
+      file,
+      ancestorIds: resolvedAncestorPath
+        .map((entry) => entry.parentId)
+        .filter((id): id is string => Boolean(id))
+    });
+  }
+
+  return result;
 };
 
 /** 构造展开指定节点后的完整 breadcrumb 路径，保证逐级浏览与搜索跳转共用已解析祖先链。 */

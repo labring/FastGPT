@@ -5,6 +5,7 @@ import type { GetApiDatasetSyncStateResponse } from '@fastgpt/global/openapi/cor
 import {
   buildApiDatasetSyncIndex,
   buildEnteredFolderPaths,
+  buildSelectionAfterDeselectAll,
   getApiDatasetItemState,
   resolveApiFileAncestorPath
 } from '@/pageComponents/dataset/detail/Import/diffSource/apiDatasetUtils';
@@ -47,6 +48,33 @@ const createSyncState = (): GetApiDatasetSyncStateResponse => ({
       type: DatasetCollectionTypeEnum.apiFile,
       syncChildren: true,
       parentId: '68ad85a7463006c963799a03'
+    },
+    {
+      collectionId: '68ad85a7463006c963799a05',
+      apiFileId: 'doc-2#dir',
+      sourceId: 'doc-2',
+      name: '同步中派生文档',
+      type: DatasetCollectionTypeEnum.folder,
+      syncChildren: true,
+      parentId: null
+    },
+    {
+      collectionId: '68ad85a7463006c963799a06',
+      apiFileId: 'doc-2',
+      sourceId: 'doc-2',
+      name: '同步中派生文档',
+      type: DatasetCollectionTypeEnum.apiFile,
+      syncChildren: true,
+      parentId: '68ad85a7463006c963799a05'
+    },
+    {
+      collectionId: '68ad85a7463006c963799a07',
+      apiFileId: 'plain-file',
+      sourceId: 'plain-file',
+      name: '普通已导入文件',
+      type: DatasetCollectionTypeEnum.apiFile,
+      syncChildren: true,
+      parentId: null
     }
   ]
 });
@@ -76,7 +104,7 @@ describe('apiDatasetUtils', () => {
     expect(state.canEnter).toBe(true);
   });
 
-  it('matches paused derived directory state by sourceId for remote file items with children', () => {
+  it('keeps paused derived directory selectable even when its body file exists locally', () => {
     const syncIndex = buildApiDatasetSyncIndex(createSyncState());
     const docWithChildren: APIFileItemType = {
       id: 'doc-1',
@@ -86,7 +114,7 @@ describe('apiDatasetUtils', () => {
       hasChild: true
     };
 
-    const state = getApiDatasetItemState({
+    const idleState = getApiDatasetItemState({
       item: docWithChildren,
       syncIndex,
       isSelectAll: false,
@@ -94,10 +122,63 @@ describe('apiDatasetUtils', () => {
       resolvedAncestorPath: []
     });
 
-    expect(state.isExists).toBe(true);
-    expect(state.isChecked).toBe(true);
-    expect(state.isPausedFolder).toBe(true);
-    expect(state.canEnter).toBe(true);
+    expect(idleState.isPausedFolder).toBe(true);
+    expect(idleState.isExists).toBe(false);
+    expect(idleState.isChecked).toBe(false);
+    expect(idleState.isIndeterminate).toBe(true);
+    expect(idleState.canSelectItem).toBe(true);
+    expect(idleState.canEnter).toBe(true);
+
+    const selectedState = getApiDatasetItemState({
+      item: docWithChildren,
+      syncIndex,
+      isSelectAll: false,
+      isSelected: true,
+      resolvedAncestorPath: []
+    });
+    expect(selectedState.isChecked).toBe(true);
+    expect(selectedState.isIndeterminate).toBe(false);
+    expect(selectedState.canEnter).toBe(false);
+
+    const syncedDerivedDoc: APIFileItemType = {
+      id: 'doc-2',
+      parentId: '',
+      name: '同步中派生文档',
+      type: 'file',
+      hasChild: true
+    };
+    const syncedState = getApiDatasetItemState({
+      item: syncedDerivedDoc,
+      syncIndex,
+      isSelectAll: false,
+      isSelected: false,
+      resolvedAncestorPath: []
+    });
+    expect(syncedState.isPausedFolder).toBe(false);
+    expect(syncedState.isExists).toBe(true);
+    expect(syncedState.isChecked).toBe(true);
+    expect(syncedState.isIndeterminate).toBe(false);
+    expect(syncedState.canEnter).toBe(true);
+  });
+
+  it('includes paused derived directories when deselecting from select-all', () => {
+    const syncIndex = buildApiDatasetSyncIndex(createSyncState());
+    const fileList: APIFileItemType[] = [
+      { id: 'dir-a', parentId: '', name: '目录A', type: 'folder', hasChild: true },
+      { id: 'doc-1', parentId: '', name: '带子文档的文档', type: 'file', hasChild: true },
+      { id: 'doc-2', parentId: '', name: '同步中派生文档', type: 'file', hasChild: true },
+      { id: 'plain-file', parentId: '', name: '普通已导入文件', type: 'file', hasChild: false },
+      { id: 'new-file', parentId: '', name: '新文件', type: 'file', hasChild: false }
+    ];
+
+    const selected = buildSelectionAfterDeselectAll({
+      fileList,
+      excludeItemId: 'new-file',
+      syncIndex,
+      resolveAncestorPath: () => []
+    });
+
+    expect(selected.map((entry) => entry.file.id)).toEqual(['doc-1']);
   });
 
   it('rebuilds the full resolved ancestor breadcrumb when entering a nested folder from search', () => {
