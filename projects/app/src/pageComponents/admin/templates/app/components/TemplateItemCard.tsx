@@ -40,28 +40,6 @@ const TemplateCard = ({
     ? template.isPromoted === true
     : template.tags.includes('recommendation');
 
-  const getTemplateUpdateBody = (
-    patch: Partial<Omit<UpdateTemplateBodyType, 'templateId'>>
-  ): UpdateTemplateBodyType => {
-    if (isPluginSystemTemplate) {
-      return {
-        templateId: template.templateId,
-        isActive: patch.isActive,
-        isPromoted: patch.isPromoted,
-        promoteTags: patch.promoteTags,
-        hideTags: patch.hideTags,
-        recommendText: patch.recommendText
-      };
-    }
-
-    // 携带 name 供 Pro 更新路由记录管理端审计日志，避免仅传增量字段时落为 Unknown Template。
-    return {
-      templateId: template.templateId,
-      name: template.name,
-      ...patch
-    };
-  };
-
   const { runAsync: updateSystemTemplate, loading } = useRequest(
     async (e: UpdateTemplateBodyType) => {
       return putUpdateTemplate(e);
@@ -171,10 +149,10 @@ const TemplateCard = ({
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            const newTemplate = getTemplateUpdateBody({
+            updateSystemTemplate({
+              templateId: template.templateId,
               isActive: !template?.isActive
             });
-            updateSystemTemplate(newTemplate);
           }}
         >
           <Switch isChecked={template.isActive} />
@@ -191,14 +169,19 @@ const TemplateCard = ({
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            const newTemplate = isPluginSystemTemplate
-              ? getTemplateUpdateBody({ isPromoted: !isRecommend })
-              : getTemplateUpdateBody({
-                  tags: isRecommend
-                    ? template.tags.filter((tag) => tag !== AppTemplateTypeEnum.recommendation)
-                    : [...template.tags, AppTemplateTypeEnum.recommendation]
-                });
-            updateSystemTemplate(newTemplate);
+            updateSystemTemplate(
+              isPluginSystemTemplate
+                ? {
+                    templateId: template.templateId,
+                    isPromoted: !isRecommend
+                  }
+                : {
+                    templateId: template.templateId,
+                    tags: isRecommend
+                      ? template.tags.filter((tag) => tag !== AppTemplateTypeEnum.recommendation)
+                      : [...template.tags, AppTemplateTypeEnum.recommendation]
+                  }
+            );
           }}
         >
           <Checkbox isChecked={isRecommend} size={'lg'} />
