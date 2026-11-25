@@ -9,7 +9,7 @@ import {
   ImportSkillResponseSchema,
   type ImportSkillQuery,
   type ImportSkillResponse
-} from '@fastgpt/global/core/ai/skill/api';
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import {
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum
@@ -20,7 +20,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import { getAgentSandboxDiskBytes } from '@fastgpt/service/core/ai/sandbox/config';
 
 export const config = {
   api: {
@@ -34,19 +34,7 @@ async function handler(
   const query = parseApiInput({ req, querySchema: ImportSkillQuerySchema }).query;
   const filename = query.filename.split(/[\\/]/).pop() ?? query.filename;
 
-  if (!filename.toLowerCase().endsWith('.zip')) {
-    return Promise.reject(SkillErrEnum.invalidArchiveFormat);
-  }
-
-  const maxSkillPackageSize = getAgentSandboxSkillMaxBytes();
-  const contentLengthHeader = req.headers['content-length'];
-  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
-
-  if (contentLength !== undefined && contentLength > maxSkillPackageSize) {
-    return Promise.reject(SkillErrEnum.archiveTooLarge);
-  }
-
-  // 在消费文件流前完成权限校验，避免未授权请求占用对象存储上传带宽。
+  // 在消费请求头大小或读取文件流前完成权限校验，避免未授权请求探测容量上限或占用对象存储上传带宽。
   const { teamId, tmbId } = query.parentId
     ? await authSkill({
         req,
@@ -61,6 +49,18 @@ async function handler(
         authApiKey: true,
         per: TeamSkillCreatePermissionVal
       });
+
+  if (!filename.toLowerCase().endsWith('.zip')) {
+    return Promise.reject(SkillErrEnum.invalidArchiveFormat);
+  }
+
+  const maxSkillPackageSize = getAgentSandboxDiskBytes();
+  const contentLengthHeader = req.headers['content-length'];
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
+
+  if (contentLength !== undefined && contentLength > maxSkillPackageSize) {
+    return Promise.reject(SkillErrEnum.archiveTooLarge);
+  }
 
   const skillName = query.name?.trim() || filename.replace(/\.[^.]+$/, '').trim() || 'package';
 

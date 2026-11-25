@@ -35,9 +35,15 @@ export const getDatasetVectorSearchData = async ({
 }): Promise<DatasetVectorSearchData[] | undefined> => {
   const provider = getVectorType();
   if ((provider !== 'pg' && provider !== 'opengauss') || datasetIds.length === 0) return;
-  const datasets = await findDatasetsVectorData({ teamId, datasetIds: [...new Set(datasetIds)] });
+  const uniqueDatasetIds = [...new Set(datasetIds.map(String))];
+  const datasets = await findDatasetsVectorData({ teamId, datasetIds: uniqueDatasetIds });
+  // Mongo/SQL 的 $in 查询在不同索引计划（如 { teamId: 1, updateTime: -1 }）下不保证返回顺序，按去重后的入参顺序稳定重排。
+  const datasetMap = new Map(datasets.map((dataset) => [String(dataset._id), dataset]));
+  const orderedDatasets = uniqueDatasetIds
+    .map((id) => datasetMap.get(id))
+    .filter((dataset): dataset is (typeof datasets)[number] => dataset !== undefined);
   return batchRun(
-    datasets,
+    orderedDatasets,
     async (dataset) => {
       const datasetId = String(dataset._id);
       return {

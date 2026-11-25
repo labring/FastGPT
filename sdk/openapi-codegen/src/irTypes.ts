@@ -113,6 +113,8 @@ export type IrOperation = {
   method: string;
   /** 双模态流式方法名，例如 completionsV2Stream 或 resumeStream */
   streamMethod?: string;
+  /** 显式覆盖默认重试策略（false 表示不可重放，GET 也不自动重试） */
+  retryable?: boolean;
   httpMethod: IrHttpMethod;
   /** 相对于 /api 的路由路径，例如 /core/dataset/collection/listV2 */
   path: string;

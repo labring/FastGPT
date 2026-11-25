@@ -360,7 +360,7 @@ describe('systemInstanceConfig controller', () => {
             expectedRevision: 0,
             submittedOverrides: {
               agentSandbox: {
-                provider: 'opensandbox',
+                enabled: true,
                 opensandbox: { baseUrl: 'https://sandbox.test' },
                 proxy
               }
@@ -379,8 +379,14 @@ describe('systemInstanceConfig controller', () => {
         expectedRevision: 0,
         submittedOverrides: {
           agentSandbox: {
-            provider: 'opensandbox',
-            opensandbox: { baseUrl: 'https://sandbox.test' },
+            enabled: true,
+            opensandbox: {
+              baseUrl: 'https://sandbox.test',
+              apiKey: 'sandbox-key',
+              image: 'fastgpt/sandbox:latest',
+              volumeManagerUrl: 'http://volume-manager.test',
+              volumeManagerToken: 'vm-token'
+            },
             proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://proxy.test', secret }
           }
         },
@@ -795,7 +801,7 @@ describe('systemInstanceConfig controller', () => {
       expect(snapshot.site.name).toBe('Snapshot Site');
       expect(snapshot.performance.workflow.maxRunTimes).toBe(999);
       expect(snapshot.security.csrfEnabled).toBe(true); // default
-      expect(snapshot.subservice.agentSandbox.provider).toBe('none'); // default
+      expect(snapshot.subservice.agentSandbox.enabled).toBe(false); // default
     });
   });
 

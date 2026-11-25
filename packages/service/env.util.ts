@@ -1,5 +1,3 @@
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
-import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { StorageVendor } from '@fastgpt/global/common/system/config/schemas/storage';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
@@ -35,12 +33,6 @@ export const validateS3Env = (env: {
     );
   }
 };
-
-/* ===== sandbox ===== */
-export const isAgentSandboxProvider = (
-  provider: string | undefined
-): provider is SandboxProviderType =>
-  agentSandboxProviderList.includes(provider as SandboxProviderType);
 
 /**
  * 校验 Agent 用户初始化环境变量。

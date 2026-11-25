@@ -25,6 +25,38 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsEnum } from '@fastgpt/global/support/user/type';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
+import type {
+  CreateTemplateBodyType,
+  UpdateTemplateBodyType
+} from '@fastgpt/global/openapi/admin/app/templates/api';
+
+/**
+ * 计算模板保存时的 experienceUrl 补丁与合法性：
+ * 编辑态仅在实际改动时校验并提交，避免覆盖社区模板继承地址或因存量旧值阻塞保存其他字段；主动清空显式传空串。
+ */
+export const resolveTemplateExperienceUrlPatch = ({
+  isEdit,
+  initialExperienceUrl,
+  inputExperienceUrl
+}: {
+  isEdit: boolean;
+  initialExperienceUrl?: string;
+  inputExperienceUrl?: string;
+}):
+  | { valid: false }
+  | { valid: true; include: false }
+  | { valid: true; include: true; value: string } => {
+  const initial = (initialExperienceUrl ?? '').trim();
+  const current = (inputExperienceUrl ?? '').trim();
+
+  if (isEdit && current === initial) return { valid: true, include: false };
+  if (current === '') {
+    return isEdit ? { valid: true, include: true, value: '' } : { valid: true, include: false };
+  }
+  if (!isValidHttpUrl(current)) return { valid: false };
+  return { valid: true, include: true, value: current };
+};
 
 export const defaultTemplate: AppTemplateSchemaType = {
   templateId: '',
@@ -39,6 +71,7 @@ export const defaultTemplate: AppTemplateSchemaType = {
   promoteTags: [],
   hideTags: [],
   recommendText: '',
+  experienceUrl: '',
   userGuide: {
     type: 'markdown',
     content: '',
@@ -96,6 +129,7 @@ const TemplateConfigModal = ({
   const isPromoted = watch('isPromoted');
   const intro = watch('intro');
   const recommendText = watch('recommendText');
+  const experienceUrl = watch('experienceUrl');
   const promoteTags = watch('promoteTags') || [];
   const hideTags = watch('hideTags') || [];
 
@@ -207,6 +241,15 @@ const TemplateConfigModal = ({
         return Promise.reject(t('admin:app_type_not_recognized'));
       }
 
+      const experienceUrlPatch = resolveTemplateExperienceUrlPatch({
+        isEdit,
+        initialExperienceUrl: defaultForm.experienceUrl,
+        inputExperienceUrl: data.experienceUrl
+      });
+      if (!experienceUrlPatch.valid) {
+        return Promise.reject(t('admin:experience_url_invalid'));
+      }
+
       let workflow = defaultForm.workflow;
       if (!isPluginSystemTemplate) {
         try {
@@ -216,17 +259,17 @@ const TemplateConfigModal = ({
         }
       }
 
-      const pluginSystemTemplateConfigBody = {
-        templateId: data.templateId,
+      const sharedConfigBody = {
         isActive: data.isActive,
         isPromoted: data.isPromoted,
         promoteTags: data.promoteTags,
         hideTags: data.hideTags,
-        recommendText: data.recommendText
+        recommendText: data.recommendText,
+        ...(experienceUrlPatch.include ? { experienceUrl: experienceUrlPatch.value } : {})
       };
 
-      const fullTemplateBody = {
-        ...pluginSystemTemplateConfigBody,
+      const createBody: CreateTemplateBodyType = {
+        ...sharedConfigBody,
         name: data.name,
         intro: data.intro,
         avatar: data.avatar,
@@ -238,15 +281,16 @@ const TemplateConfigModal = ({
           content: data.userGuide?.content ?? '',
           link: data.userGuide?.link ?? ''
         },
-        workflow
+        workflow: workflow as CreateTemplateBodyType['workflow']
       };
 
       if (isEdit) {
-        await putUpdateTemplate(
-          isPluginSystemTemplate ? pluginSystemTemplateConfigBody : fullTemplateBody
-        );
+        await putUpdateTemplate({
+          templateId: data.templateId,
+          ...(isPluginSystemTemplate ? sharedConfigBody : createBody)
+        } satisfies UpdateTemplateBodyType);
       } else {
-        await postCreateTemplate(fullTemplateBody);
+        await postCreateTemplate(createBody);
       }
     },
     {
@@ -317,7 +361,7 @@ const TemplateConfigModal = ({
         </>
       }
     >
-      <Flex w={'full'} gap={8} h={isPluginSystemTemplate ? 'auto' : 560}>
+      <Flex w={'full'} gap={8} minH={isPluginSystemTemplate ? 'auto' : 560} flexShrink={0}>
         <Flex flexDirection={'column'} gap={6} w={'full'}>
           {isPluginSystemTemplate ? (
             <Box>
@@ -447,6 +491,16 @@ const TemplateConfigModal = ({
               value={isPromoted ?? false}
               onChange={(e) => setValue('isPromoted', e)}
               gridTemplateColumns={'repeat(2, 1fr)'}
+            />
+          </Box>
+          <Box>
+            <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+              {t('admin:experience_url')}
+            </Box>
+            <Input
+              value={experienceUrl ?? ''}
+              onChange={(e) => setValue('experienceUrl', e.target.value)}
+              placeholder={t('admin:experience_url_placeholder')}
             />
           </Box>
           {/* 介绍/推荐语 */}

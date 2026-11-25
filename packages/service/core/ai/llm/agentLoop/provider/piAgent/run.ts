@@ -925,9 +925,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   const stopPoller = setInterval(() => {
     if (runtime.checkIsStopping?.()) {
+      clearInterval(stopPoller);
       agent.abort();
     }
-  }, 200);
+  }, 100);
 
   // 仅团队成员模型启用运行时 SSRF 防护；系统模型保持原有传输。
   const legacyEndpoint = isTeamModel(modelData) ? getLegacyModelEndpoint(modelData) : undefined;

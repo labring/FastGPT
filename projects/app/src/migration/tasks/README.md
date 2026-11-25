@@ -9,6 +9,16 @@
 | `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
+| `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
+| `20261117_migrate_sandbox_to_opensandbox` | 手动触发 | 存量 Sealos Devbox、旧 OpenSandbox 持久卷与 `.zip` 流式转码迁移至 OpenSandbox `.tar.zst` |
+| `20261117_cleanup_legacy_sandbox_resources` | 手动触发 | 核验并清理历史 Sealos Devbox、旧持久卷与旧 `.zip` 遗留资源 |
+| `20261110_migrate_sql_fulltext` | 手动触发 | 校验并回填向量库全文数据 |
+
+## 废弃 MongoDB 索引按版本清理约定
+
+- 后续任意版本需要退役 MongoDB 索引时，统一按 Expand-Contract 两版本收缩：N 版移除 Schema/DAL 索引声明与查询依赖，N+1 版在 `projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/` 新增独立迁移任务并追加至 `systemMigrations` 末尾。
+- 所有版本复用 `projects/app/src/migration/mongoIndexCleanup.ts` 的 `createMongoIndexCleanupMigration`，固定包含 `cleanup` 与 `validation` 两阶段、采用幂等全量重跑，并严格按 `name + key + 完整 options` 匹配删除，同时遵循 `MONGO_DEPRECATE_INDEX` 开关。
+- 凡由新索引替代的退役项必须声明 `requiredIndexes`：迁移在删除前会通过 `hasMatchingMongoIndex` 持续轮询确认前置替代索引已提交完成、非隐藏且可供查询规划器使用（排除构建中与隐藏索引），未就绪或超时时保守保留旧索引并报错待重试，避免大表异步建索引期间回退全表扫描。
 
 ## 系统配置迁移
 
@@ -61,6 +71,6 @@ Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照�
 
 `dependsOn` 是成功前提，不是额外的执行模式。任务可以声明多个更早注册的任务 ID，只有它们全部 succeeded 才能执行。前置为 waiting、pending、running、failed 或状态缺失时都不能越过；后台前置修复并重试成功后，等待的自动任务会继续执行；启动链前置失败则需修复并重启 owner。
 
-当前 4.18.0 注册表中的自动与独立任务均未声明前置依赖。
+当前 4.18.0 仅手动清理任务 `20261117_cleanup_legacy_sandbox_resources` 依赖 `20261117_migrate_sandbox_to_opensandbox`。存量沙盒全部迁入 `.tar.zst` 后才允许清理历史资源。
 
 不要用数组中的相邻位置代替业务成功依赖，也不要把所有任务链式关联来模拟旧的全队列暂停。普通队列仍按注册顺序串行选择可执行任务，独立模式仍与非空 dependsOn 互斥。

@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { type ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
+import { type ExecuteResult } from '@fastgpt/global/core/ai/sandbox/type';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import {
   runAgentSandboxEntrypoint,
-  withAgentSandboxInitLease
+  withAgentSandboxLease
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint';
+import { runWithSandboxRuntimeStateScope } from '@fastgpt/service/core/ai/sandbox/application/runtime/state';
 import { runAgentSkillVersionEntrypoints } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint';
 
 /** 用可恢复的执行结果和持久化内容模拟同一个 Sandbox，验证多次初始化的实际行为。 */
@@ -16,12 +17,9 @@ const createSandbox = (initialState?: Record<string, unknown>) => {
     execution,
     execute: vi.fn(
       async (
-        command: string,
+        _command: string,
         _options?: { workingDirectory?: string; timeoutMs?: number }
       ): Promise<ExecuteResult> => {
-        if (command === 'printf "%s" "$HOME"') {
-          return { exitCode: 0, stdout: '/home/test', stderr: '' };
-        }
         if (execution.throws) throw new Error('execute failed');
         return { exitCode: execution.exitCode, stdout: 'ok', stderr: '' };
       }
@@ -34,7 +32,10 @@ const createSandbox = (initialState?: Record<string, unknown>) => {
       paths.map((path) => ({
         path,
         content: Buffer.from(stateContent ?? ''),
-        error: stateContent === undefined ? new Error('not found') : null
+        error:
+          stateContent === undefined
+            ? Object.assign(new Error('not found'), { code: 'ENOENT' })
+            : null
       }))
     ),
     writeFiles: vi.fn(
@@ -54,8 +55,7 @@ const createSandbox = (initialState?: Record<string, unknown>) => {
 };
 
 const version = { versionId: 'version-1', targetDir: '/workspace/projects/version-1' };
-const startupCalls = (sandbox: ReturnType<typeof createSandbox>) =>
-  sandbox.execute.mock.calls.filter(([command]) => command !== 'printf "%s" "$HOME"');
+const startupCalls = (sandbox: ReturnType<typeof createSandbox>) => sandbox.execute.mock.calls;
 
 describe('runtime entrypoint', () => {
   it('initializes parent and child nodes independently, skips unchanged scripts and reruns edits', async () => {
@@ -156,9 +156,10 @@ describe('runtime entrypoint', () => {
         releaseFirst = resolve;
       });
       const runWithLease = (name: string, wait?: Promise<void>) =>
-        withAgentSandboxInitLease({
+        withAgentSandboxLease({
           sandboxId: 'shared-root-sandbox',
-          retryIntervalMs: 10,
+          retryInitialMs: 10,
+          retryMaxMs: 20,
           fn: async () => {
             order.push(`${name}:start`);
             await wait;
@@ -179,17 +180,51 @@ describe('runtime entrypoint', () => {
       ]);
       expect(order).toEqual(['first:start', 'first:end', 'second:start', 'second:end']);
 
-      heldKeys.add('agent-sandbox:init:stuck-sandbox');
+      heldKeys.add('agent-sandbox:lease:stuck-sandbox');
       await expect(
-        withAgentSandboxInitLease({
+        withAgentSandboxLease({
           sandboxId: 'stuck-sandbox',
           waitTimeoutMs: 25,
-          retryIntervalMs: 10,
+          retryInitialMs: 10,
+          retryMaxMs: 20,
           fn: async () => 'unreachable'
         })
       ).rejects.toThrow(SandboxErrEnum.agentSandboxInitializing);
     } finally {
       withLeaseSpy.mockRestore();
     }
+  });
+
+  it('batches skill entrypoint checks and flushes runtime state once across multiple skills', async () => {
+    const sandbox = createSandbox();
+    const second = { versionId: 'version-2', targetDir: '/workspace/projects/version-2' };
+    const third = { versionId: 'version-3', targetDir: '/workspace/projects/version-3' };
+
+    await runWithSandboxRuntimeStateScope(async () => {
+      await runAgentSkillVersionEntrypoints({
+        sandbox: sandbox as any,
+        versions: [version, second, third]
+      });
+
+      expect(sandbox.getFileInfo).toHaveBeenCalledTimes(1);
+      expect(sandbox.getFileInfo).toHaveBeenCalledWith([
+        '/workspace/projects/version-1/entrypoint.sh',
+        '/workspace/projects/version-2/entrypoint.sh',
+        '/workspace/projects/version-3/entrypoint.sh'
+      ]);
+      expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
+      expect(sandbox.getState().values.skillEntrypoints).toEqual([
+        version.versionId,
+        second.versionId,
+        third.versionId
+      ]);
+
+      await runAgentSkillVersionEntrypoints({
+        sandbox: sandbox as any,
+        versions: [version, second, third]
+      });
+    });
+    expect(sandbox.getFileInfo).toHaveBeenCalledTimes(1);
+    expect(sandbox.readFiles).toHaveBeenCalledTimes(1);
   });
 });

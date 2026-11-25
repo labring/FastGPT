@@ -6,6 +6,7 @@ import type { UpdatePasswordBody } from '@fastgpt/global/openapi/support/user/ac
 import { createPasswordChangeSession } from '@fastgpt/service/support/user/account/password/service';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -180,24 +181,21 @@ describe('password/update API', () => {
   });
 
   it('keeps the session available when the password update is rejected', async () => {
-    const body = await getBody({ newPsw: hashStr(OLD_PASSWORD) });
+    const body = await getBody({ newPsw: hashStr('retried-password') });
+    await MongoUser.updateOne({ _id: testUser._id }, { status: UserStatusEnum.forbidden });
+
     const rejectedResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
 
     expect(rejectedResponse.code).toBe(500);
-    expect(rejectedResponse.error).toMatchObject({
-      name: 'UserError',
-      message: UserErrEnum.newPasswordSameAsOld
-    });
+
+    await MongoUser.updateOne({ _id: testUser._id }, { status: UserStatusEnum.active });
 
     const retryResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
-      {
-        body: { ...body, newPsw: hashStr('retried-password') },
-        auth: getAuth()
-      }
+      { body, auth: getAuth() }
     );
 
     expect(retryResponse.code).toBe(200);
@@ -226,7 +224,7 @@ describe('password/update API', () => {
     expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
   });
 
-  it('rejects the current password when a stored password exists', async () => {
+  it('allows reusing the current password when a stored password exists', async () => {
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       {
@@ -235,13 +233,12 @@ describe('password/update API', () => {
       }
     );
 
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({
-      name: 'UserError',
-      message: UserErrEnum.newPasswordSameAsOld
-    });
-    const unchangedUser = await MongoUser.findById(testUser._id).lean();
-    expect(unchangedUser?.passwordUpdateTime).toBeUndefined();
+    expect(response.code).toBe(200);
+    expect(
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
+    ).toBeTruthy();
+    const updatedUser = await MongoUser.findById(testUser._id).lean();
+    expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
   });
 
   it('rejects a token issued for another user', async () => {

@@ -37,13 +37,13 @@ export function resolveOpenApiCredential(rawCredential: string) {
   };
 }
 
-/** 校验商业版 API Key 的有效期和用量额度；缺省或 -1 表示不限，0 仍是有效上限。 */
+/** 校验商业版 API Key 的有效期和用量额度；缺省或 -1 表示不限，0 表示无可用额度，达到或超过上限即拒绝。 */
 export function assertOpenApiLimit(openApi: OpenApiSchema) {
   if (openApi.limit?.expiredTime && new Date(openApi.limit.expiredTime).getTime() < Date.now()) {
     throw new UserError('API Key is expired');
   }
   const maxUsagePoints = openApi.limit?.maxUsagePoints ?? -1;
-  if (maxUsagePoints > -1 && openApi.usagePoints > maxUsagePoints) {
+  if (maxUsagePoints > -1 && openApi.usagePoints >= maxUsagePoints) {
     throw new UserError('API Key is over usage');
   }
 }

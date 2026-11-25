@@ -6,9 +6,24 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 
 export const WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY = 'openWorkflowBuilder';
 export const WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY = 'workflowBuilderChatId';
+
+/** 校验并归一化应用模板体验地址；仅放行完整的 http/https 链接，避免空串或伪协议跳转。 */
+export const getSafeExperienceUrl = (url?: string): string | undefined => {
+  const trimmed = url?.trim();
+  if (!trimmed || !isValidHttpUrl(trimmed)) return undefined;
+  return trimmed;
+};
+
+/** 在新标签页安全打开应用模板体验地址。 */
+export const openExperienceUrl = (url?: string): void => {
+  const safeUrl = getSafeExperienceUrl(url);
+  if (!safeUrl || typeof window === 'undefined') return;
+  window.open(safeUrl, '_blank', 'noopener,noreferrer');
+};
 
 /** 生成应用详情页路由，并按需携带只在首次进入时消费的 Builder 自动开启标记。 */
 export const getAppDetailRoute = ({

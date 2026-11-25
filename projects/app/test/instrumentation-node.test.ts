@@ -86,7 +86,7 @@ vi.mock('@fastgpt/service/common/s3', async () => {
     })
   };
 });
-vi.mock('@/service/common/system/volumnMongoWatch', () => ({ startMongoWatch: mocks.watch }));
+vi.mock('@/service/common/system/sync', () => ({ startSystemSync: mocks.watch }));
 vi.mock('@/service/common/system/configPolling', () => ({
   startAppConfigPolling: mocks.configPolling
 }));
@@ -111,7 +111,13 @@ import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  connectionLogMongo,
+  connectionMongo,
+  hasSeparateMongoLogUri,
+  Types
+} from '@fastgpt/service/common/mongo';
+import * as mongoInit from '@fastgpt/service/common/mongo/init';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
@@ -391,19 +397,25 @@ describe('registerNodeInstrumentation', () => {
       overrides: {
         plugin: { remoteDebug: true },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
         }
       },
       explicitDefaultPaths: []
     });
 
+    const connectMongoSpy = vi.spyOn(mongoInit, 'connectMongo');
     try {
       await registerNodeInstrumentation();
+      expect(hasSeparateMongoLogUri).toBe(false);
+      expect(connectionLogMongo).toBe(connectionMongo);
+      // 默认 shared 模式下跳过冗余 connect-log-mongo 步骤，仅连接单一物理连接池。
+      expect(connectMongoSpy).toHaveBeenCalledTimes(1);
       expect(mocks.getInitConfig).toHaveBeenCalledTimes(2);
       expect(mocks.exit).not.toHaveBeenCalled();
       expect(getSystemInstanceConfig().subservice.agentSandbox).toMatchObject({
-        provider: 'sealosdevbox',
+        enabled: true,
+        opensandbox: { baseUrl: 'https://sandbox.example.test' },
         proxy: {
           wsUrl: 'wss://proxy.example.test',
           previewUrl: 'https://preview.example.test',

@@ -8,7 +8,7 @@ import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
 import { SANDBOX_TOOL_MAX_BYTES } from '../../constants';
 
-export const SandboxReadFileToolSchema = z.object({
+const SandboxReadFileToolSchema = z.object({
   path: z.string(),
   offset: z.number().int().positive().optional(),
   limit: z.number().int().positive().optional()
@@ -24,14 +24,16 @@ const decodeFileContent = (content: unknown) => {
 export const sandboxReadFileTool = defineTool({
   zodSchema: SandboxReadFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
-
+    // 显式放开只读内置 Skill 等受控目录（如 /var/lib/fastgpt-runtime/skills）。
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
-      allowAbsolutePath: true
+      allowAbsolutePath: true,
+      allowOutsideWorkspace: true
     });
-    const [file] = await sandboxInstance.provider.readFiles([providerPath]);
+    const [file] = await sandboxInstance.opensandbox.readFiles([providerPath]);
     if (!file || file.error) {
-      throw new Error(`Failed to read file: ${file?.error?.message || params.path}`);
+      throw new Error(`Failed to read file: ${file?.error?.message || params.path}`, {
+        cause: file?.error
+      });
     }
 
     const content = decodeFileContent(file.content);

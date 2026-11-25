@@ -131,11 +131,9 @@ Configure the **File service domain** in **Admin → Core settings → Download 
 | `NO_PROXY`             | Empty   | Address list that bypasses proxies.                                                                                        |
 | `ALL_PROXY`            | Unset   | Proxy for outbound clients that support this variable. Default fetch/OpenAI clients require `HTTP_PROXY` or `HTTPS_PROXY`. |
 
-Protected requests through the shared HTTP client include Workflow HTTP Nodes, HTTP tools, and the chat channels and file operations that use this client. When these requests use a proxy, the FastGPT runtime must be able to resolve the destination, and the HTTP or HTTPS proxy must allow `CONNECT` to the resolved IP and port. Switch SOCKS and forward-only HTTP proxies to a compatible proxy. Destinations matched by `NO_PROXY` use a direct connection and still undergo address checks. If no request timeout is set, the proxy handshake has a 30-second deadline.
+When protected outbound requests (such as Workflow HTTP Nodes, HTTP tools, the MCP client, and chat channels or file operations using the shared HTTP client) route through `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`, supported proxy schemes are `http://`, `https://`, `socks://`, `socks5://`, and `socks5h://`, with target DNS resolution and egress connections delegated to the proxy layer. Enforce egress access controls on the proxy itself (blocking loopback, RFC1918 private networks, and cloud metadata addresses) to mitigate proxy-side DNS rebinding SSRF risks. Destinations matched by `NO_PROXY` use a direct connection and retain local address and IP checks.
 
-Before upgrading, use your actual Workflows and channels in a test environment to verify proxy authentication, DNS resolution, and `CONNECT` policy. If you switch proxies, update the applicable `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` setting and restart the affected processes.
-
-The WeChat Personal channel bypasses these proxy environment variables and requires direct HTTPS access from the App container to `ilinkai.weixin.qq.com` (and its subdomains) and `cdn.weixin.qq.com` (and its subdomains; default media downloads use `novac2c.cdn.weixin.qq.com`) resolving to public IP addresses. Verify connectivity from the container without a proxy (for example, `curl --noproxy '*'`), then test both messaging and media after upgrading.
+The WeChat Personal channel allows HTTPS requests only to `ilinkai.weixin.qq.com` (and its subdomains) and `cdn.weixin.qq.com` (and its subdomains; default media downloads use `novac2c.cdn.weixin.qq.com`) with redirects disabled. It supports `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` (enforce egress access controls on the proxy itself); direct connections and `NO_PROXY` targets continue to validate public IP addresses.
 
 ### Feature controls and service limits
 
@@ -230,4 +228,5 @@ The WeChat Personal channel bypasses these proxy environment variables and requi
 | `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API version. Required only in `docker` mode.                                                     |
 | `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes namespace. Required only in `kubernetes` mode.                                               |
 | `VM_K8S_PVC_STORAGE_CLASS` | Unset                  | Kubernetes PVC StorageClass. Leave empty to use the cluster default. Applies only to `kubernetes` mode. |
-| `VM_LOG_LEVEL`             | `info`                 | Log level. Supported values are `debug`, `info`, and `none`.                                            |
+
+> Volume Manager logging uses the shared `LOG_*` variables (`LOG_ENABLE_CONSOLE`, `LOG_CONSOLE_LEVEL`, `LOG_ENABLE_OTEL`, and `LOG_OTEL_*`; defaults to `LOG_CONSOLE_LEVEL=info` and `LOG_OTEL_SERVICE_NAME=fastgpt-volume-manager`).
