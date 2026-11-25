@@ -55,8 +55,8 @@ git rebase upstream/main
 3. **验证范围**：
    - Rebase 完成后，基于最新 `upstream/main..HEAD` 复核净 diff，确认无冲突标记、无多余改动；多轮修复或裁剪需求后，同步清理死代码、未引用 i18n key 与多余契约外壳。
    - 按 `AGENTS.md` 测试范围要求，运行覆盖改动及受影响模块的最小局部测试与 lint；用户验收前不主动运行全量测试。
-   - 每次提交或更新 PR（含处理 review 意见）时，对本轮增量自检 `syntax.md` 高频红线：独立参数不超过 2 个、禁止转导、i18n 使用静态字面量 key、索引显式声明与命名、DAL 边界外不直接使用 Model 或数据库驱动。
-   - 修改 `packages/*` 导出签名、跨包导入或 `@fastgpt/dal` 引用时，核对目标 `package.json` `exports` 公开子路径并运行受影响应用的 `typecheck`（如 `pnpm --filter @fastgpt/app typecheck`）；修改共享契约、运行时字段或 OpenAPI Schema 时，检索 `pro/` 与 `sdk/` 消费方确认已同步。
+   - 每次提交或更新 PR（含处理 review 意见）时，对本轮增量自检 `syntax.md` 高频红线：独立参数不超过 2 个、禁止转导、i18n key 静态注册（见 `syntax.md` 的「i18n 文案」）、索引显式声明与命名、DAL 边界外不直接使用 Model 或数据库驱动。
+   - 修改 `packages/*` 导出签名、跨包导入或 `@fastgpt/dal` 引用时，运行受影响应用的 `typecheck`（如 `pnpm --filter @fastgpt/app typecheck`），目标包声明了 `exports` 时核对所用子路径已公开；修改共享契约、运行时字段或 OpenAPI Schema 时，检索 `pro/` 与 `sdk/` 消费方确认已同步。
 
 ## 3. Pro 子模块联动检查与提交
 
