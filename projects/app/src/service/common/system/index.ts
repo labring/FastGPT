@@ -16,6 +16,7 @@ import type {
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
+import { configureLLMRequestRecordTTLIndex } from '@fastgpt/service/core/ai/record/schema';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -89,58 +90,8 @@ async function getPluginRemoteDebugEnabled() {
   }
 }
 
-type SystemConfigInitState = {
-  initConfigQueue: Promise<void>;
-  storageRefreshPending: boolean;
-  appliedLLMRequestRecordRetentionHours?: number;
-  latestLLMRequestRecordRetentionHours?: number;
-  ttlRefreshQueue: Promise<void>;
-  ttlRefreshInFlight: number;
-};
-
-/** 跨 Next bundle 共享重载队列与已生效的日志 TTL，避免重复检查独立日志库索引。 */
-const getSystemConfigInitState = (): SystemConfigInitState => {
-  const store = globalThis as typeof globalThis & {
-    systemConfigInitState?: SystemConfigInitState;
-  };
-  return (store.systemConfigInitState ??= {
-    initConfigQueue: Promise.resolve(),
-    storageRefreshPending: false,
-    ttlRefreshQueue: Promise.resolve(),
-    ttlRefreshInFlight: 0
-  });
-};
-
-/**
- * 后台串行校准日志 TTL 索引：仅在首次未同步、上次失败或 retentionHours 实际变更时执行，
- * 不阻塞配置重载队列与保存接口响应。
- */
-function scheduleLLMRequestRecordTTLRefresh(targetRetentionHours: number) {
-  const state = getSystemConfigInitState();
-  if (
-    state.ttlRefreshInFlight === 0 &&
-    state.appliedLLMRequestRecordRetentionHours === targetRetentionHours
-  ) {
-    return;
-  }
-
-  state.ttlRefreshInFlight += 1;
-  state.ttlRefreshQueue = state.ttlRefreshQueue
-    .then(async () => {
-      const currentHours = state.latestLLMRequestRecordRetentionHours ?? targetRetentionHours;
-      if (state.appliedLLMRequestRecordRetentionHours === currentHours) return;
-      const applied = await refreshLLMRequestRecordTTL();
-      if (applied) {
-        state.appliedLLMRequestRecordRetentionHours = currentHours;
-      }
-    })
-    .catch((error) => {
-      logger.error('Failed to refresh LLM request record TTL in background', { error });
-    })
-    .finally(() => {
-      state.ttlRefreshInFlight -= 1;
-    });
-}
+let initConfigQueue: Promise<void> = Promise.resolve();
+let storageRefreshPending = false;
 
 /**
  * 重新加载并应用全站系统配置。
@@ -151,11 +102,8 @@ export function initSystemConfig({
 }: {
   refreshLLMRequestRecordTTL?: boolean;
 } = {}): Promise<void> {
-  const state = getSystemConfigInitState();
-  const current = state.initConfigQueue.then(() =>
-    doInitSystemConfig({ refreshLLMRequestRecordTTL })
-  );
-  state.initConfigQueue = current.catch(() => {});
+  const current = initConfigQueue.then(() => doInitSystemConfig({ refreshLLMRequestRecordTTL }));
+  initConfigQueue = current.catch(() => {});
   return current;
 }
 
@@ -164,7 +112,6 @@ async function doInitSystemConfig({
 }: {
   refreshLLMRequestRecordTTL: boolean;
 }) {
-  const state = getSystemConfigInitState();
   const pluginRemoteDebug = await getPluginRemoteDebugEnabled();
   systemInstanceConfig.setFrontendContext({
     pluginRemoteDebug,
@@ -176,15 +123,24 @@ async function doInitSystemConfig({
   const instanceConfig = await systemInstanceConfig.initialize();
 
   // 快照已经完整发布；资源应用失败保留待重试状态，不能撤销已保存的配置。
-  const targetRetentionHours = instanceConfig.performance.tracking.retentionHours;
-  state.latestLLMRequestRecordRetentionHours = targetRetentionHours;
+  // 日志 TTL 仅在启动期（shouldRefreshLLMRequestRecordTTL=true）及配置保存事务内操作日志库，
+  // 普通重载仅同步内存 Schema 声明，避免轮询与无关保存查询独立日志库。
   if (shouldRefreshLLMRequestRecordTTL) {
-    scheduleLLMRequestRecordTTLRefresh(targetRetentionHours);
+    await refreshLLMRequestRecordTTL();
+  } else {
+    const expireAfterSeconds = instanceConfig.performance.tracking.retentionHours * 60 * 60;
+    if (
+      Number.isSafeInteger(expireAfterSeconds) &&
+      expireAfterSeconds > 0 &&
+      expireAfterSeconds <= 2_147_483_647
+    ) {
+      configureLLMRequestRecordTTLIndex(expireAfterSeconds);
+    }
   }
-  state.storageRefreshPending ||= applyRuntimeStorageConfig(instanceConfig.storage);
-  if (state.storageRefreshPending) {
+  storageRefreshPending ||= applyRuntimeStorageConfig(instanceConfig.storage);
+  if (storageRefreshPending) {
     initS3Buckets();
-    state.storageRefreshPending = false;
+    storageRefreshPending = false;
   }
   logger.info('System config loaded', { scopes: Object.keys(instanceConfig) });
 }

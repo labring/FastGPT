@@ -36,8 +36,11 @@ import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migration
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { applyLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
 
 const logger = getLogger(LogCategories.SYSTEM);
+const LLM_TTL_UPDATE_TIMEOUT_MS = 10_000;
 
 const isSiteAvatarUrl = (avatar: string) => avatar.startsWith(`${imageBaseUrl}avatar/`);
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -220,13 +223,40 @@ async function handler(
     }
   }
 
-  // 4. 单事务写入全部域和可选套餐
-  const savedConfigs = await systemInstanceConfig.update({
+  // 4. 单事务写入全部域和可选套餐；若 performance.tracking.retentionHours 实际变化，
+  // 在事务提交前同步更新日志库 TTL 索引（不传主库 session，兼容独立 MONGODB_LOG_URI），
+  // TTL 索引更新失败时直接抛错并自动回滚本次配置写入。
+  const performanceItem = itemsToSave.find((item) => item.domain === 'performance');
+  const previousRetentionHours = performanceItem
+    ? (await getDomainConfig('performance')).effectiveConfig.tracking.retentionHours
+    : undefined;
+  const updateInput = {
     items: itemsToSave,
     subPlans,
     subPlansExpectedRevision,
-    actor: { actor: 'admin', userId: auth.userId }
-  });
+    actor: { actor: 'admin' as const, userId: auth.userId }
+  };
+  const savedConfigs = performanceItem
+    ? await mongoSessionRun(
+        async (session) => {
+          const results = await systemInstanceConfig.update(updateInput, session);
+          const savedPerformance = results.find((result) => result.domain === 'performance');
+          const nextRetentionHours = (
+            savedPerformance?.effectiveConfig as
+              | { tracking?: { retentionHours?: number } }
+              | undefined
+          )?.tracking?.retentionHours;
+          if (nextRetentionHours !== undefined && nextRetentionHours !== previousRetentionHours) {
+            await applyLLMRequestRecordTTL({
+              retentionHours: nextRetentionHours,
+              maxTimeMS: LLM_TTL_UPDATE_TIMEOUT_MS
+            });
+          }
+          return results;
+        },
+        { readPreference: 'primary', writeConcern: { w: 'majority' } }
+      )
+    : await systemInstanceConfig.update(updateInput);
 
   // 只在提交后记录操作者，不记录可能包含密钥的配置；审计失败不影响已提交的保存。
   void Promise.resolve()
@@ -240,12 +270,9 @@ async function handler(
     )
     .catch((error) => logger.error('Failed to add system config audit log', { error }));
 
-  // 5. 数据库提交后即保存成功；等待运行时快照刷新以便保存返回后 getInitData 立即命中最新配置，
-  // 仅当本次触及 performance 域时检查日志 TTL 变更（且在后台执行，不阻塞保存返回）；
-  // 刷新失败不回滚也不将已提交的操作报告为失败。
-  await initSystemConfig({
-    refreshLLMRequestRecordTTL: items.some((item) => item.domain === 'performance')
-  }).catch((error) => {
+  // 5. 数据库提交后即保存成功；等待本进程运行时快照刷新以便后续请求命中最新配置，
+  // 日志 TTL 已在写事务内同步更新，此处不再重复查询日志库；刷新失败不回滚已提交的保存。
+  await initSystemConfig({ refreshLLMRequestRecordTTL: false }).catch((error) => {
     logger.error('Failed to apply instance config after save', { error });
   });
 
