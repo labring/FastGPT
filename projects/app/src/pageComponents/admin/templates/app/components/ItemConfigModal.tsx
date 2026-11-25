@@ -25,6 +25,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsEnum } from '@fastgpt/global/support/user/type';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 
 export const defaultTemplate: AppTemplateSchemaType = {
   templateId: '',
@@ -39,6 +40,7 @@ export const defaultTemplate: AppTemplateSchemaType = {
   promoteTags: [],
   hideTags: [],
   recommendText: '',
+  experienceUrl: '',
   userGuide: {
     type: 'markdown',
     content: '',
@@ -96,6 +98,7 @@ const TemplateConfigModal = ({
   const isPromoted = watch('isPromoted');
   const intro = watch('intro');
   const recommendText = watch('recommendText');
+  const experienceUrl = watch('experienceUrl');
   const promoteTags = watch('promoteTags') || [];
   const hideTags = watch('hideTags') || [];
 
@@ -207,6 +210,11 @@ const TemplateConfigModal = ({
         return Promise.reject(t('admin:app_type_not_recognized'));
       }
 
+      const trimmedExperienceUrl = (data.experienceUrl ?? '').trim();
+      if (trimmedExperienceUrl && !isValidHttpUrl(trimmedExperienceUrl)) {
+        return Promise.reject(t('admin:experience_url_invalid'));
+      }
+
       let workflow = defaultForm.workflow;
       if (!isPluginSystemTemplate) {
         try {
@@ -216,13 +224,20 @@ const TemplateConfigModal = ({
         }
       }
 
+      // 社区模板仅在显式配置或清空已有覆盖地址时才提交 experienceUrl，避免默认空串覆盖 plugin 自带体验地址。
+      const shouldIncludeExperienceUrl =
+        !isPluginSystemTemplate ||
+        trimmedExperienceUrl !== '' ||
+        Boolean(defaultForm.experienceUrl);
+
       const pluginSystemTemplateConfigBody = {
         templateId: data.templateId,
         isActive: data.isActive,
         isPromoted: data.isPromoted,
         promoteTags: data.promoteTags,
         hideTags: data.hideTags,
-        recommendText: data.recommendText
+        recommendText: data.recommendText,
+        ...(shouldIncludeExperienceUrl ? { experienceUrl: trimmedExperienceUrl } : {})
       };
 
       const fullTemplateBody = {
@@ -317,7 +332,7 @@ const TemplateConfigModal = ({
         </>
       }
     >
-      <Flex w={'full'} gap={8} h={isPluginSystemTemplate ? 'auto' : 560}>
+      <Flex w={'full'} gap={8} minH={isPluginSystemTemplate ? 'auto' : 560} flexShrink={0}>
         <Flex flexDirection={'column'} gap={6} w={'full'}>
           {isPluginSystemTemplate ? (
             <Box>
@@ -447,6 +462,16 @@ const TemplateConfigModal = ({
               value={isPromoted ?? false}
               onChange={(e) => setValue('isPromoted', e)}
               gridTemplateColumns={'repeat(2, 1fr)'}
+            />
+          </Box>
+          <Box>
+            <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+              {t('admin:experience_url')}
+            </Box>
+            <Input
+              value={experienceUrl ?? ''}
+              onChange={(e) => setValue('experienceUrl', e.target.value)}
+              placeholder={t('admin:experience_url_placeholder')}
             />
           </Box>
           {/* 介绍/推荐语 */}

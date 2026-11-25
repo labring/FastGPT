@@ -49,7 +49,12 @@ import {
   type HttpToolType,
   HttpToolTypeEnum
 } from '@fastgpt/global/core/app/tool/httpTool/constants';
-import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
+import {
+  getAppDetailRoute,
+  getSafeExperienceUrl,
+  isWorkflowAppType,
+  openExperienceUrl
+} from '@/web/core/app/utils';
 
 type FormType = {
   avatar: string;
@@ -335,74 +340,174 @@ const CreateAppsPage = () => {
               </Flex>
               <Fade in={!isLoadingTemplates && templateData?.list && templateData.list.length > 0}>
                 <SimpleGrid columns={[1, 3]} gridGap={2.5}>
-                  {templateData.list.map((item) => (
-                    <MyBox
-                      key={item.templateId}
-                      p={4}
-                      borderRadius={'10px'}
-                      border={'1px solid'}
-                      borderColor={'myGray.200'}
-                      cursor={'pointer'}
-                      boxShadow={'none'}
-                      bg={'white'}
-                      _hover={{
-                        boxShadow:
-                          '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)'
-                      }}
-                      isLoading={creatingTemplateId === item.templateId}
-                      onClick={() => {
-                        if (!creatingTemplateId) {
-                          handleSubmit((data) => onClickCreate(data, item.templateId))();
-                        }
-                      }}
-                    >
-                      <Box
-                        position={'relative'}
-                        h={28}
-                        borderRadius={'12px'}
-                        overflow={'hidden'}
-                        mb={2}
+                  {templateData.list.map((item) => {
+                    const experienceUrl = getSafeExperienceUrl(item.experienceUrl);
+                    const onCreateFromTemplate = () => {
+                      if (!creatingTemplateId) {
+                        handleSubmit((data) => onClickCreate(data, item.templateId))();
+                      }
+                    };
+                    const cardInteractiveStyles = {
+                      boxShadow:
+                        '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
+                      '& .template-intro': {
+                        opacity: 0
+                      },
+                      '& .template-actions': {
+                        opacity: 1,
+                        pointerEvents: 'auto'
+                      }
+                    };
+                    const actionButtonProps = {
+                      h: '36px',
+                      px: experienceUrl ? { base: 2, sm: 1, lg: 2 } : 2,
+                      rounded: 'sm',
+                      fontSize: experienceUrl ? { base: '14px', sm: 'xs', lg: '14px' } : '14px',
+                      fontWeight: 'medium',
+                      lineHeight: '20px',
+                      color: 'primary.700',
+                      bg: 'transparent',
+                      whiteSpace: 'nowrap' as const,
+                      cursor: 'pointer',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.1s',
+                      _hover: {
+                        bg: 'myGray.05'
+                      }
+                    };
+
+                    return (
+                      <MyBox
+                        key={item.templateId}
+                        p={4}
+                        borderRadius={'10px'}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                        cursor={experienceUrl ? 'default' : 'pointer'}
+                        boxShadow={'none'}
+                        bg={'white'}
+                        _hover={cardInteractiveStyles}
+                        sx={{
+                          '&:has(:focus-visible)': cardInteractiveStyles
+                        }}
+                        isLoading={creatingTemplateId === item.templateId}
+                        onClick={experienceUrl ? undefined : onCreateFromTemplate}
                       >
-                        <Avatar
-                          src={item.avatar}
-                          position={'absolute'}
-                          w={'full'}
-                          opacity={0.5}
-                          top={'50%'}
-                          transform={'translate(0, -50%)'}
-                          filter={'blur(20px)'}
-                          zIndex={0}
-                        />
                         <Box
-                          position={'absolute'}
-                          top={0}
-                          left={0}
-                          right={0}
-                          bottom={0}
-                          opacity={0.08}
-                          background={
-                            'linear-gradient(180deg, rgba(51, 51, 51, 0.00) 50%, #333 131.5%)'
-                          }
-                          zIndex={1}
-                        />
-
-                        <Box
-                          position={'absolute'}
-                          top={'50%'}
-                          left={'50%'}
-                          transform={'translate(-50%, -50%)'}
-                          zIndex={2}
+                          position={'relative'}
+                          h={28}
+                          borderRadius={'12px'}
+                          overflow={'hidden'}
+                          mb={2}
                         >
-                          <Avatar src={item.avatar} w={6} borderRadius={'4px'} />
-                        </Box>
-                      </Box>
+                          <Avatar
+                            src={item.avatar}
+                            position={'absolute'}
+                            w={'full'}
+                            opacity={0.5}
+                            top={'50%'}
+                            transform={'translate(0, -50%)'}
+                            filter={'blur(20px)'}
+                            zIndex={0}
+                          />
+                          <Box
+                            position={'absolute'}
+                            top={0}
+                            left={0}
+                            right={0}
+                            bottom={0}
+                            opacity={0.08}
+                            background={
+                              'linear-gradient(180deg, rgba(51, 51, 51, 0.00) 50%, #333 131.5%)'
+                            }
+                            zIndex={1}
+                          />
 
-                      <Box color={'myGray.900'}>{t(item.name as any)}</Box>
-                      <Box fontSize={'mini'} color={'myGray.500'} flex={1} noOfLines={2} mt={1}>
-                        {t(item.intro as any)}
-                      </Box>
-                    </MyBox>
-                  ))}
+                          <Box
+                            position={'absolute'}
+                            top={'50%'}
+                            left={'50%'}
+                            transform={'translate(-50%, -50%)'}
+                            zIndex={2}
+                          >
+                            <Avatar src={item.avatar} w={6} borderRadius={'4px'} />
+                          </Box>
+                        </Box>
+
+                        <Box color={'myGray.900'}>{t(item.name as any)}</Box>
+                        <Box position={'relative'} h={'36px'} mt={1}>
+                          <Box
+                            className="template-intro"
+                            fontSize={'mini'}
+                            color={'myGray.500'}
+                            noOfLines={2}
+                            lineHeight={'18px'}
+                            transition={'opacity 0.15s ease-in-out'}
+                          >
+                            {t(item.intro as any)}
+                          </Box>
+                          <Flex
+                            className="template-actions"
+                            position={'absolute'}
+                            inset={0}
+                            gap={experienceUrl ? { base: 2, sm: 1, lg: 2 } : 2}
+                            alignItems={'center'}
+                            opacity={0}
+                            pointerEvents={'none'}
+                            transition={'opacity 0.15s ease-in-out'}
+                          >
+                            {experienceUrl ? (
+                              <>
+                                <Flex
+                                  as={'button'}
+                                  type={'button'}
+                                  {...actionButtonProps}
+                                  flex={1}
+                                  minW={0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (e.detail > 0) {
+                                      e.currentTarget.blur();
+                                    }
+                                    openExperienceUrl(experienceUrl);
+                                  }}
+                                >
+                                  {t('app:templateMarket.online_preview')}
+                                </Flex>
+                                <Flex
+                                  as={'button'}
+                                  type={'button'}
+                                  {...actionButtonProps}
+                                  flex={1}
+                                  minW={0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onCreateFromTemplate();
+                                  }}
+                                >
+                                  {t('app:templateMarket.Use')}
+                                </Flex>
+                              </>
+                            ) : (
+                              <Flex
+                                as={'button'}
+                                type={'button'}
+                                {...actionButtonProps}
+                                w={'full'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCreateFromTemplate();
+                                }}
+                              >
+                                {t('app:templateMarket.Use')}
+                              </Flex>
+                            )}
+                          </Flex>
+                        </Box>
+                      </MyBox>
+                    );
+                  })}
                 </SimpleGrid>
               </Fade>
             </Box>

@@ -14,6 +14,7 @@ export type AdminCreateTemplateBodyType = {
   promoteTags?: string[];
   hideTags?: string[];
   recommendText?: string;
+  experienceUrl?: string;
   userGuide?: {
     type: 'markdown' | 'link';
     content: string;

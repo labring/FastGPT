@@ -26,7 +26,12 @@ import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/uti
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { appTypeTagMap } from '../constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
+import {
+  getAppDetailRoute,
+  getSafeExperienceUrl,
+  isWorkflowAppType,
+  openExperienceUrl
+} from '@/web/core/app/utils';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
@@ -209,6 +214,40 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                 </Box>
               ))
             : templateData?.list.map((item, index) => {
+                const experienceUrl = getSafeExperienceUrl(item.experienceUrl);
+                const onCreateFromTemplate = () => {
+                  if (!creatingTemplateId) {
+                    handleCreateFromTemplate(item.templateId);
+                  }
+                };
+                const cardHoverStyles = {
+                  boxShadow:
+                    '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
+                  '& .template-content': {
+                    filter: 'blur(5px)'
+                  },
+                  '& .hover-text': {
+                    opacity: 1,
+                    pointerEvents: 'auto'
+                  }
+                };
+                const hoverActionButtonProps = {
+                  fontSize: '14px',
+                  fontWeight: 'medium',
+                  color: 'primary.700',
+                  bg: 'transparent',
+                  rounded: 'sm',
+                  px: experienceUrl ? { base: 3, lg: 5 } : 5,
+                  py: 2.5,
+                  whiteSpace: 'nowrap' as const,
+                  cursor: 'pointer',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  _hover: {
+                    bg: 'myGray.05'
+                  }
+                };
+
                 return (
                   <MyBox
                     key={index}
@@ -218,29 +257,19 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                     boxShadow={'none'}
-                    cursor={'pointer'}
+                    cursor={experienceUrl ? 'default' : 'pointer'}
                     position={'relative'}
                     overflow={'hidden'}
                     bgImage={item.isPromoted ? "url('/imgs/app/templateCreateBg.svg')" : 'none'}
                     bgSize={'105% auto'}
                     bgPosition={'top'}
                     bgRepeat={'no-repeat'}
-                    _hover={{
-                      boxShadow:
-                        '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
-                      '& .template-content': {
-                        filter: 'blur(5px)'
-                      },
-                      '& .hover-text': {
-                        opacity: 1
-                      }
+                    _hover={cardHoverStyles}
+                    sx={{
+                      '&:has(:focus-visible)': cardHoverStyles
                     }}
                     isLoading={creatingTemplateId === item.templateId}
-                    onClick={() => {
-                      if (!creatingTemplateId) {
-                        handleCreateFromTemplate(item.templateId);
-                      }
-                    }}
+                    onClick={experienceUrl ? undefined : onCreateFromTemplate}
                     display={'flex'}
                     gap={2}
                     alignItems={'center'}
@@ -315,20 +344,36 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                       bottom={0}
                       alignItems={'center'}
                       justifyContent={'center'}
+                      gap={experienceUrl ? { base: 1, lg: 2 } : 2}
                       opacity={0}
+                      pointerEvents={'none'}
                       bg={' linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FFF 100%)'}
                       transition={'opacity 0.1s ease-in-out'}
-                      cursor={'pointer'}
+                      cursor={experienceUrl ? 'default' : 'pointer'}
                     >
+                      {experienceUrl && (
+                        <Flex
+                          as={'button'}
+                          type={'button'}
+                          {...hoverActionButtonProps}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (e.detail > 0) {
+                              e.currentTarget.blur();
+                            }
+                            openExperienceUrl(experienceUrl);
+                          }}
+                        >
+                          {t('app:templateMarket.online_preview')}
+                        </Flex>
+                      )}
                       <Flex
-                        fontSize={'14px'}
-                        fontWeight={'medium'}
-                        color={'primary.700'}
-                        rounded={'sm'}
-                        px={5}
-                        py={2.5}
-                        _hover={{
-                          bg: 'rgba(17, 24, 36, 0.05)'
+                        as={'button'}
+                        type={'button'}
+                        {...hoverActionButtonProps}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCreateFromTemplate();
                         }}
                       >
                         {t('app:templateMarket.Use')}

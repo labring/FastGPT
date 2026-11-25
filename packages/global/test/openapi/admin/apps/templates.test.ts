@@ -151,6 +151,95 @@ describe('admin app template schemas', () => {
     ).toBe(false);
   });
 
+  it('validates and trims experienceUrl on create and update', () => {
+    expect(
+      CreateTemplateBodySchema.parse({
+        ...templateBase,
+        type: AppTypeEnum.workflow,
+        workflow,
+        experienceUrl: '  https://demo.example.com/chat?shareId=abc#preview  '
+      }).experienceUrl
+    ).toBe('https://demo.example.com/chat?shareId=abc#preview');
+
+    expect(
+      CreateTemplateBodySchema.parse({
+        ...templateBase,
+        type: AppTypeEnum.workflow,
+        workflow,
+        experienceUrl: 'http://localhost:3000/demo'
+      }).experienceUrl
+    ).toBe('http://localhost:3000/demo');
+
+    expect(
+      CreateTemplateBodySchema.parse({
+        ...templateBase,
+        type: AppTypeEnum.workflow,
+        workflow,
+        experienceUrl: '   '
+      }).experienceUrl
+    ).toBe('');
+
+    expect(
+      CreateTemplateBodySchema.parse({
+        ...templateBase,
+        type: AppTypeEnum.workflow,
+        workflow
+      }).experienceUrl
+    ).toBeUndefined();
+
+    expect(
+      UpdateTemplateBodySchema.parse({
+        templateId: 'community-demo',
+        experienceUrl: '  https://demo.example.com/preview?tab=1#top  '
+      }).experienceUrl
+    ).toBe('https://demo.example.com/preview?tab=1#top');
+
+    expect(
+      UpdateTemplateBodySchema.parse({
+        templateId: 'community-demo',
+        experienceUrl: ''
+      }).experienceUrl
+    ).toBe('');
+
+    expect(
+      UpdateTemplateBodySchema.parse({
+        templateId: 'community-demo'
+      }).experienceUrl
+    ).toBeUndefined();
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'ftp://demo.example.com',
+    'demo.example.com',
+    'https://',
+    '/relative/path'
+  ])('rejects invalid experienceUrl %s on create and update', (invalidUrl) => {
+    const createResult = CreateTemplateBodySchema.safeParse({
+      ...templateBase,
+      type: AppTypeEnum.workflow,
+      workflow,
+      experienceUrl: invalidUrl
+    });
+    expect(createResult.success).toBe(false);
+    if (!createResult.success) {
+      expect(createResult.error.issues[0]?.message).toBe(
+        '请输入以 http:// 或 https:// 开头的有效体验地址'
+      );
+    }
+
+    const updateResult = UpdateTemplateBodySchema.safeParse({
+      templateId: 'community-demo',
+      experienceUrl: invalidUrl
+    });
+    expect(updateResult.success).toBe(false);
+    if (!updateResult.success) {
+      expect(updateResult.error.issues[0]?.message).toBe(
+        '请输入以 http:// 或 https:// 开头的有效体验地址'
+      );
+    }
+  });
+
   it('configures proper OpenAPI response schemas for template routes', () => {
     const listRoute = AdminTemplatePath['/proApi/admin/app/templates/list']?.get;
     expect(listRoute?.responses?.[200]?.content?.['application/json']?.schema).toBe(
