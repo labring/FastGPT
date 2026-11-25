@@ -224,13 +224,10 @@ const attachRequestAgent = async (
   const isHttps = parsedUrl.protocol === 'https:';
   const agent = await (async () => {
     if (proxyUrl) {
-      const { timeout, timeoutErrorMessage, transitional, signal, cancelToken } = config;
       return createNodeOutboundProxyAgent({
         proxyUrl,
-        isHttps,
         rejectUnauthorized,
-        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin),
-        request: { timeout, timeoutErrorMessage, transitional, signal, cancelToken }
+        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin)
       });
     }
 

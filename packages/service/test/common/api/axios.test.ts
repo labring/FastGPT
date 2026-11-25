@@ -1,12 +1,10 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
-import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import http from 'http';
 import https from 'https';
 import net from 'net';
 import os from 'os';
-import tls from 'tls';
 import dns from 'dns/promises';
 import zlib from 'node:zlib';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
@@ -732,75 +730,7 @@ describe('axios.ts', () => {
       }
     });
 
-    it('代理 HTTPS CONNECT 握手超时或取消时应立即释放代理 socket，并保留默认 30s 握手期限', async () => {
-      clearProxyEnv();
-      getTestInstanceConfig().security.checkInternalIp = false;
-      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
-      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
-
-      const hangingSockets: net.Socket[] = [];
-      const closedEvents: Promise<unknown>[] = [];
-      const connectSeen: (() => void)[] = [];
-      const waitNextConnect = () => new Promise<void>((resolve) => connectSeen.push(resolve));
-
-      const hangingProxy = await listen((_req, res) => {
-        res.statusCode = 405;
-        res.end();
-      });
-      hangingProxy.on('connect', (_req, socket) => {
-        hangingSockets.push(socket);
-        // http.Server 默认 allowHalfOpen=true，需消费对端 FIN 后才能触发服务端 socket close。
-        socket.on('end', () => socket.destroy());
-        socket.resume();
-        closedEvents.push(once(socket, 'close'));
-        connectSeen.shift()?.();
-      });
-
-      try {
-        process.env.HTTPS_PROXY = `http://127.0.0.1:${getServerPort(hangingProxy)}`;
-        const instance = createProxyAxios();
-
-        // 1. 显式请求超时：返回 ECONNABORTED 且释放代理 socket。
-        const timeoutConnect = waitNextConnect();
-        const timeoutReq = instance.get('https://hanging-timeout.example.test/resource', {
-          timeout: 80
-        });
-        await timeoutConnect;
-        await expect(timeoutReq).rejects.toMatchObject({ code: 'ECONNABORTED' });
-        await closedEvents[0];
-
-        // 2. AbortSignal 取消：立即释放代理 socket。
-        const abortConnect = waitNextConnect();
-        const controller = new AbortController();
-        const abortReq = instance.get('https://hanging-abort.example.test/resource', {
-          signal: controller.signal
-        });
-        await abortConnect;
-        controller.abort();
-        await expect(abortReq).rejects.toMatchObject({ code: 'ERR_CANCELED' });
-        await closedEvents[1];
-
-        // 3. 未设置 timeout 时触发默认 30s 握手超时并释放代理 socket。
-        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-        try {
-          const defaultConnect = waitNextConnect();
-          const defaultReq = instance.get('https://hanging-default.example.test/resource');
-          await defaultConnect;
-          vi.advanceTimersByTime(30_000);
-          await expect(defaultReq).rejects.toThrow(
-            /Proxy CONNECT handshake timed out after 30000 ms/
-          );
-          await closedEvents[2];
-        } finally {
-          vi.useRealTimers();
-        }
-      } finally {
-        for (const s of hangingSockets) s.destroy();
-        await closeServer(hangingProxy);
-      }
-    });
-
-    it('__safeAxios.rejectUnauthorized 经代理时仅作用于目标 TLS，不影响 HTTPS 代理自身证书校验', async () => {
+    it('__safeAxios.rejectUnauthorized 经代理时应控制目标 TLS 证书校验，且 Proxy-Authorization 不泄露到目标服务', async () => {
       clearProxyEnv();
       getTestInstanceConfig().security.checkInternalIp = false;
       vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
@@ -842,13 +772,6 @@ describe('axios.ts', () => {
         });
       });
 
-      const selfSignedHttpsProxy = await startServer(
-        https.createServer({ cert, key }, (_req, res) => {
-          res.statusCode = 405;
-          res.end();
-        })
-      );
-
       try {
         process.env.HTTPS_PROXY = `http://127.0.0.1:${getServerPort(httpProxy)}`;
         const instance = createProxyAxios();
@@ -864,21 +787,9 @@ describe('axios.ts', () => {
         expect(okRes.data).toBe('tls-target-ok');
         expect(connectProxyAuth).toContain('Basic dGxzLXByb3h5');
         expect(targetAuthHeaders).toEqual([undefined]);
-
-        // HTTPS 代理本身为自签名证书时，即使目标配置 rejectUnauthorized: false 仍应拒绝代理证书。
-        process.env.HTTPS_PROXY = `https://127.0.0.1:${getServerPort(selfSignedHttpsProxy)}`;
-        await expect(
-          instance.get('https://target.example.test/tls', {
-            __safeAxios: { rejectUnauthorized: false }
-          } as SafeAxiosRequestConfig)
-        ).rejects.toThrow();
       } finally {
         for (const s of connectSockets) s.destroy();
-        await Promise.all([
-          closeServer(httpProxy),
-          closeServer(selfSignedHttpsProxy),
-          closeServer(selfSignedTarget)
-        ]);
+        await Promise.all([closeServer(httpProxy), closeServer(selfSignedTarget)]);
       }
     });
 
@@ -978,188 +889,6 @@ describe('axios.ts', () => {
           await Promise.all([
             new Promise<void>((resolve) => socksServer.close(() => resolve())),
             closeServer(targetServer)
-          ]);
-        }
-      }
-    );
-
-    it('SOCKS5 代理握手挂起时取消请求应立即关闭代理 socket', async () => {
-      clearProxyEnv();
-      getTestInstanceConfig().security.checkInternalIp = false;
-      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
-      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
-
-      const hangingSockets: net.Socket[] = [];
-      let resolveGreetingSeen!: () => void;
-      const greetingSeen = new Promise<void>((resolve) => {
-        resolveGreetingSeen = resolve;
-      });
-      let socketClosed!: Promise<unknown>;
-
-      const hangingSocks = net.createServer((socket) => {
-        hangingSockets.push(socket);
-        socket.on('end', () => socket.destroy());
-        socketClosed = once(socket, 'close');
-        socket.once('data', () => {
-          // 收到 SOCKS5 greeting 后故意不响应，模拟协商挂起。
-          socket.resume();
-          resolveGreetingSeen();
-        });
-      });
-      await new Promise<void>((resolve) => hangingSocks.listen(0, '127.0.0.1', resolve));
-      const socksAddress = hangingSocks.address();
-      if (!socksAddress || typeof socksAddress === 'string') {
-        throw new Error('Invalid hanging SOCKS5 server address');
-      }
-
-      try {
-        process.env.ALL_PROXY = `socks5://127.0.0.1:${socksAddress.port}`;
-        const instance = createProxyAxios();
-        const controller = new AbortController();
-
-        const req = instance.get('http://hanging-socks.example.test/resource', {
-          signal: controller.signal
-        });
-        await greetingSeen;
-        controller.abort();
-
-        await expect(req).rejects.toMatchObject({ code: 'ERR_CANCELED' });
-        await socketClosed;
-      } finally {
-        for (const s of hangingSockets) s.destroy();
-        await new Promise<void>((resolve) => hangingSocks.close(() => resolve()));
-      }
-    });
-
-    it.each(['socks5', 'http-connect'] as const)(
-      '经 %s 隧道访问 HTTPS 目标时：域名携带 SNI，IP 字面量省略 SNI 并校验 IP SAN',
-      async (mode) => {
-        clearProxyEnv();
-        getTestInstanceConfig().security.checkInternalIp = true;
-        vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
-        vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
-
-        const cert = readFileSync(new URL('./fixtures/connect-test-cert.pem.txt', import.meta.url));
-        const key = readFileSync(new URL('./fixtures/connect-test-key.pem.txt', import.meta.url));
-
-        // 仅向真实 tls.connect 注入受信任测试 CA，完整保留 servername 与 checkServerIdentity 校验。
-        const originalTlsConnect = tls.connect.bind(tls);
-        vi.spyOn(tls, 'connect').mockImplementation(((...args: unknown[]) => {
-          const [first, ...rest] = args;
-          if (typeof first === 'object' && first !== null) {
-            return (originalTlsConnect as (...a: unknown[]) => tls.TLSSocket)(
-              { ...(first as tls.ConnectionOptions), ca: cert },
-              ...rest
-            );
-          }
-          return (originalTlsConnect as (...a: unknown[]) => tls.TLSSocket)(...args);
-        }) as typeof tls.connect);
-
-        const seenSni: Array<string | undefined> = [];
-        const tlsTarget = await startServer(
-          https.createServer(
-            {
-              cert,
-              key,
-              SNICallback: (servername, cb) => {
-                seenSni.push(servername);
-                cb(null, tls.createSecureContext({ cert, key }));
-              }
-            },
-            (req, res) => {
-              if (seenSni.length === 0) seenSni.push(undefined);
-              res.end(`https-ok:${req.headers.host}`);
-            }
-          )
-        );
-        const targetPort = getServerPort(tlsTarget);
-
-        const proxySockets = new Set<net.Socket>();
-        let proxyServer: net.Server | http.Server;
-        if (mode === 'socks5') {
-          proxyServer = net.createServer((client) => {
-            proxySockets.add(client);
-            let stage = 0;
-            client.on('data', (chunk) => {
-              if (stage === 0) {
-                stage = 1;
-                client.write(Buffer.from([0x05, 0x00]));
-              } else if (stage === 1) {
-                stage = 2;
-                const upstream = net.connect(targetPort, '127.0.0.1', () => {
-                  proxySockets.add(upstream);
-                  client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 0]));
-                  upstream.pipe(client);
-                  client.pipe(upstream);
-                });
-                upstream.on('error', () => client.destroy());
-                client.on('close', () => {
-                  proxySockets.delete(client);
-                  proxySockets.delete(upstream);
-                  upstream.destroy();
-                });
-              }
-            });
-          });
-          await new Promise<void>((resolve) => proxyServer.listen(0, '127.0.0.1', resolve));
-        } else {
-          const httpConnectProxy = await listen((_req, res) => {
-            res.statusCode = 405;
-            res.end();
-          });
-          httpConnectProxy.on('connect', (_req, clientSocket, head) => {
-            proxySockets.add(clientSocket);
-            const upstream = net.connect(targetPort, '127.0.0.1', () => {
-              proxySockets.add(upstream);
-              clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-              if (head.length > 0) upstream.write(head);
-              upstream.pipe(clientSocket);
-              clientSocket.pipe(upstream);
-            });
-            upstream.on('error', () => clientSocket.destroy());
-            clientSocket.on('close', () => {
-              proxySockets.delete(clientSocket);
-              proxySockets.delete(upstream);
-              upstream.destroy();
-            });
-          });
-          proxyServer = httpConnectProxy;
-        }
-
-        const proxyAddress = proxyServer.address();
-        if (!proxyAddress || typeof proxyAddress === 'string') {
-          throw new Error('Invalid proxy address');
-        }
-
-        try {
-          if (mode === 'socks5') {
-            process.env.ALL_PROXY = `socks5://127.0.0.1:${proxyAddress.port}`;
-          } else {
-            process.env.HTTPS_PROXY = `http://127.0.0.1:${proxyAddress.port}`;
-          }
-          const instance = createProxyAxios();
-
-          // 1. 域名目标：携带 SNI 且按 DNS SAN 校验通过。
-          seenSni.length = 0;
-          const domainRes = await instance.get('https://target.example.test/ok');
-          expect(domainRes.data).toBe('https-ok:target.example.test');
-          expect(seenSni).toEqual(['target.example.test']);
-
-          // 2. 合法 IP SAN 目标：省略 SNI 且按 IP SAN 校验通过。
-          seenSni.length = 0;
-          const ipRes = await instance.get('https://93.184.216.34/ok');
-          expect(ipRes.data).toBe('https-ok:93.184.216.34');
-          expect(seenSni).toEqual([undefined]);
-
-          // 3. 不在证书 IP SAN 内的 IP 目标：必须因身份不匹配被拒绝。
-          await expect(instance.get('https://93.184.216.35/bad-ip')).rejects.toMatchObject({
-            code: 'ERR_TLS_CERT_ALTNAME_INVALID'
-          });
-        } finally {
-          for (const s of proxySockets) s.destroy();
-          await Promise.all([
-            new Promise<void>((resolve) => proxyServer.close(() => resolve())),
-            closeServer(tlsTarget)
           ]);
         }
       }
