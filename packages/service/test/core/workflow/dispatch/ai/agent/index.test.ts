@@ -1266,7 +1266,7 @@ describe('dispatchRunAgent user context', () => {
     expect(doneResult[DispatchNodeResponseKeyEnum.assistantResponses]).toBeUndefined();
   });
 
-  it('does not append errorText to assistantResponses and marks master_agent_call errorCaptured when catchError is enabled on the node', async () => {
+  it('keeps the error text visible on the node and marks master_agent_call errorCaptured when catchError is enabled on the node', async () => {
     const publishedResponses: any[] = [];
     const props = createProps();
     delete props.params.agent_datasetParams;
@@ -1313,11 +1313,16 @@ describe('dispatchRunAgent user context', () => {
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       error: 'LLM request failed'
     });
+    // 错误分支路由不变，但可见文本必须保留：节点详情与用户气泡都不能空白。
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      textOutput: 'LLM request failed',
+      errorText: 'LLM request failed'
+    });
     expect(
       result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
         (item: any) => !item.inputContext
       )
-    ).toEqual([]);
+    ).toEqual([{ text: { content: 'LLM request failed' } }]);
     expect(publishedResponses).toEqual([
       expect.objectContaining({
         moduleName: 'chat:master_agent_call',
@@ -1330,6 +1335,38 @@ describe('dispatchRunAgent user context', () => {
       errorCount: 0
     });
     expect(props.nodeSummary.errorText).toBeUndefined();
+  });
+
+  it('falls back to a readable error text when the failed run has no error message', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    props.nodeResponseParentId = 'workflow_agent_resp_id';
+    props.nodeResponseSink = {
+      publish: vi.fn(async (inputs: Array<{ response: any }>) =>
+        inputs.map((input) => input.response)
+      )
+    };
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: undefined,
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    const result = await resultPromise!;
+
+    // 错误路由不变：仍然返回 error 字段并让节点走失败分支。
+    expect(result.error).toEqual({ system_error_text: '' });
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      textOutput: '本轮执行失败，请重试'
+    });
+    expect(result.data.answerText).toBe('本轮执行失败，请重试');
   });
 
   it('publishes Agent internal responses as current-layer top-level rows', async () => {

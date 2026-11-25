@@ -535,7 +535,13 @@ export const loadRequestMessages = async ({
           }
         };
       } catch (error) {
-        return Promise.reject(`Cannot load image ${imgUrl}, because ${getErrText(error)}`);
+        // 内部文件下载偶发失败（签名过期、边缘节点 400 等）不应让整轮请求失败：
+        // 丢弃该图片 part，保留其余文本继续请求模型，与工具图片的降级策略保持一致。
+        logger.warn('Drop image content part after normalization failure', {
+          url: maskImagePlaceholderUrl(imgUrl),
+          error: getErrText(error)
+        });
+        return undefined;
       }
     }
 
@@ -558,14 +564,21 @@ export const loadRequestMessages = async ({
       return audioItem;
     }
 
-    const data = await loadUrlAsBase64Data(audioData);
-    return {
-      ...audioItem,
-      input_audio: {
-        ...audioItem.input_audio,
-        data
-      }
-    };
+    try {
+      const data = await loadUrlAsBase64Data(audioData);
+      return {
+        ...audioItem,
+        input_audio: {
+          ...audioItem.input_audio,
+          data
+        }
+      };
+    } catch (error) {
+      logger.warn('Drop audio content part after normalization failure', {
+        error: getErrText(error)
+      });
+      return undefined;
+    }
   };
 
   /**
@@ -585,13 +598,20 @@ export const loadRequestMessages = async ({
       return videoItem;
     }
 
-    const url = await loadUrlAsBase64Data(videoUrl);
-    return {
-      ...videoItem,
-      video_url: {
-        url
-      }
-    };
+    try {
+      const url = await loadUrlAsBase64Data(videoUrl);
+      return {
+        ...videoItem,
+        video_url: {
+          url
+        }
+      };
+    } catch (error) {
+      logger.warn('Drop video content part after normalization failure', {
+        error: getErrText(error)
+      });
+      return undefined;
+    }
   };
 
   /**

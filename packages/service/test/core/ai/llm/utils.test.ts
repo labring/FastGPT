@@ -1341,6 +1341,53 @@ describe('loadRequestMessages function tests', () => {
         { type: 'image_url', image_url: { url: 'https://mysite.com/images/test.png' } }
       ]);
     });
+
+    it('should drop an image part that fails to normalize and keep the remaining text', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            { type: 'text', text: 'Look at this image' },
+            { type: 'image_url', image_url: { url: '/local/gone.png' } }
+          ]
+        }
+      ];
+
+      // 图片下载失败不能让整轮请求失败：只丢弃该图片 part，保留文本继续请求。
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('Look at this image');
+      expect(mockGetImageBase64).toHaveBeenCalledWith('/local/gone.png');
+    });
+
+    it('should drop audio and video parts that fail to normalize and keep the remaining text', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockAxiosGet.mockRejectedValue(new Error('download failed'));
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            { type: 'text', text: 'Check these files' },
+            { type: 'input_audio', input_audio: { data: '/local/gone.mp3', format: 'mp3' } },
+            { type: 'video_url', video_url: { url: '/local/gone.mp4' } }
+          ]
+        }
+      ];
+
+      // 音频/视频与图片策略一致：归一化失败只丢弃对应 part。
+      const result = await loadRequestMessages({
+        messages,
+        useAudio: true,
+        useVideo: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('Check these files');
+      expect(mockAxiosGet).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('Assistant message processing', () => {
