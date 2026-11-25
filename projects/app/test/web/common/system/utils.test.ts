@@ -101,7 +101,7 @@ describe('downloadFetch', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:download');
   });
 
-  it('resolves filename from Content-Disposition when filename is omitted', async () => {
+  it('resolves filename from Content-Disposition when omitted and preserves explicit empty filename', async () => {
     const encoded = encodeURIComponent('（测试文件）.xlsx');
     fetchMock.mockResolvedValueOnce(
       new Response('binary', {
@@ -117,8 +117,20 @@ describe('downloadFetch', () => {
       body: { skillId: 'skill-1', chatId: 'edit-debug', path: '（测试文件）.xlsx' },
       fallbackFilename: 'fallback.zip'
     });
-
     expect(anchor.download).toBe('（测试文件）.xlsx');
+
+    fetchMock.mockResolvedValueOnce(
+      new Response('binary', {
+        status: 200,
+        headers: { 'Content-Disposition': 'attachment; filename="server.txt"' }
+      })
+    );
+    await downloadFetch({ url: '/api/export', filename: '', fallbackFilename: 'fallback.txt' });
+    expect(anchor.download).toBe('');
+
+    anchor.download = 'sentinel';
+    await downloadFetch({ url: 'https://example.com/file.txt', filename: '' });
+    expect(anchor.download).toBe('');
   });
 });
 

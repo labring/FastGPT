@@ -83,6 +83,7 @@ type LoadFileResult = {
 
 type SandboxRpcError = Error & {
   rpcCode?: number;
+  isCancelled?: boolean;
 };
 
 type SandboxReadDirRecursiveResponse = {
@@ -110,9 +111,13 @@ const isReadFileStreamFallbackError = (error: unknown) => {
 const shouldReadFileByHttp = (fileSize?: number) =>
   typeof fileSize === 'number' && fileSize > RPC_READ_FILE_HTTP_MIN_BYTES;
 
-const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcError =>
+const createSandboxRpcError = (
+  message: string,
+  options?: { rpcCode?: number; isCancelled?: boolean }
+): SandboxRpcError =>
   Object.assign(new Error(message), {
-    ...(typeof rpcCode === 'number' ? { rpcCode } : {})
+    ...(typeof options?.rpcCode === 'number' ? { rpcCode: options.rpcCode } : {}),
+    ...(options?.isCancelled ? { isCancelled: true } : {})
   });
 
 const isDiskQuotaExceededApiError = (error: unknown): boolean =>
@@ -120,6 +125,14 @@ const isDiskQuotaExceededApiError = (error: unknown): boolean =>
   error !== null &&
   'statusText' in error &&
   error.statusText === SandboxErrEnum.agentSandboxDiskQuotaExceeded;
+
+const isSandboxRpcCancelledError = (error: unknown) =>
+  Boolean(
+    error &&
+    typeof error === 'object' &&
+    'isCancelled' in error &&
+    (error as Partial<SandboxRpcError>).isCancelled
+  );
 
 /**
  * useSandboxEditor —— UI Hook
@@ -813,7 +826,9 @@ export const useSandboxFileStore = ({
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
       });
-      rejectConnectRef.current?.(new Error('Sandbox is preparing'));
+      rejectConnectRef.current?.(
+        createSandboxRpcError('Sandbox is preparing', { isCancelled: true })
+      );
       resetConnectPromise();
       if (wsRef.current) {
         wsRef.current.close();
@@ -883,7 +898,7 @@ export const useSandboxFileStore = ({
                     data.error.code === SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE
                       ? t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
                       : data.error.message || 'Sandbox RPC failed';
-                  pending.reject(createSandboxRpcError(errorMessage, data.error.code));
+                  pending.reject(createSandboxRpcError(errorMessage, { rpcCode: data.error.code }));
                 } else {
                   pending.resolve(data.result);
                 }
@@ -957,11 +972,14 @@ export const useSandboxFileStore = ({
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
       }
+      const cancelError = createSandboxRpcError('WebSocket connection closed', {
+        isCancelled: true
+      });
       pendingRpcRequests.forEach((req) => {
-        req.reject(new Error('WebSocket connection closed'));
+        req.reject(cancelError);
       });
       pendingRpcRequests.clear();
-      rejectConnectRef.current?.(new Error('WebSocket connection closed'));
+      rejectConnectRef.current?.(cancelError);
       resetConnectPromise();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1042,11 +1060,13 @@ export const useSandboxFileStore = ({
 
         return sortedNodes;
       } catch (error) {
-        toast({
-          title: t('chat:sandbox_load_failed'),
-          description: getErrText(error),
-          status: 'error'
-        });
+        if (!isSandboxRpcCancelledError(error)) {
+          toast({
+            title: t('chat:sandbox_load_failed'),
+            description: getErrText(error),
+            status: 'error'
+          });
+        }
         throw error;
       } finally {
         setLoadingDirs((prev) => {
@@ -1275,12 +1295,14 @@ export const useSandboxFileStore = ({
         )
       );
     } catch (error) {
-      console.error('Failed to open file:', error);
-      toast({
-        title: t('chat:sandbox_open_file_failed'),
-        description: getErrText(error),
-        status: 'error'
-      });
+      if (!isSandboxRpcCancelledError(error)) {
+        console.error('Failed to open file:', error);
+        toast({
+          title: t('chat:sandbox_open_file_failed'),
+          description: getErrText(error),
+          status: 'error'
+        });
+      }
       // 如果加载失败，把这个临时的 tab 移出，并切到其他 tab 或清空
       setOpenedFiles((prev) => {
         const newOpenedFiles = prev.filter((f) => f.path !== filePath);

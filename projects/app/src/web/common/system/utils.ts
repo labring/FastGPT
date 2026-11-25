@@ -90,11 +90,12 @@ export const downloadFetch = async ({
 
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
+    // 显式传入 filename（含空字符串）时原样保留，仅在省略时按响应头和兜底名推导。
     const resolvedFilename =
-      filename ||
-      parseContentDispositionFilename(response.headers.get('Content-Disposition') || '') ||
-      fallbackFilename ||
-      'download';
+      filename ??
+      (parseContentDispositionFilename(response.headers.get('Content-Disposition') || '') ||
+        fallbackFilename ||
+        'download');
 
     const a = document.createElement('a');
     a.href = downloadUrl;
@@ -106,10 +107,11 @@ export const downloadFetch = async ({
     // clean up the blob URL
     window.URL.revokeObjectURL(downloadUrl);
   } else {
+    const directDownloadName = filename ?? fallbackFilename;
     const a = document.createElement('a');
     a.href = url;
-    if (filename || fallbackFilename) {
-      a.download = filename || fallbackFilename || '';
+    if (directDownloadName !== undefined) {
+      a.download = directDownloadName;
     }
     document.body.appendChild(a);
     a.click();

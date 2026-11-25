@@ -24,7 +24,7 @@ vi.mock('@/web/core/chat/context/chatRecordContext', () => ({
 import { useSandboxFileStore } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type RpcRequest = { id: number; method: string; params?: Record<string, unknown> };
-type RpcReply = { result?: unknown; error?: { code?: number; message: string } };
+type RpcReply = { result?: unknown; error?: { code?: number; message: string } } | null;
 
 class FakeWebSocket {
   static readonly OPEN = 1;
@@ -46,6 +46,7 @@ class FakeWebSocket {
   send(raw: string) {
     const req = JSON.parse(raw) as RpcRequest;
     const reply = FakeWebSocket.responder(req);
+    if (!reply) return;
     queueMicrotask(() => {
       if (this.readyState !== FakeWebSocket.OPEN) return;
       this.onmessage?.({ data: JSON.stringify({ jsonrpc: '2.0', id: req.id, ...reply }) });
@@ -124,6 +125,26 @@ describe('useSandboxFileStore failure toasts', () => {
     });
     expect(store.openedFiles.map((file) => file.path)).toEqual(['ok.txt']);
     expect(store.activeFilePath).toBe('ok.txt');
+  });
+
+  it('does not toast when an in-flight openFile is cancelled by unmount', async () => {
+    FakeWebSocket.responder = (req) => {
+      if (req.method === 'fs/read_dir_recursive')
+        return { result: { files: [], expandedPaths: [] } };
+      return null;
+    };
+
+    await mountStore();
+    let pendingOpen!: Promise<void>;
+    await act(async () => {
+      pendingOpen = store.openFile('pending.txt');
+    });
+    await act(async () => {
+      root.unmount();
+      await pendingOpen;
+    });
+
+    expect(mocks.toast).not.toHaveBeenCalled();
   });
 
   it('toasts server error details and resets loading state when downloadCurrentFile fails', async () => {
