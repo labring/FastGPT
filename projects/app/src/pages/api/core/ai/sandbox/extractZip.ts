@@ -92,11 +92,11 @@ async function handler(
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim();
     const output = [result.stderr, result.stdout].filter(Boolean).join('\n');
-    // 仅认 Info-ZIP 退出码 50（PK_DISK）、prlimit SIGXFSZ 153 及冒号后的真实 OS I/O 诊断，避免把 ENOSPC.zip 等文件名误报为配额错误。
+    // 仅认 Info-ZIP 退出码 50（PK_DISK）、prlimit SIGXFSZ 153，以及 mkdir 冒号后缀或 Info-ZIP 独立行中的 OS 磁盘满诊断，避免文件名误判。
     if (
       result.exitCode === 50 ||
       result.exitCode === 153 ||
-      /:\s*(?:no space left on device|disk quota exceeded)\b|file size limit exceeded/i.test(output)
+      /(?:^|:)\s*(?:no space left on device|disk quota exceeded)\s*$/im.test(output)
     ) {
       throw createAgentSandboxDiskQuotaExceededError();
     }

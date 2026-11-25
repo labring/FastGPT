@@ -115,11 +115,11 @@ const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcErr
     ...(typeof rpcCode === 'number' ? { rpcCode } : {})
   });
 
-const isDiskQuotaExceededApiError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') return false;
-  const candidate = error as { statusText?: unknown };
-  return candidate.statusText === SandboxErrEnum.agentSandboxDiskQuotaExceeded;
-};
+const isDiskQuotaExceededApiError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'statusText' in error &&
+  error.statusText === SandboxErrEnum.agentSandboxDiskQuotaExceeded;
 
 /**
  * useSandboxEditor —— UI Hook
