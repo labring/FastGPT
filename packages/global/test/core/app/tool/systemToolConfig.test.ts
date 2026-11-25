@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import {
-  AdminSystemToolListItemSchema,
-  SystemToolListItemSchema
-} from '@fastgpt/global/core/app/tool/systemTool/type';
+import { AdminSystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
+import { SystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { UpdateSystemToolBodySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { type SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 
