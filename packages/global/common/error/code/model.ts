@@ -30,7 +30,9 @@ export enum ModelErrEnum {
   requestTimeout = 'modelRequestTimeout',
   serviceUnavailable = 'modelServiceUnavailable',
   networkError = 'modelNetworkError',
-  invalidResponse = 'modelInvalidResponse'
+  invalidResponse = 'modelInvalidResponse',
+  channelCatalogUnsupported = 'modelChannelCatalogUnsupported',
+  channelModelMappingConflict = 'channelModelMappingConflict'
 }
 
 const modelErrList: Array<{
@@ -178,6 +180,16 @@ const modelErrList: Array<{
     statusText: ModelErrEnum.invalidResponse,
     message: i18nT('common:code_error.model_error.invalid_response'),
     httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.channelCatalogUnsupported,
+    message: i18nT('config_model:channel_import_unsupported'),
+    httpStatus: 501
+  },
+  {
+    statusText: ModelErrEnum.channelModelMappingConflict,
+    message: i18nT('config_model:channel_import_mapping_conflict'),
+    httpStatus: 409
   }
 ];
 

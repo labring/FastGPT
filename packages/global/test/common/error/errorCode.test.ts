@@ -22,7 +22,7 @@ import userErr, { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { EnterpriseAuthErrEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const ALLOWED_ERROR_HTTP_STATUSES = new Set<ErrorHttpStatus>([
-  400, 401, 402, 403, 404, 405, 406, 409, 410, 413, 422, 429, 500, 502, 503, 504
+  400, 401, 402, 403, 404, 405, 406, 409, 410, 413, 422, 429, 500, 501, 502, 503, 504
 ]);
 
 describe('ERROR_RESPONSE HTTP status contract', () => {

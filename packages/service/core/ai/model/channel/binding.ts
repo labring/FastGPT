@@ -33,6 +33,23 @@ const stripModelsFromChannel = (
   };
 };
 
+/** 按渠道快照追加模型，透传已有别名配置；已关联时不写入。 */
+export const getChannelModelBindingPatch = ({
+  channel,
+  model
+}: {
+  channel: Pick<AiproxyChannel, 'models' | 'model_mapping'>;
+  model: string;
+}): Pick<UpdateChannelData, 'models' | 'model_mapping'> | undefined => {
+  const currentModels = channel.models ?? [];
+  if (currentModels.includes(model)) return;
+
+  return {
+    models: [...currentModels, model],
+    ...(channel.model_mapping !== undefined && { model_mapping: channel.model_mapping })
+  };
+};
+
 /**
  * 调整一个模型与若干渠道的关联：addChannelIds 追加模型名，removeChannelIds 剔除模型名及映射。
  * 渠道只在当前操作者的 system/成员桶内解析，其他成员的渠道一律按不存在处理；操作幂等。
@@ -63,14 +80,8 @@ export const updateModelChannelBindings = async ({
 
   await Promise.all([
     ...addChannels.map(async (channel) => {
-      const currentModels = channel.models ?? [];
-      if (currentModels.includes(trimmedModel)) return;
-      await client.update(channel.id, {
-        models: [...currentModels, trimmedModel],
-        ...(channel.model_mapping !== undefined && {
-          model_mapping: channel.model_mapping
-        })
-      });
+      const patch = getChannelModelBindingPatch({ channel, model: trimmedModel });
+      if (patch) await client.update(channel.id, patch);
     }),
     ...removeChannels.map(async (channel) => {
       const patch = stripModelsFromChannel(channel, new Set([trimmedModel]));
