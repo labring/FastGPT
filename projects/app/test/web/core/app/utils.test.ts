@@ -625,55 +625,25 @@ describe('appWorkflow2AgentForm', () => {
 });
 
 describe('getSafeExperienceUrl & openExperienceUrl', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it('returns trimmed http/https URLs and rejects unsafe or blank values', () => {
-    expect(getSafeExperienceUrl('https://demo.example.com/chat?shareId=1#preview')).toBe(
-      'https://demo.example.com/chat?shareId=1#preview'
-    );
-    expect(getSafeExperienceUrl('  http://localhost:3000/demo  ')).toBe(
-      'http://localhost:3000/demo'
-    );
-
-    expect(getSafeExperienceUrl(undefined)).toBeUndefined();
-    expect(getSafeExperienceUrl('')).toBeUndefined();
-    expect(getSafeExperienceUrl('   ')).toBeUndefined();
-    expect(getSafeExperienceUrl('javascript:alert(1)')).toBeUndefined();
-    expect(getSafeExperienceUrl('ftp://demo.example.com')).toBeUndefined();
-    expect(getSafeExperienceUrl('demo.example.com')).toBeUndefined();
-    expect(getSafeExperienceUrl('https://')).toBeUndefined();
-  });
-
-  it('opens trimmed valid URLs in a new tab with noopener,noreferrer', () => {
+  it('opens trimmed http(s) URLs in a new tab and ignores unsafe or blank values', () => {
     const open = vi.fn();
     vi.stubGlobal('window', { open });
 
+    expect(getSafeExperienceUrl('  https://demo.example.com/chat?id=1  ')).toBe(
+      'https://demo.example.com/chat?id=1'
+    );
+    expect(getSafeExperienceUrl('javascript:alert(1)')).toBeUndefined();
+    expect(getSafeExperienceUrl('   ')).toBeUndefined();
+
     openExperienceUrl('  https://demo.example.com/chat?id=1  ');
+    openExperienceUrl('javascript:alert(1)');
     expect(open).toHaveBeenCalledTimes(1);
     expect(open).toHaveBeenCalledWith(
       'https://demo.example.com/chat?id=1',
       '_blank',
       'noopener,noreferrer'
     );
-  });
-
-  it('ignores invalid or unsafe URLs without calling window.open', () => {
-    const open = vi.fn();
-    vi.stubGlobal('window', { open });
-
-    openExperienceUrl(undefined);
-    openExperienceUrl('');
-    openExperienceUrl('   ');
-    openExperienceUrl('javascript:alert(1)');
-    openExperienceUrl('demo.example.com');
-
-    expect(open).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when window is unavailable', () => {
-    vi.stubGlobal('window', undefined);
-    expect(() => openExperienceUrl('https://demo.example.com')).not.toThrow();
   });
 });

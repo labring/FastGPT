@@ -342,39 +342,28 @@ const CreateAppsPage = () => {
                 <SimpleGrid columns={[1, 3]} gridGap={2.5}>
                   {templateData.list.map((item) => {
                     const experienceUrl = getSafeExperienceUrl(item.experienceUrl);
-                    const onCreateFromTemplate = () => {
+                    const onCreate = () => {
                       if (!creatingTemplateId) {
                         handleSubmit((data) => onClickCreate(data, item.templateId))();
                       }
                     };
-                    const cardInteractiveStyles = {
-                      boxShadow:
-                        '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
-                      '& .template-intro': {
-                        opacity: 0
-                      },
-                      '& .template-actions': {
-                        opacity: 1,
-                        pointerEvents: 'auto'
-                      }
-                    };
-                    const actionButtonProps = {
+                    const actionBtnProps = {
+                      as: 'button' as const,
+                      type: 'button' as const,
+                      flex: 1,
+                      minW: 0,
                       h: '36px',
-                      px: experienceUrl ? { base: 2, sm: 1, lg: 2 } : 2,
+                      px: 2,
                       rounded: 'sm',
-                      fontSize: experienceUrl ? { base: '14px', sm: 'xs', lg: '14px' } : '14px',
+                      fontSize: '14px',
                       fontWeight: 'medium',
-                      lineHeight: '20px',
                       color: 'primary.700',
                       bg: 'transparent',
                       whiteSpace: 'nowrap' as const,
                       cursor: 'pointer',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transition: 'background 0.1s',
-                      _hover: {
-                        bg: 'myGray.05'
-                      }
+                      _hover: { bg: 'myGray.05' }
                     };
 
                     return (
@@ -387,12 +376,14 @@ const CreateAppsPage = () => {
                         cursor={experienceUrl ? 'default' : 'pointer'}
                         boxShadow={'none'}
                         bg={'white'}
-                        _hover={cardInteractiveStyles}
-                        sx={{
-                          '&:has(:focus-visible)': cardInteractiveStyles
+                        _hover={{
+                          boxShadow:
+                            '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
+                          '& .template-intro': { opacity: 0 },
+                          '& .template-actions': { opacity: 1, pointerEvents: 'auto' }
                         }}
                         isLoading={creatingTemplateId === item.templateId}
-                        onClick={experienceUrl ? undefined : onCreateFromTemplate}
+                        onClick={experienceUrl ? undefined : onCreate}
                       >
                         <Box
                           position={'relative'}
@@ -457,52 +448,26 @@ const CreateAppsPage = () => {
                             pointerEvents={'none'}
                             transition={'opacity 0.15s ease-in-out'}
                           >
-                            {experienceUrl ? (
-                              <>
-                                <Flex
-                                  as={'button'}
-                                  type={'button'}
-                                  {...actionButtonProps}
-                                  flex={1}
-                                  minW={0}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (e.detail > 0) {
-                                      e.currentTarget.blur();
-                                    }
-                                    openExperienceUrl(experienceUrl);
-                                  }}
-                                >
-                                  {t('app:templateMarket.online_preview')}
-                                </Flex>
-                                <Flex
-                                  as={'button'}
-                                  type={'button'}
-                                  {...actionButtonProps}
-                                  flex={1}
-                                  minW={0}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onCreateFromTemplate();
-                                  }}
-                                >
-                                  {t('app:templateMarket.Use')}
-                                </Flex>
-                              </>
-                            ) : (
+                            {experienceUrl && (
                               <Flex
-                                as={'button'}
-                                type={'button'}
-                                {...actionButtonProps}
-                                w={'full'}
+                                {...actionBtnProps}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onCreateFromTemplate();
+                                  openExperienceUrl(experienceUrl);
                                 }}
                               >
-                                {t('app:templateMarket.Use')}
+                                {t('app:templateMarket.online_preview')}
                               </Flex>
                             )}
+                            <Flex
+                              {...actionBtnProps}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCreate();
+                              }}
+                            >
+                              {t('app:templateMarket.Use')}
+                            </Flex>
                           </Flex>
                         </Box>
                       </MyBox>

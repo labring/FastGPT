@@ -1,5 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/admin/app/templates/api';
+import { putUpdateTemplate } from '@/web/admin/app/templates/api';
+import type { UpdateTemplateBodyType } from '@fastgpt/global/openapi/admin/app/templates/api';
 import { Box, Checkbox, Flex, Switch, Td, Tr } from '@chakra-ui/react';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -40,8 +41,8 @@ const TemplateCard = ({
     : template.tags.includes('recommendation');
 
   const getTemplateUpdateBody = (
-    patch: Partial<Omit<AdminUpdateTemplateBodyType, 'templateId'>>
-  ): AdminUpdateTemplateBodyType => {
+    patch: Partial<Omit<UpdateTemplateBodyType, 'templateId'>>
+  ): UpdateTemplateBodyType => {
     if (isPluginSystemTemplate) {
       return {
         templateId: template.templateId,
@@ -54,13 +55,13 @@ const TemplateCard = ({
     }
 
     return {
-      ...template,
+      templateId: template.templateId,
       ...patch
     };
   };
 
   const { runAsync: updateSystemTemplate, loading } = useRequest(
-    async (e: AdminUpdateTemplateBodyType) => {
+    async (e: UpdateTemplateBodyType) => {
       return putUpdateTemplate(e);
     },
     {

@@ -1,26 +1,9 @@
 import { DELETE, GET, POST, PUT } from '@/web/admin/common/request';
 import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-
-/** 应用模板类型（原 pro/admin API 路由内联） */
-export type AdminCreateTemplateBodyType = {
-  name: string;
-  intro: string;
-  avatar: string;
-  tags: string[];
-  type: string;
-  isActive?: boolean;
-  isPromoted?: boolean;
-  promoteTags?: string[];
-  hideTags?: string[];
-  recommendText?: string;
-  experienceUrl?: string;
-  userGuide?: {
-    type: 'markdown' | 'link';
-    content: string;
-  };
-  workflow: WorkflowTemplateBasicType;
-};
+import type {
+  CreateTemplateBodyType,
+  UpdateTemplateBodyType
+} from '@fastgpt/global/openapi/admin/app/templates/api';
 
 /**
  * 模板列表与类型列表的契约都是数组，但 pro 服务不可用时请求层会降级为空分页结构（对象）。
@@ -31,15 +14,10 @@ export const getSystemTemplates = async () => {
   return Array.isArray(res) ? res : [];
 };
 
-export const postCreateTemplate = (data: AdminCreateTemplateBodyType) =>
+export const postCreateTemplate = (data: CreateTemplateBodyType) =>
   POST('/proApi/admin/app/templates/create', data);
 
-/** 更新模板入参（原 pro/admin updateTemplateBody：AppTemplateSchema 部分字段 + 必填 templateId） */
-export type AdminUpdateTemplateBodyType = Partial<AppTemplateSchemaType> & {
-  templateId: string;
-};
-
-export const putUpdateTemplate = (data: AdminUpdateTemplateBodyType) =>
+export const putUpdateTemplate = (data: UpdateTemplateBodyType) =>
   PUT('/proApi/admin/app/templates/update', data);
 
 export const delTemplate = (data: { id: string }) =>

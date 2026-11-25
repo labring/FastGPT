@@ -215,37 +215,24 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
               ))
             : templateData?.list.map((item, index) => {
                 const experienceUrl = getSafeExperienceUrl(item.experienceUrl);
-                const onCreateFromTemplate = () => {
+                const onCreate = () => {
                   if (!creatingTemplateId) {
                     handleCreateFromTemplate(item.templateId);
                   }
                 };
-                const cardHoverStyles = {
-                  boxShadow:
-                    '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
-                  '& .template-content': {
-                    filter: 'blur(5px)'
-                  },
-                  '& .hover-text': {
-                    opacity: 1,
-                    pointerEvents: 'auto'
-                  }
-                };
-                const hoverActionButtonProps = {
+                const actionBtnProps = {
+                  as: 'button' as const,
+                  type: 'button' as const,
                   fontSize: '14px',
                   fontWeight: 'medium',
                   color: 'primary.700',
                   bg: 'transparent',
                   rounded: 'sm',
-                  px: experienceUrl ? { base: 3, lg: 5 } : 5,
+                  px: 5,
                   py: 2.5,
                   whiteSpace: 'nowrap' as const,
                   cursor: 'pointer',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  _hover: {
-                    bg: 'myGray.05'
-                  }
+                  _hover: { bg: 'myGray.05' }
                 };
 
                 return (
@@ -264,12 +251,19 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     bgSize={'105% auto'}
                     bgPosition={'top'}
                     bgRepeat={'no-repeat'}
-                    _hover={cardHoverStyles}
-                    sx={{
-                      '&:has(:focus-visible)': cardHoverStyles
+                    _hover={{
+                      boxShadow:
+                        '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
+                      '& .template-content': {
+                        filter: 'blur(5px)'
+                      },
+                      '& .hover-text': {
+                        opacity: 1,
+                        pointerEvents: 'auto'
+                      }
                     }}
                     isLoading={creatingTemplateId === item.templateId}
-                    onClick={experienceUrl ? undefined : onCreateFromTemplate}
+                    onClick={experienceUrl ? undefined : onCreate}
                     display={'flex'}
                     gap={2}
                     alignItems={'center'}
@@ -353,14 +347,9 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     >
                       {experienceUrl && (
                         <Flex
-                          as={'button'}
-                          type={'button'}
-                          {...hoverActionButtonProps}
+                          {...actionBtnProps}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (e.detail > 0) {
-                              e.currentTarget.blur();
-                            }
                             openExperienceUrl(experienceUrl);
                           }}
                         >
@@ -368,12 +357,10 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                         </Flex>
                       )}
                       <Flex
-                        as={'button'}
-                        type={'button'}
-                        {...hoverActionButtonProps}
+                        {...actionBtnProps}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onCreateFromTemplate();
+                          onCreate();
                         }}
                       >
                         {t('app:templateMarket.Use')}
