@@ -1,6 +1,4 @@
 import _, {
-  AxiosError,
-  CanceledError,
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
@@ -10,8 +8,6 @@ import dns from 'dns/promises';
 import http from 'http';
 import https from 'https';
 import { isIP } from 'net';
-import { checkServerIdentity } from 'tls';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
@@ -29,28 +25,24 @@ import { getServiceAxiosMaxContentLength } from '../system/constants';
 const addSSRFInterceptor = (instance: AxiosInstance) => {
   instance.interceptors.request.use(async (config): Promise<InternalAxiosRequestConfig> => {
     const safeConfig = config as SafeRedirectInternalConfig;
-    const redirectState = safeConfig.__safeRedirect ?? {
-      count: 0,
-      maxRedirects:
-        typeof safeConfig.maxRedirects === 'number'
-          ? safeConfig.maxRedirects
-          : SAFE_AXIOS_MAX_REDIRECTS,
-      proxy: safeConfig.proxy,
-      validateStatus: safeConfig.validateStatus
-    };
-    const preparedConfig = await prepareSafeRequestConfig({
-      ...safeConfig,
-      __safeRedirect: redirectState
-    });
+    const preparedConfig = await prepareSafeRequestConfig(safeConfig);
+
+    const maxRedirects =
+      preparedConfig.__safeRedirect?.maxRedirects ??
+      (typeof preparedConfig.maxRedirects === 'number'
+        ? preparedConfig.maxRedirects
+        : SAFE_AXIOS_MAX_REDIRECTS);
 
     const nextConfigWithRedirect: SafeRedirectInternalConfig = {
       ...preparedConfig,
       // 禁用底层自动跳转,保留调用方 maxRedirects 语义给手动跳转状态使用。
       maxRedirects: 0,
-      validateStatus: getRedirectValidateStatus(
-        redirectState.validateStatus,
-        redirectState.maxRedirects
-      )
+      validateStatus: getRedirectValidateStatus(preparedConfig.validateStatus, maxRedirects),
+      __safeRedirect: preparedConfig.__safeRedirect ?? {
+        count: 0,
+        maxRedirects,
+        validateStatus: preparedConfig.validateStatus
+      }
     };
 
     return nextConfigWithRedirect;
@@ -78,7 +70,6 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
 
     const nextConfig: SafeRedirectConfig = {
       ...redirectConfig,
-      proxy: redirectState.proxy,
       validateStatus: redirectState.validateStatus,
       __safeRedirect: {
         ...redirectState,
@@ -95,8 +86,6 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
 const createProxyAgent = (options?: ProxyAgentOptions) => new ProxyAgent(options);
 
 const SAFE_AXIOS_MAX_REDIRECTS = 5;
-const DEFAULT_PROXY_CONNECT_TIMEOUT_MS = 30_000;
-const PROXY_AUTHORIZATION = 'Proxy-Authorization';
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 
 export type SafeAxiosRequestOptions = {
@@ -113,15 +102,12 @@ export type SafeAxiosRequestConfig = AxiosRequestConfig & {
  * 手动重定向状态。
  *
  * count/maxRedirects 用于替代 axios/follow-redirects 的跳转次数控制。
- * proxy 保存显式代理设置，避免下一跳继承为关闭 axios 自动代理设置的 false。
  * validateStatus 保存调用方原始成功状态判定,因为 request interceptor 会临时允许
  * 3xx 进入 response interceptor,最终非重定向响应仍需按调用方语义判断成功/失败。
  */
 type SafeRedirectState = {
   count: number;
   maxRedirects: number;
-  proxy?: AxiosRequestConfig['proxy'];
-  getProxyAuthorization?: (origin: string) => string | undefined;
   validateStatus?: AxiosRequestConfig['validateStatus'];
 };
 
@@ -131,7 +117,11 @@ type SafeRedirectConfig = AxiosRequestConfig & {
 };
 
 type SafeRedirectInternalConfig = InternalAxiosRequestConfig & {
-  __safeRedirect?: SafeRedirectState;
+  __safeRedirect?: {
+    count: number;
+    maxRedirects: number;
+    validateStatus?: AxiosRequestConfig['validateStatus'];
+  };
   __safeAxios?: SafeAxiosRequestOptions;
 };
 
@@ -147,9 +137,10 @@ type LookupCallback = (
 ) => void;
 
 /**
- * 对 safe axios 的请求做统一 SSRF 预检，并在每次建连时使用经过校验的目标地址。
+ * 对 safe axios 的请求做统一 SSRF 预检，并在直连路径固定 DNS 解析结果。
  *
- * 覆盖调用方 agent；直连使用受控 lookup，代理使用以 IP 为目标的 CONNECT 隧道。
+ * 代理路径只做本机 isInternalAddress() best-effort 检查；最终 DNS 解析由代理侧负责。
+ * 直连路径必须覆盖调用方 agent，避免自定义 lookup 在建连阶段重新指向内部地址。
  */
 const prepareSafeRequestConfig = async (
   config: SafeRedirectInternalConfig
@@ -165,124 +156,31 @@ const prepareSafeRequestConfig = async (
     return Promise.reject(new Error(PRIVATE_URL_TEXT));
   }
 
+  if (isRequestUsingProxy(requestUrl, config)) {
+    return config;
+  }
+
   return attachPinnedAgent(config, requestUrl);
 };
 
 /**
- * 根据原始请求 URL 选择显式代理或命中的环境代理。
+ * 判断当前请求是否应保留代理链路。
  *
- * 工厂默认的 proxy: false 仅用于关闭 axios 自动代理，环境变量由共享 agent 处理。
+ * 显式 axios proxy 和 proxy-from-env 命中的环境代理都视为代理路径；其它自定义
+ * httpAgent/httpsAgent 不再被 safe axios 信任，直连路径会统一覆盖。
  */
-const resolveProxyUrl = (requestUrl: string, explicitProxy: AxiosRequestConfig['proxy']) => {
-  if (!explicitProxy) {
-    const proxyUrl = getProxyForUrl(requestUrl);
-    return proxyUrl ? new URL(proxyUrl) : undefined;
+const isRequestUsingProxy = (requestUrl: string, config: AxiosRequestConfig): boolean => {
+  if (config.proxy) {
+    return true;
   }
 
-  const { host, port, auth, protocol = 'http' } = explicitProxy;
-  const proxyHost = isIP(host) === 6 ? `[${host}]` : host;
-  const proxyUrl = new URL(`${protocol.replace(/:$/, '')}://${proxyHost}`);
-  if (port) proxyUrl.port = String(port);
-  if (auth) {
-    proxyUrl.username = encodeURIComponent(auth.username ?? '');
-    proxyUrl.password = encodeURIComponent(auth.password ?? '');
+  try {
+    return getProxyForUrl(requestUrl).length > 0;
+  } catch {
+    // 代理判断失败时按可能走代理处理，避免误覆盖代理配置。
+    return true;
   }
-  return proxyUrl;
 };
-
-type PinnedProxyTarget = {
-  address: string;
-  hostname: string;
-  rejectUnauthorized: boolean;
-  request: Pick<
-    AxiosRequestConfig,
-    'timeout' | 'timeoutErrorMessage' | 'transitional' | 'signal' | 'cancelToken'
-  >;
-};
-
-/**
- * CONNECT 使用校验后的 IP，并保留原目标的 TLS 身份。
- * 代理握手期间 socket 尚未交给 ClientRequest，需要单独绑定取消和超时。
- */
-class PinnedProxyAgent extends HttpsProxyAgent<string> {
-  private readonly handshake: AbortController;
-  private readonly target: PinnedProxyTarget;
-
-  constructor(
-    proxyUrl: URL,
-    {
-      proxyAuthorization,
-      ...target
-    }: PinnedProxyTarget & {
-      proxyAuthorization?: string;
-    }
-  ) {
-    const handshake = new AbortController();
-    super(proxyUrl, {
-      signal: handshake.signal,
-      headers: proxyAuthorization
-        ? () => ({ [PROXY_AUTHORIZATION]: proxyAuthorization })
-        : undefined
-    });
-    this.handshake = handshake;
-    this.target = target;
-  }
-
-  override async connect(
-    request: http.ClientRequest,
-    options: Parameters<HttpsProxyAgent<string>['connect']>[1]
-  ) {
-    const { address, hostname, rejectUnauthorized } = this.target;
-    const {
-      signal,
-      cancelToken,
-      timeout = 0,
-      timeoutErrorMessage,
-      transitional
-    } = this.target.request;
-    const handshakeTimeout = timeout > 0 ? timeout : DEFAULT_PROXY_CONNECT_TIMEOUT_MS;
-    const cancel = (reason: unknown) => this.handshake.abort(reason);
-    const onAbort = () => cancel(new CanceledError());
-    if (signal?.aborted || request.destroyed) onAbort();
-    signal?.addEventListener?.('abort', onAbort, { once: true });
-    cancelToken?.subscribe(cancel);
-    const deadline = setTimeout(() => {
-      cancel(
-        new AxiosError(
-          timeoutErrorMessage ??
-            (timeout > 0
-              ? `timeout of ${timeout}ms exceeded`
-              : `Proxy CONNECT handshake timed out after ${handshakeTimeout} ms`),
-          transitional?.clarifyTimeoutError ? AxiosError.ETIMEDOUT : AxiosError.ECONNABORTED
-        )
-      );
-    }, handshakeTimeout).unref();
-
-    try {
-      this.handshake.signal.throwIfAborted();
-      const connectOptions = options.secureEndpoint
-        ? {
-            ...options,
-            host: address,
-            servername: isIP(hostname) ? '' : hostname,
-            rejectUnauthorized,
-            checkServerIdentity: (
-              _hostname: string,
-              certificate: Parameters<typeof checkServerIdentity>[1]
-            ) => checkServerIdentity(hostname, certificate)
-          }
-        : { ...options, host: address };
-      return await super.connect(request, connectOptions);
-    } catch (error) {
-      this.handshake.signal.throwIfAborted();
-      throw error;
-    } finally {
-      clearTimeout(deadline);
-      signal?.removeEventListener?.('abort', onAbort);
-      cancelToken?.unsubscribe(cancel);
-    }
-  }
-}
 
 const attachPinnedAgent = async (
   config: SafeRedirectInternalConfig,
@@ -299,48 +197,17 @@ const attachPinnedAgent = async (
     return config;
   }
 
-  const hostname = parsedUrl.hostname.replace(/^\[|\]$/g, '');
-  const proxyUrl = resolveProxyUrl(requestUrl, config.proxy);
-  const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
-
-  // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定，每跳都从目标请求移除。
-  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION);
-  config.headers.delete(PROXY_AUTHORIZATION);
-  const redirectState = config.__safeRedirect;
-  if (redirectState?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
-    http.validateHeaderValue(PROXY_AUTHORIZATION, proxyHeader);
-    const proxyOrigin = proxyUrl.origin;
-    // 凭据保存在闭包里，避免出现在 Axios 可序列化的请求配置中。
-    redirectState.getProxyAuthorization = (origin) =>
-      origin === proxyOrigin ? proxyHeader : undefined;
-  }
-
-  const resolved = await resolveSafeConnectAddress(hostname);
-  const agent = (() => {
-    if (proxyUrl) {
-      if (proxyUrl.protocol !== 'http:' && proxyUrl.protocol !== 'https:') {
-        throw new Error('SSRF-protected requests require an HTTP or HTTPS CONNECT proxy');
-      }
-      if (config.httpVersion === 2 || config.transport || config.socketPath) {
-        throw new Error('SSRF-protected proxy requests require the standard HTTP/1.1 transport');
-      }
-      const { timeout, timeoutErrorMessage, transitional, signal, cancelToken } = config;
-      return new PinnedProxyAgent(proxyUrl, {
-        address: resolved.address,
-        hostname,
-        rejectUnauthorized,
-        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin),
-        request: { timeout, timeoutErrorMessage, transitional, signal, cancelToken }
-      });
-    }
-
-    const lookup = createPinnedLookup(resolved);
-    return parsedUrl.protocol === 'https:'
-      ? new https.Agent({ lookup, rejectUnauthorized })
-      : new http.Agent({ lookup });
-  })();
-
+  const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
+  const lookup = createPinnedLookup(resolved);
   const isHttps = parsedUrl.protocol === 'https:';
+  const agent = isHttps
+    ? new https.Agent({
+        lookup,
+        rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
+      })
+    : new http.Agent({
+        lookup
+      });
 
   return {
     ...config,

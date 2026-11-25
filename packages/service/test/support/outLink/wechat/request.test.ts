@@ -1,7 +1,8 @@
 import type { LookupAddress } from 'node:dns';
 import { Socket } from 'node:net';
 import tls from 'node:tls';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Agent, ProxyAgent } from 'undici';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
 import { fetchWechat, getWechatBaseUrl } from '@fastgpt/service/support/outLink/wechat/request';
 
@@ -33,7 +34,26 @@ const observeDialAddresses = (addresses: LookupAddress[]) => {
 };
 
 describe('WeChat request policy', () => {
+  beforeEach(() => {
+    for (const key of [
+      'HTTP_PROXY',
+      'http_proxy',
+      'HTTPS_PROXY',
+      'https_proxy',
+      'ALL_PROXY',
+      'all_proxy',
+      'NO_PROXY',
+      'no_proxy',
+      'npm_config_http_proxy',
+      'npm_config_https_proxy',
+      'npm_config_proxy'
+    ]) {
+      vi.stubEnv(key, '');
+    }
+  });
+
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     mockLookup.mockReset();
@@ -95,7 +115,36 @@ describe('WeChat request policy', () => {
     await fetchWechat({ url, endpoint: 'media' }, { redirect: 'follow' });
     expect(fetch).toHaveBeenCalledWith(
       url,
-      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(Object) })
+      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(Agent) })
     );
+  });
+
+  it('routes WeChat requests through ProxyAgent when an outbound proxy is configured', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:7890');
+    const fetch = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal('fetch', fetch);
+
+    const url = 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates';
+    await fetchWechat({ url, endpoint: 'ilink' }, { redirect: 'follow' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(ProxyAgent) })
+    );
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('bypasses the proxy and keeps direct IP checks when NO_PROXY matches', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:7890');
+    vi.stubEnv('NO_PROXY', 'ilinkai.weixin.qq.com');
+    const fetch = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal('fetch', fetch);
+
+    const url = 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates';
+    await fetchWechat({ url, endpoint: 'ilink' }, {});
+
+    const dispatcher = fetch.mock.calls[0]?.[1]?.dispatcher;
+    expect(dispatcher).toBeInstanceOf(Agent);
+    expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
   });
 });

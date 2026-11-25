@@ -1,12 +1,6 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
-import { once } from 'node:events';
-import { readFileSync } from 'node:fs';
 import http from 'http';
-import https from 'https';
-import tls from 'tls';
-import { AxiosError, CancelToken } from 'axios';
-import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import zlib from 'node:zlib';
@@ -69,20 +63,18 @@ describe('axios.ts', () => {
     }
   };
 
-  const startServer = <T extends http.Server | https.Server>(server: T, host = '127.0.0.1') =>
-    new Promise<T>((resolve) => {
+  const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
+    new Promise<http.Server>((resolve) => {
+      const server = http.createServer(handler);
       server.listen(0, host, () => resolve(server));
     });
 
-  const listen = (handler: http.RequestListener, host?: string) =>
-    startServer(http.createServer(handler), host);
-
-  const closeServer = (server: http.Server | https.Server) =>
+  const closeServer = (server: http.Server) =>
     new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
 
-  const getServerPort = (server: http.Server | https.Server): number => {
+  const getServerPort = (server: http.Server): number => {
     const address = server.address();
     if (!address || typeof address === 'string') {
       throw new Error('Invalid test server address');
@@ -504,109 +496,28 @@ describe('axios.ts', () => {
       expect(adapter).not.toHaveBeenCalled();
     });
 
-    it('走代理时无法取得可校验的目标地址就应拒绝请求', async () => {
-      clearProxyEnv();
+    it('走代理且 isInternalAddress 返回 false 时应保留代理路径并跳过 pinning lookup', async () => {
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
-      vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
-      const adapter = vi.fn();
+      const lookupSpy = vi.spyOn(dns, 'lookup');
+      const adapter = vi.fn().mockResolvedValue({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
       const instance = createProxyAxios({ adapter });
 
-      await expect(instance.get('http://proxy-only-fastgpt.test/resource')).rejects.toThrow(
-        'DNS unavailable'
-      );
-      expect(adapter).not.toHaveBeenCalled();
+      const response = await instance.get('http://proxy-only-fastgpt.test/resource');
+
+      expect(response.data).toEqual({ ok: true });
+      expect(adapter).toHaveBeenCalled();
+      expect(lookupSpy).not.toHaveBeenCalled();
     });
-
-    it.each(['环境代理', '显式代理'])(
-      '%s应逐跳连接已检查的 IP，并向目标服务保留原始 Host',
-      async (proxyMode) => {
-        clearProxyEnv();
-        getTestInstanceConfig().security.checkInternalIp = true;
-        const firstHostname = 'first.example.test';
-        const finalHostname = 'final.example.test';
-        const firstIp = '93.184.216.34';
-        const finalIp = '93.184.216.35';
-        vi.spyOn(dns, 'resolve4').mockImplementation(async (hostname) => [
-          hostname === firstHostname ? firstIp : finalIp
-        ]);
-        vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
-        vi.spyOn(dns, 'lookup').mockImplementation(
-          async (hostname) =>
-            [{ address: hostname === firstHostname ? firstIp : finalIp, family: 4 }] as any
-        );
-
-        let targetPort = 0;
-        const hostHeaders: (string | undefined)[] = [];
-        const targetAuth: (string | undefined)[] = [];
-        const target = await listen((req, res) => {
-          hostHeaders.push(req.headers.host);
-          targetAuth.push(req.headers['proxy-authorization']);
-          if (req.url === '/start') {
-            res.writeHead(302, { Location: `http://${finalHostname}:${targetPort}/ready` });
-          }
-          res.end('ready');
-        });
-        targetPort = getServerPort(target);
-
-        const authorities: string[] = [];
-        const proxyAuth: (string | undefined)[] = [];
-        const proxy = await listen((_req, res) => res.writeHead(405).end());
-        proxy.on('connect', (req, client) => {
-          const authority = req.url ?? '';
-          authorities.push(authority);
-          proxyAuth.push(req.headers['proxy-authorization']);
-          if (
-            authority !== `${firstIp}:${targetPort}` &&
-            authority !== `${finalIp}:${targetPort}`
-          ) {
-            client.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
-            return;
-          }
-          // DNS 和代理的公网目标均为测试输入，代理只连接此用例启动的回显服务。
-          const upstream = net.connect(targetPort, '127.0.0.1', () => {
-            client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-            client.pipe(upstream).pipe(client);
-          });
-          upstream.on('error', () => client.destroy());
-          client.on('close', () => upstream.destroy());
-        });
-
-        const proxyPort = getServerPort(proxy);
-        const proxyConfig =
-          proxyMode === '显式代理'
-            ? {
-                host: '127.0.0.1',
-                port: proxyPort,
-                auth: { username: 'proxy', password: 'fixture' }
-              }
-            : undefined;
-        if (!proxyConfig) process.env.HTTP_PROXY = `http://127.0.0.1:${proxyPort}`;
-
-        try {
-          const instance = createProxyAxios({ proxy: proxyConfig, timeout: 4000 });
-          const credential = `Basic ${Buffer.from('test:fixture').toString('base64')}`;
-          const expectedCredential = proxyConfig
-            ? `Basic ${Buffer.from('proxy:fixture').toString('base64')}`
-            : credential;
-          const response = await instance.get(`http://${firstHostname}:${targetPort}/start`, {
-            headers: { 'pRoXy-AuThOrIzAtIoN': credential }
-          });
-          expect(response.data).toBe('ready');
-          expect(proxyAuth).toEqual([expectedCredential, expectedCredential]);
-          expect(targetAuth).toEqual([undefined, undefined]);
-          expect(authorities).toEqual([`${firstIp}:${targetPort}`, `${finalIp}:${targetPort}`]);
-          expect(hostHeaders).toEqual([
-            `${firstHostname}:${targetPort}`,
-            `${finalHostname}:${targetPort}`
-          ]);
-        } finally {
-          await Promise.all([closeServer(proxy), closeServer(target)]);
-        }
-      }
-    );
 
     it('直连路径 DNS lookup 失败时应该失败', async () => {
       clearProxyEnv();
@@ -630,234 +541,6 @@ describe('axios.ts', () => {
         'DNS lookup failed'
       );
       expect(adapter).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('protected proxy transport', () => {
-    // 测试证书只绑定本地代理和虚构目标域名，进程信任列表在每个用例后恢复。
-    const targetHostname = 'target.example.test';
-    const checkedAddress = '93.184.216.34';
-    const tlsFixture = {
-      cert: readFileSync(new URL('./fixtures/connect-test-cert.pem.txt', import.meta.url), 'utf8'),
-      key: readFileSync(new URL('./fixtures/connect-test-key.pem.txt', import.meta.url), 'utf8')
-    };
-    let originalCertificates: string[];
-
-    beforeEach(() => {
-      clearProxyEnv();
-      originalCertificates = tls.getCACertificates('default');
-      tls.setDefaultCACertificates([...originalCertificates, tlsFixture.cert]);
-      vi.spyOn(dns, 'resolve4').mockResolvedValue([checkedAddress]);
-      vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
-      vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: checkedAddress, family: 4 }] as never);
-    });
-
-    afterEach(() => {
-      tls.setDefaultCACertificates(originalCertificates);
-    });
-
-    const listenProxy = (scheme: 'http' | 'https') => {
-      const rejectForwardRequest: http.RequestListener = (_req, res) => res.writeHead(405).end();
-      return scheme === 'https'
-        ? startServer(https.createServer(tlsFixture, rejectForwardRequest))
-        : listen(rejectForwardRequest);
-    };
-
-    it.each(['http', 'https'] as const)(
-      'validates target TLS identity over an %s proxy',
-      async (scheme) => {
-        const sniNames: string[] = [];
-        const targetContext = tls.createSecureContext(tlsFixture);
-        const target = await startServer(
-          https.createServer(
-            {
-              ...tlsFixture,
-              SNICallback: (servername, callback) => {
-                sniNames.push(servername);
-                callback(null, targetContext);
-              }
-            },
-            (req, res) => res.end(req.headers.host)
-          )
-        );
-        const proxy = await listenProxy(scheme);
-        const targetPort = getServerPort(target);
-        const authorities: string[] = [];
-        const tunnelSockets = new Set<net.Socket>();
-        const viaProxy = createProxyAxios({ timeout: 2500 });
-        process.env.HTTPS_PROXY = `${scheme}://127.0.0.1:${getServerPort(proxy)}`;
-
-        proxy.on('connect', (req, client) => {
-          const authority = req.url ?? '';
-          authorities.push(authority);
-          if (authority !== `${checkedAddress}:${targetPort}`) {
-            client.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
-            return;
-          }
-          const upstream = net.connect(targetPort, '127.0.0.1', () => {
-            client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-            client.pipe(upstream).pipe(client);
-          });
-          tunnelSockets.add(client);
-          upstream.on('error', () => client.destroy());
-          client.on('error', () => upstream.destroy());
-          client.on('close', () => {
-            tunnelSockets.delete(client);
-            upstream.destroy();
-          });
-          upstream.on('close', () => client.destroy());
-        });
-
-        try {
-          const response = await viaProxy.get(`https://${targetHostname}:${targetPort}/`);
-          expect(response.data).toBe(`${targetHostname}:${targetPort}`);
-          await expect(
-            viaProxy.get(`https://wrong.example.test:${targetPort}/`)
-          ).rejects.toMatchObject({
-            code: 'ERR_TLS_CERT_ALTNAME_INVALID'
-          });
-          expect(authorities).toEqual(Array(2).fill(`${checkedAddress}:${targetPort}`));
-          expect(sniNames).toEqual([targetHostname, 'wrong.example.test']);
-        } finally {
-          for (const socket of tunnelSockets) socket.destroy();
-          await Promise.all([closeServer(proxy), closeServer(target)]);
-        }
-      }
-    );
-
-    it.each([
-      ['http', 'timeout'],
-      ['https', 'timeout'],
-      ['http', 'signal'],
-      ['https', 'cancelToken']
-    ] as const)('closes the %s proxy socket on %s during CONNECT', async (scheme, stop) => {
-      const proxy = await listenProxy(scheme);
-      process.env.HTTP_PROXY = `${scheme}://127.0.0.1:${getServerPort(proxy)}`;
-      const signal = new AbortController();
-      const cancelSource = CancelToken.source();
-      let proxySocket: net.Socket | undefined;
-
-      const socketClosed = Promise.withResolvers<void>();
-      proxy.once('connect', (_req, socket) => {
-        proxySocket = socket;
-        // HTTP 升级连接可以半关闭；收到客户端的 FIN 后关闭测试代理自己的写入端。
-        socket.once('end', () => socket.end());
-        socket.on('error', () => {});
-        socket.once('close', () => socketClosed.resolve());
-        socket.resume();
-      });
-      const connected = once(proxy, 'connect', { signal: AbortSignal.timeout(2000) });
-      const result = createProxyAxios({ timeout: stop === 'timeout' ? 800 : 4000 })
-        .get(`http://${targetHostname}/`, {
-          signal: signal.signal,
-          cancelToken: cancelSource.token
-        })
-        .then(
-          () => ({ code: 'unexpected success' }),
-          (error: unknown) => error
-        );
-
-      try {
-        await connected;
-        if (stop === 'signal') signal.abort();
-        if (stop === 'cancelToken') cancelSource.cancel('test canceled');
-        expect(await result).toMatchObject({
-          code: stop === 'timeout' ? 'ECONNABORTED' : 'ERR_CANCELED'
-        });
-        const closeDeadline = AbortSignal.timeout(2000);
-        await Promise.race([
-          socketClosed.promise,
-          new Promise<never>((_resolve, reject) =>
-            closeDeadline.addEventListener(
-              'abort',
-              () => reject(new Error('Proxy socket stayed open')),
-              {
-                once: true
-              }
-            )
-          )
-        ]);
-      } finally {
-        proxySocket?.destroy();
-        await closeServer(proxy);
-      }
-    });
-
-    it.each(['request', 'instance default'] as const)(
-      'does not reuse %s proxy credentials when a redirect switches proxies',
-      async (source) => {
-        process.env.HTTP_PROXY = 'http://first-proxy.example.test:8080';
-        process.env.HTTPS_PROXY = 'http://other-proxy.example.test:8080';
-        const credential = `Basic ${Buffer.from('test:fixture').toString('base64')}`;
-        const firstUrl = `http://${targetHostname}/start`;
-        const nextUrl = `https://${targetHostname}/end`;
-        const adapter = vi.fn().mockImplementation(async (config) => ({
-          config,
-          data: 'ready',
-          ...(config.url === firstUrl
-            ? { status: 302, headers: { location: nextUrl } }
-            : { status: 200, headers: {} })
-        }));
-        const client = createProxyAxios({ adapter });
-        const headers = { 'Proxy-Authorization': credential };
-        if (source === 'instance default') {
-          Object.assign(client.defaults.headers.common, headers);
-        }
-        await client.get(firstUrl, source === 'request' ? { headers } : undefined);
-
-        const [firstRequest, redirectedRequest] = adapter.mock.calls.map(([config]) => config);
-        expect(firstRequest.httpAgent.proxyHeaders()).toEqual({
-          'Proxy-Authorization': credential
-        });
-        expect(
-          JSON.stringify(new AxiosError('test', undefined, firstRequest).toJSON())
-        ).not.toContain(credential);
-        expect(firstRequest.headers.has('Proxy-Authorization')).toBe(false);
-        expect(redirectedRequest.httpsAgent.proxyHeaders).toEqual({});
-        expect(redirectedRequest.headers.has('Proxy-Authorization')).toBe(false);
-      }
-    );
-
-    it('surfaces a proxy that rejects CONNECT without trying forward HTTP', async () => {
-      const requestMethods: (string | undefined)[] = [];
-      const proxy = await listen((req, res) => {
-        requestMethods.push(req.method);
-        res.end('forwarded');
-      });
-      proxy.on('connect', (req, socket) => {
-        requestMethods.push(req.method);
-        socket.end('HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n');
-      });
-      process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(proxy)}`;
-
-      try {
-        await expect(
-          createProxyAxios({ timeout: 2500 }).get(`http://${targetHostname}/`)
-        ).rejects.toMatchObject({ response: { status: 405 } });
-        expect(requestMethods).toEqual(['CONNECT']);
-      } finally {
-        await closeServer(proxy);
-      }
-    });
-
-    it('rejects a SOCKS proxy and keeps NO_PROXY targets on the direct route', async () => {
-      process.env.ALL_PROXY = 'socks5://proxy.example.test:1080';
-      const adapter = vi
-        .fn()
-        .mockResolvedValue({ data: 'ready', status: 200, headers: {}, config: {} });
-      const client = createProxyAxios({ adapter });
-
-      await expect(client.get(`http://${targetHostname}/`)).rejects.toThrow(
-        'SSRF-protected requests require an HTTP or HTTPS CONNECT proxy'
-      );
-      expect(adapter).not.toHaveBeenCalled();
-
-      process.env.NO_PROXY = targetHostname;
-      await client.get(`http://${targetHostname}/`, {
-        headers: { 'Proxy-Authorization': 'Basic dGVzdDpmaXh0dXJl' }
-      });
-      expect(adapter.mock.calls[0][0].httpAgent).toBeInstanceOf(http.Agent);
-      expect(adapter.mock.calls[0][0].headers.has('Proxy-Authorization')).toBe(false);
     });
   });
 
