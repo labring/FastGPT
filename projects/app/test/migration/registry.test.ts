@@ -21,17 +21,21 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261120_clean_api_dataset_system_root',
-      '20261123_cleanup_mongo_indexes'
+      '20261123_cleanup_mongo_indexes',
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261120_clean_api_dataset_system_root'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
       '20261116_migrate_system_configs'
     ]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
     expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources',
       '20261120_clean_api_dataset_system_root'
     ]);
-    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
     expect(configMigration).toMatchObject({
@@ -55,8 +59,10 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261120_clean_api_dataset_system_root',
-      '20261123_cleanup_mongo_indexes'
+      '20261123_cleanup_mongo_indexes',
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261120_clean_api_dataset_system_root'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -116,7 +122,7 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('blockStartup', true);
   });
 
-  it('registers v4.18.0 deprecated MongoDB index cleanup at tail as an independent task', () => {
+  it('registers v4.18.0 deprecated MongoDB index cleanup as an independent background task', () => {
     const task = systemMigrations.find(({ id }) => id === '20261123_cleanup_mongo_indexes');
     expect(task).toMatchObject({
       id: '20261123_cleanup_mongo_indexes',
@@ -128,6 +134,29 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('delay');
+  });
+
+  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tail tasks', () => {
+    const migrateTask = systemMigrations.find(
+      ({ id }) => id === '20261117_migrate_sandbox_to_opensandbox'
+    );
+    const cleanupTask = systemMigrations.at(-1);
+
+    expect(migrateTask).toMatchObject({
+      id: '20261117_migrate_sandbox_to_opensandbox',
+      version: '4.18.0',
+      manual: true,
+      blockStartup: false
+    });
+    expect(migrateTask).not.toHaveProperty('dependsOn');
+
+    expect(cleanupTask).toMatchObject({
+      id: '20261117_cleanup_legacy_sandbox_resources',
+      version: '4.18.0',
+      manual: true,
+      blockStartup: false,
+      dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
+    });
   });
 
   it('runs only the selected production tasks independently', () => {

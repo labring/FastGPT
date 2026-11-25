@@ -6,16 +6,14 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   getSkillEditRuntimeContext,
-  getSkillEditRuntimeStatus,
   initSkillEditRuntimeSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
-import { SkillRuntimeBodySchema } from '@fastgpt/global/core/ai/skill/api';
+import { SkillRuntimeBodySchema } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   ApiRequestInputParseError,
@@ -25,7 +23,7 @@ import {
 /**
  * 初始化 Skill Edit runtime sandbox。
  *
- * 该接口只负责启动、恢复或复用沙盒；runtime 升级判断和触发由 getStatus/upgrade 承担。
+ * 自动处理冷恢复、同 PVC 静默换镜像及激活就绪；未迁移存量实例会在 context 构造阶段抛出 409。
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -76,15 +74,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       skillId,
       teamId
     });
-    const status = await getSkillEditRuntimeStatus({ context });
-
-    if (status.status !== 'readyToInit') {
-      const errorMessage =
-        status.status === 'upgrading'
-          ? SandboxErrEnum.runtimeUpgradeInProgress
-          : status.lastError || SandboxErrEnum.runtimeUpgradeFailed;
-      throw new UserError(errorMessage);
-    }
 
     await initSkillEditRuntimeSandbox({
       context,

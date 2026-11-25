@@ -298,7 +298,8 @@ describe('createApiEntry response lifecycle', () => {
     { error: TeamErrEnum.aiPointsNotEnough, status: 402, code: 500005 },
     { error: AppErrEnum.unAuthApp, status: 403, code: 502001 },
     { error: AppErrEnum.unExist, status: 404, code: 502000 },
-    { error: SandboxErrEnum.runtimeUpgradeFailed, status: 500, code: 510002 }
+    { error: SandboxErrEnum.agentSandboxInitializing, status: 409, code: 510001 },
+    { error: ModelErrEnum.unConfigured, status: 500, code: 513001 }
   ])(
     'maps domain business error $error to HTTP $status while preserving business code $code',
     async ({ error, status, code }) => {

@@ -230,4 +230,5 @@ V4.18.0 起，环境变量已简化，业务配置集中到管理员页面维护
 | `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API 版本，仅 `docker` 模式需要。                                     |
 | `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes 命名空间，仅 `kubernetes` 模式需要。                             |
 | `VM_K8S_PVC_STORAGE_CLASS` | 未设置                 | Kubernetes PVC StorageClass；留空使用集群默认值，仅 `kubernetes` 模式需要。 |
-| `VM_LOG_LEVEL`             | `info`                 | 日志等级，可选 `debug`、`info` 或 `none`。                                  |
+
+> Volume Manager 日志配置统一使用通用 `LOG_*` 变量（`LOG_ENABLE_CONSOLE`、`LOG_CONSOLE_LEVEL`、`LOG_ENABLE_OTEL`、`LOG_OTEL_*`；默认 `LOG_CONSOLE_LEVEL=info`、`LOG_OTEL_SERVICE_NAME=fastgpt-volume-manager`）。

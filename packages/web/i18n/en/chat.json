@@ -217,6 +217,7 @@
   "sandbox_save_failed": "Save failed",
   "sandbox_search_files": "Search files",
   "sandbox_select_file_edit": "Select a file to edit",
+  "sandbox_select_file_view": "Select a file to view",
   "sandbox_selected_items_count": "{{count}} selected items",
   "sandbox_starting": "Starting sandbox (1/2)",
   "sandbox_status_checkExisting": "Checking sandbox",

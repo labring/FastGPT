@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-07-16
+最后核对：2026-11-20
 
 ## 目标
 
@@ -52,8 +52,8 @@
 Pro 可以提供平台内置的辅助生成 Skill 源码。运行时遵循以下边界：
 
 - 源码归 Pro 所有，社区版通过可选注入接口保持无依赖。
-- 内置 Skill 写入 Sandbox HOME 下的 `.fastgpt/skills/<name>`。
-- 内置目录不在用户 workspace 内，因此不会出现在用户产物、导出包或发布版本中。
+- 内置 Skill 写入容器临时层目录 `/var/lib/fastgpt-runtime/skills/<name>`。
+- 内置目录不在 `$HOME` 持久卷或用户 workspace 内，因此不会出现在用户产物、导出包、冷归档或发布版本中。
 - 同步逻辑根据文件内容计算 etag，内容没有变化时不覆盖。
 - Agent 扫描用户 workspace 和内置 Skill 目录，把可用 Skill 的名称、描述和 `SKILL.md` 路径放入 reminder。
 - 模型必须先读取匹配 Skill 的完整 `SKILL.md`，不能仅凭描述推断工作流。
@@ -68,23 +68,23 @@ Pro 可以提供平台内置的辅助生成 Skill 源码。运行时遵循以下
 
 ### 发布
 
-Skill 版本保存为不可变 ZIP 包并记录 storage key。发布校验在持久化版本前执行，失败时不生成可运行版本。
+新建与发布保存的 Skill 版本默认存为不可变 `.tar.zst` 包（由容器 `fastgpt-ide-agent` 开启 `skipSymlinks` 流式打包并剔除 `.gitignore`、`.fastgpt/`、`package.zip`）并记录 storage key，同时兼容历史版本及手工导入的 `.zip` 包；发布校验（含拒绝任意异常符号链接条目 `archiveSymlinkNotAllowed` 与至少一个有效 `SKILL.md`）在持久化版本前执行，失败时不生成可运行版本。
 
 ### 普通 Agent 运行
 
 1. 根据 Agent 配置读取选中的 Skill。
 2. 校验团队和成员读取权限。
-3. 将当前发布版本注入会话 Sandbox。
+3. 将当前发布版本注入会话 Sandbox（`.tar.zst` 直传；历史或导入 `.zip` 基于 HTTP Range 在主站流式转码为 `.tar.zst` 后解压）。
 4. 可选执行版本根目录的 `entrypoint.sh`。
 5. 扫描 `SKILL.md` 并把可用 Skill 信息注入当前轮 reminder。
 
 ### Skill Edit Debug
 
-编辑调试直接使用 Skill Edit Sandbox 的当前工作区，避免下载旧发布版本覆盖正在编辑的内容。内置辅助生成 Skill 仍位于 Sandbox HOME，与用户工作区隔离。
+编辑调试直接使用 Skill Edit Sandbox 的当前工作区，避免下载旧发布版本覆盖正在编辑的内容。内置辅助生成 Skill 仍位于容器临时层 `/var/lib/fastgpt-runtime/skills/<name>`，与用户 `$HOME` 和工作区隔离。
 
 ## 安全边界
 
-- Skill ZIP 解压前校验总大小和路径穿越。
+- Skill 包（`.tar.zst` 与兼容 `.zip`）解压前校验总大小、控制字符与路径穿越，导入转码、部署和导出均不落容器 `/tmp`；发布与导出均跳过符号链接（发布在主站解析侧对意外符号链接条目兜底拒绝 `archiveSymlinkNotAllowed`）。
 - 部署前检查团队归属和成员读取权限。
 - 内置 Skill 不进入用户版本包。
 - entrypoint 在隔离 Sandbox 中执行，限制时间和输出；失败不标记为成功。

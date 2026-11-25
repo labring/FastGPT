@@ -14,7 +14,7 @@ export type CreateSkillData = {
 };
 
 // UpdateSkillData excludes markdown to ensure consistency with version management.
-// Markdown updates must go through version workflow to keep package.zip in sync.
+// Markdown updates must go through version workflow to keep version packages in sync.
 export type UpdateSkillData = Partial<
   Pick<CreateSkillData, 'name' | 'description' | 'category' | 'avatar'>
 >;

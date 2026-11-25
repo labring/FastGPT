@@ -11,7 +11,7 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
 
-export const SandboxFindToolSchema = z.object({
+const SandboxFindToolSchema = z.object({
   pattern: z.string(),
   path: z.string().optional(),
   limit: z.number().int().positive().max(5000).optional()
@@ -19,14 +19,17 @@ export const SandboxFindToolSchema = z.object({
 
 export const sandboxFindTool = defineTool({
   zodSchema: SandboxFindToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  skipEnsureAvailable: true,
+  execute: async ({ sandboxInstance, params, signal }) => {
     const limit = params.limit ?? DEFAULT_FIND_LIMIT;
     const searchPath = params.path ?? '.';
     const command = [
       `cd ${shellQuote(searchPath)}`,
       `rg --files --hidden --glob ${shellQuote(params.pattern)} -- . | head -n ${limit + 1}`
     ].join(' && ');
-    const result = await sandboxInstance.exec(command);
+    const result = signal
+      ? await sandboxInstance.exec(command, { signal })
+      : await sandboxInstance.exec(command);
     const paths = result.stdout
       .split('\n')
       .map((item) => item.trim().replace(/^\.\//, ''))

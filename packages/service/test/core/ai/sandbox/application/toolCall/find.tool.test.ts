@@ -73,4 +73,24 @@ describe('sandboxFindTool', () => {
       })
     ).rejects.toThrow('missing directory');
   });
+
+  it('forwards AbortSignal to sandbox exec', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+
+    await sandboxFindTool.execute({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      userId: 'user',
+      chatId: 'chat',
+      sandboxInstance: sandbox,
+      params: { pattern: '*.ts' },
+      signal: controller.signal
+    });
+
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      "cd '.' && rg --files --hidden --glob '*.ts' -- . | head -n 1001",
+      { signal: controller.signal }
+    );
+  });
 });

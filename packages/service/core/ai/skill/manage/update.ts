@@ -8,6 +8,7 @@ type UpdateCurrentVersionParams = {
   skillId: string;
   currentVersionId: string;
   runtimeSkills: RuntimeSkillMetadataType[];
+  updateTime?: Date;
   session?: ClientSession;
 };
 
@@ -44,6 +45,7 @@ export async function updateCurrentVersion({
   skillId,
   currentVersionId,
   runtimeSkills,
+  updateTime = new Date(),
   session
 }: UpdateCurrentVersionParams): Promise<boolean> {
   const result = await MongoAgentSkills.updateOne(
@@ -53,7 +55,7 @@ export async function updateCurrentVersion({
         currentVersionId,
         currentRuntimeSkills: runtimeSkills,
         creationStatus: AgentSkillCreationStatusEnum.ready,
-        updateTime: new Date()
+        updateTime
       },
       $unset: {
         creationError: '',

@@ -12,7 +12,7 @@ RUN npm install -g pnpm@10.33.2
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.json ./
 COPY patches ./patches
 COPY packages/global/ ./packages/global/
-COPY sdk/sandbox-adapter/ ./sdk/sandbox-adapter/
+COPY sdk/otel/ ./sdk/otel/
 COPY projects/volume-manager/ ./projects/volume-manager/
 
 RUN if [ -z "$proxy" ]; then \
@@ -21,7 +21,7 @@ RUN if [ -z "$proxy" ]; then \
       pnpm install --frozen-lockfile --ignore-scripts --filter @fastgpt/volume-manager... --registry=https://registry.npmmirror.com; \
     fi
 
-RUN cd /app/projects/volume-manager && pnpm build
+RUN pnpm --filter @fastgpt-sdk/otel build && cd /app/projects/volume-manager && pnpm build
 
 FROM node:24.22.1-alpine AS runner
 

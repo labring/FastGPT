@@ -61,17 +61,19 @@ describe('instance config update API', () => {
     mocks.edition = 'community';
     const proxySecret = 'community-proxy-secret-at-least-32-characters';
     const agentSandbox = {
-      provider: 'opensandbox',
+      enabled: true,
       proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test', secret: proxySecret },
       common: { cpuCount: 2, memoryMiB: 4096 },
       opensandbox: {
         baseUrl: 'https://sandbox.test',
         apiKey: 'community-provider-key',
+        image: 'fastgpt-agent-sandbox:v0.5.0',
+        volumeManagerUrl: 'https://volume.test',
+        volumeManagerToken: 'vm-token',
         runtime: 'kubernetes',
         cpuOvercommitFactor: 2,
         memoryOvercommitFactor: 3
-      },
-      sealosdevbox: { baseUrl: 'https://devbox.test', token: 'community-devbox-token' }
+      }
     };
     const response = await callUpdate({
       body: {
@@ -81,7 +83,7 @@ describe('instance config update API', () => {
     expect(response.results[0]).toMatchObject({ domain: 'subservice', revision: 1 });
     const config = await getDomainConfigForAdmin('subservice', 'community');
     expect(config.effectiveConfig.agentSandbox).toMatchObject({
-      provider: 'opensandbox',
+      enabled: true,
       proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test' },
       common: { cpuCount: 2, memoryMiB: 4096 },
       opensandbox: {
@@ -90,11 +92,7 @@ describe('instance config update API', () => {
         memoryOvercommitFactor: 3
       }
     });
-    for (const path of [
-      'agentSandbox.proxy.secret',
-      'agentSandbox.opensandbox.apiKey',
-      'agentSandbox.sealosdevbox.token'
-    ]) {
+    for (const path of ['agentSandbox.proxy.secret', 'agentSandbox.opensandbox.apiKey']) {
       expect(config.effectiveConfig).toHaveProperty(path, { isSecret: true });
     }
     const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
@@ -102,7 +100,7 @@ describe('instance config update API', () => {
       'agentSandbox.proxy.secret.secret',
       expect.any(String)
     );
-    for (const secret of [proxySecret, 'community-provider-key', 'community-devbox-token']) {
+    for (const secret of [proxySecret, 'community-provider-key']) {
       expect(JSON.stringify(stored)).not.toContain(secret);
       expect(JSON.stringify(config)).not.toContain(secret);
       expect(JSON.stringify(response)).not.toContain(secret);

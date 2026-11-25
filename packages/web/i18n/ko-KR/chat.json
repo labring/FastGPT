@@ -217,6 +217,7 @@
   "sandbox_save_failed": "저장 실패",
   "sandbox_search_files": "파일 검색",
   "sandbox_select_file_edit": "편집할 파일을 선택하세요",
+  "sandbox_select_file_view": "볼 파일을 선택하세요",
   "sandbox_selected_items_count": "{{count}}개 선택됨",
   "sandbox_starting": "샌드박스 시작 중 (1/2)",
   "sandbox_status_checkExisting": "샌드박스 확인 중",

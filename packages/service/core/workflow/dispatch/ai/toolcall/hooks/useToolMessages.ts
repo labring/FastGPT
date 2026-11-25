@@ -6,9 +6,9 @@ import {
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
+  allocateSandboxInputFiles,
   buildSandboxInputFileScopeKey,
-  getSandboxInputFileNameAllocation,
-  getSafeSandboxInputFilename
+  getSandboxInputFileNameAllocation
 } from '../../../../../ai/sandbox/utils';
 import { getWorkflowContext } from '../../../context';
 import {
@@ -75,22 +75,15 @@ export const useToolMessages = async ({
               contextOwner: workflowSandboxContext
             })
           : undefined;
-        const usedNames = new Map<string, number>();
-        const batchUsedFilenames = new Set<string>();
-        return files.map((file, index) => {
-          const filename = inputFileAllocation
-            ? getSafeSandboxInputFilename(file.name, index, usedNames, {
-                url: file.url,
-                allocation: inputFileAllocation,
-                batchUsedFilenames
-              })
-            : file.name;
-          return {
-            ...file,
-            name: filename,
-            sandboxPath: `${SANDBOX_USER_FILES_PATH}${filename}`
-          };
-        });
+        return allocateSandboxInputFiles({
+          items: files,
+          getFilename: (file) => file.name,
+          allocation: inputFileAllocation
+        }).map(({ item: file, filename }) => ({
+          ...file,
+          name: filename,
+          sandboxPath: `${SANDBOX_USER_FILES_PATH}${filename}`
+        }));
       }
     : undefined;
   const messages = await Promise.all(

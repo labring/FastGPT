@@ -93,5 +93,20 @@
   "migrations.20261123_cleanup_mongo_indexes.description": "启动后在后台独立清理历史已废弃的 MongoDB 索引：删除前持续跟踪前置替代索引直至构建就绪，并严格按索引名、键定义与完整选项精确匹配，自动跳过客户自建或签名不符的索引；设置 MONGO_DEPRECATE_INDEX=false 时保留现有废弃索引并延后等待开启或手动清理后重试。",
   "migrations.20261123_cleanup_mongo_indexes.cleanup": "清理废弃索引",
   "migrations.20261123_cleanup_mongo_indexes.validation": "校验清理结果",
-  "migrations.20261123_cleanup_mongo_indexes.result": "共检查 {{totalCount}} 条废弃索引：已清理 {{droppedCount}} 条，已不存在 {{missingCount}} 条，保守跳过 {{skippedCount}} 条。"
+  "migrations.20261123_cleanup_mongo_indexes.result": "共检查 {{totalCount}} 条废弃索引：已清理 {{droppedCount}} 条，已不存在 {{missingCount}} 条，保守跳过 {{skippedCount}} 条。",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.name": "迁移存量沙盒到 OpenSandbox (.tar.zst)",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.description": "请在确认所有旧版本 Pod 已下线后手动执行。从旧集合 agent_sandbox_instances_v2 只读迁移运行中 Devbox、已暂停 Devbox、旧版 OpenSandbox /workspace 卷及历史 S3 package.zip 至新集合 agent_sandbox_instances_v3 与 sandbox/archive-v2/ (.tar.zst)，并完整保留旧集合、Devbox、旧卷与 package.zip 供回滚。",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.result": "已迁移 {{runningDevbox}} 个运行中 Devbox、{{stoppedDevbox}} 个已暂停 Devbox、{{legacyArchives}} 个历史归档与旧卷",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.preflight": "前置环境与存量检查",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox": "静止化迁移运行中 Devbox",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox": "迁移已暂停 Devbox",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "迁移旧版 OpenSandbox 卷与历史 package.zip",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "校验迁移结果",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.name": "清理历史沙盒遗留资源",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "须在沙盒迁移成功并稳定运行后手动执行。先校验旧集合无未迁移活跃记录，再删除远端历史 Sealos Devbox、旧版持久卷、agent_sandbox_instances_v2 历史与孤儿记录及已验证新归档的 S3 旧 package.zip。",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "已清理 {{deletedDevboxes}} 个远端 Devbox、{{deletedVolumes}} 个旧持久卷、{{deletedZips}} 个旧 zip 归档、{{deletedOrphans}} 条孤儿记录",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "迁移状态安全门禁",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理旧 Devbox、旧持久卷与孤儿记录",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核验并删除旧 zip 归档",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "校验遗留清理结果"
 }
