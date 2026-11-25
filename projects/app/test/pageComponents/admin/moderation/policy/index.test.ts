@@ -13,8 +13,15 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   policyData: undefined as SystemModerationPolicyType | undefined,
   pluginsData: [] as AdminModerationPluginItemType[],
-  lastTitles: [] as Array<{ mainTitle: string; subTitles: string[] }>,
+  lastHeaderTitle: undefined as string | undefined,
+  lastTocItems: [] as Array<{ id: string; label: string }>,
+  lastIsLoading: false,
+  lastIsSaving: false,
+  lastOnSave: undefined as (() => void | Promise<unknown>) | undefined,
   lastNumberInputVariant: undefined as string | undefined,
+  getModerationPolicy: vi.fn(),
+  getModerationPluginList: vi.fn(),
+  deleteModerationPlugin: vi.fn(),
   saveModerationConfig: vi.fn(),
   updateModerationPolicy: vi.fn(),
   lastModalOnSuccess: undefined as
@@ -27,6 +34,12 @@ vi.mock('next/router', () => ({
 }));
 vi.mock('next/dynamic', () => ({
   default: () => () => null
+}));
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({
+    i18n: { language: 'zh-CN' },
+    t: (key: string) => key
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({
@@ -43,27 +56,10 @@ vi.mock('@fastgpt/web/hooks/useConfirm', () => ({
     ConfirmModal: () => null
   })
 }));
-vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (
-    fn: () => Promise<unknown>,
-    options?: { manual?: boolean; onSuccess?: (data: unknown) => void }
-  ) => {
-    React.useEffect(() => {
-      if (options?.manual === false) {
-        void fn().then((res) => options?.onSuccess?.(res));
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-    return {
-      loading: false,
-      runAsync: fn
-    };
-  }
-}));
 vi.mock('@/web/core/plugin/admin/moderation/api', () => ({
-  getAdminModerationPolicy: () => Promise.resolve(mocks.policyData),
-  getAdminModerationPluginList: () => Promise.resolve(mocks.pluginsData),
-  postAdminDeleteModerationPlugin: vi.fn(),
+  getAdminModerationPolicy: (...args: any[]) => mocks.getModerationPolicy(...args),
+  getAdminModerationPluginList: (...args: any[]) => mocks.getModerationPluginList(...args),
+  postAdminDeleteModerationPlugin: (...args: any[]) => mocks.deleteModerationPlugin(...args),
   postAdminSaveModerationConfig: mocks.saveModerationConfig,
   postAdminUpdateModerationPolicy: mocks.updateModerationPolicy
 }));
@@ -73,72 +69,143 @@ vi.mock('@chakra-ui/react', () => ({
     React.createElement('button', { onClick }, children),
   Flex: ({ children, onClick }: React.PropsWithChildren<{ onClick?: () => void }>) =>
     React.createElement('div', { onClick }, children),
-  Grid: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
   HStack: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
-  Switch: ({
-    isChecked,
-    onChange
-  }: {
-    isChecked: boolean;
-    onChange?: (e: { target: { checked: boolean } }) => void;
-  }) =>
-    React.createElement('input', {
-      type: 'checkbox',
-      checked: isChecked,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange?.({ target: { checked: e.target.checked } })
-    }),
+  SimpleGrid: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
   Text: ({ children }: React.PropsWithChildren) => React.createElement('span', null, children),
   useDisclosure: () => ({ isOpen: false, onOpen: vi.fn(), onClose: vi.fn() })
 }));
-vi.mock('@/pageComponents/admin/settings/SettingPage', () => ({
+vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({
-    titles,
+    headerTitle,
+    tocItems,
+    isLoading,
+    isSaving,
+    onSave,
     children
-  }: React.PropsWithChildren<{ titles: Array<{ mainTitle: string; subTitles: string[] }> }>) => {
-    mocks.lastTitles = titles;
-    return React.createElement('div', { 'data-setting-page': 'true' }, children);
+  }: React.PropsWithChildren<{
+    headerTitle?: string;
+    tocItems: Array<{ id: string; label: string }>;
+    isLoading?: boolean;
+    isSaving?: boolean;
+    onSave?: () => void | Promise<unknown>;
+  }>) => {
+    mocks.lastHeaderTitle = headerTitle;
+    mocks.lastTocItems = tocItems;
+    mocks.lastIsLoading = Boolean(isLoading);
+    mocks.lastIsSaving = Boolean(isSaving);
+    mocks.lastOnSave = onSave;
+    return React.createElement(
+      'div',
+      {
+        'data-admin-setting-page': 'true',
+        'data-header-title': headerTitle,
+        'data-is-loading': String(Boolean(isLoading)),
+        'data-is-saving': String(Boolean(isSaving))
+      },
+      children
+    );
   }
 }));
-vi.mock('@/pageComponents/admin/settings/FirstTitle', () => ({
-  default: ({ title }: { title: string }) =>
-    React.createElement('h2', { 'data-first-title': title }, title)
+vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
+  default: ({
+    id,
+    title,
+    showDivider,
+    children
+  }: React.PropsWithChildren<{ id: string; title: string; showDivider?: boolean }>) =>
+    React.createElement(
+      'section',
+      {
+        id,
+        'data-setting-section': id,
+        'data-section-title': title,
+        'data-show-divider': String(Boolean(showDivider))
+      },
+      React.createElement('h2', null, title),
+      children
+    )
+}));
+vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({
+  default: ({
+    label,
+    isChecked,
+    isDisabled,
+    onChange
+  }: {
+    label: string;
+    isChecked?: boolean;
+    isDisabled?: boolean;
+    onChange?: (checked: boolean) => void;
+  }) =>
+    React.createElement(
+      'label',
+      { 'data-switch-row': label },
+      React.createElement('span', null, label),
+      React.createElement('input', {
+        type: 'checkbox',
+        checked: Boolean(isChecked),
+        disabled: Boolean(isDisabled),
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked)
+      })
+    )
+}));
+vi.mock('@/pageComponents/admin/settings/AdminFormItem', () => ({
+  default: ({ label, children }: React.PropsWithChildren<{ label: string }>) =>
+    React.createElement('div', { 'data-form-item': label }, children)
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({
-  default: () => null
+  default: ({ 'aria-label': ariaLabel }: { 'aria-label'?: string }) =>
+    ariaLabel ? React.createElement('span', { 'aria-label': ariaLabel }) : null
 }));
 vi.mock('@fastgpt/web/components/common/Input/NumberInput', () => ({
-  default: ({ variant, value }: { variant?: string; value?: number }) => {
+  default: ({
+    variant,
+    value,
+    isDisabled
+  }: {
+    variant?: string;
+    value?: number;
+    isDisabled?: boolean;
+  }) => {
     mocks.lastNumberInputVariant = variant;
     return React.createElement('input', {
       'data-number-input': 'true',
       'data-variant': variant,
       value,
+      disabled: Boolean(isDisabled),
       readOnly: true
     });
   }
 }));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
-  default: () => React.createElement('div', { 'data-my-select': 'true' })
-}));
-vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
-  default: () => null
+  default: ({ isDisabled }: { isDisabled?: boolean }) =>
+    React.createElement('div', {
+      'data-my-select': 'true',
+      'data-disabled': String(Boolean(isDisabled))
+    })
 }));
 vi.mock('@/pageComponents/admin/moderation/policy/PluginItemRow', () => ({
   default: ({
     plugin,
     isActive,
+    isDisabled,
     onActivate,
-    onEdit
+    onEdit,
+    onDelete
   }: {
     plugin: AdminModerationPluginItemType;
     isActive: boolean;
+    isDisabled?: boolean;
     onActivate: () => void;
     onEdit: () => void;
+    onDelete: () => void;
   }) =>
     React.createElement(
       'div',
-      { 'data-plugin-row': plugin.pluginId },
+      {
+        'data-plugin-row': plugin.pluginId,
+        'data-plugin-disabled': String(Boolean(isDisabled))
+      },
       React.createElement(
         'button',
         { 'data-plugin-activate': plugin.pluginId, disabled: isActive, onClick: onActivate },
@@ -148,6 +215,11 @@ vi.mock('@/pageComponents/admin/moderation/policy/PluginItemRow', () => ({
         'button',
         { 'data-plugin-edit': plugin.pluginId, onClick: onEdit },
         'edit'
+      ),
+      React.createElement(
+        'button',
+        { 'data-plugin-delete': plugin.pluginId, onClick: onDelete },
+        'delete'
       )
     )
 }));
@@ -182,9 +254,20 @@ describe('ModerationPolicy page', () => {
       enabled: true
     };
     mocks.pluginsData = [];
-    mocks.lastTitles = [];
+    mocks.lastHeaderTitle = undefined;
+    mocks.lastTocItems = [];
+    mocks.lastIsLoading = false;
+    mocks.lastIsSaving = false;
+    mocks.lastOnSave = undefined;
     mocks.lastNumberInputVariant = undefined;
     mocks.lastModalOnSuccess = undefined;
+    mocks.getModerationPolicy
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.policyData));
+    mocks.getModerationPluginList
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.pluginsData));
+    mocks.deleteModerationPlugin.mockReset();
     mocks.saveModerationConfig.mockReset();
     mocks.updateModerationPolicy.mockReset();
   });
@@ -219,13 +302,25 @@ describe('ModerationPolicy page', () => {
     expect(mocks.lastNumberInputVariant).toBe('whiteOutline');
     expect(numberInput.value).toBe('100');
 
-    // Test section and anchor title are completely hidden when there is no active service
+    // Uses unified AdminSettingPage header title and AdminSettingSection layout
+    expect(mocks.lastHeaderTitle).toBe('admin:page_title_moderation_policy');
+    expect(
+      host.querySelector('[data-setting-section="service"]')?.getAttribute('data-show-divider')
+    ).toBe('false');
+    expect(
+      host.querySelector('[data-setting-section="hooks"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+    expect(
+      host.querySelector('[data-setting-section="strategy"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+
+    // Test section and TOC anchor are completely hidden when there is no active service
     expect(host.querySelector('[data-test-card]')).toBeNull();
-    expect(host.querySelector('[data-first-title="admin:moderation.test_title"]')).toBeNull();
-    expect(mocks.lastTitles.map((item) => item.mainTitle)).toEqual([
-      'admin:moderation.service_title',
-      'admin:moderation.hooks_title',
-      'admin:moderation.strategy_title'
+    expect(host.querySelector('[data-setting-section="test"]')).toBeNull();
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' },
+      { id: 'hooks', label: 'admin:moderation.hooks_title' },
+      { id: 'strategy', label: 'admin:moderation.strategy_title' }
     ]);
 
     await act(async () => {
@@ -273,12 +368,14 @@ describe('ModerationPolicy page', () => {
     expect(activateBtn.disabled).toBe(true);
     expect(activateBtn.textContent).toBe('in_use');
     expect(host.querySelector('[data-test-card="baidu"]')).not.toBeNull();
-    expect(host.querySelector('[data-first-title="admin:moderation.test_title"]')).not.toBeNull();
-    expect(mocks.lastTitles.map((item) => item.mainTitle)).toEqual([
-      'admin:moderation.service_title',
-      'admin:moderation.hooks_title',
-      'admin:moderation.strategy_title',
-      'admin:moderation.test_title'
+    expect(
+      host.querySelector('[data-setting-section="test"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' },
+      { id: 'hooks', label: 'admin:moderation.hooks_title' },
+      { id: 'strategy', label: 'admin:moderation.strategy_title' },
+      { id: 'test', label: 'admin:moderation.test_title' }
     ]);
 
     // Clicking an already active plugin button cannot un-enable it
@@ -518,6 +615,590 @@ describe('ModerationPolicy page', () => {
 
     expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
     expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('exposes only the service TOC item when disabled and wires AdminSettingPage onSave validation', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    };
+    mocks.updateModerationPolicy.mockResolvedValue({
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    });
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' }
+    ]);
+
+    // Saving while disabled succeeds without requiring an active plugin
+    await act(async () => {
+      await mocks.lastOnSave?.();
+    });
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith({
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    });
+
+    // Turning on moderation without an active plugin blocks save with an error toast
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    mocks.updateModerationPolicy.mockClear();
+
+    await act(async () => {
+      await mocks.lastOnSave?.();
+    });
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'error',
+      title: 'admin:moderation.select_plugin_required'
+    });
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('keeps AdminSettingPage loading and form controls disabled throughout save and post-save refetch', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: true,
+      hasConfiguredSecrets: true
+    };
+    const initialPolicy: SystemModerationPolicyType = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu'
+    };
+    mocks.policyData = initialPolicy;
+    mocks.pluginsData = [baiduPlugin];
+
+    let resolveUpdate!: (value: SystemModerationPolicyType) => void;
+    mocks.updateModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveUpdate = resolve;
+      })
+    );
+    let resolveRefetchPolicy!: (value: SystemModerationPolicyType) => void;
+    let resolveRefetchPlugins!: (value: AdminModerationPluginItemType[]) => void;
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+
+    // Prepare deferred post-save refetch promises before submitting
+    mocks.getModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveRefetchPolicy = resolve;
+      })
+    );
+    mocks.getModerationPluginList.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType[]>((resolve) => {
+        resolveRefetchPlugins = resolve;
+      })
+    );
+
+    // Trigger save without awaiting completion
+    let savePromise!: Promise<unknown> | void;
+    await act(async () => {
+      savePromise = mocks.lastOnSave?.();
+      await Promise.resolve();
+    });
+
+    // 1. While update request is pending: AdminSettingPage is loading & saving, switches are disabled
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+    const switchesDuringUpdate = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesDuringUpdate.length).toBeGreaterThan(1);
+    expect(switchesDuringUpdate.every((input) => input.disabled)).toBe(true);
+
+    // Clicking a disabled switch during save does not mutate state
+    await act(async () => {
+      switchesDuringUpdate[1].click();
+    });
+    expect(switchesDuringUpdate[1].checked).toBe(true);
+
+    // 2. After update resolves, while post-save refetch is still pending: page MUST remain busy
+    await act(async () => {
+      resolveUpdate(initialPolicy);
+      await Promise.resolve();
+    });
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+    const switchesDuringRefetch = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesDuringRefetch.every((input) => input.disabled)).toBe(true);
+
+    // 3. Once post-save refetch finishes: busy state clears and controls re-enable
+    await act(async () => {
+      resolveRefetchPolicy(initialPolicy);
+      resolveRefetchPlugins([baiduPlugin]);
+      await savePromise;
+    });
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+    const switchesAfterSave = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesAfterSave.every((input) => !input.disabled)).toBe(true);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('does not overwrite newer draft edits when a stale getAdminModerationPolicy response resolves', async () => {
+    let resolveInitialFetch!: (value: SystemModerationPolicyType) => void;
+    mocks.getModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveInitialFetch = resolve;
+      })
+    );
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+
+    // Simulate a draft edit happening before the stale policy fetch completes
+    // (e.g., via programmatic update or race while fetchPolicy is still pending)
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(totalSwitch.checked).toBe(false);
+    expect(totalSwitch.disabled).toBe(true);
+
+    // Even if an event fires directly (bypassing disabled attribute), draftRevisionRef protects it
+    totalSwitch.disabled = false;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    expect(totalSwitch.checked).toBe(true);
+
+    // Stale fetch returns enabled: false — must NOT clobber the newer enabled: true draft
+    await act(async () => {
+      resolveInitialFetch({
+        ...DefaultSystemModerationPolicy,
+        enabled: false
+      });
+      await Promise.resolve();
+    });
+
+    expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('serializes overlapping plugin activation and policy save under real useRequest without locking the page', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: true,
+      hasConfiguredSecrets: true
+    };
+    const keywordPlugin: AdminModerationPluginItemType = {
+      pluginId: 'keyword',
+      source: 'system',
+      name: 'Keyword Moderation',
+      provider: 'keyword',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    const initialPolicy: SystemModerationPolicyType = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu'
+    };
+    mocks.policyData = initialPolicy;
+    mocks.pluginsData = [baiduPlugin, keywordPlugin];
+
+    let resolveActivate!: (value: AdminModerationPluginItemType) => void;
+    mocks.saveModerationConfig.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType>((resolve) => {
+        resolveActivate = resolve;
+      })
+    );
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+    // Initial load has completed; reset counters to track post-mount calls cleanly
+    mocks.getModerationPolicy.mockClear();
+    mocks.getModerationPluginList.mockClear();
+
+    const updatedPlugins: AdminModerationPluginItemType[] = [
+      { ...baiduPlugin, enabled: false },
+      { ...keywordPlugin, enabled: true }
+    ];
+    const savedPolicy: SystemModerationPolicyType = {
+      ...initialPolicy,
+      activePluginId: 'keyword'
+    };
+
+    let resolveActivationRefresh!: (value: AdminModerationPluginItemType[]) => void;
+    let resolveSaveUpdate!: (value: SystemModerationPolicyType) => void;
+    let resolveSavePolicyRefresh!: (value: SystemModerationPolicyType) => void;
+    let resolveSavePluginsRefresh!: (value: AdminModerationPluginItemType[]) => void;
+
+    mocks.getModerationPluginList
+      .mockReturnValueOnce(
+        new Promise<AdminModerationPluginItemType[]>((resolve) => {
+          resolveActivationRefresh = resolve;
+        })
+      )
+      .mockReturnValueOnce(
+        new Promise<AdminModerationPluginItemType[]>((resolve) => {
+          resolveSavePluginsRefresh = resolve;
+        })
+      );
+    mocks.updateModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveSaveUpdate = resolve;
+      })
+    );
+    mocks.getModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveSavePolicyRefresh = resolve;
+      })
+    );
+
+    // Expand collapsed plugin list (activePluginId is already set so list defaults to collapsed)
+    const expandIcon = host.querySelector(
+      '[aria-label="admin:moderation.expand_list"]'
+    ) as HTMLElement;
+    await act(async () => {
+      expandIcon.click();
+    });
+
+    // 1. Trigger plugin activation for keyword (in-flight)
+    const activateKeywordBtn = host.querySelector(
+      '[data-plugin-activate="keyword"]'
+    ) as HTMLButtonElement;
+    await act(async () => {
+      activateKeywordBtn.click();
+    });
+    expect(mocks.saveModerationConfig).toHaveBeenCalledWith({
+      pluginId: 'keyword',
+      enabled: true
+    });
+    expect(
+      host.querySelector('[data-plugin-row="baidu"]')?.getAttribute('data-plugin-disabled')
+    ).toBe('true');
+
+    // 2. Before activation returns, click Save -> save queues behind activation and locks controls
+    let savePromise!: Promise<unknown> | void;
+    await act(async () => {
+      savePromise = mocks.lastOnSave?.();
+      await Promise.resolve();
+    });
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+
+    // 3. Activation config request finishes -> triggers activation's fetchPlugins; save must still wait
+    await act(async () => {
+      resolveActivate({ ...keywordPlugin, enabled: true });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.getModerationPluginList).toHaveBeenCalledTimes(1);
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+
+    // 4. Activation's fetchPlugins resolves -> queued save now runs with activePluginId = 'keyword'
+    await act(async () => {
+      resolveActivationRefresh(updatedPlugins);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith(savedPolicy);
+
+    // 5. Save update resolves -> post-save refetch runs non-overlapping fetchPolicy & fetchPlugins
+    await act(async () => {
+      resolveSaveUpdate(savedPolicy);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.getModerationPolicy).toHaveBeenCalledTimes(1);
+    expect(mocks.getModerationPluginList).toHaveBeenCalledTimes(2);
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+
+    // 6. Both post-save refetches resolve -> save settles cleanly and page unlocks
+    await act(async () => {
+      resolveSavePolicyRefresh(savedPolicy);
+      resolveSavePluginsRefresh(updatedPlugins);
+      await savePromise;
+    });
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'success',
+      title: 'admin:moderation.save_success'
+    });
+    const switchesAfterSave = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesAfterSave.every((input) => !input.disabled)).toBe(true);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('still completes a queued policy save and unlocks the page if the preceding plugin activation fails', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: true,
+      hasConfiguredSecrets: true
+    };
+    const keywordPlugin: AdminModerationPluginItemType = {
+      pluginId: 'keyword',
+      source: 'system',
+      name: 'Keyword Moderation',
+      provider: 'keyword',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    const initialPolicy: SystemModerationPolicyType = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu'
+    };
+    mocks.policyData = initialPolicy;
+    mocks.pluginsData = [baiduPlugin, keywordPlugin];
+
+    let rejectActivate!: (reason?: unknown) => void;
+    mocks.saveModerationConfig.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType>((_resolve, reject) => {
+        rejectActivate = reject;
+      })
+    );
+    mocks.updateModerationPolicy.mockResolvedValueOnce(initialPolicy);
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const expandIcon = host.querySelector(
+      '[aria-label="admin:moderation.expand_list"]'
+    ) as HTMLElement;
+    await act(async () => {
+      expandIcon.click();
+    });
+
+    const activateKeywordBtn = host.querySelector(
+      '[data-plugin-activate="keyword"]'
+    ) as HTMLButtonElement;
+    await act(async () => {
+      activateKeywordBtn.click();
+    });
+
+    let savePromise!: Promise<unknown> | void;
+    await act(async () => {
+      savePromise = mocks.lastOnSave?.();
+      await Promise.resolve();
+    });
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+
+    // Reject activation -> queue must recover so the queued save finishes with previous activePluginId
+    await act(async () => {
+      rejectActivate(new Error('probe failed'));
+      await savePromise;
+    });
+
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'error',
+      title: 'probe failed'
+    });
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith(initialPolicy);
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('preserves unsaved policy draft edits when deleting an inactive plugin', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: true,
+      hasConfiguredSecrets: true
+    };
+    const keywordPlugin: AdminModerationPluginItemType = {
+      pluginId: 'keyword',
+      source: 'system',
+      name: 'Keyword Moderation',
+      provider: 'keyword',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    const persistedPolicy: SystemModerationPolicyType = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu',
+      hooks: {
+        ...DefaultSystemModerationPolicy.hooks,
+        userInput: true
+      }
+    };
+    mocks.policyData = persistedPolicy;
+    mocks.pluginsData = [baiduPlugin, keywordPlugin];
+    mocks.deleteModerationPlugin.mockResolvedValueOnce(undefined);
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Make an unsaved draft edit: turn off the userInput moderation hook switch
+    const inputHookCheckbox = host.querySelector(
+      '[data-switch-row="admin:moderation.hook_user_input"] input[type="checkbox"]'
+    ) as HTMLInputElement;
+    expect(inputHookCheckbox.checked).toBe(true);
+    await act(async () => {
+      inputHookCheckbox.click();
+    });
+    expect(inputHookCheckbox.checked).toBe(false);
+
+    // Expand plugin list and delete the inactive keyword plugin
+    const expandIcon = host.querySelector(
+      '[aria-label="admin:moderation.expand_list"]'
+    ) as HTMLElement;
+    await act(async () => {
+      expandIcon.click();
+    });
+
+    mocks.pluginsData = [baiduPlugin];
+    const deleteKeywordBtn = host.querySelector(
+      '[data-plugin-delete="keyword"]'
+    ) as HTMLButtonElement;
+    await act(async () => {
+      deleteKeywordBtn.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.deleteModerationPlugin).toHaveBeenCalledWith({
+      pluginId: 'keyword',
+      source: 'system'
+    });
+    // Server still returns hooks.userInput = true, but the unsaved draft edit (false) must be preserved
+    expect(
+      (
+        host.querySelector(
+          '[data-switch-row="admin:moderation.hook_user_input"] input[type="checkbox"]'
+        ) as HTMLInputElement
+      ).checked
+    ).toBe(false);
+    expect(mocks.lastIsLoading).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('does not show save_success toast when queued save fails active-plugin validation', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: undefined
+    };
+    mocks.pluginsData = [];
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await mocks.lastOnSave?.();
+    });
+
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'error',
+      title: 'admin:moderation.select_plugin_required'
+    });
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'success', title: 'admin:moderation.save_success' })
+    );
 
     await act(async () => {
       root.unmount();

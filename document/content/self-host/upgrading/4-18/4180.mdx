@@ -29,6 +29,8 @@ upgradeTags:
 - 评估任务最大数据行数改为后台「限制与并发」中的 `resource.evaluationMaxRows`，默认 `1000`，不含表头。旧 `EVAL_LINE_LIMIT` 不再读取或迁移，升级后新字段统一默认 `1000`，需要其他值时请在表单中修改；保存后无需重启。
 - 旧 `EVAL_CONCURRENCY` 不迁移，迁移后也不再读取该 ENV；评估任务并发在管理员「资源限制」中设置，未配置时默认 `3`，已有实例配置保持不变。
 - Agent Sandbox 的 CPU 与内存超卖倍数改为实例配置，仅在 OpenSandbox 的 Kubernetes 模式下展示。旧 `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`、`AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` 仅从 App 进程 ENV 由启动迁移一次性导入，Pro 同名 ENV 不参与迁移；已有表单值优先、未配置默认 `1`；迁移后修改 ENV 不再生效。表单修改仅影响后续新建或重建的沙盒。
+- **Agent Sandbox 镜像与运行态升级**：4.18.0 起 OpenSandbox 沙盒持久卷统一挂载至 `/home/sandbox`（工作区 `/home/sandbox/workspace`），归档格式升级为 `.tar.zst`，运行态容器默认启用内置 `fastgpt-ide-agent` 与 `/usr/local/bin/entrypoint.sh`。升级后如存在历史 `sealosdevbox` 实例、旧 `.zip` 归档或旧 `/workspace` 挂载的 OpenSandbox 持久卷，在系统迁移管理页执行 `20261117_migrate_sandbox_to_opensandbox` **之前**，必须先将沙盒运行态镜像（含自定义派生镜像）以及 `fastgpt-agent-volume-manager`、`fastgpt-agent-sandbox-proxy` 同步升级至 `v0.5.0+`；使用旧版镜像会导致迁移临时容器启动失败（原持久卷不会被删除，切换为 `v0.5.0+` 镜像后可直接重试）。详见 [OpenSandbox 配置](/self-host/config/sandbox/opensandbox)。
+- **Volume Manager 日志环境变量变更**：`fastgpt-agent-volume-manager` `v0.5.0+` 改用统一日志框架，不再读取旧版 `VM_LOG_LEVEL`（默认输出 `info` 级别控制台日志）；原有部署若设置了 `VM_LOG_LEVEL=none` 请改为 `LOG_ENABLE_CONSOLE=false`，`VM_LOG_LEVEL=debug` 请改为 `LOG_CONSOLE_LEVEL=debug`，如需 OTel 日志上报可通过 `LOG_ENABLE_OTEL` 与 `LOG_OTEL_*` 配置，详见 [V4.18.0 环境变量说明](/self-host/config/env4180)。
 - 商业版新增模型下架提醒短信模板 `auth.sms.MODEL_DEPRECATION`；当前短信统一使用该中文模板，不按用户语言选择，`auth.sms.MODEL_DEPRECATION_EN` 配置暂不生效。启用短信提醒前需在管理台配置中文模板 ID。
 - **插件服务部署**：Docker Compose 模板补齐 `fastgpt-plugin` 的 `FASTGPT_BASE_URL=http://fastgpt-app:3000`，将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库，并显式设置 `DB_MAX_LINK=100`，避免与主库集合混用；自定义部署应填写插件容器可访问的主服务地址；若插件容器日志出现反向上传文件 `401`，优先核对该地址，修正后重建插件容器并重试工具。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
 - **国内镜像源**。FastGPT 停止向阿里云发布镜像，国内 Docker Compose 模板改用 `ghcr.dockerproxy.net/labring/` 获取 FastGPT 服务镜像。自定义部署如仍引用旧阿里云 FastGPT 镜像，请按 [Docker Compose 部署指南](/self-host/deploy/docker) 更新镜像地址。
@@ -46,7 +48,7 @@ upgradeTags:
 
 ### 升级脚本
 
-本次脚本均为自动执行，无需手动执行。
+以下第 1–7 项为自动执行脚本；第 8–9 项为 Agent Sandbox 存量迁移与遗留清理任务（`manual: true`），需管理员确认前提后在管理后台「版本升级」页面手动触发。
 
 1. 新增 **迁移系统配置**（`20261116_migrate_system_configs`），在启动时自动执行，成功前阻塞 App 业务启动；导入旧配置、补齐缺失字段并加密受管密钥，保留已有管理员值、显式清空、授权与实例身份，原始旧配置数据保留。不符合新保存规则的历史值会保留，日志记录对应字段，升级后可在管理台修正。安全配置损坏时，外链和跨域访问仍受限制。任务采用幂等全量重跑，失败后根据日志修正问题并重启持有租约的节点，待租约过期后自动重试。
 2. 新增 **初始化知识库向量索引**（`20261022_initialize_dataset_vector_indexes`），仅 PostgreSQL 在启动后于后台自动执行，不阻塞业务：先核验并在线删除旧全局 `vector_index`，再分批统计有效知识库并投递索引维护任务。任务成功表示统计与投递完成，实际建图由全局串行队列继续执行；清理或扫描失败时，可在升级管理页修复问题后重试，沿已保存的断点继续，同名但定义不匹配的自建索引会保留并报错。
@@ -55,6 +57,18 @@ upgradeTags:
 5. 新增 **回填 API Key 类型**（`20261104_backfill_openapi_key_type`），自动分批遍历全部密钥，将缺失的 `type` 补为 `personal`，有效 `appId` 统一保存为 BSON ObjectId；保留凭证、归属、额度及默认应用或绑定语义。运行期管理查询只支持已规范化的数据格式；迁移期间或旧实例继续写入的旧格式数据不在查询兼容范围内。首次扫描上界之后的旧格式记录不会自动补迁，需另行规范化。异常数据可在升级管理页修复后重试。
 6. 新增 **模型价格迁移**（`20261120_migrate_model_pricing`），系统配置迁移完成后在后台独立执行。先给旧 STT 模型补齐缺失的 `duration` 计价类型，保留原单价和已配置的 `tokens` 类型。随后在单事务内回填系统 LLM 的 `maxInputTokensK`，最后联合校验。若模型任一旧上限小于 1，旧有限上限按 M Tokens 换算为正整数 K Tokens，其余按 K Tokens 复制。已有新字段的档位跳过，原 `maxInputTokens` 保留供回退读取。回填前旧 LLM 模型按首档计费，单价按每百万 Tokens 结算。回退兼容范围为未被新版改写的阶梯。异常可在升级管理页查看，修复后重试。
 7. 新增 **清理废弃 MongoDB 索引**（`20261123_cleanup_mongo_indexes`），启动后独立在后台执行。任务只删除清单中名称、键和选项均匹配的旧索引，保留定义不同的自建索引。若替代索引在默认 30 分钟内仍未就绪，任务保留对应旧索引并记录失败，可在修复后从升级管理页重试。`MONGO_DEPRECATE_INDEX` 默认开启，设为 `false` 或 `0` 时只检查并记录尚待清理的条目。
+8. 新增 **迁移存量沙盒到 OpenSandbox (.tar.zst)**（`20261117_migrate_sandbox_to_opensandbox`，**手动执行**）：4.18.0 改用 MongoDB `agent_sandbox_instances_v3` 与 S3 `sandbox/archive-v2/`（`.tar.zst`）。仅重启不会自动执行该任务；凡存在未迁入 `v3` 的活跃 `agent_sandbox_instances_v2` 记录（`sealosdevbox`、旧 `sandbox/archive/*/package.zip` 或旧 `/workspace` 持久卷），运行期访问将返回 `agentSandboxMigrationInProgress`（`409`）；无存量或仅剩软删除源孤儿记录时触发即快速跳过。**切换顺序（不支持 4.17.x 与 4.18.0 混跑）**：
+   1. **先下线全部 4.17.x App 与 Pro 节点**：4.18.0 发布 Skill 会写入 `.tar.zst` 并更新当前版本指针，在线的 4.17.x 仍按 ZIP 解压会直接失败；
+   2. **升级沙盒配套组件至 `v0.5.0+`**：同步升级 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`（含自定义派生镜像）、`fastgpt-agent-volume-manager`、`fastgpt-agent-sandbox-proxy` 至 `v0.5.0+`，OpenSandbox 升至 `release-1.2.1`。存在活跃 `sealosdevbox` 时，保留 `AGENT_SANDBOX_SEALOS_BASEURL`、`AGENT_SANDBOX_SEALOS_TOKEN`（及自定义 `AGENT_SANDBOX_SEALOS_WORK_DIRECTORY`）直至迁移和清理完成；
+   3. **启动 4.18.0 服务**并等待第 1 项启动迁移放行；
+   4. **在管理后台「版本升级」手动执行本任务**：只读读取 `v2`，依次完成 `runningDevbox` → `stoppedDevbox` → `legacyArchives` → `validation` 并写入 `v3` 与 `sandbox/archive-v2/`，全程不修改或删除 `v2` 记录、远端 Devbox（保持 `pause`）、旧 `/workspace` 卷及旧 `package.zip`；失败可修复后沿断点重试。
+
+   **迁移后验证**：确认任务「已完成」且无未解决失败记录后，抽检已有 Agent 会话与 Skill 编辑页的冷恢复、文件读写、终端/预览连接及 Skill 发布（兼容转码读取旧 `.zip` 技能包）。
+
+9. 新增 **清理历史沙盒遗留资源**（`20261117_cleanup_legacy_sandbox_resources`，**手动执行，依赖第 8 项**）：前置校验 `v2` 无活跃未迁移记录后才放行；须在 4.18.0 验证稳定后手动触发（回收 Devbox 前保留 Sealos ENV，完成后可移除）。任务会在逐一核验活跃沙盒在 `sandbox/archive-v2/` 的目标 `.tar.zst` 真实存在后，幂等删除远端历史 Devbox、旧 `/workspace` 持久卷、旧 `sandbox/archive/*/package.zip` 及遗留 `agent_sandbox_instances_v2` 记录（含软删除源的 `v2` 孤儿与 `deleting` 残留行）。**回滚边界**：
+   - **沙盒层回滚**：执行第 9 项前，旧 `v2` 记录、Devbox、旧 `/workspace` 卷与旧 `package.zip` 均原样保留，**无需恢复 PVC 快照或沙盒 S3 归档**。共用 OpenSandbox 控制面时，4.17.5 会按 `sessionId` 查找并直接连接或唤醒（`resume`）`Running` / `Paused` 实例，因此**停用 4.18.0 App/Pro 后、恢复 4.17.x 流量前**，必须按 `agent_sandbox_instances_v3` 中的远端实例 ID **终止/删除**对应 4.18.0 试运行沙盒（**不可仅 Pause**；新版外置 PVC 已设 `deleteOnSandboxTermination: false`，终止不会删卷与归档），并确认按该 `sessionId` 已查不到可恢复实例（或使用隔离的 OpenSandbox 控制面试运行）；随后将沙盒组件切回 `v0.4.x` 并启动 4.17.x，抽检升级前曾运行且在 4.18.0 验证过冷恢复的沙盒，确认回连原 `/workspace` 卷与 Devbox（试运行新建的带随机后缀 `v3` PVC 与旧卷隔离，放弃升级后可按需清理）。
+   - **整站回滚边界**：因 4.18.0 含模型计价、API Key 规范化等非向后兼容迁移，且新发布的 `.tar.zst` Skill 无法被 4.17.x 读取，整站回滚至 4.17.x 仍需恢复升级前数据库备份（若删除过非沙盒 S3 资产或发布了 `.tar.zst` Skill，另需恢复升级前 S3 备份）。
+   - **不可逆点**：执行第 9 项后，历史 Devbox、旧 `/workspace` 卷、旧 `package.zip` 与 `v2` 记录将被永久删除，不可撤销。
 
 ### 兼容说明
 
@@ -93,6 +107,7 @@ upgradeTags:
 
 - **工作流 CLI 脚本**：从源码使用 `@fastgpt/workflow-cli` 的脚本需切换到 `@fastgpt/cli`，将原构建命令的 `fastgpt-workflow` 替换为 `fastgpt workflow-build`。原先离线初始化的脚本需加 `--offline`；解析 JSON 输出的脚本需适配 `fastgpt-cli-result/v1`，成功结果改从 `data` 读取。全局变量 `key` 创建后不可修改，移除 CLI 的 `--new-key` 与 `variable.update` 的 `patch.key`；修改展示名请改用 `label`。
 - **插件安装接口**：调用系统插件安装接口的脚本需处理全部失败时的 HTTP `500`。团队插件批量安装部分成功时返回 HTTP `200`，失败项改从 `data.failed` 读取，全部失败时从 `message` 读取错误说明。
+- **Skill 运行态接口移除**：4.18.0 起移除 4.17.x 发布的 `POST /api/core/ai/skill/runtime/getStatus` 与 `POST /api/core/ai/skill/runtime/upgrade`（对应 OpenAPI 定义及 API Key 入口同步下线，继续调用返回 `404`）。外部调用方与自动化脚本不再需要先查询状态或单独触发升级，改为直接调用 `POST /api/core/ai/skill/runtime/init`（SSE），由新版后端自动处理冷恢复、同持久卷静默换镜像与激活就绪；若对应存量沙盒尚未完成 4.18.0 迁移，该接口会通过 SSE 错误事件返回 `agentSandboxMigrationInProgress`（409 语义）。升级期间已提前打开的 4.17.x 浏览器 Skill 编辑页在后端切换后会因请求已移除的 `/getStatus` 返回 `404` 而进入失败态，需刷新页面加载 4.18.0 前端后再重试初始化。
 
 ## 🚀 新增内容
 

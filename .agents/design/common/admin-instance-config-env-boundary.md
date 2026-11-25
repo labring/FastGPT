@@ -170,7 +170,7 @@ config.resource
 | Code Sandbox 开关、地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN`（仅迁移读取） | `config.subservice.codeSandbox.enabled/url/token` | Token 是敏感字段 | 无旧配置时默认关闭；启用且地址、Token 完整时才提供相关业务入口，管理页可测试连通性。Sandbox 进程自身的监听认证仍由进程 ENV 配置 |
 | MCP SSE 服务开关和代理地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT`（仅迁移读取） | `config.subservice.mcp.enabled/sseProxyUrl` | 否 | 无旧配置时默认关闭；关闭或地址缺失时隐藏 SSE 发布入口 |
 | AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 两项均有效才使用代理；缺一时不使用代理，无管理页或实例配置开关 |
-| Agent Sandbox Provider 与参数 | `AGENT_SANDBOX_PROVIDER`、各 `AGENT_SANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的 Provider、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置；独立 Sandbox 进程自身的启动参数见第 5 节 |
+| Agent Sandbox 开关与参数 | `AGENT_SANDBOX_*`、`AGENT_SANDBOX_OPENSANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的启用开关、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置（`AGENT_SANDBOX_PROVIDER` 已下线且不再读取）；独立 Sandbox 进程自身的启动参数见第 5 节 |
 | Agent Sandbox 代理配置 | `AGENT_SANDBOX_PROXY_SECRET/URL/PREVIEW_PROXY_URL`（仅一次性迁移） | `config.subservice.agentSandbox.proxy` | 密钥为 secret 字段 | 主站页面统一维护三项；独立 Rust Proxy 的部署密钥须与页面一致 |
 | PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 加密存储，UI/API 仅显示已配置状态 |
 | Sangfor 文档解析和智能分块 | `DOCUMENT_PARSE_PROVIDER`、`SANGFOR_*`、`CUSTOM_PDF_PARSE_URL/KEY` | `config.providers.documentParse` / `config.providers.chunk` | Key 是敏感字段 | 当前 Sangfor 复用 `CUSTOM_PDF_PARSE_URL/KEY` 作为服务地址和 Bearer Token，迁移时需要兼容复制，详见第 10 章 |
@@ -627,19 +627,16 @@ config.performance.workflow.parallelMaxConcurrency
 | `CODE_SANDBOX_URL` | `config.subservice.codeSandbox.url` | 仅一次性迁移读取；缺省值为空，不再作为运行时来源 |
 | `CODE_SANDBOX_TOKEN` | `config.subservice.codeSandbox.token` | 仅一次性迁移读取；`secret: true` |
 | `SSE_MCP_SERVER_PROXY_ENDPOINT` | `config.subservice.mcp.sseProxyUrl` | 仅旧配置兼容迁移读取；主站运行时只读实例配置 |
-| `AGENT_SANDBOX_PROVIDER` | `config.subservice.agentSandbox.provider` | 空值转换为 `none` |
-| `AGENT_SANDBOX_SEALOS_BASEURL` | `config.subservice.agentSandbox.sealosdevbox.baseUrl` | Provider 依赖字段 |
-| `AGENT_SANDBOX_SEALOS_TOKEN` | `config.subservice.agentSandbox.sealosdevbox.token` | `secret: true` |
-| `AGENT_SANDBOX_SEALOS_WORK_DIRECTORY` | `config.subservice.agentSandbox.sealosdevbox.workDirectory` | 工作目录 |
-| `AGENT_SANDBOX_SEALOS_IMAGE` | `config.subservice.agentSandbox.sealosdevbox.image` | 镜像 |
-| `AGENT_SANDBOX_OPENSANDBOX_BASEURL` | `config.subservice.agentSandbox.opensandbox.baseUrl` | Provider 依赖字段 |
+| `AGENT_SANDBOX_OPENSANDBOX_BASEURL` | `config.subservice.agentSandbox.opensandbox.baseUrl` | 非空且代理配置完整时迁移启用 `agentSandbox.enabled = true` |
 | `AGENT_SANDBOX_OPENSANDBOX_API_KEY` | `config.subservice.agentSandbox.opensandbox.apiKey` | `secret: true` |
 | `AGENT_SANDBOX_OPENSANDBOX_RUNTIME` | `config.subservice.agentSandbox.opensandbox.runtime` | `docker` 或 `kubernetes` |
 | `AGENT_SANDBOX_OPENSANDBOX_IMAGE` | `config.subservice.agentSandbox.opensandbox.image` | 镜像 |
-| `AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY` | `config.subservice.agentSandbox.opensandbox.useServerProxy` | OpenSandbox 网络策略 |
-| `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` | `config.subservice.agentSandbox.opensandbox.volumeManagerUrl` | Provider 依赖字段 |
+| `AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY` | `config.subservice.agentSandbox.opensandbox.useServerProxy` | OpenSandbox 服务端数据面代理模式 |
+| `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` | `config.subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器服务地址 |
 | `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` | `config.subservice.agentSandbox.opensandbox.volumeManagerToken` | `secret: true` |
 | `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` | `config.subservice.agentSandbox.opensandbox.volumeNamePrefix` | 持久卷名称前缀 |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` | `config.subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | 仅 Kubernetes 生效，CPU 超卖倍数（仅迁移读取 App ENV） |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `config.subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 仅 Kubernetes 生效，内存超卖倍数（仅迁移读取 App ENV） |
 | `AGENT_SANDBOX_CPU_COUNT` | `config.subservice.agentSandbox.common.cpuCount` | 公共资源参数 |
 | `AGENT_SANDBOX_MEMORY_MIB` | `config.subservice.agentSandbox.common.memoryMiB` | 公共资源参数 |
 | `AGENT_SANDBOX_STORAGE_SIZE_GI` | `config.subservice.agentSandbox.common.storageSizeGi` | 公共资源参数 |
@@ -837,12 +834,28 @@ RUST_LOG
 
 ```text
 FASTGPT_WORKDIR
+FASTGPT_RUNTIME_DIR
 FASTGPT_IDE_MAX_FILE_BYTES
 FASTGPT_IDE_WS_MAX_MESSAGE_BYTES
 FASTGPT_IDE_WS_MAX_FRAME_BYTES
 ```
 
-这些变量决定独立 IDE Agent 的工作目录、文件上限和 WebSocket 限制，暂不纳入主站配置中心。
+这些变量决定独立 IDE Agent 的工作目录、运行时口令/状态目录、文件上限和 WebSocket 限制，暂不纳入主站配置中心。
+
+#### Volume Manager
+
+```text
+PORT
+VM_AUTH_TOKEN
+VM_RUNTIME
+VM_DOCKER_SOCKET
+VM_DOCKER_API_VERSION
+VM_K8S_NAMESPACE
+VM_K8S_PVC_STORAGE_CLASS
+VM_LOG_LEVEL
+```
+
+这些变量控制持久卷管理微服务自身的监听端口、鉴权 Token（须与主站页面 `volumeManagerToken` 一致）及 Docker / Kubernetes 驱动参数，暂不纳入主站配置中心。
 
 ### 10.4 Worker 迁移注意事项
 
@@ -914,7 +927,6 @@ system_instance_configs 不存在
 
 - URL 类空值写成 `''`；
 - `DOCUMENT_PARSE_PROVIDER` 空值写成 `none`；
-- `AGENT_SANDBOX_PROVIDER` 空值写成 `none`；
 - `PASSWORD_EXPIRED_MONTH`、`CHAT_LOG_INTERVAL` 未配置写成 `null`；
 - `ALLOWED_ORIGINS` 未配置写成 `[]`，配置后按逗号和空白拆分；
 - `SANGFOR_CHUNK_URL`、`CRM_API_URL` 有效时才启用对应 Provider；AI Proxy 独立读取 ENV，地址与 Token 均有效时才使用代理；
@@ -1072,7 +1084,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **204 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **200 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1261,7 +1273,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.provider` | 当前沙箱 Provider | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.enabled` | 启用 Agent Sandbox，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.storageSizeGi` | 存储卷大小 (Gi) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
@@ -1272,16 +1284,12 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `subservice.agentSandbox.common.npmRegistry` | npm Registry 源 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.pypiIndexUrl` | PyPI 镜像源地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.aptMirror` | APT 镜像源地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.baseUrl` | Sealos Devbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.workDirectory` | 工作空间工作目录 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |

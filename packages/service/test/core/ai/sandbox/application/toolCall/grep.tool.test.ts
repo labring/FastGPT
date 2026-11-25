@@ -106,4 +106,23 @@ describe('sandboxGrepTool', () => {
       'a.ts:1: hit\n\n[1 matches limit reached. Use limit=2 for more, or refine pattern]'
     );
   });
+
+  it('forwards AbortSignal to sandbox exec', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+
+    await sandboxGrepTool.execute({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      userId: 'user',
+      chatId: 'chat',
+      sandboxInstance: sandbox,
+      params: { pattern: 'hit' },
+      signal: controller.signal
+    });
+
+    expect(sandbox.exec).toHaveBeenCalledWith(expect.stringContaining("'--' 'hit' '.'"), {
+      signal: controller.signal
+    });
+  });
 });

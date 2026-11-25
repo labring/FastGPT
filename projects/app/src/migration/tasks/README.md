@@ -10,6 +10,8 @@
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
 | `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
+| `20261117_migrate_sandbox_to_opensandbox` | 手动触发 | 存量 Sealos Devbox、旧 OpenSandbox 持久卷与 `.zip` 流式转码迁移至 OpenSandbox `.tar.zst` |
+| `20261117_cleanup_legacy_sandbox_resources` | 手动触发 | 核验并清理历史 Sealos Devbox、旧持久卷与旧 `.zip` 遗留资源 |
 
 ## 废弃 MongoDB 索引按版本清理约定
 
@@ -49,3 +51,7 @@ Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照�
 `system_instance_configs` 共 17 个 scope：上述 11 个业务域，以及 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐保存为 `commercial.subPlans`，与商业配置共用 revision；`operations` 包含 systemMsgModal、operationalAd、activityAd 三个子对象，局部保存不会覆盖其他子项。license 保持独立，proEnv 仍只由 ENV 发布。
 
 合并迁移优先保留新目标，其次读取开发期旧 `system_instance_configs` scope，最后读取旧 `systemconfigs`；诊断配置约束后，在同一事务中迁入、复验承接结果并删除四个开发期旧 scope，保留原始 `systemconfigs` 作为迁移来源。配置更新只轮询 `domain/_id/revision`，不保留配置 Change Stream 监听。
+
+## 前置依赖（沙盒手动迁移任务）
+
+`dependsOn` 是成功前提，不是额外的执行模式。当前 4.18.0 注册表中仅手动清理任务 `20261117_cleanup_legacy_sandbox_resources` 显式声明 `dependsOn: ['20261117_migrate_sandbox_to_opensandbox']`，确保仅在存量沙盒全部迁入 `.tar.zst` 后才允许执行历史资源清理；其余任务均未声明前置依赖。

@@ -228,4 +228,50 @@ describe('PluginItemRow delete confirmation', () => {
       root.unmount();
     });
   });
+
+  it('blocks activate, edit, delete, and PopoverConfirm when isDisabled is true', async () => {
+    const onActivate = vi.fn();
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        React.createElement(PluginItemRow, {
+          plugin: basePlugin,
+          isActive: false,
+          isModerationEnabled: true,
+          isLastPlugin: false,
+          isDisabled: true,
+          onActivate,
+          onEdit,
+          onDelete
+        })
+      );
+    });
+
+    expect(mocks.popoverConfirmRendered).toBe(0);
+    const enableBtn = Array.from(host.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'admin:moderation.enable'
+    ) as HTMLButtonElement;
+    const editBtn = host.querySelector('button[data-icon="common/setting"]') as HTMLButtonElement;
+    const trashBtn = host.querySelector('button[data-icon="common/trash"]') as HTMLButtonElement;
+    expect(enableBtn.disabled).toBe(true);
+
+    await act(async () => {
+      enableBtn.click();
+      editBtn.click();
+      trashBtn.click();
+    });
+
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
 });

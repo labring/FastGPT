@@ -1,5 +1,7 @@
 import type {
   SandboxDownloadBody,
+  SandboxExtractZipBody,
+  SandboxExtractZipResponse,
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
   SandboxGetTicketBody,
@@ -26,6 +28,7 @@ type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
 type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
 type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
+type SandboxExtractZipClientBody = SandboxClientBody<SandboxExtractZipBody>;
 type SandboxUploadClientQuery = SandboxClientBody<SandboxUploadQuery>;
 
 /**
@@ -105,6 +108,12 @@ export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
 
 export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
   POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));
+
+/**
+ * 解压沙盒会话工作区内的 .zip 文件到不冲突的同名目录
+ */
+export const extractSandboxZip = async (data: SandboxExtractZipClientBody) =>
+  POST<SandboxExtractZipResponse>('/core/ai/sandbox/extractZip', normalizeSandboxRequest(data));
 
 /**
  * 将文件作为原始请求体流式写入 sandbox，避免 WebSocket base64 和主站临时文件。

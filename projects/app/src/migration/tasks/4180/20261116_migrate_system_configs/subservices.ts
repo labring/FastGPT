@@ -1,5 +1,9 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
+import {
+  agentSandboxProxyEnvKeys,
+  readMigrationDomainConfig,
+  readMigrationConfigValue
+} from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -140,12 +144,6 @@ export const verifyRehomedSubserviceConnections = async () => {
   }
 };
 
-const proxyEnvKeys = {
-  wsUrl: 'AGENT_SANDBOX_PROXY_URL',
-  previewUrl: 'AGENT_SANDBOX_PREVIEW_PROXY_URL',
-  secret: 'AGENT_SANDBOX_PROXY_SECRET'
-} as const;
-
 /**
  * 单域文档采用幂等全量重跑和 revision CAS，一次性迁入主服务的代理连接配置。
  * 已有叶子与显式默认标记优先；持久化空值防止重跑复活已清空的旧 ENV，不删除旧来源。
@@ -184,7 +182,7 @@ export const rehomeAgentSandboxProxy = async ({
     }
     const previous = overrides.agentSandbox?.proxy ?? {};
     const proxy = Object.fromEntries(
-      Object.entries(proxyEnvKeys).map(([key, envKey]) => [
+      Object.entries(agentSandboxProxyEnvKeys).map(([key, envKey]) => [
         key,
         Object.hasOwn(previous, key)
           ? previous[key]
@@ -249,7 +247,7 @@ export const verifyAgentSandboxProxyMigration = async () => {
       Array.isArray(doc.overrides.agentSandbox.proxy))
   )
     return;
-  for (const key of Object.keys(proxyEnvKeys)) {
+  for (const key of Object.keys(agentSandboxProxyEnvKeys)) {
     if (
       !Object.hasOwn(doc.overrides?.agentSandbox?.proxy ?? {}, key) &&
       !doc.explicitDefaultPaths?.includes(`agentSandbox.proxy.${key}`)

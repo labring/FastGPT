@@ -28,6 +28,7 @@ const isProviderImageFilePath = (filePath: string) => {
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
+  skipEnsureAvailable: true,
   execute: async ({ sandboxInstance, params }) => {
     if (params.paths.length === 0) {
       return { response: '[]' };
@@ -42,16 +43,12 @@ export const sandboxGetFileUrlTool = defineTool({
 
     await sandboxInstance.ensureAvailable();
 
-    const files = params.paths.map((inputPath) => {
-      const filePath = sandboxInstance.resolveRuntimePath(inputPath, {
-        allowAbsolutePath: true
-      });
-      return {
-        filePath,
-        ...resolveSandboxPreviewPath(filePath)
-      };
-    });
-    const fileInfoMap = await sandboxInstance.provider.getFileInfo(
+    const files = params.paths.map((inputPath) =>
+      resolveSandboxPreviewPath(
+        sandboxInstance.resolveRuntimePath(inputPath, { allowAbsolutePath: true })
+      )
+    );
+    const fileInfoMap = await sandboxInstance.opensandbox.getFileInfo(
       files.map(({ providerPath }) => providerPath)
     );
     for (const { providerPath } of files) {
@@ -68,10 +65,10 @@ export const sandboxGetFileUrlTool = defineTool({
       userId,
       chatId
     });
-    const result = files.map(({ filePath, relativePath }) => ({
+    const result = files.map(({ relativePath }) => ({
       fileUrl: buildSandboxPreviewFileUrl({
         sessionId,
-        filePath
+        relativePath
       }),
       filename: path.posix.basename(relativePath)
     }));

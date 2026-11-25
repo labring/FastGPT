@@ -7,12 +7,12 @@ import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
 import {
-  runAgentSandboxEntrypoint,
-  withAgentSandboxInitLease
-} from '../../../../ai/sandbox/application/runtime/entrypoint';
+  buildSandboxInputFileScopeKey,
+  getSandboxInputFileNameAllocation
+} from '../../../../ai/sandbox/utils';
+import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
+import { withAgentSandboxLease } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
@@ -85,13 +85,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         teamId: sandboxContext.teamId
       })
     : undefined;
-  if (!isAppChat && useAgentSandbox) {
-    await assertSandboxAvailable(sandboxContext.teamId);
-  }
-
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
+    if (!isAppChat && useAgentSandbox) {
+      await assertSandboxAvailable(sandboxContext.teamId);
+    }
     const toolModel = await loadWorkflowModelResource({
       appTeamId: runningAppInfo.teamId,
       userInfo: runningUserInfo,
@@ -155,6 +154,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     // 初始化沙盒
+    const workflowSandboxContext = getWorkflowContext().sandboxContext;
+    const inputFileAllocation = workflowSandboxContext
+      ? getSandboxInputFileNameAllocation({
+          scopeKey: buildSandboxInputFileScopeKey(workflowSandboxContext),
+          contextOwner: workflowSandboxContext
+        })
+      : undefined;
     const sandboxClient = useSandbox
       ? await ensureWorkflowSandboxReadyForUse({
           sourceType: sandboxSourceType,
@@ -162,15 +168,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           userId: sandboxContext.userId,
           chatId: sandboxContext.chatId,
           teamId: sandboxContext.teamId,
-          prepareRuntime: () =>
-            withAgentSandboxInitLease({
+          prepareRuntime: ({ onUpgrade, onUpgradeComplete }) =>
+            withAgentSandboxLease({
               sandboxId: getRunningSandboxId({
                 sourceType: sandboxSourceType,
                 sourceId: sandboxSourceId,
                 userId: sandboxContext.userId
               }),
-              fn: async () => {
-                const runtime = await prepareSandboxToolRuntime({
+              fn: async (lease) => {
+                lease?.assertValid();
+                return await prepareSandboxToolRuntime({
                   sourceType: sandboxSourceType,
                   sourceId: sandboxSourceId,
                   userId: sandboxContext.userId,
@@ -179,18 +186,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
                   files: currentInputFiles.map((file) => ({
                     path: file.sandboxPath!,
                     url: file.url
-                  }))
+                  })),
+                  allocation: inputFileAllocation,
+                  sandboxEntrypoint,
+                  sandboxEntrypointScope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
+                  onUpgrade,
+                  onUpgradeComplete
                 });
-                const effectiveEntrypoint = sandboxEntrypoint?.trim();
-                if (effectiveEntrypoint) {
-                  await runAgentSandboxEntrypoint({
-                    sandbox: runtime.provider,
-                    sandboxEntrypoint: effectiveEntrypoint,
-                    scope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
-                    workDirectory: getSandboxRuntimeProfile().workDirectory
-                  });
-                }
-                return runtime;
               }
             })
         })

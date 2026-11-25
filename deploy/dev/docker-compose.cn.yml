@@ -308,7 +308,7 @@ services:
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:release-1.2.1
     container_name: fastgpt-opensandbox-server
     restart: always
     ports:
@@ -339,7 +339,7 @@ services:
 
   # 浏览器与 OpenSandbox 之间的 WebSocket 鉴权代理
   fastgpt-agent-sandbox-proxy:
-    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy:v0.5.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     ports:
@@ -362,20 +362,20 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.5.0
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.1
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.1
     profiles:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
-    image: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager:v0.5.0
     container_name: fastgpt-volume-manager
     restart: always
     ports:
@@ -473,10 +473,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.1"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.1"
       mode = "dns+nft"
       disable_ipv6 = true
 

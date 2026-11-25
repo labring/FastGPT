@@ -1,6 +1,5 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -36,10 +35,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', async (importOri
   resolveSandboxPreviewPath: mocks.resolveSandboxPreviewPath
 }));
 
-import handler from '@/pages/api/core/ai/sandbox/getHtmlPreviewLink';
+import apiHandler from '@/pages/api/core/ai/sandbox/getHtmlPreviewLink';
 import { SandboxPreviewSessionLimitError } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
-const mockJsonRes = vi.mocked(jsonRes);
+const handler = apiHandler as (
+  req: Parameters<typeof apiHandler>[0]
+) => ReturnType<typeof apiHandler>;
 const sandboxId = 'app-0123456789abcdef';
 
 const createReq = (filePath = 'dist/index.html') =>
@@ -50,12 +51,6 @@ const createReq = (filePath = 'dist/index.html') =>
       filePath
     }
   }) as any;
-
-const createRes = () => {
-  const res = { status: vi.fn(), json: vi.fn() };
-  res.status.mockReturnValue(res);
-  return res as any;
-};
 
 describe('sandbox getHtmlPreviewLink API', () => {
   beforeEach(() => {
@@ -82,12 +77,13 @@ describe('sandbox getHtmlPreviewLink API', () => {
     );
     mocks.getSandboxClient.mockResolvedValue({
       resolveRuntimePath: mocks.resolveRuntimePath,
-      provider: { getFileInfo: mocks.getFileInfo }
+      runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+      opensandbox: { getFileInfo: mocks.getFileInfo }
     });
-    mocks.resolveSandboxPreviewPath.mockReturnValue({
-      providerPath: '/workspace/sessions/chat-1/dist/index.html',
-      relativePath: 'sessions/chat-1/dist/index.html'
-    });
+    mocks.resolveSandboxPreviewPath.mockImplementation((runtimePath: string) => ({
+      providerPath: runtimePath,
+      relativePath: runtimePath.replace(/^\/workspace\//, '')
+    }));
     mocks.createSandboxPreviewFileUrl.mockResolvedValue(
       'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
     );
@@ -95,9 +91,8 @@ describe('sandbox getHtmlPreviewLink API', () => {
 
   it('returns a direct proxy URL without reading or uploading the HTML file', async () => {
     const req = createReq();
-    const res = createRes();
 
-    await handler(req, res);
+    const result = await handler(req);
 
     expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith({
       req,
@@ -122,11 +117,11 @@ describe('sandbox getHtmlPreviewLink API', () => {
         userId: 'user-1',
         chatId: 'chat-1'
       },
-      filePath: '/workspace/sessions/chat-1/dist/index.html'
+      relativePath: 'sessions/chat-1/dist/index.html'
     });
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      data: 'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
-    });
+    expect(result).toBe(
+      'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
+    );
   });
 
   it.each([
@@ -165,7 +160,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
         chatId: 'chat-1'
       };
       mocks.buildSandboxClientQueryFromChatSource.mockReturnValueOnce(query);
-      await handler(req, createRes());
+      await handler(req);
       expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith(
         expect.objectContaining({
           sourceType,
@@ -181,7 +176,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       expect(mocks.getSandboxClient).toHaveBeenCalledExactlyOnceWith(query);
       expect(mocks.createSandboxPreviewFileUrl).toHaveBeenCalledWith({
         context: query,
-        filePath: '/workspace/sessions/chat-1/dist/index.html'
+        relativePath: 'sessions/chat-1/dist/index.html'
       });
     }
   );
@@ -189,7 +184,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
   it('does not access a sandbox or issue a token when authorization fails', async () => {
     const error = new Error('unAuthChat');
     mocks.authSandboxRuntimeSession.mockRejectedValueOnce(error);
-    await expect(handler(createReq(), createRes())).rejects.toBe(error);
+    await expect(handler(createReq())).rejects.toBe(error);
     expect(mocks.buildSandboxClientQueryFromChatSource).not.toHaveBeenCalled();
     expect(mocks.getSandboxClient).not.toHaveBeenCalled();
     expect(mocks.getFileInfo).not.toHaveBeenCalled();
@@ -197,33 +192,27 @@ describe('sandbox getHtmlPreviewLink API', () => {
   });
 
   it('rejects missing files, directories and non-HTML file extensions', async () => {
-    const missingRes = createRes();
     mocks.getFileInfo.mockResolvedValueOnce(new Map());
-    await handler(createReq(), missingRes);
-    expect(mockJsonRes).toHaveBeenNthCalledWith(1, missingRes, {
-      code: 400,
+    await expect(handler(createReq())).rejects.toMatchObject({
+      statusCode: 400,
       message: 'HTML file does not exist'
     });
 
-    const directoryRes = createRes();
     mocks.getFileInfo.mockResolvedValueOnce(
       new Map([['/workspace/sessions/chat-1/dist/index.html', { isDirectory: true }]])
     );
-    await handler(createReq(), directoryRes);
-    expect(mockJsonRes).toHaveBeenNthCalledWith(2, directoryRes, {
-      code: 400,
+    await expect(handler(createReq())).rejects.toMatchObject({
+      statusCode: 400,
       message: 'HTML file does not exist'
     });
 
-    const textRes = createRes();
     mocks.getFileInfo.mockResolvedValueOnce(
       new Map([
         ['/workspace/sessions/chat-1/dist/readme.txt', { isDirectory: false, isFile: true }]
       ])
     );
-    await handler(createReq('dist/readme.txt'), textRes);
-    expect(mockJsonRes).toHaveBeenNthCalledWith(3, textRes, {
-      code: 400,
+    await expect(handler(createReq('dist/readme.txt'))).rejects.toMatchObject({
+      statusCode: 400,
       message: 'File is not an HTML file'
     });
     expect(mocks.createSandboxPreviewFileUrl).not.toHaveBeenCalled();
@@ -231,12 +220,9 @@ describe('sandbox getHtmlPreviewLink API', () => {
 
   it('returns 429 when the sandbox already has 500 active preview sessions', async () => {
     mocks.createSandboxPreviewFileUrl.mockRejectedValueOnce(new SandboxPreviewSessionLimitError());
-    const res = createRes();
 
-    await handler(createReq(), res);
-
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 429,
+    await expect(handler(createReq())).rejects.toMatchObject({
+      statusCode: 429,
       message: 'Too many active preview links for this sandbox'
     });
   });
