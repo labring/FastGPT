@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { AiChatQuoteRole } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { getDatasetCiteData } from '@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite';
 import { serviceEnv } from '@fastgpt/service/env';
 
@@ -99,5 +100,20 @@ describe('dataset citation synonym compatibility', () => {
       (await run({ quoteQA, quoteTemplate: xmlTemplate, datasetQuotePrompt: '{{quote}}' }))
         .userInput
     ).toBe('<Question>\nalias\n</Question>');
+  });
+
+  it('defaults quote role to user in template and runtime fallback so system prompt stays cacheable', async () => {
+    expect(AiChatQuoteRole.value).toBe('user');
+
+    const result = await getDatasetCiteData({
+      quoteQA: [item],
+      model: { config: { quoteMaxToken: 1000 } } as LLMModelDataType,
+      quoteTemplate: '{{q}}',
+      userChatInput: 'question',
+      useDatasetQuote: true
+    });
+    expect(result.systemPrompt).toBe('');
+    expect(result.userInput).toContain('alias');
+    expect(result.userInput).toContain('question');
   });
 });

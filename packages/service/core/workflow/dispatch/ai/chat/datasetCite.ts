@@ -14,7 +14,7 @@ export const getDatasetCiteData = async ({
   quoteQA = [],
   model,
   quoteTemplate,
-  aiChatQuoteRole,
+  aiChatQuoteRole = 'user',
   datasetQuotePrompt = '',
   userChatInput,
   version,
@@ -25,7 +25,7 @@ export const getDatasetCiteData = async ({
   quoteTemplate: string;
 
   userChatInput: string;
-  aiChatQuoteRole: AiChatQuoteRoleType;
+  aiChatQuoteRole?: AiChatQuoteRoleType;
   datasetQuotePrompt?: string;
   version?: string;
   useDatasetQuote: boolean;
