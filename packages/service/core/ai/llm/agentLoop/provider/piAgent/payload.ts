@@ -66,7 +66,7 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
       : undefined;
 
   // pi-ai 会按内置白名单将 xhigh 降级为 high，并在 thinkingLevel='off' 时省略 reasoning_effort；
-  // 在最终出站层以模型实际能力声明为准同步 reasoning_effort，确保 xhigh/none 及回退档位与协议一致。
+  // 按 pi-ai 已生成的端点协议字段原地同步最终思考档位，避免 OpenRouter 等协议出现双字段冲突。
   const resolvedReasoningEffort = resolvePiReasoningEffort(
     modelData,
     runtime.llmParams.reasoningEffort
@@ -82,7 +82,26 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
     ...(stop?.length ? { stop } : {}),
     ...(responseFormat ? { response_format: responseFormat } : {})
   };
-  if (resolvedReasoningEffort) {
+  if (
+    'reasoning' in nextPayload &&
+    nextPayload.reasoning &&
+    typeof nextPayload.reasoning === 'object' &&
+    !Array.isArray(nextPayload.reasoning)
+  ) {
+    if (resolvedReasoningEffort) {
+      nextPayload.reasoning = { ...nextPayload.reasoning, effort: resolvedReasoningEffort };
+    } else {
+      delete nextPayload.reasoning;
+    }
+    delete nextPayload.reasoning_effort;
+  } else if ('enable_thinking' in nextPayload) {
+    if (resolvedReasoningEffort) {
+      nextPayload.enable_thinking = resolvedReasoningEffort !== 'none';
+    } else {
+      delete nextPayload.enable_thinking;
+    }
+    delete nextPayload.reasoning_effort;
+  } else if (resolvedReasoningEffort) {
     nextPayload.reasoning_effort = resolvedReasoningEffort;
   } else {
     delete nextPayload.reasoning_effort;

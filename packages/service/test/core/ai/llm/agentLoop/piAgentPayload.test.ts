@@ -154,10 +154,12 @@ describe('mergePiAgentPayload', () => {
 
     const captureWireRequestBody = async ({
       model,
-      reasoningEffort
+      reasoningEffort,
+      baseUrl = 'https://proxy.example.com/v1'
     }: {
       model: Record<string, any>;
       reasoningEffort?: any;
+      baseUrl?: string;
     }) => {
       let capturedBody: Record<string, unknown> | undefined;
       vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (_input, init) => {
@@ -170,7 +172,7 @@ describe('mergePiAgentPayload', () => {
 
       const piModel = buildPiModel(model as any, false, {
         key: 'test-key',
-        baseUrl: 'https://proxy.example.com/v1'
+        baseUrl
       } as any);
       const thinkingLevel = getPiThinkingLevel(model as any, reasoningEffort);
       const runtime = createRuntime(model, { reasoningEffort });
@@ -279,6 +281,61 @@ describe('mergePiAgentPayload', () => {
       } else {
         expect(wireBody).toHaveProperty('reasoning_effort', expectedEffort);
       }
+    });
+
+    it('writes only reasoning.effort for OpenRouter and enable_thinking for Z.ai without conflicting reasoning_effort', async () => {
+      const openRouterXhigh = await captureWireRequestBody({
+        baseUrl: 'https://openrouter.ai/api/v1',
+        model: createModel({
+          model: 'openai/gpt-5.5',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['none', 'low', 'medium', 'high', 'xhigh']
+          }
+        }),
+        reasoningEffort: 'xhigh'
+      });
+      expect(openRouterXhigh).toHaveProperty('reasoning', { effort: 'xhigh' });
+      expect(openRouterXhigh).not.toHaveProperty('reasoning_effort');
+
+      const openRouterDisabled = await captureWireRequestBody({
+        baseUrl: 'https://openrouter.ai/api/v1',
+        model: createModel({
+          model: 'openai/fixed-reasoning',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: false
+          }
+        }),
+        reasoningEffort: 'high'
+      });
+      expect(openRouterDisabled).not.toHaveProperty('reasoning');
+      expect(openRouterDisabled).not.toHaveProperty('reasoning_effort');
+
+      const zaiOff = await captureWireRequestBody({
+        baseUrl: 'https://api.z.ai/api/paas/v4',
+        model: createModel({
+          model: 'glm-5',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['none', 'high']
+          }
+        }),
+        reasoningEffort: 'none'
+      });
+      expect(zaiOff).toHaveProperty('enable_thinking', false);
+      expect(zaiOff).not.toHaveProperty('reasoning_effort');
     });
   });
 });
