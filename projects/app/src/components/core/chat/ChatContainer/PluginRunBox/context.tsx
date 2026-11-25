@@ -101,6 +101,7 @@ const PluginRunContextInner = ({
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
 
   const instruction = chatConfig?.instruction || '';
 
@@ -280,52 +281,132 @@ const PluginRunContextInner = ({
     }
   );
 
-  /** 客户端非 leave 中断时，先向服务端核对真实租约状态，避免服务端仍在执行却提前报 done。 */
-  const reconcileAbortedRunStatus = useMemoizedFn(
+  /**
+   * 统一收口前台非 leave 传输中断（60s 超时 abort、网络断开或异常 reject）：
+   * 先向服务端核对真实租约状态，未落库时清理占位解锁按钮，仍在生成时移交 useChatResume 恢复，
+   * 已落库结束时再收尾并按活跃状态标已读。
+   */
+  const reconcileInterruptedRun = useMemoizedFn(
     async ({
       runAppId,
       runSourceKey,
+      runChatId,
       targetChatId,
       runChatTarget,
-      finishedInActiveChat
+      finishedInActiveChat,
+      previousRecords,
+      responseChatItemId,
+      errorMsg
     }: {
       runAppId: string;
       runSourceKey: string;
+      runChatId: string;
       targetChatId: string;
       runChatTarget: ResolvedChatAuthTargetInput;
       finishedInActiveChat: boolean;
+      previousRecords: typeof chatRecords;
+      responseChatItemId: string;
+      errorMsg?: string;
     }) => {
       if (!runAppId || !targetChatId) return;
 
+      let serverItem: { chatId: string; chatGenerateStatus?: ChatGenerateStatusEnum } | undefined;
+      let statusCheckFailed = false;
       try {
         const { list } = await getChatHistoryStatus({
           ...runChatTarget,
           chatIds: [targetChatId]
         });
-        const serverItem = list.find((item) => item.chatId === targetChatId);
-        if (serverItem?.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
-          finishChatGenerateStatus({
-            status: ChatGenerateStatusEnum.generating,
-            finishedInActiveChat: false,
-            targetChatTarget: runChatTarget,
-            targetSourceKey: runSourceKey,
-            targetAppId: runAppId,
-            targetChatId
-          });
-          return;
-        }
+        serverItem = list.find((item) => item.chatId === targetChatId);
+      } catch {
+        statusCheckFailed = true;
+      }
 
+      const stillActive =
+        finishedInActiveChat &&
+        isTargetActive({
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId: runChatId,
+          resolvedChatId: targetChatId
+        });
+
+      if (
+        serverItem?.chatGenerateStatus === ChatGenerateStatusEnum.generating ||
+        statusCheckFailed
+      ) {
+        if (stillActive) {
+          setChatRecords(previousRecords);
+          if (serverItem?.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
+            setChatBoxData?.((state) =>
+              (state.sourceKey === runSourceKey || state.appId === runAppId) &&
+              state.chatId === targetChatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGenerateStatusEnum.done
+                  }
+                : state
+            );
+            setChatGeneratingConflict({
+              previousAiDataId: getLastAiDataId(previousRecords),
+              canReusePreviousAi: false
+            });
+          } else if (errorMsg) {
+            toast({ title: errorMsg, status: 'error' });
+          }
+        }
+        notifyChatGenerateStatusChange(ChatGenerateStatusEnum.generating, {
+          targetAppId: runAppId,
+          targetChatId,
+          hasBeenRead: false
+        });
+        return;
+      }
+
+      if (!serverItem) {
+        if (stillActive) {
+          if (errorMsg) {
+            toast({ title: errorMsg, status: 'error' });
+          }
+          setChatRecords(previousRecords);
+          if (previousRecords.length === 0) {
+            setTab(PluginRunBoxTabEnum.input);
+          }
+        }
         finishChatGenerateStatus({
           status: ChatGenerateStatusEnum.done,
-          finishedInActiveChat,
+          finishedInActiveChat: stillActive,
           targetChatTarget: runChatTarget,
           targetSourceKey: runSourceKey,
           targetAppId: runAppId,
-          targetChatId
+          targetChatId,
+          skipMarkRead: true
         });
-      } catch {
-        // 状态查询失败无法确认服务端是否结束，保留 generating 交由侧栏轮询收敛。
+        return;
       }
+
+      if (stillActive) {
+        if (errorMsg) {
+          toast({ title: errorMsg, status: 'error' });
+        }
+        setChatRecords((state) =>
+          state.map((item, index) => {
+            if (index !== state.length - 1 || item.dataId !== responseChatItemId) return item;
+            return {
+              ...item,
+              status: ChatStatusEnum.finish
+            };
+          })
+        );
+      }
+      finishChatGenerateStatus({
+        status: ChatGenerateStatusEnum.done,
+        finishedInActiveChat: stillActive,
+        targetChatTarget: runChatTarget,
+        targetSourceKey: runSourceKey,
+        targetAppId: runAppId,
+        targetChatId
+      });
     }
   );
 
@@ -533,7 +614,7 @@ const PluginRunContextInner = ({
 
   const onSubmit = useCallback(
     async ({ variables }: ChatBoxInputFormType) => {
-      if (!onStartChat) return;
+      if (!onStartChat || !isReady || isLoadingRecords) return;
       if (isChatting) {
         toast({
           title: t('chat:is_chatting'),
@@ -635,12 +716,15 @@ const PluginRunContextInner = ({
         });
 
         if (abortSignal.signal.aborted) {
-          await reconcileAbortedRunStatus({
+          await reconcileInterruptedRun({
             runAppId,
             runSourceKey,
+            runChatId,
             targetChatId,
             runChatTarget,
-            finishedInActiveChat
+            finishedInActiveChat,
+            previousRecords,
+            responseChatItemId
           });
           return;
         }
@@ -689,17 +773,6 @@ const PluginRunContextInner = ({
           resolvedChatId: targetChatId
         });
 
-        if (abortSignal.signal.aborted) {
-          await reconcileAbortedRunStatus({
-            runAppId,
-            runSourceKey,
-            targetChatId,
-            runChatTarget,
-            finishedInActiveChat
-          });
-          return;
-        }
-
         if (isChatGeneratingError(err)) {
           if (finishedInActiveChat) {
             setChatRecords(previousRecords);
@@ -742,25 +815,16 @@ const PluginRunContextInner = ({
           return;
         }
 
-        if (finishedInActiveChat) {
-          toast({ title: errorMsg, status: 'error' });
-          setChatRecords((state) =>
-            state.map((item, index) => {
-              if (index !== state.length - 1 || item.dataId !== responseChatItemId) return item;
-              return {
-                ...item,
-                status: ChatStatusEnum.finish
-              };
-            })
-          );
-        }
-        finishChatGenerateStatus({
-          status: ChatGenerateStatusEnum.done,
+        await reconcileInterruptedRun({
+          runAppId,
+          runSourceKey,
+          runChatId,
+          targetChatId,
+          runChatTarget,
           finishedInActiveChat,
-          targetChatTarget: runChatTarget,
-          targetSourceKey: runSourceKey,
-          targetAppId: runAppId,
-          targetChatId
+          previousRecords,
+          responseChatItemId,
+          errorMsg
         });
       } finally {
         if (chatControllerRef.current === abortSignal) {
@@ -776,11 +840,13 @@ const PluginRunContextInner = ({
       chatRecords,
       finishChatGenerateStatus,
       isChatting,
+      isLoadingRecords,
+      isReady,
       isTargetActive,
       notifyChatGenerateStatusChange,
       onStartChat,
       pluginInputs,
-      reconcileAbortedRunStatus,
+      reconcileInterruptedRun,
       setChatBoxData,
       setChatRecords,
       setTab,

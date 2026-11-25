@@ -3,6 +3,7 @@ import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generation
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   ResumeStreamParamsSchema,
+  StreamNoNeedToBeResumeSchema,
   type StreamNoNeedToBeResumeType
 } from '@fastgpt/global/openapi/core/ai/api';
 import { NextAPI } from '@/service/middleware/entry';
@@ -194,7 +195,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return chatItem;
     });
 
-    return {
+    return StreamNoNeedToBeResumeSchema.parse({
       ...chat,
       hasBeenRead: true,
       records: {
@@ -203,7 +204,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         hasMorePrev: result.hasMorePrev,
         hasMoreNext: result.hasMoreNext
       }
-    };
+    });
   };
 
   const makeSureTheCompletedChatHasBeenRead = async () => {

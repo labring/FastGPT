@@ -8,13 +8,14 @@ import { useContextSelector } from 'use-context-selector';
 
 const mocks = vi.hoisted(() => ({
   poll: vi.fn(),
+  getHistories: vi.fn(),
   setHistories: vi.fn(),
   loadHistories: vi.fn(),
   initialStatus: 0
 }));
 vi.mock('@/web/core/chat/history/api', () => ({
   getChatHistoryStatus: mocks.poll,
-  getChatHistories: vi.fn(),
+  getChatHistories: mocks.getHistories,
   putChatHistory: vi.fn(),
   delChatHistoryById: vi.fn(),
   delClearChatHistories: vi.fn()
@@ -26,7 +27,10 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
   ];
   const skillHistories = histories.map(({ appId, ...item }) => ({ ...item, skillId: 'skill' }));
   return {
-    useScrollPagination: (_fetch: unknown, { params }: { params: { skillId?: string } }) => {
+    useScrollPagination: (
+      fetch: (params: any) => Promise<{ list: any[]; total: number }>,
+      { params }: { params: { skillId?: string } }
+    ) => {
       // 使用真实 state/setter，覆盖状态切换引发的 effect 清理与重新轮询。
       const [data, setData] = React.useState(() =>
         (params.skillId ? skillHistories : histories).map((item) => ({
@@ -38,6 +42,16 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
         mocks.setHistories(update);
         setData(update);
       }, []);
+      const fetchData = React.useCallback(
+        async (options?: { init?: boolean; silent?: boolean }) => {
+          mocks.loadHistories(options);
+          if (mocks.getHistories.getMockImplementation()) {
+            const res = await fetch({ offset: 0, pageSize: 20, ...params });
+            setData(res.list);
+          }
+        },
+        [fetch, params]
+      );
 
       return {
         ScrollData: () => null,
@@ -45,7 +59,7 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
         isInitialLoading: false,
         setData: setHistories,
         setTotal: vi.fn(),
-        fetchData: mocks.loadHistories,
+        fetchData,
         data
       };
     }
@@ -58,6 +72,7 @@ describe('chat history lease polling lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.poll.mockReset();
+    mocks.getHistories.mockReset();
     mocks.initialStatus = ChatGenerateStatusEnum.generating;
     dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example' });
     vi.stubGlobal('window', dom.window);
@@ -239,4 +254,87 @@ describe('chat history lease polling lifecycle', () => {
       expect(mocks.setHistories).not.toHaveBeenCalled();
     }
   );
+
+  it('preserves another unpersisted optimistic generating chat across page-1 reload until confirmed', async () => {
+    mocks.initialStatus = ChatGenerateStatusEnum.done;
+    mocks.poll.mockResolvedValue({ list: [] });
+    mocks.getHistories.mockResolvedValue({
+      list: [
+        {
+          appId: 'app',
+          chatId: 'chat-b',
+          title: 'B',
+          updateTime: new Date(),
+          chatGenerateStatus: ChatGenerateStatusEnum.done,
+          hasBeenRead: true
+        }
+      ],
+      total: 1
+    });
+
+    let ctx!: React.ContextType<typeof ChatContext>;
+    const Probe = () => {
+      ctx = useContextSelector(ChatContext, (v) => v);
+      return React.createElement(
+        'output',
+        null,
+        ctx.histories.map((h) => `${h.chatId}:${h.chatGenerateStatus}`).join(',')
+      );
+    };
+
+    await act(async () =>
+      root!.render(
+        React.createElement(
+          ChatContextProvider,
+          {
+            params: { outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' } }
+          } as React.ComponentProps<typeof ChatContextProvider>,
+          React.createElement(Probe)
+        )
+      )
+    );
+
+    // 乐观插入 A（尚未落库）和 B（将先完成）
+    await act(async () => {
+      ctx.setHistories((prev) => [
+        {
+          appId: 'app',
+          chatId: 'chat-a',
+          title: 'New Chat',
+          updateTime: new Date(),
+          chatGenerateStatus: ChatGenerateStatusEnum.generating,
+          hasBeenRead: false
+        },
+        {
+          appId: 'app',
+          chatId: 'chat-b',
+          title: 'New Chat',
+          updateTime: new Date(),
+          chatGenerateStatus: ChatGenerateStatusEnum.generating,
+          hasBeenRead: false
+        },
+        ...prev
+      ]);
+    });
+
+    // B 完成后触发首屏静默重拉，此时服务端仅返回 B，A 必须继续保留并参与轮询
+    await act(async () => {
+      ctx.setHistories((prev) =>
+        prev.map((item) =>
+          item.chatId === 'chat-b'
+            ? { ...item, chatGenerateStatus: ChatGenerateStatusEnum.done, hasBeenRead: true }
+            : item
+        )
+      );
+      await ctx.loadHistories({ init: true, silent: true });
+    });
+
+    expect(document.querySelector('output')?.textContent).toBe('chat-a:0,chat-b:1');
+    expect(mocks.poll).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' },
+        chatIds: expect.arrayContaining(['chat-a', 'chat-b'])
+      })
+    );
+  });
 });

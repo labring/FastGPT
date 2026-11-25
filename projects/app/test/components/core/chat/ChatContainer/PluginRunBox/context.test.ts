@@ -508,7 +508,93 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
     );
   });
 
-  it('marks read and emits done status when a plugin run fails', async () => {
+  it('clears optimistic placeholder on timeout abort when round was never persisted', async () => {
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({ list: [] });
+
+    await renderProvider(async ({ controller }) => {
+      controller.abort('timeout');
+      return { responseText: '', isNewChat: true };
+    });
+
+    await act(async () => {
+      await onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await Promise.resolve();
+    });
+
+    expect(currentRecords).toEqual([]);
+    expect(setPluginRunTab).toHaveBeenLastCalledWith(PluginRunBoxTabEnum.input);
+    expect(onMarkChatRead).not.toHaveBeenCalled();
+    expect(onChatGenerateStatusChange).toHaveBeenLastCalledWith({
+      sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
+      chatId: 'chat-1',
+      status: ChatGenerateStatusEnum.done,
+      hasBeenRead: true,
+      title: undefined
+    });
+  });
+
+  it('hands off to stream resume on un-aborted network drop while server is still generating', async () => {
+    const recoveredRecords: ChatSiteItemType[] = [
+      {
+        dataId: 'ai-live-1',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: '' } }],
+        status: ChatStatusEnum.finish
+      }
+    ];
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-net', chatGenerateStatus: ChatGenerateStatusEnum.generating }]
+    });
+    refreshChatRecords.mockResolvedValueOnce(recoveredRecords);
+    mocks.streamResumeFetch.mockResolvedValueOnce({ responseText: 'resumed-after-drop' });
+
+    const { rerender } = await renderProvider(
+      async () => {
+        throw new Error('network reset');
+      },
+      {
+        chatId: 'chat-net',
+        isChatRecordsLoaded: true
+      }
+    );
+
+    await act(async () => {
+      await onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(currentRecords).toEqual([]);
+    expect(onMarkChatRead).not.toHaveBeenCalled();
+    expect(
+      onChatGenerateStatusChange.mock.calls.some(
+        ([payload]) => payload.status === ChatGenerateStatusEnum.done
+      )
+    ).toBe(false);
+
+    await rerender({
+      chatId: 'chat-net',
+      isChatRecordsLoaded: true,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating,
+      chatRecords: currentRecords
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(refreshChatRecords).toHaveBeenCalledOnce();
+    expect(mocks.streamResumeFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'app-1',
+        chatId: 'chat-net'
+      })
+    );
+  });
+
+  it('marks read and emits done status when a persisted plugin run fails', async () => {
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+    });
+
     await renderProvider(async () => {
       throw new Error('plugin failed');
     });

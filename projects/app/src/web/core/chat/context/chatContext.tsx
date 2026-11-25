@@ -140,15 +140,44 @@ const ChatContextProvider = ({
     };
   }, []);
 
+  // 记录尚未在服务端历史中确认的乐观 generating 会话，避免另一会话首屏静默刷新时将其覆写丢失。
+  const pendingGeneratingHistoriesRef = useRef<
+    Map<string, { item: ChatHistoryItemType; missedPolls: number }>
+  >(new Map());
+  const serverConfirmedChatIdsRef = useRef<Set<string>>(new Set());
+
+  const fetchChatHistoriesWithPending = useCallback<typeof getChatHistories>(async (reqParams) => {
+    const res = await getChatHistories(reqParams);
+    const serverIds = new Set(res.list.map((item) => item.chatId));
+    serverIds.forEach((id) => {
+      serverConfirmedChatIdsRef.current.add(id);
+      pendingGeneratingHistoriesRef.current.delete(id);
+    });
+
+    if ((reqParams.offset ?? 0) === 0 && pendingGeneratingHistoriesRef.current.size > 0) {
+      const preservedPending = Array.from(pendingGeneratingHistoriesRef.current.values())
+        .map((entry) => entry.item)
+        .filter((item) => !serverIds.has(item.chatId));
+      if (preservedPending.length > 0) {
+        return {
+          ...res,
+          list: [...preservedPending, ...res.list]
+        };
+      }
+    }
+
+    return res;
+  }, []);
+
   const {
     ScrollData,
     isLoading: isPaginationLoading,
     isInitialLoading,
-    setData: setHistories,
+    setData: setRawHistories,
     setTotal: setHistoriesTotal,
     fetchData: loadHistories,
     data: histories
-  } = useScrollPagination(getChatHistories, {
+  } = useScrollPagination(fetchChatHistoriesWithPending, {
     pageSize: 20,
     params,
     // /chat without an appId is the app-picker entry. It still needs this
@@ -158,6 +187,39 @@ const ChatContextProvider = ({
     showErrorToast: false,
     showNoMoreTip: false
   });
+
+  const setHistories = useCallback<React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>>(
+    (updater) => {
+      setRawHistories((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        const pendingMap = pendingGeneratingHistoriesRef.current;
+        const nextChatIds = new Set(next.map((item) => item.chatId));
+
+        for (const id of Array.from(pendingMap.keys())) {
+          if (!nextChatIds.has(id)) {
+            pendingMap.delete(id);
+          }
+        }
+
+        for (const item of next) {
+          if (item.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
+            if (!serverConfirmedChatIdsRef.current.has(item.chatId)) {
+              const existing = pendingMap.get(item.chatId);
+              pendingMap.set(item.chatId, {
+                item,
+                missedPolls: existing?.missedPolls ?? 0
+              });
+            }
+          } else {
+            pendingMap.delete(item.chatId);
+          }
+        }
+
+        return next;
+      });
+    },
+    [setRawHistories]
+  );
   const displayHistories = useMemo(() => histories.map(normalizeHistoryTitle), [histories]);
   const historiesRef = useRef(displayHistories);
 
@@ -343,6 +405,8 @@ const ChatContextProvider = ({
 
   useEffect(() => {
     statusPollingNeedsRetry.current = false;
+    pendingGeneratingHistoriesRef.current.clear();
+    serverConfirmedChatIdsRef.current.clear();
   }, [historyTargetParams]);
 
   const hasOutLinkTarget = Boolean(
@@ -388,6 +452,20 @@ const ChatContextProvider = ({
         if (disposed) return;
         statusPollingNeedsRetry.current = false;
         const map = new Map(res.list.map((item) => [item.chatId, item]));
+        const expiredPendingIds = new Set<string>();
+        map.forEach((_status, id) => {
+          serverConfirmedChatIdsRef.current.add(id);
+          pendingGeneratingHistoriesRef.current.delete(id);
+        });
+        pendingGeneratingHistoriesRef.current.forEach((entry, id) => {
+          if (map.has(id)) return;
+          entry.missedPolls += 1;
+          // 连续多轮轮询均未落库（如切走后入口审核拦截），清理孤立乐观项避免无限轮询。
+          if (entry.missedPolls >= 6) {
+            pendingGeneratingHistoriesRef.current.delete(id);
+            expiredPendingIds.add(id);
+          }
+        });
         const hasCompletedGenerating = historiesRef.current.some((item) => {
           if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return false;
           const status = map.get(item.chatId);
@@ -398,20 +476,22 @@ const ChatContextProvider = ({
           );
         });
         setHistories((prev) =>
-          prev.map((item) => {
-            const status = map.get(item.chatId);
-            if (!status) return item;
-            const nextGen = status.chatGenerateStatus ?? item.chatGenerateStatus;
-            return {
-              ...item,
-              chatGenerateStatus: nextGen,
-              hasBeenRead:
-                nextGen === ChatGenerateStatusEnum.generating
-                  ? false
-                  : (status.hasBeenRead ?? item.hasBeenRead),
-              updateTime: status.updateTime ?? item.updateTime
-            };
-          })
+          prev
+            .filter((item) => !expiredPendingIds.has(item.chatId))
+            .map((item) => {
+              const status = map.get(item.chatId);
+              if (!status) return item;
+              const nextGen = status.chatGenerateStatus ?? item.chatGenerateStatus;
+              return {
+                ...item,
+                chatGenerateStatus: nextGen,
+                hasBeenRead:
+                  nextGen === ChatGenerateStatusEnum.generating
+                    ? false
+                    : (status.hasBeenRead ?? item.hasBeenRead),
+                updateTime: status.updateTime ?? item.updateTime
+              };
+            })
         );
         if (hasCompletedGenerating) {
           // 后台生成完成后静默刷新首屏历史，补齐服务端落库的真实标题与排序。
