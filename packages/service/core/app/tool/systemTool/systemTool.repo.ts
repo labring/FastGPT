@@ -618,7 +618,7 @@ export class SystemToolRepo {
         status: getVisiblePluginStatus({ status: exactDbTool.status, source }),
         source: 'system',
         isToolSet: false,
-        avatar: exactDbTool.customConfig.avatar,
+        avatar: exactDbTool.customConfig.avatar ?? undefined,
         name: exactDbTool.customConfig.name,
         intro: exactDbTool.customConfig.intro ?? '',
         author: exactDbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
