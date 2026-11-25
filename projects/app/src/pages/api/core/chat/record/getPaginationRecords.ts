@@ -2,6 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   chatItemResponsePreviewProjection,
+  getChatItemErrorText,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -103,6 +104,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     // Remove important information
     if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
       if (item.obj === ChatRoleEnum.AI) {
+        // 分享历史裁剪公开字段前先提取未捕获错误摘要，避免刷新后丢失错误卡片退化为“应用无输出内容”。
+        item.errorText = item.errorText || getChatItemErrorText(item.responseData);
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
           responseDetail: authRes.showCite

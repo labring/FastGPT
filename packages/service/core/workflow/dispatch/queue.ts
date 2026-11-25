@@ -726,7 +726,13 @@ export class WorkflowQueue {
               result.responseData?.error === undefined &&
               result.responseData?.errorText === undefined
             ) {
-              result.responseData = { ...result.responseData, error: getErrText(result.rawError) };
+              const errorText = getErrText(result.rawError);
+              result.responseData = {
+                ...result.responseData,
+                error: errorText,
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，同时写入避免刷新或分享后退化成“应用无输出内容”。
+                errorText
+              };
             }
 
             // error 是错误分支的数据记录；主动选该分支不代表出现了系统异常。
@@ -792,6 +798,8 @@ export class WorkflowQueue {
               error: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，同时写入避免刷新或分享后退化成“应用无输出内容”。
+                errorText,
                 ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId

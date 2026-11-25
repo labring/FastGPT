@@ -700,4 +700,41 @@ describe('addStatisticalDataToHistoryItem', () => {
       errorText: 'Plugin failed'
     });
   });
+
+  it('recomputes errorText when resumed records carry empty totalQuoteList alongside new responseData, and preserves pre-extracted errorText', () => {
+    expect(
+      addStatisticalDataToHistoryItem({
+        obj: ChatRoleEnum.AI,
+        value: [],
+        totalQuoteList: [],
+        responseData: [
+          {
+            id: 'agent-step-2',
+            nodeId: 'agent-node',
+            moduleName: 'Agent',
+            moduleType: FlowNodeTypeEnum.agent,
+            errorText: 'Sandbox error: runtime failed'
+          }
+        ]
+      }).errorText
+    ).toEqual({
+      moduleName: 'Agent',
+      errorText: 'Sandbox error: runtime failed'
+    });
+
+    expect(
+      addStatisticalDataToHistoryItem({
+        obj: ChatRoleEnum.AI,
+        value: [],
+        errorText: {
+          moduleName: 'Agent',
+          errorText: 'Sandbox error: runtime failed'
+        },
+        responseData: []
+      }).errorText
+    ).toEqual({
+      moduleName: 'Agent',
+      errorText: 'Sandbox error: runtime failed'
+    });
+  });
 });

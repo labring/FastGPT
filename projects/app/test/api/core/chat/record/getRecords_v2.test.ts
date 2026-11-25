@@ -1,4 +1,5 @@
 import handler from '@/pages/api/core/chat/record/getRecords_v2';
+import paginationHandler from '@/pages/api/core/chat/record/getPaginationRecords';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -6,6 +7,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type {
   GetRecordsV2BodyType,
@@ -15,6 +17,8 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -282,5 +286,103 @@ describe('getRecords_v2 skill edit target', () => {
       expect(page.data.prevCursor).toBeNull();
       expect(page.data.nextCursor).toBeNull();
     }
+  });
+
+  it('preserves node errorText for outLink share history records in both getRecords_v2 and getPaginationRecords', async () => {
+    const app = await MongoApp.create({
+      name: 'Share Error Records App',
+      type: AppTypeEnum.simple,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      modules: []
+    });
+    const shareId = `share_${getNanoid(8)}`;
+    const outLinkUid = `uid_${getNanoid(8)}`;
+    const shareChatId = getNanoid();
+    const roundDataId = 'share-err-round-1';
+
+    const outLink = await MongoOutLink.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId: app._id,
+      shareId,
+      type: 'share',
+      name: 'Share Error Test',
+      allowAnonymous: true
+    });
+
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: String(app._id),
+        chatId: shareChatId,
+        source: ChatSourceEnum.share,
+        shareId,
+        outLinkUid,
+        publishSource: {
+          type: ChatSourceEnum.share,
+          id: String(outLink._id)
+        }
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: String(app._id),
+        chatId: shareChatId,
+        dataId: roundDataId,
+        obj: ChatRoleEnum.AI,
+        value: []
+      }),
+      MongoChatItemResponse.create({
+        teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: String(app._id),
+        chatId: shareChatId,
+        chatItemDataId: roundDataId,
+        data: {
+          id: 'agent-err-resp',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'Sandbox error: runtime failed'
+        }
+      })
+    ]);
+
+    const v2Res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      body: {
+        chatId: shareChatId,
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
+        pageSize: 10
+      }
+    });
+    expect(v2Res.code).toBe(200);
+    expect(v2Res.data.list[0]?.errorText).toEqual({
+      moduleName: 'Agent',
+      errorText: 'Sandbox error: runtime failed'
+    });
+
+    const pageRes = await Call<any, any, { list: any[] }>(paginationHandler, {
+      body: {
+        chatId: shareChatId,
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
+        offset: 0,
+        pageSize: 10
+      }
+    });
+    expect(pageRes.code).toBe(200);
+    expect(pageRes.data.list[0]?.errorText).toEqual({
+      moduleName: 'Agent',
+      errorText: 'Sandbox error: runtime failed'
+    });
   });
 });

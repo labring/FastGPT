@@ -135,7 +135,9 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     historyItem.useAgentSandbox === true || hasSandboxToolInChatValue(historyItem);
   const hasResolvedTags =
     historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
-  if (hasResolvedTags || !historyItem.responseData)
+  // 预览记录（已清除 responseData）可直接复用预计算标签；
+  // 交互续跑或恢复写入新 responseData 后需重新提取 errorText 与引用，避免旧空标签屏蔽最新节点错误。
+  if ((hasResolvedTags && !historyItem.responseData?.length) || !historyItem.responseData)
     return withUseAgentSandbox(historyItem, useAgentSandbox);
 
   // Flat children
