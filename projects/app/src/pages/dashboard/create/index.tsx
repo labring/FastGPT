@@ -451,7 +451,7 @@ const CreateAppsPage = () => {
                             className="template-actions"
                             position={'absolute'}
                             inset={0}
-                            gap={experienceUrl ? { base: 2, sm: 1, lg: 2 } : 2}
+                            gap={2}
                             alignItems={'center'}
                             opacity={0}
                             pointerEvents={'none'}

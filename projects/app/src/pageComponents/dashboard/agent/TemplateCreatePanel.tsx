@@ -344,7 +344,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                       bottom={0}
                       alignItems={'center'}
                       justifyContent={'center'}
-                      gap={experienceUrl ? { base: 1, lg: 2 } : 2}
+                      gap={2}
                       opacity={0}
                       pointerEvents={'none'}
                       bg={' linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FFF 100%)'}

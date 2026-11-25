@@ -225,11 +225,7 @@ const TemplateMarket = ({
             </MyTooltip>
           </Box>
 
-          <Flex
-            justifyContent={'space-between'}
-            alignItems={'center'}
-            gap={experienceUrl ? { base: 1, lg: 2 } : 2}
-          >
+          <Flex justifyContent={'space-between'} alignItems={'center'} gap={2}>
             {(item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
             (item.userGuide?.type === 'link' && item.userGuide?.link) ? (
               <UseGuideModal
@@ -260,7 +256,7 @@ const TemplateMarket = ({
             ) : (
               <Box></Box>
             )}
-            <Flex alignItems={'center'} gap={experienceUrl ? { base: 1, lg: 2 } : 2} flexShrink={0}>
+            <Flex alignItems={'center'} gap={2} flexShrink={0}>
               {experienceUrl && (
                 <Button
                   variant={'transparentBase'}
