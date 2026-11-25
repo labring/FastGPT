@@ -1,6 +1,10 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
 import http from 'http';
+import https from 'https';
+import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import zlib from 'node:zlib';
@@ -63,18 +67,20 @@ describe('axios.ts', () => {
     }
   };
 
-  const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
-    new Promise<http.Server>((resolve) => {
-      const server = http.createServer(handler);
+  const startServer = <T extends http.Server | https.Server>(server: T, host = '127.0.0.1') =>
+    new Promise<T>((resolve) => {
       server.listen(0, host, () => resolve(server));
     });
 
-  const closeServer = (server: http.Server) =>
+  const listen = (handler: http.RequestListener, host?: string) =>
+    startServer(http.createServer(handler), host);
+
+  const closeServer = (server: http.Server | https.Server) =>
     new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
 
-  const getServerPort = (server: http.Server): number => {
+  const getServerPort = (server: http.Server | https.Server): number => {
     const address = server.address();
     if (!address || typeof address === 'string') {
       throw new Error('Invalid test server address');
@@ -541,6 +547,338 @@ describe('axios.ts', () => {
         'DNS lookup failed'
       );
       expect(adapter).not.toHaveBeenCalled();
+    });
+
+    it('公网 IPv6 字面量直连应规范化方括号并跳过 DNS lookup', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = true;
+
+      const lookupSpy = vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
+      let capturedAgent: http.Agent | undefined;
+      const adapter = vi.fn(async (config: SafeAxiosRequestConfig) => {
+        capturedAgent = config.httpAgent;
+        return {
+          data: { ok: true },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config
+        };
+      });
+      const instance = createProxyAxios({ adapter });
+
+      const response = await instance.get('http://[2606:4700:4700::1111]/resource');
+
+      expect(response.data).toEqual({ ok: true });
+      expect(lookupSpy).not.toHaveBeenCalled();
+      expect(capturedAgent).toBeInstanceOf(http.Agent);
+      const pinnedLookup = (
+        capturedAgent as unknown as {
+          options?: {
+            lookup?: (
+              hostname: string,
+              options: object,
+              cb: (err: Error | null, address: string, family: number) => void
+            ) => void;
+          };
+        }
+      )?.options?.lookup;
+      expect(typeof pinnedLookup).toBe('function');
+      const resolved = await new Promise<{ address: string; family: number }>((resolve, reject) => {
+        pinnedLookup!('2606:4700:4700::1111', {}, (err, address, family) => {
+          if (err) reject(err);
+          else resolve({ address, family });
+        });
+      });
+      expect(resolved).toEqual({ address: '2606:4700:4700::1111', family: 6 });
+    });
+
+    it('显式代理应优先于环境代理处理 HTTP 请求', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      let envProxyHits = 0;
+      let explicitProxyHits = 0;
+      const envProxy = await listen((_req, res) => {
+        envProxyHits += 1;
+        res.end('from-env-proxy');
+      });
+      const explicitProxy = await listen((req, res) => {
+        explicitProxyHits += 1;
+        res.end(`from-explicit-proxy:${req.url}`);
+      });
+
+      try {
+        process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(envProxy)}`;
+        const instance = createProxyAxios();
+        const response = await instance.get('http://dual-proxy.example.test/resource', {
+          proxy: { host: '127.0.0.1', port: getServerPort(explicitProxy) }
+        });
+
+        expect(response.data).toBe('from-explicit-proxy:http://dual-proxy.example.test/resource');
+        expect(explicitProxyHits).toBe(1);
+        expect(envProxyHits).toBe(0);
+      } finally {
+        await Promise.all([closeServer(envProxy), closeServer(explicitProxy)]);
+      }
+    });
+
+    it('重定向跨 NO_PROXY 边界时应支持直连与环境代理双向切换', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) return;
+
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      let directPort = 0;
+      const proxyHits: string[] = [];
+      const directHits: string[] = [];
+      const directServer = await listen((req, res) => {
+        directHits.push(req.url ?? '');
+        if (req.url === '/to-proxy') {
+          res.writeHead(302, { Location: 'http://via-proxy.example.test/final' });
+          res.end();
+          return;
+        }
+        res.end('direct-final');
+      }, '0.0.0.0');
+      directPort = getServerPort(directServer);
+
+      const proxyServer = await listen((req, res) => {
+        proxyHits.push(req.url ?? '');
+        if (req.url === 'http://via-proxy.example.test/to-direct') {
+          res.writeHead(302, { Location: `http://${carrierHost}:${directPort}/final` });
+          res.end();
+          return;
+        }
+        res.end('proxy-final');
+      });
+
+      try {
+        process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(proxyServer)}`;
+        process.env.NO_PROXY = carrierHost;
+        const instance = createProxyAxios();
+
+        const directToProxy = await instance.get(`http://${carrierHost}:${directPort}/to-proxy`);
+        expect(directToProxy.data).toBe('proxy-final');
+        expect(directHits).toEqual(['/to-proxy']);
+        expect(proxyHits).toEqual(['http://via-proxy.example.test/final']);
+
+        const proxyToDirect = await instance.get('http://via-proxy.example.test/to-direct');
+        expect(proxyToDirect.data).toBe('direct-final');
+        expect(proxyHits).toEqual([
+          'http://via-proxy.example.test/final',
+          'http://via-proxy.example.test/to-direct'
+        ]);
+        expect(directHits).toEqual(['/to-proxy', '/final']);
+      } finally {
+        await Promise.all([closeServer(directServer), closeServer(proxyServer)]);
+      }
+    });
+
+    it('Proxy-Authorization 仅发送给首跳代理，直连与跨跳切换均不泄露到目标请求头', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) return;
+
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const directProxyAuthHeaders: (string | undefined)[] = [];
+      const directServer = await listen((req, res) => {
+        directProxyAuthHeaders.push(req.headers['proxy-authorization']);
+        res.end('direct-ok');
+      }, '0.0.0.0');
+      const directPort = getServerPort(directServer);
+
+      const proxyAuthSeen: (string | undefined)[] = [];
+      const proxyServer = await listen((req, res) => {
+        proxyAuthSeen.push(req.headers['proxy-authorization']);
+        if (req.url === 'http://proxied.example.test/hop1') {
+          res.writeHead(302, { Location: `http://${carrierHost}:${directPort}/hop2` });
+          res.end();
+          return;
+        }
+        res.end('proxy-ok');
+      });
+
+      try {
+        process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(proxyServer)}`;
+        process.env.NO_PROXY = carrierHost;
+        const instance = createProxyAxios();
+
+        // 1. 直连请求传入 Proxy-Authorization 必须被剥离。
+        const directRes = await instance.get(`http://${carrierHost}:${directPort}/direct`, {
+          headers: { 'Proxy-Authorization': 'Basic c2VjcmV0' }
+        });
+        expect(directRes.data).toBe('direct-ok');
+        expect(directProxyAuthHeaders).toEqual([undefined]);
+
+        // 2. 经代理发起并跳转到 NO_PROXY 直连目标时，代理收到凭据，直连目标不收到凭据。
+        const redirectRes = await instance.get('http://proxied.example.test/hop1', {
+          headers: { 'Proxy-Authorization': 'Basic c2VjcmV0' }
+        });
+        expect(redirectRes.data).toBe('direct-ok');
+        expect(proxyAuthSeen).toEqual(['Basic c2VjcmV0']);
+        expect(directProxyAuthHeaders).toEqual([undefined, undefined]);
+      } finally {
+        await Promise.all([closeServer(directServer), closeServer(proxyServer)]);
+      }
+    });
+
+    it('代理 HTTPS CONNECT 握手超时或取消时应立即释放代理 socket，并保留默认 30s 握手期限', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const hangingSockets: net.Socket[] = [];
+      const closedEvents: Promise<unknown>[] = [];
+      const connectSeen: (() => void)[] = [];
+      const waitNextConnect = () => new Promise<void>((resolve) => connectSeen.push(resolve));
+
+      const hangingProxy = await listen((_req, res) => {
+        res.statusCode = 405;
+        res.end();
+      });
+      hangingProxy.on('connect', (_req, socket) => {
+        hangingSockets.push(socket);
+        // http.Server 默认 allowHalfOpen=true，需消费对端 FIN 后才能触发服务端 socket close。
+        socket.on('end', () => socket.destroy());
+        socket.resume();
+        closedEvents.push(once(socket, 'close'));
+        connectSeen.shift()?.();
+      });
+
+      try {
+        process.env.HTTPS_PROXY = `http://127.0.0.1:${getServerPort(hangingProxy)}`;
+        const instance = createProxyAxios();
+
+        // 1. 显式请求超时：返回 ECONNABORTED 且释放代理 socket。
+        const timeoutConnect = waitNextConnect();
+        const timeoutReq = instance.get('https://hanging-timeout.example.test/resource', {
+          timeout: 80
+        });
+        await timeoutConnect;
+        await expect(timeoutReq).rejects.toMatchObject({ code: 'ECONNABORTED' });
+        await closedEvents[0];
+
+        // 2. AbortSignal 取消：立即释放代理 socket。
+        const abortConnect = waitNextConnect();
+        const controller = new AbortController();
+        const abortReq = instance.get('https://hanging-abort.example.test/resource', {
+          signal: controller.signal
+        });
+        await abortConnect;
+        controller.abort();
+        await expect(abortReq).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+        await closedEvents[1];
+
+        // 3. 未设置 timeout 时触发默认 30s 握手超时并释放代理 socket。
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+          const defaultConnect = waitNextConnect();
+          const defaultReq = instance.get('https://hanging-default.example.test/resource');
+          await defaultConnect;
+          vi.advanceTimersByTime(30_000);
+          await expect(defaultReq).rejects.toThrow(
+            /Proxy CONNECT handshake timed out after 30000 ms/
+          );
+          await closedEvents[2];
+        } finally {
+          vi.useRealTimers();
+        }
+      } finally {
+        for (const s of hangingSockets) s.destroy();
+        await closeServer(hangingProxy);
+      }
+    });
+
+    it('__safeAxios.rejectUnauthorized 经代理时仅作用于目标 TLS，不影响 HTTPS 代理自身证书校验', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const cert = readFileSync(new URL('./fixtures/connect-test-cert.pem.txt', import.meta.url));
+      const key = readFileSync(new URL('./fixtures/connect-test-key.pem.txt', import.meta.url));
+
+      const targetAuthHeaders: (string | undefined)[] = [];
+      const selfSignedTarget = await startServer(
+        https.createServer({ cert, key }, (req, res) => {
+          targetAuthHeaders.push(req.headers['proxy-authorization']);
+          res.end('tls-target-ok');
+        })
+      );
+      const targetPort = getServerPort(selfSignedTarget);
+
+      const connectSockets = new Set<net.Socket>();
+      const connectProxyAuth: (string | undefined)[] = [];
+      const httpProxy = await listen((_req, res) => {
+        res.statusCode = 405;
+        res.end();
+      });
+      httpProxy.on('connect', (req, clientSocket, head) => {
+        connectProxyAuth.push(req.headers['proxy-authorization']);
+        connectSockets.add(clientSocket);
+        const upstream = net.connect(targetPort, '127.0.0.1', () => {
+          connectSockets.add(upstream);
+          clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+          if (head.length > 0) upstream.write(head);
+          upstream.pipe(clientSocket);
+          clientSocket.pipe(upstream);
+        });
+        upstream.on('error', () => clientSocket.destroy());
+        clientSocket.on('close', () => {
+          connectSockets.delete(clientSocket);
+          connectSockets.delete(upstream);
+          upstream.destroy();
+        });
+      });
+
+      const selfSignedHttpsProxy = await startServer(
+        https.createServer({ cert, key }, (_req, res) => {
+          res.statusCode = 405;
+          res.end();
+        })
+      );
+
+      try {
+        process.env.HTTPS_PROXY = `http://127.0.0.1:${getServerPort(httpProxy)}`;
+        const instance = createProxyAxios();
+
+        // 默认校验证书，自签名目标被拒绝。
+        await expect(instance.get('https://target.example.test/tls')).rejects.toThrow();
+
+        // 显式豁免目标证书时经代理成功，且 Proxy-Authorization 不透传到目标 HTTPS 服务。
+        const okRes = await instance.get('https://target.example.test/tls', {
+          headers: { 'Proxy-Authorization': 'Basic dGxzLXByb3h5' },
+          __safeAxios: { rejectUnauthorized: false }
+        } as SafeAxiosRequestConfig);
+        expect(okRes.data).toBe('tls-target-ok');
+        expect(connectProxyAuth).toContain('Basic dGxzLXByb3h5');
+        expect(targetAuthHeaders).toEqual([undefined]);
+
+        // HTTPS 代理本身为自签名证书时，即使目标配置 rejectUnauthorized: false 仍应拒绝代理证书。
+        process.env.HTTPS_PROXY = `https://127.0.0.1:${getServerPort(selfSignedHttpsProxy)}`;
+        await expect(
+          instance.get('https://target.example.test/tls', {
+            __safeAxios: { rejectUnauthorized: false }
+          } as SafeAxiosRequestConfig)
+        ).rejects.toThrow();
+      } finally {
+        for (const s of connectSockets) s.destroy();
+        await Promise.all([
+          closeServer(httpProxy),
+          closeServer(selfSignedHttpsProxy),
+          closeServer(selfSignedTarget)
+        ]);
+      }
     });
   });
 

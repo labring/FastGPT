@@ -63,8 +63,45 @@ const MCP_NETWORK_ERROR_CODES = new Set([
   'CERT_HAS_EXPIRED',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
   'ERR_TLS_CERT_ALTNAME_INVALID',
-  'UND_ERR_PRX_TLS'
+  'UND_ERR_PRX_TLS',
+  'MCP_PROXY_TUNNEL_ERROR'
 ]);
+
+/** 代理握手被拒绝（如 HTTPS CONNECT 非 200 或 HTTP 代理 407 鉴权失败），按外部/配置故障分类。 */
+class McpProxyTunnelError extends Error {
+  readonly code = 'MCP_PROXY_TUNNEL_ERROR';
+
+  constructor(
+    message: string,
+    readonly statusCode?: number
+  ) {
+    super(message);
+    this.name = 'McpProxyTunnelError';
+  }
+}
+
+const toMcpProxyHandshakeError = (error: unknown): McpProxyTunnelError | undefined => {
+  const visited = new Set<unknown>();
+  let current: unknown = error;
+
+  while (typeof current === 'object' && current !== null && !visited.has(current)) {
+    visited.add(current);
+    if ('message' in current && typeof current.message === 'string') {
+      const tunnelMatch = /^Proxy response \((\d{3})\) !== 200 when HTTP Tunneling$/.exec(
+        current.message
+      );
+      if (tunnelMatch) {
+        return new McpProxyTunnelError(current.message, Number(tunnelMatch[1]));
+      }
+      if (current.message === 'Proxy Authentication Required (407)') {
+        return new McpProxyTunnelError(current.message, 407);
+      }
+    }
+    current = 'cause' in current ? current.cause : undefined;
+  }
+
+  return undefined;
+};
 
 type McpRequestInit = RequestInit & {
   dispatcher?: Dispatcher;
@@ -336,10 +373,22 @@ export const createMcpSafeFetch = ({
 
       const dispatcher = await getDispatcher(currentUrl);
       // dispatcher 必须覆盖调用方传入值，避免自定义 dispatcher 绕过安全 lookup。
-      const response = await fetchImpl(currentUrl, {
-        ...currentInit,
-        dispatcher
-      });
+      let response: Response;
+      try {
+        response = await fetchImpl(currentUrl, {
+          ...currentInit,
+          dispatcher
+        });
+      } catch (error) {
+        // 仅在代理路径识别 undici 代理握手拒绝，避免误将直连通用取消/参数错误归类为外部配置错误。
+        if (dispatcher instanceof ProxyAgent) {
+          const proxyError = toMcpProxyHandshakeError(error);
+          if (proxyError) {
+            throw proxyError;
+          }
+        }
+        throw error;
+      }
 
       if (!isMcpRedirectResponse(response)) {
         return response;

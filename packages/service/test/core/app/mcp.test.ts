@@ -1200,6 +1200,81 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
+  it.each([
+    {
+      name: 'HTTPS proxy CONNECT 407 Proxy Authentication Required',
+      targetUrl: 'https://auth-required.example.test/mcp',
+      envKey: 'HTTPS_PROXY',
+      statusCode: 407,
+      statusText: 'Proxy Authentication Required',
+      viaConnect: true
+    },
+    {
+      name: 'HTTPS proxy CONNECT 403 Forbidden',
+      targetUrl: 'https://blocked.example.test/mcp',
+      envKey: 'HTTPS_PROXY',
+      statusCode: 403,
+      statusText: 'Forbidden',
+      viaConnect: true
+    },
+    {
+      name: 'HTTP forward proxy 407 Proxy Authentication Required',
+      targetUrl: 'http://auth-required.example.test/mcp',
+      envKey: 'HTTP_PROXY',
+      statusCode: 407,
+      statusText: 'Proxy Authentication Required',
+      viaConnect: false
+    }
+  ])(
+    'should classify $name as UserConfigError without otel alerting in MCPClient',
+    async ({ targetUrl, envKey, statusCode, statusText, viaConnect }) => {
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const proxyServer = await listen((_req, res) => {
+        res.writeHead(statusCode, statusText);
+        res.end();
+      });
+      if (viaConnect) {
+        proxyServer.on('connect', (_req, socket) => {
+          socket.end(`HTTP/1.1 ${statusCode} ${statusText}\r\n\r\n`);
+        });
+      }
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const infoLog = vi.spyOn(logger, 'info');
+
+      try {
+        vi.stubEnv(envKey, `http://127.0.0.1:${getServerPort(proxyServer)}`);
+        vi.stubEnv('NO_PROXY', '');
+        vi.stubEnv('no_proxy', '');
+
+        const mcpClient = new MCPClient({
+          url: targetUrl,
+          headers: {}
+        });
+
+        await expect(mcpClient.getTools()).rejects.toMatchObject({
+          name: 'UserConfigError',
+          cause: expect.objectContaining({
+            code: 'MCP_PROXY_TUNNEL_ERROR',
+            statusCode
+          })
+        });
+        expect(infoLog).toHaveBeenCalledWith(
+          'Streamable HTTP error',
+          expect.objectContaining({
+            otel: false,
+            error: expect.objectContaining({
+              code: 'MCP_PROXY_TUNNEL_ERROR',
+              statusCode
+            })
+          })
+        );
+      } finally {
+        await closeServer(proxyServer);
+      }
+    }
+  );
+
   it('should follow safe redirects hop by hop', async () => {
     getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
