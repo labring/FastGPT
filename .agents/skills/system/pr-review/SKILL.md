@@ -90,7 +90,7 @@ git -C "$WORKTREE" submodule update --init --recursive -- pro
      - **查询与数据**：投影过滤 `content`/`vectorData`/`fileContent` 等大字段；高频查询结合复合索引前缀评估，不因缺单列索引断言全表扫描。
      - **错误与日志**：API/worker 外层已兜底时不要求 service 层层 try-catch；独立异步任务不能仅写 `void promise` 而丢失 rejection；日志按 [Logger 规范](../../../design/common/logger/index.md) 传 Error 对象与上下文并控高频等级。
      - **前端与 i18n**：样式优先 Chakra UI props 与 `styles/theme.ts`；用户可见文案用 `t`、服务端用 `i18nT`，**调用处必须使用静态字面量 key**（如 `t('ns:key')`，禁止模板拼接、变量或三元表达式 key，防清理脚本误删和裸显），核对各语言包齐全。
-     - **契约与产物**：常规业务 PR 不因未附带手工维护的静态 OpenAPI/翻译生成产物判违规；API 入参错误边界见 [Zod 请求入参错误处理设计](../../../design/api/zod-request-parse-error-handling.md)。
+     - **契约与产物**：常规业务 PR 不因未附带手工维护的静态 OpenAPI/翻译生成产物判违规；也不因未修改升级文档（`document/content/self-host/upgrading/`）或 Compose/Helm 模板判违规，二者由版本发布时统一更新，只要求 PR 描述或设计文档写明兼容影响与升级动作（破坏性变更未写明仍按兼容性阻断）；PR 主动修改这类文档时，仅核对其与代码行为不矛盾；API 入参错误边界见 [Zod 请求入参错误处理设计](../../../design/api/zod-request-parse-error-handling.md)。
 5. **测试覆盖**：核心需求条目、修复复现（可验证回退后失败）及关键高风险边界缺测列 `必须修复`，次要边界缺测列 `非阻塞建议`；写法按 `test-case` skill，不为需求外或极端假设堆砌测试。
 
 ## 5. 复审与收敛

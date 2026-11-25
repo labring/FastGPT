@@ -25,7 +25,7 @@ FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根
 ## 按改动查规范
 
 - **API 路由**按 [API 开发规范](./.agents/skills/system/api-development/SKILL.md) 同步合约与 OpenAPI。外部请求的 body、query、params 用 `parseApiInput` 校验。普通业务响应、数据库记录和模型输出用对应的 `Schema.parse`。无入参或无业务返回值时省略相应的占位 Schema。错误分类见[请求入参错误设计](./.agents/design/api/zod-request-parse-error-handling.md)。
-- **历史兼容、跨仓与升级**：修改持久化结构、配置默认值、公开 API/SDK 或跨主仓/`pro` 共享能力时，核对已发布版本存量数据、滚动升级/回滚窗口及 `pro` 调用方兼容；涉及 Zod 枚举或判别联合变更时按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)处理，新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
+- **历史兼容、跨仓与升级**：修改持久化结构、配置默认值、公开 API/SDK 或跨主仓/`pro` 共享能力时，核对已发布版本存量数据、滚动升级/回滚窗口及 `pro` 调用方兼容，并在设计文档或 PR 描述中写明兼容影响与升级动作（升级文档与部署模板由版本发布时统一更新，普通 PR 无需修改）；涉及 Zod 枚举或判别联合变更时按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)处理，新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
 - **跨实例调用**按[分层架构](./.agents/code/syntax.md#分层架构)组织：实例业务层不引入其他实例，所需能力由上层以函数参数注入。
 - **CI** 修改 GitHub Actions workflow 时按[双轨同步规则](./.agents/skills/system/ci-workflow-sync/SKILL.md)核对 Forgejo 对应项。
 

@@ -55,6 +55,7 @@ git rebase upstream/main
 3. **验证范围**：
    - Rebase 完成后，基于最新 `upstream/main..HEAD` 复核净 diff，确认无冲突标记、无多余改动；多轮修复或裁剪需求后，同步清理死代码、未引用 i18n key 与多余契约外壳。
    - 按 `AGENTS.md` 测试范围要求，运行覆盖改动及受影响模块的最小局部测试与 lint；用户验收前不主动运行全量测试。
+   - 每次提交或更新 PR（含处理 review 意见）时，对本轮增量自检 `syntax.md` 高频红线：独立参数不超过 2 个、禁止转导、i18n 使用静态字面量 key、索引显式声明与命名、DAL 边界外不直接使用 Model 或数据库驱动。
    - 修改 `packages/*` 导出签名、跨包导入或 `@fastgpt/dal` 引用时，核对目标 `package.json` `exports` 公开子路径并运行受影响应用的 `typecheck`（如 `pnpm --filter @fastgpt/app typecheck`）；修改共享契约、运行时字段或 OpenAPI Schema 时，检索 `pro/` 与 `sdk/` 消费方确认已同步。
 
 ## 3. Pro 子模块联动检查与提交
@@ -118,7 +119,7 @@ git rebase upstream/main
 - 关联 Issue：`Refs #xxx` / `Fixes #xxx`
 - 关联 Pro PR：<链接>（涉及 `pro` 改动时必填）
 - 设计/分析文档：`<相对路径>`
-- 破坏性变更 / 配置或迁移注意：（有则写明，无则省略）
+- 兼容与升级影响：涉及持久化结构、公开 API/SDK、配置或环境变量、部署依赖或 `pro` 契约时必填，写明存量数据、滚动升级与回滚影响及所需升级动作；升级文档与 Compose/Helm 模板由版本发布时统一更新，普通 PR 无需修改（无影响则省略）
 ```
 
 > 小型改动（例如纯文档/单点 bugfix）可保持精简篇幅，但**需求背景、问题说明、解决方案、边界情况（含已考虑与明确不考虑）、验证情况**五个维度必须全部落地，每项写清实质内容而非占位符。
