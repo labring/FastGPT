@@ -14,6 +14,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getSandboxDiskQuotaStatus } from '@fastgpt/service/core/ai/sandbox/application/quota';
 import { createAgentSandboxDiskQuotaExceededError } from '@fastgpt/service/core/ai/sandbox/error';
+import { isSandboxCommandDiskFull } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/errors';
 
 const EXTRACT_ZIP_TIMEOUT_MS = 30_000;
 
@@ -65,9 +66,12 @@ async function handler(
       '[ -f "$zip_path" ] || { echo "Zip file not found: $zip_path" >&2; exit 1; }',
       'target_dir="$parent_dir/$base_name"',
       'index=1',
-      // 以单级 mkdir 原子占有目标目录，避免并发解压选到同一路径时相互覆盖或误删。
-      'while ! mkdir "$target_dir" 2>/dev/null; do',
-      '  [ -e "$target_dir" ] || [ -L "$target_dir" ] || exit 1',
+      // 以单级 mkdir 原子占有目标目录，避免并发解压选到同一路径时相互覆盖或误删；非冲突失败保留错误输出。
+      'while ! mkdir_err=$(mkdir "$target_dir" 2>&1); do',
+      '  if [ ! -e "$target_dir" ] && [ ! -L "$target_dir" ]; then',
+      '    printf "%s\\n" "$mkdir_err" >&2',
+      '    exit 1',
+      '  fi',
       '  target_dir="$parent_dir/$base_name-$index"',
       '  index=$((index + 1))',
       'done',
@@ -88,6 +92,11 @@ async function handler(
 
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim();
+    const output = [result.stderr, result.stdout].filter(Boolean).join('\n');
+    // Info-ZIP `unzip` 退出码 50（PK_DISK）表示卷写满。
+    if (isSandboxCommandDiskFull({ exitCode: result.exitCode, output }) || result.exitCode === 50) {
+      throw createAgentSandboxDiskQuotaExceededError();
+    }
     throw new UserError(SkillErrEnum.archiveExtractionFailed, detail || undefined);
   }
 

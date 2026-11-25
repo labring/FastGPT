@@ -97,6 +97,9 @@ const MAX_ERROR_CAUSE_DEPTH = 8;
 const TRANSIENT_TRANSPORT_PATTERN =
   /ENOTCONN|Transport endpoint is not connected|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|EPIPE|UND_ERR_|fetch failed/i;
 
+const DISK_FULL_PATTERN = /\b(?:ENOSPC|EDQUOT)\b|no space left on device|disk quota exceeded/i;
+const FSIZE_LIMIT_PATTERN = /\bSIGXFSZ\b|file size limit exceeded/i;
+
 /** 沿 `cause` 链（含循环引用防护与最大深度限制）迭代错误对象节点。 */
 function* iterCauseChain(error: unknown, maxDepth = MAX_ERROR_CAUSE_DEPTH): Generator<object> {
   let current: unknown = error;
@@ -139,6 +142,50 @@ const isFileNotFoundException = (current: unknown): boolean => {
     (current.code === 'FILE_NOT_FOUND' || current.code === 'ENOENT')
   );
 };
+
+/**
+ * 判断异常或其 `cause` 链是否表示沙盒持久卷空间已满（`ENOSPC` / `EDQUOT` / `No space left on device`）。
+ */
+export function isSandboxDiskFullError(error: unknown): boolean {
+  for (const current of iterCauseChain(error)) {
+    if (current instanceof SandboxApiException) {
+      if (
+        [current.error?.code, current.error?.message, current.rawBody, current.message].some(
+          (part) => typeof part === 'string' && DISK_FULL_PATTERN.test(part)
+        )
+      ) {
+        return true;
+      }
+      continue;
+    }
+    const code = 'code' in current && typeof current.code === 'string' ? current.code : '';
+    const message =
+      'message' in current && typeof current.message === 'string' ? current.message : '';
+    if (DISK_FULL_PATTERN.test(code) || DISK_FULL_PATTERN.test(message)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 判断沙盒命令非零退出是否由磁盘写满或 `RLIMIT_FSIZE`（`SIGXFSZ` / `153`）导致。
+ *
+ * 仅在 `exitCode` 非零时生效，避免 `grep`/`cat` 正常输出包含相关字样时误判。
+ */
+export function isSandboxCommandDiskFull(params: {
+  exitCode: number | null;
+  output: string;
+}): boolean {
+  if (params.exitCode === 0 || params.exitCode === null) {
+    return false;
+  }
+  return (
+    params.exitCode === 153 ||
+    DISK_FULL_PATTERN.test(params.output) ||
+    FSIZE_LIMIT_PATTERN.test(params.output)
+  );
+}
 
 /**
  * 判断异常是否表示沙盒内目标文件不存在（如 OpenSandbox `FILE_NOT_FOUND` 或 POSIX `ENOENT`），

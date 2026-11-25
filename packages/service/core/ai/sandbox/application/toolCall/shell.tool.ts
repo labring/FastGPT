@@ -12,6 +12,7 @@ import {
   getSandboxDiskQuotaStatus,
   type SandboxDiskQuotaStatus
 } from '../quota';
+import { isSandboxCommandDiskFull } from '../../infrastructure/opensandbox/errors';
 import { truncateSandboxToolOutput } from './utils';
 
 const SandboxShellToolSchema = z.object({
@@ -82,9 +83,15 @@ export const sandboxShellTool = defineTool({
       result.exitCode === 0 || result.exitCode === null
         ? ''
         : `Command exited with code ${result.exitCode}`;
-    const quotaNotice = quotaStatus?.exceeded
-      ? formatAgentDiskQuotaNotice(quotaStatus, 'shell')
-      : '';
+    const quotaNotice = (() => {
+      if (quotaStatus?.exceeded) {
+        return formatAgentDiskQuotaNotice(quotaStatus, 'shell');
+      }
+      if (isSandboxCommandDiskFull({ exitCode: result.exitCode, output: rawOutput })) {
+        return formatAgentDiskQuotaNotice(undefined, 'shell');
+      }
+      return '';
+    })();
 
     return {
       response: [output.content, truncationNotice, exitNotice, quotaNotice]

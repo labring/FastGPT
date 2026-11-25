@@ -7,6 +7,7 @@ import type { z } from 'zod';
 import type { SandboxClient } from '../runtime/client';
 import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 import { formatAgentDiskQuotaNotice, getSandboxDiskQuotaStatus } from '../quota';
+import { isSandboxDiskFullError } from '../../infrastructure/opensandbox/errors';
 
 /** 工具执行前的业务校验；返回拒绝原因时不访问沙箱。 */
 export type SandboxToolCallValidator = (params: {
@@ -87,13 +88,20 @@ export const createToolRunner =
           return { quotaExceededNotice: formatAgentDiskQuotaNotice(quota, 'write') };
         }
       }
-      return {
-        toolResult: await definition.execute({
-          sandboxInstance: params.sandboxInstance,
-          params: parsed.data,
-          signal: params.signal
-        })
-      };
+      try {
+        return {
+          toolResult: await definition.execute({
+            sandboxInstance: params.sandboxInstance,
+            params: parsed.data,
+            signal: params.signal
+          })
+        };
+      } catch (error) {
+        if (definition.requiresWritableDisk && isSandboxDiskFullError(error)) {
+          return { quotaExceededNotice: formatAgentDiskQuotaNotice(undefined, 'write') };
+        }
+        throw error;
+      }
     }, recoveryOptions);
 
     if ('quotaExceededNotice' in outcome && outcome.quotaExceededNotice !== undefined) {

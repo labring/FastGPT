@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { SandboxInstanceStatusEnum } from '@fastgpt/service/core/ai/sandbox/constants';
 import {
   addDirectoryToArchive,
@@ -157,6 +159,28 @@ describe('writeUrlFilesToSandbox', () => {
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       { path: '/workspace/private.pdf', data: Buffer.from('private') }
     ]);
+  });
+
+  it('maps ENOSPC write failures to agentSandboxDiskQuotaExceeded', async () => {
+    const sandbox = {
+      createDirectories: vi.fn(async () => undefined),
+      writeFiles: vi.fn(async () => [
+        {
+          path: '/workspace/a.txt',
+          bytesWritten: 0,
+          error: new Error('write /workspace/a.txt: no space left on device')
+        }
+      ])
+    };
+    const readInputFile = vi.fn().mockResolvedValue(Buffer.from('data'));
+
+    await expect(
+      writeUrlFilesToSandbox({
+        sandbox: sandbox as any,
+        files: [{ path: '/workspace/a.txt', url: 'https://files.example.com/a.txt' }],
+        readInputFile
+      })
+    ).rejects.toThrowError(new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded));
   });
 
   it('rejects relative input URLs instead of calling an internal axios', async () => {

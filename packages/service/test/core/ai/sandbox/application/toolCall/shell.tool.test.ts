@@ -294,6 +294,60 @@ describe('sandboxShellTool', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('appends cleanup guidance on ENOSPC or Docker SIGXFSZ non-zero exit without false positives on exit 0', async () => {
+    const sandbox = createSandboxInstance();
+
+    // K8s 命令非零退出且输出包含 No space left on device → 追加清理指引（不提 RLIMIT_FSIZE=0）。
+    sandbox.exec.mockResolvedValueOnce({
+      stdout: '',
+      stderr: "dd: error writing 'big.bin': No space left on device",
+      exitCode: 1,
+      truncated: false
+    });
+    const fullRes = await sandboxShellTool.execute({
+      sandboxInstance: sandbox,
+      params: { command: 'dd if=/dev/zero of=big.bin bs=1M count=2048' }
+    });
+    expect(fullRes.response).toContain('No space left on device');
+    expect(fullRes.response).toContain('Command exited with code 1');
+    expect(fullRes.response).toContain('Sandbox disk space is full');
+    expect(fullRes.response).not.toContain('RLIMIT_FSIZE=0');
+
+    // exitCode=0 时即便输出含关键词也不误报（如 grep 日志）。
+    sandbox.exec.mockResolvedValueOnce({
+      stdout: 'app.log:12: No space left on device',
+      stderr: '',
+      exitCode: 0,
+      truncated: false
+    });
+    const grepRes = await sandboxShellTool.execute({
+      sandboxInstance: sandbox,
+      params: { command: 'grep "No space left on device" app.log' }
+    });
+    expect(grepRes.response).not.toContain('Sandbox disk space is full');
+
+    // Docker 正常态下运行期单文件触发 prlimit --fsize（SIGXFSZ = 153）→ 追加清理指引。
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
+    const limit = 1024 * 1024 * 1024;
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ usedBytes: 1024, limitBytes: limit }), { status: 200 })
+    ) as unknown as typeof fetch;
+    const dockerSandbox = createSandboxInstance({ withDiskProbe: true, id: 'sbx-docker-sigxfsz' });
+    dockerSandbox.exec.mockResolvedValueOnce({
+      stdout: '',
+      stderr: 'File size limit exceeded',
+      exitCode: 153,
+      truncated: false
+    });
+    const sigxfszRes = await sandboxShellTool.execute({
+      sandboxInstance: dockerSandbox,
+      params: { command: 'dd if=/dev/zero of=big.bin bs=1M count=2048' }
+    });
+    expect(sigxfszRes.response).toContain('Command exited with code 153');
+    expect(sigxfszRes.response).toContain('Sandbox disk space is full');
+  });
+
   it('returns combined output and a non-zero exit status as plain text', async () => {
     const sandbox = createSandboxInstance();
     sandbox.exec.mockResolvedValueOnce({ stdout: 'out', stderr: 'err', exitCode: 2 });

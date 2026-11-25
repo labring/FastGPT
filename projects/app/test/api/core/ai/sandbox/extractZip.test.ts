@@ -235,4 +235,39 @@ describe('sandbox extractZip API', () => {
     );
     expect(mocks.execute).not.toHaveBeenCalled();
   });
+
+  it('maps disk-full extraction failures (ENOSPC, unzip code 50, Docker SIGXFSZ) to agentSandboxDiskQuotaExceeded', async () => {
+    mocks.execute.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'error: cannot create foo.bin: No space left on device'
+    });
+    await expect(handler(createReq('bundle.zip'))).rejects.toThrowError(
+      new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
+    );
+
+    mocks.execute.mockResolvedValueOnce({
+      exitCode: 50,
+      stdout: '',
+      stderr: 'write error (disk full?).'
+    });
+    await expect(handler(createReq('bundle.zip'))).rejects.toThrowError(
+      new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
+    );
+
+    mocks.getSandboxDiskQuotaStatus.mockResolvedValueOnce({
+      enabled: true,
+      exceeded: false,
+      usedBytes: 128,
+      limitBytes: 1024 * 1024
+    });
+    mocks.execute.mockResolvedValueOnce({
+      exitCode: 153,
+      stdout: '',
+      stderr: ''
+    });
+    await expect(handler(createReq('bundle.zip'))).rejects.toThrowError(
+      new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
+    );
+  });
 });
