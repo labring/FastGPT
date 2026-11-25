@@ -175,9 +175,13 @@ export const classifyChannelModels = ({
     let bestMatch: { template: AIModelDocumentDataType; rank: number } | undefined;
     for (const template of templates) {
       const rank = getTemplateMatchRank(channelModel.id, template.model);
-      if (rank !== undefined && (bestMatch === undefined || rank < bestMatch.rank)) {
-        bestMatch = { template, rank };
-      }
+      if (rank === undefined) continue;
+      // 同一匹配等级下取模型名更长的模板：gpt-4o-2024-11-20 同时以 gpt-4 和 gpt-4o 开头，更长的才是它的型号。
+      const isBetter =
+        bestMatch === undefined ||
+        rank < bestMatch.rank ||
+        (rank === bestMatch.rank && template.model.length > bestMatch.template.model.length);
+      if (isBetter) bestMatch = { template, rank };
     }
     const blankDraft = createBlankModelData(channelModel, provider);
     if (!bestMatch) return { ...rowData, candidate: blankDraft };
