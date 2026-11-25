@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   chatItemResponsePreviewProjection,
-  getPublicChatItemErrorText,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -12,7 +12,6 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  filterPublicNodeResponseData,
   stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
@@ -95,22 +94,14 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   });
 
   // Presign file urls
-  const histories = await addPreviewUrlToChatItems(
-    sourceHistories,
-    isPlugin ? 'workflowTool' : 'chatFlow'
-  );
-
-  histories.forEach((item) => {
+  const histories = (
+    await addPreviewUrlToChatItems(sourceHistories, isPlugin ? 'workflowTool' : 'chatFlow')
+  ).map((rawItem) => {
+    let item = rawItem;
     // Remove important information
     if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
       if (item.obj === ChatRoleEnum.AI) {
-        // 分享历史裁剪公开字段前先按公开节点边界提取未捕获错误摘要，与分享实时流口径一致，
-        // 既避免公开节点刷新后退化为“应用无输出内容”，也防止内部节点诊断进入匿名响应。
-        item.errorText = item.errorText || getPublicChatItemErrorText(item.responseData);
-        item.responseData = filterPublicNodeResponseData({
-          nodeRespones: item.responseData,
-          responseDetail: authRes.showCite
-        });
+        item = sanitizeOutLinkChatHistoryItem(item, authRes.showCite);
 
         if (authRes.showRunningStatus === false) {
           item.value = item.value.filter((v) => !('tool' in v) && !v.tools && !v.skills);
@@ -133,6 +124,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
       ...value,
       type: getChatItemValueType(value)
     }));
+    return item;
   });
 
   return GetPaginationRecordsResponseSchema.parse({

@@ -9,9 +9,11 @@ import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/d
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   filterNodeResponseTreeData,
+  filterPublicNodeResponseData,
   findFailedResponseNode,
   getFlatAppResponses
 } from '@fastgpt/global/core/chat/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -73,20 +75,58 @@ export const getChatItemErrorText = (
   };
 };
 
+const PUBLIC_CHAT_ITEM_ERROR_TEXT = i18nT('common:core.chat.error.Chat error');
+
 /**
  * 分享/公开历史边界的错误摘要提取。
  *
- * 与分享实时流（`filterNodeResponseTreeData`）共享同一公开节点白名单：
- * 仅提取允许公开节点的未捕获 `errorText`，避免 HTTP 节点上游响应体等内部诊断进入匿名分享响应。
+ * 先基于完整父子关系判定整轮是否真实失败（避免先裁剪非公开父节点后将已捕获循环内的子节点误判为孤儿），
+ * 再校验失败节点是否属于公开节点白名单并脱敏为通用错误文案；非公开内部节点返回 `undefined`。
  */
 export const getPublicChatItemErrorText = (
   responseData: ChatHistoryItemResType[] = []
-): ErrorTextItemType | undefined =>
-  getChatItemErrorText(
-    filterNodeResponseTreeData({
-      nodeResponses: responseData
+): ErrorTextItemType | undefined => {
+  const failedNode = findFailedResponseNode(responseData);
+  if (!failedNode) return undefined;
+
+  const isPublicNode = filterNodeResponseTreeData({ nodeResponses: [failedNode] }).length > 0;
+  if (!isPublicNode) return undefined;
+
+  return {
+    moduleName: failedNode.moduleName,
+    errorText: PUBLIC_CHAT_ITEM_ERROR_TEXT
+  };
+};
+
+/**
+ * 匿名分享历史记录的公开裁剪边界（纯函数，供列表接口与完成态恢复共用）。
+ *
+ * 先按完整响应关系提取并脱敏公开错误摘要，再执行 `filterPublicNodeResponseData` 裁剪节点详情，
+ * 返回新记录对象而不修改入参。
+ */
+export const sanitizeOutLinkChatHistoryItem = <T extends ChatItemMiniType>(
+  item: T,
+  showCite: boolean
+): T => {
+  if (item.obj !== ChatRoleEnum.AI) return item;
+
+  const publicErrorText = getPublicChatItemErrorText(item.responseData);
+  return {
+    ...item,
+    errorText:
+      publicErrorText ??
+      (item.errorText
+        ? {
+            moduleName: item.errorText.moduleName,
+            errorText: PUBLIC_CHAT_ITEM_ERROR_TEXT
+          }
+        : undefined),
+    responseData: filterPublicNodeResponseData({
+      nodeRespones: item.responseData,
+      responseDetail: showCite
     })
-  );
+  };
+};
 
 /**
  * 聊天列表预览只需要从 nodeResponse rows 中提取标签和错误摘要。

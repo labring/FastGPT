@@ -2,7 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   chatItemResponsePreviewProjection,
-  getPublicChatItemErrorText,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -12,7 +12,6 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  filterPublicNodeResponseData,
   stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
@@ -110,30 +109,24 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
 
   // Remove important information
   if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
-    result.histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        // 分享历史裁剪公开字段前先按公开节点边界提取未捕获错误摘要，与分享实时流口径一致，
-        // 既避免公开节点刷新后退化为“应用无输出内容”，也防止内部节点诊断进入匿名响应。
-        item.errorText = item.errorText || getPublicChatItemErrorText(item.responseData);
-        item.responseData = filterPublicNodeResponseData({
-          nodeRespones: item.responseData,
-          responseDetail: authRes.showCite
-        });
+    result.histories = result.histories.map((rawItem) => {
+      if (rawItem.obj !== ChatRoleEnum.AI) return rawItem;
 
-        if (authRes.showRunningStatus === false) {
-          item.value = item.value.filter(
-            (v) =>
-              v.text?.content ||
-              v.reasoning?.content ||
-              v.interactive ||
-              v.plan ||
-              // 不返回 tool 和 skill
-              (!v.tools && !v.skills)
-          );
-        } else if (authRes.showSkillReferences === false) {
-          item.value = item.value.filter((v) => !v.skills);
-        }
+      const item = sanitizeOutLinkChatHistoryItem(rawItem, authRes.showCite);
+      if (authRes.showRunningStatus === false) {
+        item.value = item.value.filter(
+          (v) =>
+            v.text?.content ||
+            v.reasoning?.content ||
+            v.interactive ||
+            v.plan ||
+            // 不返回 tool 和 skill
+            (!v.tools && !v.skills)
+        );
+      } else if (authRes.showSkillReferences === false) {
+        item.value = item.value.filter((v) => !v.skills);
       }
+      return item;
     });
   } else if (authRes.canWrite === false) {
     result.histories.forEach((item) => {

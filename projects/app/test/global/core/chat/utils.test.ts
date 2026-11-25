@@ -10,7 +10,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   addStatisticalDataToHistoryItem,
   getChatItemErrorText,
-  getPublicChatItemErrorText
+  getPublicChatItemErrorText,
+  sanitizeOutLinkChatHistoryItem
 } from '@/global/core/chat/utils';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
 
@@ -705,87 +706,59 @@ describe('addStatisticalDataToHistoryItem', () => {
     });
   });
 
-  it('preserves pre-pause quotes and links while merging incremental responseData and errorText on interactive resume', () => {
-    const prePauseQuoteId = '68ad85a7463006c963799a01';
-    const resumedQuoteId = '68ad85a7463006c963799a02';
-    const prePauseQuote = {
-      id: prePauseQuoteId,
+  it('preserves pre-pause quotes/links and extracts errorText on interactive resume', () => {
+    const preId = '68ad85a7463006c963799a01';
+    const newId = '68ad85a7463006c963799a02';
+    const makeQuote = (id: string) => ({
+      id,
       collectionId: 'col-1',
       datasetId: 'ds-1',
-      sourceName: 'pre-pause.md',
-      q: 'old question',
-      a: 'old answer',
+      sourceName: `${id}.md`,
+      q: 'q',
+      a: 'a',
       score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
-    };
-    const resumedQuote = {
-      id: resumedQuoteId,
-      collectionId: 'col-2',
-      datasetId: 'ds-1',
-      sourceName: 'resumed.md',
-      q: 'new question',
-      a: 'new answer',
-      score: [{ type: SearchScoreTypeEnum.embedding, value: 0.88, index: 0 }]
-    };
+    });
+    const preQuote = makeQuote(preId);
+    const newQuote = makeQuote(newId);
 
-    const resumedItem: ChatItemMiniType = {
+    const resumed = addStatisticalDataToHistoryItem({
       obj: ChatRoleEnum.AI,
-      value: [
-        { text: { content: `before pause [${prePauseQuoteId}](CITE)` } },
-        { text: { content: `after resume [${resumedQuoteId}](CITE)` } }
-      ],
-      totalQuoteList: [prePauseQuote],
-      toolCiteLinks: [{ name: 'PreDoc', url: 'https://example.com/pre' }],
+      value: [{ text: { content: `[${preId}](CITE) [${newId}](CITE)` } }],
+      totalQuoteList: [preQuote],
+      toolCiteLinks: [{ name: 'Pre', url: 'https://example.com/pre' }],
       responseData: [
         {
-          id: 'resume-dataset-search',
-          nodeId: 'dataset-node-2',
+          id: 'ds-2',
+          nodeId: 'ds-node',
           moduleName: '知识库搜索',
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          quoteList: [resumedQuote]
+          quoteList: [newQuote]
         },
         {
-          id: 'resume-tool-node',
-          nodeId: 'tool-node-2',
-          moduleName: 'Web Search',
-          moduleType: FlowNodeTypeEnum.tool,
-          toolRes: {
-            citeLinks: [
-              { name: 'PreDoc', url: 'https://example.com/pre' },
-              { name: 'NewDoc', url: 'https://example.com/new' }
-            ]
-          }
-        },
-        {
-          id: 'agent-step-2',
+          id: 'agent-2',
           nodeId: 'agent-node',
           moduleName: 'Agent',
           moduleType: FlowNodeTypeEnum.agent,
           errorText: 'Sandbox error: runtime failed'
         }
       ]
-    };
-
-    const result = addStatisticalDataToHistoryItem(resumedItem);
-    expect(result.totalQuoteList).toEqual([prePauseQuote, resumedQuote]);
-    expect(result.toolCiteLinks).toEqual([
-      { name: 'PreDoc', url: 'https://example.com/pre' },
-      { name: 'NewDoc', url: 'https://example.com/new' }
-    ]);
-    expect(result.errorText).toEqual({
+    });
+    expect(resumed.totalQuoteList).toEqual([preQuote, newQuote]);
+    expect(resumed.toolCiteLinks).toEqual([{ name: 'Pre', url: 'https://example.com/pre' }]);
+    expect(resumed.errorText).toEqual({
       moduleName: 'Agent',
       errorText: 'Sandbox error: runtime failed'
     });
-    // 再次执行保持幂等，不重复追加引用或外链。
-    expect(addStatisticalDataToHistoryItem(result)).toEqual(result);
+    expect(addStatisticalDataToHistoryItem(resumed)).toEqual(resumed);
 
-    // 仅含非检索续跑节点时，暂停前已解析的引用不被清空。
-    const resumeFailedOnly = addStatisticalDataToHistoryItem({
+    // 仅含失败续跑节点时保留暂停前引用；空 responseData 时保留预提取 errorText。
+    const failedOnly = addStatisticalDataToHistoryItem({
       obj: ChatRoleEnum.AI,
-      value: [{ text: { content: `before pause [${prePauseQuoteId}](CITE)` } }],
-      totalQuoteList: [prePauseQuote],
+      value: [{ text: { content: `[${preId}](CITE)` } }],
+      totalQuoteList: [preQuote],
       responseData: [
         {
-          id: 'agent-step-3',
+          id: 'agent-3',
           nodeId: 'agent-node',
           moduleName: 'Agent',
           moduleType: FlowNodeTypeEnum.agent,
@@ -793,44 +766,31 @@ describe('addStatisticalDataToHistoryItem', () => {
         }
       ]
     });
-    expect(resumeFailedOnly.totalQuoteList).toEqual([prePauseQuote]);
-    expect(resumeFailedOnly.errorText).toEqual({
-      moduleName: 'Agent',
-      errorText: 'Sandbox error: runtime failed'
-    });
+    expect(failedOnly.totalQuoteList).toEqual([preQuote]);
+    expect(failedOnly.errorText?.errorText).toBe('Sandbox error: runtime failed');
 
-    // 已清除 responseData 的预览记录继续保留预提取 errorText。
     expect(
       addStatisticalDataToHistoryItem({
         obj: ChatRoleEnum.AI,
         value: [],
-        errorText: {
-          moduleName: 'Agent',
-          errorText: 'Sandbox error: runtime failed'
-        },
+        errorText: { moduleName: 'Agent', errorText: 'Sandbox error: runtime failed' },
         responseData: []
-      }).errorText
-    ).toEqual({
-      moduleName: 'Agent',
-      errorText: 'Sandbox error: runtime failed'
-    });
+      }).errorText?.errorText
+    ).toBe('Sandbox error: runtime failed');
   });
 
-  it('getPublicChatItemErrorText extracts public node errors and filters internal diagnostics', () => {
+  it('sanitizes public/nested share errors and hides internal nodes', () => {
     expect(
       getPublicChatItemErrorText([
         {
-          id: 'agent-err',
-          nodeId: 'agent-node',
-          moduleName: 'Agent',
-          moduleType: FlowNodeTypeEnum.agent,
-          errorText: 'Sandbox error: runtime failed'
+          id: 'run-app-err',
+          nodeId: 'run-app-node',
+          moduleName: '子应用',
+          moduleType: FlowNodeTypeEnum.runApp,
+          errorText: '500 Internal Server Error\n{"secret":"nested-body"}'
         }
       ])
-    ).toEqual({
-      moduleName: 'Agent',
-      errorText: 'Sandbox error: runtime failed'
-    });
+    ).toEqual({ moduleName: '子应用', errorText: 'common:core.chat.error.Chat error' });
 
     expect(
       getPublicChatItemErrorText([
@@ -839,9 +799,51 @@ describe('addStatisticalDataToHistoryItem', () => {
           nodeId: 'http-node',
           moduleName: 'HTTP 请求',
           moduleType: FlowNodeTypeEnum.httpRequest468,
-          errorText: 'Request failed\n{"secret":"internal-upstream-body"}'
+          errorText: '500 Internal Server Error\n{"secret":"internal-body"}'
         }
       ])
     ).toBeUndefined();
+
+    // 已捕获的父循环下属子 Agent 报错不因裁剪父节点而被误判为孤儿错误。
+    expect(
+      getPublicChatItemErrorText([
+        {
+          id: 'loop-1',
+          nodeId: 'loop-node',
+          moduleName: '循环',
+          moduleType: FlowNodeTypeEnum.loopRun,
+          errorText: 'Agent failed',
+          errorCaptured: true
+        },
+        {
+          id: 'iter-1',
+          parentId: 'loop-1',
+          nodeId: 'loop-node',
+          moduleName: '循环',
+          moduleType: FlowNodeTypeEnum.loopRun
+        },
+        {
+          id: 'agent-1',
+          parentId: 'iter-1',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'Agent failed'
+        }
+      ])
+    ).toBeUndefined();
+
+    const item: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [],
+      errorText: { moduleName: 'Agent', errorText: 'raw diagnostic' },
+      responseData: []
+    };
+    const sanitized = sanitizeOutLinkChatHistoryItem(item, false);
+    expect(sanitized.errorText).toEqual({
+      moduleName: 'Agent',
+      errorText: 'common:core.chat.error.Chat error'
+    });
+    expect(item.errorText?.errorText).toBe('raw diagnostic');
   });
 });
