@@ -80,12 +80,15 @@ export const buildAgentLoopCoreFinalAssistantOutput = ({
   assistantResponses,
   previousAssistantResponses = [],
   finalText,
+  errorNoticeText,
   reasoningText,
   hideReason
 }: {
   assistantResponses: AIChatItemValueItemType[];
   previousAssistantResponses?: AIChatItemValueItemType[];
   finalText?: string;
+  /** 用户可见的失败提示：作为独立增量追加，绝不与模型正文拼接或重发正文。 */
+  errorNoticeText?: string;
   reasoningText?: string;
   hideReason?: boolean;
 }) => {
@@ -122,6 +125,15 @@ export const buildAgentLoopCoreFinalAssistantOutput = ({
         }
       });
     }
+  }
+
+  // 失败提示是独立 response part：模型正文与错误提示互不覆盖，聊天记录与 SSE 使用同一份文本。
+  if (errorNoticeText) {
+    assistantResponses.push({
+      text: {
+        content: errorNoticeText
+      }
+    });
   }
 
   return {

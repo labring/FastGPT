@@ -25,10 +25,12 @@ import {
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import { dispatchRunAgent as dispatchRunAgentWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent';
-import {
-  AGENT_ERROR_FALLBACK_TEXT_I18N,
-  getAgentErrorFallbackText
-} from '@fastgpt/service/core/workflow/dispatch/ai/agent/constants';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import enChat from '@fastgpt/web/i18n/en/chat.json';
+import zhCNChat from '@fastgpt/web/i18n/zh-CN/chat.json';
+import enCommon from '@fastgpt/web/i18n/en/common.json';
+import zhCNCommon from '@fastgpt/web/i18n/zh-CN/common.json';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -57,6 +59,20 @@ const runWithContext = <T>(
       checkIsStopping: () => false,
       ...value,
       fileContext: value.fileContext ?? testFileContext
+    },
+    fn
+  );
+
+/** 绑定服务端请求翻译上下文，模拟真实 API 入口（NextAPI）注入的语言能力。 */
+const withI18n = createApiI18n(generatedLoaders);
+const runWithLocale = <T>(
+  locale: 'en' | 'zh-CN' | 'zh-Hant' | 'ko-KR',
+  fn: () => T | Promise<T>
+): Promise<T> =>
+  withI18n(
+    {
+      req: { headers: { 'x-fastgpt-language': locale } } as any,
+      res: {} as any
     },
     fn
   );
@@ -340,24 +356,6 @@ const createProps = () =>
   }) as any;
 
 const getSandboxWorkDirectory = () => getSandboxStaticRuntimePaths().workDirectory;
-
-describe('AGENT_ERROR_FALLBACK_TEXT_I18N', () => {
-  it('resolves the fallback text in every maintained locale and differs per locale', () => {
-    expect(getAgentErrorFallbackText('en')).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N.en);
-    expect(getAgentErrorFallbackText('zh-CN')).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N['zh-CN']);
-    expect(getAgentErrorFallbackText('zh-Hant')).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N['zh-Hant']);
-    expect(getAgentErrorFallbackText('ko-KR')).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N['ko-KR']);
-
-    // 英/繁/韩都不能再回落到简体中文。
-    expect(getAgentErrorFallbackText('en')).not.toBe(getAgentErrorFallbackText('zh-CN'));
-    expect(getAgentErrorFallbackText('zh-Hant')).not.toBe(getAgentErrorFallbackText('zh-CN'));
-    expect(getAgentErrorFallbackText('ko-KR')).not.toBe(getAgentErrorFallbackText('zh-CN'));
-  });
-
-  it('falls back to simplified Chinese when the run has no locale', () => {
-    expect(getAgentErrorFallbackText()).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N['zh-CN']);
-  });
-});
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(async () => {
@@ -1394,6 +1392,130 @@ describe('dispatchRunAgent user context', () => {
     expect(streamedAnswers).toEqual(['partial answer', 'upstream failed']);
   });
 
+  it('sends the failure notice as a standalone increment without resending parent or child text', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    const parentCall = {
+      id: 'call_child',
+      type: 'function' as const,
+      function: { name: 'child_tool', arguments: '{}' }
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      // 父 Agent 已输出正文，并调用了子工具。
+      runtime.emitEvent({ type: 'llm_request_start', requestIndex: 1, modelName: 'gpt-5' });
+      runtime.emitEvent({ type: 'answer_delta', text: 'parent answer' });
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_parent',
+        finishReason: 'tool_calls',
+        toolCalls: [parentCall],
+        usages: [],
+        seconds: 0.1
+      });
+      // 子工具输出 displayOnly 正文。
+      runtime.emitEvent({
+        type: 'tool_run_end',
+        call: parentCall,
+        response: 'child result',
+        assistantResponses: [{ text: { content: 'child answer' } }],
+        seconds: 0.1
+      });
+      // 下一次模型请求失败。
+      return {
+        status: 'error',
+        error: { message: 'upstream failed' },
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'parent answer' }],
+        requestIds: ['req_parent']
+      };
+    });
+
+    const result = await dispatchRunAgent(props);
+
+    // 聊天记录：父正文与子工具正文各出现一次，失败提示作为独立增量追加在最后。
+    const textValues = result[DispatchNodeResponseKeyEnum.assistantResponses]
+      .map((item: any) => item.text?.content)
+      .filter(Boolean);
+    expect(textValues).toEqual(['parent answer', 'child answer', 'upstream failed']);
+    expect(result.data.answerText).toBe('parent answerchild answerupstream failed');
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      textOutput: 'parent answerchild answerupstream failed'
+    });
+
+    // SSE：父正文只随模型输出流式发送一次，错误分支只补发失败提示，不再重发任何正文。
+    const streamedAnswers = props.workflowStreamResponse.mock.calls
+      .map(([event]: any[]) => event)
+      .filter((event: any) => event?.event === 'answer')
+      .map((event: any) => event.data?.choices?.[0]?.delta?.content)
+      .filter(Boolean);
+    expect(streamedAnswers).toEqual(['parent answer', 'upstream failed']);
+    // 失败提示在 SSE 与聊天记录中是同一段文本；父/子正文不会作为失败增量重发。
+    expect(streamedAnswers.at(-1)).toBe(textValues.at(-1));
+  });
+
+  it.each([
+    ['zh-CN', 'chat:LLM_model_response_empty', zhCNChat.LLM_model_response_empty],
+    [
+      'zh-CN',
+      'common:core.chat.error.File read failed',
+      zhCNCommon['core.chat.error.File read failed']
+    ],
+    ['en', 'chat:LLM_model_response_empty', enChat.LLM_model_response_empty],
+    ['en', 'common:core.chat.error.File read failed', enCommon['core.chat.error.File read failed']]
+  ] as const)(
+    'translates the failure i18n key before it reaches SSE and textOutput (%s / %s)',
+    async (locale, errorKey, expected) => {
+      const props = createProps();
+      delete props.params.agent_datasetParams;
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'error',
+        error: { message: errorKey },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      });
+
+      const result = await runWithLocale(locale, () => dispatchRunAgent(props));
+
+      const textOutput = result[DispatchNodeResponseKeyEnum.nodeResponse].textOutput;
+      expect(textOutput).toBe(expected);
+      expect(result.data.answerText).toBe(expected);
+      // key 字面量不能泄漏到节点输出或聊天记录。
+      expect(textOutput).not.toContain('chat:LLM_model_response_empty');
+      expect(textOutput).not.toContain('common:core.chat.error');
+      expect(result.data.answerText).not.toContain(':');
+
+      const streamedAnswers = props.workflowStreamResponse.mock.calls
+        .map(([event]: any[]) => event)
+        .filter((event: any) => event?.event === 'answer')
+        .map((event: any) => event.data?.choices?.[0]?.delta?.content)
+        .filter(Boolean);
+      expect(streamedAnswers).toEqual([expected]);
+      expect(streamedAnswers.join('')).not.toContain(errorKey.split(':')[0] + ':');
+    }
+  );
+
+  it('does not leak unresolved i18n keys when there is no request translation context', async () => {
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'error',
+      error: { message: 'chat:LLM_model_response_empty' },
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    // 后台任务没有请求翻译上下文，宁可不展示提示，也不能把 `chat:xxx` 写进正文。
+    const result = await dispatchRunAgent(props);
+
+    const textOutput = result[DispatchNodeResponseKeyEnum.nodeResponse].textOutput;
+    expect(textOutput).not.toContain('chat:LLM_model_response_empty');
+    expect(result.data.answerText).not.toContain('chat:');
+  });
+
   it('does not stream the failure fallback when isResponseAnswerText is false', async () => {
     const props = createProps();
     props.params.isResponseAnswerText = false;
@@ -1406,10 +1528,10 @@ describe('dispatchRunAgent user context', () => {
       requestIds: []
     });
 
-    const result = await dispatchRunAgent(props);
+    const result = await runWithLocale('zh-CN', () => dispatchRunAgent(props));
 
     // 静默配置仍保留节点输出文本，但不得向 SSE 推送兜底提示。
-    expect(result.data.answerText).toBe(getAgentErrorFallbackText('zh-CN'));
+    expect(result.data.answerText).toBe(zhCNChat.agent_run_failed_fallback);
     const streamedAnswers = props.workflowStreamResponse.mock.calls
       .map(([event]: any[]) => event)
       .filter((event: any) => event?.event === 'answer');
@@ -1433,14 +1555,12 @@ describe('dispatchRunAgent user context', () => {
       requestIds: []
     });
 
-    let resultPromise: Promise<any>;
-    runWithContext({ mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
-    const result = await resultPromise!;
+    const result = await runWithLocale('zh-CN', () =>
+      runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props))
+    );
 
     // 错误路由不变：仍然返回 error 字段并让节点走失败分支。
-    const fallbackText = getAgentErrorFallbackText('zh-CN');
+    const fallbackText = zhCNChat.agent_run_failed_fallback;
     expect(result.error).toEqual({ system_error_text: '' });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       textOutput: fallbackText
@@ -1468,17 +1588,15 @@ describe('dispatchRunAgent user context', () => {
       requestIds: []
     });
 
-    let resultPromise: Promise<any>;
-    runWithContext({ mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
-    const result = await resultPromise!;
+    const result = await runWithLocale('en', () =>
+      runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props))
+    );
 
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
-      textOutput: AGENT_ERROR_FALLBACK_TEXT_I18N.en
+      textOutput: enChat.agent_run_failed_fallback
     });
-    expect(result.data.answerText).toBe(AGENT_ERROR_FALLBACK_TEXT_I18N.en);
-    expect(result.data.answerText).not.toBe(AGENT_ERROR_FALLBACK_TEXT_I18N['zh-CN']);
+    expect(result.data.answerText).toBe(enChat.agent_run_failed_fallback);
+    expect(result.data.answerText).not.toBe(zhCNChat.agent_run_failed_fallback);
   });
 
   it('publishes Agent internal responses as current-layer top-level rows', async () => {
