@@ -9,10 +9,14 @@ import _, {
 import dns from 'dns/promises';
 import http from 'http';
 import https from 'https';
-import { isIP } from 'net';
+import net, { isIP } from 'net';
+import tls from 'tls';
+import { HttpProxyAgent } from 'http-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
+import { isSocks5ProxyProtocol, parseSupportedOutboundProxyUrl } from '../proxy/utils';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 import { getServiceAxiosMaxContentLength } from '../system/constants';
 
@@ -189,29 +193,108 @@ const resolveProxyUrl = (requestUrl: string, explicitProxy: AxiosRequestConfig['
   return proxyUrl;
 };
 
+type SafeProxyRequestMeta = Pick<
+  AxiosRequestConfig,
+  'timeout' | 'timeoutErrorMessage' | 'transitional' | 'signal' | 'cancelToken'
+>;
+
 type SafeProxyTarget = {
   rejectUnauthorized: boolean;
-  request: Pick<
-    AxiosRequestConfig,
-    'timeout' | 'timeoutErrorMessage' | 'transitional' | 'signal' | 'cancelToken'
-  >;
-};
-
-type ConnectableProxyAgent = http.Agent & {
-  connect: (
-    request: http.ClientRequest,
-    options: Parameters<ProxyAgent['connect']>[1]
-  ) => Promise<http.Agent>;
+  request: SafeProxyRequestMeta;
 };
 
 /**
- * 统一封装代理传输层：
- * - 固定使用本跳解析出的 proxyUrl（兼容 HTTP/HTTPS/SOCKS 代理，由代理侧解析目标域名）；
- * - 仅向选中的代理发送 Proxy-Authorization，避免泄露到直连目标或跨跳转目标；
- * - 代理握手阶段绑定超时（默认 30s）与取消信号，超时/取消时主动销毁代理 socket；
- * - 仅将 rejectUnauthorized 传给目标 TLS 连接，保持 HTTPS 代理自身的证书校验。
+ * 在代理握手阶段统一绑定超时（默认 30s）、取消信号和请求关闭事件，
+ * 确保任意阶段超时或取消都能通过 AbortController 销毁底层代理 socket。
  */
-class SafeProxyAgent extends ProxyAgent {
+const runProxyHandshake = async <T>(
+  request: http.ClientRequest,
+  handshake: AbortController,
+  requestMeta: SafeProxyRequestMeta,
+  fn: () => Promise<T>
+): Promise<T> => {
+  const { signal, cancelToken, timeout = 0, timeoutErrorMessage, transitional } = requestMeta;
+  const handshakeTimeout = timeout > 0 ? timeout : DEFAULT_PROXY_CONNECT_TIMEOUT_MS;
+  const cancel = (reason: unknown) => handshake.abort(reason);
+  const onAbort = () => cancel(new CanceledError());
+  if (signal?.aborted || request.destroyed) onAbort();
+  signal?.addEventListener?.('abort', onAbort, { once: true });
+  request.once('close', onAbort);
+  cancelToken?.subscribe(cancel);
+  const deadline = setTimeout(() => {
+    cancel(
+      new AxiosError(
+        timeoutErrorMessage ??
+          (timeout > 0
+            ? `timeout of ${timeout}ms exceeded`
+            : `Proxy CONNECT handshake timed out after ${handshakeTimeout} ms`),
+        transitional?.clarifyTimeoutError ? AxiosError.ETIMEDOUT : AxiosError.ECONNABORTED
+      )
+    );
+  }, handshakeTimeout).unref();
+
+  try {
+    handshake.signal.throwIfAborted();
+    return await fn();
+  } catch (error) {
+    handshake.signal.throwIfAborted();
+    throw error;
+  } finally {
+    clearTimeout(deadline);
+    signal?.removeEventListener?.('abort', onAbort);
+    request.removeListener('close', onAbort);
+    cancelToken?.unsubscribe(cancel);
+  }
+};
+
+/**
+ * HTTP 目标经 HTTP/HTTPS 代理的转发 Agent。
+ *
+ * 完整保留 HttpProxyAgent.addRequest() 构造 RFC 9112 absolute-form 请求目标的流程
+ *（避免 query 中包含 `://` 时跳过重写），仅在 connect() 阶段绑定握手超时与取消清理。
+ */
+class SafeHttpProxyAgent extends HttpProxyAgent<string> {
+  private readonly handshake: AbortController;
+  private readonly requestMeta: SafeProxyRequestMeta;
+
+  constructor(
+    proxyUrl: URL,
+    {
+      proxyAuthorization,
+      request
+    }: {
+      proxyAuthorization?: string;
+      request: SafeProxyRequestMeta;
+    }
+  ) {
+    const handshake = new AbortController();
+    super(proxyUrl, {
+      signal: handshake.signal,
+      headers: proxyAuthorization
+        ? () => ({ [PROXY_AUTHORIZATION]: proxyAuthorization })
+        : undefined
+    });
+    this.handshake = handshake;
+    this.requestMeta = request;
+  }
+
+  override connect(
+    request: Parameters<HttpProxyAgent<string>['connect']>[0],
+    options: Parameters<HttpProxyAgent<string>['connect']>[1]
+  ) {
+    return runProxyHandshake(request, this.handshake, this.requestMeta, () =>
+      super.connect(request, options)
+    );
+  }
+}
+
+/**
+ * HTTPS 目标经 HTTP/HTTPS 代理的 CONNECT 隧道 Agent。
+ *
+ * 仅将 rejectUnauthorized 透传给隧道内目标 TLS 连接，保持 HTTPS 代理自身的证书校验；
+ * 代理认证头仅在 CONNECT 请求中发送，握手超时或取消时立即销毁代理 socket。
+ */
+class SafeHttpsProxyAgent extends HttpsProxyAgent<string> {
   private readonly handshake: AbortController;
   private readonly target: SafeProxyTarget;
 
@@ -225,12 +308,8 @@ class SafeProxyAgent extends ProxyAgent {
     }
   ) {
     const handshake = new AbortController();
-    const timeout = target.request.timeout ?? 0;
-    const handshakeTimeout = timeout > 0 ? timeout : DEFAULT_PROXY_CONNECT_TIMEOUT_MS;
-    super({
-      getProxyForUrl: () => proxyUrl.href,
+    super(proxyUrl, {
       signal: handshake.signal,
-      timeout: handshakeTimeout,
       headers: proxyAuthorization
         ? () => ({ [PROXY_AUTHORIZATION]: proxyAuthorization })
         : undefined
@@ -239,55 +318,258 @@ class SafeProxyAgent extends ProxyAgent {
     this.target = target;
   }
 
-  override async connect(
+  override connect(
+    request: http.ClientRequest,
+    options: Parameters<HttpsProxyAgent<string>['connect']>[1]
+  ) {
+    return runProxyHandshake(request, this.handshake, this.target.request, () =>
+      super.connect(
+        request,
+        options.secureEndpoint
+          ? { ...options, rejectUnauthorized: this.target.rejectUnauthorized }
+          : options
+      )
+    );
+  }
+}
+
+const ipv6ToBytes = (address: string): number[] => {
+  const [left, right] = address.split('::');
+  const expand = (segment: string) =>
+    segment
+      ? segment.split(':').flatMap((part) => {
+          if (!part.includes('.')) return [parseInt(part, 16)];
+          const octets = part.split('.').map(Number);
+          return [(octets[0] << 8) | octets[1], (octets[2] << 8) | octets[3]];
+        })
+      : [];
+  const leftGroups = expand(left);
+  const rightGroups = right !== undefined ? expand(right) : [];
+  const zeroGroups =
+    right !== undefined
+      ? new Array<number>(8 - leftGroups.length - rightGroups.length).fill(0)
+      : [];
+  return [...leftGroups, ...zeroGroups, ...rightGroups].flatMap((group) => [
+    (group >> 8) & 0xff,
+    group & 0xff
+  ]);
+};
+
+const createSocketReader = (socket: net.Socket) => {
+  let buffered: Buffer = Buffer.alloc(0);
+  let closedError: Error | null = null;
+  let waiting: {
+    size: number;
+    resolve: (chunk: Buffer) => void;
+    reject: (error: Error) => void;
+  } | null = null;
+
+  const fail = (error: Error) => {
+    closedError ??= error;
+    if (waiting) {
+      const pending = waiting;
+      waiting = null;
+      pending.reject(closedError);
+    }
+  };
+
+  const onData = (chunk: Buffer) => {
+    buffered = buffered.length === 0 ? chunk : Buffer.concat([buffered, chunk]);
+    if (waiting && buffered.length >= waiting.size) {
+      const pending = waiting;
+      waiting = null;
+      const result = buffered.subarray(0, pending.size);
+      buffered = buffered.subarray(pending.size);
+      pending.resolve(result);
+    }
+  };
+  const onError = (error: Error) => fail(error);
+  const onEnd = () => fail(new Error('SOCKS5 proxy closed connection during handshake'));
+  const onClose = () => fail(new Error('SOCKS5 proxy socket closed during handshake'));
+
+  socket.on('data', onData);
+  socket.once('error', onError);
+  socket.once('end', onEnd);
+  socket.once('close', onClose);
+
+  return {
+    readExact: (size: number): Promise<Buffer> => {
+      if (buffered.length >= size) {
+        const result = buffered.subarray(0, size);
+        buffered = buffered.subarray(size);
+        return Promise.resolve(result);
+      }
+      if (closedError) return Promise.reject(closedError);
+      return new Promise<Buffer>((resolve, reject) => {
+        waiting = { size, resolve, reject };
+      });
+    },
+    release: () => {
+      socket.removeListener('data', onData);
+      socket.removeListener('error', onError);
+      socket.removeListener('end', onEnd);
+      socket.removeListener('close', onClose);
+      if (buffered.length > 0) {
+        socket.unshift(buffered);
+        buffered = Buffer.alloc(0);
+      }
+    }
+  };
+};
+
+/**
+ * SOCKS5 代理 Agent（统一支持 socks://、socks5://、socks5h://）。
+ *
+ * 直接通过 net.connect({ signal }) 拥有底层代理 socket，确保协商阶段超时或取消立即销毁连接；
+ * 对域名目标始终发送 ATYP=0x03 由代理侧解析 DNS，与 undici.ProxyAgent（MCP/微信）保持一致。
+ */
+class SafeSocks5ProxyAgent extends ProxyAgent {
+  private readonly handshake: AbortController;
+  private readonly proxyUrl: URL;
+  private readonly target: SafeProxyTarget;
+
+  constructor(proxyUrl: URL, target: SafeProxyTarget) {
+    super();
+    this.handshake = new AbortController();
+    this.proxyUrl = proxyUrl;
+    this.target = target;
+  }
+
+  override connect(
     request: http.ClientRequest,
     options: Parameters<ProxyAgent['connect']>[1]
-  ) {
-    const {
-      signal,
-      cancelToken,
-      timeout = 0,
-      timeoutErrorMessage,
-      transitional
-    } = this.target.request;
-    const handshakeTimeout = timeout > 0 ? timeout : DEFAULT_PROXY_CONNECT_TIMEOUT_MS;
-    const cancel = (reason: unknown) => this.handshake.abort(reason);
-    const onAbort = () => cancel(new CanceledError());
-    if (signal?.aborted || request.destroyed) onAbort();
-    signal?.addEventListener?.('abort', onAbort, { once: true });
-    request.once('close', onAbort);
-    cancelToken?.subscribe(cancel);
-    const deadline = setTimeout(() => {
-      cancel(
-        new AxiosError(
-          timeoutErrorMessage ??
-            (timeout > 0
-              ? `timeout of ${timeout}ms exceeded`
-              : `Proxy CONNECT handshake timed out after ${handshakeTimeout} ms`),
-          transitional?.clarifyTimeoutError ? AxiosError.ETIMEDOUT : AxiosError.ECONNABORTED
-        )
-      );
-    }, handshakeTimeout).unref();
-
-    try {
-      this.handshake.signal.throwIfAborted();
-      const subAgent = await super.connect(request, options);
-      if (typeof (subAgent as Partial<ConnectableProxyAgent>).connect === 'function') {
-        const connectOptions = options.secureEndpoint
-          ? { ...options, rejectUnauthorized: this.target.rejectUnauthorized }
-          : options;
-        return await (subAgent as ConnectableProxyAgent).connect(request, connectOptions);
+  ): Promise<http.Agent> {
+    return runProxyHandshake(request, this.handshake, this.target.request, async () => {
+      const proxyHost = this.proxyUrl.hostname.replace(/^\[|\]$/g, '');
+      const proxyPort = this.proxyUrl.port ? Number(this.proxyUrl.port) : 1080;
+      const targetHost = (options.host ?? '').replace(/^\[|\]$/g, '');
+      const targetPort =
+        typeof options.port === 'number'
+          ? options.port
+          : options.port
+            ? Number(options.port)
+            : options.secureEndpoint
+              ? 443
+              : 80;
+      if (!targetHost) {
+        throw new TypeError('No "host" provided');
       }
-      return subAgent;
-    } catch (error) {
-      this.handshake.signal.throwIfAborted();
-      throw error;
-    } finally {
-      clearTimeout(deadline);
-      signal?.removeEventListener?.('abort', onAbort);
-      request.removeListener('close', onAbort);
-      cancelToken?.unsubscribe(cancel);
-    }
+
+      const socket = net.connect({
+        host: proxyHost,
+        port: proxyPort,
+        signal: this.handshake.signal
+      });
+      const reader = createSocketReader(socket);
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const onConnect = () => {
+            socket.removeListener('error', onError);
+            socket.removeListener('close', onClose);
+            resolve();
+          };
+          const onError = (error: Error) => {
+            socket.removeListener('connect', onConnect);
+            socket.removeListener('close', onClose);
+            reject(error);
+          };
+          const onClose = () => {
+            socket.removeListener('connect', onConnect);
+            socket.removeListener('error', onError);
+            reject(new Error('SOCKS5 proxy connection closed before ready'));
+          };
+          socket.once('connect', onConnect);
+          socket.once('error', onError);
+          socket.once('close', onClose);
+        });
+
+        const hasAuth = Boolean(this.proxyUrl.username || this.proxyUrl.password);
+        socket.write(Buffer.from(hasAuth ? [0x05, 0x02, 0x00, 0x02] : [0x05, 0x01, 0x00]));
+
+        const greetingReply = await reader.readExact(2);
+        if (greetingReply[0] !== 0x05) {
+          throw new Error(`Invalid SOCKS5 greeting version: ${greetingReply[0]}`);
+        }
+        if (greetingReply[1] === 0x02) {
+          if (!hasAuth) {
+            throw new Error('SOCKS5 proxy requires username/password authentication');
+          }
+          const username = Buffer.from(decodeURIComponent(this.proxyUrl.username), 'utf8');
+          const password = Buffer.from(decodeURIComponent(this.proxyUrl.password), 'utf8');
+          if (username.length > 255 || password.length > 255) {
+            throw new Error('SOCKS5 proxy credentials exceed 255 bytes');
+          }
+          socket.write(
+            Buffer.concat([
+              Buffer.from([0x01, username.length]),
+              username,
+              Buffer.from([password.length]),
+              password
+            ])
+          );
+          const authReply = await reader.readExact(2);
+          if (authReply[0] !== 0x01 || authReply[1] !== 0x00) {
+            throw new Error(`SOCKS5 proxy authentication failed (status=${authReply[1]})`);
+          }
+        } else if (greetingReply[1] !== 0x00) {
+          throw new Error(`SOCKS5 proxy rejected authentication method: ${greetingReply[1]}`);
+        }
+
+        const ipFamily = isIP(targetHost);
+        let addrPart: Buffer;
+        if (ipFamily === 4) {
+          addrPart = Buffer.from([0x01, ...targetHost.split('.').map(Number)]);
+        } else if (ipFamily === 6) {
+          addrPart = Buffer.from([0x04, ...ipv6ToBytes(targetHost)]);
+        } else {
+          const domainBuf = Buffer.from(targetHost, 'utf8');
+          if (domainBuf.length > 255) {
+            throw new Error('SOCKS5 target hostname exceeds 255 bytes');
+          }
+          addrPart = Buffer.concat([Buffer.from([0x03, domainBuf.length]), domainBuf]);
+        }
+
+        const portBuf = Buffer.alloc(2);
+        portBuf.writeUInt16BE(targetPort, 0);
+        socket.write(Buffer.concat([Buffer.from([0x05, 0x01, 0x00]), addrPart, portBuf]));
+
+        const connectReply = await reader.readExact(4);
+        if (connectReply[0] !== 0x05) {
+          throw new Error(`Invalid SOCKS5 connect reply version: ${connectReply[0]}`);
+        }
+        if (connectReply[1] !== 0x00) {
+          throw new Error(`SOCKS5 proxy connection rejected (rep=${connectReply[1]})`);
+        }
+
+        const replyAtyp = connectReply[3];
+        if (replyAtyp === 0x01) {
+          await reader.readExact(4 + 2);
+        } else if (replyAtyp === 0x03) {
+          const [len] = await reader.readExact(1);
+          await reader.readExact(len + 2);
+        } else if (replyAtyp === 0x04) {
+          await reader.readExact(16 + 2);
+        } else {
+          throw new Error(`Unsupported SOCKS5 reply address type: ${replyAtyp}`);
+        }
+
+        reader.release();
+
+        if (options.secureEndpoint) {
+          return tls.connect({
+            socket,
+            servername: ipFamily ? undefined : targetHost,
+            rejectUnauthorized: this.target.rejectUnauthorized
+          }) as unknown as http.Agent;
+        }
+        return socket as unknown as http.Agent;
+      } catch (error) {
+        reader.release();
+        socket.destroy();
+        throw error;
+      }
+    });
   }
 }
 
@@ -306,7 +588,8 @@ const attachRequestAgent = async (
     return config;
   }
 
-  const proxyUrl = resolveProxyUrl(requestUrl, config.proxy);
+  const rawProxyUrl = resolveProxyUrl(requestUrl, config.proxy);
+  const proxyUrl = rawProxyUrl ? parseSupportedOutboundProxyUrl(rawProxyUrl) : undefined;
   const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
 
   // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定到对应代理 origin，每跳都从目标请求移除。
@@ -325,11 +608,21 @@ const attachRequestAgent = async (
   const agent = await (async () => {
     if (proxyUrl) {
       const { timeout, timeoutErrorMessage, transitional, signal, cancelToken } = config;
-      return new SafeProxyAgent(proxyUrl, {
-        rejectUnauthorized,
-        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin),
-        request: { timeout, timeoutErrorMessage, transitional, signal, cancelToken }
-      });
+      const request = { timeout, timeoutErrorMessage, transitional, signal, cancelToken };
+      if (isSocks5ProxyProtocol(proxyUrl.protocol)) {
+        return new SafeSocks5ProxyAgent(proxyUrl, { rejectUnauthorized, request });
+      }
+      const proxyAuthorization = redirectState?.getProxyAuthorization?.(proxyUrl.origin);
+      return isHttps
+        ? new SafeHttpsProxyAgent(proxyUrl, {
+            rejectUnauthorized,
+            proxyAuthorization,
+            request
+          })
+        : new SafeHttpProxyAgent(proxyUrl, {
+            proxyAuthorization,
+            request
+          });
     }
 
     const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);

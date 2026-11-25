@@ -1,6 +1,7 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
+import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
@@ -1271,6 +1272,80 @@ describe('createMcpSafeFetch', () => {
         );
       } finally {
         await closeServer(proxyServer);
+      }
+    }
+  );
+
+  it.each(['socks5', 'socks5h'] as const)(
+    'should route MCP requests via %s:// proxy without local target DNS resolution',
+    async (scheme) => {
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const lookup = vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
+
+      const targetServer = await listen((req, res) => {
+        res.end(JSON.stringify({ ok: true, host: req.headers.host, url: req.url }));
+      });
+      const targetPort = getServerPort(targetServer);
+
+      const socksTargets: Array<{ atyp: number; host: string; port: number }> = [];
+      const socksSockets = new Set<net.Socket>();
+      const socksServer = net.createServer((client) => {
+        socksSockets.add(client);
+        let stage = 0;
+        client.on('data', (chunk) => {
+          if (stage === 0) {
+            stage = 1;
+            client.write(Buffer.from([0x05, 0x00]));
+          } else if (stage === 1) {
+            stage = 2;
+            const atyp = chunk[3];
+            const hostLen = atyp === 0x03 ? chunk[4] : 0;
+            const host = atyp === 0x03 ? chunk.subarray(5, 5 + hostLen).toString('utf8') : '';
+            const port = chunk.readUInt16BE(5 + hostLen);
+            socksTargets.push({ atyp, host, port });
+            const upstream = net.connect(targetPort, '127.0.0.1', () => {
+              socksSockets.add(upstream);
+              client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 0]));
+              upstream.pipe(client);
+              client.pipe(upstream);
+            });
+            upstream.on('error', () => client.destroy());
+            client.on('close', () => {
+              socksSockets.delete(client);
+              socksSockets.delete(upstream);
+              upstream.destroy();
+            });
+          }
+        });
+      });
+      await new Promise<void>((resolve) => socksServer.listen(0, '127.0.0.1', resolve));
+      const socksAddress = socksServer.address();
+      if (!socksAddress || typeof socksAddress === 'string') {
+        throw new Error('Invalid SOCKS5 server address');
+      }
+
+      const safeFetch = createMcpSafeFetch();
+      try {
+        vi.stubEnv('ALL_PROXY', `${scheme}://127.0.0.1:${socksAddress.port}`);
+        vi.stubEnv('NO_PROXY', '');
+        vi.stubEnv('no_proxy', '');
+
+        const response = await safeFetch('http://mcp-socks.example.test/mcp');
+        expect(await response.json()).toEqual({
+          ok: true,
+          host: 'mcp-socks.example.test',
+          url: '/mcp'
+        });
+        expect(socksTargets).toEqual([{ atyp: 0x03, host: 'mcp-socks.example.test', port: 80 }]);
+        expect(lookup).not.toHaveBeenCalled();
+      } finally {
+        await safeFetch.close();
+        for (const s of socksSockets) s.destroy();
+        await Promise.all([
+          new Promise<void>((resolve) => socksServer.close(() => resolve())),
+          closeServer(targetServer)
+        ]);
       }
     }
   );

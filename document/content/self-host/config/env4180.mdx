@@ -131,7 +131,7 @@ V4.18.0 起，环境变量已简化，业务配置集中到管理员页面维护
 | `NO_PROXY`             | 空      | 不走代理的地址列表。                                                                               |
 | `ALL_PROXY`            | 未设置  | 支持此变量的出站客户端所用代理；普通 fetch/OpenAI 默认客户端需使用 `HTTP_PROXY` 或 `HTTPS_PROXY`。 |
 
-受保护的出站请求（如工作流 HTTP 节点、HTTP 工具、MCP 客户端及使用共享客户端的渠道和文件处理）在命中 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY` 时，目标域名解析与出站连接交由代理层处理，请在代理侧配置出站访问控制（禁止访问回环、内网网段及云元数据地址）以防范代理侧 DNS 重绑定导致的 SSRF 风险。`NO_PROXY` 命中的目标保持直连并继续执行本地地址与 IP 校验。
+受保护的出站请求（如工作流 HTTP 节点、HTTP 工具、MCP 客户端及使用共享客户端的渠道和文件处理）在命中 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY` 时，支持 `http://`、`https://`、`socks://`、`socks5://` 与 `socks5h://` 代理协议，目标域名解析与出站连接均交由代理层处理，请在代理侧配置出站访问控制（禁止访问回环、内网网段及云元数据地址）以防范代理侧 DNS 重绑定导致的 SSRF 风险。`NO_PROXY` 命中的目标保持直连并继续执行本地地址与 IP 校验。
 
 微信个人号渠道仅允许通过 HTTPS 访问 `ilinkai.weixin.qq.com`（及其子域）和 `cdn.weixin.qq.com`（及其子域，默认媒体下载使用 `novac2c.cdn.weixin.qq.com`）并禁止重定向；支持通过 `HTTP_PROXY`、`HTTPS_PROXY` 和 `ALL_PROXY` 出网（代理侧需自行做好出站访问控制），未配置代理或命中 `NO_PROXY` 时直连并校验公网 IP。
 

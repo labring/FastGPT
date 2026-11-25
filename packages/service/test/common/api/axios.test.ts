@@ -880,6 +880,155 @@ describe('axios.ts', () => {
         ]);
       }
     });
+
+    it('HTTP 转发代理在 query 包含完整 URL 时仍应发送 RFC 9112 absolute-form 请求目标', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const receivedRequestTargets: string[] = [];
+      const proxyServer = await listen((req, res) => {
+        const target = req.url ?? '';
+        receivedRequestTargets.push(target);
+        if (!/^http:\/\//i.test(target)) {
+          res.writeHead(400);
+          res.end('invalid-absolute-form');
+          return;
+        }
+        res.end(`proxied:${target}`);
+      });
+
+      try {
+        process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(proxyServer)}`;
+        const instance = createProxyAxios();
+        const url =
+          'http://query-url.example.test/fetch?redirect=https://other.example.test/callback&ok=1';
+        const res = await instance.get(url);
+
+        expect(res.data).toBe(`proxied:${url}`);
+        expect(receivedRequestTargets).toEqual([url]);
+      } finally {
+        await closeServer(proxyServer);
+      }
+    });
+
+    it.each(['socks5', 'socks5h', 'socks'] as const)(
+      '%s:// 代理应在无本地目标 DNS 时交由代理侧解析域名出网',
+      async (scheme) => {
+        clearProxyEnv();
+        getTestInstanceConfig().security.checkInternalIp = false;
+        vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+        vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+        const lookupSpy = vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
+
+        const targetServer = await listen((req, res) => {
+          res.end(`socks-target:${req.headers.host}${req.url}`);
+        });
+        const targetPort = getServerPort(targetServer);
+
+        const socksTargets: Array<{ atyp: number; host: string; port: number }> = [];
+        const socksSockets = new Set<net.Socket>();
+        const socksServer = net.createServer((client) => {
+          socksSockets.add(client);
+          let stage = 0;
+          client.on('data', (chunk) => {
+            if (stage === 0) {
+              stage = 1;
+              client.write(Buffer.from([0x05, 0x00]));
+            } else if (stage === 1) {
+              stage = 2;
+              const atyp = chunk[3];
+              const hostLen = atyp === 0x03 ? chunk[4] : 0;
+              const host = atyp === 0x03 ? chunk.subarray(5, 5 + hostLen).toString('utf8') : '';
+              const port = chunk.readUInt16BE(5 + hostLen);
+              socksTargets.push({ atyp, host, port });
+              const upstream = net.connect(targetPort, '127.0.0.1', () => {
+                socksSockets.add(upstream);
+                client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 0]));
+                upstream.pipe(client);
+                client.pipe(upstream);
+              });
+              upstream.on('error', () => client.destroy());
+              client.on('close', () => {
+                socksSockets.delete(client);
+                socksSockets.delete(upstream);
+                upstream.destroy();
+              });
+            }
+          });
+        });
+        await new Promise<void>((resolve) => socksServer.listen(0, '127.0.0.1', resolve));
+        const socksAddress = socksServer.address();
+        if (!socksAddress || typeof socksAddress === 'string') {
+          throw new Error('Invalid SOCKS5 server address');
+        }
+
+        try {
+          process.env.ALL_PROXY = `${scheme}://127.0.0.1:${socksAddress.port}`;
+          const instance = createProxyAxios();
+          const res = await instance.get('http://socks-only.example.test/data');
+
+          expect(res.data).toBe('socks-target:socks-only.example.test/data');
+          expect(socksTargets).toEqual([{ atyp: 0x03, host: 'socks-only.example.test', port: 80 }]);
+          expect(lookupSpy).not.toHaveBeenCalled();
+        } finally {
+          for (const s of socksSockets) s.destroy();
+          await Promise.all([
+            new Promise<void>((resolve) => socksServer.close(() => resolve())),
+            closeServer(targetServer)
+          ]);
+        }
+      }
+    );
+
+    it('SOCKS5 代理握手挂起时取消请求应立即关闭代理 socket', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const hangingSockets: net.Socket[] = [];
+      let resolveGreetingSeen!: () => void;
+      const greetingSeen = new Promise<void>((resolve) => {
+        resolveGreetingSeen = resolve;
+      });
+      let socketClosed!: Promise<unknown>;
+
+      const hangingSocks = net.createServer((socket) => {
+        hangingSockets.push(socket);
+        socket.on('end', () => socket.destroy());
+        socketClosed = once(socket, 'close');
+        socket.once('data', () => {
+          // 收到 SOCKS5 greeting 后故意不响应，模拟协商挂起。
+          socket.resume();
+          resolveGreetingSeen();
+        });
+      });
+      await new Promise<void>((resolve) => hangingSocks.listen(0, '127.0.0.1', resolve));
+      const socksAddress = hangingSocks.address();
+      if (!socksAddress || typeof socksAddress === 'string') {
+        throw new Error('Invalid hanging SOCKS5 server address');
+      }
+
+      try {
+        process.env.ALL_PROXY = `socks5://127.0.0.1:${socksAddress.port}`;
+        const instance = createProxyAxios();
+        const controller = new AbortController();
+
+        const req = instance.get('http://hanging-socks.example.test/resource', {
+          signal: controller.signal
+        });
+        await greetingSeen;
+        controller.abort();
+
+        await expect(req).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+        await socketClosed;
+      } finally {
+        for (const s of hangingSockets) s.destroy();
+        await new Promise<void>((resolve) => hangingSocks.close(() => resolve()));
+      }
+    });
   });
 
   describe('safe axios response size limit', () => {

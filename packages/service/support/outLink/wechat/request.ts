@@ -1,6 +1,7 @@
 import dns from 'node:dns';
-import { Agent, ProxyAgent } from 'undici';
+import { Agent, type ProxyAgent } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
+import { createUndiciOutboundProxyAgent } from '../../../common/proxy/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -87,7 +88,7 @@ const getWechatDispatcher = (url: string) => {
 
   let dispatcher = wechatProxyDispatchers.get(proxyUrl);
   if (!dispatcher) {
-    dispatcher = new ProxyAgent({ uri: proxyUrl, proxyTunnel: false });
+    dispatcher = createUndiciOutboundProxyAgent(proxyUrl);
     wechatProxyDispatchers.set(proxyUrl, dispatcher);
   }
   return dispatcher;

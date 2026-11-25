@@ -1,5 +1,5 @@
 import type { LookupAddress } from 'node:dns';
-import { Socket } from 'node:net';
+import net, { Socket } from 'node:net';
 import tls from 'node:tls';
 import { Agent, ProxyAgent } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -147,4 +147,56 @@ describe('WeChat request policy', () => {
     expect(dispatcher).toBeInstanceOf(Agent);
     expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
   });
+
+  it.each(['socks5', 'socks5h'] as const)(
+    'delegates target DNS resolution to %s:// proxy without local DNS lookup',
+    async (scheme) => {
+      mockLookup.mockImplementation((_hostname, _options, callback) =>
+        callback(new Error('DNS unavailable'), [])
+      );
+      const socksTargets: Array<{ atyp: number; host: string; port: number }> = [];
+      const socksSockets = new Set<net.Socket>();
+      const socksServer = net.createServer((client) => {
+        socksSockets.add(client);
+        let stage = 0;
+        client.on('data', (chunk) => {
+          if (stage === 0) {
+            stage = 1;
+            client.write(Buffer.from([0x05, 0x00]));
+          } else if (stage === 1) {
+            stage = 2;
+            const atyp = chunk[3];
+            const hostLen = atyp === 0x03 ? chunk[4] : 0;
+            const host = atyp === 0x03 ? chunk.subarray(5, 5 + hostLen).toString('utf8') : '';
+            const port = chunk.readUInt16BE(5 + hostLen);
+            socksTargets.push({ atyp, host, port });
+            // 记录到代理收到的域名和端口后返回通用失败，结束握手。
+            client.end(Buffer.from([0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          }
+        });
+        client.on('close', () => socksSockets.delete(client));
+      });
+      await new Promise<void>((resolve) => socksServer.listen(0, '127.0.0.1', resolve));
+      const socksAddress = socksServer.address();
+      if (!socksAddress || typeof socksAddress === 'string') {
+        throw new Error('Invalid SOCKS5 server address');
+      }
+
+      try {
+        vi.stubEnv('ALL_PROXY', `${scheme}://127.0.0.1:${socksAddress.port}`);
+        await expect(
+          fetchWechat(
+            { url: 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates', endpoint: 'ilink' },
+            {}
+          )
+        ).rejects.toThrow();
+
+        expect(socksTargets).toEqual([{ atyp: 0x03, host: 'ilinkai.weixin.qq.com', port: 443 }]);
+        expect(mockLookup).not.toHaveBeenCalled();
+      } finally {
+        for (const s of socksSockets) s.destroy();
+        await new Promise<void>((resolve) => socksServer.close(() => resolve()));
+      }
+    }
+  );
 });

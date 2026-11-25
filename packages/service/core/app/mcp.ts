@@ -26,6 +26,7 @@ import dns from 'dns/promises';
 import { isIP, type LookupFunction } from 'net';
 import { Agent, ProxyAgent, fetch as undiciFetch, type Dispatcher } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
+import { createUndiciOutboundProxyAgent } from '../../common/proxy/utils';
 import {
   isInternalAddress,
   isInternalResolvedIP,
@@ -336,7 +337,12 @@ export const createMcpSafeFetch = ({
       const existing = dispatchers.get(key);
       if (existing) return existing;
 
-      const dispatcher = new ProxyAgent({ uri: proxyUrl, proxyTunnel: false });
+      let dispatcher: ProxyAgent;
+      try {
+        dispatcher = createUndiciOutboundProxyAgent(proxyUrl);
+      } catch (error) {
+        throw new McpProxyTunnelError(error instanceof Error ? error.message : String(error));
+      }
       dispatchers.set(key, dispatcher);
       return dispatcher;
     }
