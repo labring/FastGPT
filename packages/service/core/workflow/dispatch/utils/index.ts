@@ -649,10 +649,14 @@ export const rewriteRuntimeWorkFlow = async ({
             const apiSchemaStr = JSON.stringify(bundledSchema);
             if (!apiSchemaStr) throw new Error('Failed to serialize HTTP tool schema');
 
-            const apiSchema = await str2OpenApiSchema(apiSchemaStr);
+            const apiSchema = await str2OpenApiSchema(apiSchemaStr).catch((error) => {
+              throw new UserConfigError('Schema is not a valid OpenAPI API definition', undefined, {
+                cause: error
+              });
+            });
             const parsedToolList = await pathData2ToolList(apiSchema.pathData);
             if (parsedToolList.length !== apiSchema.pathData.length) {
-              throw new Error('Failed to parse HTTP tool schema');
+              throw new UserConfigError('Failed to parse HTTP tool schema');
             }
             const toolList = mergeToolSetChildDescriptions({
               toolList: parsedToolList,

@@ -2451,6 +2451,63 @@ describe('bundleOpenAPISchema', () => {
     await expect(promise).rejects.toThrow('Unable to resolve $ref pointer');
   });
 
+  it.each(['./secret.yaml', '../etc/passwd', 'other.yaml#/defs/X', 'file:///etc/passwd'])(
+    'rejects external or relative file ref %s without leaking process.cwd or file path',
+    async (refValue) => {
+      let caughtError: unknown;
+      try {
+        await bundleOpenAPISchema({
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {},
+          components: {
+            schemas: {
+              Leak: {
+                $ref: refValue
+              }
+            }
+          }
+        });
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      const message = (caughtError as UserConfigError).message;
+      expect(message).toContain('Unable to resolve $ref pointer');
+      expect(message).toContain('#/components/schemas/Leak');
+      expect(message).not.toContain(process.cwd());
+      expect(message).not.toContain('secret.yaml');
+      expect(message).not.toContain('/etc/passwd');
+    }
+  );
+
+  it.each([
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: null },
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: [] },
+    { openapi: '3.1.0', info: { title: 'Test', version: '1.0.0' }, webhooks: {} },
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: { '/users': null } },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/users': { get: null } }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/users': { $ref: '#/components/bad' } },
+      components: { bad: null }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      servers: [null],
+      paths: {}
+    }
+  ])('rejects OpenAPI documents unusable by tool conversion: %j', async (doc) => {
+    await expect(bundleOpenAPISchema(doc)).rejects.toBeInstanceOf(UserConfigError);
+  });
+
   it('classifies plain non-OpenAPI JSON objects as UserConfigError without [object Object]', async () => {
     let caughtError: unknown;
     try {

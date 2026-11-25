@@ -372,6 +372,33 @@ describe('jsonRes HTTP status mapping', () => {
     }
   });
 
+  it('logs System unexpected error and maps unregistered ServerConfigError to HTTP 500', () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+
+    const serverError = new ServerConfigError('Invalid outbound proxy URL configuration');
+    const processed = processError({ error: serverError, url: '/api/test', defaultCode: 500 });
+
+    expect(processed).toMatchObject({
+      code: 500,
+      httpStatus: 500,
+      message: 'Invalid outbound proxy URL configuration'
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'System unexpected error',
+      expect.objectContaining({
+        url: '/api/test',
+        message: 'Invalid outbound proxy URL configuration',
+        error: serverError
+      })
+    );
+    expect(logger.info).not.toHaveBeenCalled();
+
+    const res = createResponse();
+    jsonRes(res, { code: 500, error: serverError, url: '/api/test' });
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
   it('maps ServerConfigError(ModelErrEnum.unExist) to HTTP 500 while keeping explicit UserError at 404', () => {
     const serverError = new ServerConfigError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
     const explicitError = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');

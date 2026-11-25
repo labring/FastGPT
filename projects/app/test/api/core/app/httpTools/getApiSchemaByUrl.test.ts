@@ -193,6 +193,60 @@ describe('getApiSchemaByUrl handler', () => {
     expect((caughtError as UserConfigError).cause).toBe(axiosLikeError);
   });
 
+  it.each(['./secret.yaml', '../etc/passwd'])(
+    'rejects relative file ref %s without leaking server cwd or file paths',
+    async (refValue) => {
+      mocks.axiosGet.mockResolvedValue({
+        data: JSON.stringify({
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {},
+          components: {
+            schemas: {
+              Leak: {
+                $ref: refValue
+              }
+            }
+          }
+        })
+      });
+
+      let caughtError: unknown;
+      try {
+        await handler({
+          body: {
+            url: 'https://example.com/openapi.json'
+          }
+        } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      const message = (caughtError as UserConfigError).message;
+      expect(message).toContain('Unable to resolve $ref pointer');
+      expect(message).toContain('#/components/schemas/Leak');
+      expect(message).not.toContain(process.cwd());
+      expect(message).not.toContain('secret.yaml');
+      expect(message).not.toContain('/etc/passwd');
+    }
+  );
+
+  it.each([
+    { openapi: '3.0.0', info: { title: 'Test API', version: '1.0.0' }, paths: null },
+    { openapi: '3.0.0', info: { title: 'Test API', version: '1.0.0' }, paths: { '/users': null } }
+  ])('rejects imported schemas with unusable paths structure: %j', async (doc) => {
+    mocks.axiosGet.mockResolvedValue({ data: JSON.stringify(doc) });
+
+    await expect(
+      handler({
+        body: {
+          url: 'https://example.com/invalid-paths.json'
+        }
+      } as ApiRequestProps<GetApiSchemaByUrlBodyType>)
+    ).rejects.toBeInstanceOf(UserConfigError);
+  });
+
   it('propagates UserConfigError when checkUrlSafety rejects the URL', async () => {
     mocks.checkUrlSafety.mockRejectedValue(
       new UserConfigError('OpenAPI Schema URL must be a valid URL')

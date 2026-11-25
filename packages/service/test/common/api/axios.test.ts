@@ -1,4 +1,5 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { isServerConfigError } from '@fastgpt/global/common/error/utils';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import http from 'http';
@@ -791,6 +792,37 @@ describe('axios.ts', () => {
         for (const s of connectSockets) s.destroy();
         await Promise.all([closeServer(httpProxy), closeServer(selfSignedTarget)]);
       }
+    });
+
+    it('rejects invalid or unsupported outbound proxy configurations as ServerConfigError without leaking credentials', async () => {
+      clearProxyEnv();
+      getTestInstanceConfig().security.checkInternalIp = false;
+      const adapter = vi.fn();
+      const client = createProxyAxios({ adapter });
+
+      process.env.HTTPS_PROXY = 'http://user:super-secret@bad host:8080';
+      let invalidProxyError: unknown;
+      try {
+        await client.get('https://example.com/openapi.json');
+      } catch (error) {
+        invalidProxyError = error;
+      }
+      expect(isServerConfigError(invalidProxyError)).toBe(true);
+      expect((invalidProxyError as Error).message).not.toContain('super-secret');
+
+      clearProxyEnv();
+      process.env.ALL_PROXY = 'socks4://proxy.example.test:1080';
+      let unsupportedProtocolError: unknown;
+      try {
+        await client.get('https://example.com/openapi.json');
+      } catch (error) {
+        unsupportedProtocolError = error;
+      }
+      expect(isServerConfigError(unsupportedProtocolError)).toBe(true);
+      expect((unsupportedProtocolError as Error).message).toContain(
+        'Unsupported outbound proxy protocol: socks4:'
+      );
+      expect(adapter).not.toHaveBeenCalled();
     });
 
     it('HTTP 转发代理在 query 包含完整 URL 时仍应发送 RFC 9112 absolute-form 请求目标', async () => {

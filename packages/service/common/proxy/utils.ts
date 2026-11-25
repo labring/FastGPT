@@ -1,4 +1,5 @@
 import type http from 'http';
+import { ServerConfigError } from '@fastgpt/global/common/error/utils';
 import { ProxyAgent as NodeProxyAgent } from 'proxy-agent';
 import { ProxyAgent as UndiciProxyAgent } from 'undici';
 
@@ -12,14 +13,24 @@ const SUPPORTED_SOCKS5_PROXY_PROTOCOLS = new Set(['socks:', 'socks5:', 'socks5h:
  *
  * 统一支持 http: / https: / socks: / socks5: / socks5h:，且全部采用代理侧 DNS 解析语义，
  * 保证共享 Axios、MCP、微信个人号及团队模型自定义端点在无目标 DNS 的隔离环境中可使用同一代理配置。
+ * 实例出站代理配置错误属于服务端故障，统一抛出 ServerConfigError 保留 5xx 告警。
  */
 export const parseSupportedOutboundProxyUrl = (proxyUrl: string | URL): URL => {
-  const parsed = proxyUrl instanceof URL ? new URL(proxyUrl.href) : new URL(proxyUrl);
+  const parsed = (() => {
+    try {
+      return proxyUrl instanceof URL ? new URL(proxyUrl.href) : new URL(proxyUrl);
+    } catch (error) {
+      throw new ServerConfigError('Invalid outbound proxy URL configuration', undefined, {
+        cause: error
+      });
+    }
+  })();
+
   if (
     !SUPPORTED_HTTP_PROXY_PROTOCOLS.has(parsed.protocol) &&
     !SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(parsed.protocol)
   ) {
-    throw new Error(
+    throw new ServerConfigError(
       `Unsupported outbound proxy protocol: ${parsed.protocol} (supported: http, https, socks, socks5, socks5h)`
     );
   }

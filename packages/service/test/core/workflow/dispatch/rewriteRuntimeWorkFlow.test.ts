@@ -690,5 +690,21 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
         edges: []
       })
     ).rejects.toBeInstanceOf(UserConfigError);
+
+    mocks.getHttpSchema.mockResolvedValue({
+      data: JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Test', version: '1.0.0' },
+        paths: null
+      })
+    });
+    await expect(
+      rewriteRuntimeWorkFlow({
+        teamId: 'team-1',
+        tmbId: 'member-1',
+        nodes: [createHttpToolSetNode([{ name: 'search', description: 'Saved tool' }])],
+        edges: []
+      })
+    ).rejects.toBeInstanceOf(UserConfigError);
   });
 });
