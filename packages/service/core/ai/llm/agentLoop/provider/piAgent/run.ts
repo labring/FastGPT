@@ -531,6 +531,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     isToolCallParamsAllowed
   });
 
+  const truncatedToolResponse = parseI18nString(
+    LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE,
+    runtime.lang
+  );
+  /** stopReason 为 length 的回复中的工具调用，引用 Pi 消息内的原对象，审核拒绝时就地脱敏。 */
+  const truncatedToolCalls = new Map<string, { name: string; arguments: unknown }>();
+
   const pendingRequests: Array<{
     requestId: string;
     requestIndex: number;
@@ -550,28 +557,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     // 同时避免 plan/ask 和普通工具在同一轮并行修改状态。
     toolExecution: 'sequential',
     // length 时 pi-ai 已用 partial-json 补全截断的参数，同轮任何工具参数都不可信，不能执行。
-    // 与 fastAgent 一致：回填未执行说明后继续模型循环。
-    beforeToolCall: async ({ assistantMessage, toolCall }) => {
+    // 与 fastAgent 一致：回填未执行说明后继续模型循环。结果统一在 tool_execution_end 回填，
+    // 因为 SDK 先查找工具、校验参数，失败的调用不会进入本钩子。
+    beforeToolCall: async ({ assistantMessage }) => {
       if (assistantMessage.stopReason !== 'length') return;
-      const response = parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, runtime.lang);
-      const call: ChatCompletionMessageToolCall = {
-        id: toolCall.id,
-        type: 'function',
-        function: { name: toolCall.name, arguments: stringifyJson(toolCall.arguments) }
-      };
-      if (emittedToolCallIds.has(call.id)) {
-        runtime.emitEvent?.({
-          type: 'tool_run_end',
-          call,
-          response,
-          errorMessage: response,
-          assistantMessages: [],
-          usages: [],
-          seconds: 0
-        });
-      }
-      recordToolResult({ call, response });
-      return { block: true, reason: response };
+      return { block: true, reason: truncatedToolResponse };
     },
     getApiKey: () => getModelApiKey(modelData, runtime.llmParams.userKey),
     onPayload: (payload) => {
@@ -938,17 +928,66 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       return;
     }
 
+    if (event.type === 'tool_execution_end') {
+      const toolCall = truncatedToolCalls.get(event.toolCallId);
+      if (!toolCall) return;
+      truncatedToolCalls.delete(event.toolCallId);
+      const rawCall: ChatCompletionMessageToolCall = {
+        id: event.toolCallId,
+        type: 'function',
+        function: { name: toolCall.name, arguments: stringifyJson(toolCall.arguments) }
+      };
+      // 与普通工具一致：结果与下一次请求都要等参数审核，拒绝时只暴露脱敏后的调用。
+      const isParamsAllowed = await isToolCallParamsAllowed(rawCall);
+      if (!isParamsAllowed) toolCall.arguments = {};
+      const call = isParamsAllowed
+        ? rawCall
+        : { ...rawCall, function: { ...rawCall.function, arguments: '{}' } };
+      if (emittedToolCallIds.has(call.id)) {
+        runtime.emitEvent?.({
+          type: 'tool_run_end',
+          call,
+          response: truncatedToolResponse,
+          errorMessage: truncatedToolResponse,
+          assistantMessages: [],
+          usages: [],
+          seconds: 0
+        });
+      }
+      recordToolResult({ call, response: truncatedToolResponse });
+      return;
+    }
+
     if (event.type === 'turn_end') {
       const errMsg = (event.message as { errorMessage?: string }).errorMessage;
       if (errMsg) latestError = errMsg;
     }
   };
   agent.subscribe((event: AgentEvent) => {
+    // 同步登记截断回复中的工具调用：SDK 紧接着就会准备这些调用。
+    if (
+      event.type === 'message_end' &&
+      isAssistantMessage(event.message) &&
+      event.message.stopReason === 'length'
+    ) {
+      event.message.content.forEach((item) => {
+        if (item.type === 'toolCall') truncatedToolCalls.set(item.id, item);
+      });
+    }
+    const isTruncatedToolResult =
+      event.type === 'tool_execution_end' && truncatedToolCalls.has(event.toolCallId);
+    if (isTruncatedToolResult) {
+      // SDK 在本事件之后才用 result.content 生成 toolResult 消息；查找或参数校验提前失败的调用
+      // 也在这里统一换成截断说明。
+      event.result.content = [{ type: 'text', text: truncatedToolResponse }];
+    }
     const task = handleAgentEvent(event);
     subscriberQueue = subscriberQueue.then(
       () => task,
       () => task
     );
+    // 截断调用的结果要等审核与回填完成，SDK 才能发出下一次请求。
+    if (isTruncatedToolResult) return subscriberQueue;
   });
 
   const stopPoller = setInterval(() => {

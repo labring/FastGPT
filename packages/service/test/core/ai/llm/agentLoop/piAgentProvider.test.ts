@@ -76,7 +76,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', async (importOr
 vi.mock('@mariozechner/pi-agent-core', () => ({
   Agent: vi.fn().mockImplementation(function (args) {
     agentConstructorArgs.push(args);
-    const subscribers: Array<(event: any) => void> = [];
+    const subscribers: Array<(event: any) => Promise<void> | void> = [];
     const state = {
       messages: [
         {
@@ -207,14 +207,27 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               message: assistantMessage
             });
           });
-          // 与 pi-agent-core 一致：beforeToolCall 拦截后不再执行工具。
+          // 与 pi-agent-core 一致：beforeToolCall 拦截后不再执行工具，直接发出带拦截原因的结果事件。
           const beforeResult = await args.beforeToolCall?.({
             assistantMessage,
             toolCall: assistantMessage.content[0],
             args: pendingTool.args,
             context: {}
           });
-          if (beforeResult?.block) return;
+          if (beforeResult?.block) {
+            await Promise.all(
+              subscribers.map((subscriber) =>
+                subscriber({
+                  type: 'tool_execution_end',
+                  toolCallId: pendingTool.callId,
+                  toolName: pendingTool.name,
+                  result: { content: [{ type: 'text', text: beforeResult.reason }], details: {} },
+                  isError: true
+                })
+              )
+            );
+            return;
+          }
           const tool = args.initialState.tools.find((item: any) => item.name === pendingTool.name);
           await tool.execute(pendingTool.callId, pendingTool.args);
           return;
