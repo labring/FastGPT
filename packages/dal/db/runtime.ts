@@ -29,45 +29,12 @@ const normalizeOptionalUrl = (url?: string): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-export type NormalizedDbTopologyUrls = {
-  mainWriteUrl: string;
-  mainReadUrl?: string;
-  logWriteUrl?: string;
-};
-
-/**
- * 统一归一化数据库连接拓扑 URL（唯一事实源，供 `DbRuntime`、`createOceanBaseRuntimeDeps` 与上层装配共享）：
- * - `mainWriteUrl` 去除首尾空白且必填；
- * - `mainReadUrl` 与 `logWriteUrl` 去除空白后，空字符串或与 `mainWriteUrl` 相同则归一为 `undefined`（复用主池）。
- */
-export const normalizeDbTopologyUrls = ({
-  mainWriteUrl,
-  mainReadUrl,
-  logWriteUrl
-}: {
-  mainWriteUrl?: string;
-  mainReadUrl?: string;
-  logWriteUrl?: string;
-}): NormalizedDbTopologyUrls => {
-  const normalizedMainWriteUrl = normalizeOptionalUrl(mainWriteUrl);
-  if (normalizedMainWriteUrl === undefined) {
-    throw new DbConfigurationError('Database mainWriteUrl must be a non-empty string');
-  }
-
-  const normalizedMainReadUrl = normalizeOptionalUrl(mainReadUrl);
-  const normalizedLogWriteUrl = normalizeOptionalUrl(logWriteUrl);
-
-  return {
-    mainWriteUrl: normalizedMainWriteUrl,
-    mainReadUrl:
-      normalizedMainReadUrl !== undefined && normalizedMainReadUrl !== normalizedMainWriteUrl
-        ? normalizedMainReadUrl
-        : undefined,
-    logWriteUrl:
-      normalizedLogWriteUrl !== undefined && normalizedLogWriteUrl !== normalizedMainWriteUrl
-        ? normalizedLogWriteUrl
-        : undefined
-  };
+const normalizeOptionalReadReplicaUrl = (
+  mainWriteUrl: string,
+  mainReadUrl?: string
+): string | undefined => {
+  const normalized = normalizeOptionalUrl(mainReadUrl);
+  return normalized !== undefined && normalized !== mainWriteUrl ? normalized : undefined;
 };
 
 export type DbRuntimeConfig = {
@@ -113,10 +80,17 @@ export class DbRuntime {
   private closePromise?: Promise<void>;
 
   constructor(config: DbRuntimeConfig) {
-    const topology = normalizeDbTopologyUrls(config);
+    const mainWriteUrl = normalizeOptionalUrl(config.mainWriteUrl);
+    if (mainWriteUrl === undefined) {
+      throw new DbConfigurationError('Database mainWriteUrl must be a non-empty string');
+    }
+
+    const mainReadUrl = normalizeOptionalReadReplicaUrl(mainWriteUrl, config.mainReadUrl);
+    // 保留显式传入同 URI 的 logWriteUrl（例如 Mongo 同一副本集 URI 配合不同 dbName 建立独立日志库）
+    const logWriteUrl = normalizeOptionalUrl(config.logWriteUrl);
     this.dialect = config.dialect;
-    this.logMode = topology.logWriteUrl !== undefined ? 'separate' : 'shared';
-    this.separateReadReplica = topology.mainReadUrl !== undefined;
+    this.logMode = logWriteUrl !== undefined ? 'separate' : 'shared';
+    this.separateReadReplica = mainReadUrl !== undefined;
     this.maxConnections = config.maxConnections;
     this.logger = config.logger ?? silentLogger;
     this.metrics = config.metrics ?? {};
@@ -276,12 +250,17 @@ const getDbRuntimeContext = (): DbRuntimeContext => {
 };
 
 const buildConfigurationKey = (config: DbRuntimeConfig): string => {
-  const topology = normalizeDbTopologyUrls(config);
+  const mainWriteUrl = normalizeOptionalUrl(config.mainWriteUrl);
+  const mainReadUrl =
+    mainWriteUrl !== undefined
+      ? normalizeOptionalReadReplicaUrl(mainWriteUrl, config.mainReadUrl)
+      : undefined;
+
   return JSON.stringify({
     dialect: config.dialect,
-    mainWriteUrl: topology.mainWriteUrl,
-    mainReadUrl: topology.mainReadUrl,
-    logWriteUrl: topology.logWriteUrl
+    mainWriteUrl,
+    mainReadUrl,
+    logWriteUrl: normalizeOptionalUrl(config.logWriteUrl)
   });
 };
 

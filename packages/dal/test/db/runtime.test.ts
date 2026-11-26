@@ -51,14 +51,27 @@ describe('@fastgpt/dal/db runtime & errors', () => {
 
     await closeDbRuntime();
 
-    const sameLogUrl = configureDbRuntime({
-      dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
-      logWriteUrl: '  mysql://root@127.0.0.1:2881/fastgpt  '
+    // Mongo 同一副本集 URI 配合不同 dbName 时必须保持 separate 独立日志库路由语义
+    const mongoModelBinder = vi.fn();
+    const mongoSameUriSeparate = configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: 'mongodb://127.0.0.1:27017/?replicaSet=rs0',
+      logWriteUrl: 'mongodb://127.0.0.1:27017/?replicaSet=rs0',
+      mongoModelBinder
     });
-    expect(sameLogUrl.logMode).toBe('shared');
-    expect(sameLogUrl.hasSeparateLogDatabase()).toBe(false);
-    expect(sameLogUrl.resolveEffectiveDatasource('log')).toBe('main');
+    expect(mongoSameUriSeparate.logMode).toBe('separate');
+    expect(mongoSameUriSeparate.hasSeparateLogDatabase()).toBe(true);
+    expect(mongoSameUriSeparate.resolveEffectiveDatasource('log')).toBe('log');
+    mongoSameUriSeparate.bindMongoModel({ name: 'apps', datasource: 'main' });
+    mongoSameUriSeparate.bindMongoModel({ name: 'llm_request_records', datasource: 'log' });
+    expect(mongoModelBinder).toHaveBeenNthCalledWith(1, {
+      collection: { name: 'apps', datasource: 'main' },
+      datasource: 'main'
+    });
+    expect(mongoModelBinder).toHaveBeenNthCalledWith(2, {
+      collection: { name: 'llm_request_records', datasource: 'log' },
+      datasource: 'log'
+    });
   });
 
   it('is idempotent for identical topology and rejects live topology mismatch until closed', async () => {

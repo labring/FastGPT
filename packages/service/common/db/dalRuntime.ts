@@ -1,12 +1,10 @@
 import { createMongoRuntimeDeps, getSharedMongoLogConnection } from '@fastgpt/dal/db/mongo/runtime';
-import { createOceanBaseRuntimeDeps } from '@fastgpt/dal/db/oceanbase/runtime';
-import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import {
-  closeDbRuntime,
-  configureDbRuntime,
-  normalizeDbTopologyUrls,
-  type DbRuntime
-} from '@fastgpt/dal/db/runtime';
+  createOceanBaseRuntimeDeps,
+  normalizeOceanBaseTopologyUrls
+} from '@fastgpt/dal/db/oceanbase/runtime';
+import { DbConfigurationError } from '@fastgpt/dal/db/errors';
+import { closeDbRuntime, configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
 import type { DbDialect, DbTransactionRunner } from '@fastgpt/dal/db/types';
 import {
   registerRedisRuntimeShutdown,
@@ -86,7 +84,7 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
         ? options.mainReadUrl
         : (process.env.OCEANBASE_DB_READ_URI ?? serviceEnv.OCEANBASE_DB_READ_URI);
 
-    const topology = normalizeDbTopologyUrls({
+    const topology = normalizeOceanBaseTopologyUrls({
       mainWriteUrl: rawMainUrl,
       mainReadUrl: rawReadUrl,
       logWriteUrl: rawLogUrl
@@ -112,20 +110,20 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
   }
 
   const mainWriteUrl = options?.mainWriteUrl ?? process.env.MONGODB_URI ?? MONGO_URL;
+  const normalizedMainUrl = mainWriteUrl.trim();
   const rawLogWriteUrl =
     options !== undefined && 'logWriteUrl' in options
       ? options.logWriteUrl
       : (process.env.MONGODB_LOG_URI ?? serviceEnv.MONGODB_LOG_URI);
-  // 仅当日志库连接串非空且与主库不同时进入 separate 模式；与主库同串时按 shared 单池处理。
-  const topology = normalizeDbTopologyUrls({
-    mainWriteUrl,
-    logWriteUrl: rawLogWriteUrl
-  });
+  const trimmedLogUrl = rawLogWriteUrl?.trim() ?? '';
+  // Mongo 环境变量装配下，仅当日志库连接串非空且与主库不同时进入 separate 模式；与主库同串时按 shared 单池处理。
+  const effectiveLogWriteUrl =
+    trimmedLogUrl.length > 0 && trimmedLogUrl !== normalizedMainUrl ? trimmedLogUrl : undefined;
 
   const mongoDeps = createMongoRuntimeDeps({
     getMainClient: () => connectionMongo,
     getLogClient: () =>
-      topology.logWriteUrl !== undefined
+      effectiveLogWriteUrl !== undefined
         ? hasSeparateMongoLogUri
           ? connectionLogMongo
           : getSharedMongoLogConnection()
@@ -134,8 +132,8 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
 
   return configureDbRuntime({
     dialect: 'mongo',
-    mainWriteUrl: topology.mainWriteUrl,
-    logWriteUrl: topology.logWriteUrl,
+    mainWriteUrl: normalizedMainUrl,
+    logWriteUrl: effectiveLogWriteUrl,
     maxConnections,
     logger: getLogger(LogCategories.INFRA.MONGO),
     metrics,

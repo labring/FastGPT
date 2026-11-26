@@ -4,23 +4,26 @@ import { registerRedisRuntimeShutdown } from '@fastgpt/dal/redis/runtime';
 type Signal = NodeJS.Signals;
 
 const createProcessMock = () => {
-  const listeners = new Map<Signal, Set<() => void>>();
+  const listeners = new Map<Signal, Set<(signal: Signal) => void>>();
+  const exit = vi.fn();
   const processRef = {
-    on: vi.fn((signal: Signal, listener: () => void) => {
-      const signalListeners = listeners.get(signal) ?? new Set<() => void>();
+    on: vi.fn((signal: Signal, listener: (signal: Signal) => void) => {
+      const signalListeners = listeners.get(signal) ?? new Set<(signal: Signal) => void>();
       signalListeners.add(listener);
       listeners.set(signal, signalListeners);
     }),
-    removeListener: vi.fn((signal: Signal, listener: () => void) => {
+    removeListener: vi.fn((signal: Signal, listener: (signal: Signal) => void) => {
       listeners.get(signal)?.delete(listener);
     }),
-    exit: vi.fn()
+    listeners: vi.fn((signal: Signal) => [...(listeners.get(signal) ?? [])]),
+    exit
   };
 
   return {
     processRef,
+    realExit: exit,
     emit(signal: Signal) {
-      for (const listener of listeners.get(signal) ?? []) listener();
+      for (const listener of [...(listeners.get(signal) ?? [])]) listener(signal);
     },
     listenerCount(signal: Signal) {
       return listeners.get(signal)?.size ?? 0;
@@ -156,5 +159,118 @@ describe('registerRedisRuntimeShutdown', () => {
       { error: hookError }
     );
     expect(failMock.processRef.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('coordinates with an existing Next.js-style SIGTERM listener so HTTP drains before DAL closes and preserves signal exit code', async () => {
+    const processMock = createProcessMock();
+    const timeline: string[] = [];
+
+    let finishHttpDrain!: () => void;
+    const httpDrainGate = new Promise<void>((resolve) => {
+      finishHttpDrain = resolve;
+    });
+    let finishDbClose!: () => void;
+    const dbCloseGate = new Promise<void>((resolve) => {
+      finishDbClose = resolve;
+    });
+
+    // 模拟 Next.js start-server 在 instrumentation 之前注册的默认 SIGTERM cleanup
+    const nextStyleCleanup = (signal: Signal) => {
+      timeline.push(`next-cleanup-start:${signal}`);
+      void httpDrainGate.then(() => {
+        timeline.push('next-http-drained');
+        processMock.processRef.exit(signal === 'SIGINT' ? 130 : 143);
+      });
+    };
+    processMock.processRef.on('SIGTERM', nextStyleCleanup);
+
+    const runtime = createRuntime(
+      vi.fn(async () => {
+        timeline.push('redis-closed');
+      })
+    );
+    const onShutdown = vi.fn(async () => {
+      timeline.push('db-close-start');
+      await dbCloseGate;
+      timeline.push('db-close-done');
+    });
+
+    const unregister = registerRedisRuntimeShutdown({
+      runtime,
+      processRef: processMock.processRef,
+      onShutdown,
+      exitProcess: true,
+      signals: ['SIGTERM']
+    });
+    // 注册后仅保留唯一协调监听器
+    expect(processMock.listenerCount('SIGTERM')).toBe(1);
+
+    processMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(timeline).toEqual(['next-cleanup-start:SIGTERM']);
+    expect(runtime.close).not.toHaveBeenCalled();
+    expect(onShutdown).not.toHaveBeenCalled();
+    expect(processMock.realExit).not.toHaveBeenCalled();
+
+    // Next.js 排空 HTTP 并尝试 process.exit(143)，被协调器接管后开始关闭 Redis 与 DB
+    finishHttpDrain();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(timeline).toEqual([
+      'next-cleanup-start:SIGTERM',
+      'next-http-drained',
+      'redis-closed',
+      'db-close-start'
+    ]);
+    expect(processMock.realExit).not.toHaveBeenCalled();
+
+    // DB 关闭完成后才真正退出，且保留 Next.js 的 143 退出码
+    finishDbClose();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(timeline).toEqual([
+      'next-cleanup-start:SIGTERM',
+      'next-http-drained',
+      'redis-closed',
+      'db-close-start',
+      'db-close-done'
+    ]);
+    expect(processMock.realExit).toHaveBeenCalledTimes(1);
+    expect(processMock.realExit).toHaveBeenCalledWith(143);
+    expect(processMock.processRef.exit).toBe(processMock.realExit);
+    unregister();
+  });
+
+  it('restores prior signal listeners on explicit unregister and catches logger failures without unhandled rejection', async () => {
+    const restoreMock = createProcessMock();
+    const prior = vi.fn();
+    restoreMock.processRef.on('SIGTERM', prior);
+
+    const unregister = registerRedisRuntimeShutdown({
+      runtime: createRuntime(vi.fn(async () => undefined)),
+      processRef: restoreMock.processRef,
+      signals: ['SIGTERM']
+    });
+    unregister();
+
+    expect(restoreMock.listenerCount('SIGTERM')).toBe(1);
+    restoreMock.emit('SIGTERM');
+    expect(prior).toHaveBeenCalledWith('SIGTERM');
+
+    const throwingLoggerMock = createProcessMock();
+    const throwingLogger = {
+      info: vi.fn(() => {
+        throw new Error('logger boom');
+      }),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+    registerRedisRuntimeShutdown({
+      runtime: createRuntime(vi.fn(async () => undefined)),
+      processRef: throwingLoggerMock.processRef,
+      logger: throwingLogger,
+      signals: ['SIGTERM']
+    });
+    throwingLoggerMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(throwingLoggerMock.realExit).toHaveBeenCalledWith(1);
   });
 });

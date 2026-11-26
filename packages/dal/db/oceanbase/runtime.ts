@@ -11,8 +11,51 @@ import {
 } from 'kysely';
 import { createPool } from 'mysql2';
 import { DbConfigurationError } from '../errors';
-import { getConfiguredDbRuntime, normalizeDbTopologyUrls, type DbRuntime } from '../runtime';
+import { getConfiguredDbRuntime, type DbRuntime } from '../runtime';
 import type { DbDatasource, DbTransactionRunner, OceanBaseExecutorResolver } from '../types';
+
+export type NormalizedOceanBaseTopologyUrls = {
+  mainWriteUrl: string;
+  mainReadUrl?: string;
+  logWriteUrl?: string;
+};
+
+const normalizeOptionalDistinctOceanBaseUrl = (
+  mainWriteUrl: string,
+  rawUrl?: string
+): string | undefined => {
+  if (rawUrl === undefined) {
+    return undefined;
+  }
+  const trimmed = rawUrl.trim();
+  return trimmed.length > 0 && trimmed !== mainWriteUrl ? trimmed : undefined;
+};
+
+/**
+ * 统一归一化 OceanBase 连接拓扑（唯一事实源，供上层 `configureDalRuntime` 与 `createOceanBaseRuntimeDeps` 共享）：
+ * - `mainWriteUrl` 必填且去除首尾空白；
+ * - `mainReadUrl` 与 `logWriteUrl` 为空或与主库 URI 相同时归一为 `undefined`（复用主池）。
+ */
+export const normalizeOceanBaseTopologyUrls = ({
+  mainWriteUrl,
+  mainReadUrl,
+  logWriteUrl
+}: {
+  mainWriteUrl?: string;
+  mainReadUrl?: string;
+  logWriteUrl?: string;
+}): NormalizedOceanBaseTopologyUrls => {
+  const normalizedMainWriteUrl = mainWriteUrl?.trim() ?? '';
+  if (normalizedMainWriteUrl.length === 0) {
+    throw new DbConfigurationError('OceanBase mainWriteUrl must be a non-empty string');
+  }
+
+  return {
+    mainWriteUrl: normalizedMainWriteUrl,
+    mainReadUrl: normalizeOptionalDistinctOceanBaseUrl(normalizedMainWriteUrl, mainReadUrl),
+    logWriteUrl: normalizeOptionalDistinctOceanBaseUrl(normalizedMainWriteUrl, logWriteUrl)
+  };
+};
 
 export type OceanBaseRuntimeDeps = {
   transactionRunner: DbTransactionRunner;
@@ -171,7 +214,7 @@ export const createOceanBaseRuntimeDeps = ({
   logWriteUrl?: string;
   maxConnections?: number;
 }): OceanBaseRuntimeDeps => {
-  const topology = normalizeDbTopologyUrls({
+  const topology = normalizeOceanBaseTopologyUrls({
     mainWriteUrl,
     mainReadUrl,
     logWriteUrl

@@ -4,7 +4,8 @@ import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import {
   createOceanBaseKyselyLogger,
   createOceanBaseRuntimeDeps,
-  extractOceanBaseQueryMeta
+  extractOceanBaseQueryMeta,
+  normalizeOceanBaseTopologyUrls
 } from '@fastgpt/dal/db/oceanbase/runtime';
 import { closeDbRuntime, configureDbRuntime } from '@fastgpt/dal/db/runtime';
 import { createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
@@ -16,6 +17,32 @@ describe('@fastgpt/dal/db/oceanbase runtime, read replica & Kysely observability
   });
 
   it('extracts table and operation from Kysely AST and raw SQL queries', () => {
+    expect(
+      normalizeOceanBaseTopologyUrls({
+        mainWriteUrl: '  mysql://root@127.0.0.1:2881/fastgpt  ',
+        mainReadUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+        logWriteUrl: '   mysql://root@127.0.0.1:2881/fastgpt '
+      })
+    ).toEqual({
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: undefined,
+      logWriteUrl: undefined
+    });
+    expect(
+      normalizeOceanBaseTopologyUrls({
+        mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+        mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt',
+        logWriteUrl: 'mysql://root@127.0.0.1:2883/fastgpt_log'
+      })
+    ).toEqual({
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt',
+      logWriteUrl: 'mysql://root@127.0.0.1:2883/fastgpt_log'
+    });
+    expect(() => normalizeOceanBaseTopologyUrls({ mainWriteUrl: '   ' })).toThrow(
+      DbConfigurationError
+    );
+
     const { db } = createMockOceanBaseKysely(() => ({ rows: [] }));
 
     const selectCompiled = db.selectFrom('apps as a').selectAll().where('id', '=', '1').compile();
