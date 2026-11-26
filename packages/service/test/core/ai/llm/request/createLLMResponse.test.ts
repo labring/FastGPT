@@ -48,7 +48,8 @@ vi.mock('@fastgpt/service/core/ai/record/controller', async (importOriginal) => 
   saveLLMRequestRecord: vi.fn()
 }));
 
-vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
+vi.mock('@fastgpt/global/core/ai/llm/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/core/ai/llm/utils')>()),
   removeDatasetCiteText: vi.fn((text: string) => text),
   normalizeToolResponseContent: vi.fn((content: unknown) =>
     typeof content === 'string' ? content : JSON.stringify(content)
