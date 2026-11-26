@@ -1049,4 +1049,20 @@ describe('migration env wiring', () => {
     });
     expect(pick(enabledViaEnv, 'subservice.agentSandbox.enabled')).toBe(true);
   });
+
+  it('clamps legacy LLM_REQUEST_TRACKING_RETENTION_HOURS (0 -> 1, 1440 -> 1000) to valid bounds', () => {
+    const zeroOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { LLM_REQUEST_TRACKING_RETENTION_HOURS: 0 }
+    });
+    expect(pick(zeroOverrides, 'performance.tracking.retentionHours')).toBe(1);
+
+    const largeOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { LLM_REQUEST_TRACKING_RETENTION_HOURS: 1440 }
+    });
+    expect(pick(largeOverrides, 'performance.tracking.retentionHours')).toBe(1000);
+  });
 });

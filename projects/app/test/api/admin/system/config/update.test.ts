@@ -43,7 +43,6 @@ vi.mock(
 
 import handler from '@/pages/api/admin/system/config/update';
 import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import * as llmRecordService from '@fastgpt/service/core/ai/record/service';
 
 const callUpdate = handler as unknown as (request: {
   body: unknown;
@@ -136,7 +135,7 @@ describe('instance config update API', () => {
     });
     expect(reads).toBe(2);
     expect(reloadSpy).not.toHaveBeenCalled();
-    expect(mocks.initSystemConfig).toHaveBeenCalledWith({ refreshLLMRequestRecordTTL: false });
+    expect(mocks.initSystemConfig).toHaveBeenCalledWith();
     expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalled();
     readSpy.mockRestore();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
@@ -563,63 +562,24 @@ describe('instance config update API', () => {
     );
   });
 
-  it('applies log TTL inside the save transaction only when retentionHours changes and rolls back on failure', async () => {
-    const applyTTL = vi
-      .spyOn(llmRecordService, 'applyLLMRequestRecordTTL')
-      .mockResolvedValue(undefined);
-
-    // 1. 保存 performance 但未改 retentionHours 时不触碰日志库
-    const unchanged = await callUpdate({
-      body: {
-        items: [
-          {
-            domain: 'performance',
-            expectedRevision: 0,
-            overrides: { chat: { maxQpm: 3000 } }
-          }
-        ]
-      }
-    } as any);
-    expect(unchanged.results[0].revision).toBe(1);
-    expect(applyTTL).not.toHaveBeenCalled();
-
-    // 2. retentionHours 变化时在事务提交前同步更新日志库 TTL
+  it('persists performance tracking retentionHours directly without modifying log TTL indexes', async () => {
     const updated = await callUpdate({
       body: {
         items: [
           {
             domain: 'performance',
-            expectedRevision: 1,
+            expectedRevision: 0,
             overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
           }
         ]
       }
     } as any);
-    expect(updated.results[0].revision).toBe(2);
-    expect(applyTTL).toHaveBeenCalledExactlyOnceWith({ retentionHours: 48, maxTimeMS: 10_000 });
-    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith({ refreshLLMRequestRecordTTL: false });
 
-    // 3. TTL 更新失败时抛错并回滚主库配置事务，不静默提交
-    mocks.initSystemConfig.mockClear();
-    applyTTL.mockRejectedValueOnce(new Error('log db collMod failed'));
-    await expect(
-      callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 2,
-              overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 12 } }
-            }
-          ]
-        }
-      } as any)
-    ).rejects.toThrow('log db collMod failed');
-
-    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+    expect(updated.results[0].revision).toBe(1);
+    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
       {
-        revision: 2,
+        revision: 1,
         overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
       }
     );
@@ -755,4 +715,99 @@ describe('instance config update API', () => {
     } as any);
     expect(updated.results[0].revision).toBe(3);
   });
+
+  it('preserves existing non-default retentionHours and revision when invalid retentionHours values are submitted', async () => {
+    const initial = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 0,
+            overrides: { tracking: { retentionHours: 48 } }
+          }
+        ]
+      }
+    });
+    expect(initial.results[0].revision).toBe(1);
+
+    for (const invalid of ['48', null, 0, 1440, 1.5]) {
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 1,
+                overrides: { tracking: { retentionHours: invalid } }
+              }
+            ]
+          }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    }
+
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
+      {
+        revision: 1,
+        overrides: { tracking: { retentionHours: 48 } }
+      }
+    );
+  });
+
+  it.each([
+    { legacyHours: 0, clampedHours: 1 },
+    { legacyHours: 1440, clampedHours: 1000 }
+  ])(
+    'clamps untouched legacy retentionHours=$legacyHours to $clampedHours on partial performance save while rejecting explicit out-of-range submits',
+    async ({ legacyHours, clampedHours }) => {
+      // 模拟升级前库中可能残留的越界旧值（如 0 或 1440）。
+      await MongoSystemInstanceConfig.collection.insertOne({
+        domain: 'performance',
+        schemaVersion: 1,
+        revision: 3,
+        overrides: { tracking: { retentionHours: legacyHours } },
+        updatedAt: new Date()
+      });
+
+      // 未显式提交 retentionHours 时保存同域其他字段不被历史越界值阻断，合并前自动就近收口。
+      const saved = await callUpdate({
+        body: {
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 3,
+              overrides: { chat: { maxQpm: 2500 } }
+            }
+          ]
+        }
+      });
+
+      expect(saved.results[0].revision).toBe(4);
+      expect(saved.results[0].effectiveConfig).toMatchObject({
+        chat: { maxQpm: 2500 },
+        tracking: { retentionHours: clampedHours }
+      });
+
+      // 显式提交越界值仍由严格 Schema 拒绝，且不改动已提交的 revision 与保留时长。
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 4,
+                overrides: { tracking: { retentionHours: legacyHours } }
+              }
+            ]
+          }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+      expect(
+        await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()
+      ).toMatchObject({
+        revision: 4,
+        overrides: { chat: { maxQpm: 2500 }, tracking: { retentionHours: clampedHours } }
+      });
+    }
+  );
 });

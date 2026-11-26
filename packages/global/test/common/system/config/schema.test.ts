@@ -1,5 +1,7 @@
 import { vi, describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   getSomarkRegionPreset,
   resolveSomarkBaseUrl,
@@ -953,6 +955,43 @@ describe('unvalidated instance config reads and strict saves', () => {
     expect(parsed).toEqual({
       tracking: { retentionHours: -1 }
     });
+  });
+
+  it('constrains performance.tracking.retentionHours strictly to 1..1000', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1 } }
+      }).tracking.retentionHours
+    ).toBe(1);
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1000 } }
+      }).tracking.retentionHours
+    ).toBe(1000);
+
+    const invalidInputs: unknown[] = [0, -1, 1001, 1.5, '48', null];
+    for (const invalid of invalidInputs) {
+      let caughtError: unknown;
+      try {
+        parseDomainOverrides({
+          domain: 'performance',
+          overrides: { tracking: { retentionHours: invalid } }
+        });
+      } catch (error) {
+        caughtError = error;
+      }
+      expect(caughtError).toBeInstanceOf(ZodError);
+      if (caughtError instanceof ZodError) {
+        expect(caughtError.issues[0]?.path).toEqual(['tracking', 'retentionHours']);
+      }
+    }
+
+    expect(clampLlmTraceRetentionHours(0)).toBe(1);
+    expect(clampLlmTraceRetentionHours(-5)).toBe(1);
+    expect(clampLlmTraceRetentionHours(1440)).toBe(1000);
+    expect(clampLlmTraceRetentionHours(24.8)).toBe(24);
   });
 
   it('distinguishes unset domain overrides from corrupted non-object root values', () => {

@@ -1,10 +1,31 @@
+import { addHours } from 'date-fns';
 import { MongoLLMRequestRecord } from './schema';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  clampLlmTraceRetentionHours,
+  LLM_TRACE_RETENTION_DEFAULT_HOURS
+} from '@fastgpt/global/common/system/config/schemas/performance';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
 export const createLLMRequestId = () => {
   return getNanoid(12);
+};
+
+/**
+ * 按当前实例配置的保留时长计算 LLM 追踪记录过期时间。
+ * 修改保留时长后仅影响后续落库记录，不影响已入库文档；历史越界值就近收口到 [1, 1000]。
+ */
+export const getLLMRequestRecordExpiredTime = (
+  baseTime: Date | number = new Date(),
+  retentionHours = getSystemInstanceConfig().performance.tracking.retentionHours
+): Date => {
+  const safeHours =
+    typeof retentionHours === 'number' && Number.isFinite(retentionHours)
+      ? clampLlmTraceRetentionHours(retentionHours)
+      : LLM_TRACE_RETENTION_DEFAULT_HOURS;
+  return addHours(baseTime, safeHours);
 };
 
 const base64OmittedPlaceholder = '[base64 omitted]';
@@ -107,7 +128,9 @@ export const saveLLMRequestRecord = async (params: {
       body: sanitizeLLMRequestRecordPayload(params.body, { omitErrorStack: true }),
       response: sanitizeLLMRequestRecordPayload(params.response, {
         omitErrorStack: true
-      })
+      }),
+      // 不再写入 createdAt，避免旧版 createdAt_1 TTL 索引提前删除新记录；旧记录由旧索引自然过期，N+1 统一清理旧索引。
+      expiredTime: getLLMRequestRecordExpiredTime()
     });
   } catch (error) {
     // 记录错误但不影响主流程
