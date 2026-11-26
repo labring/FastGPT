@@ -351,12 +351,12 @@ export const htmlTemplate = `<!DOCTYPE html>
       margin: 0;
       border: none;
       border-radius: none;
-      background-color: #222 !important;
+      background-color: #ffffff !important;
       overflow-x: auto;
-      color: #fff;
+      color: #24292e;
     }
     .markdown pre code {
-      background-color: #222 !important;
+      background-color: transparent !important;
       width: 100%;
     }
     .markdown a {
@@ -405,7 +405,7 @@ export const htmlTemplate = `<!DOCTYPE html>
       white-space: pre-wrap;
     }
     code[class*='language-'] {
-      color: #d4d4d4;
+      color: #24292e;
       text-shadow: none;
       direction: ltr;
       text-align: left;
@@ -422,7 +422,7 @@ export const htmlTemplate = `<!DOCTYPE html>
     }
 
     pre[class*='language-'] {
-      color: #d4d4d4;
+      color: #24292e;
       text-shadow: none;
       direction: ltr;
       text-align: left;
@@ -436,10 +436,10 @@ export const htmlTemplate = `<!DOCTYPE html>
       -webkit-hyphens: none;
       -moz-hyphens: none;
       hyphens: none;
-      padding: 1em;
-      margin: 0.5em0;
+      padding: 14px 16px;
+      margin: 0;
       overflow: auto;
-      background: #1e1e1e;
+      background: #ffffff;
     }
 
     code[class*='language-'] ::selection,
@@ -447,14 +447,14 @@ export const htmlTemplate = `<!DOCTYPE html>
     pre[class*='language-'] ::selection,
     pre[class*='language-']::selection {
       text-shadow: none;
-      background: #264f78;
+      background: #c8e1ff;
     }
 
     :not(pre) > code[class*='language-'] {
       padding: 0.1em 0.3em;
       border-radius: 0.3em;
-      color: #db4c69;
-      background: #1e1e1e;
+      color: #24292e;
+      background: #f4f6f8;
     }
 
     .namespace {

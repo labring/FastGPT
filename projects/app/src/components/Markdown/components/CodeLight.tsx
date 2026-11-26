@@ -6,9 +6,13 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 
+const CODE_FONT_FAMILY = 'Menlo, Monaco, Consolas, "Courier New", monospace';
+
 export const codeLight: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {
-    color: '#d4d4d4',
+    color: '#24292e',
+    fontFamily: CODE_FONT_FAMILY,
+    fontSize: '14px',
     textShadow: 'none',
     direction: 'ltr',
     textAlign: 'left',
@@ -25,7 +29,9 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     hyphens: 'none'
   },
   'pre[class*=language-]': {
-    color: '#d4d4d4',
+    color: '#24292e',
+    fontFamily: CODE_FONT_FAMILY,
+    fontSize: '14px',
     textShadow: 'none',
     direction: 'ltr',
     textAlign: 'left',
@@ -40,247 +46,260 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     MozHyphens: 'none',
     msHyphens: 'none',
     hyphens: 'none',
-    padding: '1em',
+    padding: '14px 16px',
     margin: '0',
     overflow: 'auto',
-    background: '#171923'
+    background: '#ffffff'
   },
   'code[class*=language-] ::selection': {
     textShadow: 'none',
-    background: '#264f78'
+    background: '#c8e1ff'
   },
   'code[class*=language-]::selection': {
     textShadow: 'none',
-    background: '#264f78'
+    background: '#c8e1ff'
   },
   'pre[class*=language-] ::selection': {
     textShadow: 'none',
-    background: '#264f78'
+    background: '#c8e1ff'
   },
   'pre[class*=language-]::selection': {
     textShadow: 'none',
-    background: '#264f78'
+    background: '#c8e1ff'
   },
   ':not(pre)>code[class*=language-]': {
     padding: '.1em .3em',
     borderRadius: '.3em',
-    color: '#db4c69',
-    background: '#171923'
+    color: '#24292e',
+    background: '#f4f6f8'
   },
   '.namespace': {
     opacity: '0.7'
   },
   'doctype.doctype-tag': {
-    color: '#569cd6'
+    color: '#22863a'
   },
   'doctype.name': {
-    color: '#9cdcfe'
+    color: '#22863a'
   },
   comment: {
-    color: '#6a9955'
+    color: '#6a737d'
   },
   prolog: {
-    color: '#6a9955'
+    color: '#6a737d'
   },
   '.language-html .language-css .token.punctuation': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   '.language-html .language-javascript .token.punctuation': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   punctuation: {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   boolean: {
-    color: '#569cd6'
+    color: '#005cc5'
   },
   constant: {
-    color: '#9cdcfe'
+    color: '#005cc5'
   },
   inserted: {
-    color: '#b5cea8'
+    color: '#22863a'
   },
   number: {
-    color: '#b5cea8'
+    color: '#005cc5'
   },
   property: {
-    color: '#9cdcfe'
+    color: '#005cc5'
+  },
+  'property-access': {
+    color: '#005cc5'
   },
   symbol: {
-    color: '#b5cea8'
+    color: '#005cc5'
   },
   tag: {
-    color: '#569cd6'
+    color: '#22863a'
   },
   unit: {
-    color: '#b5cea8'
+    color: '#005cc5'
   },
   'attr-name': {
-    color: '#9cdcfe'
+    color: '#6f42c1'
   },
   builtin: {
-    color: '#ce9178'
+    color: '#e36209'
   },
   char: {
-    color: '#ce9178'
+    color: '#032f62'
   },
   deleted: {
-    color: '#ce9178'
+    color: '#b31d28'
   },
   selector: {
-    color: '#d7ba7d'
+    color: '#22863a'
   },
   string: {
-    color: '#ce9178'
+    color: '#032f62'
   },
   '.language-css .token.string.url': {
     textDecoration: 'underline'
   },
   entity: {
-    color: '#569cd6'
+    color: '#005cc5'
   },
   operator: {
-    color: '#d4d4d4'
+    color: '#d73a49'
   },
   'operator.arrow': {
-    color: '#569cd6'
+    color: '#d73a49'
   },
   atrule: {
-    color: '#ce9178'
+    color: '#005cc5'
   },
   'atrule.rule': {
-    color: '#c586c0'
+    color: '#d73a49'
   },
   'atrule.url': {
-    color: '#9cdcfe'
+    color: '#032f62'
   },
   'atrule.url.function': {
-    color: '#dcdcaa'
+    color: '#6f42c1'
   },
   'atrule.url.punctuation': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   keyword: {
-    color: '#569cd6'
+    color: '#d73a49'
   },
   'keyword.control-flow': {
-    color: '#c586c0'
+    color: '#d73a49'
   },
   'keyword.module': {
-    color: '#c586c0'
+    color: '#d73a49'
   },
   function: {
-    color: '#dcdcaa'
+    color: '#6f42c1'
   },
   'function.maybe-class-name': {
-    color: '#dcdcaa'
+    color: '#6f42c1'
+  },
+  // Prism 为方法调用同时附加 method/function/property-access，避免被 property-access 覆写为蓝色。
+  'function.property-access': {
+    color: '#6f42c1'
+  },
+  'method.function': {
+    color: '#6f42c1'
   },
   regex: {
-    color: '#d16969'
+    color: '#032f62'
   },
   important: {
-    color: '#569cd6'
+    color: '#d73a49'
+  },
+  bold: {
+    fontWeight: 'bold'
   },
   italic: {
     fontStyle: 'italic'
   },
   'class-name': {
-    color: '#4ec9b0'
+    color: '#6f42c1'
   },
   'maybe-class-name': {
-    color: '#4ec9b0'
+    color: '#6f42c1'
   },
   console: {
-    color: '#9cdcfe'
+    color: '#005cc5'
   },
   parameter: {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   interpolation: {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'punctuation.interpolation-punctuation': {
-    color: '#569cd6'
+    color: '#d73a49'
   },
   'exports.maybe-class-name': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'imports.maybe-class-name': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   variable: {
-    color: '#9cdcfe'
+    color: '#005cc5'
   },
   escape: {
-    color: '#d7ba7d'
+    color: '#e36209'
   },
   'tag.punctuation': {
-    color: 'grey'
+    color: '#24292e'
   },
   cdata: {
-    color: 'grey'
+    color: '#6a737d'
   },
   'attr-value': {
-    color: '#ce9178'
+    color: '#032f62'
   },
   'attr-value.punctuation': {
-    color: '#ce9178'
+    color: '#032f62'
   },
   'attr-value.punctuation.attr-equals': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   namespace: {
-    color: '#4ec9b0'
+    color: '#6f42c1'
   },
   'code[class*=language-javascript]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'code[class*=language-jsx]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'code[class*=language-tsx]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'code[class*=language-typescript]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'pre[class*=language-javascript]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'pre[class*=language-jsx]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'pre[class*=language-tsx]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'pre[class*=language-typescript]': {
-    color: '#9cdcfe'
+    color: '#24292e'
   },
   'code[class*=language-css]': {
-    color: '#ce9178'
+    color: '#24292e'
   },
   'pre[class*=language-css]': {
-    color: '#ce9178'
+    color: '#24292e'
   },
   'code[class*=language-html]': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   'pre[class*=language-html]': {
-    color: '#d4d4d4'
+    color: '#24292e'
   },
   '.language-regex .token.anchor': {
-    color: '#dcdcaa'
+    color: '#005cc5'
   },
   '.language-html .token.punctuation': {
-    color: 'grey'
+    color: '#24292e'
   },
   'pre[class*=language-]>code[class*=language-]': {
     position: 'relative',
     zIndex: '1'
   },
   '.line-highlight.line-highlight': {
-    background: '#f7ebc6',
-    boxShadow: 'inset 5px 0 0 #f7d87c',
+    background: '#fff8c5',
+    boxShadow: 'inset 4px 0 0 #f7d87c',
     zIndex: '0'
   }
 };
@@ -323,7 +342,7 @@ const CodeLight = ({
   codeBlock,
   match
 }: {
-  children: React.ReactNode & React.ReactNode[];
+  children?: React.ReactNode;
   className?: string;
   codeBlock?: boolean;
   match: RegExpExecArray | null;
@@ -333,143 +352,136 @@ const CodeLight = ({
   const [isWrap, setIsWrap] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  if (codeBlock) {
-    const rawLanguage = match?.[1] || '';
-    const codeBoxName = useMemo(() => {
-      const input = match?.['input'] || '';
-      if (!input) return formatLanguageName(rawLanguage);
+  const rawLanguage = match?.[1] || '';
+  const codeBoxName = useMemo(() => {
+    const input = match?.['input'] || '';
+    if (!input) return formatLanguageName(rawLanguage);
 
-      const splitInput = input.split('#');
-      return splitInput[1] || formatLanguageName(rawLanguage);
-    }, [match, rawLanguage]);
+    const splitInput = input.split('#');
+    return splitInput[1] || formatLanguageName(rawLanguage);
+  }, [match, rawLanguage]);
 
-    const codeString = useMemo(() => String(children).replace(/&nbsp;/g, ' '), [children]);
+  const codeString = useMemo(() => String(children).replace(/&nbsp;/g, ' '), [children]);
 
-    const handleCopy = () => {
-      copyData(codeString);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    };
-
-    return (
-      <Box
-        className="code-block-wrapper"
-        my={3}
-        position={'relative'}
-        borderRadius={'md'}
-        boxShadow={
-          '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)'
-        }
-      >
-        {/* 吸顶头部：滚动时若代码块仍在可视区内，自动吸附在视口顶部 */}
-        <Flex
-          className="code-header"
-          position={'sticky'}
-          // 工具详情为其吸顶标题留位，普通 Markdown 默认仍贴合滚动区域顶部。
-          top={'var(--code-header-top, 0px)'}
-          zIndex={2}
-          py={2}
-          px={4}
-          bg={'#2d323b'}
-          color={'white'}
-          fontSize={'sm'}
-          userSelect={'none'}
-          alignItems={'center'}
-          borderTopRadius={'md'}
-          borderBottom={'1px solid'}
-          borderColor={'rgba(255, 255, 255, 0.08)'}
-        >
-          {/* 左侧：代码图标与语言名称 */}
-          <Flex
-            flex={1}
-            alignItems={'center'}
-            fontWeight={500}
-            fontSize={'xs'}
-            color={'myGray.200'}
-          >
-            <Icon name={'code'} width={'14px'} height={'14px'} mr={2} color={'myGray.300'} />
-            <Box>{codeBoxName}</Box>
-          </Flex>
-
-          {/* 右侧：自动换行切换与复制代码操作图标 */}
-          <HStack spacing={1}>
-            <MyTooltip
-              label={isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap')}
-              placement="top"
-              hasArrow
-            >
-              <IconButton
-                icon={
-                  <Icon
-                    name={isWrap ? 'common/wrapText' : 'common/noWrapText'}
-                    width={'14px'}
-                    height={'14px'}
-                  />
-                }
-                size={'xs'}
-                variant={'ghost'}
-                color={'rgba(255, 255, 255, 0.75)'}
-                _hover={{
-                  color: 'white',
-                  bg: 'rgba(255, 255, 255, 0.15)'
-                }}
-                onClick={() => setIsWrap(!isWrap)}
-                aria-label={isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap')}
-              />
-            </MyTooltip>
-
-            <MyTooltip
-              label={isCopied ? t('common:copied') : t('common:Copy')}
-              placement="top"
-              hasArrow
-            >
-              <IconButton
-                icon={<Icon name={'copy'} width={'14px'} height={'14px'} />}
-                size={'xs'}
-                variant={'ghost'}
-                color={'rgba(255, 255, 255, 0.75)'}
-                _hover={{
-                  color: 'white',
-                  bg: 'rgba(255, 255, 255, 0.15)'
-                }}
-                onClick={handleCopy}
-                aria-label={t('common:Copy')}
-              />
-            </MyTooltip>
-          </HStack>
-        </Flex>
-
-        {/* 代码内容区域，根据 isWrap 动态切换自动折行与横向滚动 */}
-        <Box borderBottomRadius={'md'} overflowX={isWrap ? 'hidden' : 'auto'} bg={'#171923'}>
-          <SyntaxHighlighter
-            style={codeLight as any}
-            language={rawLanguage}
-            PreTag="pre"
-            wrapLongLines={isWrap}
-            customStyle={{
-              margin: 0,
-              padding: '14px 16px',
-              borderBottomLeftRadius: '6px',
-              borderBottomRightRadius: '6px',
-              whiteSpace: isWrap ? 'pre-wrap' : 'pre',
-              wordBreak: isWrap ? 'break-all' : 'normal',
-              overflowX: isWrap ? 'hidden' : 'auto'
-            }}
-            codeTagProps={{
-              style: {
-                whiteSpace: isWrap ? 'pre-wrap' : 'pre',
-                wordBreak: isWrap ? 'break-all' : 'normal'
-              }
-            }}
-          >
-            {codeString}
-          </SyntaxHighlighter>
-        </Box>
-      </Box>
-    );
+  if (!codeBlock) {
+    return <code className={className}>{children}</code>;
   }
 
-  return <code className={className}>{children}</code>;
+  const wrapLabel = isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap');
+  const copyLabel = isCopied ? t('common:copied') : t('common:copy_code');
+
+  return (
+    <Box
+      className="code-block-wrapper"
+      my={3}
+      position={'relative'}
+      bg={'white'}
+      borderRadius={'md'}
+      boxShadow={'1.5'}
+    >
+      {/* 吸顶头部：滚动时若代码块仍在可视区内，自动吸附在视口顶部 */}
+      <Flex
+        className="code-header"
+        position={'sticky'}
+        // 工具详情为其吸顶标题留位，普通 Markdown 默认仍贴合滚动区域顶部。
+        top={'var(--code-header-top, 0px)'}
+        zIndex={2}
+        py={2}
+        px={4}
+        bg={'myGray.50'}
+        color={'myGray.900'}
+        fontSize={'sm'}
+        userSelect={'none'}
+        alignItems={'center'}
+        borderTopRadius={'md'}
+      >
+        {/* 左侧：代码图标与语言名称 */}
+        <Flex
+          flex={1}
+          minW={0}
+          alignItems={'center'}
+          fontWeight={500}
+          fontSize={'xs'}
+          color={'myGray.900'}
+        >
+          <Icon name={'code'} w={'14px'} h={'14px'} mr={2} color={'myGray.900'} flexShrink={0} />
+          <Box isTruncated>{codeBoxName}</Box>
+        </Flex>
+
+        {/* 右侧：自动换行切换与复制代码操作图标 */}
+        <HStack spacing={1} flexShrink={0}>
+          <MyTooltip
+            label={wrapLabel}
+            placement="bottom"
+            offset={[0, 10]}
+            shouldWrapChildren={false}
+          >
+            <IconButton
+              icon={
+                <Icon
+                  name={isWrap ? 'common/wrapText' : 'common/noWrapText'}
+                  w={'14px'}
+                  h={'14px'}
+                />
+              }
+              size={'xsSquare'}
+              variant={'grayGhost'}
+              onClick={() => setIsWrap((prev) => !prev)}
+              aria-label={wrapLabel}
+            />
+          </MyTooltip>
+
+          <MyTooltip
+            label={copyLabel}
+            placement="bottom"
+            offset={[0, 10]}
+            shouldWrapChildren={false}
+            closeOnClick={false}
+            onClose={() => setIsCopied(false)}
+          >
+            <IconButton
+              icon={<Icon name={isCopied ? 'check' : 'copy'} w={'14px'} h={'14px'} />}
+              size={'xsSquare'}
+              variant={'grayGhost'}
+              onClick={() => {
+                copyData(codeString, null);
+                setIsCopied(true);
+              }}
+              aria-label={copyLabel}
+            />
+          </MyTooltip>
+        </HStack>
+      </Flex>
+
+      {/* 代码内容区域，根据 isWrap 动态切换自动折行与横向滚动 */}
+      <Box borderBottomRadius={'md'} overflowX={isWrap ? 'hidden' : 'auto'} bg={'white'}>
+        <SyntaxHighlighter
+          style={codeLight as any}
+          language={rawLanguage}
+          PreTag="pre"
+          wrapLongLines={isWrap}
+          customStyle={{
+            margin: 0,
+            padding: '14px 16px',
+            borderBottomLeftRadius: '8px',
+            borderBottomRightRadius: '8px',
+            background: '#ffffff',
+            whiteSpace: isWrap ? 'pre-wrap' : 'pre',
+            wordBreak: isWrap ? 'break-all' : 'normal',
+            overflowX: isWrap ? 'hidden' : 'auto'
+          }}
+          codeTagProps={{
+            style: {
+              whiteSpace: isWrap ? 'pre-wrap' : 'pre',
+              wordBreak: isWrap ? 'break-all' : 'normal'
+            }
+          }}
+        >
+          {codeString}
+        </SyntaxHighlighter>
+      </Box>
+    </Box>
+  );
 };
 
 export default React.memo(CodeLight);

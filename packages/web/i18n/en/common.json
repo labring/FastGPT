@@ -1406,6 +1406,7 @@
   "source_label": "Source {{index}}",
   "enable_word_wrap": "Enable word wrap",
   "disable_word_wrap": "Disable word wrap",
+  "copy_code": "Copy code",
   "copied": "Copied",
   "download_png": "Download PNG",
   "open_in_new_tab": "Open in new tab",
