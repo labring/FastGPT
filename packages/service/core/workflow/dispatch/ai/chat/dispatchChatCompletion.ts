@@ -104,7 +104,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     userChatInput = datasetCiteData.userInput;
 
-    if (!userChatInput && userFiles.length === 0) {
+    // 同时校验原始输入与模板渲染结果：
+    // 1) 避免 user 角色下默认引用模板的固定文案放行空问题且无附件的输入；
+    // 2) 保留仅附件路径，以及自定义模板不含 {{question}} 且引用为空时的空消息拦截。
+    if ((!rawUserChatInput || !userChatInput) && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
     }
 

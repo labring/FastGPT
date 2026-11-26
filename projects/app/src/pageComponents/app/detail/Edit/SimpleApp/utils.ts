@@ -22,6 +22,7 @@ import {
   AiChatQuoteRole,
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
+import { AiChatQuoteRoleSchema } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -114,6 +115,12 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.sandboxEntrypoint
       );
+      const parsedQuoteRole = AiChatQuoteRoleSchema.safeParse(
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.aiChatQuoteRole)
+      );
+      if (parsedQuoteRole.success) {
+        defaultAppForm.aiSettings.aiChatQuoteRole = parsedQuoteRole.data;
+      }
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -329,7 +336,11 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        AiChatQuoteRole,
+        // 存量简易应用可能显式保存了 system 角色；编辑保存往返保留已存配置，新建或缺失时回退模板默认 user。
+        {
+          ...AiChatQuoteRole,
+          value: formData.aiSettings.aiChatQuoteRole ?? AiChatQuoteRole.value
+        },
         AiChatQuoteTemplate,
         AiChatQuotePrompt,
         {

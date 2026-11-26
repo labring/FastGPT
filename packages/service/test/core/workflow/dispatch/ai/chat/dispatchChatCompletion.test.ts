@@ -19,6 +19,8 @@ import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/c
 const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
   useRealFileFlow: false,
+  useRealDatasetCite: false,
+  mockInputFiles: [] as Array<{ type: string; url: string; name?: string }>,
   modelSupportsAudio: false,
   modelSupportsVideo: false
 }));
@@ -63,9 +65,17 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/chatMessages', async (i
       fixture.useRealFileFlow ? mod.getChatMessages(props) : []
   };
 });
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', () => ({
-  getDatasetCiteData: async () => ({ userInput: 'question' })
-}));
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', async (importOriginal) => {
+  const mod =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite')
+    >();
+  return {
+    ...mod,
+    getDatasetCiteData: async (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
+      fixture.useRealDatasetCite ? mod.getDatasetCiteData(props) : { userInput: 'question' }
+  };
+});
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (importOriginal) => {
   const mod =
     await importOriginal<
@@ -76,7 +86,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (im
     getAIChatFileContextConfig: (props: Parameters<typeof mod.getAIChatFileContextConfig>[0]) =>
       fixture.useRealFileFlow ? mod.getAIChatFileContextConfig(props) : {},
     getInputFiles: (props: Parameters<typeof mod.getInputFiles>[0]) =>
-      fixture.useRealFileFlow ? mod.getInputFiles(props) : []
+      fixture.useRealFileFlow ? mod.getInputFiles(props) : fixture.mockInputFiles
   };
 });
 vi.mock('@fastgpt/service/core/workflow/dispatch/context', async (importOriginal) => {
@@ -102,7 +112,8 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 }));
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 1),
-  countGptMessagesTokensBatch: vi.fn(async (groups: unknown[]) => groups.map(() => 1))
+  countGptMessagesTokensBatch: vi.fn(async (groups: unknown[]) => groups.map(() => 1)),
+  countPromptTokensBatch: vi.fn(async (texts: unknown[]) => texts.map(() => 1))
 }));
 
 describe('dispatchChatCompletion token summary', () => {
@@ -303,4 +314,86 @@ describe('dispatchChatCompletion media file inputs', () => {
       expect(get).not.toHaveBeenCalled();
     }
   );
+});
+
+describe('dispatchChatCompletion empty input guard', () => {
+  afterEach(() => {
+    fixture.useRealDatasetCite = false;
+    fixture.mockInputFiles = [];
+    requestMock.mockReset();
+  });
+
+  const runDispatch = (params: Record<string, unknown>) => {
+    requestMock.mockClear();
+    return dispatchChatCompletion({
+      node: { name: 'Chat', inputs: [] },
+      histories: [],
+      runningUserInfo: { teamId: 'team' },
+      runningAppInfo: { teamId: 'team' },
+      externalProvider: {},
+      params,
+      nodeSummary: createNodeSummary(),
+      usagePush: vi.fn()
+    } as any);
+  };
+
+  it.each([
+    { label: 'default user role', aiChatQuoteRole: undefined },
+    { label: 'explicit system role', aiChatQuoteRole: 'system' }
+  ])(
+    'rejects empty userChatInput with empty quoteQA and no files ($label)',
+    async ({ aiChatQuoteRole }) => {
+      fixture.useRealDatasetCite = true;
+
+      const result = await runDispatch({
+        userChatInput: '',
+        quoteQA: [],
+        aiChatQuoteRole
+      });
+
+      expect(requestMock).not.toHaveBeenCalled();
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+        errorText: 'chat:AI_input_is_empty'
+      });
+    }
+  );
+
+  it('rejects empty rendered input when custom user quotePrompt omits {{question}} and quoteQA is empty', async () => {
+    fixture.useRealDatasetCite = true;
+
+    const result = await runDispatch({
+      userChatInput: 'hello',
+      quoteQA: [],
+      aiChatQuoteRole: 'user',
+      quotePrompt: '{{quote}}'
+    });
+
+    expect(requestMock).not.toHaveBeenCalled();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      errorText: 'chat:AI_input_is_empty'
+    });
+  });
+
+  it('allows file-only requests when userChatInput is empty under default user quote role', async () => {
+    fixture.useRealDatasetCite = true;
+    fixture.mockInputFiles = [
+      { type: ChatFileTypeEnum.image, url: 'https://example.com/a.png', name: 'a.png' }
+    ];
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'described image',
+      finish_reason: 'stop',
+      requestId: 'req-file-only',
+      usage: { inputTokens: 10, outputTokens: 5 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      quoteQA: []
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.answerText]).toBe('described image');
+  });
 });

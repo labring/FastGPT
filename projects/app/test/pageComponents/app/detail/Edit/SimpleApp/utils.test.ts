@@ -251,4 +251,42 @@ describe('form2AppWorkflow model reference', () => {
     expect(form.selectedTools[1].name).toBe('Snapshot Name 2');
     expect(form.selectedTools[1].avatar).toBe('snapshot/avatar/2');
   });
+
+  it('defaults new simple apps to user quote role and preserves saved system role on edit round-trip', () => {
+    const newWorkflow = form2AppWorkflow(getFormWithDataset(), (key: string) => key);
+    const newChatNode = newWorkflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.chatNode
+    );
+    expect(
+      newChatNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value
+    ).toBe('user');
+
+    // 模拟存量 v4.17.5 简易应用保存了 aiChatQuoteRole: 'system'，编辑温度后重新发布。
+    const legacyNodes = newWorkflow.nodes.map((node) =>
+      node.flowNodeType === FlowNodeTypeEnum.chatNode
+        ? {
+            ...node,
+            inputs: node.inputs.map((input) =>
+              input.key === NodeInputKeyEnum.aiChatQuoteRole ? { ...input, value: 'system' } : input
+            )
+          }
+        : node
+    );
+    const restoredForm = appWorkflow2Form({ nodes: legacyNodes, chatConfig: {} });
+    expect(restoredForm.aiSettings.aiChatQuoteRole).toBe('system');
+
+    restoredForm.aiSettings.temperature = 0.7;
+    const republishedWorkflow = form2AppWorkflow(restoredForm, (key: string) => key);
+    const republishedChatNode = republishedWorkflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.chatNode
+    );
+    expect(
+      republishedChatNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)
+        ?.value
+    ).toBe('system');
+    expect(
+      republishedChatNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)
+        ?.value
+    ).toBe(0.7);
+  });
 });
