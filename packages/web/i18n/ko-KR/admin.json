@@ -347,7 +347,7 @@
   "custom_pdf_parse_price": "PDF 요금",
   "custom_pdf_parse_price_tip": "문서 고급 파싱 요금은 PDF 페이지 수에 따라 포인트로 부과됩니다.",
   "pdf_parse_timeout_tip": "PDF 고급 파싱 요청 최대 제한 시간(초)으로 기본 파일 파싱 제한 시간과 별도입니다. 기본값은 600초입니다.",
-  "test_document_parse_file": "파일 테스트",
+  "test_document_parse_file": "테스트",
   "test_document_parse_passed": "파싱 성공",
   "test_document_parse_failed": "파싱 실패",
   "pdf_points_per_page": "포인트 / 페이지",

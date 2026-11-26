@@ -347,7 +347,7 @@
   "custom_pdf_parse_price": "PDF Billing",
   "custom_pdf_parse_price_tip": "Enhanced document parsing is billed per PDF page in points.",
   "pdf_parse_timeout_tip": "Maximum timeout (in seconds) for enhanced PDF parsing requests, independent of built-in file parsing timeout. Defaults to 600 seconds.",
-  "test_document_parse_file": "Test File",
+  "test_document_parse_file": "Test",
   "test_document_parse_passed": "Parse Succeeded",
   "test_document_parse_failed": "Parse Failed",
   "pdf_points_per_page": "Points / page",

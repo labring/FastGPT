@@ -37,7 +37,7 @@ With the four PDF parsing providers covered in this guide, PDF files uploaded wi
 
 1. Sign in as the `root` administrator and open **Admin → System Settings → Core Settings** (`/admin/settings/core`).
 2. Scroll to the **Enhanced Document Parsing** section and choose a service from the **Parsing Provider** dropdown.
-3. Enter the required endpoint or credentials for your chosen provider. You can click **Test File** in the bottom-right corner of the card to send a built-in single-page sample PDF and verify connectivity, credentials, and response format, then click **Save** in the top-right corner to hot-reload without restarting containers.
+3. Enter the required endpoint or credentials for your chosen provider. You can click **Test** in the bottom-right corner of the card to send a built-in single-page sample PDF and verify connectivity, credentials, and response format, then click **Save** in the top-right corner to hot-reload without restarting containers.
 
 ![Admin Core Settings showing the Enhanced Document Parsing configuration section](/imgs/pdf-parse/admin-core-config.png)
 
@@ -48,12 +48,12 @@ Additional settings:
 
 ## 3. Supported Providers
 
-| Provider                 | Website / API Keys                                                                                                 | Required Fields                                                  | Highlights & Best Fit                                                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **SoMark** (Recommended) | International: [somark.ai](https://somark.ai)<br/>China Mainland: [somark.cn](https://somark.cn)                   | Service Region, Somark API Key                                   | Synchronous parsing with high fidelity for text, tables, formulas, and images; supports up to 200 MB and 300 pages per file.                     |
-| **Doc2X**                | [open.noedgeai.com/apiKeys](https://open.noedgeai.com/apiKeys)                                                     | Doc2X Key                                                        | Asynchronous upload and polling; strong at academic formulas, multi-column layouts, and complex tables.                                          |
-| **TextIn (IntSig)**      | [www.textin.com](https://www.textin.com)                                                                           | TextIn AppId, TextIn Secret Code                                 | Enterprise OCR and layout reconstruction with automatic watermark removal and Markdown table conversion.                                         |
-| **Custom (Self-hosted)** | Local deployment guides:<br/>[OXR](/en/self-host/custom-models/oxr) / [MinerU](/en/self-host/custom-models/mineru) | Custom PDF Parser Service URL, Custom Parser Auth Key (optional) | Keeps all document data inside your private network with built-in **Test File** end-to-end verification; ideal for self-hosted GPU environments. |
+| Provider                 | Website / API Keys                                                                                                 | Required Fields                                                  | Highlights & Best Fit                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SoMark** (Recommended) | International: [somark.ai](https://somark.ai)<br/>China Mainland: [somark.cn](https://somark.cn)                   | Service Region, Somark API Key                                   | Synchronous parsing with high fidelity for text, tables, formulas, and images; supports up to 200 MB and 300 pages per file.                |
+| **Doc2X**                | [open.noedgeai.com/apiKeys](https://open.noedgeai.com/apiKeys)                                                     | Doc2X Key                                                        | Asynchronous upload and polling; strong at academic formulas, multi-column layouts, and complex tables.                                     |
+| **TextIn (IntSig)**      | [www.textin.com](https://www.textin.com)                                                                           | TextIn AppId, TextIn Secret Code                                 | Enterprise OCR and layout reconstruction with automatic watermark removal and Markdown table conversion.                                    |
+| **Custom (Self-hosted)** | Local deployment guides:<br/>[OXR](/en/self-host/custom-models/oxr) / [MinerU](/en/self-host/custom-models/mineru) | Custom PDF Parser Service URL, Custom Parser Auth Key (optional) | Keeps all document data inside your private network with built-in **Test** end-to-end verification; ideal for self-hosted GPU environments. |
 
 ### SoMark Regions
 
@@ -115,4 +115,4 @@ curl --fail-with-body \
   -F "file=@./sample.pdf"
 ```
 
-If the response returns valid JSON containing `pages` and `markdown`, enter the URL in **Core Settings** and click **Test File** to verify end-to-end parsing from the FastGPT container.
+If the response returns valid JSON containing `pages` and `markdown`, enter the URL in **Core Settings** and click **Test** to verify end-to-end parsing from the FastGPT container.
