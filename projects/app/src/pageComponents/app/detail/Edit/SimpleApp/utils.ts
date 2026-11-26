@@ -295,6 +295,8 @@ export function form2AppWorkflow(
     };
   }
   function aiChatTemplate(formData: AppFormEditFormType): StoreNodeItemType {
+    const parsedQuoteRole = AiChatQuoteRoleSchema.safeParse(formData.aiSettings.aiChatQuoteRole);
+
     return {
       nodeId: aiChatNodeId,
       name: t(AiChatModule.name),
@@ -336,10 +338,10 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        // 存量简易应用可能显式保存了 system 角色；编辑保存往返保留已存配置，新建或缺失时回退模板默认 user。
+        // 存量简易应用可能显式保存了 system 角色；仅接受符合 AiChatQuoteRoleSchema 的值，缺省或非法值回退模板默认 user。
         {
           ...AiChatQuoteRole,
-          value: formData.aiSettings.aiChatQuoteRole ?? AiChatQuoteRole.value
+          value: parsedQuoteRole.success ? parsedQuoteRole.data : AiChatQuoteRole.value
         },
         AiChatQuoteTemplate,
         AiChatQuotePrompt,

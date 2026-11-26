@@ -73,7 +73,9 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', async (im
   return {
     ...mod,
     getDatasetCiteData: async (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
-      fixture.useRealDatasetCite ? mod.getDatasetCiteData(props) : { userInput: 'question' }
+      fixture.useRealDatasetCite
+        ? mod.getDatasetCiteData(props)
+        : { userInput: 'question', systemPrompt: '', hasEffectiveUserInput: true }
   };
 });
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (importOriginal) => {
@@ -395,5 +397,42 @@ describe('dispatchChatCompletion empty input guard', () => {
     expect(requestMock).toHaveBeenCalledTimes(1);
     expect(result.error).toBeUndefined();
     expect(result[DispatchNodeResponseKeyEnum.answerText]).toBe('described image');
+  });
+
+  it('allows legacy user quotePrompt requests with substantive quoteQA even when userChatInput is empty', async () => {
+    fixture.useRealDatasetCite = true;
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'summarized quote',
+      finish_reason: 'stop',
+      requestId: 'req-quote-only',
+      usage: { inputTokens: 20, outputTokens: 10 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      aiChatQuoteRole: 'user',
+      quotePrompt: '{{quote}}',
+      quoteTemplate: '{{q}}',
+      quoteQA: [
+        {
+          id: 'chunk-1',
+          datasetId: 'ds-1',
+          collectionId: 'col-1',
+          sourceName: 'doc.md',
+          chunkIndex: 0,
+          q: 'retrieved knowledge content',
+          a: '',
+          updateTime: new Date(),
+          score: []
+        }
+      ]
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      query: 'retrieved knowledge content'
+    });
   });
 });

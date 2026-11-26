@@ -289,4 +289,20 @@ describe('form2AppWorkflow model reference', () => {
         ?.value
     ).toBe(0.7);
   });
+
+  it.each(['', 'invalid', null, undefined])(
+    'falls back to default user quote role when form2AppWorkflow receives invalid or missing value (%s)',
+    (invalidRole) => {
+      const form = getFormWithDataset();
+      (form.aiSettings as Record<string, unknown>).aiChatQuoteRole = invalidRole;
+
+      const workflow = form2AppWorkflow(form, (key: string) => key);
+      const chatNode = workflow.nodes.find(
+        (node) => node.flowNodeType === FlowNodeTypeEnum.chatNode
+      );
+      expect(
+        chatNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value
+      ).toBe('user');
+    }
+  );
 });

@@ -83,8 +83,17 @@ export const getDatasetCiteData = async ({
       ? datasetQuotePromptTemplate.replace(/\{\{quote\}\}/g, () => datasetQuoteText)
       : '';
 
+  // User 角色下默认/自定义模板本身带固定文案，仅当模板实际消费了非空问题或非空引用内容时才视为有效输入。
+  const hasEffectiveUserInput =
+    useDatasetQuote && quoteRole === 'user'
+      ? Boolean(replaceInputValue) &&
+        ((Boolean(userChatInput) && datasetQuotePromptTemplate.includes('{{question}}')) ||
+          (Boolean(datasetQuoteText) && datasetQuotePromptTemplate.includes('{{quote}}')))
+      : Boolean(replaceInputValue);
+
   return {
     userInput: replaceInputValue,
-    systemPrompt
+    systemPrompt,
+    hasEffectiveUserInput
   };
 };

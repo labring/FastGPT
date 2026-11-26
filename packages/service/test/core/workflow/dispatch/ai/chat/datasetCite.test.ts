@@ -115,5 +115,32 @@ describe('dataset citation synonym compatibility', () => {
     expect(result.systemPrompt).toBe('');
     expect(result.userInput).toContain('alias');
     expect(result.userInput).toContain('question');
+    expect(result.hasEffectiveUserInput).toBe(true);
+  });
+
+  it('distinguishes substantive quote content from static user template boilerplate', async () => {
+    const emptyDefault = await run({
+      quoteQA: [],
+      datasetQuotePrompt: '',
+      userChatInput: ''
+    });
+    expect(emptyDefault.userInput).toContain('<system-reminder>');
+    expect(emptyDefault.hasEffectiveUserInput).toBe(false);
+
+    const quoteOnly = await run({
+      quoteQA: [item],
+      datasetQuotePrompt: '{{quote}}',
+      userChatInput: ''
+    });
+    expect(quoteOnly.userInput).toContain('alias');
+    expect(quoteOnly.hasEffectiveUserInput).toBe(true);
+
+    const systemEmptyQuestion = await run({
+      quoteQA: [item],
+      aiChatQuoteRole: 'system',
+      datasetQuotePrompt: '{{quote}}',
+      userChatInput: ''
+    });
+    expect(systemEmptyQuestion.hasEffectiveUserInput).toBe(false);
   });
 });
