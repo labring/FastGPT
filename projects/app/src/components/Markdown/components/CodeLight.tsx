@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 const CODE_FONT_FAMILY = 'Menlo, Monaco, Consolas, "Courier New", monospace';
 
 export const codeLight: { [key: string]: React.CSSProperties } = {
-  'code[class*=language-]': {
+  'code[class*="language-"]': {
     color: '#24292e',
     fontFamily: CODE_FONT_FAMILY,
     fontSize: '14px',
@@ -28,7 +28,7 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     msHyphens: 'none',
     hyphens: 'none'
   },
-  'pre[class*=language-]': {
+  'pre[class*="language-"]': {
     color: '#24292e',
     fontFamily: CODE_FONT_FAMILY,
     fontSize: '14px',
@@ -51,31 +51,6 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     overflow: 'auto',
     background: '#ffffff'
   },
-  'code[class*=language-] ::selection': {
-    textShadow: 'none',
-    background: '#c8e1ff'
-  },
-  'code[class*=language-]::selection': {
-    textShadow: 'none',
-    background: '#c8e1ff'
-  },
-  'pre[class*=language-] ::selection': {
-    textShadow: 'none',
-    background: '#c8e1ff'
-  },
-  'pre[class*=language-]::selection': {
-    textShadow: 'none',
-    background: '#c8e1ff'
-  },
-  ':not(pre)>code[class*=language-]': {
-    padding: '.1em .3em',
-    borderRadius: '.3em',
-    color: '#24292e',
-    background: '#f4f6f8'
-  },
-  '.namespace': {
-    opacity: '0.7'
-  },
   'doctype.doctype-tag': {
     color: '#22863a'
   },
@@ -87,12 +62,6 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
   },
   prolog: {
     color: '#6a737d'
-  },
-  '.language-html .language-css .token.punctuation': {
-    color: '#24292e'
-  },
-  '.language-html .language-javascript .token.punctuation': {
-    color: '#24292e'
   },
   punctuation: {
     color: '#24292e'
@@ -141,9 +110,6 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
   },
   string: {
     color: '#032f62'
-  },
-  '.language-css .token.string.url': {
-    textDecoration: 'underline'
   },
   entity: {
     color: '#005cc5'
@@ -249,58 +215,8 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     color: '#24292e'
   },
   namespace: {
-    color: '#6f42c1'
-  },
-  'code[class*=language-javascript]': {
-    color: '#24292e'
-  },
-  'code[class*=language-jsx]': {
-    color: '#24292e'
-  },
-  'code[class*=language-tsx]': {
-    color: '#24292e'
-  },
-  'code[class*=language-typescript]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-javascript]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-jsx]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-tsx]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-typescript]': {
-    color: '#24292e'
-  },
-  'code[class*=language-css]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-css]': {
-    color: '#24292e'
-  },
-  'code[class*=language-html]': {
-    color: '#24292e'
-  },
-  'pre[class*=language-html]': {
-    color: '#24292e'
-  },
-  '.language-regex .token.anchor': {
-    color: '#005cc5'
-  },
-  '.language-html .token.punctuation': {
-    color: '#24292e'
-  },
-  'pre[class*=language-]>code[class*=language-]': {
-    position: 'relative',
-    zIndex: '1'
-  },
-  '.line-highlight.line-highlight': {
-    background: '#fff8c5',
-    boxShadow: 'inset 4px 0 0 #f7d87c',
-    zIndex: '0'
+    color: '#6f42c1',
+    opacity: '0.7'
   }
 };
 
@@ -351,6 +267,7 @@ const CodeLight = ({
   const { copyData } = useCopyData();
   const [isWrap, setIsWrap] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const copyAttemptRef = useRef(0);
 
   const rawLanguage = match?.[1] || '';
   const codeBoxName = useMemo(() => {
@@ -369,6 +286,14 @@ const CodeLight = ({
 
   const wrapLabel = isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap');
   const copyLabel = isCopied ? t('common:copied') : t('common:copy_code');
+
+  const handleCopy = async () => {
+    const attemptId = ++copyAttemptRef.current;
+    const copied = await copyData(codeString, null);
+    if (copyAttemptRef.current === attemptId) {
+      setIsCopied(copied);
+    }
+  };
 
   return (
     <Box
@@ -437,16 +362,16 @@ const CodeLight = ({
             offset={[0, 10]}
             shouldWrapChildren={false}
             closeOnClick={false}
-            onClose={() => setIsCopied(false)}
+            onClose={() => {
+              copyAttemptRef.current += 1;
+              setIsCopied(false);
+            }}
           >
             <IconButton
               icon={<Icon name={isCopied ? 'check' : 'copy'} w={'14px'} h={'14px'} />}
               size={'xsSquare'}
               variant={'grayGhost'}
-              onClick={() => {
-                copyData(codeString, null);
-                setIsCopied(true);
-              }}
+              onClick={handleCopy}
               aria-label={copyLabel}
             />
           </MyTooltip>
@@ -471,7 +396,9 @@ const CodeLight = ({
             overflowX: isWrap ? 'hidden' : 'auto'
           }}
           codeTagProps={{
+            className: rawLanguage ? `language-${rawLanguage}` : undefined,
             style: {
+              ...codeLight['code[class*="language-"]'],
               whiteSpace: isWrap ? 'pre-wrap' : 'pre',
               wordBreak: isWrap ? 'break-all' : 'normal'
             }

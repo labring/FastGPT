@@ -163,6 +163,7 @@ const IframeHtmlCodeBlock = ({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const [isCopied, setIsCopied] = useState(false);
+  const copyAttemptRef = useRef(0);
   const code = String(children);
   const lang = match?.[1]?.toLowerCase();
   const isHtmlBlock = lang === 'html' || lang === 'htm';
@@ -282,15 +283,21 @@ const IframeHtmlCodeBlock = ({
             offset={[0, 10]}
             shouldWrapChildren={false}
             closeOnClick={false}
-            onClose={() => setIsCopied(false)}
+            onClose={() => {
+              copyAttemptRef.current += 1;
+              setIsCopied(false);
+            }}
           >
             <IconButton
               icon={<Icon name={isCopied ? 'check' : 'copy'} w={'14px'} h={'14px'} />}
               size={'xsSquare'}
               variant={'grayGhost'}
-              onClick={() => {
-                copyData(code, null);
-                setIsCopied(true);
+              onClick={async () => {
+                const attemptId = ++copyAttemptRef.current;
+                const copied = await copyData(code, null);
+                if (copyAttemptRef.current === attemptId) {
+                  setIsCopied(copied);
+                }
               }}
               aria-label={isCopied ? t('common:copied') : t('common:copy_code')}
             />

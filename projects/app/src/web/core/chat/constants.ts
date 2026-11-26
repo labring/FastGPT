@@ -406,6 +406,8 @@ export const htmlTemplate = `<!DOCTYPE html>
     }
     code[class*='language-'] {
       color: #24292e;
+      font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
+      font-size: 14px;
       text-shadow: none;
       direction: ltr;
       text-align: left;
@@ -423,6 +425,8 @@ export const htmlTemplate = `<!DOCTYPE html>
 
     pre[class*='language-'] {
       color: #24292e;
+      font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
+      font-size: 14px;
       text-shadow: none;
       direction: ltr;
       text-align: left;
@@ -457,246 +461,8 @@ export const htmlTemplate = `<!DOCTYPE html>
       background: #f4f6f8;
     }
 
-    .namespace {
-      opacity: 0.7;
-    }
-
-    .doctype.doctype-tag {
-      color: #569cd6;
-    }
-
-    .doctype.name {
-      color: #9cdcfe;
-    }
-
-    comment {
-      color: #6a9955;
-    }
-
-    prolog {
-      color: #6a9955;
-    }
-
-    .language-html .language-css .token.punctuation,
-    .language-html .language-javascript .token.punctuation {
-      color: #d4d4d4;
-    }
-
-    punctuation {
-      color: #d4d4d4;
-    }
-
-    boolean {
-      color: #569cd6;
-    }
-
-    constant {
-      color: #9cdcfe;
-    }
-
-    inserted {
-      color: #b5cea8;
-    }
-
-    number {
-      color: #b5cea8;
-    }
-
-    property {
-      color: #9cdcfe;
-    }
-
-    symbol {
-      color: #b5cea8;
-    }
-
-    tag {
-      color: #569cd6;
-    }
-
-    unit {
-      color: #b5cea8;
-    }
-
-    attr-name {
-      color: #9cdcfe;
-    }
-
-    builtin {
-      color: #ce9178;
-    }
-
-    char {
-      color: #ce9178;
-    }
-
-    deleted {
-      color: #ce9178;
-    }
-
-    selector {
-      color: #d7ba7d;
-    }
-
-    string {
-      color: #ce9178;
-    }
-
     .language-css .token.string.url {
       text-decoration: underline;
-    }
-
-    entity {
-      color: #569cd6;
-    }
-
-    operator {
-      color: #d4d4d4;
-    }
-
-    operator.arrow {
-      color: #569cd6;
-    }
-
-    atrule {
-      color: #ce9178;
-    }
-
-    atrule.rule {
-      color: #c586c0;
-    }
-
-    atrule.url {
-      color: #9cdcfe;
-    }
-
-    atrule.url.function {
-      color: #dcdcaa;
-    }
-
-    atrule.url.punctuation {
-      color: #d4d4d4;
-    }
-    keyword {
-      color: #569cd6;
-    }
-
-    keyword.control-flow {
-      color: #c586c0;
-    }
-
-    keyword.module {
-      color: #c586c0;
-    }
-
-    function {
-      color: #dcdcaa;
-    }
-
-    function.maybe-class-name {
-      color: #dcdcaa;
-    }
-
-    regex {
-      color: #d16969;
-    }
-
-    important {
-      color: #569cd6;
-    }
-
-    italic {
-      font-style: italic;
-    }
-
-    class-name {
-      color: #4ec9b0;
-    }
-
-    maybe-class-name {
-      color: #4ec9b0;
-    }
-
-    console {
-      color: #9cdcfe;
-    }
-
-    parameter {
-      color: #9cdcfe;
-    }
-
-    interpolation {
-      color: #9cdcfe;
-    }
-    punctuation.interpolation-punctuation {
-      color: #569cd6;
-    }
-    exports.maybe-class-name {
-      color: #9cdcfe;
-    }
-    imports.maybe-class-name {
-      color: #9cdcfe;
-    }
-    variable {
-      color: #9cdcfe;
-    }
-    escape {
-      color: #d7ba7d;
-    }
-    tag.punctuation {
-      color: grey;
-    }
-    cdata {
-      color: grey;
-    }
-    attr-value {
-      color: #ce9178;
-    }
-    attr-value.punctuation {
-      color: #ce9178;
-    }
-    attr-value.punctuation.attr-equals {
-      color: #d4d4d4;
-    }
-    namespace {
-      color: #4ec9b0;
-    }
-    code[class*='language-javascript'],
-    code[class*='language-jsx'],
-    code[class*='language-tsx'],
-    code[class*='language-typescript'] {
-      color: #9cdcfe;
-    }
-
-    pre[class*='language-javascript'],
-    pre[class*='language-jsx'],
-    pre[class*='language-tsx'],
-    pre[class*='language-typescript'] {
-      color: #9cdcfe;
-    }
-
-    code[class*='language-css'] {
-      color: #ce9178;
-    }
-
-    pre[class*='language-css'] {
-      color: #ce9178;
-    }
-
-    code[class*='language-html'] {
-      color: #d4d4d4;
-    }
-
-    pre[class*='language-html'] {
-      color: #d4d4d4;
-    }
-
-    .language-regex .token.anchor {
-      color: #dcdcaa;
-    }
-
-    .language-html .token.punctuation {
-      color: grey;
     }
 
     pre[class*='language-'] > code[class*='language-'] {
@@ -705,8 +471,8 @@ export const htmlTemplate = `<!DOCTYPE html>
     }
 
     .line-highlight.line-highlight {
-      background: #f7ebc6;
-      box-shadow: inset 5px 0 0 #f7d87c;
+      background: #fff8c5;
+      box-shadow: inset 4px 0 0 #f7d87c;
       z-index: 0;
     }
     * {

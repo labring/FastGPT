@@ -8,7 +8,7 @@ import Tag from '../components/common/Tag';
 import { useCommonStore } from '../store/useCommonStore';
 
 /**
- * copy text data
+ * copy text data; resolves true when clipboard write succeeds, false when falling back to manual copy modal.
  */
 export const useCopyData = () => {
   const { t } = useTranslation();
@@ -20,7 +20,7 @@ export const useCopyData = () => {
       data: string,
       title: string | null | undefined = t('common:copy_successful'),
       duration = 1000
-    ) => {
+    ): Promise<boolean> => {
       data = data.trim();
 
       try {
@@ -33,11 +33,13 @@ export const useCopyData = () => {
               duration
             });
           }
+          return true;
         } else {
           throw new Error('Clipboard is not supported');
         }
-      } catch (error) {
+      } catch {
         setCopyContent(data);
+        return false;
       }
     },
     [setCopyContent, t, toast]
