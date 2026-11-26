@@ -6,6 +6,7 @@ import {
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { describe, expect, it } from 'vitest';
 import {
+  formatAppLogRegion,
   formatDateByTimespan,
   calculateOffsetDates,
   isUnselectedLogUserFilter,
@@ -348,5 +349,50 @@ describe('getLogIdentity', () => {
     expect(getLogIdentity({ source: 'share', outLinkUid: 'external-visitor', authMember })).toEqual(
       { name: 'external-visitor' }
     );
+  });
+});
+
+describe('formatAppLogRegion', () => {
+  it('formats region and IP together by default', () => {
+    expect(formatAppLogRegion({ originIp: '139.162.20.230', region: '新加坡，新加坡' })).toBe(
+      '新加坡，新加坡: 139.162.20.230'
+    );
+    expect(formatAppLogRegion({ originIp: '192.168.1.1', region: '其他' })).toBe(
+      '其他: 192.168.1.1'
+    );
+    expect(formatAppLogRegion({ originIp: ' 139.162.20.230 ', region: '' })).toBe(
+      '-: 139.162.20.230'
+    );
+    expect(formatAppLogRegion({ originIp: '139.162.20.230', region: '139.162.20.230' })).toBe(
+      '-: 139.162.20.230'
+    );
+    expect(formatAppLogRegion({ originIp: undefined, region: '其他' })).toBe('-');
+    expect(formatAppLogRegion({ originIp: '   ', region: '其他' })).toBe('-');
+  });
+
+  it('supports only_ip and only_region display modes', () => {
+    expect(
+      formatAppLogRegion({
+        originIp: '139.162.20.230',
+        region: '新加坡，新加坡',
+        displayType: 'only_ip'
+      })
+    ).toBe('139.162.20.230');
+    expect(formatAppLogRegion({ originIp: '', region: '其他', displayType: 'only_ip' })).toBe('-');
+
+    expect(
+      formatAppLogRegion({
+        originIp: '139.162.20.230',
+        region: '新加坡，新加坡',
+        displayType: 'only_region'
+      })
+    ).toBe('新加坡，新加坡');
+    expect(
+      formatAppLogRegion({
+        originIp: '139.162.20.230',
+        region: '139.162.20.230',
+        displayType: 'only_region'
+      })
+    ).toBe('-');
   });
 });

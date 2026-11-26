@@ -1408,4 +1408,56 @@ describe('logs list API - errorFilter', () => {
       versionFindSpy.mockRestore();
     }
   });
+
+  it('导出 IP及属地 列同时包含属地与 IP，缺失 IP 时导出占位符', async () => {
+    const now = new Date();
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api',
+      createTime: now,
+      updateTime: now
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'ip-public', metadata: { originIp: '139.162.20.230' } },
+      { ...base, chatId: 'ip-private', metadata: { originIp: '192.168.1.1' } },
+      { ...base, chatId: 'ip-missing' }
+    ]);
+
+    const exportedZh = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: 'Session,IP及属地',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.REGION]
+      }
+    });
+    expect(exportedZh.code).toBe(200);
+    expect(exportedZh.raw).toContain('\nip-public,新加坡，新加坡: 139.162.20.230,');
+    expect(exportedZh.raw).toContain('\nip-private,其他: 192.168.1.1,');
+    expect(exportedZh.raw).toContain("\nip-missing,'-,");
+
+    const exportedEn = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=en' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: 'Session,IP & Region',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.REGION]
+      }
+    });
+    expect(exportedEn.code).toBe(200);
+    expect(exportedEn.raw).toMatch(/\nip-public,"Singapore, ?Singapore: 139\.162\.20\.230",/);
+    expect(exportedEn.raw).toContain('\nip-private,Other: 192.168.1.1,');
+    expect(exportedEn.raw).toContain("\nip-missing,'-,");
+  });
 });

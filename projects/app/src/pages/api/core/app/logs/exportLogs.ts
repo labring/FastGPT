@@ -39,7 +39,7 @@ import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { formatAppLogRegion, isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const formatJsonString = (data: any) => {
@@ -193,7 +193,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const authorizer = member?.name?.trim()
       ? `${authorizerId}:${member.name}`
       : authorizerId || '-';
-    const region = getLocationFromIp(doc.metadata?.originIp, locale);
     const averageResponseTime = computeAverageResponseTime(
       itemStats?.totalResponseTime,
       itemStats?.aiMessageCount
@@ -244,7 +243,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         averageResponseTime ? Number(averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (totalPoints ? Number(totalPoints).toFixed(2) : 0),
-      [AppLogKeysEnum.REGION]: () => region,
+      [AppLogKeysEnum.REGION]: () => {
+        const originIp = doc.metadata?.originIp?.trim();
+        if (!originIp) return '-';
+        return formatAppLogRegion({
+          originIp,
+          region: getLocationFromIp(originIp, locale)
+        });
+      },
       [AppLogKeysEnum.VERSION_NAME]: () => versionNameLoader.get(doc.appVersionId),
       chatDetails: () => formatJsonString(itemStats?.chatDetails || [])
     };

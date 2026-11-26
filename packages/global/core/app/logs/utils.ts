@@ -136,3 +136,36 @@ export const getLogIdentity = ({
   if (authMember) return { name: authMember.name, member: authMember };
   return { name: tmbId || '-' };
 };
+
+export type AppLogIpDisplayType = 'all' | 'only_ip' | 'only_region';
+
+/** 统一格式化日志中的 IP 与属地展示文案，保持列表展示与 CSV 导出口径一致。 */
+export const formatAppLogRegion = ({
+  originIp,
+  region,
+  displayType = 'all'
+}: {
+  originIp?: string | null;
+  region?: string | null;
+  displayType?: AppLogIpDisplayType;
+}): string => {
+  const normalizedIp = originIp?.trim() || '';
+  const normalizedRegion = region?.trim() || '';
+
+  if (displayType === 'only_ip') {
+    return normalizedIp || '-';
+  }
+
+  if (displayType === 'only_region') {
+    return normalizedRegion && normalizedRegion !== normalizedIp ? normalizedRegion : '-';
+  }
+
+  if (!normalizedIp) {
+    return '-';
+  }
+
+  // 当属地解析回退为原始 IP 时，避免拼接出 "ip: ip"。
+  const displayRegion =
+    normalizedRegion && normalizedRegion !== normalizedIp ? normalizedRegion : '-';
+  return `${displayRegion}: ${normalizedIp}`;
+};
