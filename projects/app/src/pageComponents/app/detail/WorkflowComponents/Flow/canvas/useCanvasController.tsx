@@ -463,8 +463,7 @@ export const dropEdgeDisconnectsOfRemovedNodes = (
  * 收集需要取消选中的节点 id：只留当前真的选中、且不是标红焦点的节点。
  *
  * 返回空数组意味着调用方一个变更都不该发：空变更也会换掉画布数组身份，带动全部节点卡片重渲染。
- * 标红焦点节点由投影层强制 `selected: true`（不经过任何变更事件），跳过它才不会在保存 gate
- * 定位之后把该节点的选中态清掉。
+ * 标红节点由投影层设为 `selected: true`，清理普通选中态时保留它。
  */
 export const collectClearSelectionIds = (nodes: readonly Node[], skipNodeId?: string): string[] =>
   nodes.filter((node) => node.selected && node.id !== skipNodeId).map((node) => node.id);

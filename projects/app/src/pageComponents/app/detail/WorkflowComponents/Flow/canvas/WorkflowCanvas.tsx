@@ -39,10 +39,15 @@ import { useWorkflowUIValue } from './canvasState';
 import { WorkflowSelectionProvider } from '../context/workflowSelectionContext';
 import { useTranslation } from 'next-i18next';
 import {
-  useWorkflowIssueFocusNodeId,
+  useWorkflowIssueFocusRef,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
-import { getLayoutDimension, WORKFLOW_NODE_MEASUREMENT_ESTIMATE } from './nodeDimensions';
+import {
+  getLayoutDimension,
+  shouldRenderWorkflowNodesFully,
+  WORKFLOW_NODE_FOCUS_OPTIONS,
+  WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+} from './nodeDimensions';
 import {
   ConnectionTargetHandle,
   NodeShellSourceHandles
@@ -438,6 +443,7 @@ const ViewportObserver = () => {
 
 /** 画布背景：写成模块常量，内联字面量会让 ReactFlow 每次渲染都收到新的 style 对象。 */
 const canvasStyle = { background: '#F7F8FA' };
+const viewportPadding = 0.3;
 
 /** 鼠标模式依赖 Shift 临时框选，触摸板模式改为直接拖动框选。 */
 export const getCanvasSelectionProps = (mode: 'drag' | 'select') =>
@@ -559,6 +565,7 @@ const WorkflowCanvas = () => {
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
   const renderedEdges = useWorkflowCanvasRendererValue((v) => v.renderedEdges);
   const runtime = useWorkflowRuntime();
+  const issueFocusRef = useWorkflowIssueFocusRef();
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，
   // 而这里只需要一个稳定 callback ref、一个原始值和一个菜单坐标。
@@ -571,8 +578,6 @@ const WorkflowCanvas = () => {
       console.warn('[Workflow auto layout] Failed to align nodes:', error);
     });
   }, [autoLayout]);
-  const issueFocusNodeId = useWorkflowIssueFocusNodeId();
-
   const {
     handleNodesChange,
     handleEdgeChange,
@@ -601,28 +606,35 @@ const WorkflowCanvas = () => {
   );
   const onMoveEnd = useCallback(() => setMovingCanvas(false), []);
 
-  const startNodeId = nodes.find(
-    (node) =>
-      node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-      node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
-  )?.id;
-  const fittedStartRuntimeRef = useRef<unknown>();
+  const fittedRuntimeRef = useRef<typeof runtime>();
 
   useEffect(() => {
-    if (!runtime || nodes.length === 0) return;
-    if (fittedStartRuntimeRef.current === runtime) return;
-    if (startNodeId) {
-      focusNodes([startNodeId], { padding: 0.3 });
+    if (!runtime || nodes.length === 0 || fittedRuntimeRef.current === runtime) return;
+    // 切回编辑页时恢复保留的单选，标红自动产生的选中态只用于提示。
+    const selectedNodes = nodes.filter((node) => node.selected);
+    const selectedNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined;
+    if (
+      selectedNode &&
+      !selectedNode.selectedByIssue &&
+      selectedNode.id !== issueFocusRef.current
+    ) {
+      focusNodes([selectedNode.id], WORKFLOW_NODE_FOCUS_OPTIONS);
+    } else if (shouldRenderWorkflowNodesFully(nodes.length)) {
+      fitNodes(undefined, { padding: viewportPadding, minZoom: 0 });
     } else {
-      fitNodes(undefined, { padding: 0.3 });
+      const startNode = nodes.find(
+        (node) =>
+          node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+          node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+      );
+      fitNodes(undefined, {
+        padding: viewportPadding,
+        minZoom: 0.15,
+        positionOnly: { center: startNode?.position }
+      });
     }
-    fittedStartRuntimeRef.current = runtime;
-  }, [fitNodes, focusNodes, nodes.length, runtime, startNodeId]);
-
-  useEffect(() => {
-    if (!issueFocusNodeId) return;
-    focusNodes([issueFocusNodeId], { padding: 0.3, minZoom: 0.6 });
-  }, [focusNodes, issueFocusNodeId]);
+    fittedRuntimeRef.current = runtime;
+  }, [fitNodes, focusNodes, issueFocusRef, nodes, runtime]);
 
   return (
     <>

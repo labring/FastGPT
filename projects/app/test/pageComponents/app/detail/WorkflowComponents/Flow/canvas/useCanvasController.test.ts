@@ -410,7 +410,7 @@ describe('collectClearSelectionIds', () => {
     expect(collectClearSelectionIds(nodes)).toEqual(['a', 'c', 'focus']);
   });
 
-  it('skips the focused issue node so save-gate positioning keeps it selected', () => {
+  it('keeps the highlighted issue node selected when clearing selection', () => {
     expect(collectClearSelectionIds(nodes, 'focus')).toEqual(['a', 'c']);
   });
 

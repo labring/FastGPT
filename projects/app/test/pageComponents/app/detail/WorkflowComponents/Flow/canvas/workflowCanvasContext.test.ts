@@ -9,9 +9,12 @@ import WorkflowCanvasProvider, {
   useWorkflowCanvasRendererValue,
   useWorkflowCanvasValue
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/workflowCanvasContext';
-import type {
-  DimensionRegistration,
-  NodeDimensions
+import {
+  WORKFLOW_NODE_FOCUS_OPTIONS,
+  type CanvasViewport,
+  type DimensionRegistration,
+  type NodeDimensions,
+  type ViewportFitOptions
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/nodeDimensions';
 import * as layout from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/layout';
 
@@ -21,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   structureKeys: new Map<string, string>(),
   cardHeights: new Map<string, number>(),
   nodesInitialized: false,
+  canvasWidth: 100,
   getNodesBounds: vi.fn(() => ({ x: 0, y: 0, width: 30, height: 30 })),
   setViewport: vi.fn(async () => true),
   replaceDocument: () => {},
@@ -41,7 +45,7 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
   useNodesInitialized: () => mocks.nodesInitialized,
   useStore: (selector: (state: { width: number; height: number }) => unknown) =>
-    selector({ width: 100, height: 100 }),
+    selector({ width: mocks.canvasWidth, height: 100 }),
   useStoreApi: () => ({ getState: () => ({ minZoom: 0.1, maxZoom: 2 }) }),
   useReactFlow: () => ({
     getNode: (nodeId: string) => mocks.nodes.find(({ id }) => id === nodeId),
@@ -79,13 +83,15 @@ describe('workflow canvas measurements', () => {
   let renderedNodes: CanvasNode[];
   let renderedEdges: Edge[];
   let renderModes: ReadonlyMap<string, string>;
-  let fitNodes: (nodeIds?: string[]) => boolean;
+  let fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   let requestNodeMeasurements: (nodeIds: ReadonlySet<string>) => () => void;
-  let focusNodes: (nodeIds: string[]) => void;
+  let focusNodes: (nodeIds: readonly string[], options?: ViewportFitOptions) => void;
   let cancelPendingViewport: () => void;
+  let onViewportChange: (viewport: CanvasViewport) => void;
   let pinNodeFocus: (nodeId: string) => void;
   let unpinNodeFocus: (nodeId: string) => void;
   let applyNodeChanges: (changes: import('@xyflow/react').NodeChange<CanvasNode>[]) => void;
+  let selectNodes: (nodeIds: readonly string[]) => void;
 
   const Measurement = ({ nodeId }: { nodeId: string }) => {
     const register = useWorkflowCanvasValue((value) => value.registerNodeMeasurement);
@@ -112,9 +118,11 @@ describe('workflow canvas measurements', () => {
     requestNodeMeasurements = useWorkflowCanvasValue((value) => value.requestNodeMeasurements);
     focusNodes = useWorkflowCanvasValue((value) => value.focusNodes);
     cancelPendingViewport = useWorkflowCanvasValue((value) => value.cancelPendingViewport);
+    onViewportChange = useWorkflowCanvasRendererValue((value) => value.onViewportChange);
     pinNodeFocus = useWorkflowCanvasValue((value) => value.pinNodeFocus);
     unpinNodeFocus = useWorkflowCanvasValue((value) => value.unpinNodeFocus);
     applyNodeChanges = useWorkflowCanvasRendererValue((value) => value.applyNodeChanges);
+    selectNodes = useWorkflowCanvasRendererValue((value) => value.selectNodes);
     const nodes = useWorkflowCanvasRendererValue((value) => value.renderedNodes);
     renderedNodes = nodes;
     renderedEdges = useWorkflowCanvasRendererValue((value) => value.renderedEdges);
@@ -176,6 +184,7 @@ describe('workflow canvas measurements', () => {
     mocks.structureKeys.clear();
     mocks.cardHeights.clear();
     mocks.nodesInitialized = false;
+    mocks.canvasWidth = 100;
     mocks.getNodesBounds.mockClear();
     mocks.setViewport.mockClear();
     dom = new JSDOM('<!doctype html><div id="root"></div>');
@@ -204,6 +213,20 @@ describe('workflow canvas measurements', () => {
     await act(async () => root.unmount());
     dom.window.close();
     vi.unstubAllGlobals();
+  });
+
+  it('records an explicit selection even when an issue already selected that node', async () => {
+    const first = mocks.nodes[0];
+    mocks.nodes[0] = { ...first, selected: true, selectedByIssue: true };
+    await render();
+
+    await act(async () => selectNodes([first.id]));
+    await flushFrame();
+
+    expect(renderedNodes.find((node) => node.id === first.id)).toMatchObject({
+      selected: true,
+      selectedByIssue: undefined
+    });
   });
 
   it('skips unrelated containers on a root drag and recalculates only the moved child’s parent', async () => {
@@ -329,6 +352,37 @@ describe('workflow canvas measurements', () => {
     expect(mocks.setViewport).toHaveBeenCalledOnce();
   });
 
+  it('waits for the viewport size and applies a position-only fit without measuring offscreen nodes', async () => {
+    mocks.nodes = Array.from({ length: 51 }, (_, index) => ({
+      ...node(`node-${index}`),
+      position: { x: 10000 + index * 1000, y: 10000 }
+    }));
+    mocks.canvasWidth = 0;
+    await render();
+
+    const viewport = { x: 0, y: 0, zoom: 1, width: 0, height: 100 };
+    await act(async () => {
+      expect(
+        fitNodes(undefined, {
+          minZoom: 0.15,
+          positionOnly: { center: mocks.nodes[0].position }
+        })
+      ).toBe(false);
+      onViewportChange(viewport);
+    });
+    await flushFrame();
+    await flushFrame();
+    expect(dimensions.size).toBe(0);
+    expect(mocks.setViewport).not.toHaveBeenCalled();
+
+    await act(async () => onViewportChange({ ...viewport, width: 100 }));
+    mocks.canvasWidth = 100;
+    await render();
+    await flushFrame();
+
+    expect(mocks.setViewport).toHaveBeenCalledExactlyOnceWith({ x: -1450, y: -1450, zoom: 0.15 });
+  });
+
   it.each([6, 51])(
     'measures the requested %i-node layout without fitting the viewport',
     async (size) => {
@@ -408,6 +462,21 @@ describe('workflow canvas measurements', () => {
 
     expect(mocks.getNodesBounds).toHaveBeenCalledWith(['first-container']);
     expect(mocks.setViewport).toHaveBeenCalledExactlyOnceWith({ x: 20, y: 20, zoom: 2 });
+  });
+
+  it.each([
+    { height: 30, zoom: 1 },
+    { height: 2000, zoom: 0.039 }
+  ])('fits a focused node of height $height at zoom $zoom', async ({ height, zoom }) => {
+    mocks.nodesInitialized = true;
+    mocks.getNodesBounds.mockReturnValueOnce({ x: 0, y: 0, width: 30, height });
+    await render();
+    await act(async () => focusNodes(['first-container'], WORKFLOW_NODE_FOCUS_OPTIONS));
+    await flushFrame();
+    await flushFrame();
+
+    expect(mocks.getNodesBounds).toHaveBeenCalledExactlyOnceWith(['first-container']);
+    expect(mocks.setViewport).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ zoom }));
   });
 
   it('remeasures offscreen nodes after output structure changes with the same canvas data', async () => {

@@ -577,7 +577,7 @@ describe('WorkflowSessionProvider version history', () => {
     }
   });
 
-  it('does not focus an isolated workflow start node on initial attach', async () => {
+  it('focuses an isolated workflow start node on initial attach', async () => {
     const initial = materializeWorkflow({
       input: {
         nodes: [
@@ -603,7 +603,7 @@ describe('WorkflowSessionProvider version history', () => {
 
     await act(async () => vi.advanceTimersByTime(300));
 
-    expect(readHost().issueFocusNodeId).toBeUndefined();
+    expect(readHost().issueFocusNodeId).toBe('start');
     act(() => root.unmount());
   });
 

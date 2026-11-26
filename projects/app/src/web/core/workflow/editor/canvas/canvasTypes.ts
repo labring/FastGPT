@@ -23,7 +23,11 @@ type CanvasNodeMeasurement = {
 };
 
 /** 画布状态边界使用宽类型，renderer 注册使用下面的按 type 辨识联合。 */
-export type CanvasNode = Node<CanvasNodeData, FlowNodeTypeEnum> & CanvasNodeMeasurement;
+export type CanvasNode = Node<CanvasNodeData, FlowNodeTypeEnum> &
+  CanvasNodeMeasurement & {
+    /** 标红产生的选中态用于展示，不参与切回画布时的视口定位。 */
+    selectedByIssue?: true;
+  };
 
 /** 画布端口可归一化，data 保留 Runtime 边的原始端口和值身份。 */
 export type CanvasEdge = Edge<WorkflowCanvasEdgeSnapshot>;

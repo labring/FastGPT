@@ -166,6 +166,9 @@ type PendingFocusRequest = {
   options?: ViewportFitOptions;
 };
 
+const needsFitMeasurements = (options?: ViewportFitOptions) =>
+  !options?.useEstimatedDimensions && !options?.positionOnly;
+
 const defaultViewport: CanvasViewport = {
   x: 0,
   y: 0,
@@ -591,15 +594,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         });
     const nextModes = new Map<string, WorkflowRenderMode>();
     const nextMeasurementNodeIds = new Set<string>();
-    const pendingFitNodeIds = pendingFitRef.current
-      ? new Set(
-          getUnmeasuredViewportFitNodeIds({
-            nodes: viewportNodes,
-            nodeIds: pendingFitRef.current.nodeIds,
-            dimensions: measuredDimensions
-          })
-        )
-      : new Set<string>();
+    const pendingFit = pendingFitRef.current;
+    const pendingFitNodeIds =
+      pendingFit && needsFitMeasurements(pendingFit.options)
+        ? new Set(
+            getUnmeasuredViewportFitNodeIds({
+              nodes: viewportNodes,
+              nodeIds: pendingFit.nodeIds,
+              dimensions: measuredDimensions
+            })
+          )
+        : new Set<string>();
 
     nextNodes.forEach(({ id }) => {
       const isFull = renderedGraph.fullNodeIds.has(id);
@@ -876,16 +881,30 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const next = applyReactFlowNodeChanges(effectiveChanges, prev);
-    if (next !== prev) {
-      setCanvasNodes(next);
-    }
+    if (next === prev) return;
+
+    const selectionIds = new Set(
+      effectiveChanges.flatMap((change) => (change.type === 'select' ? [change.id] : []))
+    );
+    setCanvasNodes(
+      selectionIds.size === 0
+        ? next
+        : next.map((node) =>
+            node.selectedByIssue && selectionIds.has(node.id)
+              ? { ...node, selectedByIssue: undefined }
+              : node
+          )
+    );
   });
 
   /** 按高层 node id intent 更新选中态，调用方不需要理解 ReactFlow NodeChange。 */
   const selectNodes = useMemoizedFn((nodeIds: readonly string[]) => {
     const selectedNodeIds = new Set(nodeIds);
     const changes = nodesRef.current
-      .filter((node) => node.selected !== selectedNodeIds.has(node.id))
+      .filter((node) => {
+        const selected = selectedNodeIds.has(node.id);
+        return node.selected !== selected || (selected && node.selectedByIssue);
+      })
       .map((node) => ({
         id: node.id,
         type: 'select' as const,
@@ -893,10 +912,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }));
     if (changes.length === 0) return;
 
-    const next = applyReactFlowNodeChanges(changes, nodesRef.current);
-    if (next !== nodesRef.current) {
-      setCanvasNodes(next);
-    }
+    applyNodeChanges(changes);
   });
 
   const applyEdgeChanges = useMemoizedFn((changes: EdgeChange<Edge<any>>[]) => {
@@ -919,21 +935,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       isFolded: node.data.isFolded
     }));
 
-  const applyViewportFit = (request: PendingFitRequest) => {
-    const viewport = getViewportForNodeIds({
-      nodes: toViewportNodes(),
-      nodeIds: request.nodeIds,
-      dimensions: getFitDimensions(),
-      width: canvasWidth,
-      height: canvasHeight,
-      ...request.options
-    });
-    if (!viewport) return false;
-    pendingFitRef.current = undefined;
-    setViewport(viewport);
-    return true;
-  };
-
   const requestViewportFit = (request: PendingFitRequest) => {
     const viewportNodes = toViewportNodes();
     const fitNodeIds = getViewportFitNodeIds({
@@ -946,24 +947,31 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
     pendingFitRef.current = request;
 
-    const missingNodeIds = getUnmeasuredViewportFitNodeIds({
-      nodes: viewportNodes,
-      nodeIds: request.nodeIds,
-      dimensions: getFitDimensions()
-    });
-    if (!request.options?.useEstimatedDimensions && missingNodeIds.length > 0) {
+    const dimensions = getFitDimensions();
+    if (needsFitMeasurements(request.options) && fitNodeIds.some((id) => !dimensions.has(id))) {
       reconcileRenderState(nodesRef.current);
       scheduleMeasurementFrame();
       return false;
     }
 
-    return applyViewportFit(request);
+    const viewport = getViewportForNodeIds({
+      nodes: viewportNodes,
+      nodeIds: request.nodeIds,
+      dimensions,
+      width: canvasWidth,
+      height: canvasHeight,
+      ...request.options
+    });
+    if (!viewport) return false;
+    pendingFitRef.current = undefined;
+    setViewport(viewport);
+    return true;
   };
 
-  const applyPendingViewportFit = () => {
+  const applyPendingViewportFit = useMemoizedFn(() => {
     const request = pendingFitRef.current;
     if (request) requestViewportFit(request);
-  };
+  });
 
   const scheduleFocusFrame = useMemoizedFn(() => {
     if (focusFrameRef.current !== undefined) return;
@@ -1045,7 +1053,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     scheduleFocusFrame();
   });
 
-  /** 直接按完整节点图和测量尺寸设置 viewport，不依赖 React Flow 当前渲染集合。 */
+  /** 按完整节点图适配 viewport，首屏可只用坐标估算。 */
   const fitNodes = useMemoizedFn(
     (nodeIds?: readonly string[], options?: ViewportFitOptions): boolean => {
       if (pendingFocusRef.current) {

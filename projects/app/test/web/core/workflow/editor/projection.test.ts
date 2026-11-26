@@ -208,9 +208,20 @@ describe('workflow editor projection', () => {
     expect(runtime.getNode('answer')?.issues.length).toBeGreaterThan(0);
     expect(answer.data).not.toHaveProperty('issues');
     expect(answer.data.isError).toBe(true);
-    // 标红焦点节点强制选中，定位后无需再点一次。
     expect(answer.selected).toBe(true);
+    expect(answer.selectedByIssue).toBe(true);
     expect(http.data).not.toHaveProperty('isError');
+  });
+
+  it('keeps the issue selection origin after the highlight is cleared', () => {
+    const runtime = createRuntime();
+    const cache = createProjectionCache();
+    const highlighted = project(runtime, { errorNodeId: 'answer', cache });
+    const { nodes } = project(runtime, { localNodes: highlighted.nodes, cache });
+    const answer = nodeById(nodes, 'answer');
+
+    expect(answer.data.isError).toBeUndefined();
+    expect(answer).toMatchObject({ selected: true, selectedByIssue: true });
   });
 
   it('does not mark the focused node after its issue is resolved', () => {

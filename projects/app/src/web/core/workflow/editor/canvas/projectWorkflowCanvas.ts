@@ -166,6 +166,7 @@ export const projectRuntimeCanvas = ({
       errorNodeId === nodeId && snapshot.issues.some((issue) => issue.level === 'error');
     const local = localNodeById.get(nodeId);
     const selected = local?.selected;
+    const selectedByIssue = isError && !selected ? true : local?.selectedByIssue;
     const dragging = local?.dragging;
     // 拖拽中的位置以本地为准：几何要等手势结束才提交给 Runtime。
     const position = dragging && local ? local.position : (view?.position ?? { x: 0, y: 0 });
@@ -183,6 +184,7 @@ export const projectRuntimeCanvas = ({
       cached.overlay === overlay &&
       cached.isError === isError &&
       cached.selected === selected &&
+      cached.node.selectedByIssue === selectedByIssue &&
       cached.dragging === dragging &&
       cached.width === width &&
       cached.height === height &&
@@ -217,9 +219,10 @@ export const projectRuntimeCanvas = ({
       data,
       position,
       selected,
+      selectedByIssue,
       zIndex,
       ...(local ? pick(local, [...INTERACTION_FIELDS]) : {}),
-      // 标红焦点节点保持选中：与旧 onUpdateNodeError 一致，定位后无需再点一次即可操作该节点。
+      // 标红节点保持选中，用户可以直接操作它。
       ...(isError ? { selected: true } : {})
     };
 
