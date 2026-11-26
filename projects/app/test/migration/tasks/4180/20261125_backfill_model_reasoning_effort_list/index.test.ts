@@ -20,7 +20,10 @@ import {
 } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { getSystemMigrationList, startManualSystemMigration } from '@/migration/service';
-import { backfillModelReasoningEffortListMigration } from '@/migration/tasks/4180/20261125_backfill_model_reasoning_effort_list';
+import {
+  backfillModelReasoningEffortListMigration,
+  createBackfillModelReasoningEffortListMigration
+} from '@/migration/tasks/4180/20261125_backfill_model_reasoning_effort_list';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -46,31 +49,52 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/cache', async (importOriginal) =
   invalidateTeamModelCatalog: mocks.invalidateTeamModelCatalog
 }));
 
-const createContext = () => {
-  let failures: SystemMigrationFailedRecord[] = [];
+const createContext = (initial?: {
+  checkpoint?: unknown;
+  failures?: SystemMigrationFailedRecord[];
+  assertActive?: () => Promise<void>;
+}) => {
+  let checkpoint: unknown = structuredClone(initial?.checkpoint);
+  let failures: SystemMigrationFailedRecord[] = structuredClone(initial?.failures ?? []);
+  const callOrder: string[] = [];
   const progressCalls: Array<{ key: string; status: SystemMigrationStatusEnum }> = [];
+
   const context = {
     migrationId: '20261125_backfill_model_reasoning_effort_list',
     runId: 'test-run',
     signal: new AbortController().signal,
-    getCheckpoint: vi.fn(async () => undefined),
-    saveCheckpoint: vi.fn(async () => undefined),
-    getFailedRecords: async () => structuredClone(failures),
+    getCheckpoint: vi.fn(async (schema) => {
+      if (checkpoint === undefined) return undefined;
+      return schema.parse(structuredClone(checkpoint));
+    }),
+    saveCheckpoint: vi.fn(async (value: unknown) => {
+      callOrder.push('saveCheckpoint');
+      checkpoint = structuredClone(value);
+    }),
+    getFailedRecords: vi.fn(async () => structuredClone(failures)),
     reportFailedRecords: vi.fn(async (value: SystemMigrationFailedRecord[]) => {
+      callOrder.push('reportFailedRecords');
       failures = structuredClone(value);
     }),
-    assertActive: vi.fn(async () => undefined),
+    assertActive: vi.fn(initial?.assertActive ?? (async () => undefined)),
     reportProgress: vi.fn<SystemMigrationContext['reportProgress']>(async (progress) => {
       progressCalls.push({ key: progress.key, status: progress.status });
     }),
     fail: vi.fn(async (input: SystemMigrationFailureInput): Promise<never> => {
+      callOrder.push('fail');
       failures = structuredClone(input.failedRecords ?? failures);
       throw new Error(input.message);
     }),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
   } satisfies SystemMigrationContext;
 
-  return { context, progressCalls, failures: () => failures };
+  return {
+    context,
+    progressCalls,
+    callOrder,
+    checkpoint: () => structuredClone(checkpoint),
+    failures: () => structuredClone(failures)
+  };
 };
 
 const pluginPresets = [
@@ -113,10 +137,12 @@ const pluginPresets = [
 
 const seedModel = async (overrides: Record<string, unknown> = {}) => {
   const _id = new Types.ObjectId();
+  const scope = (overrides.scope as ModelScopeEnum | undefined) ?? ModelScopeEnum.system;
   const raw = {
     _id,
     type: ModelTypeEnum.llm,
-    scope: ModelScopeEnum.system,
+    scope,
+    ...(scope === ModelScopeEnum.team ? { tmbId: new Types.ObjectId() } : {}),
     model: `model-${_id}`,
     name: 'Test LLM',
     provider: 'OpenAI',
@@ -151,7 +177,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     vi.restoreAllMocks();
   });
 
-  it('backfills missing presets for system and team models, preserves manual configs, and is idempotent on rerun', async () => {
+  it('backfills missing presets in bounded batches across scopes, preserves manual configs, and is idempotent on rerun', async () => {
     const teamId = new Types.ObjectId();
     const systemLegacy = await seedModel({ model: 'glm-5' });
     const teamLegacy = await seedModel({
@@ -201,8 +227,9 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     const customModel = await seedModel({ model: 'private-reasoning-model' });
     await seedModel({ type: ModelTypeEnum.stt, model: 'whisper-1', config: {} });
 
-    const { context, progressCalls } = createContext();
-    const firstResult = await backfillModelReasoningEffortListMigration(context);
+    const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(2);
+    const { context, progressCalls, checkpoint } = createContext();
+    const firstResult = await runWithSmallBatch(context);
 
     expect(firstResult).toEqual({
       presetCount: 2,
@@ -210,27 +237,37 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
       backfilledCount: 2,
       skippedCount: 4
     });
-    expect(context.saveCheckpoint).not.toHaveBeenCalled();
-    expect(progressCalls).toEqual([
-      { key: 'loadPresets', status: SystemMigrationStatusEnum.running },
-      { key: 'loadPresets', status: SystemMigrationStatusEnum.succeeded },
-      { key: 'backfill', status: SystemMigrationStatusEnum.running },
-      { key: 'backfill', status: SystemMigrationStatusEnum.succeeded },
-      { key: 'validation', status: SystemMigrationStatusEnum.running },
-      { key: 'validation', status: SystemMigrationStatusEnum.succeeded }
-    ]);
+    expect(checkpoint()).toMatchObject({
+      precheckPassed: true,
+      backfillCompleted: true,
+      scannedCount: 6,
+      backfilledCount: 2,
+      skippedCount: 4
+    });
+    expect(context.saveCheckpoint).toHaveBeenCalledTimes(5);
+    expect(progressCalls.at(0)).toEqual({
+      key: 'loadPresets',
+      status: SystemMigrationStatusEnum.running
+    });
+    expect(progressCalls.at(1)).toEqual({
+      key: 'loadPresets',
+      status: SystemMigrationStatusEnum.succeeded
+    });
+    expect(progressCalls.at(-2)).toEqual({
+      key: 'validation',
+      status: SystemMigrationStatusEnum.running
+    });
+    expect(progressCalls.at(-1)).toEqual({
+      key: 'validation',
+      status: SystemMigrationStatusEnum.succeeded
+    });
 
     expect((await MongoAIModel.findById(systemLegacy._id).lean())?.config).toMatchObject({
-      reasoning: true,
-      reasoningEffort: true,
       reasoningEffortList: ['none', 'high']
     });
     expect((await MongoAIModel.findById(teamLegacy._id).lean())?.config).toMatchObject({
-      reasoning: true,
-      reasoningEffort: true,
       reasoningEffortList: ['low', 'high']
     });
-    // 人工配置（子集与空数组）、关闭项与自定义模型均保持不变
     expect((await MongoAIModel.findById(manualSubset._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['high']
     });
@@ -255,7 +292,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     vi.clearAllMocks();
     mocks.listModels.mockResolvedValue(pluginPresets);
     const secondRun = createContext();
-    const secondResult = await backfillModelReasoningEffortListMigration(secondRun.context);
+    const secondResult = await runWithSmallBatch(secondRun.context);
     expect(secondResult).toEqual({
       presetCount: 2,
       scannedCount: 6,
@@ -293,16 +330,25 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     expect(
       ((await MongoAIModel.findById(legacy._id).lean())?.config as any)?.reasoningEffortList
     ).toBeUndefined();
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
   });
 
-  it('aborts before partial writes and reports sanitized failed records when source data is invalid', async () => {
+  it('aborts in batched precheck before any write or revision bump when valid records coexist with invalid existing arrays or scopes', async () => {
     const validSystem = await seedModel({ model: 'glm-5' });
-    const invalidScope = await seedModel({
-      model: 'gemini-2.5-pro',
+    const invalidArrayValue = await seedModel({
+      model: 'glm-5',
       scope: ModelScopeEnum.team,
-      teamId: 'not-an-object-id'
+      teamId: new Types.ObjectId(),
+      config: {
+        maxContext: 128000,
+        maxResponse: 16000,
+        quoteMaxToken: 100000,
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['high', 'future_level']
+      }
     });
-    const invalidExistingField = await seedModel({
+    const invalidNonArray = await seedModel({
       model: 'glm-5',
       scope: ModelScopeEnum.team,
       teamId: new Types.ObjectId(),
@@ -315,29 +361,81 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         reasoningEffortList: 'high'
       }
     });
+    const invalidScope = await seedModel({
+      model: 'gemini-2.5-pro',
+      scope: ModelScopeEnum.team,
+      teamId: 'not-an-object-id'
+    });
 
-    const { context, failures } = createContext();
-    await expect(backfillModelReasoningEffortListMigration(context)).rejects.toThrow(
-      'could not be backfilled'
+    const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(2);
+    const first = createContext();
+    await expect(runWithSmallBatch(first.context)).rejects.toThrow(
+      'invalid scope or reasoningEffortList'
     );
 
-    // 校验前置失败时不得留下局部写入
+    // 预检拦截后不得留下任何局部写入或目录修订号递增
     expect(
       ((await MongoAIModel.findById(validSystem._id).lean())?.config as any)?.reasoningEffortList
     ).toBeUndefined();
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
+    expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
 
-    const reported = failures();
-    expect(reported).toHaveLength(2);
+    const reported = first.failures();
+    expect(reported).toHaveLength(3);
     expect(reported.every((item) => item.stageKey === 'backfill')).toBe(true);
     expect(reported.map((item) => item.data.id).sort()).toEqual(
-      [String(invalidScope._id), String(invalidExistingField._id)].sort()
+      [String(invalidArrayValue._id), String(invalidNonArray._id), String(invalidScope._id)].sort()
     );
     expect(JSON.stringify(reported)).not.toContain('secret-token-must-not-leak');
+
+    // 管理员修复坏数据后重试，预检通过并完成全部回填
+    const repairedTeamId = new Types.ObjectId();
+    await Promise.all([
+      MongoAIModel.collection.updateOne(
+        { _id: invalidArrayValue._id },
+        { $set: { 'config.reasoningEffortList': ['high'] } }
+      ),
+      MongoAIModel.collection.updateOne(
+        { _id: invalidNonArray._id },
+        { $unset: { 'config.reasoningEffortList': '' } }
+      ),
+      MongoAIModel.collection.updateOne(
+        { _id: invalidScope._id },
+        { $set: { teamId: repairedTeamId } }
+      )
+    ]);
+
+    const retry = createContext({ checkpoint: first.checkpoint(), failures: first.failures() });
+    const result = await runWithSmallBatch(retry.context);
+    expect(result).toEqual({
+      presetCount: 2,
+      scannedCount: 4,
+      backfilledCount: 3,
+      skippedCount: 1
+    });
+    expect((await MongoAIModel.findById(validSystem._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
+    expect((await MongoAIModel.findById(invalidArrayValue._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['high']
+    });
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 
-  it('fails in validation stage when an existing matched model contains invalid reasoning effort values', async () => {
-    const corrupted = await seedModel({
+  it('persists failed records before checkpoint, resumes from checkpoint without rescanning, and replays committed batches idempotently', async () => {
+    const teamA = new Types.ObjectId();
+    const teamB = new Types.ObjectId();
+    const m1 = await seedModel({ model: 'glm-5', scope: ModelScopeEnum.team, teamId: teamA });
+    const m2 = await seedModel({
+      model: 'gemini-2.5-pro',
+      scope: ModelScopeEnum.team,
+      teamId: teamA
+    });
+    const m3 = await seedModel({ model: 'glm-5', scope: ModelScopeEnum.team, teamId: teamB });
+    const m4 = await seedModel({
       model: 'glm-5',
+      scope: ModelScopeEnum.team,
+      teamId: teamB,
       config: {
         maxContext: 128000,
         maxResponse: 16000,
@@ -348,19 +446,182 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
       }
     });
 
-    const { context, failures } = createContext();
-    await expect(backfillModelReasoningEffortListMigration(context)).rejects.toThrow(
-      'validation failed'
+    const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(2);
+
+    // 模拟第一批已提交后（尚未到达第二批）在第二批遇到并发写入的坏记录：
+    // 校验 reportFailedRecords 必须先于 saveCheckpoint 调用。
+    await MongoAIModel.collection.updateMany(
+      { _id: { $in: [m1._id, m2._id] } },
+      { $set: { 'config.reasoningEffortList': ['high'] } }
     );
-    expect(failures()).toEqual([
+    const resumedRun = createContext({
+      checkpoint: {
+        endId: String(m4._id),
+        lastId: String(m2._id),
+        scannedCount: 2,
+        backfilledCount: 2,
+        skippedCount: 0,
+        precheckPassed: true,
+        backfillCompleted: false
+      }
+    });
+
+    await expect(runWithSmallBatch(resumedRun.context)).rejects.toThrow('could not be backfilled');
+    expect(resumedRun.callOrder).toEqual(['reportFailedRecords', 'saveCheckpoint', 'fail']);
+    expect(resumedRun.failures()).toEqual([
+      {
+        stageKey: 'backfill',
+        data: { id: String(m4._id) },
+        reason: {
+          message: 'Existing reasoningEffortList is invalid; repair before retrying'
+        }
+      }
+    ]);
+    // 第一批所属目录未被重扫，第二批有效记录已回填
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
+    ).toBe(0);
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
+    ).toBe(1);
+    expect((await MongoAIModel.findById(m3._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
+
+    // 模拟崩溃发生在 reportFailedRecords 之后、saveCheckpoint 之前：从旧断点重放不重复追加错误也不重复递增修订号
+    const crashReplay = createContext({
+      checkpoint: {
+        endId: String(m4._id),
+        lastId: String(m2._id),
+        scannedCount: 2,
+        backfilledCount: 2,
+        skippedCount: 0,
+        precheckPassed: true,
+        backfillCompleted: false
+      },
+      failures: resumedRun.failures()
+    });
+    await expect(runWithSmallBatch(crashReplay.context)).rejects.toThrow('could not be backfilled');
+    expect(crashReplay.failures()).toHaveLength(1);
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
+    ).toBe(1);
+
+    // 修复 m4 后从 checkpoint + failedRecords 重试：优先修复 m4 且不再重扫 m1/m2
+    await MongoAIModel.collection.updateOne(
+      { _id: m4._id },
+      { $unset: { 'config.reasoningEffortList': '' } }
+    );
+    const finalRetry = createContext({
+      checkpoint: resumedRun.checkpoint(),
+      failures: resumedRun.failures()
+    });
+    const finalResult = await runWithSmallBatch(finalRetry.context);
+    expect(finalResult).toEqual({
+      presetCount: 2,
+      scannedCount: 4,
+      backfilledCount: 4,
+      skippedCount: 0
+    });
+    expect(finalRetry.failures()).toEqual([]);
+    expect((await MongoAIModel.findById(m4._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
+    ).toBe(0);
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
+    ).toBe(2);
+  });
+
+  it('stops without starting further batches or wiping reported failures when lease is lost', async () => {
+    const m1 = await seedModel({ model: 'glm-5' });
+    const m2 = await seedModel({ model: 'gemini-2.5-pro' });
+    const existingFailure: SystemMigrationFailedRecord = {
+      stageKey: 'backfill',
+      data: { id: String(m1._id) },
+      reason: { message: 'Existing reasoningEffortList is invalid; repair before retrying' }
+    };
+
+    let activeChecks = 0;
+    const { context, failures } = createContext({
+      checkpoint: {
+        endId: String(m2._id),
+        lastId: String(m1._id),
+        scannedCount: 1,
+        backfilledCount: 0,
+        skippedCount: 0,
+        precheckPassed: true,
+        backfillCompleted: false
+      },
+      failures: [existingFailure],
+      assertActive: async () => {
+        activeChecks += 1;
+        // loadPresets(1), backfill start(2), retry chunk(3) -> 模拟在进入重试写入前丢失租约
+        if (activeChecks >= 3) {
+          throw new Error('Lease lost');
+        }
+      }
+    });
+
+    const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(1);
+    await expect(runWithSmallBatch(context)).rejects.toThrow('Lease lost');
+    expect(failures()).toEqual([existingFailure]);
+    expect(
+      ((await MongoAIModel.findById(m2._id).lean())?.config as any)?.reasoningEffortList
+    ).toBeUndefined();
+    expect(context.saveCheckpoint).not.toHaveBeenCalled();
+  });
+
+  it('catches models inserted after endId during batched validation and backfills them on retry', async () => {
+    const initialModel = await seedModel({ model: 'glm-5' });
+    const lateInserted = await seedModel({ model: 'gemini-2.5-pro' });
+
+    const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(1);
+    // 模拟 backfill 已扫描到 initialModel 并标记完成，随后并发写入了缺失列表的 lateInserted
+    await MongoAIModel.collection.updateOne(
+      { _id: initialModel._id },
+      { $set: { 'config.reasoningEffortList': ['none', 'high'] } }
+    );
+    const first = createContext({
+      checkpoint: {
+        endId: String(initialModel._id),
+        lastId: String(initialModel._id),
+        scannedCount: 1,
+        backfilledCount: 1,
+        skippedCount: 0,
+        precheckPassed: true,
+        backfillCompleted: true
+      }
+    });
+
+    await expect(runWithSmallBatch(first.context)).rejects.toThrow('validation failed');
+    expect(first.failures()).toEqual([
       {
         stageKey: 'validation',
-        data: { id: String(corrupted._id) },
+        data: { id: String(lateInserted._id) },
         reason: {
           message: 'Model reasoningEffortList is missing or invalid; repair before retrying'
         }
       }
     ]);
+
+    // 重试时优先处理 validation 留下的失败记录并补齐回填
+    const retry = createContext({
+      checkpoint: first.checkpoint(),
+      failures: first.failures()
+    });
+    const retryResult = await runWithSmallBatch(retry.context);
+    expect(retryResult).toEqual({
+      presetCount: 2,
+      scannedCount: 1,
+      backfilledCount: 2,
+      skippedCount: 0
+    });
+    expect((await MongoAIModel.findById(lateInserted._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['low', 'high']
+    });
   });
 
   it('stays waiting until manually started and publishes structured result through the real migration runner', async () => {

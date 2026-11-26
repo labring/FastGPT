@@ -346,7 +346,7 @@ export const systemMigrations = [
   {
     id: '20261125_backfill_model_reasoning_effort_list',
     version: '4.18.0',
-    // 依赖新版 fastgpt-plugin 提供预设，由管理员确认插件升级后手动触发执行。
+    // 须在所有 App 实例与 fastgpt-plugin 均升级完成后由管理员手动触发执行。
     manual: true,
     blockStartup: false,
     nameKey: i18nT(

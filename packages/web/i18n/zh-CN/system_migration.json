@@ -105,7 +105,7 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核验并删除旧 zip 归档",
   "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "校验遗留清理结果",
   "migrations.20261125_backfill_model_reasoning_effort_list.name": "回填模型可用思考等级预设",
-  "migrations.20261125_backfill_model_reasoning_effort_list.description": "请在确认 fastgpt-plugin 已升级后手动执行：按插件模型预设为存量开启思考配置的 LLM 回填缺失的可用思考等级列表，已手工配置的模型与未命中预设的自定义模型保持不变。",
+  "migrations.20261125_backfill_model_reasoning_effort_list.description": "请在确认所有 App 实例与 fastgpt-plugin 均已升级完成后手动执行：按插件模型预设为存量开启思考配置的 LLM 回填缺失的可用思考等级列表，已手工配置的模型与未命中预设的自定义模型保持不变。",
   "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "加载插件思考等级预设",
   "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "回填模型可用思考等级",
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "校验回填结果",
