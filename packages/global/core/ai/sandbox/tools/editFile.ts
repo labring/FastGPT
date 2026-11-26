@@ -13,7 +13,8 @@ export const SANDBOX_EDIT_FILE_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_EDIT_FILE_TOOL_NAME,
-    description: '在虚拟机中按原文查找并替换文件内容，支持一次编辑多个文件',
+    description:
+      '在虚拟机中按原文查找并替换文件内容，支持一次编辑多个文件。oldContent 和 newContent 必须使用文件原始文本，不要包含 sandbox_read_file 输出中的行号前缀（如 1→）',
     parameters: {
       type: 'object',
       properties: {
