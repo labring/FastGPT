@@ -69,7 +69,14 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [t]
   );
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm<ChatSettingType>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { dirtyFields }
+  } = useForm<ChatSettingType>({
     defaultValues: chatSettings2Form(chatSettings)
   });
 
@@ -127,11 +134,15 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       return updateChatSetting({
         ...params,
         quickAppIds: quickAppList.map((q) => q._id),
-        selectedTools: values.selectedTools.map((tool) => ({
-          pluginId: tool.pluginId,
-          source: tool.source,
-          inputs: tool.inputs
-        }))
+        ...(dirtyFields.selectedTools
+          ? {
+              selectedTools: values.selectedTools.map((tool) => ({
+                pluginId: tool.pluginId,
+                source: tool.source,
+                inputs: tool.inputs
+              }))
+            }
+          : { selectedTools: undefined })
       });
     },
     {
