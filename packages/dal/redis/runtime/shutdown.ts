@@ -11,10 +11,10 @@ const silentLogger: RedisRuntimeLogger = {
   error: () => undefined
 };
 
-type SignalListener = (...args: any[]) => unknown;
+type SignalListener = (signal: NodeJS.Signals) => unknown;
 
 type RedisProcessLike = {
-  on: (signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => unknown;
+  on: (signal: NodeJS.Signals, listener: SignalListener) => unknown;
   removeListener: (signal: NodeJS.Signals, listener: SignalListener) => unknown;
   listeners?: (signal: NodeJS.Signals) => ReadonlyArray<SignalListener>;
   exit: (code?: number) => void;
@@ -70,6 +70,38 @@ const waitForSignalWithTimeout = (promise: Promise<void>, timeoutMs: number): Pr
     void promise.then(finish, finish);
   });
 
+const createDeferredExitGate = (processRef: RedisProcessLike) => {
+  const originalExit = processRef.exit;
+  const realExit = originalExit.bind(processRef);
+  let requestedExitCode: number | undefined;
+  let signaled = false;
+  let resolveExit!: () => void;
+  const exitRequested = new Promise<void>((resolve) => {
+    resolveExit = resolve;
+  });
+
+  const interceptedExit = (code?: number) => {
+    if (signaled) return;
+    signaled = true;
+    requestedExitCode = code;
+    resolveExit();
+  };
+
+  return {
+    install: () => {
+      processRef.exit = interceptedExit;
+    },
+    restore: () => {
+      if (processRef.exit === interceptedExit) {
+        processRef.exit = originalExit;
+      }
+    },
+    exitRequested,
+    getRequestedCode: () => requestedExitCode,
+    realExit
+  };
+};
+
 /**
  * 注册进程级 Redis（及可选协同资源如 `DbRuntime`）优雅关闭处理器。
  *
@@ -104,7 +136,7 @@ export const registerRedisRuntimeShutdown = ({
 
   let closePromise: Promise<void> | undefined;
   let registered = true;
-  const handlers = new Map<NodeJS.Signals, (signal: NodeJS.Signals) => void>();
+  const handlers = new Map<NodeJS.Signals, SignalListener>();
   const delegatedListeners = new Map<NodeJS.Signals, SignalListener[]>();
 
   const detachSelf = (restoreDelegated: boolean) => {
@@ -118,7 +150,7 @@ export const registerRedisRuntimeShutdown = ({
     if (restoreDelegated) {
       for (const [signal, priorListeners] of delegatedListeners) {
         for (const listener of priorListeners) {
-          processRef.on(signal, listener as (signal: NodeJS.Signals) => void);
+          processRef.on(signal, listener);
         }
       }
     }
@@ -135,45 +167,21 @@ export const registerRedisRuntimeShutdown = ({
     if (closePromise) return;
     const selfHandler = handlers.get(signal);
     const priorListeners = delegatedListeners.get(signal) ?? [];
-    const lateListeners = (processRef.listeners?.(signal) ?? []).filter(
+    const hasLateListeners = (processRef.listeners?.(signal) ?? []).some(
       (listener) => listener !== selfHandler
     );
-    const hasCoordinatedListeners = priorListeners.length > 0 || lateListeners.length > 0;
 
     detachSelf(false);
 
-    const originalExit = processRef.exit;
-    const realExit = originalExit.bind(processRef);
-    let requestedExitCode: number | undefined;
-    let frameworkExitResolved = false;
-    let resolveFrameworkExit!: () => void;
-    const frameworkExitPromise = new Promise<void>((resolve) => {
-      resolveFrameworkExit = resolve;
-    });
-
-    const interceptedExit = (code?: number) => {
-      if (!frameworkExitResolved) {
-        frameworkExitResolved = true;
-        requestedExitCode = code;
-        resolveFrameworkExit();
-      }
-    };
-
-    const restoreExit = () => {
-      if (processRef.exit === interceptedExit) {
-        processRef.exit = originalExit;
-      }
-    };
-
-    if (hasCoordinatedListeners) {
-      // 仅在存在框架/其他信号监听器时接管本次退出信号中的 process.exit，
-      // 确保框架排空 HTTP 请求后再释放 Redis/DB 连接池，最后由唯一出口退出进程。
-      processRef.exit = interceptedExit;
+    const exitGate = createDeferredExitGate(processRef);
+    if (priorListeners.length > 0 || hasLateListeners) {
+      // 存在框架或其他信号监听器时临时接管 process.exit，防止其在 DAL 资源释放完成前抢先退出。
+      exitGate.install();
     }
 
     const runShutdown = async (): Promise<void> => {
       try {
-        if (hasCoordinatedListeners) {
+        if (priorListeners.length > 0) {
           for (const listener of priorListeners) {
             try {
               void Promise.resolve(listener(signal)).catch((error) => {
@@ -189,8 +197,7 @@ export const registerRedisRuntimeShutdown = ({
               });
             }
           }
-
-          await waitForSignalWithTimeout(frameworkExitPromise, frameworkShutdownTimeoutMs);
+          await waitForSignalWithTimeout(exitGate.exitRequested, frameworkShutdownTimeoutMs);
         }
 
         const tasks: Array<Promise<void>> = [Promise.resolve().then(() => runtime.close())];
@@ -203,11 +210,11 @@ export const registerRedisRuntimeShutdown = ({
           (result): result is PromiseRejectedResult => result.status === 'rejected'
         );
 
-        restoreExit();
+        exitGate.restore();
 
         if (failures.length === 0) {
           logger.info('Redis runtime closed after process shutdown signal');
-          if (exitProcess) realExit(requestedExitCode ?? 0);
+          if (exitProcess) exitGate.realExit(exitGate.getRequestedCode() ?? 0);
           return;
         }
 
@@ -215,15 +222,15 @@ export const registerRedisRuntimeShutdown = ({
           error: failures[0].reason,
           ...(failures.length > 1 ? { errors: failures.map((failure) => failure.reason) } : {})
         });
-        if (exitProcess) realExit(1);
+        if (exitProcess) exitGate.realExit(1);
       } finally {
-        restoreExit();
+        exitGate.restore();
       }
     };
 
     // 显式捕获收尾阶段（如 logger 或 exit 自身异常），彻底消除未处理 rejection。
     closePromise = runShutdown().catch((error) => {
-      restoreExit();
+      exitGate.restore();
       try {
         logger.error('Redis runtime close failed after process shutdown signal', { error });
       } catch {
@@ -231,7 +238,7 @@ export const registerRedisRuntimeShutdown = ({
       }
       if (exitProcess) {
         try {
-          realExit(1);
+          exitGate.realExit(1);
         } catch {
           // 忽略测试替身或退出回调抛错
         }
@@ -248,7 +255,7 @@ export const registerRedisRuntimeShutdown = ({
       delegatedListeners.set(signal, priorListeners);
     }
 
-    const handler = (receivedSignal?: NodeJS.Signals) => handleSignal(receivedSignal ?? signal);
+    const handler: SignalListener = (receivedSignal) => handleSignal(receivedSignal ?? signal);
     handlers.set(signal, handler);
     processRef.on(signal, handler);
   }

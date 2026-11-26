@@ -273,4 +273,49 @@ describe('registerRedisRuntimeShutdown', () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(throwingLoggerMock.realExit).toHaveBeenCalledWith(1);
   });
+
+  it('prevents a late-registered listener from exiting early without blocking when it does not call exit', async () => {
+    const processMock = createProcessMock();
+    let releaseDb!: () => void;
+    const dbGate = new Promise<void>((resolve) => {
+      releaseDb = resolve;
+    });
+
+    registerRedisRuntimeShutdown({
+      runtime: createRuntime(vi.fn(async () => undefined)),
+      processRef: processMock.processRef,
+      onShutdown: vi.fn(() => dbGate),
+      signals: ['SIGTERM'],
+      frameworkShutdownTimeoutMs: 5_000
+    });
+
+    // 后注册的监听器立即尝试 exit(143)，不应在 DB 关闭前抢先退出
+    processMock.processRef.on('SIGTERM', () => {
+      processMock.processRef.exit(143);
+    });
+
+    processMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(processMock.realExit).not.toHaveBeenCalled();
+
+    releaseDb();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(processMock.realExit).toHaveBeenCalledWith(143);
+
+    // 仅记录日志、不调用 exit 的后注册监听器不应触发 5s 超时等待
+    const nonExitingMock = createProcessMock();
+    registerRedisRuntimeShutdown({
+      runtime: createRuntime(vi.fn(async () => undefined)),
+      processRef: nonExitingMock.processRef,
+      signals: ['SIGTERM'],
+      frameworkShutdownTimeoutMs: 5_000
+    });
+    const observer = vi.fn();
+    nonExitingMock.processRef.on('SIGTERM', observer);
+
+    nonExitingMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(observer).toHaveBeenCalledWith('SIGTERM');
+    expect(nonExitingMock.realExit).toHaveBeenCalledWith(0);
+  });
 });
