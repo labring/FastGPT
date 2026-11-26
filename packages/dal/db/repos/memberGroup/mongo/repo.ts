@@ -1,22 +1,19 @@
 import { Types } from 'mongoose';
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type { MemberGroupLookupRepository } from '../repo.type';
+import { MemberGroupIdReadSchema, type MemberGroupLookupRepository } from '../repo.type';
 import { memberGroupLookupMongoCollection, type MemberGroupLookupMongoDoc } from './schema';
-
-const MemberGroupPassthroughReadSchema = z.unknown();
 
 /** team_member_groups 的 MongoDB 主体解析仓储实现。 */
 export class MongoMemberGroupLookupRepository
-  extends MongoRepositoryBase<MemberGroupLookupMongoDoc, typeof MemberGroupPassthroughReadSchema>
+  extends MongoRepositoryBase<MemberGroupLookupMongoDoc, typeof MemberGroupIdReadSchema>
   implements MemberGroupLookupRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: memberGroupLookupMongoCollection,
-      readSchema: MemberGroupPassthroughReadSchema,
+      readSchema: MemberGroupIdReadSchema,
       runtime
     });
   }
@@ -40,6 +37,7 @@ export class MongoMemberGroupLookupRepository
       .find({ teamId, _id: { $in: validObjectIds } }, '_id', this.txOpts(tx))
       .lean();
 
-    return new Set(groups.map((item) => String(item._id)));
+    const parsed = this.parseList(groups);
+    return new Set(parsed.map((item) => item._id));
   }
 }

@@ -1,17 +1,24 @@
-import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { EntityIdSchema } from '@fastgpt/global/common/string/entityId';
+import { optionalNullToUndefined } from '@fastgpt/global/common/zod';
+import { ApiDatasetServerSchema } from '@fastgpt/global/core/dataset/apiDataset/type';
+import z from 'zod';
 import type { DbSession } from '../../types';
 
+/** 写权限同步加锁后返回的知识库配置窄 Read Schema。 */
+export const DatasetPermissionLockReadSchema = z.object({
+  apiDatasetServer: optionalNullToUndefined(ApiDatasetServerSchema)
+});
 /** 写权限同步加锁后返回的知识库配置窄 DTO。 */
-export type DatasetPermissionLockDTO = {
-  apiDatasetServer?: ApiDatasetServerType;
-};
+export type DatasetPermissionLockDTO = z.infer<typeof DatasetPermissionLockReadSchema>;
 
+/** 清理历史 SYSTEM_ROOT 哨兵所需的知识库元信息窄 Read Schema。 */
+export const DatasetLegacySystemRootMetaReadSchema = z.object({
+  _id: EntityIdSchema,
+  teamId: EntityIdSchema,
+  collectionPermissionEnabled: optionalNullToUndefined(z.boolean())
+});
 /** 清理历史 SYSTEM_ROOT 哨兵所需的知识库元信息窄 DTO。 */
-export type DatasetLegacySystemRootMetaDTO = {
-  _id: string;
-  teamId: string;
-  collectionPermissionEnabled?: boolean;
-};
+export type DatasetLegacySystemRootMetaDTO = z.infer<typeof DatasetLegacySystemRootMetaReadSchema>;
 
 /**
  * API 知识库同步范围与权限托管涉及的 Dataset 持久化公开契约。

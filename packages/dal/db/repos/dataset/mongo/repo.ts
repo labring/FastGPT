@@ -1,28 +1,27 @@
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type {
-  DatasetApiSyncRepository,
-  DatasetLegacySystemRootMetaDTO,
-  DatasetPermissionLockDTO
+import {
+  DatasetLegacySystemRootMetaReadSchema,
+  DatasetPermissionLockReadSchema,
+  type DatasetApiSyncRepository,
+  type DatasetLegacySystemRootMetaDTO,
+  type DatasetPermissionLockDTO
 } from '../repo.type';
 import { datasetApiSyncMongoCollection, type DatasetApiSyncMongoDoc } from './schema';
 
-const DatasetPassthroughReadSchema = z.unknown();
-
 /**
  * datasets 的 MongoDB 仓储实现（API 知识库同步范围与权限托管）。
- * 统一收口裸 Model 访问、`ObjectId` 转换与 `DbSession` 解包，出口仅返回窄 DTO。
+ * 统一收口裸 Model 访问、`ObjectId` 转换与 `DbSession` 解包，出口经窄 Read Schema 归一化为 DTO。
  */
 export class MongoDatasetApiSyncRepository
-  extends MongoRepositoryBase<DatasetApiSyncMongoDoc, typeof DatasetPassthroughReadSchema>
+  extends MongoRepositoryBase<DatasetApiSyncMongoDoc, typeof DatasetLegacySystemRootMetaReadSchema>
   implements DatasetApiSyncRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: datasetApiSyncMongoCollection,
-      readSchema: DatasetPassthroughReadSchema,
+      readSchema: DatasetLegacySystemRootMetaReadSchema,
       runtime
     });
   }
@@ -48,10 +47,7 @@ export class MongoDatasetApiSyncRepository
       )
       .select('apiDatasetServer')
       .lean();
-    if (!doc) return null;
-    return {
-      apiDatasetServer: doc.apiDatasetServer
-    };
+    return this.parseNullable(doc, DatasetPermissionLockReadSchema);
   }
 
   /**
@@ -90,12 +86,7 @@ export class MongoDatasetApiSyncRepository
     const doc = await this.model
       .findById(this.oid(datasetId), '_id teamId collectionPermissionEnabled', this.txOpts(tx))
       .lean();
-    if (!doc) return null;
-    return {
-      _id: String(doc._id),
-      teamId: String(doc.teamId),
-      collectionPermissionEnabled: doc.collectionPermissionEnabled
-    };
+    return this.parseNullable(doc);
   }
 
   /** 回填历史知识库的 `syncAll = true`。 */

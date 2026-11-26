@@ -1,4 +1,11 @@
+import { EntityIdSchema } from '@fastgpt/global/common/string/entityId';
+import z from 'zod';
 import type { DbSession } from '../../types';
+
+/** 组织存在性校验窄 Read Schema。 */
+export const OrgIdReadSchema = z.object({
+  _id: EntityIdSchema
+});
 
 /** Org 主体解析公开仓储契约。 */
 export type OrgLookupRepository = {

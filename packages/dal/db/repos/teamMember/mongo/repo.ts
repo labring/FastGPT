@@ -1,23 +1,24 @@
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { Types } from 'mongoose';
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type { TeamMemberLookupRepository } from '../repo.type';
+import {
+  TeamMemberIdReadSchema,
+  TeamMemberUserIdReadSchema,
+  type TeamMemberLookupRepository
+} from '../repo.type';
 import { teamMemberLookupMongoCollection, type TeamMemberLookupMongoDoc } from './schema';
-
-const TeamMemberPassthroughReadSchema = z.unknown();
 
 /** team_members 的 MongoDB 主体解析仓储实现。 */
 export class MongoTeamMemberLookupRepository
-  extends MongoRepositoryBase<TeamMemberLookupMongoDoc, typeof TeamMemberPassthroughReadSchema>
+  extends MongoRepositoryBase<TeamMemberLookupMongoDoc, typeof TeamMemberUserIdReadSchema>
   implements TeamMemberLookupRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: teamMemberLookupMongoCollection,
-      readSchema: TeamMemberPassthroughReadSchema,
+      readSchema: TeamMemberUserIdReadSchema,
       runtime
     });
   }
@@ -46,7 +47,8 @@ export class MongoTeamMemberLookupRepository
       )
       .lean();
 
-    return new Map(members.map((member) => [String(member.userId), String(member._id)]));
+    const parsed = this.parseList(members);
+    return new Map(parsed.map((member) => [member.userId, member._id]));
   }
 
   /** 校验并返回指定团队内处于 active 状态的 tmbId 集合；非法 ObjectId 自动忽略。 */
@@ -76,6 +78,7 @@ export class MongoTeamMemberLookupRepository
       )
       .lean();
 
-    return new Set(members.map((item) => String(item._id)));
+    const parsed = this.parseList(members, TeamMemberIdReadSchema);
+    return new Set(parsed.map((item) => item._id));
   }
 }

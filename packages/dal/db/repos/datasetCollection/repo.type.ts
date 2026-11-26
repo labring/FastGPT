@@ -1,18 +1,35 @@
+import { EntityIdSchema } from '@fastgpt/global/common/string/entityId';
+import { optionalNullToUndefined } from '@fastgpt/global/common/zod';
+import z from 'zod';
 import type { DbSession } from '../../types';
 
-/** 集合权限树遍历所需的窄 DTO。 */
-export type DatasetCollectionTreeNodeDTO = {
-  _id: string;
-  parentId?: string | null;
-  inheritPermission?: boolean;
-};
+/** 集合所属 datasetId 查询窄 Read Schema。 */
+export const DatasetCollectionDatasetIdReadSchema = z.object({
+  datasetId: optionalNullToUndefined(EntityIdSchema)
+});
 
+/** 集合权限树遍历所需的窄 Read Schema（保留历史缺失 inheritPermission 语义，缺失 parentId 归一为 null）。 */
+export const DatasetCollectionTreeNodeReadSchema = z.object({
+  _id: EntityIdSchema,
+  parentId: z.preprocess(
+    (value) => (value === undefined || value === '' ? null : value),
+    EntityIdSchema.nullable()
+  ),
+  inheritPermission: optionalNullToUndefined(z.boolean())
+});
+/** 集合权限树遍历所需的窄 DTO。 */
+export type DatasetCollectionTreeNodeDTO = z.infer<typeof DatasetCollectionTreeNodeReadSchema>;
+
+/** 历史 SYSTEM_ROOT 哨兵集合清理所需的窄 Read Schema。 */
+export const DatasetCollectionLegacySentinelReadSchema = z.object({
+  _id: EntityIdSchema,
+  teamId: EntityIdSchema,
+  inheritPermission: optionalNullToUndefined(z.boolean())
+});
 /** 历史 SYSTEM_ROOT 哨兵集合清理所需的窄 DTO。 */
-export type DatasetCollectionLegacySentinelDTO = {
-  _id: string;
-  teamId: string;
-  inheritPermission?: boolean;
-};
+export type DatasetCollectionLegacySentinelDTO = z.infer<
+  typeof DatasetCollectionLegacySentinelReadSchema
+>;
 
 /**
  * API 知识库同步范围、权限物化与历史哨兵清理涉及的 DatasetCollection 持久化公开契约。

@@ -1,22 +1,19 @@
 import { Types } from 'mongoose';
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type { OrgLookupRepository } from '../repo.type';
+import { OrgIdReadSchema, type OrgLookupRepository } from '../repo.type';
 import { orgLookupMongoCollection, type OrgLookupMongoDoc } from './schema';
-
-const OrgPassthroughReadSchema = z.unknown();
 
 /** team_orgs 的 MongoDB 主体解析仓储实现。 */
 export class MongoOrgLookupRepository
-  extends MongoRepositoryBase<OrgLookupMongoDoc, typeof OrgPassthroughReadSchema>
+  extends MongoRepositoryBase<OrgLookupMongoDoc, typeof OrgIdReadSchema>
   implements OrgLookupRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: orgLookupMongoCollection,
-      readSchema: OrgPassthroughReadSchema,
+      readSchema: OrgIdReadSchema,
       runtime
     });
   }
@@ -40,6 +37,7 @@ export class MongoOrgLookupRepository
       .find({ teamId, _id: { $in: validObjectIds } }, '_id', this.txOpts(tx))
       .lean();
 
-    return new Set(orgs.map((item) => String(item._id)));
+    const parsed = this.parseList(orgs);
+    return new Set(parsed.map((item) => item._id));
   }
 }

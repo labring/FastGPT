@@ -1,21 +1,18 @@
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type { UserLookupRepository } from '../repo.type';
+import { UserLookupReadSchema, type UserLookupRepository } from '../repo.type';
 import { userLookupMongoCollection, type UserLookupMongoDoc } from './schema';
-
-const UserPassthroughReadSchema = z.unknown();
 
 /** users 的 MongoDB 主体解析仓储实现。 */
 export class MongoUserLookupRepository
-  extends MongoRepositoryBase<UserLookupMongoDoc, typeof UserPassthroughReadSchema>
+  extends MongoRepositoryBase<UserLookupMongoDoc, typeof UserLookupReadSchema>
   implements UserLookupRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: userLookupMongoCollection,
-      readSchema: UserPassthroughReadSchema,
+      readSchema: UserLookupReadSchema,
       runtime
     });
   }
@@ -34,6 +31,7 @@ export class MongoUserLookupRepository
       .find({ username: { $in: usernames } }, 'username', this.txOpts(tx))
       .lean();
 
-    return new Map(users.map((user) => [String(user._id), String(user.username)]));
+    const parsed = this.parseList(users);
+    return new Map(parsed.map((user) => [user._id, user.username]));
   }
 }

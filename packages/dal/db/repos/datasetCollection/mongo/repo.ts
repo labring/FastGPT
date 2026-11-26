@@ -1,35 +1,35 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import z from 'zod';
 import { MongoRepositoryBase } from '../../../mongo/base';
 import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
-import type {
-  DatasetCollectionApiSyncRepository,
-  DatasetCollectionLegacySentinelDTO,
-  DatasetCollectionTreeNodeDTO
+import {
+  DatasetCollectionDatasetIdReadSchema,
+  DatasetCollectionLegacySentinelReadSchema,
+  DatasetCollectionTreeNodeReadSchema,
+  type DatasetCollectionApiSyncRepository,
+  type DatasetCollectionLegacySentinelDTO,
+  type DatasetCollectionTreeNodeDTO
 } from '../repo.type';
 import {
   datasetCollectionApiSyncMongoCollection,
   type DatasetCollectionApiSyncMongoDoc
 } from './schema';
 
-const DatasetCollectionPassthroughReadSchema = z.unknown();
-
 /**
  * dataset_collections 的 MongoDB 仓储实现（API 同步范围、权限物化与历史哨兵清理）。
- * 统一收口裸 Model 访问、`ObjectId` 转换与 `DbSession` 解包，出口仅返回归一化窄 DTO。
+ * 统一收口裸 Model 访问、`ObjectId` 转换与 `DbSession` 解包，出口经窄 Read Schema 归一化为 DTO。
  */
 export class MongoDatasetCollectionApiSyncRepository
   extends MongoRepositoryBase<
     DatasetCollectionApiSyncMongoDoc,
-    typeof DatasetCollectionPassthroughReadSchema
+    typeof DatasetCollectionTreeNodeReadSchema
   >
   implements DatasetCollectionApiSyncRepository
 {
   constructor(runtime?: DbRuntime) {
     super({
       collection: datasetCollectionApiSyncMongoCollection,
-      readSchema: DatasetCollectionPassthroughReadSchema,
+      readSchema: DatasetCollectionTreeNodeReadSchema,
       runtime
     });
   }
@@ -67,8 +67,8 @@ export class MongoDatasetCollectionApiSyncRepository
   }): Promise<string | undefined> {
     const row = await this.model
       .findOne({ _id: collectionId, teamId }, 'datasetId', this.txOpts(tx))
-      .lean<{ datasetId?: unknown } | null>();
-    return row?.datasetId ? String(row.datasetId) : undefined;
+      .lean();
+    return this.parseNullable(row, DatasetCollectionDatasetIdReadSchema)?.datasetId;
   }
 
   /** 按层查询指定父集合列表的直接子集合（含继承标志）。 */
@@ -97,11 +97,7 @@ export class MongoDatasetCollectionApiSyncRepository
       )
       .lean();
 
-    return rows.map((row) => ({
-      _id: String(row._id),
-      parentId: row.parentId ? String(row.parentId) : null,
-      inheritPermission: row.inheritPermission
-    }));
+    return this.parseList(rows);
   }
 
   /** 恢复指定 API 目录集合的自动同步子项开关（syncChildren=true）。 */
@@ -174,11 +170,7 @@ export class MongoDatasetCollectionApiSyncRepository
       )
       .lean();
 
-    return rows.map((row) => ({
-      _id: String(row._id),
-      teamId: String(row.teamId),
-      inheritPermission: row.inheritPermission
-    }));
+    return this.parseList(rows, DatasetCollectionLegacySentinelReadSchema);
   }
 
   /** 将历史哨兵下的直接子节点重挂到知识库根，并按需固化原独立哨兵下的继承态快照。 */

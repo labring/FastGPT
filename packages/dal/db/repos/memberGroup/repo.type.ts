@@ -1,4 +1,11 @@
+import { EntityIdSchema } from '@fastgpt/global/common/string/entityId';
+import z from 'zod';
 import type { DbSession } from '../../types';
+
+/** 成员分组存在性校验窄 Read Schema。 */
+export const MemberGroupIdReadSchema = z.object({
+  _id: EntityIdSchema
+});
 
 /** MemberGroup 主体解析公开仓储契约。 */
 export type MemberGroupLookupRepository = {
