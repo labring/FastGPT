@@ -212,15 +212,15 @@ const mergeNodeResponse = (
       ...(hasCacheReadTokens
         ? {
             cacheReadTokens:
-              (current.compressTextAgent?.cacheReadTokens || 0) +
-              (incoming.compressTextAgent?.cacheReadTokens || 0)
+              (current.compressTextAgent?.cacheReadTokens ?? 0) +
+              (incoming.compressTextAgent?.cacheReadTokens ?? 0)
           }
         : {}),
       ...(hasCacheCreationTokens
         ? {
             cacheCreationTokens:
-              (current.compressTextAgent?.cacheCreationTokens || 0) +
-              (incoming.compressTextAgent?.cacheCreationTokens || 0)
+              (current.compressTextAgent?.cacheCreationTokens ?? 0) +
+              (incoming.compressTextAgent?.cacheCreationTokens ?? 0)
           }
         : {}),
       totalPoints:
