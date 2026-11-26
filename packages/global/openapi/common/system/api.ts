@@ -34,13 +34,27 @@ export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
  * API: 获取 Pro SSO 接入状态
  * Route: GET /api/common/system/sso/config (Pro 内部接口)
  * Method: GET
- * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；保留 includeProvider 与 isWecom 可选字段以兼容尚未移除探测分支的 Pro 版本
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
+/** @deprecated 保留以兼容仍解析 includeProvider 参数的 Pro 内部路由，主服务不再传递该参数。 */
+export const ProSsoConfigQuerySchema = z.object({
+  includeProvider: BoolSchema.optional().meta({
+    description:
+      '已废弃的可选参数；保留以兼容当前 Pro 内部路由，主服务不传该参数，Pro 仅返回 enabled',
+    example: true
+  })
+});
+export type ProSsoConfigQuery = z.infer<typeof ProSsoConfigQuerySchema>;
+
 export const ProSsoConfigResponseSchema = z
   .object({
-    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true })
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
+    isWecom: z.boolean().optional().meta({
+      description: '已废弃的可选字段；保留以兼容尚未移除探测分支的 Pro 内部接口',
+      example: false
+    })
   })
   .strict();
 export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;

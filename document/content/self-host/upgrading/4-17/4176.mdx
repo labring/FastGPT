@@ -16,5 +16,5 @@ sidebarTag: 开发中
 
 1. 修复配置环境代理时 MCP 服务无法连接的问题，固定代理隧道连接的已校验 IP，防止代理侧重新解析域名绕过 SSRF 防护，并完善连接超时、取消与资源清理。
 2. 修复插件重新运行后清空输入时，部分字段仍保留上一次的值或无法恢复默认值的问题。
-3. 修复企业微信客户端在未开启 `sso.autoLogin` 时误跳转非企业微信 SSO 的问题；同时通过 `sso.autoLogin` 与 `WECOM_LOGIN_AUTO_REDIRECT` 两个开关组合控制企业微信终端内的自动跳转行为，无需更新 SSO 镜像。
+3. 修复企业微信客户端在未开启 `sso.autoLogin` 时误跳转非企业微信 SSO 的问题；同时通过 `sso.autoLogin` 与 `WECOM_LOGIN_AUTO_REDIRECT` 两个开关组合控制企业微信终端内的自动跳转行为，无需更新 SSO 镜像。原仅依赖 `WECOM_LOGIN_AUTO_REDIRECT=true` 自动跳转的自建企业微信 SSO，升级后需开启全局 `sso.autoLogin` 才能继续在企业微信内自动跳转（开启后普通浏览器访问登录页也会自动跳转至 SSO）。
 4. 修复 API 知识库同步部分目录时，如果接入方不支持查询目录详情，已导入的目录或文件可能被误删的问题。
