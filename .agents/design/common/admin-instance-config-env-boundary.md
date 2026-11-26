@@ -1090,7 +1090,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **205 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **207 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1247,10 +1247,12 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `performance.parse.xlsxMaxCells` | XLSX 最大单元格数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.parse.xlsxMaxMergedCells` | XLSX 最大合并单元格数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.parse.maxHtmlTransformChars` | HTML 转换最大字符数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.parseMaxProcess` | 文档解析并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.vectorMaxProcess` | 向量化处理并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.qaMaxProcess` | QA 自动生成并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.vlmMaxProcess` | 多模态理解并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.documentMaxProcess` | 集群同时训练的文档数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.documentChunkMaxProcess` | 单篇文档同时处理的 QA 原文或索引分块数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.parseMaxProcess` | 旧文档解析并发数 | ✅ | ✅ | — | — | 仅 API（旧配置兼容） |
+| `performance.dataset.vectorMaxProcess` | 旧向量化处理并发数 | ✅ | ✅ | — | — | 仅 API（旧配置兼容） |
+| `performance.dataset.qaMaxProcess` | 旧 QA 自动生成并发数 | ✅ | ✅ | — | — | 仅 API（旧配置兼容） |
+| `performance.dataset.vlmMaxProcess` | 旧多模态理解并发数 | ✅ | ✅ | — | — | 仅 API（旧配置兼容） |
 | `performance.chat.maxQpm` | 对话 QPM 上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.tracking.retentionHours` | LLM 追踪保留时长 (小时) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.task.evalConcurrency` | 评估任务并发上限 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |

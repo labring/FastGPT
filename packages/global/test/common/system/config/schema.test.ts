@@ -212,6 +212,23 @@ describe('Domain default config and overrides validation', () => {
     expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
   });
 
+  it('resolves document and per-document chunk concurrency independently', () => {
+    expect(getDomainDefaultConfig('performance').dataset).toMatchObject({
+      documentMaxProcess: 10,
+      documentChunkMaxProcess: 2
+    });
+    const overrides = { dataset: { documentMaxProcess: 4, documentChunkMaxProcess: 3 } };
+    expect(
+      resolveDomainEffectiveConfig({ domain: 'performance', overrides }).dataset
+    ).toMatchObject(overrides.dataset);
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'performance',
+        overrides: { dataset: { documentChunkMaxProcess: 0 } }
+      })
+    ).toThrow();
+  });
+
   it('ignores retired stream resume settings and rejects configuring them again', () => {
     const overrides = {
       streamResume: {

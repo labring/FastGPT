@@ -20,10 +20,25 @@ const ParsePerformanceConfigSchema = z.strictObject({
 });
 
 const DatasetPerformanceConfigSchema = z.strictObject({
-  parseMaxProcess: positiveInteger(10),
-  vectorMaxProcess: positiveInteger(10),
-  qaMaxProcess: positiveInteger(10),
-  vlmMaxProcess: positiveInteger(10)
+  documentMaxProcess: positiveInteger(10),
+  documentChunkMaxProcess: positiveInteger(2),
+  // 兼容已保存的实例配置。
+  parseMaxProcess: positiveInteger(10).meta({
+    deprecated: true,
+    description: '旧训练队列并发，文档队列使用 documentMaxProcess'
+  }),
+  vectorMaxProcess: positiveInteger(10).meta({
+    deprecated: true,
+    description: '旧训练队列并发，文档队列使用 documentMaxProcess'
+  }),
+  qaMaxProcess: positiveInteger(10).meta({
+    deprecated: true,
+    description: '旧训练队列并发，文档队列使用 documentMaxProcess'
+  }),
+  vlmMaxProcess: positiveInteger(10).meta({
+    deprecated: true,
+    description: '旧训练队列并发，文档队列使用 documentMaxProcess'
+  })
 });
 
 const ChatPerformanceConfigSchema = z.strictObject({

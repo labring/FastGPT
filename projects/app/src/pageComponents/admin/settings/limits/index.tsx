@@ -903,12 +903,12 @@ const LimitsSettingComponent = () => {
       >
         <SimpleGrid columns={[1, 3]} spacing={5}>
           <AdminFormItem
-            label={t('admin:document_parsing_concurrency_2')}
-            tooltip={t('admin:max_parallel_file_parsing_processes_in_the_dataset_queue')}
+            label={t('admin:document_training_concurrency')}
+            tooltip={t('admin:max_concurrent_dataset_training_documents')}
             isRequired
           >
             <Controller
-              name="dataset.parseMaxProcess"
+              name="dataset.documentMaxProcess"
               control={control}
               render={({ field }) => (
                 <NumberInput
@@ -930,82 +930,23 @@ const LimitsSettingComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label={t('admin:vectorization_concurrency')}
-            tooltip={t('admin:max_concurrent_embedding_tasks_for_dataset_vectorization')}
+            label={t('admin:document_chunk_training_concurrency')}
+            tooltip={t('admin:max_concurrent_training_chunks_per_document')}
             isRequired
           >
             <Controller
-              name="dataset.vectorMaxProcess"
+              name="dataset.documentChunkMaxProcess"
               control={control}
               render={({ field }) => (
-                <NumberInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                <AdminNumberInput
                   {...numberInputProps}
                   min={1}
                   max={100}
-                  value={field.value ?? 10}
-                  onChange={(_, val) => field.onChange(val || 10)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:qa_auto_generation_concurrency')}
-            tooltip={t('admin:concurrency_for_auto_qa_pair_splitting_and_generation')}
-            isRequired
-          >
-            <Controller
-              name="dataset.qaMaxProcess"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
+                  value={field.value}
+                  fallbackValue={2}
+                  onChange={field.onChange}
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  {...numberInputProps}
-                  min={1}
-                  max={100}
-                  value={field.value ?? 10}
-                  onChange={(_, val) => field.onChange(val || 10)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:multimodal_understanding_concurrency')}
-            tooltip={t('admin:max_concurrency_for_vlm_image_understanding_and_description')}
-            isRequired
-          >
-            <Controller
-              name="dataset.vlmMaxProcess"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  {...numberInputProps}
-                  min={1}
-                  max={100}
-                  value={field.value ?? 10}
-                  onChange={(_, val) => field.onChange(val || 10)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                />
               )}
             />
           </AdminFormItem>
