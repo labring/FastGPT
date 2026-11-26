@@ -244,11 +244,27 @@ describe('opensandbox client and lifecycle helpers', () => {
     );
     expect(sdkSandbox.close).toHaveBeenCalledTimes(1);
     expect(mocks.sandboxCreate.mock.calls[0]?.[0]).not.toHaveProperty('secureAccess');
+    expect(mocks.sandboxCreate.mock.calls[0]?.[0]).not.toHaveProperty('credentialProxy');
     expect(mocks.sandboxCreate.mock.calls[0]?.[0]?.resource).not.toHaveProperty(
       'ephemeral-storage'
     );
     expect(client.rootPath).toBe('/home/sandbox/workspace');
     expect(client.id).toBe('remote-1');
+  });
+
+  it('forwards credentialProxy to Sandbox.create in docker mode when enableUpstreamProxy is enabled', async () => {
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
+      runtime: 'docker',
+      enableUpstreamProxy: true
+    });
+    mocks.sandboxCreate.mockResolvedValueOnce(createSdkSandbox('remote-proxy-1'));
+    mocks.sandboxConnect.mockResolvedValueOnce(createSdkSandbox('remote-proxy-1'));
+
+    await createRuntimeOpenSandboxClient({ sandboxId: 'sb-proxy-1' }).create();
+
+    expect(mocks.sandboxCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialProxy: { enabled: true } })
+    );
   });
 
   it('fast-connects via remoteSandboxId without verifyHealth and maps 404 to SandboxNotFoundError', async () => {

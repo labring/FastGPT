@@ -1425,5 +1425,20 @@
   "aliyun_sms_not_configured": "{{service}}가 구성되지 않았습니다",
   "aliyun_sms": "Alibaba Cloud SMS",
   "clear_smtp_config_confirm": "이메일 SMTP 서비스 설정을 비우시겠습니까? 변경 사항을 적용하려면 저장을 클릭하세요.",
-  "clear_aliyun_sms_confirm": "Alibaba Cloud SMS 서비스 설정을 비우시겠습니까? 변경 사항을 적용하려면 저장을 클릭하세요."
+  "clear_aliyun_sms_confirm": "Alibaba Cloud SMS 서비스 설정을 비우시겠습니까? 변경 사항을 적용하려면 저장을 클릭하세요.",
+  "sandbox_outbound_proxy": "샌드박스 아웃바운드 프록시",
+  "sandbox_http_proxy": "HTTP 프록시 URL",
+  "sandbox_http_proxy_tip": "새 샌드박스나 재시작된 샌드박스에 HTTP_PROXY / http_proxy로 주입됩니다(클러스터 네트워크 정책에서 프록시를 허용하고 프록시 측에서 사설망/메타데이터 접근을 차단하세요).",
+  "sandbox_https_proxy": "HTTPS 프록시 URL",
+  "sandbox_https_proxy_tip": "새 샌드박스나 재시작된 샌드박스에 HTTPS_PROXY / https_proxy로 주입됩니다(클러스터 네트워크 정책에서 프록시를 허용하고 프록시 측에서 사설망/메타데이터 접근을 차단하세요).",
+  "sandbox_no_proxy": "프록시 제외 목록 (NO_PROXY)",
+  "sandbox_no_proxy_tip": "프록시를 우회할 쉼표 구분 도메인, IP 또는 CIDR이며 localhost,127.0.0.1,::1이 자동 포함됩니다.",
+  "invalid_sandbox_outbound_proxy_url": "올바른 http:// 또는 https:// 프록시 URL을 입력하세요",
+  "sandbox_docker_upstream_proxy_title": "Docker 모드 아웃바운드 프록시 설정 예시 (OpenSandbox 서버 config.toml)",
+  "sandbox_docker_upstream_proxy_desc": "유지보수 시간대에 양쪽을 맞춰 전환하세요: 활성화 시 위 스위치를 먼저 켠 뒤 OpenSandbox config.toml을 구성하고 재시작하며, 비활성화/롤백 시 OpenSandbox에서 [egress.upstream_proxy]를 먼저 제거하고 재시작한 뒤 스위치를 끄세요. 사내 DNS 공용 도메인 해석 및 업스트림 프록시의 사설망/메타데이터 차단이 필요합니다",
+  "sandbox_docker_upstream_proxy_comment_egress": "DNS + nftables 아웃바운드 격리 활성화",
+  "sandbox_docker_upstream_proxy_comment_auth": "선택: 프록시 인증 헤더",
+  "sandbox_docker_upstream_proxy_comment_ca": "선택: 호스트의 프록시 사용자 지정 CA 인증서 절대 경로",
+  "sandbox_enable_upstream_proxy": "OpenSandbox Egress 프록시 활성화",
+  "sandbox_enable_upstream_proxy_tip": "활성화하면 Docker 모드에서 샌드박스 생성 시 OpenSandbox [egress.upstream_proxy] 연동을 위해 credentialProxy.enabled = true가 전달됩니다(업스트림 프록시에서 사설망/메타데이터 접근 차단 필요). 400 오류 구간을 피하려면 먼저 이 스위치를 켠 뒤 [egress.upstream_proxy]를 구성하고, 비활성화 또는 롤백 시 서버 측 [egress.upstream_proxy]를 먼저 제거한 뒤 이 스위치를 끄세요. 새 샌드박스 또는 재시작된 샌드박스에 적용됩니다."
 }
