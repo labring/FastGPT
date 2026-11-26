@@ -4,7 +4,8 @@ import { DbRecordCorruptedError } from '@fastgpt/dal/db/errors';
 import { parseRepoRow, parseRepoRows } from '@fastgpt/dal/db/parse';
 import {
   DatasetLegacySystemRootMetaReadSchema,
-  DatasetPermissionLockReadSchema
+  DatasetPermissionLockReadSchema,
+  DatasetPermissionSyncContextReadSchema
 } from '@fastgpt/dal/db/repos/dataset/repo.type';
 import {
   DatasetCollectionDatasetIdReadSchema,
@@ -51,6 +52,29 @@ describe('API dataset DAL narrow read schemas', () => {
       })
     ).toEqual({
       apiDatasetServer: undefined
+    });
+
+    expect(
+      parseRepoRow({
+        table: 'datasets',
+        schema: DatasetPermissionSyncContextReadSchema,
+        row: {
+          _id: { toString: () => datasetId },
+          tmbId: { toString: () => teamId },
+          collectionPermissionEnabled: null,
+          apiDatasetServer: {
+            apiServer: { baseUrl: 'example.com/api' },
+            permissionSync: true
+          }
+        }
+      })
+    ).toEqual({
+      tmbId: teamId,
+      collectionPermissionEnabled: undefined,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com/api' },
+        permissionSync: true
+      }
     });
 
     expect(

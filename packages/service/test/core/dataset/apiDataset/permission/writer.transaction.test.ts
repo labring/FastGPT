@@ -6,6 +6,8 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { injectRepo } from '@fastgpt/dal/db/container';
+import { DatasetApiSyncRepoToken } from '@fastgpt/dal/db/repos/dataset/repo';
 
 // 全局 mock 会把事务降级成无 session 的普通执行；这里只验证真实事务的提交/回滚语义。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
@@ -242,5 +244,81 @@ describe('applyCollectionPermissionStates transaction boundary', () => {
         tmbId: readerTmbId
       })
     ).toBe(0);
+  });
+
+  it('writes ACLs for a legacy bare-domain dataset after toggling permissionSync on', async () => {
+    const teamId = String(new Types.ObjectId());
+    const datasetId = String(new Types.ObjectId());
+    const collectionId = String(new Types.ObjectId());
+    const ownerTmbId = String(new Types.ObjectId());
+    const readerTmbId = String(new Types.ObjectId());
+
+    // 模拟 v4.17.0 存量数据：apiServer.baseUrl 不带协议前缀，局部开启 permissionSync 后仍保留裸域名
+    await MongoDataset.create({
+      _id: datasetId,
+      teamId,
+      tmbId: ownerTmbId,
+      name: 'legacy-bare-domain-dataset',
+      type: DatasetTypeEnum.dataset,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'legacy.example.com/api' }
+      }
+    });
+    await MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        $set: {
+          collectionPermissionEnabled: true,
+          'apiDatasetServer.permissionSync': true
+        }
+      }
+    );
+    await MongoDatasetCollection.create({
+      _id: collectionId,
+      teamId,
+      datasetId,
+      tmbId: ownerTmbId,
+      name: 'legacy-file',
+      type: DatasetCollectionTypeEnum.apiFile,
+      inheritPermission: true
+    });
+
+    const datasetRepo = injectRepo(DatasetApiSyncRepoToken);
+    const snapshot = await datasetRepo.findPermissionSyncContext({ teamId, datasetId });
+    expect(snapshot?.apiDatasetServer?.apiServer?.baseUrl).toBe('https://legacy.example.com/api');
+
+    const result = await applyCollectionPermissionStates({
+      teamId,
+      datasetId,
+      states: [
+        {
+          collectionId,
+          type: DatasetCollectionTypeEnum.apiFile,
+          parentId: null,
+          collaborators: [
+            { tmbId: ownerTmbId, permission: OwnerRoleVal },
+            { tmbId: readerTmbId, permission: ReadRoleVal }
+          ],
+          currentCollaborators: [],
+          isIndependent: false,
+          changed: true
+        }
+      ],
+      expectedApiDatasetServer: snapshot!.apiDatasetServer!
+    });
+
+    expect(result).toEqual({ updated: 1 });
+    expect((await MongoDatasetCollection.findById(collectionId).lean())?.inheritPermission).toBe(
+      false
+    );
+    expect(
+      await MongoResourcePermission.countDocuments({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: collectionId,
+        tmbId: readerTmbId,
+        permission: ReadRoleVal
+      })
+    ).toBe(1);
   });
 });

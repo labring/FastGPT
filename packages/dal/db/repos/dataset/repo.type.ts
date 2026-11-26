@@ -11,6 +11,16 @@ export const DatasetPermissionLockReadSchema = z.object({
 /** 写权限同步加锁后返回的知识库配置窄 DTO。 */
 export type DatasetPermissionLockDTO = z.infer<typeof DatasetPermissionLockReadSchema>;
 
+/** 权限同步抓取前读取的知识库上下文窄 Read Schema（与锁后复核复用同一 apiDatasetServer 归一化契约）。 */
+export const DatasetPermissionSyncContextReadSchema = DatasetPermissionLockReadSchema.extend({
+  tmbId: EntityIdSchema,
+  collectionPermissionEnabled: optionalNullToUndefined(z.boolean())
+});
+/** 权限同步抓取前读取的知识库上下文窄 DTO。 */
+export type DatasetPermissionSyncContextDTO = z.infer<
+  typeof DatasetPermissionSyncContextReadSchema
+>;
+
 /** 清理历史 SYSTEM_ROOT 哨兵所需的知识库元信息窄 Read Schema。 */
 export const DatasetLegacySystemRootMetaReadSchema = z.object({
   _id: EntityIdSchema,
@@ -25,6 +35,11 @@ export type DatasetLegacySystemRootMetaDTO = z.infer<typeof DatasetLegacySystemR
  * 统一使用字符串实体 ID 与不透明 `DbSession`，不暴露底层驱动类型。
  */
 export type DatasetApiSyncRepository = {
+  findPermissionSyncContext: (params: {
+    datasetId: string;
+    teamId: string;
+    tx?: DbSession;
+  }) => Promise<DatasetPermissionSyncContextDTO | null>;
   bumpCollectionPermissionVersion: (params: {
     datasetId: string;
     teamId: string;

@@ -7,6 +7,7 @@ export const DatasetCollectionName = 'datasets';
 export type DatasetApiSyncMongoDoc = {
   _id: unknown;
   teamId: unknown;
+  tmbId?: unknown;
   apiDatasetServer?: ApiDatasetServerType;
   collectionPermissionVersion?: number;
   collectionPermissionEnabled?: boolean;
@@ -19,6 +20,9 @@ const DatasetApiSyncMongoSchema = new Schema(
     teamId: {
       type: Schema.Types.ObjectId,
       required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId
     },
     apiDatasetServer: {
       type: Schema.Types.Mixed

@@ -3,7 +3,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
-const datasetFindOne = vi.fn();
+const findPermissionSyncContext = vi.fn();
 const collectionFind = vi.fn();
 const getApiDatasetRequest = vi.fn();
 const fetchApiFilePermissions = vi.fn();
@@ -11,9 +11,18 @@ const findByResourceIds = vi.fn();
 const resolveApiDatasetPermissionItems = vi.fn();
 const applyCollectionPermissionStates = vi.fn();
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  MongoDataset: { findOne: datasetFindOne }
-}));
+vi.mock('@fastgpt/dal/db/container', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/db/container')>();
+  return {
+    ...actual,
+    injectRepo: (token: { name: string }) => {
+      if (token.name === 'DatasetApiSyncRepository') {
+        return { findPermissionSyncContext };
+      }
+      return actual.injectRepo(token as never);
+    }
+  };
+});
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
   MongoDatasetCollection: { find: collectionFind }
 }));
@@ -92,7 +101,7 @@ const makeDataset = (apiDatasetServer: Record<string, unknown> | undefined) => (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  datasetFindOne.mockReturnValue(lean(makeDataset({ apiServer: {}, permissionSync: true })));
+  findPermissionSyncContext.mockResolvedValue(makeDataset({ apiServer: {}, permissionSync: true }));
   collectionFind.mockReturnValue(lean([]));
   getApiDatasetRequest.mockResolvedValue({});
   fetchApiFilePermissions.mockResolvedValue(new Map());
@@ -103,7 +112,7 @@ beforeEach(() => {
 
 describe('syncCollectionPermissions', () => {
   it('rejects when the dataset does not exist', async () => {
-    datasetFindOne.mockReturnValue(lean(null));
+    findPermissionSyncContext.mockResolvedValue(null);
 
     await expect(syncCollectionPermissions({ teamId, datasetId })).rejects.toBe(
       DatasetErrEnum.unExist
@@ -111,7 +120,7 @@ describe('syncCollectionPermissions', () => {
   });
 
   it('returns zeros without fetching when permission sync is off', async () => {
-    datasetFindOne.mockReturnValue(lean(makeDataset({ apiServer: {} })));
+    findPermissionSyncContext.mockResolvedValue(makeDataset({ apiServer: {} }));
 
     const stats = await syncCollectionPermissions({ teamId, datasetId });
 
@@ -202,12 +211,10 @@ describe('syncCollectionPermissions', () => {
   });
 
   it('returns zeros without fetching when collection permission is not enabled', async () => {
-    datasetFindOne.mockReturnValue(
-      lean({
-        ...makeDataset({ apiServer: {}, permissionSync: true }),
-        collectionPermissionEnabled: false
-      })
-    );
+    findPermissionSyncContext.mockResolvedValue({
+      ...makeDataset({ apiServer: {}, permissionSync: true }),
+      collectionPermissionEnabled: false
+    });
 
     const stats = await syncCollectionPermissions({ teamId, datasetId });
 

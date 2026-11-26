@@ -4,9 +4,11 @@ import type { DbSession } from '../../../types';
 import {
   DatasetLegacySystemRootMetaReadSchema,
   DatasetPermissionLockReadSchema,
+  DatasetPermissionSyncContextReadSchema,
   type DatasetApiSyncRepository,
   type DatasetLegacySystemRootMetaDTO,
-  type DatasetPermissionLockDTO
+  type DatasetPermissionLockDTO,
+  type DatasetPermissionSyncContextDTO
 } from '../repo.type';
 import { datasetApiSyncMongoCollection, type DatasetApiSyncMongoDoc } from './schema';
 
@@ -24,6 +26,26 @@ export class MongoDatasetApiSyncRepository
       readSchema: DatasetLegacySystemRootMetaReadSchema,
       runtime
     });
+  }
+
+  /**
+   * 读取权限同步抓取前所需的知识库上下文，经与锁库复核一致的 Read Schema 归一化 `apiDatasetServer`。
+   */
+  async findPermissionSyncContext({
+    datasetId,
+    teamId,
+    tx
+  }: {
+    datasetId: string;
+    teamId: string;
+    tx?: DbSession;
+  }): Promise<DatasetPermissionSyncContextDTO | null> {
+    const doc = await this.model
+      .findOne({ _id: datasetId, teamId })
+      .select('tmbId collectionPermissionEnabled apiDatasetServer')
+      .setOptions(this.txOpts(tx))
+      .lean();
+    return this.parseNullable(doc, DatasetPermissionSyncContextReadSchema);
   }
 
   /**

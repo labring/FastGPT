@@ -1,4 +1,3 @@
-import { MongoDataset } from '../../schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { getApiDatasetRequest } from '../index';
 import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
@@ -8,6 +7,7 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { buildLegacyApiFileDirSourceMap } from '../utils';
 import { injectRepo } from '@fastgpt/dal/db/container';
+import { DatasetApiSyncRepoToken } from '@fastgpt/dal/db/repos/dataset/repo';
 import { MemberGroupLookupRepoToken } from '@fastgpt/dal/db/repos/memberGroup/repo';
 import { OrgLookupRepoToken } from '@fastgpt/dal/db/repos/org/repo';
 import { TeamMemberLookupRepoToken } from '@fastgpt/dal/db/repos/teamMember/repo';
@@ -25,6 +25,7 @@ import type { ApiDatasetPermissionItemType } from '@fastgpt/global/core/dataset/
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
+const datasetRepo = injectRepo(DatasetApiSyncRepoToken);
 const userRepo = injectRepo(UserLookupRepoToken);
 const teamMemberRepo = injectRepo(TeamMemberLookupRepoToken);
 const memberGroupRepo = injectRepo(MemberGroupLookupRepoToken);
@@ -156,10 +157,7 @@ export const syncCollectionPermissions = async ({
 
   assertPermissionSyncActive({ deadlineAt, lease });
 
-  const dataset = await MongoDataset.findOne(
-    { _id: datasetId, teamId },
-    'teamId tmbId collectionPermissionEnabled apiDatasetServer'
-  ).lean();
+  const dataset = await datasetRepo.findPermissionSyncContext({ teamId, datasetId });
   if (!dataset) throw DatasetErrEnum.unExist;
   if (!isPermissionSyncDataset(dataset.apiDatasetServer)) return stats;
 
