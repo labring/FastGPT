@@ -1,5 +1,8 @@
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import { getSupportedReasoningEfforts } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getSupportedReasoningEfforts,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import {
@@ -17,30 +20,18 @@ type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 const normalizeBaseUrl = (url?: string) => (url ? url.replace(/\/chat\/completions$/, '') : '');
 
 /**
- * 解析 Pi Agent 出站应发送的思考等级：
- * - 不支持思考或无可用思考等级时返回 undefined（不传 reasoning_effort）；
- * - 请求档位在模型支持列表内时原样保留（含显式 `'none'`）；
- * - 未指定或不在支持列表内（含模型不支持 `'none'` 时的旧 `'none'`）时，
- *   优先回退 `'medium'`，否则选取最低非 `'none'` 档位（若仅支持 `'none'` 则返回 `'none'`）。
+ * 解析 Pi Agent 出站应发送的思考等级（与普通出站 requestBody.ts 及前端配置弹窗保持同一契约）：
+ * - 仅当请求档位在模型支持列表内时原样保留（含显式 `'none'`）；
+ * - 未指定（默认）、不支持思考或不在模型支持列表内时返回 undefined（出站移除思考等级参数，走模型默认行为）。
  */
 export function resolvePiReasoningEffort(
   modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ReasoningEffortLevel | undefined {
-  const supportedLevels = getSupportedReasoningEfforts(modelData);
-  if (supportedLevels.length === 0) {
-    return undefined;
-  }
-
-  if (reasoningEffort && supportedLevels.includes(reasoningEffort)) {
-    return reasoningEffort;
-  }
-
-  if (supportedLevels.includes('medium')) {
-    return 'medium';
-  }
-
-  return supportedLevels.find((level) => level !== 'none') ?? supportedLevels[0];
+  return (
+    normalizeModelReasoningEffort(reasoningEffort, getSupportedReasoningEfforts(modelData)) ??
+    undefined
+  );
 }
 
 export function getPiThinkingLevel(

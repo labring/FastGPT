@@ -211,7 +211,7 @@ describe('mergePiAgentPayload', () => {
         expectedEffort: 'xhigh'
       },
       {
-        name: 'keeps xhigh on fallback when a model only supports xhigh',
+        name: 'omits reasoning_effort when caller leaves reasoningEffort unset (default)',
         model: createModel({
           model: 'xhigh-only-model',
           config: {
@@ -224,7 +224,7 @@ describe('mergePiAgentPayload', () => {
           }
         }),
         reasoningEffort: undefined,
-        expectedEffort: 'xhigh'
+        expectedEffort: undefined
       },
       {
         name: 'explicitly sends reasoning_effort=none when supported (e.g. deepseek-flash)',
@@ -243,7 +243,7 @@ describe('mergePiAgentPayload', () => {
         expectedEffort: 'none'
       },
       {
-        name: 'falls back legacy none to the lowest supported level when none is not supported',
+        name: 'omits reasoning_effort when configured level is unsupported (e.g. legacy none on o4-mini)',
         model: createModel({
           model: 'o4-mini',
           config: {
@@ -256,7 +256,7 @@ describe('mergePiAgentPayload', () => {
           }
         }),
         reasoningEffort: 'none',
-        expectedEffort: 'low'
+        expectedEffort: undefined
       },
       {
         name: 'omits reasoning_effort when model disables reasoningEffort',
@@ -336,6 +336,24 @@ describe('mergePiAgentPayload', () => {
       });
       expect(zaiOff).toHaveProperty('enable_thinking', false);
       expect(zaiOff).not.toHaveProperty('reasoning_effort');
+
+      const zaiUnsupported = await captureWireRequestBody({
+        baseUrl: 'https://api.z.ai/api/paas/v4',
+        model: createModel({
+          model: 'glm-5.3',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['low', 'high', 'xhigh']
+          }
+        }),
+        reasoningEffort: 'none'
+      });
+      expect(zaiUnsupported).not.toHaveProperty('enable_thinking');
+      expect(zaiUnsupported).not.toHaveProperty('reasoning_effort');
     });
   });
 });

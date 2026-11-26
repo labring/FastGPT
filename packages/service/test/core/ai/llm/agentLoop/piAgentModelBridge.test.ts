@@ -44,10 +44,13 @@ const reasoningWithoutEffortModel = createLlmModel({
 
 describe('PiAgent provider model bridge', () => {
   it('maps FastGPT reasoning effort to pi-agent-core thinking levels', () => {
-    expect(getPiThinkingLevel(reasoningModel as any)).toBe('medium');
-    expect(getPiThinkingLevel(reasoningModel as any, null)).toBe('medium');
+    expect(getPiThinkingLevel(reasoningModel as any)).toBe('off');
+    expect(getPiThinkingLevel(reasoningModel as any, null)).toBe('off');
+    expect(resolvePiReasoningEffort(reasoningModel as any)).toBeUndefined();
+    expect(resolvePiReasoningEffort(reasoningModel as any, null)).toBeUndefined();
     expect(getPiThinkingLevel(reasoningModel as any, 'high')).toBe('high');
     expect(getPiThinkingLevel(reasoningModel as any, 'none')).toBe('off');
+    expect(resolvePiReasoningEffort(reasoningModel as any, 'none')).toBe('none');
     expect(getPiThinkingLevel(plainModel as any, 'high')).toBe('off');
     expect(getPiThinkingLevel(reasoningWithoutEffortModel as any, 'high')).toBe('off');
 
@@ -60,11 +63,13 @@ describe('PiAgent provider model bridge', () => {
       }
     });
     expect(getPiThinkingLevel(restrictedModel as any, 'high')).toBe('high');
-    expect(getPiThinkingLevel(restrictedModel as any, 'xhigh')).toBe('low');
-    expect(getPiThinkingLevel(restrictedModel as any, null)).toBe('low');
-    // 模型不支持 'none' 时，旧 'none' 也应按回退规则落到支持的最低非 none 档位
-    expect(getPiThinkingLevel(restrictedModel as any, 'none')).toBe('low');
-    expect(resolvePiReasoningEffort(restrictedModel as any, 'none')).toBe('low');
+    // 未指定或不在模型支持列表内的档位（含旧 'none' / 'xhigh'）统一省略思考配置，走模型默认行为
+    expect(getPiThinkingLevel(restrictedModel as any, 'xhigh')).toBe('off');
+    expect(resolvePiReasoningEffort(restrictedModel as any, 'xhigh')).toBeUndefined();
+    expect(getPiThinkingLevel(restrictedModel as any, null)).toBe('off');
+    expect(resolvePiReasoningEffort(restrictedModel as any, null)).toBeUndefined();
+    expect(getPiThinkingLevel(restrictedModel as any, 'none')).toBe('off');
+    expect(resolvePiReasoningEffort(restrictedModel as any, 'none')).toBeUndefined();
 
     const binaryModel = createLlmModel({
       model: 'deepseek-flash',
@@ -76,7 +81,7 @@ describe('PiAgent provider model bridge', () => {
     });
     expect(getPiThinkingLevel(binaryModel as any, 'none')).toBe('off');
     expect(resolvePiReasoningEffort(binaryModel as any, 'none')).toBe('none');
-    expect(resolvePiReasoningEffort(binaryModel as any, null)).toBe('high');
+    expect(resolvePiReasoningEffort(binaryModel as any, null)).toBeUndefined();
 
     const xhighOnlyModel = createLlmModel({
       model: 'gpt-5.5',
@@ -86,8 +91,10 @@ describe('PiAgent provider model bridge', () => {
         reasoningEffortList: ['xhigh']
       }
     });
-    expect(getPiThinkingLevel(xhighOnlyModel as any, null)).toBe('xhigh');
-    expect(resolvePiReasoningEffort(xhighOnlyModel as any, null)).toBe('xhigh');
+    expect(getPiThinkingLevel(xhighOnlyModel as any, 'xhigh')).toBe('xhigh');
+    expect(resolvePiReasoningEffort(xhighOnlyModel as any, 'xhigh')).toBe('xhigh');
+    expect(getPiThinkingLevel(xhighOnlyModel as any, null)).toBe('off');
+    expect(resolvePiReasoningEffort(xhighOnlyModel as any, null)).toBeUndefined();
 
     const emptyEffortModel = createLlmModel({
       model: 'empty-effort',
