@@ -63,7 +63,7 @@ describe('summarizeAgentLoopCoreResult', () => {
     );
   });
 
-  it('turns errors into final text and treats aborts as normal finishes', () => {
+  it('keeps errorText separate from finalText and treats aborts as normal finishes', () => {
     expect(
       summarizeAgentLoopCoreResult({
         status: 'error',
@@ -91,7 +91,7 @@ describe('summarizeAgentLoopCoreResult', () => {
       expect.objectContaining({
         status: 'error',
         errorText: 'failed',
-        finalText: 'step 1 failed',
+        finalText: 'step 1 ',
         finishReason: 'stop',
         inputTokens: 0,
         outputTokens: 0,

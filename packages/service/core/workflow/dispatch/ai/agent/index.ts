@@ -112,7 +112,7 @@ type Response = DispatchNodeResultType<{
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, inputs, catchError },
+    node: { nodeId, inputs },
     lang,
     histories,
     query,
@@ -553,13 +553,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     });
     // 4. 输出归一化。
-    // done 正常落 answer；error/aborted 在未开启异常捕获时转成可见文本，开启 catchError 时仅通过 errorText 分支暴露。
-    const finalTextForBubble =
-      coreResult.status === 'error' && catchError ? '' : outputSummary.finalText;
+    // 失败错误统一经 nodeResponse.errorText（触发前端错误卡片）与工作流 error 分支暴露，
+    // 不再把错误文本混入普通答复正文，与 AI 对话节点保持一致；失败前已流出的正文仍保留在 assistantResponses 中。
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputSummary.assistantResponses,
       previousAssistantResponses,
-      finalText: finalTextForBubble,
+      finalText: coreResult.status === 'error' ? undefined : outputSummary.finalText,
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });

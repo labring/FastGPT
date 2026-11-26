@@ -68,9 +68,10 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   // 交互已由工具业务层组织；这里只验证并透传，不再自动套子流程包装。
   const parsedInteractive = InteractiveNodeResponseTypeSchema.safeParse(result.pause?.interactive);
   // abort 既用于用户主动停止，也可能是 provider 结束暂停轮次的控制信号，不应展示为错误。
+  // 失败原因由 errorText 与 nodeResponse.errorText 独立承载，不再混入普通答复正文 finalText。
   const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
   const messageText = getAgentLoopCoreFinalMessageText(result.assistantMessages);
-  const finalText = [messageText, errorText].filter(Boolean).join('') || undefined;
+  const finalText = messageText || undefined;
 
   return {
     status: result.status,

@@ -1157,6 +1157,11 @@ describe('dispatchRunAgent user context', () => {
       expect(Object.hasOwn(result, 'rawError')).toBe(true);
       expect(result.rawError).toBe(error);
       expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
+      expect(
+        result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+          (item: any) => !item.inputContext
+        )
+      ).toEqual([]);
     }
   );
 
