@@ -663,6 +663,81 @@ describe('migration env wiring', () => {
     }
   });
 
+  it('backfills customPdf.timeoutSeconds only when PARSE_FILE_TIMEOUT_SECONDS > 600', () => {
+    const baseEnv = readLegacyInstanceConfigEnv();
+
+    const larger = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 1200 }
+    });
+    expect(pick(larger, 'performance.parse.fileTimeoutSeconds')).toBe(1200);
+    expect(pick(larger, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(1200);
+
+    const equal = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 600 }
+    });
+    expect(pick(equal, 'providers.documentParse.customPdf.timeoutSeconds')).toBeUndefined();
+
+    const smaller = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 120 }
+    });
+    expect(pick(smaller, 'performance.parse.fileTimeoutSeconds')).toBe(120);
+    expect(pick(smaller, 'providers.documentParse.customPdf.timeoutSeconds')).toBeUndefined();
+
+    const sangforLarger = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: 'https://sangfor.example.com/parse',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 900
+      }
+    });
+    expect(pick(sangforLarger, 'providers.documentParse.provider')).toBe('sangfor');
+    expect(pick(sangforLarger, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(900);
+    expect(pick(sangforLarger, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
+
+    const sangforSmaller = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: 'https://sangfor.example.com/parse',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 45
+      }
+    });
+    expect(pick(sangforSmaller, 'providers.documentParse.provider')).toBe('sangfor');
+    expect(
+      pick(sangforSmaller, 'providers.documentParse.customPdf.timeoutSeconds')
+    ).toBeUndefined();
+    expect(pick(sangforSmaller, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
+
+    // 开启深信服 ENV 标记但未配 URL 时，旧运行时实际走 SoMark，超时应取 PARSE_FILE_TIMEOUT_SECONDS
+    const sangforFlagWithoutUrl = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: undefined,
+        SOMARK_API_KEY: 'sk-somark-fallback',
+        PARSE_FILE_TIMEOUT_SECONDS: 1200,
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 600
+      }
+    });
+    expect(pick(sangforFlagWithoutUrl, 'providers.documentParse.provider')).toBe('somark');
+    expect(pick(sangforFlagWithoutUrl, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(
+      1200
+    );
+  });
+
   /**
    * 客户的环境变量只在这条迁移链路上进入实例配置：任何一条映射断掉，
    * 客户已配置的 env 值在升级后就会变成 Schema 默认值。
@@ -778,7 +853,6 @@ describe('migration env wiring', () => {
       ['providers.documentParse.customPdf.textinAppId', legacyEnv.TEXTIN_APP_ID],
       ['providers.documentParse.customPdf.textinSecretCode', legacyEnv.TEXTIN_SECRET_CODE],
       ['providers.documentParse.sangfor.extensions', legacyEnv.SANGFOR_PARSE_EXTENSIONS],
-      ['providers.documentParse.sangfor.timeoutSeconds', legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
       // subservice
       ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
       ['subservice.agentSandbox.enabled', true],

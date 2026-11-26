@@ -570,14 +570,15 @@ describe('systemInstanceConfig controller', () => {
           submittedOverrides: {
             documentParse: {
               customPdf: {
-                url: 'https://pdf.new-domain.com'
+                timeoutSeconds: 900
               }
             }
           },
           actor: { actor: 'admin' }
         });
 
-        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.new-domain.com');
+        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.example.com');
+        expect(updated.overrides.documentParse?.customPdf?.timeoutSeconds).toBe(900);
         expect(updated.overrides.documentParse?.customPdf?.key).toBe('original-secret-key');
         expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key');
         const preserved = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();

@@ -100,11 +100,15 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const loopbackOnly: AxiosAdapter = async (config) => {
-      const source = new URL(config.url ?? '', config.baseURL);
+      const source = new URL(axiosLibrary.getUri(config));
       if (
-        ![new URL(origin).host, 'somark.ai', 'api.textin.com', 'v2.doc2x.noedgeai.com'].includes(
-          source.host
-        )
+        ![
+          new URL(origin).host,
+          'somark.ai',
+          'somark.cn',
+          'api.textin.com',
+          'v2.doc2x.noedgeai.com'
+        ].includes(source.host)
       ) {
         throw new Error('Protocol fixture rejects unowned upstream');
       }
@@ -159,6 +163,7 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
         Object.assign(config.customPdf, {
           url: origin + '/custom-' + phase,
           key: 'custom-' + phase,
+          somarkBaseUrl: phase === 'A' ? '' : origin + '/somark-endpoint-' + phase,
           somarkApiKey: 'somark-' + phase,
           doc2xKey: 'doc2x-' + phase,
           textinAppId: 'textin-app-' + phase,
@@ -190,8 +195,12 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
         const received = events.slice(start);
         expect(received.length).toBe(provider === 'doc2x' ? 3 : 1);
         const request = received[0];
-        if (provider === 'somark') expect(request.body.toString()).toContain('somark-' + phase);
-        else if (provider === 'textin')
+        if (provider === 'somark') {
+          expect(request.body.toString()).toContain('somark-' + phase);
+          expect(request.path).toBe(
+            phase === 'A' ? '/api/v1/parse/sync' : `/somark-endpoint-${phase}/parse/sync`
+          );
+        } else if (provider === 'textin')
           expect(request).toMatchObject({
             appId: 'textin-app-' + phase,
             secret: 'textin-secret-' + phase
@@ -245,14 +254,14 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     expect(boundary.systemParse).toHaveBeenCalledTimes(2);
   });
 
-  it('applies the dedicated Sangfor timeout to a real slow HTTP response without falling back', async () => {
+  it('applies the unified document parse timeout to a real slow Sangfor HTTP response without falling back', async () => {
     const config = getSystemInstanceConfig().providers.documentParse;
     config.provider = 'sangfor';
+    config.customPdf.timeoutSeconds = 1;
     Object.assign(config.sangfor, {
       url: origin + '/sangfor-slow',
       key: 'synthetic-sangfor',
-      extensions: 'pdf',
-      timeoutSeconds: 1
+      extensions: 'pdf'
     });
     slowAborted = false;
     await expect(
@@ -268,5 +277,72 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     await vi.waitFor(() => expect(slowAborted).toBe(true));
     expect(boundary.systemParse).not.toHaveBeenCalled();
     expect(events).toHaveLength(1);
+  });
+
+  it('allows admin-configured loopback SoMark and customPdf endpoints in production-initialized mode for both runtime and test', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    try {
+      const { isDevEnv } = await import('@fastgpt/global/common/system/constants');
+      expect(isDevEnv).toBe(false);
+
+      const { readFileContentByBuffer: prodReadFileContentByBuffer } =
+        await import('@fastgpt/service/common/file/read/utils');
+      const { testDocumentParseProvider: prodTestDocumentParseProvider } =
+        await import('@fastgpt/service/common/file/read/testDocumentParse');
+
+      const instanceConfig = getSystemInstanceConfig();
+      instanceConfig.security.checkInternalIp = true;
+
+      // 1. SoMark 自建回环地址在生产模式下运行时与测试均放行
+      instanceConfig.providers.documentParse.provider = 'somark';
+      Object.assign(instanceConfig.providers.documentParse.customPdf, {
+        somarkBaseUrl: `${origin}/somark-selfhost/api/v1`,
+        somarkApiKey: 'synthetic-selfhost-key',
+        timeoutSeconds: 60
+      });
+      phase = 'selfhost';
+      const somarkRuntime = await prodReadFileContentByBuffer({
+        teamId: 'owned-team',
+        tmbId: 'owned-member',
+        extension: 'pdf',
+        encoding: 'utf-8',
+        buffer: Buffer.from('%PDF selfhost fixture'),
+        customPdfParse: true
+      });
+      expect(somarkRuntime.rawText).toBe('# somark-selfhost');
+      const somarkTest = await prodTestDocumentParseProvider({
+        provider: 'somark',
+        somarkBaseUrl: `${origin}/somark-selfhost/api/v1`,
+        somarkApiKey: 'synthetic-selfhost-key'
+      });
+      expect(somarkTest).toMatchObject({ success: true, pages: 2 });
+
+      // 2. 自建 customPdf 回环地址在生产模式下运行时与测试使用同一套出站策略
+      instanceConfig.providers.documentParse.provider = 'customPdf';
+      Object.assign(instanceConfig.providers.documentParse.customPdf, {
+        url: `${origin}/custom-selfhost`,
+        key: 'custom-selfhost-key',
+        timeoutSeconds: 60
+      });
+      const customRuntime = await prodReadFileContentByBuffer({
+        teamId: 'owned-team',
+        tmbId: 'owned-member',
+        extension: 'pdf',
+        encoding: 'utf-8',
+        buffer: Buffer.from('%PDF selfhost fixture'),
+        customPdfParse: true
+      });
+      expect(customRuntime.rawText).toBe('# customPdf-selfhost');
+      const customTest = await prodTestDocumentParseProvider({
+        provider: 'customPdf',
+        url: `${origin}/custom-selfhost`,
+        key: 'custom-selfhost-key'
+      });
+      expect(customTest).toMatchObject({ success: true, pages: 2 });
+    } finally {
+      vi.stubEnv('NODE_ENV', 'development');
+      vi.resetModules();
+    }
   });
 });

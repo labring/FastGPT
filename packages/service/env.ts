@@ -30,6 +30,9 @@ export const serviceEnv = createEnv({
     ENABLE_SAAS_ADMIN_CONFIG: BoolSchema.default(false).meta({
       description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
     }),
+    ENABLE_SANGFOR_ADMIN_CONFIG: BoolSchema.default(false).meta({
+      description: '是否在管理端展示深信服专用配置项，默认为 false（默认隐藏）'
+    }),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z

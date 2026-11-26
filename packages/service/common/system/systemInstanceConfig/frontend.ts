@@ -98,6 +98,7 @@ export const buildSystemFrontendConfig = (
     show_workorder: Boolean(proEnv.show_workorder),
     show_enterprise_auth: Boolean(proEnv.show_enterprise_auth),
     enableSaasAdminConfig: serviceEnv.ENABLE_SAAS_ADMIN_CONFIG,
+    enableSangforAdminConfig: serviceEnv.ENABLE_SANGFOR_ADMIN_CONFIG,
 
     show_coupon: instanceConfig?.commercial?.showCoupon,
     show_discount_coupon: instanceConfig?.commercial?.showDiscountCoupon,
