@@ -14,7 +14,7 @@
     "aiproxy": "v0.7.7",
     "aiproxy-pg": "18.7",
 
-    "mongo": "8.0.38",
+    "mongo": "8.3.17",
     "redis": "7.2-alpine",
     "rustfs": "1.0.4",
     "pg": "0.8.7-pg18",

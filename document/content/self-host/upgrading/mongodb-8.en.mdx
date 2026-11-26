@@ -3,7 +3,7 @@ title: Migrate MongoDB 5.x to 8.x (Dump/Restore)
 description: Export FastGPT's bundled MongoDB 5.x data and restore it into a new MongoDB 8.x container
 ---
 
-This guide is for Docker Compose deployments that use FastGPT's bundled MongoDB 5.x and want to move the data to MongoDB 8.x. The procedure exports the business databases from the old container, creates a new MongoDB 8.0.38 container with a new data volume, and restores the data into it.
+This guide is for Docker Compose deployments that use FastGPT's bundled MongoDB 5.x and want to move the data to MongoDB 8.x. The procedure exports the business databases from the old container, creates a new MongoDB 8.3.17 container with a new data volume, and restores the data into it.
 
 > This procedure does not reuse the old data volume. The old container and volume are kept during the migration. When you make the change permanent in Compose, the old container is removed but the old volume is kept; roll back by recreating the old container from the old image and volume. FastGPT and the old MongoDB must be stopped during the migration, so plan a maintenance window.
 
@@ -127,7 +127,7 @@ Create a new data volume instead of reusing the old one:
 docker volume create "$VOL"
 ```
 
-Start 8.0.38 on the same network with the same alias:
+Start 8.3.17 on the same network with the same alias:
 
 ```bash
 docker run -d --name "$NEW" \
@@ -138,7 +138,7 @@ docker run -d --name "$NEW" \
   -e MONGO_INITDB_ROOT_PASSWORD="$PASS" \
   -v "$VOL":/data/db \
   --entrypoint bash \
-  mongo:8.0.38 \
+  mongo:8.3.17 \
   -c 'openssl rand -base64 128 > /data/mongodb.key; chmod 400 /data/mongodb.key; chown 999:999 /data/mongodb.key; exec docker-entrypoint.sh mongod --keyFile /data/mongodb.key --replSet rs0 --bind_ip_all'
 ```
 
@@ -148,7 +148,7 @@ Notes:
 - No host port is published by default; FastGPT and other containers connect through the Docker network at `fastgpt-mongo:27017`.
 - If an application on the host needs access, add `-p 127.0.0.1:27017:27017` to bind only to loopback. Do not use `-p 27017:27017`.
 - `fastgpt-mongo8` is a brand-new data volume.
-- For Alibaba Cloud, replace `mongo:8.0.38` with the corresponding mirror image.
+- For Alibaba Cloud, replace `mongo:8.3.17` with the corresponding mirror image.
 
 Wait for it to start:
 
@@ -308,7 +308,7 @@ After testing, make the new container permanent in `docker-compose.yml`; otherwi
 
 ```yaml
 fastgpt-mongo:
-  image: mongo:8.0.38
+  image: mongo:8.3.17
 ```
 
 2. Point the MongoDB data volume to the new volume:
@@ -318,7 +318,7 @@ volumes:
   - fastgpt-mongo8:/data/db
 ```
 
-3. Change the `mongo` commands in the health check and entrypoint to `mongosh`. If you use a newer Compose template with `MONGO_CLI` auto-detection, skip this step. An old template that is switched directly to 8.0.38 will block while waiting for MongoDB to start.
+3. Change the `mongo` commands in the health check and entrypoint to `mongosh`. If you use a newer Compose template with `MONGO_CLI` auto-detection, skip this step. An old template that is switched directly to 8.3.17 will block while waiting for MongoDB to start.
 
 4. Declare the new volume at the top level:
 
