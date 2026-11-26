@@ -4,13 +4,14 @@ import net, { isIP } from 'net';
 import dns from 'dns/promises';
 import tls, { checkServerIdentity } from 'tls';
 import {
+  PinnedHttpProxyAgent,
+  TwoLayerHttpsProxyAgent
+} from '@fastgpt/global/common/proxy/nodeAgent';
+import {
   parseSupportedOutboundProxyUrl,
-  resolveValidatedHttpForwardTargetUri,
   SUPPORTED_HTTP_PROXY_PROTOCOLS,
   SUPPORTED_SOCKS5_PROXY_PROTOCOLS
 } from '@fastgpt/global/common/proxy/utils';
-import { HttpProxyAgent, type HttpProxyAgentOptions } from 'http-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { SocksClient, type SocksProxy } from 'socks';
 import { SocksProxyAgent } from 'socks-proxy-agent';
@@ -37,23 +38,12 @@ export type SandboxHttpRequestPayload = {
   timeoutMs?: number;
 };
 
-type HttpProxySetRequestPropsArgs = Parameters<HttpProxyAgent<string>['setRequestProps']>;
-type HttpProxyConnectArgs = Parameters<HttpProxyAgent<string>['connect']>;
 type SocksProxyConnectArgs = Parameters<SocksProxyAgent['connect']>;
 
 const createAbortError = () => {
   const error = new Error('The operation was aborted');
   error.name = 'AbortError';
   return error;
-};
-
-const buildProxyTlsOptions = (proxyUrl: URL): { rejectUnauthorized: true; servername?: string } => {
-  const proxyHost = proxyUrl.hostname.replace(/^\[|\]$/g, '');
-  return {
-    // 代理层 TLS 证书始终严格校验，并为域名形式的 https:// 代理补齐 SNI。
-    rejectUnauthorized: true,
-    ...(proxyUrl.protocol === 'https:' && !isIP(proxyHost) ? { servername: proxyHost } : {})
-  };
 };
 
 const waitForSocketConnect = (socket: net.Socket, onPostConnectError: () => void) =>
@@ -82,59 +72,6 @@ const waitForSocketConnect = (socket: net.Socket, onPostConnectError: () => void
     socket.once('error', onError);
     socket.once('close', onClose);
   });
-
-/**
- * 面向明文 HTTP 目标的转发代理 Agent：
- * 1. 基于已通过 SSRF 预检的 targetUrl 锁定 Host 与绝对转发 URI，阻断 `//`、`/\\` 路径二次解析劫持；
- * 2. 连接 https:// 代理时始终严格校验证书并发送代理域名 SNI。
- */
-class PinnedHttpProxyAgent extends HttpProxyAgent<string> {
-  private readonly targetUrl: URL;
-
-  constructor(proxyUrl: URL, targetUrl: URL, opts?: HttpProxyAgentOptions<string>) {
-    super(proxyUrl, {
-      ...opts,
-      ...buildProxyTlsOptions(proxyUrl)
-    });
-    this.targetUrl = targetUrl;
-  }
-
-  override setRequestProps(
-    req: HttpProxySetRequestPropsArgs[0],
-    opts: HttpProxySetRequestPropsArgs[1]
-  ): void {
-    const validatedHref = resolveValidatedHttpForwardTargetUri({
-      targetUrl: this.targetUrl,
-      requestPath: req.path
-    });
-    const targetPort = this.targetUrl.port ? Number(this.targetUrl.port) : 80;
-    req.setHeader('host', this.targetUrl.host);
-    req.path = validatedHref;
-    super.setRequestProps(req, {
-      ...opts,
-      secureEndpoint: false,
-      port: targetPort
-    });
-    req.path = resolveValidatedHttpForwardTargetUri({
-      targetUrl: this.targetUrl,
-      requestPath: req.path
-    });
-  }
-
-  override async connect(req: HttpProxyConnectArgs[0], opts: HttpProxyConnectArgs[1]) {
-    // 对齐 HttpProxyAgent.connect：先清空已缓冲的 _header，再锁定 Host 与目标 URI。
-    (req as { _header?: string | null })._header = null;
-    req.setHeader('host', this.targetUrl.host);
-    req.path = resolveValidatedHttpForwardTargetUri({
-      targetUrl: this.targetUrl,
-      requestPath: req.path
-    });
-    return super.connect(req, {
-      ...opts,
-      secureEndpoint: false
-    });
-  }
-}
 
 /**
  * 支持 AbortSignal 即时中断的 SOCKS5 代理 Agent：
@@ -279,10 +216,10 @@ const createSandboxProxyAgent = ({
   }
 
   if (isHttpsTarget) {
-    return new HttpsProxyAgent(proxyUrl, {
+    return new TwoLayerHttpsProxyAgent(proxyUrl, {
       keepAlive: false,
       signal,
-      ...buildProxyTlsOptions(proxyUrl)
+      targetRejectUnauthorized: true
     });
   }
 

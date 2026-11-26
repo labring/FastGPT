@@ -12,11 +12,11 @@ import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import {
-  createNodeOutboundProxyAgent,
   createOutboundProxyConfigError,
   parseSupportedOutboundProxyUrl,
   PROXY_AUTHORIZATION_HEADER
-} from '../proxy/utils';
+} from '@fastgpt/global/common/proxy/utils';
+import { createNodeOutboundProxyAgent } from '../proxy/utils';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 import { getServiceAxiosMaxContentLength } from '../system/constants';
 

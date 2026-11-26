@@ -611,6 +611,12 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: 0.1.13
+      http-proxy-agent:
+        specifier: ^7.0.2
+        version: 7.0.2
+      https-proxy-agent:
+        specifier: ^7.0.6
+        version: 7.0.6
       ipaddr.js:
         specifier: 'catalog:'
         version: 2.4.0
