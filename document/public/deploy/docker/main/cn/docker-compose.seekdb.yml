@@ -245,7 +245,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.dockerproxy.net/labring/fastgpt:v4.17.5
+    image: ghcr.dockerproxy.net/labring/fastgpt:v4.17.6
     ports:
       - 3000:3000
     networks:
