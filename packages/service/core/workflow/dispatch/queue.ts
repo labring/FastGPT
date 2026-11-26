@@ -726,12 +726,10 @@ export class WorkflowQueue {
               result.responseData?.error === undefined &&
               result.responseData?.errorText === undefined
             ) {
-              const errorText = getErrText(result.rawError);
               result.responseData = {
                 ...result.responseData,
-                error: errorText,
-                // 列表预览投影与分享树裁剪只保留轻量的 errorText，同时写入避免刷新或分享后退化成“应用无输出内容”。
-                errorText
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，调度层统一写 errorText，不再写历史兼容字段 error。
+                errorText: getErrText(result.rawError)
               };
             }
 
@@ -797,8 +795,7 @@ export class WorkflowQueue {
               rawError: error,
               error: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                error: errorText,
-                // 列表预览投影与分享树裁剪只保留轻量的 errorText，同时写入避免刷新或分享后退化成“应用无输出内容”。
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，调度层统一写 errorText，不再写历史兼容字段 error。
                 errorText,
                 ...(node.catchError ? { errorCaptured: true } : {})
               },

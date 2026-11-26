@@ -285,9 +285,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         runningTime: Math.round(iterationRunningTime * 100) / 100,
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
-        error: opts.error,
         // 迭代错误只是详情；循环节点自身响应负责上报或被 catch 分支捕获，避免父级重复计数。
-        ...(opts.error !== undefined ? { errorCaptured: true } : {}),
+        ...(opts.error !== undefined ? { errorText: opts.error, errorCaptured: true } : {}),
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);

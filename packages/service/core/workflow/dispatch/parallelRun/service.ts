@@ -233,7 +233,7 @@ const buildParallelTaskWrapper = ({
     runningTime: result.runningTime,
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,
-    error: result.success ? undefined : result.error,
+    ...(result.success ? {} : { errorText: result.error }),
     childResponseCount: runtimeSummary?.childResponseCount
   };
 };
