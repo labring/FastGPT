@@ -117,7 +117,14 @@ export class DbRuntime {
     return this.logger;
   }
 
+  private assertOpen(action: string): void {
+    if (this.state !== 'open') {
+      throw new DbConfigurationError(`Cannot ${action} while DbRuntime is "${this.state}"`);
+    }
+  }
+
   getTransactionRunner(): DbTransactionRunner {
+    this.assertOpen('access transactionRunner');
     if (this.transactionRunner === undefined) {
       throw new DbConfigurationError(
         `No transactionRunner has been registered for dialect "${this.dialect}"`
@@ -127,6 +134,7 @@ export class DbRuntime {
   }
 
   getOceanBaseExecutorResolver(): OceanBaseExecutorResolver {
+    this.assertOpen('resolve OceanBase executor');
     if (this.oceanBaseExecutorResolver === undefined) {
       throw new DbConfigurationError(
         `OceanBase executor resolver has not been registered for dialect "${this.dialect}"`
@@ -137,6 +145,7 @@ export class DbRuntime {
 
   /** 按当前 `DbRuntime` 拓扑幂等绑定指定集合的 Mongo `Model`。 */
   bindMongoModel<TDoc, TModel = unknown>(collection: MongoCollectionDescriptor<TDoc>): TModel {
+    this.assertOpen(`bind Mongo model "${collection.name}"`);
     if (this.dialect !== 'mongo') {
       throw new DbConfigurationError(
         `Cannot bind Mongo model "${collection.name}" when DbRuntime is configured for dialect "${this.dialect}"`

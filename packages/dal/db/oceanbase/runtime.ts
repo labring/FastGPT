@@ -140,23 +140,29 @@ const normalizeOptionalDistinctUrl = (mainUrl: string, rawUrl?: string): string 
 const createOceanBaseKysely = ({
   url,
   connectionLimit,
-  datasource
+  datasource,
+  assertOpen
 }: {
   url: string;
   connectionLimit: number;
   datasource: DbDatasource;
+  assertOpen: () => void;
 }): Kysely<any> =>
   new Kysely<any>({
     dialect: new MysqlDialect({
-      pool: createPool({
-        uri: url,
-        connectionLimit,
-        waitForConnections: true,
-        timezone: 'Z',
-        charset: 'utf8mb4',
-        supportBigNumbers: true,
-        bigNumberStrings: true
-      }) as unknown as MysqlPool
+      // 交由 Kysely 驱动在首次执行 SQL 时延迟建池，避免未执行查询即 close() 时跳过 destroy() 泄露连接池与 maxIdle 定时器。
+      pool: async () => {
+        assertOpen();
+        return createPool({
+          uri: url,
+          connectionLimit,
+          waitForConnections: true,
+          timezone: 'Z',
+          charset: 'utf8mb4',
+          supportBigNumbers: true,
+          bigNumberStrings: true
+        }) as unknown as MysqlPool;
+      }
     }),
     log: createOceanBaseKyselyLogger({ datasource })
   });
@@ -164,7 +170,7 @@ const createOceanBaseKysely = ({
 /**
  * 构建基于 `mysql2` + Kysely 的轻量 OceanBase 运行时依赖。
  *
- * - 连接池采用懒创建策略，避免幂等检查失败时泄露未释放的 `mysql2` Pool；
+ * - 连接池采用驱动级懒创建策略，并受 Runtime 关闭态同步门禁约束，避免关闭前后泄露或重建 `mysql2` Pool；
  * - 遵循日志双态拓扑：配置与主库不同的 `logWriteUrl` 进入独立池，否则透明复用主池；
  * - 支持可选 `mainReadUrl` 只读副本路由（仅非事务且 `useReadReplica: true` 生效，事务内强制走写池）。
  */
@@ -187,39 +193,53 @@ export const createOceanBaseRuntimeDeps = ({
   const effectiveMainReadUrl = normalizeOptionalDistinctUrl(normalizedMainWriteUrl, mainReadUrl);
   const effectiveLogWriteUrl = normalizeOptionalDistinctUrl(normalizedMainWriteUrl, logWriteUrl);
 
+  let closed = false;
+  let closePromise: Promise<void> | undefined;
   let mainDb: Kysely<any> | undefined;
   let mainReadDb: Kysely<any> | undefined;
   let logDb: Kysely<any> | undefined;
 
+  const assertOpen = (): void => {
+    if (closed) {
+      throw new DbConfigurationError('OceanBase runtime is closing or has been closed');
+    }
+  };
+
   const getMainDb = (): Kysely<any> => {
+    assertOpen();
     mainDb ??= createOceanBaseKysely({
       url: normalizedMainWriteUrl,
       connectionLimit: maxConnections,
-      datasource: 'main'
+      datasource: 'main',
+      assertOpen
     });
     return mainDb;
   };
 
   const getMainReadDb = (): Kysely<any> | undefined => {
+    assertOpen();
     if (effectiveMainReadUrl === undefined) {
       return undefined;
     }
     mainReadDb ??= createOceanBaseKysely({
       url: effectiveMainReadUrl,
       connectionLimit: maxConnections,
-      datasource: 'main'
+      datasource: 'main',
+      assertOpen
     });
     return mainReadDb;
   };
 
   const getLogDb = (): Kysely<any> | undefined => {
+    assertOpen();
     if (effectiveLogWriteUrl === undefined) {
       return undefined;
     }
     logDb ??= createOceanBaseKysely({
       url: effectiveLogWriteUrl,
       connectionLimit: maxConnections,
-      datasource: 'log'
+      datasource: 'log',
+      assertOpen
     });
     return logDb;
   };
@@ -231,6 +251,7 @@ export const createOceanBaseRuntimeDeps = ({
     datasource: DbDatasource;
     useReadReplica?: boolean;
   }): Kysely<any> => {
+    assertOpen();
     if (datasource === 'log') {
       const dedicatedLogDb = getLogDb();
       if (dedicatedLogDb !== undefined) {
@@ -249,22 +270,43 @@ export const createOceanBaseRuntimeDeps = ({
   };
 
   return {
-    oceanBaseExecutorResolver: ({ datasource, nativeTx, useReadReplica }) =>
-      nativeTx !== undefined
+    oceanBaseExecutorResolver: ({ datasource, nativeTx, useReadReplica }) => {
+      assertOpen();
+      return nativeTx !== undefined
         ? (nativeTx as Kysely<any>)
-        : resolvePoolDb({ datasource, useReadReplica }),
+        : resolvePoolDb({ datasource, useReadReplica });
+    },
 
-    transactionRunner: async ({ datasource, execute }) =>
-      resolvePoolDb({ datasource, useReadReplica: false })
+    transactionRunner: async ({ datasource, execute }) => {
+      assertOpen();
+      return resolvePoolDb({ datasource, useReadReplica: false })
         .transaction()
-        .execute((trx) => execute(trx)),
+        .execute((trx) => execute(trx));
+    },
 
     closeHandler: async () => {
+      // 关闭开始即同步拒绝新执行器分配与延迟建池，避免并发关闭或残留回调重建连接池。
+      closed = true;
+      if (closePromise !== undefined) {
+        return closePromise;
+      }
+
       const pools = [mainDb, mainReadDb, logDb].filter((db): db is Kysely<any> => db !== undefined);
       mainDb = undefined;
       mainReadDb = undefined;
       logDb = undefined;
-      await Promise.all(pools.map((db) => db.destroy()));
+
+      closePromise = (async () => {
+        const results = await Promise.allSettled(pools.map((db) => db.destroy()));
+        const firstRejected = results.find(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+        if (firstRejected !== undefined) {
+          throw firstRejected.reason;
+        }
+      })();
+
+      return closePromise;
     }
   };
 };

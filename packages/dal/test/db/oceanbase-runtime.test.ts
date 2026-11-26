@@ -220,4 +220,77 @@ describe('@fastgpt/dal/db/oceanbase runtime, read replica & Kysely observability
     });
     await expect(untouchedDeps.closeHandler()).resolves.toBeUndefined();
   });
+
+  it('defers mysql2 pool creation until query execution and blocks post-close pool resurrection or maxIdle timer leaks', async () => {
+    const countTimeoutHandles = () =>
+      process.getActiveResourcesInfo().filter((resource) => resource === 'Timeout').length;
+
+    const baselineTimeouts = countTimeoutHandles();
+
+    const deps = createOceanBaseRuntimeDeps({
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/main?maxIdle=1&idleTimeout=60000',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/main_ro?maxIdle=1&idleTimeout=60000',
+      logWriteUrl: 'mysql://root@127.0.0.1:2883/log?maxIdle=1&idleTimeout=60000'
+    });
+
+    // 1. 仅解析执行器未执行 SQL 前不得创建 mysql2 Pool 或开启 maxIdle 定时器
+    const writePool = deps.oceanBaseExecutorResolver({ datasource: 'main', useReadReplica: false });
+    const readPool = deps.oceanBaseExecutorResolver({ datasource: 'main', useReadReplica: true });
+    const logPool = deps.oceanBaseExecutorResolver({ datasource: 'log', useReadReplica: false });
+    expect(readPool).not.toBe(writePool);
+    expect(logPool).not.toBe(writePool);
+    expect(countTimeoutHandles()).toBe(baselineTimeouts);
+
+    // 2. 未执行任何 SQL 即关闭，不应残留任何 mysql2 定时器，且重复 closeHandler 幂等
+    await expect(deps.closeHandler()).resolves.toBeUndefined();
+    await expect(deps.closeHandler()).resolves.toBeUndefined();
+    expect(countTimeoutHandles()).toBe(baselineTimeouts);
+
+    // 3. 关闭后继续使用已缓存的 Kysely 实例执行查询或再次向旧 resolver/transactionRunner 申请执行器，均须拒绝且不得建池
+    await expect(readPool.selectFrom('apps').selectAll().execute()).rejects.toThrow(
+      DbConfigurationError
+    );
+    expect(countTimeoutHandles()).toBe(baselineTimeouts);
+
+    expect(() =>
+      deps.oceanBaseExecutorResolver({ datasource: 'main', useReadReplica: false })
+    ).toThrow(DbConfigurationError);
+    expect(() =>
+      deps.oceanBaseExecutorResolver({ datasource: 'main', useReadReplica: true })
+    ).toThrow(DbConfigurationError);
+    await expect(
+      deps.transactionRunner({ datasource: 'main', execute: async () => undefined })
+    ).rejects.toThrow(DbConfigurationError);
+    expect(countTimeoutHandles()).toBe(baselineTimeouts);
+
+    // 4. 在 DbRuntime 进入 closing/closed 态后即刻拒绝继续分配执行器与事务入口
+    let releaseClose!: () => void;
+    const closeGate = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+    const guardedDeps = createOceanBaseRuntimeDeps({
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/main'
+    });
+    const runtime = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/main',
+      oceanBaseExecutorResolver: guardedDeps.oceanBaseExecutorResolver,
+      transactionRunner: guardedDeps.transactionRunner,
+      closeHandler: async () => {
+        await guardedDeps.closeHandler();
+        await closeGate;
+      }
+    });
+
+    const closingPromise = runtime.close();
+    expect(runtime.getState()).toBe('closing');
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+
+    releaseClose();
+    await closingPromise;
+    expect(runtime.getState()).toBe('closed');
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+  });
 });

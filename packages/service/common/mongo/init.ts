@@ -34,15 +34,20 @@ const shouldSyncDalIndexesOnConnect = (explicitFlag?: boolean): boolean => {
   return process.env.NODE_ENV !== 'test' && process.env.NEXT_PHASE !== 'phase-production-build';
 };
 
-const resolveDalIndexSyncDatasources = (db: Mongoose): readonly DbDatasource[] => {
-  const runtime = getConfiguredDbRuntime();
-  const isSeparate =
-    runtime !== undefined ? runtime.hasSeparateLogDatabase() : hasSeparateMongoLogUri;
+/**
+ * 依据 MongoDB 自身实际连接拓扑（`hasSeparateMongoLogUri && connectionLogMongo !== connectionMongo`）
+ * 决定本次连接负责同步的 DAL 数据源集合。
+ * 严禁读取全局 `DbRuntime.hasSeparateLogDatabase()`：当 `DB_DIALECT=oceanbase` 时全局 Runtime
+ * 描述的是 OceanBase 的日志拓扑，而 Mongo 连接仍按 `MONGODB_URI` / `MONGODB_LOG_URI` 拓扑运行。
+ */
+export const resolveDalIndexSyncDatasources = (db: Mongoose): readonly DbDatasource[] => {
+  const hasSeparateMongoLogConnection =
+    hasSeparateMongoLogUri && connectionLogMongo !== connectionMongo;
 
-  if (!isSeparate) {
+  if (!hasSeparateMongoLogConnection) {
     return ['main', 'log'];
   }
-  if (db === connectionLogMongo && connectionLogMongo !== connectionMongo) {
+  if (db === connectionLogMongo) {
     return ['log'];
   }
   return ['main'];

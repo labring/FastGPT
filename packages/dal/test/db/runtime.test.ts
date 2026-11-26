@@ -172,4 +172,39 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(isDbTransactionOutcomeUnknownError(new DbTransactionOutcomeUnknownError())).toBe(true);
     expect(isDbTransactionOutcomeUnknownError({ errno: 6002 })).toBe(false);
   });
+
+  it('rejects resolver, transactionRunner, and mongoModelBinder access while closing or closed', async () => {
+    let releaseClose!: () => void;
+    const closeGate = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+
+    const runtime = configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
+      transactionRunner: async ({ execute }) => execute({} as never),
+      oceanBaseExecutorResolver: () => ({}) as never,
+      mongoModelBinder: () => ({}) as never,
+      closeHandler: () => closeGate
+    });
+
+    const closingPromise = runtime.close();
+    expect(runtime.getState()).toBe('closing');
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() =>
+      runtime.bindMongoModel({
+        name: 'demo',
+        datasource: 'main',
+        schema: {} as never,
+        indexes: []
+      })
+    ).toThrow(DbConfigurationError);
+
+    releaseClose();
+    await closingPromise;
+    expect(runtime.getState()).toBe('closed');
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+  });
 });
