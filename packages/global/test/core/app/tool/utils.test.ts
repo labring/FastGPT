@@ -5,7 +5,6 @@ import {
   getToolNameCandidates,
   getToolRawId,
   getToolSetChildDescription,
-  hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
   isTeamPluginSource,
   mergeToolSetChildDescriptions,
@@ -16,8 +15,10 @@ import {
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('tool set child descriptions', () => {
   it('uses definitions for falsy values except an explicitly empty description', () => {
@@ -286,27 +287,47 @@ describe('getToolIdentityKey', () => {
 });
 
 describe('debug tool detection', () => {
-  it('detects explicit debug source in selected tools', () => {
-    expect(
-      hasDebugToolInSelectedTools([
-        {
-          id: 'node-id',
-          pluginId: 'systemTool-weather',
-          source: 'debug:tmbId:tmb-1'
-        } as any
-      ])
-    ).toBe(true);
-  });
+  const source = 'debug:tmbId:tmb-1';
+  const toolId = 'systemTool-weather';
 
-  it('ignores debug-looking ids without explicit debug source', () => {
+  it.each([
+    { name: 'explicit debug', tool: { source }, expected: true },
+    {
+      name: 'nested system tool',
+      tool: { toolConfig: { systemTool: { toolId, source } } },
+      expected: true
+    },
+    {
+      name: 'nested toolset',
+      tool: { toolConfig: { systemToolSet: { toolId, source, toolList: [] } } },
+      expected: true
+    },
+    {
+      name: 'explicit source wins',
+      tool: { source: 'system', toolConfig: { systemTool: { toolId, source } } },
+      expected: false
+    },
+    { name: 'debug-looking ID', tool: { pluginId: source + '|weather' }, expected: false }
+  ])('checks selected tools at publish for $name', ({ tool, expected }) => {
+    const selectedTools = [
+      {
+        id: toolId,
+        name: 'Weather',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        inputs: [],
+        outputs: [],
+        ...tool
+      }
+    ];
+    expect(hasDebugToolInSelectedTools(selectedTools)).toBe(expected);
     expect(
-      hasDebugToolInSelectedTools([
+      hasDebugToolInNodes([
         {
-          id: 'debug:tmbId:tmb-1|node-id',
-          pluginId: 'debug:tmbId:tmb-1|weather'
-        } as any
-      ])
-    ).toBe(false);
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [{ key: NodeInputKeyEnum.selectedTools, value: selectedTools }]
+        }
+      ] as any)
+    ).toBe(expected);
   });
 
   it('detects explicit debug source in workflow nodes', () => {
@@ -319,6 +340,50 @@ describe('debug tool detection', () => {
         } as any
       ])
     ).toBe(true);
+  });
+
+  it('detects debug tool references in Agent aiSystemPrompt for both V2 and legacy formats', () => {
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '调试请用 {{@plugin:debug:tmb1:local_calc@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(true);
+
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '调试请用 {{@debug:tmbId:tmb1:systemTool-local_calc@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(true);
+
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '正式请用 {{@plugin:system:metaso@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(false);
   });
 });
 

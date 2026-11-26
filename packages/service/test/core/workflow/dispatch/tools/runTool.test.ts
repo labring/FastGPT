@@ -1,14 +1,20 @@
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  dispatchRunTool,
+  dispatchRunTool as dispatchRunToolWithoutContext,
   parseToolId
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
+const dispatchRunTool = createTestWorkflowDispatch(dispatchRunToolWithoutContext);
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
-import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -96,11 +102,6 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => workflowContextMock),
-  getWorkflowResourceContext: vi.fn(() => undefined)
-}));
-
 const createRunToolProps = (
   toolConfig: Record<string, any>,
   params: Record<string, any> = { keyword: 'fastgpt' }
@@ -122,7 +123,7 @@ const createRunToolProps = (
       // 调用者与应用创建者不同；工具引用按当前运行人鉴权。
       tmbId: 'caller-without-toolset-permission'
     },
-    variableState: {
+    variableContext: {
       get: vi.fn()
     },
     node: {
@@ -145,7 +146,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
     vi.clearAllMocks();
     workflowContextMock.mcpClientMemory = {};
     mcpToolCallMock.mockResolvedValue({ ok: true });
-    vi.mocked(getWorkflowResourceContext).mockReturnValue(undefined);
     authAppByTmbIdMock.mockResolvedValue({
       app: {
         _id: 'victim-toolset',
@@ -247,34 +247,44 @@ describe('dispatchRunTool runtime toolset auth', () => {
       getHTTPToolListMock.mockResolvedValue([tool]);
       mcpToolCallMock.mockResolvedValue({ ok: true });
       runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
-      vi.mocked(getWorkflowResourceContext).mockReturnValue({
+      const resourceContext = {
         isRoot: false,
         resourceMap: new Map([
           [
             'tool:victim-toolset',
             {
-              type: 'tool',
+              type: 'tool' as const,
               id: 'victim-toolset',
               data: { toolNames: ['staticTool'] }
             }
           ]
         ])
-      });
+      };
       const props = createRunToolProps({
         [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
       });
 
-      const result = await dispatchRunTool(props);
-      expect(result.error).toBeUndefined();
-      const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
-      expect(execute).toHaveBeenCalledOnce();
-      expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
+      await runWithTestWorkflowContext(
+        {
+          checkIsStopping: () => false,
+          mcpClientMemory: {},
+          fileContext: await createTestWorkflowFileContext(),
+          resourceContext
+        },
+        async () => {
+          const result = await dispatchRunTool(props);
+          expect(result.error).toBeUndefined();
+          const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+          expect(execute).toHaveBeenCalledOnce();
+          expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
 
-      execute.mockClear();
-      authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
-      const denied = await dispatchRunTool(props);
-      expect(denied.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
-      expect(execute).not.toHaveBeenCalled();
+          execute.mockClear();
+          authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
+          const denied = await dispatchRunTool(props);
+          expect(denied.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+          expect(execute).not.toHaveBeenCalled();
+        }
+      );
     }
   );
 
@@ -327,6 +337,26 @@ describe('dispatchRunTool runtime toolset auth', () => {
       result: 1,
       usagePoint: expectedPoints,
       msg: ''
+    });
+  });
+
+  it('returns value to workflow and ordered content to the agent', async () => {
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      outputSchema: { properties: { summary: { 'x-fastgpt-output-kind': 'model-content' } } }
+    });
+    runToolStreamMock.mockResolvedValueOnce({
+      output: { summary: { value: ['generated'], images: [] } }
+    });
+    const props = createRunToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    const result = await dispatchRunTool({ ...props, isToolCall: true });
+    expect(result.data).toEqual({ summary: ['generated'] });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
+      __fastgptPluginModelContent: true,
+      result: { summary: '["generated"]' },
+      content: [
+        { type: 'text', text: '{}' },
+        { type: 'text', text: '["generated"]' }
+      ]
     });
   });
 
@@ -697,12 +727,21 @@ describe('dispatchRunTool runtime toolset auth', () => {
     let token = 'token-a';
     const props = createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } });
     props.runtimeNodesMap = {};
-    props.variableState.toRuntimeRecord = () => ({ token });
+    props.variableContext.toRuntimeRecord = () => ({ token });
 
-    await dispatchRunTool(props);
-    token = 'token-b';
-    await dispatchRunTool(props);
-    await dispatchRunTool(props);
+    await runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: workflowContextMock.mcpClientMemory as any
+      },
+      async () => {
+        await dispatchRunTool(props);
+        token = 'token-b';
+        await dispatchRunTool(props);
+        await dispatchRunTool(props);
+      }
+    );
 
     expect(MCPClient).toHaveBeenNthCalledWith(1, {
       url,
@@ -788,8 +827,20 @@ describe('dispatchRunTool runtime toolset auth', () => {
     const result = await dispatchRunTool(createRunToolProps({ systemTool: { toolId: 'search' } }));
 
     expect(result.error).toBeUndefined();
+    expect(result.toolResponse).toEqual({ ok: true });
     expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
+    );
+  });
+
+  it('passes the complete child ID to the plugin when running a system tool node', async () => {
+    const result = await dispatchRunTool(
+      createRunToolProps({ systemTool: { toolId: 'systemTool-search/catalog/search' } })
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ pluginId: 'search', childId: 'catalog/search' })
     );
   });
   it('should inject usageId into systemVar and invokeToken', async () => {

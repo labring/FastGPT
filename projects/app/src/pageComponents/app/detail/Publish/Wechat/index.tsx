@@ -18,7 +18,8 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { WechatAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { WechatOutLinkListItemType } from '@fastgpt/global/openapi/support/outLink/api';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -30,6 +31,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import { POST } from '@/web/common/api/request';
 import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const WechatEditModal = dynamic(() => import('./WechatEditModal'));
 const QRLoginModal = dynamic(() => import('./QRLoginModal'));
@@ -44,7 +46,7 @@ const Wechat = ({
   const { t } = useSafeTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
-  const [editData, setEditData] = useState<OutLinkEditType<WechatAppType>>();
+  const [editData, setEditData] = useState<Omit<OutLinkEditType, 'app'>>();
   const [isEdit, setIsEdit] = useState(false);
   const [loginOutLinkId, setLoginOutLinkId] = useState<string>();
 
@@ -52,13 +54,10 @@ const Wechat = ({
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetch
-  } = useRequest(
-    () => getShareChatList<WechatAppType>({ appId, type: PublishChannelEnum.wechat }),
-    {
-      manual: false,
-      refreshDeps: [appId]
-    }
-  );
+  } = useRequest(() => getShareChatList({ appId, type: PublishChannelEnum.wechat }), {
+    manual: false,
+    refreshDeps: [appId]
+  });
 
   const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
     async (id: string) => {
@@ -71,14 +70,33 @@ const Wechat = ({
     }
   );
 
-  const statusBadge = (status?: string) => {
-    const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
+  const connectionErrors = {
+    invalid_url: t('publish:wechat.error.invalid_url'),
+    private_address: t('publish:wechat.error.private_address'),
+    request_failed: t('publish:wechat.error.request_failed')
+  };
+
+  const renderStatus = (app: WechatOutLinkListItemType['app']) => {
+    const map: Record<typeof app.status, { colorSchema: ColorSchemaType; label: string }> = {
       online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
       offline: { colorSchema: 'gray', label: t('publish:wechat.status.offline') },
       error: { colorSchema: 'red', label: t('publish:wechat.status.error') }
     };
-    const cfg = map[status || 'offline'] ?? map['offline'];
-    return <MyTag colorSchema={cfg.colorSchema}>{cfg.label}</MyTag>;
+    const cfg = map[app.status];
+    const errorTip = app.errorReason ? connectionErrors[app.errorReason] : undefined;
+
+    if (!errorTip) {
+      return <MyTag colorSchema={cfg.colorSchema}>{cfg.label}</MyTag>;
+    }
+
+    return (
+      <MyTooltip label={errorTip}>
+        <MyTag colorSchema={cfg.colorSchema} cursor={'pointer'}>
+          {cfg.label}
+          <MyIcon name={'help'} w={'13px'} ml={1} />
+        </MyTag>
+      </MyTooltip>
+    );
   };
 
   return (
@@ -143,24 +161,13 @@ const Wechat = ({
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{statusBadge(item.app?.status)}</Td>
+                <Td>{renderStatus(item.app)}</Td>
                 <Td>{Math.round(item.usagePoints)}</Td>
                 <Td>
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
-                  {!item.app?.token ? (
-                    <Button
-                      size={'sm'}
-                      mr={3}
-                      colorScheme="green"
-                      onClick={() => {
-                        setLoginOutLinkId(item._id);
-                      }}
-                    >
-                      {t('publish:wechat.login')}
-                    </Button>
-                  ) : item.app.status === 'online' ? (
+                  {item.app.isBound && item.app.status === 'online' ? (
                     <Button
                       size={'sm'}
                       mr={3}
@@ -183,12 +190,14 @@ const Wechat = ({
                     <Button
                       size={'sm'}
                       mr={3}
-                      variant={'whitePrimary'}
+                      {...(item.app.isBound
+                        ? { variant: 'whitePrimary' }
+                        : { colorScheme: 'green' })}
                       onClick={() => {
                         setLoginOutLinkId(item._id);
                       }}
                     >
-                      {t('publish:wechat.relogin')}
+                      {item.app.isBound ? t('publish:wechat.relogin') : t('publish:wechat.login')}
                     </Button>
                   )}
                   <MyMenu
@@ -213,7 +222,6 @@ const Wechat = ({
                                 _id: item._id,
                                 name: item.name,
                                 limit: item.limit,
-                                app: item.app,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });
@@ -244,10 +252,7 @@ const Wechat = ({
           appId={appId}
           defaultData={editData}
           isEdit={isEdit}
-          onCreate={async (shareId) => {
-            const [newList] = await Promise.all([refetch(), onRefreshOutLinkCounts()]);
-            return newList?.find((i) => i.shareId === shareId)?._id;
-          }}
+          onCreate={() => Promise.all([refetch(), onRefreshOutLinkCounts()])}
           onEdit={() => refetch()}
           onClose={() => setEditData(undefined)}
         />

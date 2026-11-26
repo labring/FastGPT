@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   ApiRequestInputParseError,
+  getZodError,
   getZodParseErrorInputSource,
   parseApiInput
 } from '../../../common/zod/requestParseError';
@@ -56,6 +57,14 @@ describe('getZodParseErrorInputSource', () => {
     }
   });
 
+  it('recognizes explicit header request errors', () => {
+    const cause = schema.safeParse({}).error!;
+    const error = new ApiRequestInputParseError(cause, { inputSource: 'header' });
+
+    expect(getZodParseErrorInputSource(error)).toEqual({ inputSource: 'header' });
+    expect(getZodError(error)).toBe(cause);
+  });
+
   it('does not classify internal schema parse failures', () => {
     try {
       schema.parse({});
@@ -63,5 +72,27 @@ describe('getZodParseErrorInputSource', () => {
       expect(error).toBeInstanceOf(z.ZodError);
       expect(getZodParseErrorInputSource(error)).toBeUndefined();
     }
+  });
+
+  it('recognizes explicit request errors created by another loaded module instance', async () => {
+    vi.resetModules();
+    const reloaded = await import('../../../common/zod/requestParseError');
+    const cause = schema.safeParse({}).error!;
+    const error = new reloaded.ApiRequestInputParseError(cause, { inputSource: 'body' });
+
+    expect(error).not.toBeInstanceOf(ApiRequestInputParseError);
+    expect(getZodParseErrorInputSource(error)).toEqual({ inputSource: 'body' });
+    expect(getZodError(error)).toBe(cause);
+  });
+
+  it('does not downgrade ordinary errors that only copy a request error name and context', () => {
+    const error = Object.assign(new Error('Internal failure'), {
+      name: 'ApiRequestInputParseError',
+      context: { inputSource: 'body' },
+      cause: schema.safeParse({}).error
+    });
+
+    expect(getZodParseErrorInputSource(error)).toBeUndefined();
+    expect(getZodError(error)).toBeUndefined();
   });
 });

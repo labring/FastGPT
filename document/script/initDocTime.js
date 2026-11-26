@@ -65,22 +65,47 @@ function getAllDocFiles(dirPath, extensions = ['.md', '.mdx']) {
 }
 
 /**
- * 获取所有文档的最新修改时间
+ * 读取已存在的修改时间映射表，用于在新增未提交文档缺少 git 历史时保留时间戳。
+ * @param {string} outputPath - JSON 文件路径
+ * @returns {Record<string, string>}
+ */
+function readExistingModifiedTimes(outputPath = DEFAULT_OUTPUT_PATH) {
+  if (!outputPath || !fs.existsSync(outputPath)) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch (error) {
+    console.warn(`无法读取已有时间映射 ${outputPath}:`, error.message);
+  }
+  return {};
+}
+
+/**
+ * 获取所有文档的最新修改时间；若文件尚无 git 提交记录，则保留已有记录中的时间戳。
  * @param {string} contentDir - 文档内容目录
+ * @param {string} existingOutputPath - 已有修改时间映射路径
  * @returns {Object} - 文件路径到修改时间的映射
  */
-function getAllDocLastModifiedTimes(contentDir = DEFAULT_CONTENT_DIR) {
-  const docFiles = getAllDocFiles(contentDir);
+function getAllDocLastModifiedTimes(
+  contentDir = DEFAULT_CONTENT_DIR,
+  existingOutputPath = DEFAULT_OUTPUT_PATH
+) {
+  const docFiles = getAllDocFiles(contentDir).sort();
+  const existingTimes = readExistingModifiedTimes(existingOutputPath);
   const result = {};
 
   console.log(`正在处理 ${docFiles.length} 个文档文件...`);
 
   for (const filePath of docFiles) {
-    const relativePath = path.relative(DOCUMENT_ROOT, filePath);
-    const lastModified = getFileLastModifiedTime(relativePath);
+    const relativePath = path.relative(DOCUMENT_ROOT, filePath).split(path.sep).join('/');
+    const lastModified = getFileLastModifiedTime(relativePath) ?? existingTimes[relativePath];
 
-    if (lastModified) {
-      result[relativePath] = lastModified;
+    if (typeof lastModified === 'string' && lastModified.trim().length > 0) {
+      result[relativePath] = lastModified.trim();
     }
 
     // 显示进度
@@ -88,7 +113,7 @@ function getAllDocLastModifiedTimes(contentDir = DEFAULT_CONTENT_DIR) {
   }
 
   console.log('\n完成！');
-  return result;
+  return Object.fromEntries(Object.entries(result).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 /**

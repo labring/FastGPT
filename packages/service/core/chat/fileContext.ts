@@ -8,7 +8,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
-import { S3Buckets } from '../../common/s3/config/constants';
+import { S3Buckets, getStorageFileUrlExpiredTime } from '../../common/s3/config/constants';
 import { S3Sources } from '../../common/s3/contracts/type';
 import path from 'path';
 import { getFileS3Key } from '../../common/s3/utils';
@@ -16,14 +16,10 @@ import { S3ChatSource } from '../../common/s3/sources/chat';
 import { readFileContentBySource } from '../../common/file/read/utils';
 import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../../common/s3/utils/preview';
-import { serviceEnv } from '../../env';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
-import {
-  S3_ACCESS_LINK_ROUTES,
-  verifyS3DownloadAccess,
-  type VerifiedS3DownloadAccess
-} from '../../common/s3/accessLink';
+import { verifyS3DownloadAccess, type VerifiedS3DownloadAccess } from '../../common/s3/accessLink';
+import { resolveS3DownloadAliasFromUrl } from '../../common/s3/accessLink/url';
 import { getFileMaxSize } from '../../common/file/utils';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
 import { batchRun } from '@fastgpt/global/common/system/utils';
@@ -37,7 +33,7 @@ import {
   validateChatFileInput,
   type FilePreparationContext
 } from './file/service';
-import { getFileUrlIdentity, isSignedDownloadAlias, selectFileInputs } from './file/utils';
+import { getFileUrlIdentity, selectFileInputs } from './file/utils';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = FilePreparationContext & {
@@ -69,33 +65,9 @@ type GetFileProps = {
   fileContext?: FileReadContext;
 };
 
-/** 从下载 API 或公开短路径提取 signed alias；访问权限仍由后续签名校验或 HTTP 读取判断。 */
-export const resolveSignedDownloadAliasFromUrl = (url: string) => {
-  try {
-    const parsedUrl = new URL(url, 'http://localhost:3000');
-    const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
-    const routeIndex = parsedUrl.pathname.indexOf(routePrefix);
-
-    const signedAlias = (() => {
-      if (routeIndex >= 0) {
-        return decodeURIComponent(
-          parsedUrl.pathname.slice(routeIndex + routePrefix.length).split('/')[0] || ''
-        );
-      }
-
-      // 支持 FILE_DOWNLOAD_PUBLIC_URL_PREFIX 暴露的 nginx 短路径:
-      //   /{signedAlias}
-      //   /f/{signedAlias}
-      // 这类 URL 的 path 不是文件名，最后一段只有通过短链格式和 HMAC 校验后才可信。
-      const lastPathSegment = parsedUrl.pathname.split('/').filter(Boolean).at(-1) || '';
-      return decodeURIComponent(lastPathSegment);
-    })();
-
-    return isSignedDownloadAlias(signedAlias) ? signedAlias : '';
-  } catch {
-    return '';
-  }
-};
+/** 从当前实例的下载路由或已配置公开短路径前缀提取 signed alias；普通外链返回空串。 */
+export const resolveSignedDownloadAliasFromUrl = (url: string) =>
+  resolveS3DownloadAliasFromUrl(url);
 
 /**
  * 短链 path 只携带 alias/expiry/signature，不能当作文件名或后缀。
@@ -560,10 +532,7 @@ export const getFileContentByUrl = async ({
     onPdfParseUsage
   });
 
-  const replacedText = await replaceS3KeyToPreviewUrl(
-    rawText,
-    addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
-  );
+  const replacedText = await replaceS3KeyToPreviewUrl(rawText, getStorageFileUrlExpiredTime());
   const resolvedFilename = sourceMetadata?.filename || filename;
 
   // Add to buffer

@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateCollectionByLocalFileBodySchema,
@@ -15,6 +16,8 @@ import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadC
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
@@ -26,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const formData = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(documentFileType)
     });
     filepaths.push(formData.fileMetadata.path);
@@ -61,6 +64,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       filename: collectionName
     });
 
+    const collectionType = DatasetCollectionTypeEnum.file;
     const collectionResult = await createCollectionAndInsertData({
       dataset,
       modelAuthContext,
@@ -70,7 +74,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         name: collectionName,
         teamId,
         tmbId,
-        type: DatasetCollectionTypeEnum.file,
+        type: collectionType,
         fileId,
         metadata: {
           ...collectionData.metadata,
@@ -79,6 +83,21 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       }
     });
     promoted = true;
+
+    void addAuditLog(
+      await buildCollectionCreateAuditLog({
+        teamId,
+        tmbId,
+        dataset,
+        collection: {
+          _id: collectionResult.collectionId,
+          name: collectionName,
+          type: collectionType,
+          parentId: collectionData.parentId
+        }
+      })
+    );
+
     return collectionResult;
   } catch (error) {
     if (fileId && !promoted) {

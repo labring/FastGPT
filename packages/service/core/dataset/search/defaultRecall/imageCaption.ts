@@ -1,6 +1,7 @@
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { normalizeImageToBase64 } from '../utils';
+import { getMultipleDataToBase64 } from '../../../../common/system/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -12,6 +13,8 @@ type ImageCaptionQueries = {
   requestIds: string[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   seconds: number;
   usedUserOpenAIKey: boolean;
 };
@@ -48,6 +51,8 @@ export const getImageCaptionQueries = async ({
 
   const vlmModelData = vlmModel;
 
+  // 批量入口一次求值下传，避免同批图片混合转/不转 base64
+  const toBase64 = getMultipleDataToBase64();
   const results = await Promise.all(
     imageQueries.map(async (url, index) => {
       try {
@@ -55,7 +60,13 @@ export const getImageCaptionQueries = async ({
         const {
           answerText,
           requestId,
-          usage: { inputTokens, outputTokens, usedUserOpenAIKey }
+          usage: {
+            inputTokens,
+            outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
+            usedUserOpenAIKey
+          }
         } = await createLLMResponse({
           userKey,
           teamId,
@@ -71,7 +82,7 @@ export const getImageCaptionQueries = async ({
                   {
                     type: 'image_url',
                     image_url: {
-                      url: await normalizeImageToBase64(url)
+                      url: await normalizeImageToBase64(url, toBase64)
                     }
                   },
                   {
@@ -89,6 +100,8 @@ export const getImageCaptionQueries = async ({
           requestId,
           inputTokens,
           outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens,
           seconds: +((Date.now() - llmStartTime) / 1000).toFixed(2),
           usedUserOpenAIKey
         };
@@ -119,6 +132,8 @@ export const getImageCaptionQueries = async ({
     requestIds: results.map((item) => item.requestId).filter(Boolean),
     inputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),
     outputTokens: results.reduce((sum, item) => sum + item.outputTokens, 0),
+    cacheReadTokens: results.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
+    cacheCreationTokens: results.reduce((sum, item) => sum + (item.cacheCreationTokens ?? 0), 0),
     seconds: results.reduce((sum, item) => sum + item.seconds, 0),
     usedUserOpenAIKey:
       billableResults.length > 0 && billableResults.every((item) => item.usedUserOpenAIKey)

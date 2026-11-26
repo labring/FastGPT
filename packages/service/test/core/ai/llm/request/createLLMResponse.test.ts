@@ -395,6 +395,8 @@ describe('createLLMResponse', () => {
       expect(result.usage).toEqual({
         inputTokens: 0,
         outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
         usedUserOpenAIKey: false
       });
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
@@ -685,6 +687,8 @@ describe('createLLMResponse', () => {
       expect(result.usage).toEqual({
         inputTokens: 5,
         outputTokens: 3,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
         usedUserOpenAIKey: false
       });
       expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
@@ -1505,7 +1509,7 @@ describe('createLLMResponse', () => {
       expect(record?.response).toMatchObject({
         answerText: 'original model answer',
         finish_reason: 'tool_calls',
-        usage: { inputTokens: 20, outputTokens: 5 }
+        usage: { inputTokens: 20, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 }
       });
       expect(record?.response).not.toHaveProperty('error');
       expect(record?.response).not.toHaveProperty('toolCalls');
@@ -1568,7 +1572,7 @@ describe('createLLMResponse', () => {
           response: expect.objectContaining({
             finish_reason: 'tool_calls',
             error: undefined,
-            usage: { inputTokens: 20, outputTokens: 4 }
+            usage: { inputTokens: 20, outputTokens: 4, cacheReadTokens: 0, cacheCreationTokens: 0 }
           })
         })
       );
@@ -1823,7 +1827,12 @@ describe('createLLMResponse', () => {
           expect.objectContaining({
             response: expect.objectContaining({
               error,
-              usage: { inputTokens: 10, outputTokens: 2 }
+              usage: {
+                inputTokens: 10,
+                outputTokens: 2,
+                cacheReadTokens: 0,
+                cacheCreationTokens: 0
+              }
             })
           })
         );
@@ -1881,7 +1890,9 @@ describe('createLLMResponse', () => {
             finish_reason: 'error',
             usage: {
               inputTokens: 10,
-              outputTokens: 2
+              outputTokens: 2,
+              cacheReadTokens: 0,
+              cacheCreationTokens: 0
             },
             error: expect.any(Error)
           })

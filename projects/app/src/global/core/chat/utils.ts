@@ -7,7 +7,13 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { findFailedResponseNode, getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import {
+  filterNodeResponseTreeData,
+  filterPublicNodeResponseData,
+  findFailedResponseNode,
+  getFlatAppResponses
+} from '@fastgpt/global/core/chat/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -66,6 +72,59 @@ export const getChatItemErrorText = (
   return {
     moduleName: failedNode.moduleName,
     errorText: nodeErrorText
+  };
+};
+
+const PUBLIC_CHAT_ITEM_ERROR_TEXT = i18nT('common:core.chat.error.Chat error');
+
+/**
+ * 分享/公开历史边界的错误摘要提取。
+ *
+ * 先基于完整父子关系判定整轮是否真实失败（避免先裁剪非公开父节点后将已捕获循环内的子节点误判为孤儿），
+ * 再校验失败节点是否属于公开节点白名单并脱敏为通用错误文案；非公开内部节点返回 `undefined`。
+ */
+export const getPublicChatItemErrorText = (
+  responseData: ChatHistoryItemResType[] = []
+): ErrorTextItemType | undefined => {
+  const failedNode = findFailedResponseNode(responseData);
+  if (!failedNode) return undefined;
+
+  const isPublicNode = filterNodeResponseTreeData({ nodeResponses: [failedNode] }).length > 0;
+  if (!isPublicNode) return undefined;
+
+  return {
+    moduleName: failedNode.moduleName,
+    errorText: PUBLIC_CHAT_ITEM_ERROR_TEXT
+  };
+};
+
+/**
+ * 匿名分享历史记录的公开裁剪边界（纯函数，供列表接口与完成态恢复共用）。
+ *
+ * 先按完整响应关系提取并脱敏公开错误摘要，再执行 `filterPublicNodeResponseData` 裁剪节点详情，
+ * 返回新记录对象而不修改入参。
+ */
+export const sanitizeOutLinkChatHistoryItem = <T extends ChatItemMiniType>(
+  item: T,
+  showCite: boolean
+): T => {
+  if (item.obj !== ChatRoleEnum.AI) return item;
+
+  const publicErrorText = getPublicChatItemErrorText(item.responseData);
+  return {
+    ...item,
+    errorText:
+      publicErrorText ??
+      (item.errorText
+        ? {
+            moduleName: item.errorText.moduleName,
+            errorText: PUBLIC_CHAT_ITEM_ERROR_TEXT
+          }
+        : undefined),
+    responseData: filterPublicNodeResponseData({
+      nodeRespones: item.responseData,
+      responseDetail: showCite
+    })
   };
 };
 
@@ -135,8 +194,16 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     historyItem.useAgentSandbox === true || hasSandboxToolInChatValue(historyItem);
   const hasResolvedTags =
     historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
-  if (hasResolvedTags || !historyItem.responseData)
+  // 预览记录（已清除 responseData）可直接复用预计算标签；
+  // 交互续跑或恢复写入新 responseData 后需保留已有引用/外链，仅增量合并新响应并提取最新 errorText。
+  if ((hasResolvedTags && !historyItem.responseData?.length) || !historyItem.responseData)
     return withUseAgentSandbox(historyItem, useAgentSandbox);
+
+  const existingQuoteList = historyItem.totalQuoteList ?? [];
+  const existingToolCiteLinks = historyItem.toolCiteLinks ?? [];
+  const initialLinkDedupe = new Set(
+    existingToolCiteLinks.map(({ name = '', url = '' }) => `${name}::${url}`)
+  );
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
@@ -186,23 +253,32 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     {
       useAgentSandbox,
       totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
-      toolCiteLinks: [] as ToolCiteLinksType[],
-      linkDedupe: new Set<string>(),
+      toolCiteLinks: [...existingToolCiteLinks] as ToolCiteLinksType[],
+      linkDedupe: initialLinkDedupe,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined
     }
   );
-  const errorText = getChatItemErrorText(historyItem.responseData);
+  const errorText = getChatItemErrorText(historyItem.responseData) ?? historyItem.errorText;
 
-  // Filter quote list to only include citations actually referenced in the response text
+  // Filter new quote list to only include citations actually referenced in the response text,
+  // while preserving previously resolved quotes (e.g. from pre-pause history previews).
   const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
   const citedIds = new Set(extractCitationIdsFromText(responseText));
   const quoteDedupe = new Set<string>();
-  const filteredQuoteList = totalQuoteList.filter((quote) => {
-    if (!quote.id || !citedIds.has(quote.id) || quoteDedupe.has(quote.id)) return false;
+  const filteredQuoteList: SearchDataResponseQuoteListItemType[] = [];
+  existingQuoteList.forEach((quote) => {
+    if (quote.id) {
+      if (quoteDedupe.has(quote.id)) return;
+      quoteDedupe.add(quote.id);
+    }
+    filteredQuoteList.push(quote);
+  });
+  totalQuoteList.forEach((quote) => {
+    if (!quote.id || !citedIds.has(quote.id) || quoteDedupe.has(quote.id)) return;
 
     quoteDedupe.add(quote.id);
-    return true;
+    filteredQuoteList.push(quote);
   });
 
   return {

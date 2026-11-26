@@ -1,5 +1,9 @@
 import { InvalidObjectNameError, InvalidXMLError, S3Error } from 'minio';
-import type { MultipartUploadPart, S3MultipartUploadSession } from '@fastgpt-sdk/storage';
+import {
+  assertStorageObjectKey,
+  type MultipartUploadPart,
+  type S3MultipartUploadSession
+} from '@fastgpt-sdk/storage';
 
 type MultipartUploadStatus = S3MultipartUploadSession['status'];
 
@@ -67,6 +71,10 @@ export const isFileNotFoundError = (error: unknown): boolean => {
       statusCode?: unknown;
       $metadata?: { httpStatusCode?: unknown };
     };
+    // 具名 NoSuchBucket 属于服务端存储桶配置故障，虽然 provider 返回 HTTP 404，不能归类为对象缺失。
+    if ([value.code, value.name].some((item) => String(item) === 'NoSuchBucket')) {
+      return false;
+    }
     const statusCodes = [value.status, value.statusCode, value.$metadata?.httpStatusCode].map(
       (status) => Number(status)
     );
@@ -96,4 +104,45 @@ export const isFileNotFoundError = (error: unknown): boolean => {
     return true;
   }
   return false;
+};
+
+/**
+ * 为已 URL 编码的对象存储 key 构造 `[规范 key, 解码后的 legacy key]` 候选列表。
+ */
+export const getStorageKeyCandidates = (key: string): string[] => {
+  assertStorageObjectKey(key);
+  const decodedSegments = key.split('/').map((segment) => {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  });
+
+  // Legacy fallback 只能还原段内字符，不能让编码内容改变对象路径层级。
+  if (decodedSegments.some((segment) => segment.includes('/'))) return [key];
+
+  const legacyKey = decodedSegments.join('/');
+
+  if (legacyKey === key) return [key];
+  try {
+    assertStorageObjectKey(legacyKey, 'legacyKey');
+    return [key, legacyKey];
+  } catch {
+    return [key];
+  }
+};
+
+/** 按 `[规范 key, legacy key]` 顺序执行对象读取操作，遇到 404/NoSuchKey 时回退尝试 legacy key。 */
+export const withStorageKeyFallback = async <T>(
+  key: string,
+  operation: (candidate: string) => Promise<T>
+): Promise<T> => {
+  const candidates = getStorageKeyCandidates(key);
+  try {
+    return await operation(candidates[0]);
+  } catch (error) {
+    if (candidates.length === 1 || !isFileNotFoundError(error)) throw error;
+    return operation(candidates[1]);
+  }
 };

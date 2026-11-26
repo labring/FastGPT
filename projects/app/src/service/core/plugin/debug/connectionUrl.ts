@@ -1,4 +1,5 @@
 import { serviceEnv } from '@fastgpt/service/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 
 const getHeaderValue = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value);
@@ -17,7 +18,7 @@ const getRequestOrigin = (req: ApiRequestProps) => {
     return `${protocol}://${host}`;
   }
 
-  return serviceEnv.FE_DOMAIN ? trimSlash(serviceEnv.FE_DOMAIN) : '';
+  return trimSlash(getSystemInstanceConfig().site.publicUrl || '');
 };
 
 /**

@@ -283,6 +283,35 @@ describe('SystemToolRepo.getSystemToolList', () => {
 });
 
 describe('SystemToolRepo.getSystemToolDetail', () => {
+  it('keeps the full child ID in detail and display lookups even if the first segment also exists', async () => {
+    const pluginId = 'systemTool-search/catalog/search';
+    const source = 'teamId:team-1';
+    const name = { en: 'Catalog search', 'zh-CN': '目录搜索' };
+    const toolset = {
+      ...createPluginTool({ pluginId: 'search', name: 'Search', source }),
+      isToolset: true,
+      children: [
+        { id: 'catalog', name: { en: 'Catalog' } },
+        { id: 'catalog/search', name }
+      ]
+    };
+    mocks.getTool.mockResolvedValueOnce(toolset);
+    mocks.listTools.mockResolvedValueOnce([toolset]);
+
+    const repo = SystemToolRepo.getInstance();
+    await expect(repo.getSystemToolDetail({ pluginId, source })).resolves.toMatchObject({
+      id: pluginId,
+      name,
+      isToolSet: false
+    });
+    await expect(repo.getSystemToolDisplayInfo({ pluginId, source })).resolves.toMatchObject({
+      id: pluginId,
+      name,
+      isToolSet: false
+    });
+    expect(mocks.getTool).toHaveBeenCalledWith(expect.objectContaining({ pluginId: 'search' }));
+  });
+
   it('returns app version id and label for workflow tools', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-workflow-tool',
@@ -1150,6 +1179,25 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
     expect(tool.children?.[0]).not.toHaveProperty('outputSchema');
     expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
+  it('normalizes legacy null customConfig.avatar to undefined in getSystemToolDisplayInfo', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-legacy-tool',
+      status: PluginStatusEnum.Normal,
+      customConfig: {
+        name: 'Legacy Workflow Tool',
+        avatar: null,
+        version: 'v1',
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'commercial-legacy-tool'
+    });
+
+    expect(tool.avatar).toBeUndefined();
   });
 
   it('fills parent toolset children icons from detail for expanded child templates', async () => {

@@ -1,17 +1,24 @@
 import { ZodError, type z } from 'zod';
 
-export type ZodRequestInputSource = 'body' | 'query' | 'params';
+/** 请求入参来源；除 parseApiInput 处理的 body/query/params 外，显式校验请求头时也允许标记为 header */
+export type ZodRequestInputSource = 'body' | 'query' | 'params' | 'header';
+
+type ParseApiInputSource = 'body' | 'query' | 'params';
 
 export type ZodRequestParseErrorContext = {
   inputSource: ZodRequestInputSource;
 };
 
+// Next.js 按需编译或热更新会重复加载模块，使用同进程稳定标识保留显式 API 入参错误的身份。
+const apiRequestInputParseErrorBrand = Symbol.for('fastgpt.ApiRequestInputParseError');
+
 export class ApiRequestInputParseError extends Error {
+  readonly [apiRequestInputParseErrorBrand] = true;
   context: ZodRequestParseErrorContext;
   cause: ZodError;
 
   /**
-   * 表示 API 请求入参校验失败。只由 `parseApiInput` 创建，用于和内部 `ZodError` 明确区分。
+   * 由 API 入参校验边界显式创建，用于和内部 `ZodError` 明确区分。
    */
   constructor(error: ZodError, context: ZodRequestParseErrorContext) {
     super(error.message);
@@ -21,10 +28,18 @@ export class ApiRequestInputParseError extends Error {
   }
 }
 
+/** 只识别显式创建的请求错误；不凭 name/context 将普通内部错误降级为 400。 */
+const isApiRequestInputParseError = (error: unknown): error is ApiRequestInputParseError =>
+  error instanceof ApiRequestInputParseError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    apiRequestInputParseErrorBrand in error &&
+    error[apiRequestInputParseErrorBrand] === true);
+
 function parseRequestInput<T extends z.ZodTypeAny>(
   schema: T,
-  req: Partial<Record<ZodRequestInputSource, unknown>>,
-  inputSource: ZodRequestInputSource
+  req: Partial<Record<ParseApiInputSource, unknown>>,
+  inputSource: ParseApiInputSource
 ): z.output<T> {
   try {
     return schema.parse(req[inputSource]);
@@ -42,7 +57,7 @@ type ParseApiInputProps<
   Q extends z.ZodTypeAny | undefined,
   P extends z.ZodTypeAny | undefined
 > = {
-  req: Partial<Record<ZodRequestInputSource, unknown>>;
+  req: Partial<Record<ParseApiInputSource, unknown>>;
   bodySchema?: B;
   querySchema?: Q;
   paramsSchema?: P;
@@ -78,10 +93,10 @@ export function parseApiInput<
 }
 
 export function getZodParseErrorInputSource(error: unknown) {
-  return error instanceof ApiRequestInputParseError ? error.context : undefined;
+  return isApiRequestInputParseError(error) ? error.context : undefined;
 }
 
 export function getZodError(error: unknown) {
-  if (error instanceof ApiRequestInputParseError) return error.cause;
+  if (isApiRequestInputParseError(error)) return error.cause;
   if (error instanceof ZodError) return error;
 }

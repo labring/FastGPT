@@ -4,6 +4,7 @@ import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { recordDatasetPgRoutePerf } from '../../opsPerf/datasetSearch';
 import { buildPgVectorRecallQuery } from './utils';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
@@ -132,6 +133,7 @@ export class PgVectorCtrl implements VectorControllerType {
   embRecall: VectorControllerType['embRecall'] = async (props) => {
     const query = buildPgVectorRecallQuery(props);
     if (!query) return { results: [] };
+    recordDatasetPgRoutePerf({ usesHnsw: query.usesHnsw, maxScanTuples: query.maxScanTuples });
     // 精确分组与 HNSW 分组都等待服务端先终止超时 SQL，再归还外层并发额度。
     const recallQuery = { text: query.text, query_timeout: RECALL_QUERY_TIMEOUT_MS };
 
@@ -146,10 +148,7 @@ export class PgVectorCtrl implements VectorControllerType {
           `SELECT set_config('hnsw.ef_search', $1, true),
                   set_config('hnsw.max_scan_tuples', $2, true),
                   set_config('hnsw.iterative_scan', 'relaxed_order', true)`,
-          [
-            String(Math.min(1000, Math.max(props.limit, global.systemEnv?.hnswEfSearch || 200))),
-            String(query.maxScanTuples)
-          ]
+          [String(props.hnswEfSearch), String(query.maxScanTuples)]
         );
         const result = await client.query<{ id: string; collection_id: string; score: number }>(
           recallQuery,

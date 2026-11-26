@@ -2,15 +2,24 @@ import { describe, expect, it } from 'vitest';
 import {
   getErrorMessage,
   getErrText,
+  isServerConfigError,
   isUserConfigError,
+  ServerConfigError,
   ToastHandledError,
   UserError,
   UserConfigError
 } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
 describe('getErrText', () => {
+  it('maps the moderation uninstall refusal string to the admin i18n key', () => {
+    expect(getErrText('Disable the moderation plugin before deleting it')).toBe(
+      'admin:moderation.disable_before_delete'
+    );
+    expect(ERROR_RESPONSE[PluginErrEnum.disableModerationBeforeDelete].httpStatus).toBe(400);
+  });
   it('maps the model domain error code to the user-facing message', () => {
     expect(getErrText(ModelErrEnum.unExist)).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
     expect(getErrText(ModelErrEnum.unExist)).toBe('common:model_delisted');
@@ -180,6 +189,25 @@ describe('isUserConfigError', () => {
       expect(isUserConfigError(error)).toBe(false);
     }
   );
+});
+
+describe('ServerConfigError & isServerConfigError', () => {
+  it('inherits UserError, preserves displayMessage, and rejects spoofed plain objects', () => {
+    const error = new ServerConfigError(ModelErrEnum.unExist, 'Model is disabled: Default LLM');
+
+    expect(error).toBeInstanceOf(ServerConfigError);
+    expect(error).toBeInstanceOf(UserError);
+    expect(error.name).toBe('ServerConfigError');
+    expect(error.message).toBe(ModelErrEnum.unExist);
+    expect(getErrText(error)).toBe('Model is disabled: Default LLM');
+    expect(isServerConfigError(error)).toBe(true);
+
+    expect(isServerConfigError(new UserError(ModelErrEnum.unExist))).toBe(false);
+    expect(isServerConfigError({ name: 'ServerConfigError' })).toBe(false);
+    expect(
+      isServerConfigError(Object.assign(new Error('boom'), { name: 'ServerConfigError' }))
+    ).toBe(false);
+  });
 });
 
 describe('ToastHandledError', () => {

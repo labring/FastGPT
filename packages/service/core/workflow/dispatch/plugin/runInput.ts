@@ -8,7 +8,7 @@ import {
   normalizeChatFileStoreValue,
   normalizeChatFileStoreValues
 } from '../../../chat/fileStoreValue';
-import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES = 5;
@@ -27,10 +27,8 @@ export const dispatchPluginInput = async (
 ): Promise<PluginInputResponse> => {
   const { params, query, node } = props;
   const { files } = chatValue2RuntimePrompt(query);
-  const fileContext = getWorkflowFileContext();
-  const fileRegistrar = getWorkflowFileRegistrar();
-  const userMaxFileAmount =
-    fileContext?.limits.maxFileAmount ?? DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES;
+  const { fileContext } = getWorkflowContext();
+  const userMaxFileAmount = fileContext.limits.maxFileAmount;
   const fileInputMaxFiles = new Map(
     node.inputs
       .filter((input) => input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect))
@@ -74,11 +72,9 @@ export const dispatchPluginInput = async (
                 : normalizeChatFileStoreValues([fileItem])[0];
             if (!storeValue) throw new UserError('Invalid workflow plugin file');
 
-            const existingRef = fileContext?.resolveInputFile(storeValue);
+            const existingRef = fileContext.resolveInputFile(storeValue);
             if (existingRef) return existingRef.modelUrl;
-            if (!fileRegistrar) throw new UserError('Workflow file context is unavailable');
-
-            const ref = await fileRegistrar.registerInputFile({
+            const ref = await fileContext.register({
               file: storeValue,
               source: 'plugin'
             });

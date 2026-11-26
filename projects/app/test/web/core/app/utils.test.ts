@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  addModelNamesToAppForm,
+  filterSensitiveFormData,
+  getSafeExperienceUrl,
+  openExperienceUrl
+} from '@/web/core/app/utils';
 import {
   appWorkflow2Form,
   form2AppWorkflow
@@ -616,5 +621,29 @@ describe('appWorkflow2AgentForm', () => {
         mode: 'agentGenerated'
       }
     ]);
+  });
+});
+
+describe('getSafeExperienceUrl & openExperienceUrl', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('opens trimmed http(s) URLs in a new tab and ignores unsafe or blank values', () => {
+    const open = vi.fn();
+    vi.stubGlobal('window', { open });
+
+    expect(getSafeExperienceUrl('  https://demo.example.com/chat?id=1  ')).toBe(
+      'https://demo.example.com/chat?id=1'
+    );
+    expect(getSafeExperienceUrl('javascript:alert(1)')).toBeUndefined();
+    expect(getSafeExperienceUrl('   ')).toBeUndefined();
+
+    openExperienceUrl('  https://demo.example.com/chat?id=1  ');
+    openExperienceUrl('javascript:alert(1)');
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(
+      'https://demo.example.com/chat?id=1',
+      '_blank',
+      'noopener,noreferrer'
+    );
   });
 });

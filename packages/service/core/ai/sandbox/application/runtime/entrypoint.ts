@@ -4,93 +4,77 @@
  * 负责脚本 hash 状态、输出裁剪和 Redis 临界区保护，不处理具体 Skill 版本部署。
  */
 import {
+  SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS,
   MAX_LOG_OUTPUT_LENGTH,
   SANDBOX_ENTRYPOINT_STATE_HASH_KEY,
   MAX_ENTRYPOINT_OUTPUT_BYTES,
-  SANDBOX_INIT_LEASE_TTL_MS,
-  SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
-  SANDBOX_INIT_LEASE_WAIT_TIMEOUT_MS,
-  SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS
+  SANDBOX_LEASE_WAIT_TIMEOUT_MS
 } from '../../constants';
-
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { isRecoverableSandboxError } from '../../infrastructure/opensandbox/errors';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import {
-  LeaseCache,
-  RedisLeaseUnavailableError,
-  isRedisLeaseError
-} from '@fastgpt/dal/redis/caches';
+import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
 import { createAgentSandboxInitializingError } from '../../error';
+import { withSandboxLease } from '../lease';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash } from '../../utils';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,
+  runWithSandboxRuntimeStateScope,
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from './state';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const leaseCache = new LeaseCache();
 
 /**
- * 保护同一个 sandbox 的运行态初始化流程。
+ * 保护同一个 sandbox 的运行态准备与初始化流程。
  *
- * 同一个 sandbox 内并发初始化时（如父 Agent 并发调用多个启用沙盒的子应用工具），
- * 如果文件部署、entrypoint 和扫描交错，可能互相污染。
- * 锁被占用时按重试间隔有界等待，超时或租约异常再转为标准 initializing 错误。
- * 锁只存在于服务端 Redis，不写入 sandbox 文件系统。
+ * 通过统一可重入 `withSandboxLease` 覆盖底层实例激活与上层文件部署、entrypoint 和 Skill 扫描，
+ * 消除激活与工作区初始化之间的锁断层。锁被并发请求占用时按指数退避有界等待，超时或租约异常转为标准 initializing 错误。
  */
-export const withAgentSandboxInitLease = async <T>({
+export const withAgentSandboxLease = async <T>({
   sandboxId,
-  waitTimeoutMs = SANDBOX_INIT_LEASE_WAIT_TIMEOUT_MS,
-  retryIntervalMs = SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS,
+  label = `agent-sandbox-runtime:${sandboxId}`,
+  waitTimeoutMs = SANDBOX_LEASE_WAIT_TIMEOUT_MS,
+  retryInitialMs,
+  retryMaxMs,
+  signal,
   fn
 }: {
   sandboxId: string;
+  label?: string;
   waitTimeoutMs?: number;
-  retryIntervalMs?: number;
-  fn: () => Promise<T>;
+  retryInitialMs?: number;
+  retryMaxMs?: number;
+  signal?: AbortSignal;
+  fn: (lease: RedisLeaseContext) => Promise<T>;
 }): Promise<T> => {
-  const deadline = Date.now() + waitTimeoutMs;
-
-  while (true) {
-    let entered = false;
-    try {
-      return await leaseCache.withLease({
-        key: `agent-sandbox:init:${sandboxId}`,
-        label: 'agent-sandbox-init',
-        ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
-        renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
-        fn: async () => {
-          entered = true;
-          return await fn();
-        }
-      });
-    } catch (error) {
-      if (!entered && error instanceof RedisLeaseUnavailableError) {
-        const remainingMs = deadline - Date.now();
-        if (remainingMs > 0) {
-          await new Promise<void>((resolve) =>
-            setTimeout(resolve, Math.min(retryIntervalMs, remainingMs))
-          );
-          continue;
-        }
-      }
-      if (isRedisLeaseError(error)) {
-        throw createAgentSandboxInitializingError();
-      }
-      throw error;
+  try {
+    return await withSandboxLease({
+      sandboxId,
+      label,
+      waitTimeoutMs,
+      retryInitialMs,
+      retryMaxMs,
+      signal,
+      fn: async (lease) => await runWithSandboxRuntimeStateScope(() => fn(lease), { lease })
+    });
+  } catch (error) {
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
     }
+    throw error;
   }
 };
 
 /**
  * 执行 runtime sandbox entrypoint。
  *
- * 状态只写入 sandbox 用户 HOME，确保“是否执行过”跟具体 sandbox 实例绑定。
+ * 状态只写入容器临时层 `/var/lib/fastgpt-runtime/state.json`，确保“是否执行过”绑定容器实例生命周期，
+ * 不写入 `$HOME` 持久卷；容器休眠唤醒或重建后会在新容器内自动重新初始化系统级依赖。
  * 脚本失败、超时或状态读写失败都不会阻断主流程。
  * scope 必须显式区分应用/节点，只读取该作用域下的成功标记。
  */
@@ -100,7 +84,7 @@ export const runAgentSandboxEntrypoint = async ({
   workDirectory,
   scope
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   sandboxEntrypoint?: string;
   workDirectory?: string;
   scope: string;
@@ -125,8 +109,12 @@ export const runAgentSandboxEntrypoint = async ({
 
   if (!result) return;
 
-  setRuntimeStateValue(stateContext.state, stateKey, scriptHash);
-  await writeSandboxRuntimeState(sandbox, stateContext);
+  setRuntimeStateValue({
+    state: stateContext.state,
+    key: stateKey,
+    value: scriptHash
+  });
+  await writeSandboxRuntimeState({ sandbox, context: stateContext });
 };
 
 /** 将 sandbox entrypoint 包装为 prepare step，便于和文件注入、skill 扫描按顺序编排。 */
@@ -154,19 +142,19 @@ export const executeEntrypointCommand = async ({
   label,
   workingDirectory
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   command: string;
   label: string;
   workingDirectory?: string;
 }): Promise<boolean> => {
-  const timeoutSeconds = getEntrypointTimeoutSeconds();
   const result = await sandbox
     .execute(command, {
-      timeoutMs: timeoutSeconds * 1000,
+      timeoutMs: SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS * 1000,
       maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES,
       workingDirectory
     })
     .catch((error) => {
+      if (isRecoverableSandboxError(error)) throw error;
       logger.warn('[Agent Skills] Entrypoint execution threw', {
         label,
         error
@@ -206,9 +194,6 @@ const buildBashScriptCommand = (script: string): string => {
   const encoded = Buffer.from(script, 'utf-8').toString('base64');
   return buildLimitedOutputShellCommand(`printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`);
 };
-
-const getEntrypointTimeoutSeconds = (): number =>
-  Math.min(Math.max(serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS, 1), 600);
 
 const truncateOutput = (value: string): string =>
   value.length > MAX_LOG_OUTPUT_LENGTH ? `${value.slice(0, MAX_LOG_OUTPUT_LENGTH)}...` : value;

@@ -8,7 +8,7 @@ import type { RedisRuntimeLogger, RedisRuntimeMetrics } from '../types';
 export type { RedisRuntimeLogger } from '../types';
 
 export type RedisClient = Redis;
-export type RedisConnectionRole = 'command' | 'blocking' | 'queue' | 'worker';
+export type RedisConnectionRole = 'command' | 'blocking' | 'queue' | 'worker' | 'subscriber';
 export type RedisConnectionState =
   | 'connecting'
   | 'connected'
@@ -99,6 +99,7 @@ export class RedisRuntime {
     this.getState = this.getState.bind(this);
     this.getCommandConnection = this.getCommandConnection.bind(this);
     this.createBlockingConnection = this.createBlockingConnection.bind(this);
+    this.createSubscriberConnection = this.createSubscriberConnection.bind(this);
     this.createQueueConnection = this.createQueueConnection.bind(this);
     this.createWorkerConnection = this.createWorkerConnection.bind(this);
     this.registerBeforeCloseHook = this.registerBeforeCloseHook.bind(this);
@@ -211,6 +212,11 @@ export class RedisRuntime {
     return this.createConnection('blocking');
   }
 
+  /** 创建独立 Pub/Sub 订阅连接；进入 SUBSCRIBE 模式后不得复用为普通命令连接。 */
+  createSubscriberConnection() {
+    return this.createConnection('subscriber');
+  }
+
   createQueueConnection() {
     return this.createConnection('queue');
   }
@@ -321,9 +327,9 @@ export class RedisRuntime {
         });
       }
 
-      // 阻塞连接先退出，随后关闭队列连接，最后才关闭普通命令连接。
+      // 阻塞和订阅连接先退出，随后关闭队列连接，最后才关闭普通命令连接。
       const closeRoleGroups: readonly RedisConnectionRole[][] = [
-        ['blocking'],
+        ['blocking', 'subscriber'],
         ['worker', 'queue'],
         ['command']
       ];

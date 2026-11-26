@@ -1,15 +1,17 @@
 ---
-title: "Virtual Machine Sandbox Environment"
+title: 'Virtual Machine Sandbox Environment'
 description: Master Agent virtual machine execution environments, session directory isolation, persistent volume mounts, startup scripts, and troubleshooting.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="what-is-virtual-machine" />
 <span id="virtual-machine-design" />
 <span id="using-the-virtual-machine" />
 <span id="virtual-machine-debugging" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="1-session-level-isolation-and-lifecycle-management" />
 <span id="2-session-persistence" />
 <span id="3-security-constraints--escape-prevention" />
@@ -64,14 +66,16 @@ During environment initialization and execution, the platform manages the sandbo
 ![Agent sandbox initialization](/imgs/diagrams/sandbox-initialization.en.light.svg)
 
 ### Startup Scripts and Dependency Management
+
 The application "Startup Script" runs after runtime acquisition, the initialization lock, and configuration and file preparation. It can install Python packages (e.g., `pip install matplotlib pandas`) or system binaries:
+
 - **Preparation Order and Atomic Deployment**: Preparation runs in this order: Skill package injection → file injection → application startup script → Skill entrypoint scripts.
   1. **Skill Package Injection**: When published Skills are attached, each Skill bundle extracts into a temporary staging directory (`.tmp-<versionId>-<random>`) and atomically swaps into `projects/<versionId>` upon completion.
   2. **File Injection**: Files uploaded in the current conversation are written into the virtual machine.
-  3. **Application Startup Script**: Runs inside the virtual machine workspace directory (such as `/workspace`) using the shell commands configured in the application panel.
+  3. **Application Startup Script**: Runs inside the virtual machine workspace directory (such as `/home/sandbox/workspace`) using the shell commands configured in the application panel.
   4. **Skill Entrypoint Script**: Each Skill's initialization script (such as `entrypoint.sh`) executes inside that Skill's directory.
-- **Dual-Key State Deduplication (`~/.fastgpt/runtime/state.json`)**:
-  - **Application Startup Script (SHA-256 Hash Deduplication)**: The runtime computes the SHA-256 hash of the startup script text and compares it against `~/.fastgpt/runtime/state.json`. Subsequent warm turns skip execution when the hash matches, and re-run automatically when the script text changes or the sandbox is rebuilt.
+- **Dual-Key State Deduplication (`/var/lib/fastgpt-runtime/state.json`)**:
+  - **Application Startup Script (SHA-256 Hash Deduplication)**: The runtime computes the SHA-256 hash of the startup script text and compares it against `/var/lib/fastgpt-runtime/state.json`. Subsequent warm turns skip execution when the hash matches, and re-run automatically when the script text changes or the sandbox is rebuilt.
   - **Skill Entrypoint Script (Version ID Deduplication)**: Skill entrypoints deduplicate by immutable **Skill Version ID**, ensuring each published Skill version initializes once per sandbox instance lifecycle.
 
 <span id="execution-constraints--fault-tolerance" />
@@ -79,7 +83,7 @@ The application "Startup Script" runs after runtime acquisition, the initializat
 ### Execution Constraints and Fault Tolerance
 
 - **Preparation Failures**: Runtime acquisition or initialization lock failures return an error for the current preparation. Skill editor debugging uses a separate preparation branch.
-- **Startup Timeout Protection**: Script execution duration is bounded by the `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` environment variable (defaults to 30 seconds; configurable from 1 to 600 seconds).
+- **Startup Timeout Protection**: Script execution timeout is fixed at 60 seconds.
 - **Non-blocking Resilience**: Non-zero exit codes or timeouts during script execution log warnings without crashing the conversational flow, allowing builders to inspect missing dependencies in debug panels.
 - **Buffer Output Limits**: Script output retains the last 8 KiB and background service logs retain up to 4,000 characters; write large results to files and inspect the generated artifacts.
 

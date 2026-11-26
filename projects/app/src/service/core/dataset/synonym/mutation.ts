@@ -103,6 +103,11 @@ export const createDatasetSynonymMutation = async ({
 
   const synonymId = current?._id ?? new Types.ObjectId();
   const fileVersion = (current?.version ?? 0) + 1;
+  // 空词表版本记为「按原文索引」，后续差量重建不能把它当作快照丢失而全量重算。
+  const emptyVersions =
+    mappings.length === 0
+      ? [...new Set([...(current?.emptyVersions ?? []), fileVersion])]
+      : (current?.emptyVersions ?? []).filter((version) => version !== fileVersion);
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
   const modelHandle = await getTeamModelHandle({ teamId });
@@ -160,6 +165,7 @@ export const createDatasetSynonymMutation = async ({
                   uploaderId: tmbId,
                   version: fileVersion,
                   enabled: true,
+                  emptyVersions,
                   schemaVersion: DatasetSynonymSchemaVersion,
                   updateTime: now
                 }
@@ -168,6 +174,7 @@ export const createDatasetSynonymMutation = async ({
                 $set: {
                   version: fileVersion,
                   enabled: false,
+                  emptyVersions,
                   schemaVersion: DatasetSynonymSchemaVersion,
                   updateTime: now
                 },
@@ -196,6 +203,7 @@ export const createDatasetSynonymMutation = async ({
             uploaderId: tmbId,
             version: fileVersion,
             enabled: true,
+            emptyVersions,
             schemaVersion: DatasetSynonymSchemaVersion,
             updateTime: now
           }

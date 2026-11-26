@@ -1,11 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createNodeFileIoAdapter } from '../../src/infra/fs/file-io';
 import {
   buildAuthHeaders,
   createFastGptHttpClient
 } from '../../src/infra/http/fastgpt-http-client';
 import { createOutputRenderer } from '../../src/infra/ui/renderer';
 import { CliApiError, CliArgumentError, CliNetworkError } from '../../src/shared/errors';
-import type { CliFetchFn } from '../../src/shared/types';
+import { CliExitCode, type CliFetchFn } from '../../src/shared/types';
+
+const tempDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -113,6 +123,107 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     await expect(client.request({ method: 'GET', path: '/down' })).rejects.toBeInstanceOf(
       CliNetworkError
     );
+  });
+
+  it('keeps HTTP 403 plan/quota errors as API_ERROR while distinguishing 403 permission refusal and 401/514 auth failures', async () => {
+    const mockFetch: CliFetchFn = async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith('/dataset-limit')) {
+        return jsonResponse(
+          {
+            code: 500007,
+            statusText: 'datasetAmountNotEnough',
+            message: 'Dataset amount limit reached',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/commercial-feature')) {
+        return jsonResponse(
+          {
+            code: 509001,
+            statusText: 'commercialFeature',
+            message: 'Commercial feature required',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/dataset-forbidden')) {
+        return jsonResponse(
+          {
+            code: 501004,
+            statusText: 'unAuthDataset',
+            message: 'No dataset permission',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/apikey-401')) {
+        return jsonResponse(
+          {
+            code: 514,
+            statusText: 'unAuthApiKey',
+            message: 'Invalid API Key',
+            data: null
+          },
+          401
+        );
+      }
+      return jsonResponse(
+        {
+          code: 401,
+          statusText: 'unAuthorization',
+          message: 'Unauthenticated',
+          data: null
+        },
+        401
+      );
+    };
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: mockFetch
+    });
+
+    for (const [path, expectedCode, expectedStatusText] of [
+      ['/dataset-limit', 500007, 'datasetAmountNotEnough'],
+      ['/commercial-feature', 509001, 'commercialFeature']
+    ] as const) {
+      await expect(client.request({ method: 'POST', path, body: {} })).rejects.toMatchObject({
+        code: 'API_ERROR',
+        exitCode: CliExitCode.business,
+        httpStatus: 403,
+        serverCode: expectedCode,
+        statusText: expectedStatusText
+      });
+    }
+
+    await expect(
+      client.request({ method: 'GET', path: '/dataset-forbidden' })
+    ).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      exitCode: CliExitCode.auth
+    });
+    await expect(
+      client.request({ method: 'GET', path: '/dataset-forbidden' })
+    ).rejects.not.toMatchObject({
+      hint: expect.stringContaining('fastgpt login')
+    });
+
+    await expect(client.request({ method: 'GET', path: '/apikey-401' })).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth,
+      hint: expect.stringContaining('API Key')
+    });
+    await expect(client.request({ method: 'GET', path: '/session-401' })).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth,
+      hint: expect.stringContaining('fastgpt login')
+    });
   });
 
   it('renders JSON and text formats with picocolors and redaction', () => {
@@ -369,5 +480,75 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     await client.request({ method: 'POST', path: '/redirect-post', body: { name: 'test' } });
     expect(receivedPostMethod).toBe('GET');
+  });
+
+  it('handles multipart Blob uploads without consuming request body and obeys redirect method rules', async () => {
+    let redirect307BodyText = '';
+    let redirect303Method = '';
+    let redirect303ContentType: string | null = null;
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        if (req.url.endsWith('/upload-unconsumed')) {
+          // 故意不读取 req.body，验证 Node 24 下不会因 ky finally cancel() 触发未捕获异常
+          return jsonResponse({ code: 200, data: { ok: true } });
+        }
+        if (req.url.endsWith('/upload-307')) {
+          return new Response(null, { status: 307, headers: { location: '/upload-307-target' } });
+        }
+        if (req.url.endsWith('/upload-307-target')) {
+          const form = await req.formData();
+          redirect307BodyText = await (form.get('file') as File).text();
+          return jsonResponse({ code: 200, data: { preserved: true } });
+        }
+        if (req.url.endsWith('/upload-303')) {
+          return new Response(null, { status: 303, headers: { location: '/upload-303-target' } });
+        }
+        if (req.url.endsWith('/upload-303-target')) {
+          redirect303Method = req.method;
+          redirect303ContentType = req.headers.get('content-type');
+          return jsonResponse({ code: 200, data: { switched: true } });
+        }
+        return jsonResponse({}, 404);
+      }
+    });
+
+    const createSampleForm = () => {
+      const form = new FormData();
+      form.append('file', new Blob(['# Hello FastGPT'], { type: 'text/markdown' }), 'notes.md');
+      form.append('data', JSON.stringify({ name: 'notes.md' }));
+      return form;
+    };
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-unconsumed', formData: createSampleForm() })
+    ).resolves.toEqual({ ok: true });
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-307', formData: createSampleForm() })
+    ).resolves.toEqual({ preserved: true });
+    expect(redirect307BodyText).toBe('# Hello FastGPT');
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-303', formData: createSampleForm() })
+    ).resolves.toEqual({ switched: true });
+    expect(redirect303Method).toBe('GET');
+    expect(redirect303ContentType).toBeNull();
+  });
+
+  it('supports concurrent writeTextAtomic calls targeting the same file without temp-name collision', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'fastgpt-cli-fileio-'));
+    tempDirs.push(dir);
+    const fileIo = createNodeFileIoAdapter({ cwd: dir });
+
+    const payloads = Array.from({ length: 8 }, (_, idx) => JSON.stringify({ index: idx }));
+    await Promise.all(
+      payloads.map((content) => fileIo.writeTextAtomic({ filePath: 'workflow.json', content }))
+    );
+
+    const finalContent = await readFile(join(dir, 'workflow.json'), 'utf8');
+    expect(payloads).toContain(finalContent);
   });
 });

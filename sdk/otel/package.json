@@ -31,6 +31,7 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit --pretty",
     "test": "vitest run --config vitest.config.ts",
     "prepublishOnly": "pnpm build"
   },

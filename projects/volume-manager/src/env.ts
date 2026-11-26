@@ -7,8 +7,7 @@ const schema = z.object({
   VM_DOCKER_SOCKET: z.string().default('/var/run/docker.sock'),
   VM_DOCKER_API_VERSION: z.string().default('v1.44'),
   VM_K8S_NAMESPACE: z.string().default('opensandbox'),
-  VM_K8S_PVC_STORAGE_CLASS: z.string().default(''),
-  VM_LOG_LEVEL: z.enum(['debug', 'info', 'none']).default('info')
+  VM_K8S_PVC_STORAGE_CLASS: z.string().default('')
 });
 
 const result = schema.safeParse(process.env);

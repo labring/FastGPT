@@ -24,4 +24,6 @@ export type MultipleSelectProps = {
 export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {
   value?: any[][];
   onSelect: (val: any[][]) => void;
+  /** 标签需要交互操作时，将操作控件作为菜单触发器的同级节点渲染。 */
+  labelActions?: React.ReactNode;
 };

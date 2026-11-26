@@ -204,6 +204,7 @@ export const useChatTest = ({
         flexDirection={'column'}
       >
         <PluginRunBox
+          isReady={isReady}
           appId={appId}
           chatId={chatId}
           fileUploadMode="draft"

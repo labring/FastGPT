@@ -100,24 +100,32 @@ const removeNaNValues = (value: unknown): void => {
 const Section = ({
   title,
   children,
-  showBorder = true
+  showBorder = true,
+  vertical = false
 }: {
   title: string;
   children: React.ReactNode;
   showBorder?: boolean;
+  vertical?: boolean;
 }) => (
   <Grid
-    templateColumns={['1fr', '160px minmax(0, 1fr)']}
+    templateColumns={vertical ? '1fr' : ['1fr', '160px minmax(0, 1fr)']}
     rowGap={[3, 4]}
     columnGap={'32px'}
     py={6}
     borderBottom={showBorder ? '1px solid' : 'none'}
     borderColor={'myGray.200'}
   >
-    <Box fontSize={'14px'} w={'160px'} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
+    <Box
+      fontSize={'14px'}
+      w={vertical ? 'auto' : '160px'}
+      fontWeight={'600'}
+      color={'myGray.900'}
+      lineHeight={1.2}
+    >
       {title}
     </Box>
-    <Box>{children}</Box>
+    <Box minW={0}>{children}</Box>
   </Grid>
 );
 
@@ -409,7 +417,7 @@ const ModelConfigForm = ({
       const last = tiers.at(-1);
       if (
         tiers.length === 0 ||
-        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokens !== undefined)
+        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokensK !== undefined)
       )
         tiers.push(emptyPriceTier);
       return {
@@ -493,8 +501,14 @@ const ModelConfigForm = ({
         }
 
         const tiers = getRuntimeResolvedPriceTiers(data);
-        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求首档上限大于零。
-        if (tiers[0]?.maxInputTokens === 0) {
+        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求有限阶梯上限为正整数（K Tokens）。
+        if (
+          tiers.some(
+            (tier) =>
+              tier.maxInputTokensK !== undefined &&
+              (!Number.isInteger(tier.maxInputTokensK) || tier.maxInputTokensK <= 0)
+          )
+        ) {
           return Promise.reject(t('config_model:model.price_tier_range_invalid'));
         }
 
@@ -776,7 +790,7 @@ const ModelConfigForm = ({
       )}
 
       {priceUnit && feConfigs?.isPlus && !isTeamModel && (
-        <Section title={t('config_model:model.price_config_section')}>
+        <Section title={t('config_model:model.price_config_section')} vertical>
           {isLLMModel ? (
             <ModelPriceTiersTable
               control={control}
@@ -787,7 +801,7 @@ const ModelConfigForm = ({
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               {isSTTModel && (
-                <>
+                <GridItem colSpan={sttPriceType === 'tokens' ? [1, 2] : 1}>
                   <Field label={t('config_model:model.stt_billing_type')}>
                     <MySelect
                       value={sttPriceType}
@@ -796,48 +810,62 @@ const ModelConfigForm = ({
                         { label: t('config_model:model.stt_billing_tokens'), value: 'tokens' }
                       ]}
                       onChange={(value) => {
-                        const unitPrice = getValues('pricing.unitPrice');
-                        setValue(
-                          'pricing',
-                          value === 'tokens'
-                            ? { type: 'tokens', unitPrice }
-                            : { type: 'duration', unitPrice },
-                          { shouldDirty: true }
-                        );
+                        setValue('pricing.type', value === 'tokens' ? 'tokens' : 'duration', {
+                          shouldDirty: true
+                        });
                       }}
                     />
                   </Field>
-                </>
+                </GridItem>
               )}
-              <Field label={t('config_model:model.unitPrice')}>
-                <Flex alignItems={'center'} gap={2}>
-                  <Input
-                    type="number"
-                    step={0.01}
-                    {...register('pricing.unitPrice', {
-                      setValueAs: (value) =>
-                        value === '' ? undefined : roundModelPrice(Number(value)),
-                      onBlur: (event) => {
-                        const price =
-                          event.target.value === '' ? undefined : Number(event.target.value);
-                        if (price !== undefined && !Number.isFinite(price)) return;
-                        // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
-                        setValue(
-                          'pricing.unitPrice',
-                          price === undefined ? undefined : roundModelPrice(price),
-                          {
-                            shouldDirty: true
-                          }
-                        );
-                      }
-                    })}
-                    {...InputStyles}
-                  />
-                  <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
-                    {priceUnit}
-                  </Box>
-                </Flex>
-              </Field>
+              {(isSTTModel && sttPriceType === 'tokens'
+                ? [
+                    {
+                      priceKey: 'pricing.inputPrice' as const,
+                      label: t('config_model:model.stt_input_price')
+                    },
+                    {
+                      priceKey: 'pricing.outputPrice' as const,
+                      label: t('config_model:model.stt_output_price')
+                    }
+                  ]
+                : [
+                    {
+                      priceKey: 'pricing.unitPrice' as const,
+                      label: t('config_model:model.unitPrice')
+                    }
+                  ]
+              ).map(({ priceKey, label }) => (
+                <Field key={priceKey} label={label}>
+                  <Flex alignItems={'center'} gap={2}>
+                    <Input
+                      type="number"
+                      step={0.01}
+                      {...register(priceKey, {
+                        setValueAs: (value) =>
+                          value === '' ? undefined : roundModelPrice(Number(value)),
+                        onBlur: (event) => {
+                          const price =
+                            event.target.value === '' ? undefined : Number(event.target.value);
+                          if (price !== undefined && !Number.isFinite(price)) return;
+                          // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
+                          setValue(
+                            priceKey,
+                            price === undefined ? undefined : roundModelPrice(price),
+                            {
+                              shouldDirty: true
+                            }
+                          );
+                        }
+                      })}
+                      {...InputStyles}
+                    />
+                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                      {priceUnit}
+                    </Box>
+                  </Flex>
+                </Field>
+              ))}
             </Grid>
           )}
         </Section>

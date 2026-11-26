@@ -1,3 +1,4 @@
+import { S3_DOWNLOAD_ALIAS_SIGN_VERSION } from './constants';
 import { createDefaultIdGenerator, createS3AccessLinkCrypto } from './crypto';
 import {
   createDownloadUrlsHandler,
@@ -7,6 +8,7 @@ import {
   revokeDownloadAliasHandler,
   verifyDownloadAliasHandler
 } from './download';
+import { resolveS3DownloadExtension } from './extension';
 import {
   createUploadUrlHandler,
   markMultipartAbortedHandler,
@@ -41,7 +43,8 @@ const resolveOptions = (
         options.idGenerator?.multipartCompletionAttemptId ??
         defaultIdGenerator.multipartCompletionAttemptId
     },
-    uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used'
+    uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used',
+    downloadSignVersion: options.downloadSignVersion ?? S3_DOWNLOAD_ALIAS_SIGN_VERSION
   };
 };
 
@@ -59,6 +62,7 @@ export const createS3AccessLinkService = (
   const deps = { ...resolvedOptions, crypto };
 
   return {
+    resolveDownloadExtension: resolveS3DownloadExtension,
     createDownloadUrl: createDownloadUrlHandler(deps),
     createDownloadUrls: createDownloadUrlsHandler(deps),
     verifyDownloadAlias: verifyDownloadAliasHandler(deps),

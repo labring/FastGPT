@@ -2,7 +2,7 @@ import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeApiInputSchema } from '../../../../common/secret/utils';
-import { CreateAppBodySchema } from '../common/api';
+import { CreateAppBodyBaseSchema } from '../common/api';
 import { HttpToolConfigTypeSchema } from '../../../../core/app/tool/httpTool/type';
 import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
 
@@ -10,7 +10,7 @@ import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
  * API: 创建 HTTP 工具集
  * Route: POST /core/app/httpTools/create
  * ============================================================================ */
-export const CreateHttpToolsBodySchema = CreateAppBodySchema.omit({
+export const CreateHttpToolsBodySchema = CreateAppBodyBaseSchema.omit({
   type: true,
   nodes: true,
   edges: true,

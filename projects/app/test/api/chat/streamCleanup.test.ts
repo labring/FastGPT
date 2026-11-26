@@ -63,16 +63,19 @@ vi.mock('@fastgpt/service/core/chat/title', () => ({
     close: vi.fn()
   })
 }));
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/core/workflow/utils/streamResponseContext')
-  >()),
-  createWorkflowStreamResponseContext: vi.fn(async () => ({
-    responseWrite: mocks.responseWrite,
-    writeStreamError: mocks.writeStreamError,
-    flushResume: mocks.flushResume
-  }))
-}));
+vi.mock(
+  '@fastgpt/service/core/workflow/dispatch/context/streamResponse',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@fastgpt/service/core/workflow/dispatch/context/streamResponse')
+    >()),
+    createWorkflowStreamResponseContext: vi.fn(async () => ({
+      responseWrite: mocks.responseWrite,
+      writeStreamError: mocks.writeStreamError,
+      flushResume: mocks.flushResume
+    }))
+  })
+);
 
 import completionsHandler from '@/pages/api/v2/chat/completions';
 import chatTestHandler from '@/pages/api/core/chat/chatTest';

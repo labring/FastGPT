@@ -4,6 +4,7 @@ import { AwsS3StorageAdapter } from '../../src/adapters/aws-s3.adapter';
 import { CosStorageAdapter } from '../../src/adapters/cos.adapter';
 import { MinioStorageAdapter } from '../../src/adapters/minio.adapter';
 import { OssStorageAdapter } from '../../src/adapters/oss.adapter';
+import { R2StorageAdapter } from '../../src/adapters/r2.adapter';
 import { InvalidStorageObjectKeyError } from '../../src/errors';
 import { createVitestStorageMock } from '../../src/helper/mock';
 
@@ -45,6 +46,19 @@ const createMinioStorage = (): GuardedStorage => {
   (storage as any).client.send = remoteCall;
   (storage as any).minioClient.removeObject = remoteCall;
   (storage as any).minioClient.removeObjects = remoteCall;
+  return { storage, remoteCall };
+};
+
+const createR2Storage = (): GuardedStorage => {
+  const storage = new R2StorageAdapter({
+    vendor: 'r2',
+    bucket: 'test-bucket',
+    endpoint: 'https://account.r2.cloudflarestorage.com',
+    region: 'auto',
+    credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
+  });
+  const remoteCall = vi.fn(unexpectedRemoteCall);
+  (storage as any).client.send = remoteCall;
   return { storage, remoteCall };
 };
 
@@ -100,6 +114,7 @@ const createMockStorage = (): GuardedStorage => ({
 
 const storageFactories = [
   ['AWS S3', createAwsStorage],
+  ['R2', createR2Storage],
   ['MinIO', createMinioStorage],
   ['OSS', createOssStorage],
   ['COS', createCosStorage],
@@ -197,6 +212,20 @@ describe('IStorage object key preflight contract', () => {
       await expect(storage.deleteObjectsByMultiKeys({ keys })).rejects.toBeInstanceOf(
         InvalidStorageObjectKeyError
       );
+      expect(remoteCall).not.toHaveBeenCalled();
+    }
+  );
+  it.each(storageFactories)(
+    '%s validates download range before dispatch',
+    async (_storageName, createStorage) => {
+      const { storage, remoteCall } = createStorage();
+
+      await expect(
+        storage.downloadObject({
+          key: 'valid/key',
+          range: { start: 5, end: 3 }
+        })
+      ).rejects.toThrow('Download range end must be a safe integer >= start');
       expect(remoteCall).not.toHaveBeenCalled();
     }
   );

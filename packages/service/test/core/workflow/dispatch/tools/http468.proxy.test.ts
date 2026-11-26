@@ -1,3 +1,8 @@
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
 import https from 'node:https';
@@ -6,7 +11,7 @@ import dns from 'node:dns/promises';
 import { httpProxyTestTlsOptions } from '@test/fixtures/http-proxy/tls';
 import os from 'node:os';
 import { once } from 'node:events';
-import { dispatchHttp468Request } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import { dispatchHttp468Request as dispatchHttp468RequestWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
 import {
   ContentTypes,
   NodeInputKeyEnum,
@@ -21,6 +26,8 @@ import { formatToolInputSecrets } from '@fastgpt/service/core/app/tool/secretCon
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+
+const dispatchHttp468Request = createTestWorkflowDispatch(dispatchHttp468RequestWithoutContext);
 
 const proxyKey = NodeInputKeyEnum.httpProxy;
 const proxyEnvKeys = [
@@ -73,7 +80,7 @@ describe('HTTP node proxy over real sockets', () => {
   const props = (url: string, proxy?: unknown) =>
     ({
       runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
-      variableState: { toRuntimeRecord: () => ({}) },
+
       node: { outputs: [] },
       runtimeNodesMap: new Map(),
       histories: [],
@@ -96,7 +103,7 @@ describe('HTTP node proxy over real sockets', () => {
 
   afterEach(async () => {
     vi.restoreAllMocks();
-    global.systemEnv = {} as any;
+    getTestInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate = false;
     mutableEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
     for (const key of proxyEnvKeys) {
       if (savedEnv[key] === undefined) delete process.env[key];
@@ -149,11 +156,10 @@ describe('HTTP node proxy over real sockets', () => {
     formatToolInputSecrets({ flowNodeType: savedNode.flowNodeType, inputs: savedNode.inputs });
     expect(JSON.stringify(savedNode)).not.toContain('p%40ss');
     const reloaded = JSON.parse(JSON.stringify(savedNode));
-    const requestProps = props(`${target}/test?q=1`);
     const savedParams = getWorkflowNodeRunParams({
       node: reloaded,
       runtimeNodesMap: new Map(),
-      variableState: requestProps.variableState
+      variableState: createTestVariableContext()
     });
     const result = await dispatchHttp468Request(props(`${target}/test?q=1`, savedParams[proxyKey]));
     expect(result.data?.[NodeOutputKeyEnum.httpRawResponse]).toEqual({ ok: true });
@@ -191,12 +197,12 @@ describe('HTTP node proxy over real sockets', () => {
       upstream.on('error', () => client.destroy());
       client.on('error', () => upstream.destroy());
     });
-    global.systemEnv = { workflowHttpNode: { ignoreHttpsCertificate: true } } as any;
+    getTestInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate = true;
     const result = await dispatchHttp468Request(props(`${target}/secure`, { value: proxy }));
     expect(result.data?.[NodeOutputKeyEnum.httpRawResponse]).toEqual({ secure: true });
     expect(tunnels).toEqual([new URL(target).host]);
 
-    global.systemEnv = {} as any;
+    getTestInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate = false;
     const strict = await dispatchHttp468Request(props(`${target}/strict`, { value: proxy }));
     expect(strict.error).toBeDefined();
     expect(strict.data).toBeUndefined();
@@ -352,7 +358,7 @@ describe('HTTP node proxy over real sockets', () => {
         client.on('end', () => client.end());
         client.resume();
       });
-      global.systemEnv = { workflowHttpNode: { ignoreHttpsCertificate: true } } as any;
+      getTestInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate = true;
       const requestProps = props('https://public.example.test/', { value: proxy });
       requestProps.params[NodeInputKeyEnum.httpTimeout] = 0.15;
       const result = await dispatchHttp468Request(requestProps);
@@ -549,6 +555,37 @@ describe('HTTP node proxy over real sockets', () => {
       { url: 'http://public.example.test/start', method: 'POST', body: '{"value":"中文"}' },
       { url: 'http://public.example.test/final', method: 'POST', body: '{"value":"中文"}' }
     ]);
+  });
+
+  it('keeps a custom proxy authorization header out of the HTTPS target tunnel', async () => {
+    let proxyAuth: string | undefined;
+    let targetAuth: string | undefined;
+    const target = await listen((req, res) => {
+      targetAuth = req.headers['proxy-authorization'];
+      res.end('ok');
+    }, true);
+    const proxy = await listen((_req, res) => res.end());
+    servers[servers.length - 1].on('connect', (req, client, head) => {
+      proxyAuth = req.headers['proxy-authorization'];
+      const targetUrl = new URL(`https://${req.url}`);
+      const upstream = net.connect(Number(targetUrl.port), targetUrl.hostname, () => {
+        client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        upstream.write(head);
+        upstream.pipe(client);
+        client.pipe(upstream);
+      });
+      sockets.add(upstream);
+      upstream.on('error', () => client.destroy());
+      client.on('error', () => upstream.destroy());
+    });
+    const requestConfig: SafeAxiosRequestConfig = {
+      headers: { 'Proxy-Authorization': 'Basic custom-proxy-token' },
+      __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
+    };
+    const response = await createProxyAxios().get(target, requestConfig);
+    expect(response.data).toBe('ok');
+    expect(proxyAuth).toBe('Basic custom-proxy-token');
+    expect(targetAuth).toBeUndefined();
   });
 
   it('uses TLS to an HTTPS proxy for an HTTP target', async () => {

@@ -38,12 +38,13 @@ export const parseCompatibleWorkflowDocument = (input: unknown): WorkflowDocumen
 };
 
 export const createWorkflowDocument = (
-  input: Partial<Pick<WorkflowDocument, 'app' | 'nodes' | 'executionEdges' | 'chatConfig'>> = {}
+  input: Partial<Omit<WorkflowDocument, 'schemaVersion'>> = {}
 ): WorkflowDocument =>
   WorkflowDocumentSchema.parse({
     schemaVersion: WORKFLOW_DOCUMENT_SCHEMA_VERSION,
     app: input.app ?? {},
     nodes: input.nodes ?? [],
     executionEdges: input.executionEdges ?? [],
-    chatConfig: input.chatConfig ?? {}
+    chatConfig: input.chatConfig ?? {},
+    ...(input.referenceSnapshots !== undefined && { referenceSnapshots: input.referenceSnapshots })
   });

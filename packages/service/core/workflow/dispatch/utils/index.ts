@@ -1,4 +1,4 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
@@ -40,12 +40,11 @@ import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 import { getHTTPToolList } from '../../../app/http';
-import { getWorkflowResourceContext } from '../../utils/context';
-import { filterWorkflowToolList } from '../../resource/context';
+import { fetchOpenAPISchemaByUrl } from '../../../app/httpTool/schema';
+import { getWorkflowResourceContext } from '../context';
+import { filterWorkflowToolList } from '../context/resource';
 import { loadWorkflowAppResource } from '../../resource/service';
-import { axios } from '../../../../common/api/axios';
 import { getSecretValue } from '../../../../common/secret/utils';
-import { checkUrlSafety } from '../../../../common/system/utils';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -57,10 +56,6 @@ import {
   getInlineToolSetChildNodeId,
   getToolSetChildDescription
 } from '@fastgpt/global/core/app/tool/utils';
-import {
-  bundleOpenAPISchema,
-  parseOpenAPISchemaString
-} from '@fastgpt/global/common/string/swagger';
 
 /**
  * 构造 workflow SSE 写入函数。
@@ -645,26 +640,23 @@ export const rewriteRuntimeWorkFlow = async ({
         } else if (httpToolsetVal) {
           if (!toolSetNode.pluginId) {
             const httpToolSet = HttpToolSetNodeConfigSchema.parse(httpToolsetVal);
-            if (!httpToolSet.apiSchemaUrl) throw new Error('HTTP tool set schema URL is missing');
+            if (!httpToolSet.apiSchemaUrl) {
+              throw new UserConfigError('HTTP tool set schema URL is missing');
+            }
             const nodeIds = new Set(nodes.map((node) => node.nodeId));
 
-            await checkUrlSafety(httpToolSet.apiSchemaUrl, 'OpenAPI Schema URL');
-            const { data: downloadedSchema } = await axios.get<string>(httpToolSet.apiSchemaUrl, {
-              responseType: 'text',
-              maxRedirects: 0,
-              timeout: 30000,
-              transformResponse: (value) => value
-            });
-            const bundledSchema = await bundleOpenAPISchema(
-              parseOpenAPISchemaString(downloadedSchema)
-            );
+            const bundledSchema = await fetchOpenAPISchemaByUrl(httpToolSet.apiSchemaUrl);
             const apiSchemaStr = JSON.stringify(bundledSchema);
             if (!apiSchemaStr) throw new Error('Failed to serialize HTTP tool schema');
 
-            const apiSchema = await str2OpenApiSchema(apiSchemaStr);
+            const apiSchema = await str2OpenApiSchema(apiSchemaStr).catch((error) => {
+              throw new UserConfigError('Schema is not a valid OpenAPI API definition', undefined, {
+                cause: error
+              });
+            });
             const parsedToolList = await pathData2ToolList(apiSchema.pathData);
             if (parsedToolList.length !== apiSchema.pathData.length) {
-              throw new Error('Failed to parse HTTP tool schema');
+              throw new UserConfigError('Failed to parse HTTP tool schema');
             }
             const toolList = mergeToolSetChildDescriptions({
               toolList: parsedToolList,

@@ -12,14 +12,18 @@ import { WorkflowIOValueTypeEnum } from '../constants';
 import { i18nT } from '../../../common/i18n/utils';
 
 /** 画布模板在通用输出数据上附加可用性计算；回调只供客户端使用，不参与持久化。 */
+export type WorkflowLLMModelMap = {
+  byId: Record<string, LLMModelDataType['config']>;
+  byLegacyName: Record<string, LLMModelDataType['config']>;
+};
+
 export const FlowNodeTemplateOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.extend({
   invalidCondition: z
     .function({
       input: z.tuple([
         z.object({
           inputs: z.custom<FlowNodeInputItemType[]>(),
-          llmModelMap:
-            z.custom<Record<string, Pick<LLMModelDataType, 'model' | 'modelId' | 'config'>>>()
+          llmModelMap: z.custom<WorkflowLLMModelMap>()
         })
       ]),
       output: BoolSchema

@@ -4,7 +4,7 @@ import { SendAuthCodeBodySchema } from '@fastgpt/global/openapi/support/user/inf
 
 const common = {
   username: 'user@example.com',
-  captcha: 'A1B2C3',
+  captcha: 'a'.repeat(64),
   lang: 'zh-CN' as const
 };
 
@@ -43,11 +43,11 @@ describe('SendAuthCodeBodySchema', () => {
     expect(
       SendAuthCodeBodySchema.parse({
         ...common,
-        captcha: '  A1B2C3  ',
+        captcha: `  ${'a'.repeat(64)}  `,
         type: VerificationCodeTypeEnum.register,
         purpose: 'register'
       }).captcha
-    ).toBe('A1B2C3');
+    ).toBe('a'.repeat(64));
     expect(() =>
       SendAuthCodeBodySchema.parse({
         ...common,

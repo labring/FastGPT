@@ -17,7 +17,6 @@ const blacklist = [
 function filePathToUrl(filePath, lang) {
   const baseDir = path.join(__dirname, '../content');
   let relativePath = filePath.replace(baseDir, '');
-  const basePath = `/${lang}`;
 
   if (lang !== 'zh-CN' && relativePath.endsWith('.en.mdx')) {
     relativePath = relativePath.replace(/\.en\.mdx$/, '');
@@ -25,7 +24,7 @@ function filePathToUrl(filePath, lang) {
     relativePath = relativePath.replace(/\.mdx$/, '');
   }
 
-  return `${basePath}/${relativePath}`.replace(/\/\/+/g, '/').replace(/\/index$/, '');
+  return `/${relativePath}`.replace(/\/\/+/g, '/').replace(/\/index$/, '');
 }
 
 function isBlacklisted(url) {

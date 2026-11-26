@@ -1,0 +1,22 @@
+---
+title: V4.17.6
+description: FastGPT V4.17.6 release notes covering MCP environment proxy connections and SSRF protection.
+sidebarTag: In dev
+---
+
+## Upgrade guide
+
+### Configuration
+
+When using `HTTP_PROXY` / `HTTPS_PROXY` to access MCP services, the FastGPT container must resolve target hostnames through local DNS. The proxy must support CONNECT tunnels to the target port, including port 80 or a custom port for plain HTTP targets.
+
+Use `NO_PROXY` for trusted hosts that require direct connections. Direct requests still pin DNS addresses and enforce SSRF checks. This update requires no new environment variables or app upgrade scripts.
+
+Update FastGPT, FastGPT Pro, and FastGPT SSO together to detect the SSO provider in WeCom. If an older or custom SSO service cannot report its provider, the previous redirect behavior applies.
+
+## 🐛 Fixes
+
+1. Fixed MCP connections failing when an environment proxy is configured. Proxy tunnels now connect to a validated, pinned IP address to prevent proxy-side DNS resolution from bypassing SSRF protection. Also improved connection timeouts, cancellation, and resource cleanup.
+2. Fixed an issue where clearing inputs after restarting a plugin could leave stale values in some fields or fail to restore their defaults.
+3. Fixed the WeCom client automatically redirecting to a non-WeCom SSO provider. The global `sso.autoLogin` setting now also applies in the WeCom client.
+4. Fixed an issue where syncing selected folders in an API Dataset could incorrectly remove imported folders or files if the provider did not support folder detail lookups.

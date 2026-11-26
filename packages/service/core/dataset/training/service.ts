@@ -5,7 +5,11 @@ import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from './schema';
 import { findAndLockTrainingTask, type FindAndLockTrainingTaskOptions } from './entity';
 import type { ClientSession } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
+import {
+  getModelErrorRetryDelayMs,
+  isNonRetryableModelError
+} from '@fastgpt/global/common/error/model';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -16,8 +20,10 @@ import {
 
 import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './utils';
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
+import { publishTrainingWakeup } from './wakeup';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
+const MAX_TRAINING_RETRY_DELAY_MS = 24 * 60 * 60 * 1000;
 
 /** 失去租约不是业务失败，不扣重试次数，也不允许旧 worker 再写错误或结果。 */
 export class TrainingLeaseLostError extends Error {
@@ -32,7 +38,13 @@ export class TrainingLeaseLostError extends Error {
  */
 export const claimTrainingTask = async <T = Record<string, never>>(
   options: FindAndLockTrainingTaskOptions
-) => {
+): Promise<
+  | {
+      data: Omit<DatasetTrainingSchemaType, keyof T> & T;
+      lease: TrainingTaskLease;
+    }
+  | undefined
+> => {
   const data = await findAndLockTrainingTask<T>(options);
   if (!data) return;
   return {
@@ -49,7 +61,15 @@ type TrainingStageResult = Pick<DatasetTrainingSchemaType, 'mode'> &
 type TrainingLeaseTask = Pick<
   DatasetTrainingSchemaType,
   '_id' | 'mode' | 'lockTime' | 'retryCount' | 'dataId' | 'teamId' | 'datasetId' | 'collectionId'
->;
+> &
+  Partial<Pick<DatasetTrainingSchemaType, 'expireAt'>>;
+
+/** 仅在任务原本启用了有效 Date 类型 TTL 时解析其过期时间，保留 null/缺失的免过期策略。 */
+const parseActiveExpireAt = (expireAt: unknown): Date | undefined => {
+  if (expireAt === null || expireAt === undefined) return undefined;
+  const parsed = expireAt instanceof Date ? expireAt : new Date(String(expireAt));
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
 
 /**
  * 以现有 lockTime + mode 为租约，不增加训练字段。续租失败时保守放弃本地写权限；
@@ -178,18 +198,44 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         lose();
         throw new TrainingLeaseLostError();
       }
+      await publishTrainingWakeup({
+        modes: [next.mode],
+        tx: bridgeClientSessionToDbSession(session)
+      });
     });
   const fail = async (
     error: unknown,
     {
-      terminal = false,
+      terminal,
       blocked = false,
-      retryDelayMs = TRAINING_LEASE_HEARTBEAT_MS
+      retryDelayMs
     }: { terminal?: boolean; blocked?: boolean; retryDelayMs?: number } = {}
   ) => {
     if (lost || error instanceof TrainingLeaseLostError) return;
-    const retryCount = terminal ? 0 : Math.max(0, task.retryCount - 1);
+    // 调用方未显式覆盖 terminal 时，确定的模型配置或向量化错误直接终止重试，避免反复打上游并拖延失败反馈。
+    const isTerminal = terminal ?? isNonRetryableModelError(error);
+    const retryCount = isTerminal ? 0 : Math.max(0, task.retryCount - 1);
     const errorMsg = getErrText(error, 'unknown error');
+    const requestedRetryDelayMs = retryDelayMs ?? TRAINING_LEASE_HEARTBEAT_MS;
+    const upstreamRetryDelayMs = getModelErrorRetryDelayMs(error);
+    // 接续上游超出单次请求预算的 Retry-After 等待时间（不超过 24 小时，且不早于默认/显式延迟），
+    // 避免 429 长限流窗口下每分钟空转耗尽队列重试预算。
+    const effectiveRetryDelayMs =
+      upstreamRetryDelayMs !== undefined
+        ? Math.min(
+            Math.max(requestedRetryDelayMs, upstreamRetryDelayMs),
+            MAX_TRAINING_RETRY_DELAY_MS
+          )
+        : requestedRetryDelayMs;
+    const now = Date.now();
+    const existingExpireAt = parseActiveExpireAt(task.expireAt);
+    const extendedExpireAt =
+      retryCount > 0 &&
+      !blocked &&
+      effectiveRetryDelayMs > TRAINING_LEASE_HEARTBEAT_MS &&
+      existingExpireAt
+        ? new Date(Math.max(existingExpireAt.getTime(), now + effectiveRetryDelayMs))
+        : undefined;
     try {
       await commit(async (session) => {
         const result = await MongoDatasetTraining.updateOne(
@@ -201,9 +247,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
               // 暂停使用统一锁时间；默认一分钟后重试，parse 可显式保留即时重试。
               lockTime: blocked
                 ? BLOCKED_LOCK_TIME
-                : new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS + retryDelayMs),
+                : new Date(now - TRAINING_LEASE_TIMEOUT_MS + effectiveRetryDelayMs),
               // 最终错误保留供用户重试，不能被 TTL 删除后留下无任务的 indexing 数据。
-              ...(retryCount === 0 ? { expireAt: null } : {})
+              // 长退避等待期间仅延后原本启用了 TTL 的日期字段，保留 rebuildSynonym / 恢复任务的 null 或缺失值。
+              ...(retryCount === 0
+                ? { expireAt: null }
+                : extendedExpireAt
+                  ? { expireAt: extendedExpireAt }
+                  : {})
             }
           },
           { session }
@@ -290,19 +341,26 @@ export const skipDatasetTrainingEnhancement = async (
     .select('_id teamId datasetId collectionId dataId')
     .lean()
     .cursor();
+  const wokenModes = new Set<TrainingModeEnum>();
   try {
     for await (const training of cursor) {
       const nextMode = await getDatasetIndexTrainingMode(training);
       const readyUpdate = getTrainingTaskReadyUpdate({
         restoreExpiration: nextMode === TrainingModeEnum.index
       });
-      await MongoDatasetTraining.updateOne(
+      const result = await MongoDatasetTraining.updateOne(
         { _id: training._id, mode },
         { ...readyUpdate, $set: { ...readyUpdate.$set, mode: nextMode } }
       );
+      if (result.modifiedCount > 0) {
+        wokenModes.add(nextMode);
+      }
     }
   } finally {
     await cursor.close();
+  }
+  if (wokenModes.size > 0) {
+    await publishTrainingWakeup({ modes: [...wokenModes] });
   }
 };
 
@@ -361,6 +419,10 @@ export const retryFailedTrainingTasks = async (
         ];
       });
       if (updates.length) await MongoDatasetData.bulkWrite(updates, { session });
+      await publishTrainingWakeup({
+        modes: tasks.map((task) => task.mode),
+        tx: bridgeClientSessionToDbSession(session)
+      });
       return tasks;
     });
     if (!batch.length) break;

@@ -66,7 +66,9 @@ export function usePagination<DataT, ResT = unknown>(
     params,
     type = 'button',
     onChange,
+    onError,
     refreshDeps,
+    forceFirstPage = false,
     scrollLoadType = 'bottom',
     EmptyTip,
     pollingInterval,
@@ -80,7 +82,11 @@ export function usePagination<DataT, ResT = unknown>(
     params?: DataT;
     type?: 'button' | 'scroll';
     onChange?: (pageNum: number) => void;
+    /** 最新请求未能加载列表时调用，包括取消。 */
+    onError?: (error: unknown) => void;
     refreshDeps?: any[];
+    /** 首页刷新尚未完成时，将并发分页请求也发到第一页。 */
+    forceFirstPage?: boolean;
     throttleWait?: number;
     scrollLoadType?: 'top' | 'bottom';
     EmptyTip?: React.JSX.Element;
@@ -149,10 +155,11 @@ export function usePagination<DataT, ResT = unknown>(
 
   const fetchData = useMemoizedFn(
     async (
-      num: number = pageNum,
+      requestedPage: number = pageNum,
       ScrollContainerRef?: RefObject<HTMLDivElement>,
       scrollToTop = false
     ) => {
+      const num = forceFirstPage ? 1 : requestedPage;
       if (noMore && num !== 1) return;
 
       // 取消请求与响应完成可能同时发生，仅允许最新请求回写分页状态。
@@ -216,7 +223,7 @@ export function usePagination<DataT, ResT = unknown>(
           setData(res.list);
         }
 
-        if (type === 'button' && scrollToTop) {
+        if (type === 'button' && (scrollToTop || forceFirstPage)) {
           window.requestAnimationFrame(() => {
             scrollPaginationContentToTop(scrollContainerRef?.current ?? paginationRef.current);
           });
@@ -224,7 +231,9 @@ export function usePagination<DataT, ResT = unknown>(
 
         onChange?.(num);
       } catch (error: any) {
-        if (requestId !== requestIdRef.current || error?.code === 'ERR_CANCELED') return;
+        if (requestId !== requestIdRef.current) return;
+        onError?.(error);
+        if (error?.code === 'ERR_CANCELED') return;
         setError(error);
         toast({
           title: getErrText(error, t('common:core.chat.error.data_error')),

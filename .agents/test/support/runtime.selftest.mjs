@@ -192,9 +192,18 @@ test('真实 HTTP 分块 SSE 保留中文与多行 data，并识别错误和完�
 
 test('证据脱敏遇到循环资源也能完成，不丢失已执行的场景结果', async () => {
   const { sanitize } = await import('./scenario.mjs');
-  const resource = { token: 'private-value' };
+  const resource = {
+    token: 'private-value',
+    accessLink: 'http://localhost/api/system/file/d/temporary-private-ticket',
+    signedUrl: 'https://storage.invalid/object?X-Amz-Credential=example&X-Amz-Signature=secret'
+  };
   resource.self = resource;
-  assert.deepEqual(sanitize(resource), { token: '[REDACTED]', self: '[Circular]' });
+  assert.deepEqual(sanitize(resource), {
+    token: '[REDACTED]',
+    accessLink: 'http://localhost/api/system/file/d/[REDACTED_ACCESS_LINK]',
+    signedUrl: '[REDACTED_SIGNED_URL]',
+    self: '[Circular]'
+  });
 });
 
 test('一个场景失败后先执行该项收尾，再运行下一场景，防止忙任务污染后续', async () => {

@@ -1,5 +1,6 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -7,6 +8,7 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -22,6 +24,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { migrateAppTemplateWorkflowToCurrent } from '@fastgpt/service/core/app/templates/utils';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
@@ -111,6 +114,153 @@ describe('create api', () => {
     expect(res4.data).toBeDefined();
   });
 
+  const workflowStart = {
+    nodeId: 'start',
+    flowNodeType: FlowNodeTypeEnum.workflowStart,
+    name: 'Start',
+    inputs: [],
+    outputs: []
+  };
+
+  it.each([
+    {
+      message: 'Circular workflow parent: loop',
+      nodes: [
+        {
+          nodeId: 'loop',
+          parentNodeId: 'loop',
+          flowNodeType: FlowNodeTypeEnum.loopRun,
+          name: 'Loop',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    },
+    { message: 'Duplicate workflow node id: start', nodes: [workflowStart, workflowStart] },
+    {
+      message: 'Workflow edge references a missing node: start -> removed',
+      nodes: [workflowStart],
+      edges: [
+        {
+          source: 'start',
+          target: 'removed',
+          sourceHandle: 'start-source-right',
+          targetHandle: 'removed-target-left'
+        }
+      ]
+    }
+  ])('rejects unopenable workflows before writing: $message', async ({ message, nodes, edges }) => {
+    const { owner } = await getFakeUsers(0);
+    const name = 'Unopenable workflow';
+    const result = await Call<CreateAppBodyType>(createapi.default, {
+      auth: owner,
+      body: { name, nodes, edges, type: AppTypeEnum.workflow }
+    });
+    expect(result.error).toMatchObject({ name: 'UserConfigError', message });
+    expect(await MongoApp.exists({ name, teamId: owner.teamId })).toBeNull();
+  });
+
+  it('creates an app from a legacy template with dangling edges', async () => {
+    const { owner } = await getFakeUsers(0);
+    const validEdge = {
+      source: 'start',
+      target: 'answer',
+      sourceHandle: 'start-source-right',
+      targetHandle: 'answer-target-left'
+    };
+    const template = migrateAppTemplateWorkflowToCurrent({
+      templateId: 'legacy-workflow',
+      name: 'Legacy workflow',
+      type: AppTypeEnum.workflow,
+      avatar: '',
+      intro: '',
+      tags: [],
+      workflow: {
+        nodes: [
+          workflowStart,
+          { ...workflowStart, nodeId: 'answer', flowNodeType: FlowNodeTypeEnum.answerNode }
+        ],
+        edges: [
+          validEdge,
+          { ...validEdge, target: 'removed', targetHandle: 'removed-target-left' }
+        ],
+        chatConfig: {}
+      }
+    });
+    const result = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
+      auth: owner,
+      body: { ...template.workflow, name: template.name, type: AppTypeEnum.workflow }
+    });
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne({ appId: result.data }).lean();
+    expect(version?.edges).toEqual([validEdge]);
+  });
+
+  it('keeps the snapshot of a removed Loop output despite a stale stored output', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+    await MongoResourcePermission.findOneAndUpdate(
+      {
+        resourceType: 'team',
+        teamId: user.teamId,
+        resourceId: null,
+        tmbId: user.tmbId
+      },
+      {
+        permission: TeamAppCreatePermissionVal
+      },
+      { upsert: true }
+    );
+
+    const referenceSnapshots: NonNullable<AppVersionSchemaType['referenceSnapshots']> = [
+      {
+        reference: ['loop', 'sample'],
+        sourceLabel: 'Removed Loop result'
+      }
+    ];
+    const result = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
+      auth: user,
+      body: {
+        name: 'snapshot workflow',
+        type: AppTypeEnum.workflow,
+        nodes: [
+          {
+            nodeId: 'loop',
+            name: 'Loop',
+            flowNodeType: FlowNodeTypeEnum.loopRun,
+            inputs: [],
+            outputs: [{ id: 'sample', key: 'sample', type: FlowNodeOutputTypeEnum.dynamic }]
+          },
+          {
+            nodeId: 'consumer',
+            name: 'Consumer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.answerText,
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: ['loop', 'sample']
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [],
+        chatConfig: {},
+        referenceSnapshots: [
+          ...referenceSnapshots,
+          { reference: ['unused-node', 'output'], sourceLabel: 'Unused node' }
+        ]
+      }
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne({ appId: result.data }).lean();
+    expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
+  });
+
   it('keeps community template avatar from plugin detail when database has stale avatar', async () => {
     const users = await getFakeUsers(1);
     await MongoResourcePermission.findOneAndUpdate(
@@ -166,12 +316,19 @@ describe('create api', () => {
               key: 'query',
               label: 'Query',
               renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-              selectedTypeIndex: 1
+              selectedTypeIndex: 1,
+              value: ['deleted-node', 'output']
             }
           ],
           outputs: []
         }
-      ] as unknown as AppVersionSchemaType['nodes']
+      ] as unknown as AppVersionSchemaType['nodes'],
+      referenceSnapshots: [
+        {
+          reference: ['deleted-node', 'output'],
+          sourceLabel: 'Deleted node'
+        }
+      ]
     });
 
     const version = await MongoAppVersion.findOne({ appId }).lean();
@@ -183,6 +340,12 @@ describe('create api', () => {
 
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
+    expect(version?.referenceSnapshots).toEqual([
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ]);
     expect(rawApp).not.toHaveProperty('modules');
     expect(rawApp).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('chatConfig');
@@ -420,7 +583,7 @@ describe('generic app creation folder depth', () => {
     async (type) => {
       const { owner } = await getFakeUsers(1);
       const ids: string[] = [];
-      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+      for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth - 1; i++) {
         const folder = await MongoApp.create({
           name: `level-${i}`,
           type,

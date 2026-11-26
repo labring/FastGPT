@@ -66,7 +66,11 @@ describe('PromptEditor 变量标签', () => {
       const textBefore = $createTextNode('a');
       paragraph.append(
         textBefore,
-        $createVariableLabelNode(VARIABLE_LABEL_TOKEN, 'node.key', ''),
+        $createVariableLabelNode({
+          variableKey: VARIABLE_LABEL_TOKEN,
+          variableLabel: 'node.key',
+          nodeAvatar: ''
+        }),
         $createTextNode('b')
       );
       $getRoot().append(paragraph);
@@ -95,7 +99,11 @@ describe('PromptEditor 变量标签', () => {
     await editor.update(() => {
       const nodes = [
         $createVariableNode('{{key}}', 'label'),
-        $createVariableLabelNode(VARIABLE_LABEL_TOKEN, 'node.key', ''),
+        $createVariableLabelNode({
+          variableKey: VARIABLE_LABEL_TOKEN,
+          variableLabel: 'node.key',
+          nodeAvatar: ''
+        }),
         $createSkillNode({
           id: 'skillId',
           name: 'skill',
@@ -125,7 +133,11 @@ describe('PromptEditor 变量标签', () => {
 
     const unregister = mergeRegister(
       ...registerLexicalTextEntity(editor, getMatch, VariableLabelNode, (textNode) =>
-        $createVariableLabelNode(textNode.getTextContent(), 'node.key', '')
+        $createVariableLabelNode({
+          variableKey: textNode.getTextContent(),
+          variableLabel: 'node.key',
+          nodeAvatar: ''
+        })
       )
     );
 

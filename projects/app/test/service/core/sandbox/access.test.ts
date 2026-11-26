@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_SANDBOX_ENABLED_CHAT_METADATA_KEY,
@@ -9,6 +10,10 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ensureWorkflowSandboxReadyForUse } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({
   assertSandboxAvailable: vi.fn(),
@@ -22,9 +27,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/core/sandbox/auth', () => ({
   authSandboxSession: mocks.authSandboxSession
-}));
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', () => ({
-  ensureAppSandboxRuntimeReady: vi.fn(async () => false)
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/availability', () => ({
@@ -68,7 +70,7 @@ const appSession = {
 describe('resolveSandboxSessionAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.resolveAppSandboxAvailability.mockImplementation(async ({ appEnabled }) =>
       appEnabled
         ? { available: true }
@@ -82,20 +84,13 @@ describe('resolveSandboxSessionAvailability', () => {
   });
 
   it('short-circuits before App queries when the system feature is disabled', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
-    mocks.resolveAppSandboxAvailability.mockResolvedValueOnce({
-      available: false,
-      reason: SandboxUnavailableReasonEnum.systemDisabled
-    });
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(resolveSandboxSessionAvailability(appSession)).resolves.toEqual({
       available: false,
       reason: SandboxUnavailableReasonEnum.systemDisabled
     });
-    expect(mocks.resolveAppSandboxAvailability).toHaveBeenCalledWith({
-      appEnabled: true,
-      teamId: 'team_1'
-    });
+    expect(mocks.resolveAppSandboxAvailability).not.toHaveBeenCalled();
     expect(mocks.findAppById).not.toHaveBeenCalled();
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
   });
@@ -241,7 +236,7 @@ describe('authSandboxRuntimeSession', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.authSandboxSession.mockResolvedValue({
       ...appSession,
       chat: {
@@ -285,15 +280,25 @@ describe('authSandboxRuntimeSession', () => {
     await expect(authSandboxRuntimeSession(authParams)).rejects.toThrow('sandbox denied');
 
     let runtimeAccess: ReturnType<typeof authSandboxRuntimeSession> | undefined;
-    await ensureWorkflowSandboxReadyForUse({
-      ...source,
-      prepareRuntime: async () => 'runtime',
-      workflowStreamResponse: (event) => {
-        if (event.event === 'sandboxStatus' && event.data.phase === 'ready') {
-          runtimeAccess = authSandboxRuntimeSession(authParams);
+    await runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === 'sandboxStatus' &&
+            typeof event.data === 'object' &&
+            event.data !== null &&
+            'phase' in event.data &&
+            event.data.phase === 'ready'
+          ) {
+            runtimeAccess = authSandboxRuntimeSession(authParams);
+          }
         }
-      }
-    });
+      },
+      () => ensureWorkflowSandboxReadyForUse({ ...source, prepareRuntime: async () => 'runtime' })
+    );
     expect(runtimeAccess).toBeDefined();
     await expect(runtimeAccess).resolves.toMatchObject({
       chat: {

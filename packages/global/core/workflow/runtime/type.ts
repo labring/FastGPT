@@ -21,6 +21,8 @@ const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_questi
 /* node props */
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
+  /** 容器归属用于在运行态解析祖先容器输入引用和其上游来源。 */
+  parentNodeId?: string;
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
@@ -30,7 +32,8 @@ export type RuntimeNodeItemType = {
   isEntry?: boolean;
   version?: string;
 
-  inputs: FlowNodeInputItemType[];
+  /** 调试请求中 true 为手填字面值，false 为文档引用，省略时兼容旧客户端。 */
+  inputs: (FlowNodeInputItemType & { debugValueOverride?: boolean })[];
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string; // workflow id / plugin id
@@ -87,6 +90,8 @@ export const DispatchNodeResponseSchema = z
     tokens: z.number().optional().meta({ description: '总 token' }),
     inputTokens: z.number().optional().meta({ description: '输入 token' }),
     outputTokens: z.number().optional().meta({ description: '输出 token' }),
+    cacheReadTokens: z.number().optional().meta({ description: '输入中缓存读取 token' }),
+    cacheCreationTokens: z.number().optional().meta({ description: '输入中缓存创建 token' }),
     modelId: z.string().optional().meta({ description: '模型 ID' }),
     model: z.string().optional().meta({ description: '旧模型标识', deprecated: true }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
@@ -189,6 +194,8 @@ export const DispatchNodeResponseSchema = z
     compressTextAgent: z
       .object({
         inputTokens: z.number().meta({ description: '输入 token' }),
+        cacheReadTokens: z.number().optional().meta({ description: '输入中缓存读取 token' }),
+        cacheCreationTokens: z.number().optional().meta({ description: '输入中缓存创建 token' }),
         outputTokens: z.number().meta({ description: '输出 token' }),
         totalPoints: z.number().meta({ description: '总积分' })
       })

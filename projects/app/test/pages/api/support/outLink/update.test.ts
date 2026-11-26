@@ -100,6 +100,20 @@ describe('update outlink anonymous access', () => {
     );
   });
 
+  it('edits WeChat channel preferences without writing the connection object', async () => {
+    mockCrudResult(PublishChannelEnum.wechat);
+    await request({
+      _id: id,
+      name: 'renamed channel',
+      limit: { maxUsagePoints: 30 },
+      app: { token: 'stale-token', status: 'offline' }
+    });
+
+    const update = vi.mocked(MongoOutLink.findByIdAndUpdate).mock.calls[0][1];
+    expect(update).toMatchObject({ name: 'renamed channel', limit: { maxUsagePoints: 30 } });
+    expect(update).not.toHaveProperty('app');
+  });
+
   it('preserves a share link anonymous-access setting when omitted', async () => {
     mockCrudResult(PublishChannelEnum.share);
 

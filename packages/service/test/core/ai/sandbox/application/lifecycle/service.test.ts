@@ -5,8 +5,10 @@ import * as repository from '@fastgpt/service/core/ai/sandbox/infrastructure/ins
 import { checkSandboxQuota } from '@fastgpt/service/core/ai/sandbox/application/quota';
 import { buildVolumeConfig } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
 import {
+  recoverArchivingSandboxWithinLease,
   recoverSandboxActivation,
   recoverSandboxActivationWithinLease,
+  retryStaleArchivingSandboxes,
   retryStaleSandboxActivations
 } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/service';
 import {
@@ -19,18 +21,26 @@ const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   delete: vi.fn(),
   getInfo: vi.fn(),
-  close: vi.fn(),
+  disconnectSandbox: vi.fn(),
+  createOpenSandboxResourceClient: vi.fn(),
   deleteSessionVolume: vi.fn(),
-  withSandboxLifecycleLease: vi.fn(),
+  withSandboxLease: vi.fn(),
+  isAgentSandboxOpenSandboxConfigured: vi.fn(),
   s3: vi.fn(),
-  error: vi.fn(),
-  buildSandboxResourceAdapter: vi.fn()
+  error: vi.fn()
 }));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
-  withSandboxLifecycleLease: mocks.withSandboxLifecycleLease
+  withSandboxLease: mocks.withSandboxLease
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () => ({
-  buildSandboxResourceAdapter: mocks.buildSandboxResourceAdapter
+vi.mock('@fastgpt/service/core/ai/sandbox/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/config')>()),
+  isAgentSandboxOpenSandboxConfigured: mocks.isAgentSandboxOpenSandboxConfigured,
+  getAgentSandboxCommonConfig: () => ({ maxEditDebug: 100, maxPerTeam: 1 })
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/opensandbox', () => ({
+  createOpenSandboxResourceClient: mocks.createOpenSandboxResourceClient,
+  disconnectSandbox: mocks.disconnectSandbox
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => ({
   getVolumeManagerEnvConfig: () => ({ volumeNamePrefix: 'test', enable: true })
@@ -46,32 +56,36 @@ vi.mock(
 );
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({ getS3SandboxSource: mocks.s3 }));
 vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => ({ error: mocks.error }),
+  getLogger: () => ({ error: mocks.error, debug: vi.fn(), info: vi.fn(), warn: vi.fn() }),
   LogCategories: { MODULE: { AI: { SANDBOX: 'sandbox' } } }
-}));
-vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxMax: () => 100,
-  getAgentSandboxMaxPerTeam: () => 1
 }));
 
 const sandboxId = 'activation-recovery-test';
 const teamId = 'activation-recovery-team';
 const storage = buildVolumeConfig('test-target-generation').storage;
+const archive = {
+  objectKey: `sandbox/${sandboxId}/gen1.tar.zst`,
+  generation: 'gen1',
+  format: 'tar.zst' as const,
+  sizeBytes: 128,
+  archivedAt: new Date('2026-10-01T00:00:00Z')
+};
 const now = new Date('2026-10-12T00:00:00Z');
 const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
 let remoteState: 'Running' | 'Stopped' | null;
 
-/** 使用真实 Mongo、CAS、runner 和 quota，只替换远端基础设施。 */
 const createResource = async (
   params: {
-    status?: 'provisioning' | 'restoring';
+    status?: 'provisioning' | 'restoring' | 'archiving';
     phase?: string;
     provider?: SandboxProviderType;
+    instanceId?: string;
     heartbeatAt?: Date;
-    storage?: typeof storage | null;
+    storage?: Record<string, unknown> | null;
   } = {}
 ) => {
   const status = params.status ?? 'restoring';
+  const defaultStorage = status === 'restoring' ? { ...storage, archive } : storage;
   const doc = await MongoSandboxInstance.create({
     sandboxId,
     teamId,
@@ -79,14 +93,15 @@ const createResource = async (
     sourceId: 'recovery-app',
     userId: 'user',
     provider: params.provider ?? 'opensandbox',
+    ...(params.instanceId !== undefined ? { instanceId: params.instanceId } : {}),
     status,
-    storage: params.storage === null ? undefined : (params.storage ?? storage),
+    storage: params.storage === null ? undefined : (params.storage ?? defaultStorage),
     lastActiveAt: new Date(0),
     image: { repository: 'preserved-image', tag: 'v1' },
     versionId: 'preserved-version',
     operation: {
       id: 'original-operation',
-      type: status === 'restoring' ? 'restore' : 'provision',
+      type: status === 'restoring' ? 'restore' : status === 'archiving' ? 'archive' : 'provision',
       phase: params.phase ?? 'claimed',
       previousStatus: status === 'restoring' ? 'archived' : 'stopped',
       startedAt: new Date(0),
@@ -96,6 +111,7 @@ const createResource = async (
   });
   return doc.toObject();
 };
+
 const makeResourceDoc = (params: {
   status?: 'provisioning' | 'restoring';
   phase?: string;
@@ -110,7 +126,7 @@ const makeResourceDoc = (params: {
     userId: 'user',
     provider: 'opensandbox',
     status: params.status ?? 'restoring',
-    storage,
+    storage: { ...storage, archive },
     lastActiveAt: new Date(0),
     image: { repository: 'preserved-image', tag: 'v1' },
     versionId: 'preserved-version',
@@ -124,24 +140,28 @@ const makeResourceDoc = (params: {
       retryAfter: params.retryAfter
     }
   }) as repository.SandboxResourceDoc;
+
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
 
 beforeAll(async () => {
   await MongoSandboxInstance.init();
 });
+
 beforeEach(async () => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   await MongoSandboxInstance.deleteMany({ teamId });
   lease.assertValid.mockReset();
   remoteState = 'Running';
-  mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }) => fn(lease));
-  mocks.buildSandboxResourceAdapter.mockReturnValue({
+  mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(true);
+  mocks.withSandboxLease.mockImplementation(async ({ fn }) => fn(lease));
+  mocks.createOpenSandboxResourceClient.mockImplementation(() => ({
+    id: 'remote-instance-1',
     stop: mocks.stop,
     delete: mocks.delete,
     getInfo: mocks.getInfo,
-    close: mocks.close
-  });
+    close: vi.fn(async () => undefined)
+  }));
   mocks.stop.mockImplementation(async () => {
     remoteState = null;
   });
@@ -149,33 +169,40 @@ beforeEach(async () => {
     remoteState = null;
   });
   mocks.getInfo.mockImplementation(async () =>
-    remoteState ? { status: { state: remoteState } } : null
+    remoteState ? { id: 'remote-instance-1', status: { state: remoteState } } : null
   );
-  mocks.close.mockResolvedValue(undefined);
+  mocks.disconnectSandbox.mockResolvedValue(undefined);
   mocks.deleteSessionVolume.mockResolvedValue(undefined);
 });
 
 describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
   it.each([
-    ['provisioning', 5],
-    ['restoring', 20]
-  ] as const)('requires the full %s isolation window even after an error', (status, minutes) => {
-    const resource = makeResourceDoc({
-      status,
-      heartbeatAt: new Date(now.getTime() - minutes * 60 * 1000 + 1)
-    });
-    expect(isSandboxActivationRecoverable(resource, now)).toBe(false);
-    expect(isSandboxActivationRecoverable(resource, new Date(now.getTime() + 1))).toBe(true);
-  });
-  it('keeps recent errors isolated without acquiring lease', async () => {
+    { status: 'provisioning' as const, phase: 'claimed', expectedMs: 240_000 },
+    { status: 'restoring' as const, phase: 'volumeAssigned', expectedMs: 240_000 },
+    { status: 'provisioning' as const, phase: 'providerEnsured', expectedMs: 60_000 },
+    { status: 'restoring' as const, phase: 'claimed', expectedMs: 60_000 }
+  ])(
+    'requires $expectedMs stale timeout for orphaned $status ($phase) operations without retryAfter',
+    ({ status, phase, expectedMs }) => {
+      const resource = makeResourceDoc({
+        status,
+        phase,
+        heartbeatAt: new Date(now.getTime() - expectedMs + 1)
+      });
+      expect(isSandboxActivationRecoverable(resource, now)).toBe(false);
+      expect(isSandboxActivationRecoverable(resource, new Date(now.getTime() + 1))).toBe(true);
+    }
+  );
+
+  it('keeps recent orphaned operations untouched without acquiring lease', async () => {
     const resource = await createResource({ status: 'provisioning', heartbeatAt: now });
     expect(isSandboxActivationRecoverable(resource, now)).toBe(false);
     expect(isSandboxActivationRollback(resource)).toBe(false);
     await recoverSandboxActivation({ sandboxId, now });
-    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
-    expect(mocks.stop).not.toHaveBeenCalled();
+    expect(mocks.withSandboxLease).not.toHaveBeenCalled();
     expect(mocks.delete).not.toHaveBeenCalled();
   });
+
   it('allows rollback continuation without reopening the forward isolation window', () => {
     const resource = makeResourceDoc({ phase: 'rollbackClaimed', heartbeatAt: now });
     expect(isSandboxActivationRecoverable(resource, now)).toBe(true);
@@ -184,38 +211,25 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
 });
 
 describe('recoverSandboxActivationWithinLease', () => {
-  it('preserves successful recovery when local adapter cleanup fails', async () => {
-    const resource = await createResource();
-    mocks.close.mockRejectedValueOnce(new Error('connection close failed'));
-    await expect(
-      recoverSandboxActivationWithinLease({ resource, lease, now })
-    ).resolves.toMatchObject({ status: 'archived' });
-  });
-  it.each(['opensandbox', 'sealosdevbox'] as const)(
-    'stops failed %s provisioning and preserves workspace and metadata',
-    async (provider) => {
-      const resource = await createResource({ status: 'provisioning', provider });
-      if (provider === 'sealosdevbox')
-        mocks.stop.mockImplementation(async () => {
-          remoteState = 'Stopped';
-        });
-      const result = await recoverSandboxActivationWithinLease({ resource, lease, now });
-      expect(result).toMatchObject({
-        status: 'stopped',
-        teamId,
-        storage,
-        versionId: 'preserved-version',
-        image: resource.image
-      });
-      expect(result.operation).toBeUndefined();
-      expect(mocks.stop).toHaveBeenCalledOnce();
-      expect(mocks.delete).not.toHaveBeenCalled();
-      expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
-      expect(mocks.s3).not.toHaveBeenCalled();
-    }
-  );
+  it('deletes failed opensandbox provisioning container while preserving PVC and metadata', async () => {
+    const resource = await createResource({ status: 'provisioning', provider: 'opensandbox' });
+    const result = await recoverSandboxActivationWithinLease({ resource, lease, now });
 
-  it('rolls back restore before migration with durable intent and exact volume', async () => {
+    expect(result).toMatchObject({
+      status: 'stopped',
+      teamId,
+      storage,
+      versionId: 'preserved-version',
+      image: resource.image
+    });
+    expect(result.operation).toBeUndefined();
+    expect(result.instanceId).toBeUndefined();
+    expect(mocks.delete).toHaveBeenCalledOnce();
+    expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
+    expect(mocks.s3).not.toHaveBeenCalled();
+  });
+
+  it('rolls back restore with durable intent, deletes temp container/PVC, and keeps S3 archive', async () => {
     const resource = await createResource({ phase: 'claimed' });
     mocks.delete.mockImplementation(async () => {
       expect((await read())?.operation?.phase).toBe('rollbackClaimed');
@@ -225,18 +239,22 @@ describe('recoverSandboxActivationWithinLease', () => {
       expect(claimName).toBe('test-target-generation');
       expect((await read())?.operation?.phase).toBe('rollbackProviderReleased');
     });
+
     const result = await recoverSandboxActivationWithinLease({
       resource,
       lease,
-      now,
-      rollbackRestore: true
+      now
     });
-    expect(result).toMatchObject({ status: 'archived', storage, teamId });
+
+    expect(result).toMatchObject({ status: 'archived', teamId });
+    expect(result.storage?.archive).toEqual(archive);
+    expect(result.storage?.volumes).toBeUndefined();
+    expect(result.storage?.mountPath).toBeUndefined();
     expect(mocks.s3).not.toHaveBeenCalled();
   });
 
   it.each(['providerEnsured', 'archiveInstalled'])(
-    'rolls back a completed %s phase whose provider is gone',
+    'rolls back a completed %s phase whose container is gone',
     async (phase) => {
       const resource = await createResource({
         phase,
@@ -249,7 +267,22 @@ describe('recoverSandboxActivationWithinLease', () => {
     }
   );
 
-  it('keeps quota occupied on an uncertain provider probe', async () => {
+  it('fast-commits running when providerEnsured/archiveInstalled container is already Running', async () => {
+    const resource = await createResource({
+      phase: 'providerEnsured',
+      status: 'provisioning',
+      instanceId: 'remote-instance-1'
+    });
+    remoteState = 'Running';
+
+    const result = await recoverSandboxActivationWithinLease({ resource, lease, now });
+
+    expect(result.status).toBe('running');
+    expect(result.instanceId).toBe('remote-instance-1');
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps quota occupied on an uncertain container probe', async () => {
     const resource = await createResource({ phase: 'archiveInstalled' });
     mocks.getInfo.mockRejectedValueOnce(new Error('probe timed out'));
     await expect(recoverSandboxActivationWithinLease({ resource, lease, now })).rejects.toThrow(
@@ -258,26 +291,15 @@ describe('recoverSandboxActivationWithinLease', () => {
     expect((await read())?.operation?.id).toBe('original-operation');
     expect(await repository.countActiveSandboxInstances({ teamId })).toBe(1);
     expect(mocks.delete).not.toHaveBeenCalled();
-    expect(mocks.close).toHaveBeenCalledOnce();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledOnce();
   });
 
-  it('persists the legacy cleanup target before the first destructive call', async () => {
-    const resource = await createResource({ storage: null });
-    mocks.delete.mockImplementation(async () => {
-      expect((await read())?.storage).toEqual(buildVolumeConfig(`test-${sandboxId}`).storage);
-      remoteState = null;
-    });
-    await recoverSandboxActivationWithinLease({ resource, lease, now });
-    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith(`test-${sandboxId}`);
-  });
-
-  it('does not guess a missing restore generation', async () => {
-    const resource = await createResource({ phase: 'volumeAssigned', storage: null });
-    await expect(recoverSandboxActivationWithinLease({ resource, lease, now })).rejects.toThrow(
-      'no persisted workspace claimName'
-    );
+  it('skips volume deletion when restore rolls back before volumeAssigned (no storage volumes)', async () => {
+    const resource = await createResource({ phase: 'claimed', storage: { archive } });
+    const result = await recoverSandboxActivationWithinLease({ resource, lease, now });
+    expect(result.status).toBe('archived');
+    expect(result.storage?.archive).toEqual(archive);
     expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
-    expect((await read())?.status).toBe('restoring');
   });
 
   it('resumes after an operation failure and only releases quota after terminal commit', async () => {
@@ -318,7 +340,7 @@ describe('recoverSandboxActivationWithinLease', () => {
     expect(mocks.s3).not.toHaveBeenCalled();
   });
 
-  it('retains active quota when another physical provider resource remains', async () => {
+  it('retains active quota when remote container remains', async () => {
     const resource = await createResource();
     mocks.delete.mockResolvedValue(undefined);
     await expect(recoverSandboxActivationWithinLease({ resource, lease, now })).rejects.toThrow(
@@ -342,19 +364,38 @@ describe('recoverSandboxActivationWithinLease', () => {
     ).rejects.toThrow('Unsupported');
     expect(mocks.delete).not.toHaveBeenCalled();
   });
+
+  it('rolls back stale archiving at claimed phase back to stopped while keeping PVC', async () => {
+    const resource = await createResource({
+      status: 'archiving',
+      phase: 'claimed',
+      storage
+    });
+    const result = await recoverArchivingSandboxWithinLease({ resource, lease, now });
+    expect(result.status).toBe('stopped');
+    expect(result.storage).toEqual(storage);
+    expect(mocks.delete).toHaveBeenCalledOnce();
+    expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
+  });
+
+  it('continues already-committed rollbackClaimed archiving immediately even before 20m isolation expires', async () => {
+    const resource = await createResource({
+      status: 'archiving',
+      phase: 'rollbackClaimed',
+      storage,
+      heartbeatAt: now
+    });
+    const result = await recoverArchivingSandboxWithinLease({ resource, lease, now });
+    expect(result.status).toBe('stopped');
+    expect(result.storage).toEqual(storage);
+    expect(mocks.delete).toHaveBeenCalledOnce();
+  });
 });
 
 describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
-  it('rolls back an installed old-provider restore before switching to the configured provider', async () => {
-    await createResource({ phase: 'archiveInstalled' });
-    await recoverSandboxActivation({ sandboxId, now, targetProvider: 'sealosdevbox' });
-    expect((await read())?.status).toBe('archived');
-    expect(mocks.delete).toHaveBeenCalledOnce();
-    expect(mocks.s3).not.toHaveBeenCalled();
-  });
   it('rereads after acquiring the lease and leaves a concurrent stable transition untouched', async () => {
     await createResource();
-    mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }) => {
+    mocks.withSandboxLease.mockImplementation(async ({ fn }) => {
       await MongoSandboxInstance.updateOne(
         { sandboxId },
         { $set: { status: 'running' }, $unset: { operation: '' } }
@@ -365,9 +406,10 @@ describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
     expect(mocks.delete).not.toHaveBeenCalled();
     expect((await read())?.status).toBe('running');
   });
+
   it('accepts disappearance while waiting for the lease', async () => {
     await createResource();
-    mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }) => {
+    mocks.withSandboxLease.mockImplementation(async ({ fn }) => {
       await MongoSandboxInstance.deleteMany({ sandboxId });
       return fn(lease);
     });
@@ -376,7 +418,7 @@ describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
 
   it('does not take over a new forward operation that replaced the stale scan candidate', async () => {
     await createResource();
-    mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }) => {
+    mocks.withSandboxLease.mockImplementation(async ({ fn }) => {
       await MongoSandboxInstance.updateOne(
         { sandboxId },
         { $set: { 'operation.id': 'new-operation', 'operation.heartbeatAt': now } }
@@ -387,6 +429,7 @@ describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
     expect(mocks.delete).not.toHaveBeenCalled();
     expect((await read())?.operation?.id).toBe('new-operation');
   });
+
   it('recovers stale provisioning via the cron and logs an isolated restore failure', async () => {
     await createResource({ status: 'provisioning' });
     await retryStaleSandboxActivations(now);
@@ -415,7 +458,7 @@ describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
       sourceId: 'other-recovery-app',
       userId: 'user',
       status: 'restoring',
-      storage,
+      storage: { ...storage, archive },
       operation: {
         id: 'second-operation',
         type: 'restore',
@@ -424,10 +467,139 @@ describe('recoverSandboxActivation / retryStaleSandboxActivations', () => {
         heartbeatAt: new Date(0)
       }
     });
-    mocks.stop.mockRejectedValueOnce(new Error('first provider unavailable'));
+    let secondRemoteState: 'Running' | null = 'Running';
+    mocks.createOpenSandboxResourceClient.mockImplementation(
+      ({ sandboxId: clientSandboxId }: { sandboxId: string }) => {
+        if (clientSandboxId === sandboxId) {
+          return {
+            id: 'remote-instance-1',
+            stop: mocks.stop,
+            delete: vi.fn(async () => {
+              throw new Error('first provider unavailable');
+            }),
+            getInfo: mocks.getInfo,
+            close: vi.fn(async () => undefined)
+          };
+        }
+        return {
+          id: `remote-${clientSandboxId}`,
+          stop: mocks.stop,
+          delete: vi.fn(async () => {
+            secondRemoteState = null;
+          }),
+          getInfo: vi.fn(async () =>
+            secondRemoteState
+              ? { id: `remote-${clientSandboxId}`, status: { state: secondRemoteState } }
+              : null
+          ),
+          close: vi.fn(async () => undefined)
+        };
+      }
+    );
     await retryStaleSandboxActivations(now);
     expect((await read())?.status).toBe('provisioning');
     expect((await MongoSandboxInstance.findById(second._id).lean())?.status).toBe('archived');
     expect(mocks.error).toHaveBeenCalledOnce();
+  });
+
+  it('prevents premature takeover while an in-flight 210s create request may still run, then cleans the late-appearing container after 240s', async () => {
+    const resource = await createResource({ status: 'provisioning', heartbeatAt: now });
+    // t = 0..180s：旧进程崩溃前发出的 POST /sandboxes 仍在 210s 创建超时窗口内飞行，远端尚不可见。
+    remoteState = null;
+
+    const at180s = new Date(now.getTime() + 180_000);
+    await retryStaleSandboxActivations(at180s);
+    const untouched = await recoverSandboxActivationWithinLease({
+      resource,
+      lease,
+      now: at180s
+    });
+    expect(untouched.status).toBe('provisioning');
+    expect(mocks.delete).not.toHaveBeenCalled();
+
+    // t = 190s（240s 窗口内）：在途 POST /sandboxes 迟到返回 202 落库变为可见，240s 窗口结束前仍不抢跑。
+    remoteState = 'Running';
+    await retryStaleSandboxActivations(new Date(now.getTime() + 190_000));
+    expect(mocks.delete).not.toHaveBeenCalled();
+    expect((await read())?.status).toBe('provisioning');
+
+    // t = 240s + 1ms：覆盖 210s create 超时 + 30s 余量后接管，彻底清理迟到容器并收敛至 stopped。
+    await retryStaleSandboxActivations(new Date(now.getTime() + 240_000 + 1));
+    expect(mocks.delete).toHaveBeenCalledOnce();
+    expect(remoteState).toBeNull();
+    expect((await read())?.status).toBe('stopped');
+    expect((await read())?.operation).toBeUndefined();
+  });
+
+  it('converges invisible crashed create after 240s to stopped', async () => {
+    await createResource({ status: 'provisioning', heartbeatAt: now });
+    remoteState = null;
+
+    // t = 240s + 1ms：旧线程尚未完成，远端仍不可见；接管完成清理并收敛至 stopped。
+    await retryStaleSandboxActivations(new Date(now.getTime() + 240_000 + 1));
+    expect((await read())?.status).toBe('stopped');
+    expect((await read())?.operation).toBeUndefined();
+  });
+
+  it('rolls back instead of committing running when instanceId mismatches the remote container id', async () => {
+    await MongoSandboxInstance.deleteMany({ teamId });
+    await MongoSandboxInstance.create({
+      sandboxId,
+      teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'recovery-app',
+      userId: 'user',
+      provider: 'opensandbox',
+      instanceId: 'expected-instance-1',
+      status: 'provisioning',
+      storage,
+      lastActiveAt: new Date(0),
+      operation: {
+        id: 'op-current',
+        type: 'provision',
+        phase: 'providerEnsured',
+        previousStatus: 'stopped',
+        startedAt: new Date(0),
+        heartbeatAt: new Date(0)
+      }
+    });
+    const doc = (await read())!;
+    remoteState = 'Running';
+    mocks.getInfo.mockImplementation(async () =>
+      remoteState
+        ? {
+            id: 'different-instance-2',
+            status: { state: remoteState },
+            metadata: { app: 'fastgpt', sessionId: sandboxId, operationId: 'op-current' }
+          }
+        : null
+    );
+
+    const recovered = await recoverSandboxActivationWithinLease({
+      resource: doc,
+      lease,
+      now
+    });
+
+    expect(recovered.status).toBe('stopped');
+    expect(recovered.instanceId).toBeUndefined();
+    expect(mocks.delete).toHaveBeenCalledOnce();
+  });
+
+  it('replays container deletion when archiving recovery at rollbackProviderReleased sees a late-appearing container', async () => {
+    await createResource({
+      status: 'archiving',
+      phase: 'rollbackProviderReleased',
+      storage,
+      heartbeatAt: new Date(Date.now() - 10 * 60 * 1000)
+    });
+    remoteState = 'Running';
+
+    await retryStaleArchivingSandboxes();
+
+    const recovered = await read();
+    expect(mocks.delete).toHaveBeenCalledOnce();
+    expect(recovered?.status).toBe('stopped');
+    expect(recovered?.operation).toBeUndefined();
   });
 });

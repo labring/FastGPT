@@ -4,6 +4,62 @@ import { FastGPTFeConfigsSchema } from '../../../common/system/types';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
 /* ============================================================================
+ * API: Pro 服务健康检查
+ * Route: POST /api/health (Pro), /proApi/health (App 代理)
+ * Method: POST
+ * Description: 检查服务是否可访问；服务间认证成功时返回 Pro 环境决定的前端能力
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+// 能力字段只接受真正的布尔值；错误或旧版本响应不能作为开启能力的依据。
+export const ProFrontendCapabilitiesSchema = FastGPTFeConfigsSchema.pick({
+  show_workorder: true,
+  show_enterprise_auth: true,
+  showWecomConfig: true
+})
+  .required()
+  .strict();
+export type ProFrontendCapabilities = z.infer<typeof ProFrontendCapabilitiesSchema>;
+
+export const ProHealthResponseSchema = z.object({
+  data: z.literal('success').meta({ description: '健康检查成功', example: 'success' }),
+  auth: z.literal(true).optional().meta({ description: '服务间认证成功时为 true', example: true }),
+  frontendCapabilities: ProFrontendCapabilitiesSchema.optional().meta({
+    description: '仅服务间认证成功时返回的 Pro 前端能力'
+  })
+});
+export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
+
+/* ============================================================================
+ * API: 获取 Pro SSO 接入状态
+ * Route: GET /api/common/system/sso/config (Pro 内部接口)
+ * Method: GET
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；仅在显式请求 includeProvider=true 时探测 provider 类型
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+export const ProSsoConfigQuerySchema = z.object({
+  includeProvider: BoolSchema.optional().meta({
+    description:
+      '是否探测并返回 SSO provider 类型（isWecom）；未传或为 false 时仅返回 enabled，兼容旧版主服务 .strict() 校验并避免密码策略路径触发外部探测',
+    example: true
+  })
+});
+export type ProSsoConfigQuery = z.infer<typeof ProSsoConfigQuerySchema>;
+
+export const ProSsoConfigResponseSchema = z
+  .object({
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
+    isWecom: z.boolean().optional().meta({
+      description:
+        'SSO 服务是否使用企业微信 provider；仅在 includeProvider=true 且探测成功时返回，未返回表示未探测或无法确认',
+      example: false
+    })
+  })
+  .strict();
+export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;
+
+/* ============================================================================
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET
@@ -33,10 +89,16 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
       example: false
     }),
     // SSO 根地址只在服务端访问；客户端通过能力标志展示入口，点击后按需获取授权地址。
+    // isWecom 为纯运行时客户端投影（不属于可存储配置），undefined 表示未探测或无法确认 provider 类型。
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
+        isWecom: BoolSchema.optional().meta({
+          description:
+            '当前 SSO 是否为企业微信 provider；undefined 表示未探测或旧版/自建 SSO 无法确认',
+          example: false
+        })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -53,7 +115,8 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v9_ 前缀，包含匿名过滤规则版本'
+    description:
+      '当前系统配置缓存标识；未登录时以 unAuth_v12_sso_ 开头，包含 SSO 能力及企业微信类型状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

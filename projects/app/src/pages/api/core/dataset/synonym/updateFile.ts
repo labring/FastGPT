@@ -34,9 +34,10 @@ async function handler(req: ApiRequestProps): Promise<DatasetSynonymMutationResp
       bodySchema: UpdateDatasetSynonymFileBodySchema
     }).body;
     const fileName = path.basename(decodeMultipartFilename(result.fileMetadata.originalname));
+    const extension = path.extname(fileName).toLowerCase();
     const mappings = parseSynonymFile({
       buffer: result.getBuffer(),
-      extension: path.extname(fileName)
+      extension
     });
     return DatasetSynonymMutationResponseSchema.parse(
       await createDatasetSynonymMutation({

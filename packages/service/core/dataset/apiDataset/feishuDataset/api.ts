@@ -13,8 +13,9 @@ import {
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axiosWithoutSSRF } from '../../../../common/api/axios';
+import { getFeishuBaseUrl } from '../../../../common/feishu/endpoint';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { serviceEnv } from '../../../../env';
+import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 
 type ResponseDataType = {
   code: number;
@@ -40,7 +41,7 @@ type FeishuFileListResponse = {
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServerType }) => {
-  const feishuBaseUrl = serviceEnv.FEISHU_BASE_URL;
+  const feishuBaseUrl = getFeishuBaseUrl();
   // FEISHU_BASE_URL / 飞书文档接口由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
     {
@@ -106,7 +107,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return data.data;
   };
   const responseError = (err: any) => {
-    logger.error('Feishu dataset request failed', { error: err });
+    logger.error('Feishu dataset request failed', getSafeHttpErrorLog(err));
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });

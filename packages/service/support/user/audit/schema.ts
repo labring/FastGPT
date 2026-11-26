@@ -1,10 +1,13 @@
 import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import {
   AuditResourcesSchema,
+  AuditResourceTypeEnum,
+  isCollectionAuditResource,
   type AuditResourceType,
   type TeamAuditSchemaType
 } from '@fastgpt/global/support/user/audit/type';
 import type { Types } from 'mongoose';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   AdminAuditEventEnum,
   TeamAuditEventList
@@ -42,25 +45,43 @@ const TeamAuditSchema = new Schema({
     enum: [...TeamAuditEventList, ...Object.values(AdminAuditEventEnum)],
     required: true
   },
-  // 日志库只保存业务资源 ID 快照，不依赖资源继续存在，也不自动 populate 业务库。
+  // 保存受操作实体类型、ID、名称/头像快照及父级上下文；资源删除后仍可展示且导出无需回查业务库。
   resources: {
     type: [
       new Schema(
         {
-          appId: Schema.Types.ObjectId,
+          type: {
+            type: String,
+            enum: Object.values(AuditResourceTypeEnum),
+            required: true
+          },
+          id: String,
+          name: String,
+          avatar: String,
           datasetId: Schema.Types.ObjectId,
-          skillId: Schema.Types.ObjectId,
-          collectionId: Schema.Types.ObjectId
+          parentId: Schema.Types.ObjectId,
+          collectionType: { type: String, enum: Object.values(DatasetCollectionTypeEnum) },
+          deleted: Boolean
         },
         { _id: false, strict: 'throw' }
       )
     ],
     default: undefined,
     validate: {
-      // Mongoose 子文档含内部属性，转为普通对象后再使用共享 union 校验资源互斥性。
+      // Mongoose 子文档含内部属性且 datasetId/parentId 为 ObjectId，转为普通对象后统一复用共享 schema 校验。
       validator: (resources: Types.DocumentArray<AuditResourceType>) =>
-        AuditResourcesSchema.safeParse(resources.toObject()).success,
-      message: 'Each audit resource must contain exactly one valid resource ID'
+        AuditResourcesSchema.safeParse(
+          resources.toObject().map((item: AuditResourceType) => ({
+            ...item,
+            ...(isCollectionAuditResource(item) && item.datasetId
+              ? { datasetId: String(item.datasetId) }
+              : {}),
+            ...(isCollectionAuditResource(item) && item.parentId
+              ? { parentId: String(item.parentId) }
+              : {})
+          }))
+        ).success,
+      message: 'Each audit resource must contain a valid type and an id or name'
     }
   },
   metadata: {
@@ -69,7 +90,10 @@ const TeamAuditSchema = new Schema({
   }
 });
 
+defineIndex(TeamAuditSchema, { key: { teamId: 1, timestamp: -1, _id: -1 } });
 defineIndex(TeamAuditSchema, { key: { teamId: 1, tmbId: 1, event: 1 } });
+defineIndex(TeamAuditSchema, { key: { event: 1, _id: -1 } });
+// 过期审计日志归档任务需按全局 timestamp 范围预筛候选 teamId，不能仅靠 teamId 前缀索引覆盖。
 defineIndex(TeamAuditSchema, { key: { timestamp: 1, teamId: 1 } });
 
 export const MongoTeamAudit = getMongoLogModel<TeamAuditSchemaType>(

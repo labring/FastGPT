@@ -4,6 +4,7 @@ import handler from '@/pages/api/system/img/[...id]';
 const mocks = vi.hoisted(() => ({
   createPublicUrl: vi.fn(),
   resolveExistingObjectKey: vi.fn(),
+  getFileMetadata: vi.fn(),
   handleS3ProxyDownload: vi.fn(),
   handleS3ProxyRouteError: vi.fn(),
   storageDownloadUrlMode: 'short-proxy',
@@ -14,14 +15,13 @@ vi.mock('@fastgpt/service/common/s3/sources/avatar', () => ({
   getS3AvatarSource: vi.fn(() => ({
     bucketName: 'fastgpt-public',
     createPublicUrl: mocks.createPublicUrl,
+    getFileMetadata: mocks.getFileMetadata,
     resolveExistingObjectKey: mocks.resolveExistingObjectKey
   }))
 }));
 
 vi.mock('@fastgpt/service/common/s3/config/constants', () => ({
-  get storageDownloadUrlMode() {
-    return mocks.storageDownloadUrlMode;
-  }
+  getStorageDownloadUrlMode: () => mocks.storageDownloadUrlMode
 }));
 
 vi.mock('@/service/common/s3/proxy', () => ({
@@ -51,6 +51,7 @@ describe('system image download', () => {
     mocks.storageDownloadUrlMode = 'short-proxy';
     mocks.resolveExistingObjectKey.mockResolvedValue(key);
     mocks.createPublicUrl.mockReturnValue(encodedPublicUrl);
+    mocks.getFileMetadata.mockResolvedValue({ contentType: 'image/png', filename: 'avatar.png' });
   });
 
   it('proxies the canonical object key without requiring an external endpoint', async () => {
@@ -111,5 +112,17 @@ describe('system image download', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.end).toHaveBeenCalledOnce();
     expect(res.redirect).not.toHaveBeenCalled();
+  });
+
+  it('proxies active content found in legacy image metadata in redirect mode', async () => {
+    mocks.storageDownloadUrlMode = 'short-redirect';
+    mocks.getFileMetadata.mockResolvedValue({
+      contentType: 'image/svg+xml',
+      filename: 'avatar.png'
+    });
+    const res = { redirect: vi.fn() } as any;
+    await handler({ query: { id: key.split('/') } } as any, res);
+    expect(res.redirect).not.toHaveBeenCalled();
+    expect(mocks.handleS3ProxyDownload).toHaveBeenCalledOnce();
   });
 });

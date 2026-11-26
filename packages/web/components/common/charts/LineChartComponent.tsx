@@ -21,6 +21,9 @@ type LineConfig = {
   name: string;
   color: string;
   gradient?: boolean;
+  type?: 'linear' | 'monotone';
+  strokeDasharray?: string;
+  strokeWidth?: number;
 };
 
 type TooltipItem = {
@@ -42,6 +45,8 @@ type LineChartComponentProps = {
   averageKey?: string;
   blur?: boolean;
   allowDecimals?: boolean;
+  yAxisFormatter?: (value: number) => string;
+  yAxisWidth?: number;
 };
 
 const CustomTooltip = ({
@@ -93,7 +98,9 @@ const LineChartComponent = ({
   showAverage = false,
   averageKey,
   blur = false,
-  allowDecimals = true
+  allowDecimals = true,
+  yAxisFormatter,
+  yAxisWidth
 }: LineChartComponentProps) => {
   const theme = useTheme();
 
@@ -195,18 +202,21 @@ const LineChartComponent = ({
             tickMargin={10}
             tick={{ fontSize: '12px', color: theme?.colors?.myGray['500'], fontWeight: '500' }}
             interval="preserveStartEnd"
-            tickFormatter={formatYAxisNumber}
+            tickFormatter={yAxisFormatter ?? formatYAxisNumber}
             allowDecimals={allowDecimals}
+            width={yAxisWidth}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          {lines.map((line, index) => (
+          {lines.map((line) => (
             <Line
               key={line.dataKey}
+              type={line.type}
               name={line.name}
               dataKey={line.dataKey}
               stroke={line.color}
-              strokeWidth={2}
+              strokeWidth={line.strokeWidth ?? 2}
+              strokeDasharray={line.strokeDasharray}
               fill={`url(#gradient-${line.color})`}
               dot={false}
             />

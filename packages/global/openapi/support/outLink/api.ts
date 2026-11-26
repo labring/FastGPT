@@ -1,6 +1,7 @@
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { PublishChannelEnum } from '../../../support/outLink/constant';
+import { WechatAppSchema, WechatConnectionErrorSchema } from '../../../support/outLink/type';
 import { OutLinkBrandConfigSchema } from '../../../support/outLink/branding';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
@@ -29,7 +30,7 @@ const OutLinkAppConfigSchema = z
   .optional()
   .meta({
     ...OpenObjectOpenApiMeta,
-    description: '第三方平台配置，不同发布渠道结构不同'
+    description: '第三方平台配置。微信渠道的连接配置由服务端维护，编辑时忽略此字段。'
   });
 
 export const OutLinkEditSchema = z.object({
@@ -111,9 +112,42 @@ export const OutLinkListQuerySchema = z.object({
 });
 export type OutLinkListQueryType = z.infer<typeof OutLinkListQuerySchema>;
 
-export const OutLinkListResponseSchema = z.array(OutLinkSchema).meta({
-  description: '发布渠道列表'
+const WechatOutLinkListItemSchema = OutLinkSchema.extend({
+  type: z
+    .literal(PublishChannelEnum.wechat)
+    .meta({ description: '发布渠道类型', example: 'wechat' }),
+  app: z
+    .object({
+      status: WechatAppSchema.shape.status.meta({
+        description: '微信渠道连接状态',
+        example: 'online'
+      }),
+      isBound: z.boolean().meta({ example: true, description: '是否已绑定微信账号' }),
+      errorReason: WechatConnectionErrorSchema.optional().meta({
+        description: '服务端识别的微信连接异常原因',
+        example: 'request_failed'
+      })
+    })
+    .meta({
+      description: '微信渠道只读连接摘要，仅用于展示连接状态和绑定情况',
+      example: { status: 'online', isBound: true }
+    })
 });
+export type WechatOutLinkListItemType = z.infer<typeof WechatOutLinkListItemSchema>;
+
+export const OutLinkListResponseSchema = z
+  .array(
+    z.discriminatedUnion('type', [
+      WechatOutLinkListItemSchema,
+      OutLinkSchema.extend({
+        type: OutLinkSchema.shape.type.exclude([PublishChannelEnum.wechat]).meta({
+          description: '发布渠道类型',
+          example: 'share'
+        })
+      })
+    ])
+  )
+  .meta({ description: '发布渠道列表' });
 export type OutLinkListResponseType = z.infer<typeof OutLinkListResponseSchema>;
 
 /* ============================================================================
@@ -175,7 +209,6 @@ const NonSharePublishChannelSchema = z.enum([
   PublishChannelEnum.dingtalk,
   PublishChannelEnum.wecom,
   PublishChannelEnum.officialAccount,
-  PublishChannelEnum.wechat,
   PublishChannelEnum.playground
 ]);
 
@@ -183,6 +216,10 @@ export const OutLinkCreateBodySchema = z.discriminatedUnion('type', [
   ShareOutLinkEditSchema.omit({ _id: true }).extend({
     appId: ObjectIdSchema.meta({ description: '应用 ID' }),
     type: z.literal(PublishChannelEnum.share).meta({ description: '分享链接' })
+  }),
+  OutLinkEditSchema.omit({ _id: true, app: true }).extend({
+    appId: ObjectIdSchema.meta({ description: '应用 ID' }),
+    type: z.literal(PublishChannelEnum.wechat).meta({ description: '微信发布渠道' })
   }),
   OutLinkEditSchema.omit({ _id: true }).extend({
     appId: ObjectIdSchema.meta({ description: '应用 ID' }),

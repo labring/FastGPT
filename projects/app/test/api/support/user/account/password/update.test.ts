@@ -1,9 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getTestInstanceConfig, setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdatePasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { createPasswordChangeSession } from '@fastgpt/service/support/user/account/password/service';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -34,6 +37,7 @@ vi.mock('@fastgpt/service/support/user/lock', () => ({
 }));
 
 describe('password/update API', () => {
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
@@ -41,10 +45,12 @@ describe('password/update API', () => {
   const OLD_PASSWORD = 'old-password';
 
   beforeEach(async () => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
-    global.feConfigs = { ...global.feConfigs, sso: undefined, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, sso: undefined };
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = false;
+    setTestLicenseActive(false);
+    getSystemInstanceConfig().proEnv.ssoUrl = '';
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr(OLD_PASSWORD)
@@ -61,6 +67,10 @@ describe('password/update API', () => {
       role: 'owner'
     });
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
   });
 
   const getAuth = (userId = String(testUser._id), isRoot = false) =>
@@ -171,24 +181,21 @@ describe('password/update API', () => {
   });
 
   it('keeps the session available when the password update is rejected', async () => {
-    const body = await getBody({ newPsw: hashStr(OLD_PASSWORD) });
+    const body = await getBody({ newPsw: hashStr('retried-password') });
+    await MongoUser.updateOne({ _id: testUser._id }, { status: UserStatusEnum.forbidden });
+
     const rejectedResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
 
     expect(rejectedResponse.code).toBe(500);
-    expect(rejectedResponse.error).toMatchObject({
-      name: 'UserError',
-      message: UserErrEnum.newPasswordSameAsOld
-    });
+
+    await MongoUser.updateOne({ _id: testUser._id }, { status: UserStatusEnum.active });
 
     const retryResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
-      {
-        body: { ...body, newPsw: hashStr('retried-password') },
-        auth: getAuth()
-      }
+      { body, auth: getAuth() }
     );
 
     expect(retryResponse.code).toBe(200);
@@ -217,7 +224,7 @@ describe('password/update API', () => {
     expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
   });
 
-  it('rejects the current password when a stored password exists', async () => {
+  it('allows reusing the current password when a stored password exists', async () => {
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       {
@@ -226,13 +233,12 @@ describe('password/update API', () => {
       }
     );
 
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({
-      name: 'UserError',
-      message: UserErrEnum.newPasswordSameAsOld
-    });
-    const unchangedUser = await MongoUser.findById(testUser._id).lean();
-    expect(unchangedUser?.passwordUpdateTime).toBeUndefined();
+    expect(response.code).toBe(200);
+    expect(
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
+    ).toBeTruthy();
+    const updatedUser = await MongoUser.findById(testUser._id).lean();
+    expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
   });
 
   it('rejects a token issued for another user', async () => {
@@ -311,14 +317,10 @@ describe('password/update API', () => {
   });
 
   it('rejects a restricted SSO user before changing password or sessions', async () => {
+    global.getSsoConfiguredHandler = () => true;
     await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
-    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
-    global.feConfigs = {
-      ...global.feConfigs,
-      sso: {
-        disablePasswordForSsoUsers: true
-      }
-    };
+    getSystemInstanceConfig().proEnv.ssoUrl = 'https://sso.example.com';
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
     vi.mocked(delUserAllSession).mockClear();
 
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(

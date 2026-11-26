@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   SubTypeEnum,
@@ -23,6 +27,10 @@ import {
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+
+beforeEach(() => {
+  global.systemInstanceConfig = createDefaultInstanceConfig();
+});
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
@@ -148,11 +156,11 @@ describe('getPlansCanHideShareBrand', () => {
 
 describe('getStandardPlansConfig', () => {
   beforeEach(() => {
-    // 清理 global.subPlans
-    delete (global as any).subPlans;
+    // 清理 实例套餐配置
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
-  it('返回 global.subPlans.standard 配置', () => {
+  it('返回 实例套餐配置.standard 配置', () => {
     const mockStandardPlans: StandSubPlanLevelMapType = {
       [StandardSubLevelEnum.free]: {
         price: 0,
@@ -219,7 +227,7 @@ describe('getStandardPlansConfig', () => {
       }
     };
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: mockStandardPlans
     };
 
@@ -230,13 +238,13 @@ describe('getStandardPlansConfig', () => {
     expect(result).toHaveProperty(StandardSubLevelEnum.advanced);
   });
 
-  it('global.subPlans 不存在时返回 undefined', () => {
+  it('实例套餐配置 不存在时返回 undefined', () => {
     const result = getStandardPlansConfig();
     expect(result).toBeUndefined();
   });
 
-  it('global.subPlans 存在但 standard 不存在时返回 undefined', () => {
-    (global as any).subPlans = {};
+  it('实例套餐配置 存在但 standard 不存在时返回 undefined', () => {
+    (getTestInstanceConfig().commercial as any).subPlans = {};
     const result = getStandardPlansConfig();
     expect(result).toBeUndefined();
   });
@@ -244,7 +252,7 @@ describe('getStandardPlansConfig', () => {
 
 describe('getStandardPlanConfig', () => {
   beforeEach(() => {
-    delete (global as any).subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
   it('返回指定 level 的套餐配置', () => {
@@ -258,7 +266,7 @@ describe('getStandardPlanConfig', () => {
       maxDatasetSize: 100
     };
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: mockBasicPlan
       }
@@ -281,7 +289,7 @@ describe('getStandardPlanConfig', () => {
       maxDatasetSize: 10
     };
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.free]: mockFreePlan
       }
@@ -302,7 +310,7 @@ describe('getStandardPlanConfig', () => {
       maxDatasetSize: 500
     };
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.advanced]: mockAdvancedPlan
       }
@@ -326,7 +334,7 @@ describe('getStandardPlanConfig', () => {
       maxDatasetSize: undefined
     };
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.advanced]: mockAdvancedPlan,
         [StandardSubLevelEnum.custom]: mockCustomPlan
@@ -344,7 +352,7 @@ describe('getStandardPlanConfig', () => {
   });
 
   it('缺少 advanced 配置时不构造 custom 运行时套餐', () => {
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.custom]: { customFormUrl: 'https://example.com/contact' }
       }
@@ -353,19 +361,19 @@ describe('getStandardPlanConfig', () => {
     expect(getStandardPlanConfig(StandardSubLevelEnum.custom)).toBeUndefined();
   });
 
-  it('global.subPlans 不存在时返回 undefined', () => {
+  it('实例套餐配置 不存在时返回 undefined', () => {
     const result = getStandardPlanConfig(StandardSubLevelEnum.basic);
     expect(result).toBeUndefined();
   });
 
-  it('global.subPlans.standard 不存在时返回 undefined', () => {
-    (global as any).subPlans = {};
+  it('实例套餐配置.standard 不存在时返回 undefined', () => {
+    (getTestInstanceConfig().commercial as any).subPlans = {};
     const result = getStandardPlanConfig(StandardSubLevelEnum.basic);
     expect(result).toBeUndefined();
   });
 
   it('指定的 level 不存在时返回 undefined', () => {
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.free]: {
           price: 0,
@@ -724,12 +732,9 @@ describe('buildStandardPlan', () => {
 
   describe('字段名映射：maxApp → maxAppAmount，maxDataset → maxDatasetAmount', () => {
     it('零值团队上传限制继承套餐，零值套餐上传限制继承系统', () => {
-      const originalFeConfigs = global.feConfigs;
+      const originalConfig = global.systemInstanceConfig;
       try {
-        global.feConfigs = {
-          ...global.feConfigs,
-          limit: { ...global.feConfigs?.limit, uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
-        };
+        global.systemInstanceConfig = createDefaultInstanceConfig();
         const standard = { ...baseStandard, maxUploadFileSize: 0, maxUploadFileCount: 0 };
         expect(
           buildStandardPlan(standard, {
@@ -746,7 +751,7 @@ describe('buildStandardPlan', () => {
           })
         ).toMatchObject({ maxUploadFileSize: 1000, maxUploadFileCount: 1000 });
       } finally {
-        global.feConfigs = originalFeConfigs;
+        global.systemInstanceConfig = originalConfig;
       }
     });
 
@@ -784,7 +789,7 @@ describe('buildStandardPlan', () => {
 describe('initTeamFreePlan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete (global as any).subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
   it('创建新的免费套餐（不存在时）', async () => {
@@ -799,7 +804,7 @@ describe('initTeamFreePlan', () => {
     };
     vi.spyOn(MongoTeamSub, 'create').mockResolvedValue([mockCreatedPlan] as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.free]: {
           totalPoints: 100
@@ -834,7 +839,7 @@ describe('initTeamFreePlan', () => {
 
     vi.spyOn(MongoTeamSub, 'findOne').mockResolvedValue(mockExistingPlan as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.free]: {
           totalPoints: 100
@@ -852,7 +857,7 @@ describe('initTeamFreePlan', () => {
 describe('getTeamStandPlan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete (global as any).subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
   it.each([
@@ -871,7 +876,7 @@ describe('getTeamStandPlan', () => {
       const find = vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
         lean: vi.fn().mockResolvedValue([plan])
       } as any);
-      global.subPlans = {
+      getTestInstanceConfig().commercial.subPlans = {
         standard: { basic: { ...baseConstants, canHideShareBrand: configured } }
       };
       try {
@@ -904,7 +909,7 @@ describe('getTeamStandPlan', () => {
       const find = vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
         lean: vi.fn().mockImplementation(async () => [...plans])
       } as any);
-      global.subPlans = {
+      getTestInstanceConfig().commercial.subPlans = {
         standard: {
           basic: { ...baseConstants, canHideShareBrand: basicEntitled },
           advanced: { ...baseConstants, canHideShareBrand: advancedEntitled }
@@ -954,7 +959,7 @@ describe('getTeamStandPlan', () => {
     };
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           name: 'Basic Plan',
@@ -981,7 +986,7 @@ describe('getTeamStandPlan', () => {
       lean: vi.fn().mockResolvedValue([])
     } as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.free]: {
           name: 'Free Plan',
@@ -1018,7 +1023,7 @@ describe('getTeamStandPlan', () => {
       ])
     } as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           ...baseConstants,
@@ -1052,7 +1057,7 @@ describe('getTeamStandPlan', () => {
 describe('getTeamPlanStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete (global as any).subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
   it('未启用套餐限制时统一返回 null 而不是 Infinity', async () => {
@@ -1083,7 +1088,7 @@ describe('getTeamPlanStatus', () => {
         }
       ])
     } as any);
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: baseConstants
       }
@@ -1122,7 +1127,7 @@ describe('getTeamPlanStatus', () => {
     };
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           name: 'Basic Plan',
@@ -1149,7 +1154,7 @@ describe('getTeamPlanStatus', () => {
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
       lean: vi.fn().mockResolvedValue([baseStandard])
     } as any);
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: baseConstants
       }
@@ -1204,7 +1209,7 @@ describe('getTeamPlanStatus', () => {
       ])
     } as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           ...baseConstants,
@@ -1261,7 +1266,7 @@ describe('getTeamPlanStatus', () => {
     };
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           name: 'Basic Plan',
@@ -1317,7 +1322,7 @@ describe('getTeamPlanStatus', () => {
     };
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
 
-    (global as any).subPlans = {
+    (getTestInstanceConfig().commercial as any).subPlans = {
       standard: {
         [StandardSubLevelEnum.basic]: {
           name: 'Basic Plan',
@@ -1392,7 +1397,7 @@ describe('teamPoint', () => {
 describe('teamQPM', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete (global as any).subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
   });
 
   describe('getTeamQPMLimit', () => {

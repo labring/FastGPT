@@ -10,7 +10,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/controller';
 import { countEffectiveTeamMembers } from '@fastgpt/service/support/user/team/controller';
-import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
+import { appRegistrationService } from '@fastgpt/service/support/appRegistration/service';
 import {
   GetTeamPlanStatusQuerySchema,
   GetTeamPlanStatusResponseSchema,
@@ -65,9 +65,7 @@ async function handler(
           type: { $ne: DatasetTypeEnum.folder }
         }),
         getVectorCountByTeamId(teamId),
-        MongoAppRegistration.countDocuments({
-          teamId
-        })
+        appRegistrationService.countTeamRegistrations({ teamId })
       ]);
 
       return {

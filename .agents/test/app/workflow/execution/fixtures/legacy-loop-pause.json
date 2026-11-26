@@ -1,0 +1,431 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": ["reference", "textarea"],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "loop",
+      "templateType": "tools",
+      "flowNodeType": "loop",
+      "status": "SoonOffline",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/loop",
+      "avatarLinear": "core/workflow/template/loopLinear",
+      "colorSchema": "violetDeep",
+      "name": "Loop",
+      "intro": "workflow:intro_loop",
+      "showStatus": true,
+      "courseUrl": "/guide/build/workflow/nodes/loop",
+      "inputs": [
+        {
+          "key": "loopInputArray",
+          "renderTypeList": ["reference", "JSONEditor"],
+          "valueType": "arrayAny",
+          "required": true,
+          "label": "workflow:loop_input_array",
+          "value": [0, false, ""],
+          "selectedType": "JSONEditor"
+        },
+        {
+          "key": "childrenNodeIdList",
+          "renderTypeList": ["hidden"],
+          "valueType": "arrayString",
+          "label": "",
+          "value": ["BodyStart", "BodyUpdate", "BodyEnd", "PauseSecond", "Form"]
+        },
+        {
+          "key": "nodeWidth",
+          "renderTypeList": ["hidden"],
+          "valueType": "number",
+          "label": "",
+          "value": 900
+        },
+        {
+          "key": "nodeHeight",
+          "renderTypeList": ["hidden"],
+          "valueType": "number",
+          "label": "",
+          "value": 500
+        },
+        {
+          "key": "loopNodeInputHeight",
+          "renderTypeList": ["hidden"],
+          "valueType": "number",
+          "label": "",
+          "value": 320
+        }
+      ],
+      "outputs": [
+        {
+          "id": "loopArray",
+          "key": "loopArray",
+          "label": "workflow:loop_result",
+          "type": "static",
+          "valueType": "arrayAny"
+        }
+      ],
+      "nodeId": "Loop",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "loopStart",
+      "templateType": "systemInput",
+      "flowNodeType": "loopStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/loopStart",
+      "avatarLinear": "core/workflow/template/loopStartLinear",
+      "colorSchema": "violetDeep",
+      "name": "BodyStart",
+      "unique": true,
+      "forbidDelete": true,
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "loopStartInput",
+          "renderTypeList": ["hidden"],
+          "valueType": "any",
+          "label": "",
+          "required": true,
+          "value": ""
+        },
+        {
+          "key": "loopStartIndex",
+          "renderTypeList": ["hidden"],
+          "valueType": "number",
+          "label": "workflow:Array_element_index"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "loopStartIndex",
+          "key": "loopStartIndex",
+          "label": "workflow:Array_element_index",
+          "type": "static",
+          "valueType": "number"
+        },
+        {
+          "id": "loopStartInput",
+          "key": "loopStartInput",
+          "label": "数组元素",
+          "type": "static",
+          "valueType": "any"
+        }
+      ],
+      "nodeId": "BodyStart",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "parentNodeId": "Loop"
+    },
+    {
+      "id": "variableUpdate",
+      "templateType": "tools",
+      "flowNodeType": "variableUpdate",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/variableUpdate",
+      "avatarLinear": "core/workflow/template/variableUpdateLinear",
+      "colorSchema": "coral",
+      "name": "BodyUpdate",
+      "intro": "workflow:update_specified_node_output_or_global_variable",
+      "showStatus": false,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/variable_update",
+      "inputs": [
+        {
+          "key": "updateList",
+          "valueType": "any",
+          "label": "",
+          "renderTypeList": ["hidden"],
+          "value": [
+            {
+              "variable": ["VARIABLE_NODE_ID", "a"],
+              "value": ["", "LEGACY-SHARED"],
+              "valueType": "string",
+              "renderType": "input"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "BodyUpdate",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "parentNodeId": "Loop"
+    },
+    {
+      "id": "loopEnd",
+      "templateType": "systemInput",
+      "flowNodeType": "loopEnd",
+      "showSourceHandle": false,
+      "showTargetHandle": true,
+      "unique": true,
+      "forbidDelete": true,
+      "avatar": "core/workflow/template/loopEnd",
+      "avatarLinear": "core/workflow/template/loopEndLinear",
+      "colorSchema": "violetDeep",
+      "name": "BodyEnd",
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "loopEndInput",
+          "renderTypeList": ["reference"],
+          "valueType": "any",
+          "label": "",
+          "required": true,
+          "value": ["BodyStart", "loopStartInput"]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "BodyEnd",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "parentNodeId": "Loop"
+    },
+    {
+      "id": "ifElseNode",
+      "templateType": "tools",
+      "flowNodeType": "ifElseNode",
+      "showSourceHandle": false,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/ifelse",
+      "avatarLinear": "core/workflow/template/ifelseLinear",
+      "colorSchema": "greenLight",
+      "name": "PauseSecond",
+      "intro": "workflow:execute_different_branches_based_on_conditions",
+      "showStatus": true,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/tfswitch",
+      "inputs": [
+        {
+          "key": "ifElseList",
+          "renderTypeList": ["hidden"],
+          "valueType": "any",
+          "canAgentGenerated": false,
+          "label": "",
+          "value": [
+            {
+              "branchId": "second",
+              "condition": "AND",
+              "list": [
+                {
+                  "variable": ["BodyStart", "loopStartIndex"],
+                  "condition": "equalTo",
+                  "value": "2",
+                  "valueType": "input"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "ifElseResult",
+          "key": "ifElseResult",
+          "label": "workflow:judgment_result",
+          "valueType": "string",
+          "type": "static"
+        }
+      ],
+      "nodeId": "PauseSecond",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "parentNodeId": "Loop"
+    },
+    {
+      "id": "formInput",
+      "templateType": "interactive",
+      "flowNodeType": "formInput",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/formInput",
+      "avatarLinear": "core/workflow/template/formInputLinear",
+      "colorSchema": "violetDeep",
+      "name": "Form",
+      "intro": "app:workflow.form_input_tip",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "description",
+          "renderTypeList": ["textarea"],
+          "valueType": "string",
+          "label": "app:workflow.select_description",
+          "description": "app:workflow.input_description_tip",
+          "placeholder": "app:workflow.form_input_description_placeholder"
+        },
+        {
+          "key": "userInputForms",
+          "renderTypeList": ["custom"],
+          "valueType": "any",
+          "label": "",
+          "value": [
+            {
+              "key": "value",
+              "label": "value",
+              "type": "input",
+              "valueType": "string",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "formInputResult",
+          "key": "formInputResult",
+          "required": true,
+          "label": "workflow:form_input_result",
+          "description": "workflow:form_input_result_tip",
+          "valueType": "object",
+          "type": "static"
+        }
+      ],
+      "nodeId": "Form",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "parentNodeId": "Loop"
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Reply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": ["textarea", "reference"],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "RESULT:{{$Loop.loopArray$}}|a={{$VARIABLE_NODE_ID.a$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Reply",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Loop",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Loop-target-left"
+    },
+    {
+      "source": "Loop",
+      "target": "Reply",
+      "sourceHandle": "Loop-source-right",
+      "targetHandle": "Reply-target-left"
+    },
+    {
+      "source": "BodyStart",
+      "target": "BodyUpdate",
+      "sourceHandle": "BodyStart-source-right",
+      "targetHandle": "BodyUpdate-target-left"
+    },
+    {
+      "source": "BodyUpdate",
+      "target": "PauseSecond",
+      "sourceHandle": "BodyUpdate-source-right",
+      "targetHandle": "PauseSecond-target-left"
+    },
+    {
+      "source": "PauseSecond",
+      "target": "Form",
+      "sourceHandle": "PauseSecond-source-second",
+      "targetHandle": "Form-target-left"
+    },
+    {
+      "source": "Form",
+      "target": "BodyEnd",
+      "sourceHandle": "Form-source-right",
+      "targetHandle": "BodyEnd-target-left"
+    },
+    {
+      "source": "PauseSecond",
+      "target": "BodyEnd",
+      "sourceHandle": "PauseSecond-source-ELSE",
+      "targetHandle": "BodyEnd-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "PARENT-BASE",
+        "required": false
+      }
+    ]
+  }
+}

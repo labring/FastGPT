@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import {
+  runWithTestWorkflowContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import {
@@ -63,6 +68,10 @@ describe('Agent read_files tool protocol', () => {
     const readFileTool = createReadFilesTool({ maxFileAmount: 3 });
 
     expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
+    expect(readFileTool.function.description).toContain('document files only');
+    expect(readFileTool.function.description).toContain(
+      'Image, audio, and video attachments provided in the message are already available to understand directly'
+    );
     expect(readFileTool.function.parameters).toEqual({
       type: 'object',
       properties: {
@@ -72,7 +81,8 @@ describe('Agent read_files tool protocol', () => {
           items: {
             type: 'string'
           },
-          description: 'Absolute HTTP(S) file URLs'
+          description:
+            'Absolute HTTP(S) document URLs (document files only; do not pass image, audio, video, or unknown URLs)'
         }
       },
       required: ['urls']
@@ -114,12 +124,17 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchAgentDatasetSearchMock).not.toHaveBeenCalled();
   });
 
-  it('does not forward child tool streams from Agent', async () => {
-    const streamResponseFn = vi.fn();
-    dispatchToolMock.mockResolvedValue({ response: 'ok' });
+  it('preserves usage identity while suppressing child tool streams from Agent', async () => {
+    const workflowStreamResponse = vi.fn();
+    dispatchToolMock.mockImplementation(async (props) => {
+      expect(props).not.toHaveProperty('workflowStreamResponse');
+      expect(props.usageId).toBe('usage-agent-tool');
+      expect(getWorkflowContext().workflowStreamResponse).toBeUndefined();
+      return { response: 'ok' };
+    });
     const executeTool = createExecuteToolForTest({
       stream: true,
-      streamResponseFn,
+      usageId: 'usage-agent-tool',
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',
@@ -130,18 +145,25 @@ describe('Agent read_files tool protocol', () => {
       })
     });
 
-    await executeTool({
-      callId: 'call_system_tool',
-      toolId: 'system-tool',
-      args: '{}'
-    });
-
-    expect(dispatchToolMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowStreamResponse: undefined
-      })
+    await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false,
+        workflowStreamResponse
+      },
+      async () => {
+        const result = await executeTool({
+          callId: 'call_system_tool',
+          toolId: 'system-tool',
+          args: '{}'
+        });
+        expect(result.response).toBe('ok');
+        expect(getWorkflowContext().workflowStreamResponse).toBe(workflowStreamResponse);
+      }
     );
-    expect(streamResponseFn).not.toHaveBeenCalled();
+    expect(dispatchToolMock).toHaveBeenCalledOnce();
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
   });
 
   it('omits built-in history for workflow sub-apps while preserving history business inputs for plugins', async () => {
@@ -198,5 +220,79 @@ describe('Agent read_files tool protocol', () => {
         customAppVariables: { history: 'order audit history' }
       })
     );
+  });
+
+  it('passes structured tool content from dispatchTool to the agent loop result', async () => {
+    const content = [
+      { type: 'text', text: '{"files":["chart.png"]}' },
+      { type: 'image_url', image_url: { url: 'https://files.example.com/chart.png' } }
+    ];
+    dispatchToolMock.mockResolvedValue({
+      response: '{"files":["chart.png"]}',
+      content
+    });
+
+    const executeTool = createExecuteToolForTest({
+      stream: true,
+      getSubApp: () => ({
+        type: 'tool',
+        id: 'system-tool',
+        name: 'System Tool',
+        avatar: '',
+        toolConfig: { systemTool: { toolId: 'systemTool-test' } },
+        params: {}
+      })
+    });
+
+    const result = await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false
+      },
+      () =>
+        executeTool({
+          callId: 'call_plugin',
+          toolId: 'system-tool',
+          args: '{}'
+        })
+    );
+
+    // 业务输出保持原样，结构化 content 单独透传给 agent-loop。
+    expect(result.response).toBe('{"files":["chart.png"]}');
+    expect(result.content).toEqual(content);
+  });
+
+  it('omits content when the tool returns plain text', async () => {
+    dispatchToolMock.mockResolvedValue({ response: 'plain result' });
+
+    const executeTool = createExecuteToolForTest({
+      stream: true,
+      getSubApp: () => ({
+        type: 'tool',
+        id: 'system-tool',
+        name: 'System Tool',
+        avatar: '',
+        toolConfig: { systemTool: { toolId: 'systemTool-test' } },
+        params: {}
+      })
+    });
+
+    const result = await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false
+      },
+      () =>
+        executeTool({
+          callId: 'call_plain',
+          toolId: 'system-tool',
+          args: '{}'
+        })
+    );
+
+    expect(result.response).toBe('plain result');
+    expect(result.content).toBeUndefined();
   });
 });

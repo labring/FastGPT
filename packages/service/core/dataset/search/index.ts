@@ -1,3 +1,5 @@
+import { withDatasetSearchPerf } from '../../../common/opsPerf/datasetSearch';
+import { getVectorCount } from '../../../common/vectorDB/controller';
 import type { DefaultSearchDatasetDataProps, SearchDatasetDataResponse } from './type';
 import { searchDatasetData } from './defaultRecall';
 import { datasetSearchQueryExtension } from './utils';
@@ -20,44 +22,68 @@ export const defaultSearchDatasetData = async ({
   const textQueries = props.textQueries.map((query) => query.trim()).filter(Boolean);
   const query = textQueries.join('\n');
 
-  const { searchQueries, reRankQuery, aiExtensionResult } = query
-    ? await datasetSearchQueryExtension({
-        query,
-        llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
-        embeddingModel: props.model,
-        extensionBg: datasetSearchExtensionBg,
-        histories: props.histories,
-        datasetIds: props.datasetIds,
+  return withDatasetSearchPerf(
+    {
+      teamId: props.teamId,
+      datasetIds: props.datasetIds,
+      textQueries,
+      queryChars: query.length,
+      imageQueryCount: props.imageQueries?.length ?? 0,
+      searchMode: props.searchMode,
+      usingReRank: props.usingReRank,
+      usingExtension: datasetSearchUsingExtensionQuery,
+      embeddingModel: props.model,
+      rerankModel: props.rerankModel,
+      extensionModel: datasetSearchExtensionModel,
+      fetchVectorCount: ({ teamId, datasetId }) =>
+        getVectorCount({ teamId, datasetId }, { notifyDatasetCounted: false })
+    },
+    async () => {
+      const { searchQueries, reRankQuery, aiExtensionResult } = query
+        ? await datasetSearchQueryExtension({
+            query,
+            llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
+            embeddingModel: props.model,
+            extensionBg: datasetSearchExtensionBg,
+            histories: props.histories,
+            datasetIds: props.datasetIds,
+            userKey,
+            teamId: props.teamId
+          })
+        : {
+            searchQueries: [],
+            reRankQuery: query,
+            aiExtensionResult: undefined
+          };
+
+      const result = await searchDatasetData({
+        ...props,
         userKey,
-        teamId: props.teamId
-      })
-    : {
-        searchQueries: [],
-        reRankQuery: query,
-        aiExtensionResult: undefined
+        reRankQuery,
+        textQueries: searchQueries,
+        // S2：同义词装饰只扫「用户原始问题」（props.textQueries 是扩展前的输入），
+        // 扩展模型生成的同义词与装饰语义（原词出现在分块或用户问题中）无关。
+        rawQueries: [...(props.rawQueries ?? []), ...textQueries]
+      });
+
+      return {
+        ...result,
+        queryExtensionResult: aiExtensionResult
+          ? {
+              llmModel: aiExtensionResult.llmModel,
+              requestId: aiExtensionResult.requestId,
+              seconds: aiExtensionResult.seconds,
+              inputTokens: aiExtensionResult.inputTokens,
+              outputTokens: aiExtensionResult.outputTokens,
+              cacheReadTokens: aiExtensionResult.cacheReadTokens,
+              cacheCreationTokens: aiExtensionResult.cacheCreationTokens,
+              usedUserOpenAIKey: aiExtensionResult.usedUserOpenAIKey,
+              embeddingModel: aiExtensionResult.embeddingModel,
+              embeddingTokens: aiExtensionResult.embeddingTokens,
+              query: searchQueries.join('\n')
+            }
+          : undefined
       };
-
-  const result = await searchDatasetData({
-    ...props,
-    userKey,
-    reRankQuery,
-    textQueries: searchQueries
-  });
-
-  return {
-    ...result,
-    queryExtensionResult: aiExtensionResult
-      ? {
-          llmModel: aiExtensionResult.llmModel,
-          requestId: aiExtensionResult.requestId,
-          seconds: aiExtensionResult.seconds,
-          inputTokens: aiExtensionResult.inputTokens,
-          outputTokens: aiExtensionResult.outputTokens,
-          usedUserOpenAIKey: aiExtensionResult.usedUserOpenAIKey,
-          embeddingModel: aiExtensionResult.embeddingModel,
-          embeddingTokens: aiExtensionResult.embeddingTokens,
-          query: searchQueries.join('\n')
-        }
-      : undefined
-  };
+    }
+  );
 };

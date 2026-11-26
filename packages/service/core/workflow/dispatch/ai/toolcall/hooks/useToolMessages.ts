@@ -6,15 +6,11 @@ import {
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
+  allocateSandboxInputFiles,
   buildSandboxInputFileScopeKey,
-  getSandboxInputFileNameAllocation,
-  getSafeSandboxInputFilename
+  getSandboxInputFileNameAllocation
 } from '../../../../../ai/sandbox/utils';
-import {
-  getWorkflowFileMaxAmount,
-  prepareWorkflowFiles,
-  WorkflowContext
-} from '../../../../utils/context';
+import { getWorkflowContext } from '../../../context';
 import {
   rewriteWorkflowAIHistoryMessageWithFiles,
   rewriteWorkflowAIUserMessageWithFiles
@@ -46,7 +42,8 @@ export const useToolMessages = async ({
   useSandbox: boolean;
 }) => {
   const currentInputFiles: FileInputType[] = [];
-  const userFiles = await prepareWorkflowFiles({
+  const { fileContext } = getWorkflowContext();
+  const userFiles = await fileContext.prepareFiles({
     files: (fileLinks ?? []).map((url) => ({ url }))
   });
   const concatenateSystemPrompt = [defaultSystemPrompt, systemPrompt]
@@ -57,13 +54,12 @@ export const useToolMessages = async ({
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...chatHistories
   ];
-  const maxFileAmount = getWorkflowFileMaxAmount();
 
   /**
    * 文件链接会作为 model URL 暴露给 LLM，供 read_files 和其他工具直接使用。
    * 当前轮输入文件额外记录下来，用于 sandbox 场景先上传到隔离目录。
    */
-  const workflowSandboxContext = WorkflowContext.getStore()?.sandboxContext;
+  const workflowSandboxContext = getWorkflowContext().sandboxContext;
   const historyTransformFiles = useSandbox
     ? (files: FileInputType[]) =>
         files.map((file) => ({
@@ -79,29 +75,22 @@ export const useToolMessages = async ({
               contextOwner: workflowSandboxContext
             })
           : undefined;
-        const usedNames = new Map<string, number>();
-        const batchUsedFilenames = new Set<string>();
-        return files.map((file, index) => {
-          const filename = inputFileAllocation
-            ? getSafeSandboxInputFilename(file.name, index, usedNames, {
-                url: file.url,
-                allocation: inputFileAllocation,
-                batchUsedFilenames
-              })
-            : file.name;
-          return {
-            ...file,
-            name: filename,
-            sandboxPath: `${SANDBOX_USER_FILES_PATH}${filename}`
-          };
-        });
+        return allocateSandboxInputFiles({
+          items: files,
+          getFilename: (file) => file.name,
+          allocation: inputFileAllocation
+        }).map(({ item: file, filename }) => ({
+          ...file,
+          name: filename,
+          sandboxPath: `${SANDBOX_USER_FILES_PATH}${filename}`
+        }));
       }
     : undefined;
   const messages = await Promise.all(
     historyMessages.map(async (message) => {
       const res = await rewriteWorkflowAIHistoryMessageWithFiles({
         message,
-        maxFileAmount,
+        maxFileAmount: fileContext.limits.maxFileAmount,
         parseHistoryFiles,
         transformFiles: historyTransformFiles
       });
@@ -121,7 +110,7 @@ export const useToolMessages = async ({
           files: userFiles
         })
       },
-      maxFileAmount,
+      maxFileAmount: fileContext.limits.maxFileAmount,
       transformFiles: currentTransformFiles
     });
     messages.push(message);

@@ -7,6 +7,7 @@ import type { SystemMigrationRunner } from './runner';
 export const startBusinessAfterSystemMigrations = async ({
   runner,
   reloadModels,
+  onMigrationsSettled,
   startBusinessServices
 }: {
   runner: Pick<
@@ -14,10 +15,17 @@ export const startBusinessAfterSystemMigrations = async ({
     'hasBlockingMigrations' | 'waitForBlockingMigrations' | 'startBackgroundMigrations'
   >;
   reloadModels: () => Promise<void>;
+  onMigrationsSettled?: () => Promise<void>;
   startBusinessServices: () => Promise<void>;
 }) => {
   await runner.waitForBlockingMigrations();
-  if (runner.hasBlockingMigrations) await reloadModels();
+  if (runner.hasBlockingMigrations) {
+    await reloadModels();
+  } else {
+    // 没有阻塞迁移时仍需在一次完整的启动迁移屏障后重新应用配置，
+    // 主要是让首次日志 TTL 同步使用数据库中的权威保留期而不是 Schema 默认值。
+    await onMigrationsSettled?.();
+  }
   await startBusinessServices();
   runner.startBackgroundMigrations();
 };

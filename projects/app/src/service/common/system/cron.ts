@@ -9,6 +9,7 @@ import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
+import { wechatPollingReconcileCron } from '@fastgpt/service/support/outLink/wechat/mq';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -91,4 +92,5 @@ export const startCron = () => {
   clearExpiredS3FilesCron();
   sandboxCronJob();
   modelStatusProbeCron();
+  wechatPollingReconcileCron();
 };

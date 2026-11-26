@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -82,7 +83,7 @@ const run = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  global.feConfigs.isPlus = false;
+  setTestProLicense(false);
   mocks.auth.mockImplementation(async ({ datasetId }) => ({
     _id: datasetId,
     teamId: actor.teamId,
@@ -320,10 +321,18 @@ describe('member knowledge search orchestration', () => {
       queryExtensionResult: {
         inputTokens: 30,
         outputTokens: 40,
+        cacheReadTokens: 12,
+        cacheCreationTokens: 0,
         embeddingTokens: 50,
         usedUserOpenAIKey: true
       },
-      imageCaptionResult: { inputTokens: 60, outputTokens: 70, usedUserOpenAIKey: false }
+      imageCaptionResult: {
+        inputTokens: 60,
+        outputTokens: 70,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 24,
+        usedUserOpenAIKey: false
+      }
     });
     const { deps, promise } = run({
       scope: { datasetIds: ids },
@@ -341,11 +350,19 @@ describe('member knowledge search orchestration', () => {
           phase: 'queryExtension',
           inputTokens: 30,
           outputTokens: 40,
+          cacheReadTokens: 12,
+          cacheCreationTokens: 0,
           usedUserOpenAIKey: true
         }),
         expect.objectContaining({ phase: 'queryExtensionEmbedding', inputTokens: 50 }),
         expect.objectContaining({ phase: 'rerank', inputTokens: 20 }),
-        expect.objectContaining({ phase: 'imageCaption', inputTokens: 60, outputTokens: 70 })
+        expect.objectContaining({
+          phase: 'imageCaption',
+          inputTokens: 60,
+          outputTokens: 70,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 24
+        })
       ])
     );
   });

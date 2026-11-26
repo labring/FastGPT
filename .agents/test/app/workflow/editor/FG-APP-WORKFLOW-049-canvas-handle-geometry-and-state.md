@@ -17,6 +17,10 @@ tags:
   - 覆盖边界场景
 evidence:
   - ui
+automation:
+  - runner: playwright
+    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-049.browser.spec.ts
+    items: [C1, C2, C3]
 sources:
   - document/content/guide/build/workflow/rules.mdx
   - packages/workflow-core/src/edge/validation.ts
@@ -28,7 +32,7 @@ sources:
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/components/FlowController.tsx
 routes: []
 related: []
-baseline: 5a5211f70998f5311cd40b0e5362a1414be6fbdf
+baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 ---
 
 # 画布交互中的端口几何与连线保留
@@ -39,7 +43,7 @@ baseline: 5a5211f70998f5311cd40b0e5362a1414be6fbdf
 
 ## 前置准备
 
-- 环境：独立测试实例、Chrome、中文界面；登录具有本例临时应用写入和删除权限的账号，记录 BASE_URL、appId、teamId、版本和 run 标识。
+- 环境：本地 dev、Chromium、中文界面；登录具有本例临时应用写入和删除权限的账号，记录 BASE_URL、appId、teamId、版本和 run 标识。脚本使用仓库外的 `FASTGPT_TEST_STORAGE_STATE`。
 - 配置：在应用列表新建临时工作流，普通节点填固定文本。顶部应用更多菜单支持“导入配置”和“导出配置 → 导出 JSON”；模型目录可正常读取。A、B 等是别名，记录实际 nodeId；→ 为普通边，⇢ 为菱形工具挂载。
 - 公共基线：每组图准备一次，导出所有 edges 的 (source, sourceHandle, target, targetHandle) 四元组集合 E0。临时画布边 ID 不持久化；比较精确集合/差集，不以边数或刷新后的临时 ID 代替。
 - 复位：除明确“承接”的行外，子场景从所指基线开始。参数化行逐个变体执行，失败先保存证据并复位再继续，记录“子场景编号 / 变体”，避免后续失败由脏状态引起。
@@ -71,7 +75,7 @@ Free（独立）
 | 子场景 | 特有预期 |
 | --- | --- |
 | C1 | 普通出口尺寸、已有路径和 E0 不变；起点对齐右侧 Handle 的右边界与垂直中心，不误用矩形中心 X。 |
-| C2 | 展开后锚点按新布局更新；候选线取消，原 E0 保留。 |
-| C3 | 视口变化后锚点仍对齐，端口身份与 E0 不变； |
+| C2 | 拖线时已有线条可见。展开后锚点按新布局更新；候选线取消，原 E0 保留。 |
+| C3 | 视口变化后锚点仍对齐，端口身份与 E0 不变。 |
 
 缺少入口、准备或验证证据时记录对应子场景阻塞，不将其或整个用例标记为通过。

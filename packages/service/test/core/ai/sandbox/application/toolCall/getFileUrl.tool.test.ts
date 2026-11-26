@@ -28,7 +28,7 @@ const createSandboxInstance = () =>
     }),
     resolveRuntimePath,
     ensureAvailable,
-    provider: {
+    opensandbox: {
       getFileInfo
     }
   }) as any;
@@ -45,7 +45,7 @@ describe('sandboxGetFileUrlTool', () => {
     });
     previewMock.createSandboxPreviewSession.mockResolvedValue('a12345678901234567890123');
     previewMock.buildSandboxPreviewFileUrl.mockImplementation(
-      ({ filePath }: { filePath: string }) => `preview:${filePath}`
+      ({ relativePath }: { relativePath: string }) => `preview:/workspace/${relativePath}`
     );
   });
 
@@ -88,12 +88,58 @@ describe('sandboxGetFileUrlTool', () => {
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/file.txt'
+      relativePath: 'file.txt'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/sessions/chat-1/report/data.csv'
+      relativePath: 'sessions/chat-1/report/data.csv'
     });
+    // 非图片文件只保留承载原 response 的 text part
+    expect(result.content).toEqual([{ type: 'text', text: result.response }]);
+  });
+
+  it('adds image_url parts for image files on top of the text part', async () => {
+    getFileInfo.mockResolvedValue(
+      new Map([['/workspace/sessions/chat-1/report/chart.png', { isDirectory: false }]])
+    );
+
+    const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: ['report/chart.png'] }
+    });
+
+    expect(JSON.parse(result.response)).toEqual([
+      {
+        fileUrl: 'preview:/workspace/sessions/chat-1/report/chart.png',
+        filename: 'chart.png'
+      }
+    ]);
+    expect(result.content).toEqual([
+      { type: 'text', text: result.response },
+      {
+        type: 'image_url',
+        image_url: { url: 'preview:/workspace/sessions/chat-1/report/chart.png' }
+      }
+    ]);
+  });
+
+  it('keeps non-raster image files on the text path', async () => {
+    getFileInfo.mockResolvedValue(
+      new Map([
+        ['/workspace/sessions/chat-1/report/logo.svg', { isDirectory: false }],
+        ['/workspace/sessions/chat-1/report/design.psd', { isDirectory: false }],
+        ['/workspace/sessions/chat-1/report/legacy.bmp', { isDirectory: false }]
+      ])
+    );
+
+    const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: ['report/logo.svg', 'report/design.psd', 'report/legacy.bmp'] }
+    });
+
+    // svg / psd / bmp 等格式视觉模型消费不了（OpenAI / Claude 只认 png/jpeg/webp/gif），
+    // 强行塞 image_url 会让整轮请求被拒，文本内容也一起失效。
+    expect(result.content).toEqual([{ type: 'text', text: result.response }]);
   });
 
   it('returns an empty result without creating a preview session', async () => {

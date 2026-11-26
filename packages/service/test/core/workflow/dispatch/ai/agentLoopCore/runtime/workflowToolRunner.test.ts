@@ -1,7 +1,18 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
-import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+import {
+  convertMcpToolContentToToolContent,
+  createPluginToolResponse,
+  extractAgentLoopCoreToolContent,
+  projectPluginModelContent,
+  maskToolImagePayload
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolContent';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { dispatchUpdateVariable as dispatchUpdateVariableWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+
+const dispatchUpdateVariable = createTestWorkflowDispatch(dispatchUpdateVariableWithoutContext);
 
 const createCall = ({
   id = 'call_1',
@@ -32,18 +43,15 @@ const createRunner = ({
   runtimeEdges?: any[];
   runWorkflowTool?: ReturnType<typeof vi.fn>;
 }) => {
-  const cacheToolFlowResponse = vi.fn();
   const runner = createAgentLoopCoreWorkflowToolRunner({
     runtimeNodes,
     runtimeEdges,
     getToolInfo,
-    runWorkflowTool,
-    cacheToolFlowResponse
+    runWorkflowTool
   });
 
   return {
     ...runner,
-    cacheToolFlowResponse,
     runWorkflowTool
   };
 };
@@ -51,6 +59,66 @@ const createRunner = ({
 describe('createAgentLoopCoreWorkflowToolRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('converts MCP image blocks from a tool node into image_url content', async () => {
+    const toolResponses = {
+      content: [
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ]
+    };
+    const runner = createRunner({
+      runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+      getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+      runWorkflowTool: vi.fn().mockResolvedValue({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses
+      })
+    });
+
+    const result = await runner.runTool({ call: createCall() });
+
+    // ToolCall 节点里的 MCP 工具同样要能把原生图片块变成视觉输入。
+    expect(result.content).toEqual([
+      { type: 'text', text: result.response },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+    ]);
+    // 文本里不能再带一份 base64：图片已经由 content part 承载。
+    expect(result.response).toBe(
+      JSON.stringify(
+        {
+          content: [
+            { type: 'text', text: 'chart ready' },
+            { type: 'image', mimeType: 'image/png', data: '[image data omitted]' }
+          ]
+        },
+        null,
+        2
+      )
+    );
+    expect(result.response).not.toContain('AAAA');
+  });
+
+  it('does not attach images when the workflow already blocked its result', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const runner = createRunner({
+      runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+      getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+      runWorkflowTool: vi.fn().mockResolvedValue({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: { content: [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }] },
+        workflowRuntimeSummary: { hasModerationBlock: true }
+      })
+    });
+    const result = await runner.runTool({ call: createCall() });
+    expect(result.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+    expect(result.content).toBeUndefined();
   });
 
   it.each([0, 1])(
@@ -100,7 +168,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
             ].map((item) => ({ ...item, renderType: 'input' }))
           },
           runtimeNodesMap: new Map(childNodes.map((node: any) => [node.nodeId, node])),
-          variableState: { toRuntimeRecord: () => ({}), toStoreRecord: () => ({}) },
+          variableContext: { toRuntimeRecord: () => ({}), toStoreRecord: () => ({}) },
           runningAppInfo: {}
         } as any);
         childNodes[0].inputs.push({ key: 'leaked', value: 'bad' });
@@ -211,8 +279,8 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(runtimeNodes[0].outputs[0].value.count).toBe(1);
   });
 
-  it('returns a stable not-found result without caching flow response', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+  it('returns a stable not-found result without running a workflow', async () => {
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => undefined
     });
 
@@ -227,11 +295,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute sandbox system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'sandbox',
         name: 'Run shell',
@@ -254,11 +322,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute read-file system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'file',
         name: 'File parse',
@@ -280,11 +348,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute dataset search system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'datasetSearch',
         name: 'Dataset search',
@@ -307,7 +375,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('runs user workflow tools and interactive resume paths', async () => {
@@ -376,7 +444,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
           }
         ]
       });
-    const { runTool, runInteractiveTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runInteractiveTool } = createRunner({
       runtimeNodes,
       runtimeEdges,
       runWorkflowTool,
@@ -455,17 +523,6 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
         content: 'nested result'
       }
     ]);
-    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
-      callId: call.id,
-      flowResponse: expect.objectContaining({
-        flowUsages: [usage],
-        flowResponses: [
-          {
-            toolStop: true
-          }
-        ]
-      })
-    });
 
     const interactiveResult = await runInteractiveTool({
       childrenResponse: {
@@ -474,16 +531,12 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       toolCallId: 'call_interactive'
     } as any);
 
-    expect(cacheToolFlowResponse).toHaveBeenLastCalledWith({
-      callId: 'call_interactive',
-      flowResponse: expect.objectContaining({
-        flowResponses: [
-          {
-            toolStop: false
-          }
-        ]
+    expect(runWorkflowTool).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        callId: 'call_interactive',
+        lastInteractive: { entryNodeIds: ['search'] }
       })
-    });
+    );
     expect(interactiveResult).toEqual({
       response: 'interactive ok',
       assistantMessages: [],
@@ -494,6 +547,69 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(runtimeNodes[0].inputs[0].value).toBe('old');
     expect(runtimeNodes[0]).not.toHaveProperty('isEntry');
     expect(runtimeEdges[0]).not.toHaveProperty('status');
+  });
+
+  it('preserves the projected plugin content through the workflow tool runner', async () => {
+    const content = [
+      { type: 'text' as const, text: '{}' },
+      { type: 'text' as const, text: '"summary"' },
+      { type: 'image_url' as const, image_url: { url: 'https://files.example.com/chart.png' } }
+    ];
+    const { runTool } = createRunner({
+      runtimeNodes: [{ nodeId: 'plugin', inputs: [], outputs: [] }],
+      runtimeEdges: [],
+      getToolInfo: () => ({ type: 'user', name: 'Plugin', rawData: { nodeId: 'plugin' } }),
+      runWorkflowTool: vi.fn(async () => ({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: createPluginToolResponse({ result: { summary: '"summary"' }, content })
+      }))
+    });
+    await expect(runTool({ call: createCall({ name: 'plugin' }) })).resolves.toEqual(
+      expect.objectContaining({
+        response: '{\n  "summary": "\\"summary\\""\n}',
+        content
+      })
+    );
+  });
+
+  it('does not fall back to legacy content shape for a plugin without schema', async () => {
+    const { runTool } = createRunner({
+      runtimeNodes: [{ nodeId: 'plugin', inputs: [], outputs: [] }],
+      runtimeEdges: [],
+      getToolInfo: () => ({
+        type: 'user',
+        name: 'Plugin',
+        rawData: {
+          nodeId: 'plugin',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          toolConfig: { systemTool: { toolId: 'systemTool-plugin' } }
+        }
+      }),
+      runWorkflowTool: vi.fn(async () => ({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: createPluginToolResponse({
+          result: {
+            content: [
+              { type: 'text', text: 'legacy' },
+              { type: 'image_url', image_url: { url: '[image omitted]' } }
+            ]
+          }
+        })
+      }))
+    });
+
+    const result = await runTool({ call: createCall({ name: 'plugin' }) });
+    expect(result.content).toBeUndefined();
+    expect(JSON.parse(result.response)).toEqual({
+      content: [
+        { type: 'text', text: 'legacy' },
+        { type: 'image_url', image_url: { url: '[image omitted]' } }
+      ]
+    });
   });
 
   it('isolates input values between repeated calls to the same tool', async () => {
@@ -612,5 +728,229 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(received.runtimeNodes[0].inputs).toEqual([
       { key: 'userChatInput', value: 'restored user prompt', renderTypeList: ['agentGenerated'] }
     ]);
+  });
+});
+
+describe('extractAgentLoopCoreToolContent', () => {
+  it('returns structured content parts when every part is valid', () => {
+    const content = [
+      { type: 'text', text: 'done' },
+      { type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }
+    ];
+
+    expect(extractAgentLoopCoreToolContent({ content })).toEqual(content);
+  });
+
+  it('returns undefined for non-object or missing content', () => {
+    expect(extractAgentLoopCoreToolContent(undefined)).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent(null)).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent('text')).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent([])).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent({})).toBeUndefined();
+  });
+
+  it('returns undefined when content is an empty array', () => {
+    expect(extractAgentLoopCoreToolContent({ content: [] })).toBeUndefined();
+  });
+
+  it('returns undefined when an image_url part has an empty url', () => {
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [{ type: 'image_url', image_url: { url: '' } }]
+      })
+    ).toBeUndefined();
+  });
+
+  it('returns undefined when any part is invalid', () => {
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [
+          { type: 'text', text: 'ok' },
+          { type: 'image_url', image_url: {} },
+          { type: 'unknown' }
+        ]
+      })
+    ).toBeUndefined();
+  });
+
+  it('rejects image parts whose detail is not accepted by the shared schema', () => {
+    // detail 只允许 auto/low/high；手写校验放过它会让下一轮请求被供应商拒绝。
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: 'https://files.example.com/plot.png', detail: 'ultra' }
+          }
+        ]
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('projectPluginModelContent', () => {
+  it('projects workflow and response values and keeps each value beside its images', () => {
+    const image = { type: 'image_url', image_url: { url: 'https://files.example.com/chart.png' } };
+    const result = {
+      jobId: 'job-1',
+      first: { value: [1, 2], images: [image] },
+      second: { value: 'ok', images: [] }
+    };
+    const marked = { 'x-fastgpt-output-kind': 'model-content' };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { jobId: {}, first: marked, second: marked }
+        }
+      })
+    ).toEqual({
+      workflowResult: { jobId: 'job-1', first: [1, 2], second: 'ok' },
+      responseResult: { jobId: 'job-1', first: '[1,2]', second: '"ok"' },
+      content: [
+        { type: 'text', text: '{"jobId":"job-1"}' },
+        { type: 'text', text: '[1,2]' },
+        image,
+        { type: 'text', text: '"ok"' }
+      ]
+    });
+    expect(result.first.images).toEqual([image]);
+  });
+
+  it('does not follow references to find a marker', () => {
+    const result = { field: { value: 'ok', images: [] } };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { field: { $ref: '#/$defs/marked' } },
+          $defs: { marked: { 'x-fastgpt-output-kind': 'model-content' } }
+        }
+      })
+    ).toEqual({ workflowResult: result, responseResult: result });
+  });
+
+  it('does not infer unmarked content and excludes invalid images', () => {
+    const onInvalidField = vi.fn();
+    const result = {
+      plain: { value: 1, images: [] },
+      marked: {
+        value: false,
+        images: [{ type: 'image_url', image_url: { url: 'javascript:alert(1)' } }]
+      }
+    };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { plain: {}, marked: { 'x-fastgpt-output-kind': 'model-content' } }
+        },
+        onInvalidField
+      })
+    ).toEqual({
+      workflowResult: { plain: result.plain, marked: false },
+      responseResult: { plain: result.plain, marked: 'false' },
+      content: [
+        { type: 'text', text: JSON.stringify({ plain: result.plain }) },
+        { type: 'text', text: 'false' }
+      ]
+    });
+    expect(onInvalidField).toHaveBeenCalledWith('marked', 'invalid-part');
+  });
+});
+
+describe('convertMcpToolContentToToolContent', () => {
+  it('converts MCP image blocks into data URI image parts', () => {
+    // MCP 原生图片块是 { type: 'image', data, mimeType }，不是 image_url。
+    expect(
+      convertMcpToolContentToToolContent([
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ])
+    ).toEqual([{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }]);
+  });
+
+  it('returns undefined when the result has no image block', () => {
+    expect(convertMcpToolContentToToolContent([{ type: 'text', text: 'ok' }])).toBeUndefined();
+    expect(convertMcpToolContentToToolContent(undefined)).toBeUndefined();
+    expect(convertMcpToolContentToToolContent([])).toBeUndefined();
+  });
+
+  it('skips non-raster image blocks that vision providers reject', () => {
+    // OpenAI / Claude 只接受 png/jpeg/webp/gif；svg、bmp 会被供应商拒绝。
+    expect(
+      convertMcpToolContentToToolContent([
+        { type: 'image', data: 'AAAA', mimeType: 'image/svg+xml' }
+      ])
+    ).toBeUndefined();
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: 'AAAA', mimeType: 'image/bmp' }])
+    ).toBeUndefined();
+  });
+
+  it('drops image blocks with unusable payload', () => {
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: '', mimeType: 'image/png' }])
+    ).toBeUndefined();
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: 'AAAA', mimeType: 'text/html' }])
+    ).toBeUndefined();
+  });
+});
+
+describe('maskToolImagePayload', () => {
+  it('replaces only the MCP image blocks that get converted', () => {
+    expect(
+      maskToolImagePayload({
+        content: [
+          { type: 'text', text: 'ok' },
+          { type: 'image', data: 'AAAA', mimeType: 'image/png' },
+          { type: 'image', data: 'BBBB', mimeType: 'image/svg+xml' }
+        ]
+      })
+    ).toEqual({
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image', mimeType: 'image/png', data: '[image data omitted]' },
+        // 没被转换的块不能跟着消失，否则两条通道都拿不到内容。
+        { type: 'image', data: 'BBBB', mimeType: 'image/svg+xml' }
+      ]
+    });
+  });
+
+  it('masks lowercase and uppercase data URI parts consistently while preserving HTTP(S) URLs', () => {
+    const base64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+    const httpImage = {
+      type: 'image_url',
+      image_url: { url: 'https://files.example.com/chart.png' }
+    };
+    const lowercaseInput = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } },
+        httpImage
+      ]
+    };
+    const uppercaseInput = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: `DATA:IMAGE/PNG;BASE64,${base64}` } },
+        httpImage
+      ]
+    };
+    const expected = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: '[image data omitted]' } },
+        httpImage
+      ]
+    };
+
+    expect(maskToolImagePayload(lowercaseInput, { maskDataUrlParts: true })).toEqual(expected);
+    expect(maskToolImagePayload(uppercaseInput, { maskDataUrlParts: true })).toEqual(expected);
+    // 没走 content 通道时保持原样，否则唯一一份数据会被抹掉。
+    expect(maskToolImagePayload(lowercaseInput)).toBe(lowercaseInput);
+    expect(maskToolImagePayload(uppercaseInput)).toBe(uppercaseInput);
   });
 });

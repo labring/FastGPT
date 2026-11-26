@@ -8,7 +8,9 @@ import { serviceEnv } from '../../env';
  * `scryptSync` 是高 CPU/内存开销的密码派生算法。采用 `memoize` 缓存计算结果，
  * 避免在每次加解密时重复执行耗时的同步 KDF 计算，同时在环境变量动态变更或单测场景下自动根据新 secret 计算与缓存。
  */
-export const getDerivedKey = memoize(
+export const getDerivedKey: ((secret?: string) => Buffer) & {
+  cache: { clear?: () => void };
+} = memoize(
   (secret: string = serviceEnv.AES256_SECRET_KEY): Buffer => {
     return crypto.scryptSync(secret, 'salt', 32);
   },

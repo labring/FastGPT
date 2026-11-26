@@ -7,9 +7,8 @@ description: 保留生成文档迁移前的知识库、集合与数据块接口�
 
 本页保留手写参考的历史语境，部分字段、端点及模型名称属于旧版。当前任务请阅读[当前集成指南](/zh-CN/openapi/dataset)，接口参数以部署实例的生成参考为准。
 
-
-| 如何获取知识库 ID（datasetId）          | 如何获取文件集合 ID（collectionId）        |
-| --------------------------------------- | ------------------------------------------ |
+| 如何获取知识库 ID（datasetId）                          | 如何获取文件集合 ID（collectionId）                          |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
 | ![获取知识库 ID](/imgs/optimized/getDatasetId.png.webp) | ![获取文件集合 ID](/imgs/optimized/getCollectionId.png.webp) |
 
 ## 知识库
@@ -215,23 +214,23 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **入参**
 
-| 参数             | 说明                                                                                                         | 必填 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ | ---- |
-| datasetId        | 知识库 ID                                                                                                    | ✅   |
-| parentId         | 父级 ID，不填则默认为根目录                                                                                  |      |
-| trainingType     | 数据处理方式（选填，默认 `chunk`）。`chunk`: 按文本长度进行分割；`qa`: 问答对提取                            |      |
-| indexPrefixTitle | 是否自动生成标题索引                                                                                         |      |
-| customPdfParse   | 是否开启 PDF 增强解析, 默认 false: 关闭;true: 开启;                                                          |      |
-| autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                               |      |
-| imageIndex       | 是否自动生成图片索引(仅商业版支持)                                                                           |      |
-| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数                                                       |      |
-| chunkSplitMode   | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto 时不生效。                           |      |
-| chunkSize        | 分块大小，默认 1500。chunkSettingMode=auto 时不生效。                                                        |      |
-| indexSize        | 索引大小，默认 512，必须小于索引模型最大 token。chunkSettingMode=auto 时不生效。                             |      |
-| chunkSplitter    | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto 时不生效。 |      |
-| qaPrompt         | qa 拆分提示词                                                                                                |      |
+| 参数             | 说明                                                                                                                                                         | 必填 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
+| datasetId        | 知识库 ID                                                                                                                                                    | ✅   |
+| parentId         | 父级 ID，不填则默认为根目录                                                                                                                                  |      |
+| trainingType     | 数据处理方式（选填，默认 `chunk`）。`chunk` : 按文本长度进行分割；`qa` : 问答对提取                                                                          |      |
+| indexPrefixTitle | 是否自动生成标题索引                                                                                                                                         |      |
+| customPdfParse   | 是否开启 PDF 增强解析, 默认 false: 关闭;true: 开启;                                                                                                          |      |
+| autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                                                                               |      |
+| imageIndex       | 是否自动生成图片索引(仅商业版支持)                                                                                                                           |      |
+| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数                                                                                                       |      |
+| chunkSplitMode   | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto 时不生效。                                                                           |      |
+| chunkSize        | 分块大小，默认 1500。chunkSettingMode=auto 时不生效。                                                                                                        |      |
+| indexSize        | 索引大小，默认 512，必须小于索引模型最大 token。chunkSettingMode=auto 时不生效。                                                                             |      |
+| chunkSplitter    | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto 时不生效。                                                 |      |
+| qaPrompt         | qa 拆分提示词                                                                                                                                                |      |
 | tags             | 集合标签（商业版）。支持传入结构化标签数组（如 `[{"tag": "适用部门", "value": ["全员", "研发部"]}, {"tag": "保密等级", "value": 1}]`），也兼容旧版字符串数组 |      |
-| createTime       | 文件创建时间（Date / String）                                                                                |      |
+| createTime       | 文件创建时间（Date / String）                                                                                                                                |      |
 
 **出参**
 
@@ -356,7 +355,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "link":"https://doc.fastgpt.io/guide/getting-started/quick-start",
+    "link":"https://doc.fastgpt.cn/guide/getting-started/quick-start",
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
 
@@ -639,7 +638,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
         "tmbId": "65422be6aa44b7da77729ec9",
         "type": "link",
         "name": "快速上手 | FastGPT",
-        "rawLink": "https://doc.fastgpt.io/guide/getting-started/quick-start",
+        "rawLink": "https://doc.fastgpt.cn/guide/getting-started/quick-start",
         "updateTime": "2024-01-20T13:54:53.031Z",
         "dataAmount": 3,
         "trainingAmount": 0,

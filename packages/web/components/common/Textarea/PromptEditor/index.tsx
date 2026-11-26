@@ -7,6 +7,7 @@ import MyModal from '../../../v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import type { LexicalEditor } from 'lexical';
 import type { FormPropsType } from './type';
+import { VariableLabelContext } from './context';
 
 const PromptEditor = ({
   showOpenModal = true,
@@ -57,7 +58,7 @@ const PromptEditor = ({
   }, [value]);
 
   return (
-    <>
+    <VariableLabelContext.Provider value={props.variableLabels}>
       <Box position="relative">
         <Editor
           {...props}
@@ -123,7 +124,7 @@ const PromptEditor = ({
           )}
         </Box>
       </MyModal>
-    </>
+    </VariableLabelContext.Provider>
   );
 };
 

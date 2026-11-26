@@ -6,8 +6,6 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { checkCollectionFolderNavigable } from '@/service/core/dataset/collectionVisibleList';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
@@ -15,8 +13,8 @@ import {
   GetCollectionPathsResponseSchema,
   type GetCollectionPathsResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import { getFolderParentPathItems } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/paths';
 
 export async function handler(req: ApiRequestProps): Promise<GetCollectionPathsResponseType> {
   const { sourceId } = parseApiInput({ req, querySchema: GetCollectionPathsQuerySchema }).query;
@@ -67,29 +65,3 @@ export async function handler(req: ApiRequestProps): Promise<GetCollectionPathsR
 }
 
 export default NextAPI(handler);
-
-/** 查询同一团队和知识库内的面包屑，包含当前资源；环、断链或超深路径会被截断。 */
-export async function getDatasetCollectionPaths({
-  parentId = '',
-  teamId,
-  datasetId
-}: {
-  parentId?: string;
-  teamId: string;
-  datasetId: string;
-}): Promise<ParentTreePathItemType[]> {
-  return getFolderParentPathItems({
-    folderId: parentId || null,
-    findFolder: (id) =>
-      MongoDatasetCollection.findOne(
-        {
-          _id: id,
-          teamId,
-          datasetId,
-          // 当前资源可为文件，其余祖先只能是文件夹。
-          ...(id === parentId ? {} : { type: DatasetCollectionTypeEnum.folder })
-        },
-        'name parentId'
-      ).lean()
-  });
-}

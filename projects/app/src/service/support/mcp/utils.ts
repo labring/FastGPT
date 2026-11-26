@@ -30,10 +30,9 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
@@ -51,7 +50,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { markProfileError, profileStage, setProfileMeta } from '@fastgpt/service/common/profiling';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import {
   LimitTypeEnum,
   assertTeamFrequencyLimit
@@ -363,7 +362,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
             chatConfig,
             histories: [],
             stream: false,
-            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             nodeResponseWriteConfig: {
               persistToDb: true,
               retainInMemory: false

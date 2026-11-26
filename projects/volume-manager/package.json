@@ -14,6 +14,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
+    "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@hono/node-server": "catalog:",
     "hono": "catalog:",

@@ -1,6 +1,6 @@
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { getModelList } from '@/web/core/ai/model/modelData';
-import { Button } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -9,7 +9,8 @@ import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
-import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
+import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -22,11 +23,18 @@ type Props = {
 const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
-  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const { loadDocument } = useWorkflowSessionActions();
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [modelsLoading, setModelsLoading] = useState(false);
+  const showImportFailure = (message?: string) =>
+    toast({
+      title: t('app:import_configs_failed'),
+      description: message ? <Box whiteSpace="pre-wrap">{message}</Box> : undefined,
+      status: 'error'
+    });
 
   return (
     <MyModal
@@ -56,17 +64,24 @@ const ImportSettings = ({ onClose }: Props) => {
                 models: modelList,
                 modelCatalogLoaded: true
               });
-              await initData(workflowConfig);
+              const result = loadDocument(
+                materializeWorkflow({
+                  input: workflowConfig,
+                  chatConfig: workflowConfig.chatConfig ?? chatConfig,
+                  t
+                })
+              );
+              if (!result.ok) {
+                showImportFailure(result.error?.message);
+                return;
+              }
               toast({
                 title: t('app:import_configs_success'),
                 status: 'success'
               });
               onClose();
             } catch {
-              toast({
-                title: t('app:import_configs_failed'),
-                status: 'error'
-              });
+              showImportFailure();
             } finally {
               setModelsLoading(false);
             }

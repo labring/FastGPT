@@ -1,6 +1,19 @@
+import { createHash } from 'node:crypto';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
+
+/** 轮询和回复都要求连接在线且存在非空凭据。 */
+export const isActiveWechatConnection = (
+  app?: Pick<WechatAppType, 'status' | 'token'>
+): app is { status: 'online'; token: string } =>
+  app?.status === 'online' && typeof app.token === 'string' && app.token !== '';
+
+/** 使用登录快照哈希作为不透明绑定键，隔离不同登录的失败计数与回复，且不将凭据写入 Redis。 */
+export const getWechatBindingKey = (app: Pick<WechatAppType, 'loginTime' | 'token'>) =>
+  createHash('sha256')
+    .update(JSON.stringify([app.loginTime ?? null, app.token]))
+    .digest('hex');
 
 /**
  * 确保后台微信接口只能操作微信发布渠道。

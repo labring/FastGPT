@@ -1,5 +1,5 @@
 import { Box, Flex, ModalBody, useDisclosure, Switch, Textarea } from '@chakra-ui/react';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { type AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
@@ -22,14 +22,15 @@ const ScheduledTriggerConfig = ({
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const timezone = value?.timezone;
+  const isOpenSchedule = Boolean(value?.cronString);
+  // 延迟挂载配置面板时只读取默认时区，直到用户编辑才写入运行时。
+  const timezone = value?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const defaultPrompt = value?.defaultPrompt;
-  const isOpenSchedule = value?.cronString !== '';
 
   const onUpdate = useCallback(
     ({
       cronString,
-      timezone,
+      timezone: nextTimezone,
       defaultPrompt
     }: {
       cronString?: string;
@@ -38,18 +39,12 @@ const ScheduledTriggerConfig = ({
     }) => {
       onChange({
         cronString: cronString ?? value?.cronString ?? '',
-        timezone: timezone ?? value?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone: nextTimezone ?? timezone,
         defaultPrompt: defaultPrompt ?? value?.defaultPrompt ?? ''
       });
     },
-    [onChange, value]
+    [onChange, timezone, value]
   );
-
-  useEffect(() => {
-    if (!value?.timezone) {
-      onUpdate({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    }
-  }, []);
 
   return (
     <>

@@ -10,10 +10,12 @@ import {
   GetCollectionCollaboratorListQuerySchema,
   GetCollectionCollaboratorListResponseSchema,
   GetCollectionDetailQuerySchema,
+  GetCollectionDetailResponseSchema,
   GetCollectionPathsQuerySchema,
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
+  ListCollectionV2ResponseSchema,
   GetTagFilterOptionsQuerySchema,
   GetTagFilterOptionsResponseSchema,
   ReadCollectionSourceBodyRawSchema,
@@ -38,6 +40,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       summary: '申请知识库集合批量下载凭证',
       description: '校验并准备通用知识库集合批量下载所需的短效一次性凭证',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'getDownloadTicket'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -62,6 +68,11 @@ export const DatasetCollectionPath: OpenAPIPath = {
       summary: '下载知识库集合归档文件',
       description: '使用短效凭证将预检后的集合原始文件流式归档为 ZIP 文件',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'batchDownload',
+        retryable: false
+      },
       requestParams: {
         query: BatchDownloadDatasetCollectionsQuerySchema
       },
@@ -92,6 +103,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       description:
         '删除一个或多个集合及其子集合。请求体三选一：body.id（单个集合）、body.collectionIds（集合列表）、body.datasetId + body.apiFileIds（API 文件库外部文件或目录 ID）。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除。按 apiFileIds 定位时全部未命中会返回集合不存在错误。旧版 query.id 仍兼容但已弃用，请改用 body.id；使用 query.id 时请求体可缺失或为 {}，同时提供合法请求体时 query.id 优先，非法请求体仍会被拒绝。未提供任何定位参数时拒绝请求',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'delete'
+      },
       requestParams: {
         query: DeleteCollectionQuerySchema
       },
@@ -116,12 +131,21 @@ export const DatasetCollectionPath: OpenAPIPath = {
       description:
         '获取集合详细信息，包括索引数量、错误数量、文件信息等。需要所属数据集读权限与集合读权限',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'detail'
+      },
       requestParams: {
         query: GetCollectionDetailQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回集合详情'
+          description: '成功返回集合详情',
+          content: {
+            'application/json': {
+              schema: GetCollectionDetailResponseSchema
+            }
+          }
         }
       }
     }
@@ -132,6 +156,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       description:
         '获取数据集集合列表，支持分页、搜索、标签过滤。需要数据集读权限；传入 parentId 时同时校验该文件夹读权限。知识库开启文件级权限后，列表按当前成员逐条可读的集合过滤，并返回每个集合的有效权限',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -141,7 +169,12 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合列表和总数'
+          description: '成功返回集合列表和总数',
+          content: {
+            'application/json': {
+              schema: ListCollectionV2ResponseSchema
+            }
+          }
         }
       }
     }
@@ -172,6 +205,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       description:
         '更新数据集集合信息，支持通过集合ID或数据集ID+外部文件ID定位集合。需要集合写权限；变更 parentId 视为移动，源父级与目标父级均需管理权限（根目录与文件夹之间移动还需团队知识库创建权限），且不接受 inheritPermission，独立态保持独立、继承态保持继承',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'update'
+      },
       requestBody: {
         content: {
           'application/json': {

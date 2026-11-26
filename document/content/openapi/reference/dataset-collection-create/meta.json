@@ -1,0 +1,10 @@
+{
+  "title": "集合创建",
+  "pages": [
+    "create",
+    "local-file",
+    "link",
+    "text",
+    "api-collection"
+  ]
+}

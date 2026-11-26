@@ -15,8 +15,28 @@ vi.mock('@/web/common/api/request', () => ({
 
 import {
   canBatchDownloadDatasetCollections,
-  createBatchDownloadDatasetCollectionsSubmitter
+  createBatchDownloadDatasetCollectionsSubmitter,
+  postTemplateDatasetCollection
 } from '@/web/core/dataset/api/collection';
+
+describe('template dataset import', () => {
+  it.each([
+    ['中文%20.csv', '中文%20.csv'],
+    ['file%20name.csv', 'file%20name.csv'],
+    ['file%22name.csv', 'file%22name.csv'],
+    ['file name.csv', 'file name.csv']
+  ])('preserves the uploaded filename %s', (filename, multipartFilename) => {
+    postTemplateDatasetCollection({
+      datasetId: 'dataset-1',
+      file: new File(['q,a'], filename),
+      percentListen: vi.fn()
+    });
+
+    const form = mocks.post.mock.lastCall?.[1] as FormData;
+    expect((form.get('file') as File).name).toBe(multipartFilename);
+    expect(JSON.parse(form.get('data') as string)).toEqual({ datasetId: 'dataset-1' });
+  });
+});
 
 describe('batch dataset collection download', () => {
   beforeEach(() => {

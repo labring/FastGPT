@@ -3,37 +3,54 @@ import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
+/** LLM 阶梯上限由 maxInputTokensK 固定为 K Tokens，避免同一字段在不同版本中按不同单位解释。 */
 export const ModelPriceTierSchema = z.object({
-  maxInputTokens: z
+  maxInputTokensK: z
     .number()
-    .min(0)
+    .int()
+    .positive()
     .optional()
-    .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
+    .meta({ description: '本档输入上限，单位 K Tokens；省略表示无限', example: 32 }),
   inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
-  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
+  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 }),
+  // 必须区分未配置与显式 0，不能把 null 或空字符串转换为免费。
+  cacheReadPrice: z.number().min(0).optional().meta({
+    description: '每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费',
+    example: 0.2
+  }),
+  cacheCreationPrice: z.number().min(0).optional().meta({
+    description: '每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费',
+    example: 2.5
+  })
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
 /** STT 支持独立计价口径；其他类型仍由模型类型确定分母。 */
 export const ModelPricingSchema = z.object({
   type: z.enum(['duration', 'tokens']).optional().meta({ description: 'STT 计价类型' }),
+  inputPrice: ModelPriceTierSchema.shape.inputPrice.optional(),
+  outputPrice: ModelPriceTierSchema.shape.outputPrice.optional(),
   tiers: z
     .array(ModelPriceTierSchema)
     .max(5)
     .optional()
     .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
   unitPrice: z.number().min(0).optional().meta({
-    description: '综合单价；Token/TTS 每百万数量，STT 按类型固定为每 60 秒或每百万 Tokens',
+    description: '综合单价；Token/TTS 每百万数量，STT 时长模式固定为每 60 秒',
     example: 2
   })
 });
 export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
 export const LLMModelPricingSchema = ModelPricingSchema.omit({
   unitPrice: true,
+  inputPrice: true,
+  outputPrice: true,
   type: true
 });
 export const UnitModelPricingSchema = ModelPricingSchema.omit({
   tiers: true,
+  inputPrice: true,
+  outputPrice: true,
   type: true
 });
 /** STT 价格必须明确声明口径；旧数据由后台迁移补齐。 */
@@ -47,10 +64,8 @@ export const STTModelPricingSchema = z.union([
   }),
   z.object({
     type: z.literal('tokens'),
-    unitPrice: UnitModelPricingSchema.shape.unitPrice.meta({
-      description: '每百万总 Tokens 的积分单价',
-      example: 10
-    })
+    inputPrice: ModelPricingSchema.shape.inputPrice,
+    outputPrice: ModelPricingSchema.shape.outputPrice
   })
 ]);
 export type STTModelPricingType = z.infer<typeof STTModelPricingSchema>;

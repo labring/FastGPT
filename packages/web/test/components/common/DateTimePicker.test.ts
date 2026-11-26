@@ -9,15 +9,19 @@ const reactGlobals = globalThis as typeof globalThis & {
 };
 reactGlobals.IS_REACT_ACT_ENVIRONMENT = true;
 
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'zh-CN' } })
+}));
+
 vi.mock('@chakra-ui/react', () => ({
   Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockBox({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
+    function MockBox({ children, as, ...props }, ref) {
+      return React.createElement(typeof as === 'string' ? as : 'div', { ...props, ref }, children);
     }
   ),
   Flex: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockFlex({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
+    function MockFlex({ children, as, ...props }, ref) {
+      return React.createElement(typeof as === 'string' ? as : 'div', { ...props, ref }, children);
     }
   ),
   Card: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
@@ -25,6 +29,8 @@ vi.mock('@chakra-ui/react', () => ({
       return React.createElement('div', { ...props, ref }, children);
     }
   ),
+  Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+    React.createElement('input', props),
   Portal: ({ children }: React.PropsWithChildren) =>
     React.createElement(React.Fragment, null, children)
 }));
@@ -33,7 +39,8 @@ vi.mock('../../../components/common/Icon', () => ({
   default: () => React.createElement('span', { 'data-testid': 'mock-icon' })
 }));
 
-vi.mock('react-day-picker', () => ({
+vi.mock('react-day-picker', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-day-picker')>()),
   DayPicker: ({ onSelect }: { onSelect?: (date: Date) => void }) =>
     React.createElement(
       'div',
@@ -250,6 +257,210 @@ describe('DateTimePicker controlled and uncontrolled behavior', () => {
     expect(host.textContent).toContain('2026/09/11');
     expect(host.textContent).not.toContain('2026/09/20');
 
+    root.unmount();
+  });
+});
+
+it('browses years and months without changing the selected date, respecting disabled years', async () => {
+  const { host, root } = createTestRoot();
+  const onChange = vi.fn();
+  await act(async () => {
+    root.render(
+      React.createElement(DateTimePicker, {
+        defaultDate: new Date(2026, 8, 11),
+        disabled: [{ after: new Date(2026, 11, 31) }],
+        onChange,
+        'data-testid': 'datetime-trigger'
+      })
+    );
+  });
+  await act(async () => {
+    (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
+  });
+  const button = (label: string) =>
+    Array.from(host.querySelectorAll('button')).find((item) => item.textContent === label);
+  await act(async () => {
+    button('2026 年')?.click();
+  });
+  expect(button('2027')?.disabled).toBe(true);
+  await act(async () => {
+    Array.from(host.querySelectorAll('button'))
+      .filter((item) => item.textContent === '2026')
+      .at(-1)
+      ?.click();
+  });
+  expect(button('1月')).toBeTruthy();
+  await act(async () => {
+    button('1月')?.click();
+  });
+  expect(host.textContent).toContain('2026/09/11');
+  expect(onChange).not.toHaveBeenCalled();
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+it('keeps the selected year and month unchanged while paging', async () => {
+  const { host, root } = createTestRoot();
+  const onChange = vi.fn();
+  await act(async () => {
+    root.render(
+      React.createElement(DateTimePicker, {
+        defaultDate: new Date(2026, 8, 11),
+        onChange,
+        'data-testid': 'datetime-trigger'
+      })
+    );
+  });
+  const button = (label: string) =>
+    Array.from(host.querySelectorAll('button')).find((item) => item.textContent === label);
+  const arrow = (label: string) =>
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+  await act(async () => {
+    (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
+  });
+  await act(async () => {
+    button('2026 年')?.click();
+  });
+  expect(button('2026')?.getAttribute('bg')).toBe('primary.600');
+  await act(async () => {
+    arrow('common:date_picker.next')?.click();
+  });
+  expect(button('2038')?.getAttribute('bg')).not.toBe('primary.600');
+  expect(
+    host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]')?.value
+  ).toBe('2026');
+  await act(async () => {
+    arrow('common:date_picker.previous')?.click();
+  });
+  await act(async () => {
+    button('2026')?.click();
+  });
+  expect(button('9月')?.getAttribute('bg')).toBe('primary.600');
+  await act(async () => {
+    arrow('common:date_picker.next')?.click();
+  });
+  expect(button('9月')?.getAttribute('bg')).not.toBe('primary.600');
+  expect(host.textContent).toContain('2026/09/11');
+  expect(onChange).not.toHaveBeenCalled();
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+it('submits the year input and allows it to be edited again', async () => {
+  const { host, root } = createTestRoot();
+  await act(async () => {
+    root.render(
+      React.createElement(DateTimePicker, {
+        defaultDate: new Date(2026, 8, 11),
+        'data-testid': 'datetime-trigger'
+      })
+    );
+  });
+  await act(async () => {
+    (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
+  });
+  await act(async () => {
+    Array.from(host.querySelectorAll('button'))
+      .find((item) => item.textContent === '2026 年')
+      ?.click();
+  });
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]');
+  expect(input).toBeTruthy();
+  await act(async () => {
+    input?.focus();
+  });
+  await act(async () => {
+    input?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  expect(host.textContent).toContain('1月');
+  expect(document.activeElement).not.toBe(input);
+  await act(async () => {
+    input?.focus();
+  });
+  expect(document.activeElement).toBe(input);
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+it('disables paging past date bounds in day, month and year views', async () => {
+  const { host, root } = createTestRoot();
+  await act(async () => {
+    root.render(
+      React.createElement(DateTimePicker, {
+        defaultDate: new Date(2026, 8, 11),
+        disabled: [{ before: new Date(2026, 8, 5) }, { after: new Date(2027, 2, 10) }],
+        'data-testid': 'datetime-trigger'
+      })
+    );
+  });
+  const button = (label: string) =>
+    Array.from(host.querySelectorAll('button')).find((item) => item.textContent === label);
+  const arrow = (label: string) =>
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+  await act(async () => {
+    (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
+  });
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(false);
+  await act(async () => {
+    button('2026 年')?.click();
+  });
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(true);
+  await act(async () => {
+    button('2026')?.click();
+  });
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(false);
+  await act(async () => {
+    arrow('common:date_picker.next')?.click();
+  });
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(false);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(true);
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+it('closes and resets the year input after an invalid submission', async () => {
+  const { host, root } = createTestRoot();
+  await act(async () => {
+    root.render(
+      React.createElement(DateTimePicker, {
+        defaultDate: new Date(2026, 8, 11),
+        disabled: [{ after: new Date(2026, 11, 31) }],
+        'data-testid': 'datetime-trigger'
+      })
+    );
+  });
+  await act(async () => {
+    (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
+  });
+  await act(async () => {
+    Array.from(host.querySelectorAll('button'))
+      .find((item) => item.textContent === '2026 年')
+      ?.click();
+  });
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]');
+  await act(async () => {
+    input?.focus();
+  });
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, '2027');
+    input?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(input?.value).toBe('2027');
+  await act(async () => {
+    input?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  expect(document.activeElement).not.toBe(input);
+  expect(input?.value).toBe('2026');
+  expect(host.textContent).toContain('2025');
+  await act(async () => {
     root.unmount();
   });
 });

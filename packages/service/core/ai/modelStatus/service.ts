@@ -1,9 +1,8 @@
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import {
-  ModelStatusProbeConfigDefaults,
   ModelStatusProbeConfigSchema,
   type ModelStatusProbeConfig
 } from '@fastgpt/global/common/system/config/modelStatus';
@@ -25,7 +24,15 @@ import type {
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { MongoSystemConfigs } from '../../../common/system/config/schema';
+import { isEmbeddingRequestError } from '../embedding/error';
+import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
+import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
+import { systemInstanceConfig } from '../../../common/system/systemInstanceConfig/service';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '../../../common/system/systemInstanceConfig/secrets';
 import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { getSystemModelHandle } from '../model/catalog/service';
@@ -58,29 +65,6 @@ let modelStatusProbeInFlight: Promise<RunModelStatusProbeResponse> | undefined;
 const manualModelStatusProbeLease = new LeaseCache();
 
 /**
- * 读取数据库中存储的模型探测配置。
- * 若数据库中不存在或格式校验失败，则安全回退到系统默认配置并记录警告日志。
- */
-const getStoredConfig = async (): Promise<ModelStatusProbeConfig> => {
-  const record = await MongoSystemConfigs.findOne({
-    type: SystemConfigsTypeEnum.modelStatusProbe
-  })
-    .sort({ createTime: -1 })
-    .lean();
-
-  const parsed = ModelStatusProbeConfigSchema.safeParse({
-    ...ModelStatusProbeConfigDefaults,
-    ...(record?.value ?? {})
-  });
-  if (parsed.success) return parsed.data;
-
-  logger.warn('Invalid model status probe config; using defaults', {
-    issues: parsed.error.issues
-  });
-  return ModelStatusProbeConfigDefaults;
-};
-
-/**
  * 将内部配置结构转换为脱敏的外部响应对象。
  * 敏感信息 webhookToken 仅转换为布尔值 webhookTokenConfigured，永不回显明文。
  */
@@ -96,7 +80,7 @@ const toConfigResponse = (config: ModelStatusProbeConfig): ModelStatusProbeConfi
  * 包含自动探测开关、探测间隔分钟、告警 Webhook 地址及 Token 配置标记（脱敏）。
  */
 export const getModelStatusProbeConfig = async () => {
-  const config = await getStoredConfig();
+  const config = getSystemInstanceConfig().modelStatusProbe;
   return toConfigResponse(config);
 };
 
@@ -107,33 +91,48 @@ export const getModelStatusProbeConfig = async () => {
  * 2. webhookToken 未传时保持旧值，仅在 clearWebhookToken=true 时彻底清除已保存 Token。
  */
 export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbeConfigBody) => {
-  const current = await getStoredConfig();
-  const next: ModelStatusProbeConfig = {
+  // 读取主库的原值后再应用补丁。先严格校验旧值会让管理员无法替换损坏的凭据。
+  const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' })
+    .read('primary')
+    .lean();
+  const storedOverrides = record?.overrides;
+  const current = decryptDomainSecrets('modelStatusProbe', storedOverrides ?? {});
+  const webhookUrl = input.webhookUrl === undefined ? current.webhookUrl : input.webhookUrl;
+  const webhookToken = input.clearWebhookToken
+    ? undefined
+    : input.webhookToken === undefined
+      ? current.webhookToken
+      : input.webhookToken;
+
+  // 仍对最终写入值严格校验，未提交的无效旧凭据需要明确修复或清除。
+  const result = ModelStatusProbeConfigSchema.safeParse({
     enabled: input.enabled,
     intervalMinutes: input.intervalMinutes,
-    ...(input.webhookUrl === undefined
-      ? current.webhookUrl
-        ? { webhookUrl: current.webhookUrl }
-        : {}
-      : input.webhookUrl
-        ? { webhookUrl: input.webhookUrl }
-        : {}),
-    ...(input.clearWebhookToken
-      ? {}
-      : input.webhookToken === undefined
-        ? current.webhookToken
-          ? { webhookToken: current.webhookToken }
-          : {}
-        : input.webhookToken
-          ? { webhookToken: input.webhookToken }
-          : {})
-  };
+    ...(webhookUrl !== undefined && webhookUrl !== '' ? { webhookUrl } : {}),
+    ...(webhookToken !== undefined && webhookToken !== '' ? { webhookToken } : {})
+  });
+  if (!result.success) {
+    throw new ApiRequestInputParseError(result.error, { inputSource: 'body' });
+  }
+  const value = result.data;
+  const encrypted = encryptDomainSecrets({
+    domain: 'modelStatusProbe',
+    data: value,
+    previousStored: storedOverrides
+  });
+  await MongoSystemInstanceConfig.updateOne(
+    { domain: 'modelStatusProbe' },
+    {
+      $set: { overrides: encrypted },
+      $inc: { revision: 1 },
+      $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
+    },
+    { upsert: true, setDefaultsOnInsert: false }
+  );
 
-  const value = ModelStatusProbeConfigSchema.parse(next);
-  await MongoSystemConfigs.create({
-    type: SystemConfigsTypeEnum.modelStatusProbe,
-    value,
-    createTime: new Date()
+  // 写入已经成功，刷新失败不能把提交结果误报为失败；轮询会继续重试。
+  await systemInstanceConfig.refresh().catch((error) => {
+    logger.error('Failed to refresh model status probe config; polling will retry', { error });
   });
 
   return toConfigResponse(value);
@@ -270,7 +269,8 @@ const getModelStatusItem = ({
  * 同时统计绿/黄/红状态的模型总数与最近一次探测完成时间。
  */
 export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
-  const [config, modelHandle] = await Promise.all([getStoredConfig(), getSystemModelHandle()]);
+  const config = getSystemInstanceConfig().modelStatusProbe;
+  const modelHandle = await getSystemModelHandle();
   const models = [...modelHandle.getActiveModels()] as AIModelDataType[];
   const modelIds = models.map((model) => model.modelId);
   const since = new Date(Date.now() - MODEL_STATUS_WINDOW_MS);
@@ -309,6 +309,32 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
     models: statusModels,
     lastProbeTime
   };
+};
+
+/**
+ * 格式化模型探活失败记录：日志与告警记录不需要经过 i18n 翻译，已登记业务错误直接输出错误码
+ * （携带上游状态码时附带 HTTP 状态），其余错误保留原有英文提示文本。
+ */
+const formatProbeErrorMessage = (error: unknown): string => {
+  if (isEmbeddingRequestError(error) && error.errorCode) {
+    return error.upstreamStatus !== undefined
+      ? `${error.errorCode} (HTTP ${error.upstreamStatus})`
+      : error.errorCode;
+  }
+
+  const errorCode =
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    Object.hasOwn(ERROR_RESPONSE, error.message)
+      ? error.message
+      : typeof error === 'string' && Object.hasOwn(ERROR_RESPONSE, error)
+        ? error
+        : undefined;
+  if (errorCode) return errorCode;
+
+  return getErrText(error, 'Model test failed');
 };
 
 /**
@@ -386,7 +412,7 @@ export const probeModelStatus = async ({
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
     // 告警接收端可能只展示 probe.error，因此错误文本也携带模型名称以便定位。
-    error: `${model.name}: ${getErrText(lastError, 'Model test failed')}`.slice(0, 1000),
+    error: `${model.name}: ${formatProbeErrorMessage(lastError)}`.slice(0, 1000),
     startedAt,
     requestStartedAt,
     requestEndedAt
@@ -563,7 +589,7 @@ export const runModelStatusProbe = async ({
 }: {
   teamId?: string;
 } = {}): Promise<RunModelStatusProbeResponse> => {
-  const config = await getStoredConfig();
+  const config = getSystemInstanceConfig().modelStatusProbe;
   if (!config.enabled) return { skipped: true, startedAt: new Date().toISOString(), records: [] };
   if (modelStatusProbeInFlight) return modelStatusProbeInFlight;
 
@@ -590,7 +616,7 @@ export const runManualModelStatusProbe = async ({
       fn: async ({ signal, assertValid }) =>
         executeModelStatusProbe({
           teamId,
-          config: await getStoredConfig(),
+          config: getSystemInstanceConfig().modelStatusProbe,
           signal,
           assertLeaseValid: assertValid
         })
@@ -638,16 +664,15 @@ export const getModelStatusProbeConstants = () => ({
 export const testModelStatusWebhook = async (
   input?: TestModelStatusWebhookBody
 ): Promise<TestModelStatusWebhookResponse> => {
-  const [config, modelHandle] = await Promise.all([getStoredConfig(), getSystemModelHandle()]);
+  const config = getSystemInstanceConfig().modelStatusProbe;
+  const modelHandle = await getSystemModelHandle();
   const targetUrl = input?.webhookUrl?.trim() || config.webhookUrl;
   if (!targetUrl) {
     throw new UserError('Webhook URL is required');
   }
 
-  const targetToken =
-    input?.webhookToken !== undefined && input.webhookToken !== ''
-      ? input.webhookToken
-      : config.webhookToken;
+  // 未提交时沿用已存令牌，明确传入空字符串时按无凭据测试。
+  const targetToken = input?.webhookToken ?? config.webhookToken;
 
   const activeModels = [...modelHandle.getActiveModels()] as AIModelDataType[];
   const sampleModel =

@@ -23,7 +23,8 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
-import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../../memory/state';
+import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../context/memory';
+import { getWorkflowContext } from '../context';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
@@ -66,12 +67,12 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   });
   const chatHistories = getHistories(history, histories);
   const memoryKey = getWorkflowNodeMemoryKey({
-    memoryState: props.memoryState,
+    memoryContext: getWorkflowContext().memoryContext,
     runningAppInfo,
     nodeId
   });
   const lastMemory = readWorkflowNodeMemory<Record<string, any>>({
-    memoryState: props.memoryState,
+    memoryContext: getWorkflowContext().memoryContext,
     runningAppInfo,
     nodeId,
     history,
@@ -79,7 +80,14 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   });
 
   try {
-    const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await completions({
+    const {
+      arg,
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
+      usedUserOpenAIKey
+    } = await completions({
       ...props,
       histories: chatHistories,
       extractModel,
@@ -119,7 +127,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     const { totalPoints } = formatModelChars2Points({
       model: extractModel,
       inputTokens: inputTokens,
-      outputTokens: outputTokens
+      outputTokens: outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     });
     props.usagePush([
       {
@@ -127,7 +137,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
         modelId: extractModel.modelId,
         inputTokens,
-        outputTokens
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens
       }
     ]);
 
@@ -146,6 +158,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         query: content,
         inputTokens,
         outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         extractDescription: description,
         extractResult: arg,
         contextTotalLen: chatHistories.length + 2
@@ -214,7 +228,7 @@ const completions = async (props: ActionProps) => {
     requestId,
     finish_reason: finishReason,
     answerText: answer,
-    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     body: {
       model: extractModel,
@@ -235,7 +249,9 @@ const completions = async (props: ActionProps) => {
     answerLength: answer.length,
     jsonLength: jsonStr.length,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   if (!jsonStr) {
@@ -245,13 +261,17 @@ const completions = async (props: ActionProps) => {
       finishReason,
       answerLength: answer.length,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     });
 
     return {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       arg: {}
     };
@@ -273,6 +293,8 @@ const completions = async (props: ActionProps) => {
         rawResponse: answer,
         inputTokens,
         outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         usedUserOpenAIKey,
         arg: {}
       };
@@ -282,6 +304,8 @@ const completions = async (props: ActionProps) => {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       arg: arg as Record<string, any>
     };
@@ -298,6 +322,8 @@ const completions = async (props: ActionProps) => {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       arg: {}
     };

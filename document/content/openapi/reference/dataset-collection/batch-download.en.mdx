@@ -1,0 +1,46 @@
+---
+title: 'Download Collections Archive'
+seoTitle: 'Download Collections Archive - GET /api/core/dataset/collection/batchDownload | FastGPT OpenAPI'
+description: 'Stream a ZIP archive containing original source files for dataset collections authorized by a short-lived download ticket.'
+---
+
+## Endpoint Overview
+
+- **Method** : `GET`
+- **Path** : `/api/core/dataset/collection/batchDownload`
+- **Module** : Datasets / Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/batchDownload) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/batchDownload` )
+
+## Description & Notes
+
+Stream original source files for validated collections as a ZIP archive using a short-lived ticket.
+
+## Request Parameters
+
+### Query Parameters
+
+| Field    | Type     | Required | Default | Constraints & Description                                                          |
+| -------- | -------- | -------- | ------- | ---------------------------------------------------------------------------------- |
+| `ticket` | `string` | Yes      | -       | Short-lived single-use ticket issued by the download ticket endpoint. minLength: 1 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.io/api/core/dataset/collection/batchDownload?ticket=01JZZ8B7M5Y7QJX9J7S5V7QJ4F" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+### HTTP 200
+
+Successfully returned ZIP archive stream
+
+**Content-Type** : `application/zip`
+
+Returns raw binary stream ( `application/zip` ). Save with `curl -o archive.zip` .

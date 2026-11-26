@@ -4,6 +4,7 @@ import {
   adaptRole_Message2Chat,
   simpleUserContentPart,
   chats2GPTMessages,
+  filterToolMessages,
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
   runtimePrompt2ChatsValue,
@@ -16,7 +17,9 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { ChatItemMiniSchema, type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   ChatCompletionMessageParamSchema,
-  type ChatCompletionMessageParam
+  type ChatCompletionMessageParam,
+  type ChatCompletionMessageToolCall,
+  type ChatCompletionToolMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import type {
   WorkflowBuilderPreviewInteractive,
@@ -3197,7 +3200,7 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools[0].response).toBe('{"results": []}');
   });
 
-  it('should stringify non-string tool response content', () => {
+  it('should keep text parts when folding non-string tool response content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -3222,9 +3225,49 @@ describe('GPTMessages2Chats', () => {
     const result = GPTMessages2Chats({ messages, reserveTool: true });
 
     expect(result).toHaveLength(1);
-    expect((result[0].value[0] as any).tools[0].response).toBe(
-      '[{"type":"text","text":"chunked result"}]'
-    );
+    expect((result[0].value[0] as any).tools[0].response).toBe('chunked result');
+  });
+
+  it('round-trips structured tool content for agent recovery', () => {
+    const content = [
+      { type: 'text' as const, text: 'tool result' },
+      { type: 'image_url' as const, image_url: { url: 'https://example.com/result.png' } }
+    ];
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_image',
+            type: 'function',
+            function: {
+              name: 'render',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_image',
+        content
+      }
+    ];
+
+    const chats = GPTMessages2Chats({ messages, reserveTool: true });
+    const tool = chats[0].value[0].tools?.[0];
+    const restored = chats2GPTMessages({
+      messages: chats,
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(tool).toMatchObject({ response: 'tool result', content });
+    expect(restored[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_image',
+      content
+    });
   });
 
   it('should keep assistant content and reasoning separate from tools after chat roundtrip', () => {
@@ -3693,6 +3736,40 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools).toHaveLength(1);
     expect(toolValue.tools[0].toolName).toBe('Custom Tool Display Name');
     expect(toolValue.tools[0].toolAvatar).toBe('http://example.com/avatar.png');
+  });
+
+  it('should keep only text parts when folding tool content parts back to chat items', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: '',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'custom_tool',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: [
+          { type: 'text', text: 'Look at these images' },
+          { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+        ]
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages, reserveTool: true });
+
+    const toolValue = result[0].value[0] as any;
+    expect(toolValue.tools).toBeDefined();
+    expect(toolValue.tools).toHaveLength(1);
+    expect(toolValue.tools[0].response).toBe('Look at these images');
   });
 });
 
@@ -4238,4 +4315,147 @@ describe('workflow preview answers', () => {
       chats2GPTMessages({ messages, reserveId: false, reserveTool: false }).at(-1)
     ).toMatchObject({ role: 'user', content: JSON.stringify({ action: 'confirm' }) });
   });
+});
+
+describe('filterToolMessages', () => {
+  const call = (id: string, name: string) => ({
+    id,
+    type: 'function' as const,
+    function: { name, arguments: '{}' }
+  });
+  const assistant = (...tool_calls: ChatCompletionMessageToolCall[]) => ({
+    role: 'assistant' as const,
+    tool_calls
+  });
+  const result = (id: string, content: ChatCompletionToolMessageParam['content'] = id) => ({
+    role: 'tool' as const,
+    tool_call_id: id,
+    content
+  });
+  const allowsWeather = (name: string) => name === 'weather';
+  const user = { role: 'user' as const, content: 'Check the weather' };
+
+  it('keeps a split parallel group in order, dropping denied calls and duplicate results', () => {
+    const weather = call('weather', 'weather');
+    const first = {
+      ...assistant(call('stock', 'stock'), weather),
+      content: 'Checking weather and stock',
+      reasoning_content: 'Parallel calls'
+    };
+    const second = { ...assistant(call('other_city', 'weather')), hideInUI: true };
+    const picture = result('weather', [
+      { type: 'text', text: 'Sunny' },
+      { type: 'image_url', image_url: { url: 'https://example.com/weather.png' } }
+    ]);
+    const otherCity = result('other_city', 'Cloudy');
+    const messages = [user, first, second, otherCity, result('stock'), picture, result('weather')];
+    const original = structuredClone(messages);
+
+    expect(filterToolMessages(messages, allowsWeather)).toEqual([
+      user,
+      { ...first, tool_calls: [weather] },
+      second,
+      otherCity,
+      picture
+    ]);
+    expect(messages).toEqual(original);
+  });
+
+  it('isolates reused IDs between tool rounds without an intervening user message', () => {
+    const weather = assistant(call('call_0', 'weather'));
+    const stock = { ...assistant(call('call_0', 'stock')), reasoning_content: 'Thinking' };
+    const sunny = result('call_0', 'Sunny');
+    const rainy = result('call_0', 'Rainy');
+
+    expect(
+      filterToolMessages(
+        [weather, sunny, stock, result('call_0', 'Stock'), weather, rainy],
+        allowsWeather
+      )
+    ).toEqual([weather, sunny, weather, rainy]);
+  });
+
+  it('ignores tool results before any call and after a user boundary', () => {
+    const weather = assistant(call('call_0', 'weather'));
+    const orphan = result('call_0');
+
+    expect(filterToolMessages([orphan, weather, user, orphan], allowsWeather)).toEqual([
+      weather,
+      user
+    ]);
+  });
+
+  it('pairs legacy functions by name while filtering modern calls by ID', () => {
+    const modern = assistant(call('modern', 'weather'));
+    const mixed = { ...modern, function_call: call('legacy', 'stock').function };
+    const legacy = {
+      role: 'assistant' as const,
+      function_call: call('legacy', 'weather').function
+    };
+    const legacyResult = { role: 'function' as const, name: 'weather', content: 'Rainy' };
+    const modernResult = result('modern', 'Sunny');
+
+    expect(
+      filterToolMessages(
+        [legacyResult, mixed, modernResult, legacy, legacyResult, user, legacyResult],
+        allowsWeather
+      )
+    ).toEqual([modern, modernResult, legacy, legacyResult, user]);
+  });
+
+  it('drops ambiguous IDs in adjacent ChatItem fragments and keeps unrelated pairs', () => {
+    const history: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentPlanUpdate: { id: 'call_0', functionName: 'update_plan', params: '{}' }
+          },
+          {
+            modelResponseId: 'tool-turn',
+            tools: [
+              { id: 'call_0', functionName: 'stock', params: '{}', response: 'Stock price' },
+              { id: 'call_1', functionName: 'weather', params: '{}', response: 'Sunny' }
+            ]
+          }
+        ]
+      }
+    ];
+    const messages = chats2GPTMessages({ messages: history, reserveId: false, reserveTool: true });
+
+    expect(
+      filterToolMessages(messages, (name) => name === 'update_plan' || allowsWeather(name))
+    ).toEqual([
+      expect.objectContaining({ role: 'assistant', tool_calls: [call('call_1', 'weather')] }),
+      expect.objectContaining(result('call_1', 'Sunny'))
+    ]);
+  });
+
+  it.each([
+    { content: '  \n ' },
+    {
+      content: [
+        { type: 'text' as const, text: '' },
+        { type: 'text' as const, text: '   ' }
+      ]
+    }
+  ])(
+    'drops blank tool shells with an empty allowlist and retains interactive payloads (%j)',
+    ({ content }) => {
+      const shell = {
+        ...assistant(call('weather', 'weather')),
+        content,
+        reasoning_content: 'Thinking'
+      };
+      const interactive = { type: 'agentAsk' };
+      const weatherResult = result('weather');
+
+      expect(
+        filterToolMessages(
+          [user, shell, weatherResult, { ...shell, interactive }, weatherResult],
+          () => false
+        )
+      ).toEqual([user, { role: 'assistant', content, reasoning_content: 'Thinking', interactive }]);
+    }
+  );
 });

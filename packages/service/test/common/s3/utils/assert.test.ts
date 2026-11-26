@@ -33,5 +33,18 @@ describe('isFileNotFoundError', () => {
     expect(isFileNotFoundError(new Error('Not Found'))).toBe(false);
     expect(isFileNotFoundError({ statusCode: 500 })).toBe(false);
     expect(isFileNotFoundError({ code: 'AccessDenied' })).toBe(false);
+    expect(
+      isFileNotFoundError(
+        Object.assign(new Error('The specified bucket does not exist.'), {
+          name: 'NoSuchBucket',
+          code: 'NoSuchBucket',
+          statusCode: 404,
+          $metadata: { httpStatusCode: 404 }
+        })
+      )
+    ).toBe(false);
+    const bucketS3Error = new S3Error('Not Found');
+    bucketS3Error.code = 'NoSuchBucket';
+    expect(isFileNotFoundError(bucketS3Error)).toBe(false);
   });
 });

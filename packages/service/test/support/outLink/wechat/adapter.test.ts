@@ -16,6 +16,24 @@ describe('createWechatOutlinkAdapter', () => {
     vi.clearAllMocks();
   });
 
+  it('sends partial output together with a terminal error', async () => {
+    const sendMessage = vi.fn();
+    const adapter = createWechatOutlinkAdapter({
+      client: { sendMessage } as any,
+      appId: 'app-1',
+      jobData: { shareId: 'share-1', userId: 'user-1', contextToken: 'context-1', items: [] } as any
+    });
+    await adapter.respond(
+      (async function* () {
+        yield { type: 'chunk' as const, content: 'partial' };
+        yield { type: 'error' as const, content: 'App run error: failed' };
+      })()
+    );
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'partial\n\nApp run error: failed' })
+    );
+  });
+
   it.each([
     ['report.pdf', ChatFileTypeEnum.document],
     ['archive.zip', ChatFileTypeEnum.unknown],
@@ -46,7 +64,14 @@ describe('createWechatOutlinkAdapter', () => {
             type: 4,
             file_item: {
               file_name: filename,
-              media: { aes_key: key.toString('base64'), full_url: 'https://example.com/file' }
+              media: {
+                aes_key: key.toString('base64'),
+                full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/file'
+              }
+            },
+            // 混合字段时仍只读取 FILE 对应的媒体，避免被 image_item 误覆盖。
+            image_item: {
+              media: { full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/unused-image' }
             }
           }
         ]
@@ -87,7 +112,10 @@ describe('createWechatOutlinkAdapter', () => {
             type: 5,
             video_item: {
               file_name: 'video.mp4',
-              media: { aes_key: key.toString('base64'), full_url: 'https://example.com/video' }
+              media: {
+                aes_key: key.toString('base64'),
+                full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/video'
+              }
             }
           }
         ]

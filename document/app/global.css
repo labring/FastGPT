@@ -2,6 +2,14 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'fumadocs-ui/css/black.css';
 
+/* Keep the sticky banner and fixed navigation aligned during desktop overscroll. */
+@media (min-width: 768px) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
 /* 移动端目录下拉框：文本溢出省略号 */
 @media (max-width: 767px) {
   button[class*='tocnav'] {

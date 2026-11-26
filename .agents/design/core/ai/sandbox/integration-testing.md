@@ -1,108 +1,49 @@
-# FastGPT Sandbox 集成测试设计
+# Agent Sandbox 集成测试
 
-## 背景
+状态：当前实现
 
-Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 FastGPT 在真实运行时中的行为：
+最后核对：2026-11-23
 
-- Agent 准备阶段是否创建真实 App Sandbox，并把用户文件写入 workspace。
-- `runSandboxTools` 的参数校验、命令调度、耗时上报和错误返回是否正确。
-- Mongo lifecycle、Redis lease、preview session、volume manager 与 provider 是否协同工作。
-- provider 资源消失或生命周期中断后，FastGPT 是否能按持久化状态重试和恢复。
-- OpenSandbox runtime 是否使用 FastGPT 的 network policy 并创建 egress sidecar。
+## 1. 测试架构与环境配置
 
-因此本测试不以 SDK 为目标，而是从 FastGPT 业务入口覆盖 Agent Sandbox 完整链路。
+Agent Sandbox 集成测试统一收敛在 [`packages/service/test/integrations/sandbox/`](../../../../../packages/service/test/integrations/sandbox)，通过独立配置 [`packages/service/vitest.sandbox.integration.config.ts`](../../../../../packages/service/vitest.sandbox.integration.config.ts) 运行，不混入日常单元测试。
 
-## 目标
+- **基础设施装配**：
+  - `globalSetup.ts` 读取 `SANDBOX_INTEGRATION_MONGODB_URI`（缺省回退 `MONGODB_URI` 或本地副本集默认连接），为每个测试文件提供独立的 Mongo 副本集测试数据库隔离。
+  - `setup.ts` 与 `config.ts` 从环境变量装配内存 `systemInstanceConfig`（`subservice.agentSandbox`）、真实 Redis 与 RustFS/S3 连接，无需手工启动主站 Web 进程。
+  - `fixtures.ts` 提供单测例级的远端容器、持久卷、Mongo 记录与 S3 归档清理逻辑，确保并发或失败重跑后不残留脏资源。
+- **开关与环境变量模板（`test/.env.example`）**：
+  - 默认 `SANDBOX_INTEGRATION=false`；仅当显式设置 `SANDBOX_INTEGRATION=true` 时才激活执行真实容器/存储集成测试。
+  - 相关连接与耗时断言阈值见仓库根目录 `test/.env.example`（包含 `SANDBOX_INTEGRATION_MONGODB_URI`、`SANDBOX_INTEGRATION_REDIS_URL`、`SANDBOX_INTEGRATION_TOOL_MAX_MS`、`SANDBOX_INTEGRATION_TIMEOUT_MAX_MS`、`SANDBOX_INTEGRATION_LIFECYCLE_MAX_MS`、`SANDBOX_INTEGRATION_CLEANUP_MAX_MS` 以及 `AGENT_SANDBOX_OPENSANDBOX_*`、`AGENT_SANDBOX_PROXY_*`）。
 
-1. 通过 `prepareSandboxToolRuntime` 和 `runSandboxTools` 执行真实 Agent Sandbox 链路。
-2. 覆盖 FastGPT 当前提供的全部八个 Sandbox 指令，并记录每条指令的 wall-clock 耗时。
-3. 对单条指令、超时、生命周期创建和清理分别设置可配置的性能预算。
-4. 注入参数错误、命令失败、命令超时和生命周期中断，验证 runtime 可复用或自动恢复。
-5. 使用与 dev 一致的 OpenSandbox、volume manager、egress、preview proxy、Mongo 和 Redis。
-6. 每个用例独立创建 App source，并通过 FastGPT delete lifecycle 清理所有资源。
+## 2. 执行方式
 
-## 测试入口
-
-位置：`packages/service/test/integrations/sandbox/fastgpt.integration.test.ts`
-
-专用 Vitest 配置为 `packages/service/vitest.sandbox.integration.config.ts`。它不加载通用
-`test/setup.ts`，避免该 setup 中的 Redis mock 将 lifecycle lease 和 preview session 变成内存行为。
-
-运行命令：
+全量运行 Agent Sandbox 集成测试：
 
 ```bash
-FASTGPT_TEST_MODE=sandbox pnpm test
+SANDBOX_INTEGRATION=true pnpm test:service:integration:sandbox
 ```
 
-只有 `SANDBOX_INTEGRATION=true` 时才运行真实 provider 用例。已启用但 provider 环境变量不完整
-时直接失败，避免配置错误被静默跳过。
+定向运行单个套件（示例）：
 
-## 环境一致性与隔离
+```bash
+SANDBOX_INTEGRATION=true pnpm --dir packages/service exec vitest run \
+  -c vitest.sandbox.integration.config.ts \
+  test/integrations/sandbox/opensandbox-pvc-s3.integration.test.ts
+```
 
-- Mongo 连接 dev Mongo 服务，但由测试 binding 生成随机数据库，并在 suite 结束时删除。
-- Redis 连接 dev Redis，默认使用 DB 15；所有 Sandbox identity 和 preview session 均为随机值。
-- OpenSandbox 使用 dev 的 server、agent image、volume manager 和 preview proxy。
-- runtime 必须由 FastGPT `buildOpenSandboxRuntimeProfile` 构造，network policy 会创建 egress
-  sidecar；测试还会从 Sandbox 访问 dev 私网服务并断言被阻止。
-- `AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY` 只控制 SDK 到 OpenSandbox server 的连接方式，
-  不负责创建 egress；egress 由 FastGPT runtime profile 中的 `networkPolicy` 触发。
+Kubernetes 套件默认跳过，仅在同时满足以下条件时激活：
 
-## 指令与计时
+- `SANDBOX_INTEGRATION=true` 且 `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes`
+- 配置 `SANDBOX_K8S_SSH_HOST`（经 SSH 调目标集群 `kubectl`）或 `SANDBOX_K8S_LOCAL_KUBECTL=true`
+- 可选 `SANDBOX_K8S_NAMESPACE`（默认 `opensandbox`）
 
-以下八个工具全部通过 `runSandboxTools` 执行：
+## 3. 测试套件说明
 
-1. `sandbox_write_file`
-2. `sandbox_read_file`
-3. `sandbox_edit_file`
-4. `sandbox_grep`
-5. `sandbox_find`
-6. `sandbox_ls`
-7. `sandbox_shell`
-8. `sandbox_get_file_url`
-
-每次调用记录：操作名、wall-clock 耗时、预算、业务返回的 `durationSeconds` 和结果类型。测试会
-校验 wall-clock 不超过预算，并检查业务上报耗时没有显著大于实际耗时。suite 结束时统一输出 JSON
-计时报告。
-
-默认预算：
-
-- 普通工具：2 秒。
-- 主动超时场景：8 秒。
-- create、repair、resume 等生命周期操作：180 秒。
-- provider、volume、archive、Mongo 清理：120 秒。
-
-预算可分别通过 `SANDBOX_INTEGRATION_TOOL_MAX_MS`、
-`SANDBOX_INTEGRATION_TIMEOUT_MAX_MS`、`SANDBOX_INTEGRATION_LIFECYCLE_MAX_MS` 和
-`SANDBOX_INTEGRATION_CLEANUP_MAX_MS` 调整。
-
-## 错误与重试场景
-
-- 工具参数校验失败后，同一个 runtime 继续执行命令。
-- 未知工具和损坏 JSON 被调度层拒绝后，同一个 runtime 继续执行命令。
-- 文件不存在、offset 越界、路径穿越和 preview 文件不存在后，同一个 runtime 继续执行命令。
-- shell 返回非零 exit code 后，同一个 runtime 继续执行命令。
-- shell 超时并中断后，同一个 OpenSandbox runtime 继续执行命令。
-- App source 已删除时拒绝运行命令，不执行用户脚本。
-- Mongo 仍为 `running` 但 provider 资源消失时，同一个 FastGPT client 在下一条指令中自动重建
-  runtime，并保留 volume 文件。
-- 持久化 `provisioning` 失败操作后，再次调用 `getSandboxClient` 重放 provision。
-- 持久化 stale `stopping` 失败操作后，scheduler retry 完成 stop，再次调用时恢复 runtime。
-- delete 在 archive 阶段失败后保留 phase，再次调用从已完成阶段继续删除。
-- 完整模式下，两个 Chat 并发获取相同 source 的 client 并并发执行命令，Mongo 只保留一条实例。
-
-## 清理策略
-
-删除前核对 Mongo 记录的 provider、source 和 user，避免误删共享 dev 资源。清理统一调用
-`deleteSandboxResource`，覆盖 provider runtime、egress sidecar、persistent volume、archive 和 Mongo
-阶段；可重放删除最多重试三次。suite 结束后再清除本轮 preview Redis key 和随机 Mongo 数据库。
-
-## TODO
-
-- [x] 将测试目标从 provider SDK 改为 FastGPT Agent Sandbox 业务链路。
-- [x] 新增独立 Vitest 配置并使用真实 dev Redis。
-- [x] 覆盖全部八个 FastGPT Sandbox 工具及逐条计时预算。
-- [x] 覆盖参数错误、命令错误、超时及 runtime 复用。
-- [x] 覆盖 provider 丢失、provision/stop/delete 中断后的持久化重试。
-- [x] 验证 OpenSandbox egress 创建和私网访问阻断。
-- [x] 覆盖多 Chat 与并发命令复用同一 FastGPT source。
-- [x] 使用本地 dev OpenSandbox 运行全量套件并检查资源清理。
+| 套件文件 | 适用范围 | 核心覆盖场景 |
+| --- | --- | --- |
+| `fastgpt.integration.test.ts` | 核心业务工具与生命周期故障恢复 | 8 个沙盒工具分发耗时、`sandbox_get_file_url` 真实 Redis 链接、非法 JSON/Schema/路径边界隔离（不污染 runtime）、App 软删拒执行、异常 `provisioning` 回滚、`restoring` 配额保持与 `/archive/extract` 失败同租约立即回滚、停机态保护、超期 `stopping`/`deleting` 状态接管与 S3 失败续删、同用户多 Chat 复用、APT 只读/可写源备份恢复 |
+| `opensandbox-pvc-s3.integration.test.ts` | Docker + 原生卷 + RustFS `.tar.zst` + IDE Agent | `>5 MiB` `$HOME` 经 RustFS Multipart 归档（保留缓存/dotfiles/软链/PAX、容器 `/tmp` 零落盘、S3 `sandbox/archive-v2/` 旧 CoW 世代归档清理与遗留 `sandbox/archive/` 前缀隔离）、空 `$HOME` `204` 短路、`fastgpt-ide-agent` `0600` 口令校验与目录越界拦截、`running`/`stopped` 同卷原地镜像升级与 `aptMirror`、`volume-manager` 鉴权/所有权与两阶段孤儿卷/容器 GC、`agent_sandbox_instances_v2` 未迁移记录 409 拦截与 `agent_sandbox_instances_v3` 运行期物理删除（不写墓碑、不修改 `v2`）、Skill `.zip -> .tar.zst` 导入部署/导出及逃逸软链拒绝 |
+| `opensandbox-k8s.integration.test.ts` | Kubernetes 真集群 | Pod limits 与超售 `resourceRequests`、下发省略 `ephemeral-storage`、PVC 挂载 `/home/sandbox` 与 `fsGroup=10001`、无 egress sidecar、local-path PV 跨停机/唤醒持久化与删 PVC 后冷恢复、`CiliumNetworkPolicy` 封堵内网/元数据 CIDR 并放行 CoreDNS、`K8sVolumeDriver` `Terminating` 等待/存量兼容及两阶段孤儿 PVC/Pod GC |
+| `migration-4180.integration.test.ts` | 4.18.0 升级迁移与清理 | 真实 Mongo 副本集 + RustFS 下的第 7 步迁移（只读读取 `agent_sandbox_instances_v2`，将 `running`/`stopped` Devbox 静止化打包、历史 S3 `sandbox/archive/*/package.zip`（含空包/PAX/UTF-8/修剪规则）流式转码及旧 `/workspace` 卷打包写入 `agent_sandbox_instances_v3` 与 `sandbox/archive-v2/`，全程保留 `v2` 记录、远端 `pause` Devbox、旧持久卷与旧 `package.zip` 不动）与 Skill 包升级，并在 Docker OpenSandbox 基于 `v3` 冷恢复验收后执行第 8 步清理任务（删除远端 Devbox、旧 `/workspace` 卷与旧 `package.zip`，跳过 `v3` 在用 PVC/容器并保留 `v2` 集合只读不删）；覆盖部分失败写入 `failedRecords` 及幂等重试 |
+| `skill-import.integration.test.ts` | Skill 导入编辑态初始化 | 导入未携带 `.gitignore` 的 Skill 包后首次进入 Skill Edit Sandbox 的工作区初始化验证 |

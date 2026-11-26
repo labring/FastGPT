@@ -45,6 +45,10 @@ const AppVersionSchema = new Schema(
       type: Array,
       default: []
     },
+    // 已删除引用来源的历史展示元数据；随版本一起保存，切版本时一并恢复。
+    referenceSnapshots: {
+      type: Array
+    },
     chatConfig: {
       type: chatConfigType
     },
@@ -66,10 +70,6 @@ const AppVersionSchema = new Schema(
 );
 
 defineIndex(AppVersionSchema, { key: { appId: 1, time: -1 } });
-defineIndex(AppVersionSchema, {
-  key: { appId: 1, 'resources.type': 1, 'resources.id': 1 },
-  deprecated: true
-});
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
   AppVersionCollectionName,

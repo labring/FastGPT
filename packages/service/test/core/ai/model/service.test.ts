@@ -70,7 +70,7 @@ beforeEach(async () => {
 describe('model lifecycle', () => {
   it.each([
     { type: 'duration' as const, unitPrice: 0.2 },
-    { type: 'tokens' as const, unitPrice: 10 }
+    { type: 'tokens' as const, inputPrice: 10, outputPrice: 20 }
   ])('round-trips STT $type pricing through Mongo and the runtime catalog', async (pricing) => {
     const created = await createModel({
       ...owner,
@@ -86,7 +86,7 @@ describe('model lifecycle', () => {
     const changed =
       pricing.type === 'tokens'
         ? { type: 'duration' as const, unitPrice: 0.2 }
-        : { type: 'tokens' as const, unitPrice: 20 };
+        : { type: 'tokens' as const, inputPrice: 20, outputPrice: 30 };
     await updateModel({
       ...owner,
       modelId: created.modelId,

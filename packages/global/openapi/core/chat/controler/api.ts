@@ -45,7 +45,7 @@ export const InitChatResponseSchema = createChatTargetResponseSchema({
       chatConfig: OpenAPIAppChatConfigSchema.optional().describe('聊天配置'),
       chatModels: z.array(z.string()).optional().describe('聊天模型'),
       name: z.string().min(1).describe('应用名称'),
-      avatar: z.string().describe('应用头像'),
+      avatar: z.string().optional().describe('应用头像'),
       intro: z.string().describe('应用简介'),
       canUse: z.boolean().optional().describe('是否可用'),
       type: z.enum(AppTypeEnum).describe('应用类型'),

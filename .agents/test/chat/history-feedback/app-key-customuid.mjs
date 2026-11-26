@@ -495,7 +495,7 @@ async function runtimeScope(w, context) {
   assert.equal(download.status, 200);
   assert.equal(digest(Buffer.from(await download.arrayBuffer())), digest(bytes));
   const instances = await w.db
-    .collection('agent_sandbox_instances_v2')
+    .collection('agent_sandbox_instances_v3')
     .find({ sourceType: 'app', sourceId: w.W })
     .toArray();
   assert.deepEqual(

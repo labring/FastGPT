@@ -84,7 +84,6 @@ const ModelLinkedChannels = ({
         rootProps={{
           h: 'auto',
           maxH: '220px',
-          p: 2,
           border: '1px solid',
           borderColor: 'myGray.200',
           borderRadius: '12px',
@@ -92,7 +91,15 @@ const ModelLinkedChannels = ({
         }}
         bodyProps={{ flex: '1 1 auto', minH: 0, overflowY: 'auto' }}
         renderHeader={({ headerTableWidth }) => (
-          <Table sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}>
+          <Table
+            sx={{
+              tableLayout: 'fixed',
+              width: `${headerTableWidth} !important`,
+              'th, th:first-of-type, th:last-of-type': {
+                borderRadius: '0 !important'
+              }
+            }}
+          >
             <ChannelTableColumns />
             <Thead>
               <Tr h="40px">

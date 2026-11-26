@@ -7,12 +7,13 @@ description: 选择 FastGPT 插件开发路径，了解工具插件、模型预�
 
 插件开发是 FastGPT 开发者文档中的扩展开发专题。根据要交付的能力选择指南：
 
-| 开发目标 | 开始阅读 | 交付方式 |
-| --- | --- | --- |
-| 创建第一个工具插件 | [快速开始](/zh-CN/plugin/quick-start) | 本地验证后生成 `.pkg` 工具包 |
-| 实现单工具或工具集 | [工具开发指南](/zh-CN/plugin/system-tool-development) | SDK 定义、调试、构建与打包 |
-| 增加模型或供应商预设 | [模型预设指南](/zh-CN/plugin/model-presets) | 修改插件仓库中的静态配置并提交变更 |
-| 开发智能体技能 (Skill) | [技能开发教程](/zh-CN/guide/build/skill/development) | 在沙盒中编写并在应用中绑定执行 |
+| 开发目标               | 开始阅读                                              | 交付方式                                         |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------ |
+| 创建第一个工具插件     | [快速开始](/zh-CN/plugin/quick-start)                 | 本地验证后生成 `.pkg` 工具包                     |
+| 实现单工具或工具集     | [工具开发指南](/zh-CN/plugin/system-tool-development) | SDK 定义、调试、构建与打包                       |
+| 接入或开发内容审核     | [内容审核指南](/zh-CN/plugin/moderation)              | 管理台策略配置、审查环节及 `moderation` 插件扩展 |
+| 增加模型或供应商预设   | [模型预设指南](/zh-CN/plugin/model-presets)           | 修改插件仓库中的静态配置并提交变更               |
+| 开发智能体技能 (Skill) | [技能开发教程](/zh-CN/guide/build/skill/development)  | 在沙盒中编写并在应用中绑定执行                   |
 
 安装现成插件请阅读[团队安装与管理](/zh-CN/plugin/team-installation)。系统管理员（使用 `root` 账号登录的用户，界面左侧底部有**管理员**入口）可进入[系统工具管理](/zh-CN/guide/build/tools/system-plugins/upload_system_tool)和[插件运行时配置](/zh-CN/plugin/runtime)。
 
@@ -31,39 +32,39 @@ FastGPT Plugin 将插件服务、SDK 和 CLI 集中在[独立仓库](https://git
 
 ## 核心概念
 
-| 名称 | 说明 |
-| --- | --- |
-| 插件 | 为 FastGPT 扩展能力的独立资源；开发步骤取决于资源类型。 |
-| 工具 | 封装接口或计算逻辑，供工作流和 Agent 调用。 |
-| 工具集 | 在一个插件中提供多个子工具，共享元信息与密钥配置。 |
-| 插件包 | 当前工具插件的 `.pkg` 交付文件，用于安装与版本管理。 |
-| 模型预设 | 插件服务提供的模型供应商、模型能力和默认参数等静态配置。 |
-| 插件市场 | 发现和分发官方及社区插件的 Marketplace。 |
-| 运行时 | 执行插件代码并管理资源的后端实现，当前默认采用 `local-pool`。 |
-| Pod | `local-pool` 中的插件工作进程。 |
+| 名称     | 说明                                                          |
+| -------- | ------------------------------------------------------------- |
+| 插件     | 为 FastGPT 扩展能力的独立资源；开发步骤取决于资源类型。       |
+| 工具     | 封装接口或计算逻辑，供工作流和 Agent 调用。                   |
+| 工具集   | 在一个插件中提供多个子工具，共享元信息与密钥配置。            |
+| 插件包   | 当前工具插件的 `.pkg` 交付文件，用于安装与版本管理。          |
+| 模型预设 | 插件服务提供的模型供应商、模型能力和默认参数等静态配置。      |
+| 插件市场 | 发现和分发官方及社区插件的 Marketplace。                      |
+| 运行时   | 执行插件代码并管理资源的后端实现，当前默认采用 `local-pool`。 |
+| Pod      | `local-pool` 中的插件工作进程。                               |
 
 ## 仓库结构
 
 插件作者主要接触以下入口：
 
-| 路径 | 职责 |
-| --- | --- |
-| `apps/cli/` | 创建、调试、构建、检查与打包命令 |
-| `sdk/factory/` | 作者侧 SDK，定义工具、工具集、Schema 与 handler |
-| `sdk/client/` | FastGPT 主服务调用插件服务的客户端 SDK |
-| `apps/server/` | 插件服务的启动与 HTTP 接口 |
-| `packages/infrastructure/src/static-data/models/` | 模型与供应商预设 |
+| 路径                                              | 职责                                            |
+| ------------------------------------------------- | ----------------------------------------------- |
+| `apps/cli/`                                       | 创建、调试、构建、检查与打包命令                |
+| `sdk/factory/`                                    | 作者侧 SDK，定义工具、工具集、Schema 与 handler |
+| `sdk/client/`                                     | FastGPT 主服务调用插件服务的客户端 SDK          |
+| `apps/server/`                                    | 插件服务的启动与 HTTP 接口                      |
+| `packages/infrastructure/src/static-data/models/` | 模型与供应商预设                                |
 
 服务内部的分层与依赖关系见 [FastGPT Plugin 架构文档](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/architecture.zh.md)。
 
 ## 仓库分工
 
-| 仓库 | 维护内容 |
-| --- | --- |
-| `labring/fastgpt-plugin` | 插件服务、CLI、SDK、运行时与模型预设 |
-| `fastgpt-official-plugins` | 官方维护或审核通过的工具插件 |
-| `fastgpt-community-plugins` | 社区贡献的工具插件 |
-| `fastgpt-business-plugins` | 私有插件、客户定制与商业交付插件 |
+| 仓库                        | 维护内容                             |
+| --------------------------- | ------------------------------------ |
+| `labring/fastgpt-plugin`    | 插件服务、CLI、SDK、运行时与模型预设 |
+| `fastgpt-official-plugins`  | 官方维护或审核通过的工具插件         |
+| `fastgpt-community-plugins` | 社区贡献的工具插件                   |
+| `fastgpt-business-plugins`  | 私有插件、客户定制与商业交付插件     |
 
 ## 插件市场与使用边界
 
@@ -71,11 +72,11 @@ FastGPT Plugin 将插件服务、SDK 和 CLI 集中在[独立仓库](https://git
 
 ## 插件安装与管理
 
-| 管理范围 | 负责角色 | 操作指南 |
-| --- | --- | --- |
-| 团队安装、更新和删除 | 团队管理员或所有者 | [团队安装与管理插件](/zh-CN/plugin/team-installation) |
-| 全系统安装与配置 | 系统管理员（`root` 账号） | [系统工具管理](/zh-CN/guide/build/tools/system-plugins/upload_system_tool) |
-| 运行容量、环境变量与服务排障 | 部署运维人员 | [插件运行时配置](/zh-CN/plugin/runtime) |
+| 管理范围                     | 负责角色                  | 操作指南                                                                   |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| 团队安装、更新和删除         | 团队管理员或所有者        | [团队安装与管理插件](/zh-CN/plugin/team-installation)                      |
+| 全系统安装与配置             | 系统管理员（`root` 账号） | [系统工具管理](/zh-CN/guide/build/tools/system-plugins/upload_system_tool) |
+| 运行容量、环境变量与服务排障 | 部署运维人员              | [插件运行时配置](/zh-CN/plugin/runtime)                                    |
 
 ### 插件元数据的多语言展示
 

@@ -1,19 +1,17 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
+  DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
+  DATASET_CONFIG_SENSITIVE_KEY_PATTERN,
   datasetConfigAuditItemLabelMap,
-  type DatasetConfigAuditItem
+  type DatasetConfigAuditItem,
+  type DatasetConfigAuditValueSource
 } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { isEqual } from 'lodash-es';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 
 /** 审计值允许为任意原始类型，写入前统一转成字符串落到 metadata。 */
 type AuditRawValue = unknown;
-
-/**
- * 凭据类字段名（包含匹配）。配置结构会随第三方集成扩展，
- * 宁可在少量非敏感字段上少展示内容，也不能漏出一个凭据。
- */
-const sensitiveKeyPattern =
-  /(token|secret|password|passwd|apikey|api_key|authorization|credential|cookie|privatekey|accesskey|signature)/i;
 
 /** Mongoose 子文档会带 `_id`（以 Buffer 形式序列化），它不携带配置语义，一律剔除。 */
 const shouldSkipKey = (key: string) => key === '_id' || key === '__v';
@@ -41,7 +39,7 @@ const formatAuditScalar = (value: AuditRawValue): string => {
 
 /** 递归脱敏并剔除 `_id`；用于「必须整体展示」的兜底场景。 */
 const sanitizeAuditValue = (input: AuditRawValue, key?: string): AuditRawValue => {
-  if (key && sensitiveKeyPattern.test(key)) return '[REDACTED]';
+  if (key && DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) return '[REDACTED]';
   if (Array.isArray(input)) return input.map((item) => sanitizeAuditValue(item));
   if (input && typeof input === 'object') {
     return Object.fromEntries(
@@ -68,7 +66,7 @@ const flattenAuditObject = (input: AuditRawValue, prefix = ''): FlattenedAuditFi
     if (shouldSkipKey(key)) continue;
 
     const path = prefix ? `${prefix}.${key}` : key;
-    if (sensitiveKeyPattern.test(key)) {
+    if (DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) {
       result.push({ path, value, sensitive: true });
       continue;
     }
@@ -102,14 +100,25 @@ export const buildDatasetConfigAuditChanges = ({
   oldValue,
   newValue,
   enabled = true,
-  compareValues
+  compareValues,
+  valueSources
 }: {
   item: DatasetConfigAuditItem;
   oldValue: AuditRawValue;
   newValue: AuditRawValue;
   enabled?: boolean;
   compareValues?: { oldValue: AuditRawValue; newValue: AuditRawValue };
-}): Array<{ changeItem: string; oldValue: string; newValue: string }> => {
+  valueSources?: {
+    oldValue?: DatasetConfigAuditValueSource;
+    newValue?: DatasetConfigAuditValueSource;
+  };
+}): Array<{
+  changeItem: string;
+  oldValue?: string;
+  newValue?: string;
+  oldValueSource?: DatasetConfigAuditValueSource;
+  newValueSource?: DatasetConfigAuditValueSource;
+}> => {
   if (!enabled) return [];
 
   const itemLabel = datasetConfigAuditItemLabelMap[item];
@@ -125,14 +134,15 @@ export const buildDatasetConfigAuditChanges = ({
           {
             changeItem: itemLabel,
             oldValue: formatAuditScalar(sanitizeAuditValue(oldValue)),
-            newValue: formatAuditScalar(sanitizeAuditValue(newValue))
+            newValue: formatAuditScalar(sanitizeAuditValue(newValue)),
+            ...(valueSources?.oldValue && { oldValueSource: valueSources.oldValue }),
+            ...(valueSources?.newValue && { newValueSource: valueSources.newValue })
           }
         ];
   }
 
   const formatFieldValue = (field?: FlattenedAuditField) => {
     if (!field) return '-';
-    if (field.sensitive) return '[REDACTED]';
     return formatAuditScalar(sanitizeAuditValue(field.value));
   };
 
@@ -151,10 +161,16 @@ export const buildDatasetConfigAuditChanges = ({
     const newField = newFieldMap.get(path);
     if (isEqual(oldField?.value, newField?.value)) return [];
 
+    // 子字段沿用父级 i18n 标签再拼上字段路径，保证列表里有上下文。
+    const changeItem = `${itemLabel}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${path}`;
+    // 敏感字段仅记录变更项本身，不落库新旧值，防止凭据泄漏也避免无意义的脱敏对比。
+    if (oldField?.sensitive || newField?.sensitive) {
+      return [{ changeItem }];
+    }
+
     return [
       {
-        // 子字段沿用父级 i18n 标签再拼上字段路径，保证列表里有上下文。
-        changeItem: `${itemLabel} · ${path}`,
+        changeItem,
         oldValue: formatFieldValue(oldField),
         newValue: formatFieldValue(newField)
       }
@@ -173,3 +189,68 @@ export const stringifyDatasetConfigAuditValue = ({
   value: AuditRawValue;
   fieldName?: string;
 }): string => formatAuditScalar(sanitizeAuditValue(value));
+
+/**
+ * 比较集合标签写入前后的实际值，供公开更新入口、单集合和批量标签更新复用。
+ * 旧字符串标签不参与审计；新增、值追加或覆盖记为 added，整条移除或仅裁剪选项记为 removed。
+ * 值比较按选项集合进行，避免规范化、选项顺序或重复项造成假变更；changed 另按存储内容判断。
+ */
+export const diffCollectionTags = ({
+  currentTags,
+  nextTags
+}: {
+  currentTags: Array<string | CollectionTagValueType>;
+  nextTags: Array<string | CollectionTagValueType>;
+}) => {
+  /** 存储签名保留顺序与旧格式条目，用于批量路径判断是否需要写库。 */
+  const tagItemsSignature = (items: Array<string | CollectionTagValueType>) =>
+    items
+      .map((item) =>
+        isCollectionTagValue(item)
+          ? `v2:${String(item.tagId)}:${JSON.stringify(item.value ?? null)}`
+          : `legacy:${JSON.stringify(item)}`
+      )
+      .join('\u0000');
+
+  /** 同一标签的值按集合比较，忽略选项顺序和重复值。 */
+  const valuesByTagId = (items: Array<string | CollectionTagValueType>) => {
+    const map = new Map<string, Set<string>>();
+    for (const item of items) {
+      if (!isCollectionTagValue(item)) continue;
+      const tagId = String(item.tagId);
+      const values = map.get(tagId) ?? new Set<string>();
+      for (const value of Array.isArray(item.value) ? item.value : [item.value]) {
+        values.add(JSON.stringify(value));
+      }
+      map.set(tagId, values);
+    }
+    return map;
+  };
+
+  const before = valuesByTagId(currentTags);
+  const after = valuesByTagId(nextTags);
+  const addedTagIds: string[] = [];
+  const removedTagIds: string[] = [];
+
+  for (const tagId of new Set([...before.keys(), ...after.keys()])) {
+    const beforeValues = before.get(tagId);
+    const afterValues = after.get(tagId);
+
+    if (!beforeValues) {
+      addedTagIds.push(tagId);
+    } else if (!afterValues) {
+      removedTagIds.push(tagId);
+    } else if ([...afterValues].some((value) => !beforeValues.has(value))) {
+      // 覆盖同时含新增、移除值时只记一次写入，避免一条操作产生互相矛盾的日志。
+      addedTagIds.push(tagId);
+    } else if ([...beforeValues].some((value) => !afterValues.has(value))) {
+      removedTagIds.push(tagId);
+    }
+  }
+
+  return {
+    addedTagIds,
+    removedTagIds,
+    changed: tagItemsSignature(currentTags) !== tagItemsSignature(nextTags)
+  };
+};
