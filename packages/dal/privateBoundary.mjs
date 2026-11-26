@@ -121,3 +121,86 @@ export const isBlockedPrivateDalRepoImport = ({ source, importer }) => {
     targetDomain
   });
 };
+
+/**
+ * 使用 TypeScript AST 统一扫描单份源码中的越界私有 DAL 仓储导入，返回违规说明符及 1-based 行列范围。
+ * 供根 `eslint.config.mjs` 自定义规则与 CI 静态门禁共享同一套语法提取与边界判定。
+ *
+ * @param {{ filePath: string; content: string; ts: typeof import('typescript') }} params
+ * @returns {Array<{ specifier: string; loc: { start: { line: number; column: number }; end: { line: number; column: number } } }>}
+ */
+export const findBlockedPrivateDalImportsInSource = ({ filePath, content, ts }) => {
+  const scriptKind = filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    content,
+    ts.ScriptTarget.Latest,
+    false,
+    scriptKind
+  );
+  /** @type {Array<import('typescript').StringLiteral | import('typescript').NoSubstitutionTemplateLiteral>} */
+  const literalNodes = [];
+
+  /** @param {import('typescript').Node | undefined} node */
+  const extractStaticLiteralNode = (node) => {
+    if (node === undefined) {
+      return undefined;
+    }
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      return node;
+    }
+    return undefined;
+  };
+
+  /** @param {import('typescript').Node} node */
+  const visit = (node) => {
+    let candidate;
+
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      candidate = extractStaticLiteralNode(node.moduleSpecifier);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      candidate = extractStaticLiteralNode(node.moduleReference.expression);
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      candidate = extractStaticLiteralNode(node.argument.literal);
+    } else if (ts.isCallExpression(node)) {
+      const isDynamicImport =
+        node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments.length >= 1;
+      const isRequireCall =
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'require' &&
+        node.arguments.length === 1;
+      if (isDynamicImport || isRequireCall) {
+        candidate = extractStaticLiteralNode(node.arguments[0]);
+      }
+    }
+
+    if (candidate !== undefined) {
+      literalNodes.push(candidate);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+
+  const violations = [];
+  for (const literalNode of literalNodes) {
+    if (!isBlockedPrivateDalRepoImport({ source: literalNode.text, importer: filePath })) {
+      continue;
+    }
+    const startPos = sourceFile.getLineAndCharacterOfPosition(literalNode.getStart(sourceFile));
+    const endPos = sourceFile.getLineAndCharacterOfPosition(literalNode.getEnd());
+    violations.push({
+      specifier: literalNode.text,
+      loc: {
+        start: { line: startPos.line + 1, column: startPos.character },
+        end: { line: endPos.line + 1, column: endPos.character }
+      }
+    });
+  }
+
+  return violations;
+};

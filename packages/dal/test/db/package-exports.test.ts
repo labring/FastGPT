@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { isBlockedPrivateDalRepoImport } from '../../privateBoundary.mjs';
+import { findBlockedPrivateDalImportsInSource } from '../../privateBoundary.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..');
 
@@ -38,73 +38,6 @@ const ALLOWED_PRO_DAL_SPECIFIERS = [
   '@/dal/db/repos/teamInvoiceTitle/repo',
   '@/dal/db/repos/teamInvoiceTitle/repo.type'
 ] as const;
-
-const extractLiteralText = (node: ts.Node | undefined): string | undefined => {
-  if (node === undefined) {
-    return undefined;
-  }
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-    return node.text;
-  }
-  return undefined;
-};
-
-const findBlockedPrivateDalImportsInSource = ({
-  filePath,
-  content
-}: {
-  filePath: string;
-  content: string;
-}): string[] => {
-  const scriptKind = filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(
-    filePath,
-    content,
-    ts.ScriptTarget.Latest,
-    false,
-    scriptKind
-  );
-  const specifiers: string[] = [];
-
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-      const specifier = extractLiteralText(node.moduleSpecifier);
-      if (specifier !== undefined) {
-        specifiers.push(specifier);
-      }
-    } else if (
-      ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference)
-    ) {
-      const specifier = extractLiteralText(node.moduleReference.expression);
-      if (specifier !== undefined) {
-        specifiers.push(specifier);
-      }
-    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
-      const specifier = extractLiteralText(node.argument.literal);
-      if (specifier !== undefined) {
-        specifiers.push(specifier);
-      }
-    } else if (ts.isCallExpression(node) && node.arguments.length === 1) {
-      const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
-      const isRequireCall = ts.isIdentifier(node.expression) && node.expression.text === 'require';
-      if (isDynamicImport || isRequireCall) {
-        const specifier = extractLiteralText(node.arguments[0]);
-        if (specifier !== undefined) {
-          specifiers.push(specifier);
-        }
-      }
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(sourceFile);
-
-  return specifiers.filter((specifier) =>
-    isBlockedPrivateDalRepoImport({ source: specifier, importer: filePath })
-  );
-};
 
 const collectTsFiles = (rootDir: string): string[] => {
   const results: string[] = [];
@@ -429,7 +362,9 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     for (const root of scanRoots) {
       for (const filePath of collectTsFiles(root)) {
         const content = fs.readFileSync(filePath, 'utf8');
-        const blocked = findBlockedPrivateDalImportsInSource({ filePath, content });
+        const blocked = findBlockedPrivateDalImportsInSource({ filePath, content, ts }).map(
+          (violation) => violation.specifier
+        );
         if (blocked.length > 0) {
           offenders.push({
             file: path.relative(REPO_ROOT, filePath),
@@ -440,9 +375,9 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     }
 
     expect(offenders).toEqual([]);
-  });
+  }, 30_000);
 
-  it('keeps CI AST scanner and ESLint rule aligned on type imports, multiline imports, and nested repo boundaries', async () => {
+  it('keeps CI AST scanner and ESLint rule aligned on type imports, multiline imports, dynamic imports, and nested repo boundaries', async () => {
     const rootRequire = createRequire(path.join(REPO_ROOT, 'package.json'));
     const { ESLint } = rootRequire('eslint') as typeof import('eslint');
     const eslint = new ESLint({ cwd: REPO_ROOT });
@@ -469,6 +404,26 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         code: "export type Schema = import('./repos/teamInvoiceTitle/mongo/schema').Foo;\n"
       },
       {
+        name: 'dynamic import with no-substitution template literal',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts'),
+        code: 'export const load = () => import(`@/dal/db/repos/teamInvoiceTitle/mongo/repo`);\n'
+      },
+      {
+        name: 'dynamic import with options second argument',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts'),
+        code: "export const load = () => import('@/dal/db/repos/teamInvoiceTitle/mongo/repo', { with: { type: 'json' } });\n"
+      },
+      {
+        name: 'dynamic import with template literal and options from container.ts',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/dal/db/container.ts'),
+        code: 'export const load = () => import(`./repos/teamInvoiceTitle/mongo/schema`, { with: {} });\n'
+      },
+      {
+        name: 'require with no-substitution template literal',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts'),
+        code: 'export const mod = require(`@/dal/db/repos/teamInvoiceTitle/mongo/repo`);\n'
+      },
+      {
         name: 'nested child repo importing parent private mongo schema',
         filePath: path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts'),
         code: "import { x } from '../mongo/schema';\nexport { x };\n"
@@ -483,7 +438,8 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     for (const testCase of blockedCases) {
       const astViolations = findBlockedPrivateDalImportsInSource({
         filePath: testCase.filePath,
-        content: testCase.code
+        content: testCase.code,
+        ts
       });
       expect(astViolations.length, `AST missed case: ${testCase.name}`).toBeGreaterThan(0);
 
@@ -492,6 +448,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         (message) => message.ruleId === 'fastgpt/no-private-dal-repo-imports'
       );
       expect(ruleMessages.length, `ESLint missed case: ${testCase.name}`).toBeGreaterThan(0);
+      expect(ruleMessages[0]?.line).toBe(astViolations[0]?.loc.start.line);
     }
 
     const allowedCases = [
@@ -518,7 +475,8 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     for (const testCase of allowedCases) {
       const astViolations = findBlockedPrivateDalImportsInSource({
         filePath: testCase.filePath,
-        content: testCase.code
+        content: testCase.code,
+        ts
       });
       expect(astViolations, `AST false positive: ${testCase.name}`).toEqual([]);
 
@@ -528,5 +486,5 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
       );
       expect(ruleMessages, `ESLint false positive: ${testCase.name}`).toEqual([]);
     }
-  });
+  }, 30_000);
 });

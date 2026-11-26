@@ -3,13 +3,15 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
-import { isBlockedPrivateDalRepoImport } from './packages/dal/privateBoundary.mjs';
+import ts from 'typescript';
+import { findBlockedPrivateDalImportsInSource } from './packages/dal/privateBoundary.mjs';
 
 const DAL_PRIVATE_BOUNDARY_MESSAGE =
   '禁止越界导入 DAL 仓储私有 mongo/oceanbase 实现，请改用公开的 .../repo 或 .../repo.type。';
 
 /**
- * 复用 `privateBoundary.mjs` 精确校验静态/类型/动态导入与重导出是否越界访问私有 DAL 实现。
+ * 复用 `privateBoundary.mjs` 的 TypeScript AST 提取器精确校验静态/类型/动态导入与重导出，
+ * 确保 ESLint 规则与 CI 静态扫描保持完全一致的语法覆盖与作用域边界。
  *
  * @type {import('eslint').Rule.RuleModule}
  */
@@ -21,62 +23,22 @@ const noPrivateDalRepoImportsRule = {
     },
     schema: []
   },
-  create: (context) => {
-    const filename = context.filename;
-    /** @param {any} reportNode @param {unknown} specifier */
-    const checkSpecifier = (reportNode, specifier) => {
-      if (typeof specifier !== 'string') {
-        return;
-      }
-      if (isBlockedPrivateDalRepoImport({ source: specifier, importer: filename })) {
+  create: (context) => ({
+    Program: () => {
+      const content = context.sourceCode?.text ?? context.getSourceCode().text;
+      const violations = findBlockedPrivateDalImportsInSource({
+        filePath: context.filename,
+        content,
+        ts
+      });
+      for (const violation of violations) {
         context.report({
-          node: reportNode,
+          loc: violation.loc,
           message: DAL_PRIVATE_BOUNDARY_MESSAGE
         });
       }
-    };
-
-    return {
-      ImportDeclaration: (node) => checkSpecifier(node.source, node.source?.value),
-      ExportNamedDeclaration: (node) => {
-        if (node.source !== null && node.source !== undefined) {
-          checkSpecifier(node.source, node.source.value);
-        }
-      },
-      ExportAllDeclaration: (node) => checkSpecifier(node.source, node.source?.value),
-      ImportExpression: (node) => {
-        if (node.source?.type === 'Literal') {
-          checkSpecifier(node.source, node.source.value);
-        }
-      },
-      CallExpression: (node) => {
-        if (
-          node.callee.type === 'Identifier' &&
-          node.callee.name === 'require' &&
-          node.arguments.length === 1 &&
-          node.arguments[0]?.type === 'Literal'
-        ) {
-          checkSpecifier(node.arguments[0], node.arguments[0].value);
-        }
-      },
-      /** @param {any} node */
-      TSExternalModuleReference: (node) => {
-        if (node.expression?.type === 'Literal') {
-          checkSpecifier(node.expression, node.expression.value);
-        }
-      },
-      /** @param {any} node */
-      TSImportType: (node) => {
-        if (node.source?.type === 'Literal') {
-          checkSpecifier(node.source, node.source.value);
-          return;
-        }
-        if (node.argument?.type === 'TSLiteralType' && node.argument.literal?.type === 'Literal') {
-          checkSpecifier(node.argument.literal, node.argument.literal.value);
-        }
-      }
-    };
-  }
+    }
+  })
 };
 
 // 枚举分组规则集中在来源分类模块；业务代码只消费语义化判断。
