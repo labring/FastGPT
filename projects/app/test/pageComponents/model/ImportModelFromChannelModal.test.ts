@@ -364,6 +364,8 @@ describe('ImportModelFromChannelModal', () => {
 
     expect(host.querySelector('[role="dialog"]')).toBe(modal);
     expect(modal?.querySelector('h2')?.textContent).toBe('config_model:channel_import_import_step');
+    const modalTitle = modal?.querySelector('h2 [tabindex="-1"]');
+    expect(document.activeElement).toBe(modalTitle);
     const selectedCount = modal?.querySelector('[aria-live="polite"]');
     expect(selectedCount?.textContent).toBe('config_model:channel_import_selected_count: 0');
     const searchInput = modal?.querySelector(
@@ -411,6 +413,7 @@ describe('ImportModelFromChannelModal', () => {
     expect(host.querySelector('[role="dialog"]')).toBe(modal);
     expect(getButton('common:Confirm')).toBeDefined();
     await act(async () => getButton('config_model:previous_step').click());
+    expect(document.activeElement).toBe(modalTitle);
     expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
 

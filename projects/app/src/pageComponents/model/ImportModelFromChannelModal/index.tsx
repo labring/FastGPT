@@ -12,7 +12,7 @@ import type {
   CreateModelData,
   ModelChannelSummary
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ImportResultsStep from './ImportResultsStep';
 import ModelPreviewStep from './ModelPreviewStep';
 import SelectChannelStep from './SelectChannelStep';
@@ -42,7 +42,11 @@ const ImportModelFromChannelModal = ({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [flow, setFlow] = useState<ImportFlowState>({ step: 'select', channelId: '' });
+  const titleRef = useRef<HTMLSpanElement>(null);
   const channel = channels.find((item) => item.id === flow.channelId);
+
+  // 进入预览前把焦点移到常驻标题，步骤按钮卸载时焦点继续留在弹窗内。
+  const focusModalTitle = () => titleRef.current?.focus({ preventScroll: true });
 
   return (
     <MyModal
@@ -50,7 +54,11 @@ const ImportModelFromChannelModal = ({
       onClose={submitting ? undefined : onClose}
       closeOnOverlayClick={false}
       closeOnEsc={false}
-      title={t('config_model:channel_import_import_step')}
+      title={
+        <span ref={titleRef} tabIndex={-1}>
+          {t('config_model:channel_import_import_step')}
+        </span>
+      }
       w="1080px"
       h="min(760px, calc(100vh - 32px))"
       maxW="calc(100vw - 24px)"
@@ -61,7 +69,10 @@ const ImportModelFromChannelModal = ({
           channelId={flow.channelId}
           onChannelChange={(channelId) => setFlow({ step: 'select', channelId })}
           channels={channels}
-          onSubmit={(channelId) => setFlow({ step: 'preview', channelId })}
+          onSubmit={(channelId) => {
+            focusModalTitle();
+            setFlow({ step: 'preview', channelId });
+          }}
         />
       )}
       {flow.step !== 'select' && flow.channelId !== '' && (
@@ -83,7 +94,10 @@ const ImportModelFromChannelModal = ({
           channel={channel}
           models={flow.models}
           onSubmittingChange={setSubmitting}
-          onPrevious={() => setFlow((current) => ({ ...current, step: 'preview' }))}
+          onPrevious={() => {
+            focusModalTitle();
+            setFlow((current) => ({ ...current, step: 'preview' }));
+          }}
           onRefresh={onSuccess}
           onImportSuccess={() => {
             onClose();
