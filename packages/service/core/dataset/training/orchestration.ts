@@ -141,7 +141,9 @@ export const hasDatasetTrainingTask = (
   });
 
 /** 检查仍可执行的解析、QA 和分块工作，供知识库同步判断。 */
-export const hasActiveDatasetTrainingTask = async (scope: DatasetTrainingScope): Promise<boolean> => {
+export const hasActiveDatasetTrainingTask = async (
+  scope: DatasetTrainingScope
+): Promise<boolean> => {
   const activeRound = { ...scope, 'training.status': 'active' };
   if (
     await MongoDatasetCollection.exists({ ...activeRound, 'training.parse.status': 'active' }).read(
