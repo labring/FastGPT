@@ -565,13 +565,15 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
         sandbox: toolFixture.sandbox,
         message: 'Failed to read file'
       });
-      await expectTimedToolError({
-        operation: 'error.read-offset-beyond-end',
+      const offsetBeyondEnd = await runTimedTool({
+        operation: 'notice.read-offset-beyond-end',
         toolName: SANDBOX_READ_FILE_TOOL_NAME,
-        args: { path: 'docs/sample.txt', offset: 100 },
-        sandbox: toolFixture.sandbox,
-        message: /Offset 100 is beyond end of file/
+        input: { path: 'docs/sample.txt', offset: 100 },
+        sandbox: toolFixture.sandbox
       });
+      expect(assertToolSuccess(offsetBeyondEnd).response).toMatch(
+        /File exists but has no content at or after offset 100/
+      );
       await expectTimedToolError({
         operation: 'error.path-traversal',
         toolName: SANDBOX_WRITE_FILE_TOOL_NAME,
