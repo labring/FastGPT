@@ -98,10 +98,10 @@
   "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "Migrate legacy volumes & package.zip",
   "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "Validate migration",
   "migrations.20261117_cleanup_legacy_sandbox_resources.name": "Clean up legacy sandbox resources",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "Run manually after verifying the OpenSandbox migration in production. Enforces zero unmigrated active records in agent_sandbox_instances_v2, then deletes remote legacy Sealos Devboxes, legacy persistent volumes, legacy/orphan agent_sandbox_instances_v2 records, and verified legacy package.zip objects.",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "Cleaned up {{deletedDevboxes}} remote Devboxes, {{deletedVolumes}} legacy volumes, {{deletedZips}} legacy zip objects, and {{deletedOrphans}} orphan records",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "Run manually after verifying the OpenSandbox migration in production. Enforces zero unmigrated active records in agent_sandbox_instances_v2, then deletes remote legacy Sealos Devboxes, legacy persistent volumes, and verified legacy package.zip objects while keeping agent_sandbox_instances_v2 read-only.",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "Cleaned up {{deletedDevboxes}} remote Devboxes, {{deletedVolumes}} legacy volumes, and {{deletedZips}} legacy zip objects",
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "Safety guard verification",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "Delete legacy Devboxes, volumes & orphans",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "Delete legacy Devboxes, containers & volumes",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "Verify & delete legacy zip objects",
   "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "Validate cleanup"
 }

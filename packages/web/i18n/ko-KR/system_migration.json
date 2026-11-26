@@ -98,10 +98,10 @@
   "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "기존 볼륨 및 package.zip 마이그레이션",
   "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "마이그레이션 결과 검증",
   "migrations.20261117_cleanup_legacy_sandbox_resources.name": "이전 샌드박스 잔여 리소스 정리",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "OpenSandbox 마이그레이션 완료 및 안정화 확인 후 수동으로 실행하세요. agent_sandbox_instances_v2에 미마이그레이션 활성 레코드가 없는지 검증한 뒤 원격 Sealos Devbox, 기존 영구 볼륨, 기존·고아 agent_sandbox_instances_v2 레코드 및 검증된 기존 package.zip을 삭제합니다.",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "원격 Devbox {{deletedDevboxes}}개, 기존 볼륨 {{deletedVolumes}}개, 기존 zip {{deletedZips}}개, 고아 레코드 {{deletedOrphans}}개 정리 완료",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "OpenSandbox 마이그레이션 완료 및 안정화 확인 후 수동으로 실행하세요. agent_sandbox_instances_v2에 미마이그레이션 활성 레코드가 없는지 검증한 뒤 원격 Sealos Devbox, 기존 영구 볼륨 및 검증된 기존 package.zip을 삭제하며 agent_sandbox_instances_v2는 읽기 전용으로 보존합니다.",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "원격 Devbox {{deletedDevboxes}}개, 기존 볼륨 {{deletedVolumes}}개, 기존 zip {{deletedZips}}개 정리 완료",
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "마이그레이션 상태 안전 검증",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "기존 Devbox, 볼륨 및 고아 레코드 정리",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "기존 Devbox, 컨테이너 및 볼륨 정리",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "기존 zip 아카이브 검증 및 삭제",
   "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증"
 }

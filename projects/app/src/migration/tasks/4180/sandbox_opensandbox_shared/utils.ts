@@ -527,7 +527,6 @@ export async function runSandboxDocCursorStage(params: {
   collection: SandboxMigrationCollection;
   failures: Map<string, SystemMigrationFailedRecord>;
   stageKey: string;
-  retryStageKeys?: string[];
   filter: SandboxDocFilter;
   stage: SandboxCursorStageState;
   concurrency: number;
@@ -541,7 +540,6 @@ export async function runSandboxDocCursorStage(params: {
     collection,
     failures,
     stageKey,
-    retryStageKeys,
     filter,
     stage,
     concurrency,
@@ -551,8 +549,6 @@ export async function runSandboxDocCursorStage(params: {
     saveCheckpoint
   } = params;
 
-  const effectiveRetryStageKeys = retryStageKeys ?? [stageKey];
-  const retryStageSet = new Set(effectiveRetryStageKeys);
   const lastIdHex = stage.lastId ? new Types.ObjectId(stage.lastId).toHexString() : null;
 
   const remainingFilter: SandboxDocFilter = stage.lastId
@@ -563,7 +559,7 @@ export async function runSandboxDocCursorStage(params: {
   const retryIdSet = new Set<string>();
   const aheadFailureIdSet = new Set<string>();
   for (const item of failures.values()) {
-    if (!retryStageSet.has(item.stageKey)) continue;
+    if (item.stageKey !== stageKey) continue;
     if (typeof item.data.id !== 'string' || !Types.ObjectId.isValid(item.data.id)) continue;
     const itemHex = new Types.ObjectId(item.data.id).toHexString();
     if (stage.done || (lastIdHex !== null && itemHex <= lastIdHex)) {
@@ -626,7 +622,7 @@ export async function runSandboxDocCursorStage(params: {
       context,
       collection,
       failures,
-      stageKeys: effectiveRetryStageKeys,
+      stageKeys: [stageKey],
       excludeIds: cursorCoveredFailureIds,
       concurrency,
       processDoc: runAndTrackDoc,

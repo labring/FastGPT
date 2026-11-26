@@ -129,7 +129,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 ### 4.1 MongoDB Schema 与索引（`agent_sandbox_instances_v3`）
 
-模型位于 [`infrastructure/instance/schema.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/instance/schema.ts)，唯一业务/物理约束通过 `defineIndex` 声明。4.18.0 运行态唯一读写 `agent_sandbox_instances_v3`；4.18.0 升级前遗留集合 `agent_sandbox_instances_v2` 仅作为运行期未迁移门禁与第 7 步升级任务的**只读**数据源，保持原样直至第 8 步清理任务执行：
+模型位于 [`infrastructure/instance/schema.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/instance/schema.ts)，唯一业务/物理约束通过 `defineIndex` 声明。4.18.0 运行态唯一读写 `agent_sandbox_instances_v3`；4.18.0 升级前遗留集合 `agent_sandbox_instances_v2` 全程保持**只读**，仅作为运行期未迁移门禁、孤儿对账保护以及第 7/8 步升级与清理任务的只读数据源（不在迁移任务中删除旧表及记录）：
 
 - **核心字段**：`provider: 'opensandbox'`、`instanceId?`（OpenSandbox 容器/Pod ID，支持跳过列表扫描直连）、`sandboxId`、`sourceType`、`sourceId`、`userId`、`teamId?`、`status`、`lastActiveAt`、`createdAt`、`limit?: { cpuCount?, memoryMiB? }`、`image?: SandboxImageConfig`、`versionId?`、`storage?: { volumes?, mountPath?, archive? }`、`operation?: { id, type, phase, previousStatus?, startedAt, heartbeatAt, failedAt?, retryAfter?, error? }`。
 - **状态机与稳态物理不变量**：`SandboxInstanceZodSchema.superRefine` 与 `SandboxInstanceSchema.pre('validate')` 强制校验 `status <-> operation.type` 绑定关系，稳态下的物理资源收敛由生命周期状态机（`application/lifecycle/*`、`archive.ts`、`resource.ts`）保证：
@@ -342,12 +342,12 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
    - **Stage 4 `validation`**：校验 `v2` 全部活跃源记录均已在 `v3` 具备有效已迁移记录。
 2. **`20261117_cleanup_legacy_sandbox_resources`（强依赖任务 1 完成后允许触发）**：
    - **前置门禁**：扫描 `agent_sandbox_instances_v2`，发现任何非 `deleting` 且源活跃、尚未在 `v3` 落库的记录立即阻断，零删除放行；存在 `sealosdevbox` 记录且缺少 Sealos 凭证 ENV 时同样阻断；
-   - **阶段 `cleanupDevboxes`（Pass A 清理 `v2` + Pass B 清理 `v3` 孤儿）**：Pass A 逐条读取 `v2` 并在 `withSandboxLease` 锁内幂等回收远端历史 Sealos Devbox、按条件销毁仅属于 `v2` 的遗留容器与旧 `/workspace` 持久卷（**绝不删除任何仍被 `v3` 引用的容器与 PVC**），确认后通过 `deleteOne` 物理清除 `v2` 文档；Pass B 扫描 `v3`，跳过活跃源记录，通过 `deleteSandboxResourceWithinLease` 回收所属应用或 Skill 已软删除的 `v3` 孤儿记录及其 `sandbox/archive-v2/` 归档；
-   - **阶段 `cleanupLegacyZips` 与 `validation`**：扫描 `sandbox/archive/<sandboxId>/package.zip`，确认无活跃非 `deleting` `v2` 记录且 `v3` 中目标 `.tar.zst`（若处于 `archived`/`restoring`）已在 `sandbox/archive-v2/` 真实存在后删除旧 `package.zip`；最终 `validation` 校验 S3 `package.zip` 与 `agent_sandbox_instances_v2` 均已彻底清零。
+   - **阶段 `cleanupDevboxes`**：只读扫描 `agent_sandbox_instances_v2`，在 `withSandboxLease` 锁内确认活跃实例已存在 `v3` 记录且 `.tar.zst` 归档真实存在，随后幂等回收远端历史 Sealos Devbox、按条件销毁仅属于 `v2` 的遗留容器与旧 `/workspace` 持久卷（**绝不删除任何仍被 `v3` 引用的容器与 PVC**），并**保留 `agent_sandbox_instances_v2` 文档只读不删除**；
+   - **阶段 `cleanupLegacyZips` 与 `validation`**：扫描 `sandbox/archive/<sandboxId>/package.zip`，确认无未迁入 `v3` 的活跃非 `deleting` `v2` 记录且 `v3` 中目标 `.tar.zst`（若含归档元数据或处于 `archived`/`restoring`）已在 `sandbox/archive-v2/` 真实存在后删除旧 `package.zip`；最终 `validation` 校验 S3 `package.zip` 已彻底清零。
 
 **回滚边界**：
 - **沙盒层回滚**：在执行任务 2 清理前，`agent_sandbox_instances_v2` 记录、远端 Devbox（`pause`）、旧 `/workspace` 持久卷与旧 S3 `sandbox/archive/*/package.zip` 均保持 100% 原样未动。回滚沙盒**无需恢复 PVC 快照或沙盒 S3 归档**，停止 4.18.0 容器并将沙盒组件切回 `v0.4.x` 即可恢复原有 Devbox 与旧 OpenSandbox 沙盒（试运行期在 `v3` 新建的容器与带随机后缀的新 PVC 与旧卷隔离，可在放弃升级后按需清理）。
-- **整站回滚与不可逆点**：整站从 4.18.0 回滚到 4.17.x 仍需恢复升级前数据库备份（若 4.18.0 上线后删除过非沙盒 S3 资产或发布过 `.tar.zst` Skill 版本，还需恢复 S3 备份），因为其他 4.18.0 迁移（如模型计价阶梯、API Key 规范化）与 `.tar.zst` Skill 版本不向后兼容 4.17.x。一旦执行 `20261117_cleanup_legacy_sandbox_resources`，远端 Devbox、旧 `/workspace` 持久卷、旧 `package.zip` 与 `agent_sandbox_instances_v2` 记录将被永久删除，不可撤销。
+- **整站回滚与不可逆点**：整站从 4.18.0 回滚到 4.17.x 仍需恢复升级前数据库备份（若 4.18.0 上线后删除过非沙盒 S3 资产或发布过 `.tar.zst` Skill 版本，还需恢复 S3 备份），因为其他 4.18.0 迁移（如模型计价阶梯、API Key 规范化）与 `.tar.zst` Skill 版本不向后兼容 4.17.x。一旦执行 `20261117_cleanup_legacy_sandbox_resources`，远端 Devbox、旧 `/workspace` 持久卷与旧 `package.zip` 将被永久删除，不可撤销（MongoDB 旧集合 `agent_sandbox_instances_v2` 保留只读留存，不删除）。
 
 ---
 

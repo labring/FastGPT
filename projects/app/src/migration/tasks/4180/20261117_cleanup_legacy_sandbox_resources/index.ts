@@ -53,7 +53,6 @@ const CheckpointSchema = z.object({
   deletedDevboxes: IntSchema,
   deletedVolumes: IntSchema,
   deletedZips: IntSchema,
-  deletedOrphans: IntSchema,
   processedDocs: IntSchema,
   totalDocs: IntSchema.optional(),
   processedZips: IntSchema,
@@ -70,7 +69,6 @@ const createInitialCheckpoint = (): CheckpointState => ({
   deletedDevboxes: 0,
   deletedVolumes: 0,
   deletedZips: 0,
-  deletedOrphans: 0,
   processedDocs: 0,
   processedZips: 0
 });
@@ -78,10 +76,11 @@ const createInitialCheckpoint = (): CheckpointState => ({
 /**
  * 4.18.0 历史沙盒遗留资源核验与永久清理任务（`manual: true`，强依赖 `20261117_migrate_sandbox_to_opensandbox`）。
  *
+ * 全程只读扫描旧集合 `agent_sandbox_instances_v2`，**不删除旧 Mongo 集合或其文档**，仅回收高成本外部遗留资源：
  * - 前置安全门禁：扫描 `agent_sandbox_instances_v2`，发现任何非 `deleting` 且源活跃、却尚未在 `v3` 落库的记录立即阻断，零删除放行；
- * - 阶段 `cleanupDevboxes`：扫描 `agent_sandbox_instances_v2`，对每条 `v2` 记录在 `withSandboxLease` 锁内确认活跃实例已存在 `v3` 记录且对应 `sandbox/archive-v2/*.tar.zst` 归档真实存在（若 `v3` 含归档元数据或处于 `archived`/`restoring`），随后回收远端 Sealos Devbox 与仅属于 `v2` 的孤儿/已替代容器及旧持久卷（绝不触碰 `targetV3` 的活容器或仍在 `v3` 使用中的持久卷），最后删除 `v2` 文档（源已软删除的孤儿行与 `deleting` 行计入 `deletedOrphans`）；
- * - 阶段 `cleanupLegacyZips`：扫描 `sandbox/archive/<sandboxId>/package.zip`，确认无非 `deleting` 活跃 `v2` 行且 `v3` 归档（若含归档元数据或处于 `archived`/`restoring`）已在 `sandbox/archive-v2/` 真实存在后删除旧 `package.zip`；
- * - 阶段 `validation`：校验 S3 `sandbox/archive/<sandboxId>/package.zip` 与 `agent_sandbox_instances_v2` 均已彻底清零。
+ * - 阶段 `cleanupDevboxes`：只读扫描 `agent_sandbox_instances_v2`，对每条 `v2` 记录在 `withSandboxLease` 锁内确认活跃实例已存在 `v3` 记录且对应 `sandbox/archive-v2/*.tar.zst` 归档真实存在（若 `v3` 含归档元数据或处于 `archived`/`restoring`），随后回收远端 Sealos Devbox 与仅属于 `v2` 的孤儿/已替代容器及旧持久卷（绝不触碰 `targetV3` 的活容器或仍在 `v3` 使用中的持久卷），保留 `v2` 文档不删除；
+ * - 阶段 `cleanupLegacyZips`：扫描 `sandbox/archive/<sandboxId>/package.zip`，确认无未迁入 `v3` 的非 `deleting` 活跃 `v2` 记录且 `v3` 归档（若含归档元数据或处于 `archived`/`restoring`）已在 `sandbox/archive-v2/` 真实存在后删除旧 `package.zip`；
+ * - 阶段 `validation`：校验 S3 `sandbox/archive/<sandboxId>/package.zip` 已彻底清零。
  */
 export const cleanupLegacySandboxResources = async (context: SystemMigrationContext) => {
   const legacyCollection = getLegacySandboxInstanceCollection();
@@ -160,7 +159,6 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     const deletedDevboxes = existingCheckpoint?.deletedDevboxes ?? 0;
     const deletedVolumes = existingCheckpoint?.deletedVolumes ?? 0;
     const deletedZips = existingCheckpoint?.deletedZips ?? 0;
-    const deletedOrphans = existingCheckpoint?.deletedOrphans ?? 0;
 
     return await completeNoopSandboxMigration({
       context,
@@ -174,7 +172,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
           current: existingCheckpoint?.processedZips ?? 0
         }
       ],
-      result: { deletedDevboxes, deletedVolumes, deletedZips, deletedOrphans }
+      result: { deletedDevboxes, deletedVolumes, deletedZips }
     });
   }
 
@@ -311,13 +309,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
           }
 
           lease.assertValid();
-          const deleteRes = await legacyCollection.deleteOne({ _id: latest._id });
-          if (
-            (!active || latest.status === SandboxInstanceStatusEnum.deleting) &&
-            deleteRes.deletedCount > 0
-          ) {
-            checkpoint.deletedOrphans += 1;
-          }
+          // 保留 MongoDB 旧集合 agent_sandbox_instances_v2 仅作只读留存，不在迁移任务中删除旧表记录。
           failures.delete(failureKey);
         }
       });
@@ -333,13 +325,12 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     }
   };
 
-  // 清理所有 v2 记录、远端 Devbox、未被 v3 引用的旧 PVC 以及 v2 孤儿/deleting 行。
+  // 只读扫描 v2 记录，回收远端 Devbox、无 targetV3 的遗留容器及未被 v3 引用的旧 PVC（不删除 v2 Mongo 记录）。
   await runSandboxDocCursorStage({
     context,
     collection: legacyCollection,
     failures,
     stageKey: 'cleanupDevboxes',
-    retryStageKeys: ['cleanupDevboxes', 'validation'],
     filter: {},
     stage: docStage,
     concurrency: CLEANUP_CONCURRENCY,
@@ -365,9 +356,13 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
         },
         { projection: SANDBOX_MIGRATION_PROJECTION }
       );
-      if (legacyRow && (await isSandboxSourceActive(legacyRow, activeSourceCache))) {
+      if (
+        legacyRow &&
+        (await isSandboxSourceActive(legacyRow, activeSourceCache)) &&
+        !(await hasMigratedV3Record(legacyRow))
+      ) {
         throw new Error(
-          'Active legacy sandbox row still exists in v2; preserving legacy package.zip'
+          'Active legacy sandbox row is not migrated to v3; preserving legacy package.zip'
         );
       }
 
@@ -558,28 +553,6 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     });
   }
 
-  const residualV2Docs = await legacyCollection
-    .find<SandboxMigrationDoc>({}, { projection: SANDBOX_MIGRATION_PROJECTION })
-    .sort({ _id: 1 })
-    .limit(systemMigrationBatchSize)
-    .toArray();
-  if (residualV2Docs.length > 0) {
-    // 重置 v2 清理游标，使重跑既能重放失败快照也能覆盖期间新增的残留记录。
-    docStage.lastId = null;
-    docStage.done = false;
-    docStage.processed = 0;
-    docStage.total = undefined;
-    await saveCleanupCheckpoint();
-    await context.fail({
-      message: 'Legacy sandbox resource cleanup validation failed with remaining v2 records',
-      failedRecords: residualV2Docs.map((doc) => ({
-        stageKey: 'validation',
-        data: { id: String(doc._id), sandboxId: doc.sandboxId },
-        reason: { message: 'Legacy v2 sandbox record still remains after cleanup' }
-      }))
-    });
-  }
-
   await context.reportProgress({
     key: 'validation',
     status: SystemMigrationStatusEnum.succeeded
@@ -588,7 +561,6 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
   return {
     deletedDevboxes: checkpoint.deletedDevboxes,
     deletedVolumes: checkpoint.deletedVolumes,
-    deletedZips: checkpoint.deletedZips,
-    deletedOrphans: checkpoint.deletedOrphans
+    deletedZips: checkpoint.deletedZips
   };
 };

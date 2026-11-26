@@ -794,12 +794,11 @@ describe
       expect(cleanupAgainResult).toEqual({
         deletedDevboxes: 0,
         deletedVolumes: 0,
-        deletedZips: 0,
-        deletedOrphans: 0
+        deletedZips: 0
       });
 
-      // 验证 legacy .zip 与 v2 记录已清理，而 v3 .tar.zst 存档与 Skill 版本包完好保留
-      expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(0);
+      // 验证 legacy .zip 与远端 Devbox 已清理，而 v2 旧集合记录、v3 .tar.zst 存档与 Skill 版本包均完好保留
+      expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(5);
       expect(await s3Sandbox.isObjectExists(legacyStoppedZipKey)).toBe(false);
       expect(await s3Sandbox.isObjectExists(emptyZipKey)).toBe(false);
       expect(await s3Sandbox.isObjectExists(migratedStoppedArchiveKey)).toBe(true);
