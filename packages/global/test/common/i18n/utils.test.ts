@@ -49,6 +49,13 @@ describe('parseLocale', () => {
     }
   );
 
+  it.each(['tr', 'tr-TR', 'tr-tr', 'TR_TR', 'tr-CY'])(
+    'should normalize Turkish locale %s to tr-TR',
+    (locale) => {
+      expect(parseLocale(locale)).toBe('tr-TR');
+    }
+  );
+
   it('should normalize English and Chinese locale variants', () => {
     expect(parseLocale('en-US')).toBe('en');
     expect(parseLocale('zh_hant_tw')).toBe('zh-Hant');
@@ -100,6 +107,7 @@ describe('parseI18nString', () => {
 
   it('should accept legacy translation objects without zh-CN', () => {
     expect(parseI18nString({ en: 'Hello' }, 'ko-KR')).toBe('Hello');
+    expect(parseI18nString({ en: 'Hello' }, 'tr-TR')).toBe('Hello');
   });
 
   it('falls back to an empty string when all translations are omitted', () => {

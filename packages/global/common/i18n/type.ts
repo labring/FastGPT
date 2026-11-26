@@ -4,7 +4,8 @@ export const I18nStringSchema = z.object({
   en: z.string(),
   'zh-CN': z.string(),
   'zh-Hant': z.string().optional(),
-  'ko-KR': z.string().optional()
+  'ko-KR': z.string().optional(),
+  'tr-TR': z.string().optional()
 });
 export type I18nStringType = z.infer<typeof I18nStringSchema>;
 
@@ -12,11 +13,12 @@ export enum LangEnum {
   'zh_CN' = 'zh-CN',
   'zh_Hant' = 'zh-Hant',
   'en' = 'en',
-  'ko_KR' = 'ko-KR'
+  'ko_KR' = 'ko-KR',
+  'tr_TR' = 'tr-TR'
 }
 
 export type localeType = `${LangEnum}`;
-export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
+export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR', 'tr-TR'] as const;
 const localeSet: ReadonlySet<string> = new Set(LocaleList);
 
 // 保留必填与非空字符串校验，仅将当前版本不识别的非空语言标识回退为英文。
@@ -46,6 +48,10 @@ export const langMap = {
   [LangEnum.ko_KR]: {
     label: '한국어 (대한민국)',
     avatar: 'common/language/SouthKorea'
+  },
+  [LangEnum.tr_TR]: {
+    label: 'Türkçe (Türkiye)',
+    avatar: 'common/language/Turkey'
   }
 };
 
