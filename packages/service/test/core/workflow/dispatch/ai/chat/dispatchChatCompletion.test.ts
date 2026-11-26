@@ -435,4 +435,28 @@ describe('dispatchChatCompletion empty input guard', () => {
       query: 'retrieved knowledge content'
     });
   });
+
+  it('allows custom user quotePrompt containing expanded workflow variable content when quoteQA and userChatInput are empty', async () => {
+    fixture.useRealDatasetCite = true;
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'summary from variable',
+      finish_reason: 'stop',
+      requestId: 'req-var-prompt',
+      usage: { inputTokens: 18, outputTokens: 8 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      aiChatQuoteRole: 'user',
+      quotePrompt: '请总结：来自上游变量的正文\n{{quote}}',
+      quoteQA: []
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      query: '请总结：来自上游变量的正文\n'
+    });
+  });
 });

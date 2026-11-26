@@ -142,5 +142,13 @@ describe('dataset citation synonym compatibility', () => {
       userChatInput: ''
     });
     expect(systemEmptyQuestion.hasEffectiveUserInput).toBe(false);
+
+    const customExpandedVar = await run({
+      quoteQA: [],
+      datasetQuotePrompt: '请总结：来自工作流变量的正文\n{{quote}}',
+      userChatInput: ''
+    });
+    expect(customExpandedVar.userInput).toBe('请总结：来自工作流变量的正文\n');
+    expect(customExpandedVar.hasEffectiveUserInput).toBe(true);
   });
 });

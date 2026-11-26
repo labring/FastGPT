@@ -83,12 +83,11 @@ export const getDatasetCiteData = async ({
       ? datasetQuotePromptTemplate.replace(/\{\{quote\}\}/g, () => datasetQuoteText)
       : '';
 
-  // User 角色下默认/自定义模板本身带固定文案，仅当模板实际消费了非空问题或非空引用内容时才视为有效输入。
+  // 仅内置默认 User 模板会在问题与引用均为空时产出纯固定提示文案；
+  // 自定义模板可能包含已由工作流展开的全局变量，沿用渲染结果非空语义以保持历史兼容。
   const hasEffectiveUserInput =
-    useDatasetQuote && quoteRole === 'user'
-      ? Boolean(replaceInputValue) &&
-        ((Boolean(userChatInput) && datasetQuotePromptTemplate.includes('{{question}}')) ||
-          (Boolean(datasetQuoteText) && datasetQuotePromptTemplate.includes('{{quote}}')))
+    useDatasetQuote && quoteRole === 'user' && !datasetQuotePrompt
+      ? Boolean(userChatInput) || Boolean(datasetQuoteText)
       : Boolean(replaceInputValue);
 
   return {
