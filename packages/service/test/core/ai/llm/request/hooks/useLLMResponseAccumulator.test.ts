@@ -14,7 +14,7 @@ const createToolCall = (id: string, name: string, args = ''): ChatCompletionMess
 
 describe('useLLMResponseAccumulator', () => {
   it.each([true, false])(
-    'preserves empty reasoning for tool history and continuation only when supported: %s',
+    'preserves empty reasoning for tool history and omits unexecuted tool_calls from continuation: %s',
     (supportReason) => {
       const accumulator = useLLMResponseAccumulator({ supportReason });
       accumulator.appendResponse({
@@ -25,10 +25,24 @@ describe('useLLMResponseAccumulator', () => {
       });
 
       const assistant = accumulator.getResponse().assistantMessage;
-      const continuation = accumulator.buildContinuationMessages({ baseMessages: [] })[0];
-      expect(continuation).toEqual(assistant);
       expect(assistant.tool_calls).toEqual([
         createToolCall('call_empty_reasoning', 'search', '{}')
+      ]);
+      // 仅含未执行 tool_calls 且无正文/思考时，续写请求不应发送空 assistant 或悬空 tool_calls。
+      expect(accumulator.buildContinuationMessages({ baseMessages: [] })).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: '[继续输出]' }
+      ]);
+
+      // 有思考内容但无正文时，移除未执行 tool_calls 后仍缺少 content，续写同样省略该 assistant 消息。
+      const reasoningOnly = useLLMResponseAccumulator({ supportReason });
+      reasoningOnly.appendResponse({
+        answerText: '',
+        reasoningText: 'only thinking',
+        finish_reason: 'length',
+        toolCalls: [createToolCall('call_reasoning_only', 'search', '{}')]
+      });
+      expect(reasoningOnly.buildContinuationMessages({ baseMessages: [] })).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: '[继续输出]' }
       ]);
       const serialized = JSON.parse(JSON.stringify(assistant));
       if (supportReason) {
@@ -89,7 +103,7 @@ describe('useLLMResponseAccumulator', () => {
     ]);
   });
 
-  it('should build continuation messages from accumulated assistant content', () => {
+  it('should build continuation messages from replayable assistant text/reasoning without unexecuted tool_calls', () => {
     const accumulator = useLLMResponseAccumulator();
     const baseMessages = [
       {
@@ -111,8 +125,7 @@ describe('useLLMResponseAccumulator', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'partial',
-        reasoning_content: 'reasoning',
-        tool_calls: [createToolCall('call_1', 'search', '{"q":"x"}')]
+        reasoning_content: 'reasoning'
       },
       {
         role: ChatCompletionRequestMessageRoleEnum.User,
@@ -154,6 +167,38 @@ describe('useLLMResponseAccumulator', () => {
 
     expect(accumulator.shouldContinue()).toBe(false);
     expect(accumulator.getResponse().error).toBe(error);
+  });
+
+  it('keeps per-round error record redaction and moderation precedence when a tool call id is reused across rounds', () => {
+    const accumulator = useLLMResponseAccumulator();
+    accumulator.appendResponse({
+      answerText: '',
+      reasoningText: '',
+      finish_reason: 'length',
+      toolCalls: [createToolCall('dup_id', 'search', '{}')],
+      rawToolCalls: [createToolCall('dup_id', 'search', '{"q":"toxic"}')],
+      errorRecordToolCalls: [createToolCall('dup_id', 'search', '{}')],
+      blockedToolCalls: { dup_id: 'moderation' }
+    });
+    accumulator.appendResponse({
+      answerText: '',
+      reasoningText: '',
+      finish_reason: 'length',
+      toolCalls: [createToolCall('dup_id', 'search', '{}')],
+      rawToolCalls: [createToolCall('dup_id', 'search', '{"q":"clean-trunc')],
+      blockedToolCalls: { dup_id: 'length' }
+    });
+
+    const response = accumulator.getResponse();
+    expect(response.blockedToolCalls).toEqual({ dup_id: 'moderation' });
+    expect(response.rawToolCalls).toEqual([
+      createToolCall('dup_id', 'search', '{"q":"toxic"}'),
+      createToolCall('dup_id', 'search', '{"q":"clean-trunc')
+    ]);
+    expect(response.errorRecordToolCalls).toEqual([
+      createToolCall('dup_id', 'search', '{}'),
+      createToolCall('dup_id', 'search', '{"q":"clean-trunc')
+    ]);
   });
 
   it('keeps empty provider usage at zero', () => {

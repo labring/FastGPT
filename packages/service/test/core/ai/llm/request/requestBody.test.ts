@@ -150,6 +150,53 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).not.toHaveProperty('tools');
   });
 
+  it('should preserve allowed reasoning_effort, strip unsupported caller levels, and keep defaultConfig/fieldMap precedence', async () => {
+    const model = createModel({
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'high']
+      }
+    });
+
+    const allowedResult = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      reasoning_effort: 'high'
+    });
+    expect(allowedResult.requestBody).toHaveProperty('reasoning_effort', 'high');
+
+    const disallowedResult = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      reasoning_effort: 'none'
+    });
+    expect(disallowedResult.requestBody).not.toHaveProperty('reasoning_effort');
+
+    // fieldMap 映射已通过能力裁剪的调用方参数，defaultConfig 始终保持最高优先级原样覆盖
+    const overrideModel = createModel({
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'high'],
+        fieldMap: { reasoning_effort: 'effort_level' },
+        defaultConfig: { reasoning_effort: 'none' }
+      }
+    });
+    const overrideResult = await llmCompletionsBodyFormat({
+      model: overrideModel,
+      messages,
+      stream: false,
+      reasoning_effort: 'low'
+    });
+    expect(overrideResult.requestBody).toMatchObject({
+      effort_level: 'low',
+      reasoning_effort: 'none'
+    });
+  });
+
   it('should remove FastGPT private tool schema fields before sending tools to model', async () => {
     const model = createModel();
 

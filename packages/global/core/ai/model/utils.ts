@@ -1,4 +1,5 @@
 import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import { normalizeReasoningEffortList } from '../llm/utils';
 import type { AIModelDocumentDataType } from './schema';
 import type { ChannelType } from './scope';
 
@@ -51,6 +52,46 @@ export const resolveChannelType = ({
 /** embedding 模型是否支持图片输入；未配置时按纯文本模型处理。 */
 export const isImageEmbeddingModel = (model?: { config?: { vision?: boolean } }): boolean =>
   model?.config?.vision === true;
+
+/**
+ * 写入边界统一规范化 LLM 思考等级配置，作为所有持久化入口的单一不变量：
+ * - 未开启深度思考或显式关闭思考配置时剥离 `reasoningEffortList`（深度思考关闭且原开关存在时归为 `false`）；
+ * - 显式传入非空列表时去重并按 AI Proxy 6 档标准顺序排序，同时对齐 `reasoningEffort: true`；
+ * - 未配置或传入空数组时省略 `reasoningEffortList`，保留缺省语义供运行期目录加载兜底与手动迁移回填。
+ */
+export const normalizeModelReasoningEffortForSave = <T extends AIModelDocumentDataType>(
+  model: T
+): T => {
+  if (model.type !== ModelTypeEnum.llm) return model;
+  const { reasoningEffortList, ...restConfig } = model.config;
+
+  if (!restConfig.reasoning || restConfig.reasoningEffort === false) {
+    return {
+      ...model,
+      config: {
+        ...restConfig,
+        ...(restConfig.reasoningEffort !== undefined ? { reasoningEffort: false } : {})
+      }
+    };
+  }
+
+  const normalizedLevels = normalizeReasoningEffortList(reasoningEffortList);
+  if (normalizedLevels.length > 0) {
+    return {
+      ...model,
+      config: {
+        ...restConfig,
+        reasoningEffort: true,
+        reasoningEffortList: normalizedLevels
+      }
+    };
+  }
+
+  return {
+    ...model,
+    config: restConfig
+  };
+};
 
 /** 提交渠道导入时，将上游限制合入所选模板，保留模板的其他配置。 */
 export const mergeChannelTemplateModelData = ({

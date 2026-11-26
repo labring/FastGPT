@@ -2,6 +2,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelReasoningEffortForSave } from '@fastgpt/global/core/ai/model/utils';
 import { NEW_MODEL_SORT_ORDER, sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import type {
   CreateModelBody,
@@ -96,7 +97,9 @@ export const updateModel = async ({
       }).session(session))
     )
       throw new UserError(ModelErrEnum.alreadyExists);
-    const normalizedModelData = normalizeModelPricingForSave({ ...modelData, model: newModel });
+    const normalizedModelData = normalizeModelReasoningEffortForSave(
+      normalizeModelPricingForSave({ ...modelData, model: newModel })
+    );
     await MongoAIModel.updateOne(
       { _id: modelId, ...filter },
       getModelConfigUpdate(
@@ -222,7 +225,7 @@ export const createModel = async ({
     scope: _scope,
     sortOrder: _sortOrder,
     ...data
-  } = normalizeModelPricingForSave(modelData);
+  } = normalizeModelReasoningEffortForSave(normalizeModelPricingForSave(modelData));
   const [model] = await runModelTransaction(context, async (session) => {
     if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
       throw new UserError(ModelErrEnum.alreadyExists);
@@ -263,7 +266,9 @@ export const createModelsFromTemplates = async ({
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
         // 模板只提供模型配置，不继承模板携带的 rank。
-        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(template);
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelReasoningEffortForSave(
+          normalizeModelPricingForSave(template)
+        );
         return [template.model, modelData] as const;
       })
     ).values()

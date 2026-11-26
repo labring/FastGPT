@@ -108,5 +108,11 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "Safety guard verification",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "Delete legacy Devboxes, containers & volumes",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "Verify & delete legacy zip objects",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "Validate cleanup"
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "Validate cleanup",
+  "migrations.20261125_backfill_model_reasoning_effort_list.name": "Backfill model reasoning effort presets",
+  "migrations.20261125_backfill_model_reasoning_effort_list.description": "Run manually after all App instances and fastgpt-plugin have been upgraded: backfills missing available reasoning effort levels for existing reasoning-configurable LLMs from plugin presets while preserving manually configured and custom models.",
+  "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "Load plugin reasoning effort presets",
+  "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "Backfill model reasoning effort levels",
+  "migrations.20261125_backfill_model_reasoning_effort_list.validation": "Validate backfill results",
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "Loaded {{presetCount}} plugin presets and verified {{verifiedCount}} matched LLM models."
 }

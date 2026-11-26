@@ -2,7 +2,10 @@ import type {
   ChatCompletionCreateParams,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getLLMSupportParams,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
@@ -126,7 +129,9 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   if (!supportParams.responseFormat) {
     delete requestBody.response_format;
   }
-  if (!supportParams.reasoningEffort) {
+  if (
+    !normalizeModelReasoningEffort(requestBody.reasoning_effort, supportParams.reasoningEffortList)
+  ) {
     delete requestBody.reasoning_effort;
   }
 

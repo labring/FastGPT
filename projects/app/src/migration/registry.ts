@@ -16,6 +16,7 @@ import { cleanApiDatasetSystemRoot } from './tasks/4180/20261120_clean_api_datas
 import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes';
 import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
+import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -342,6 +343,43 @@ export const systemMigrations = [
       }
     ],
     run: cleanupLegacySandboxResources
+  },
+  {
+    id: '20261125_backfill_model_reasoning_effort_list',
+    version: '4.18.0',
+    // 须在所有 App 实例与 fastgpt-plugin 均升级完成后由管理员手动触发执行。
+    manual: true,
+    blockStartup: false,
+    nameKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.name'
+    ),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.result'
+    ),
+    progressSteps: [
+      {
+        key: 'loadPresets',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.loadPresets'
+        )
+      },
+      {
+        key: 'backfill',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.backfill'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.validation'
+        )
+      }
+    ],
+    run: backfillModelReasoningEffortListMigration
   },
   {
     id: '20261120_clean_api_dataset_system_root',

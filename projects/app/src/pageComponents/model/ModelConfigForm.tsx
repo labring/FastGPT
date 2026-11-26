@@ -2,10 +2,20 @@ import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelScopeEnum,
+  ModelTypeEnum,
+  REASONING_EFFORT_LEVELS,
+  reasoningEffortList as reasoningEffortOptionList
+} from '@fastgpt/global/core/ai/constants';
+import {
+  getSupportedReasoningEfforts,
+  normalizeReasoningEffortList
+} from '@fastgpt/global/core/ai/llm/utils';
 import type {
   AIModelDocumentDataType,
-  ModelPriceTierType
+  ModelPriceTierType,
+  ReasoningEffortLevel
 } from '@fastgpt/global/core/ai/model/schema';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
@@ -17,6 +27,7 @@ import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
 } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelReasoningEffortForSave } from '@fastgpt/global/core/ai/model/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -27,7 +38,7 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLockFn } from 'ahooks';
-import React, { useEffect, useMemo, useState, type MutableRefObject } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import {
   useController,
   useForm,
@@ -260,6 +271,65 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   );
 });
 
+const ReasoningEffortListField = React.memo(function ReasoningEffortListField({
+  control,
+  setValue,
+  t
+}: {
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
+  t: ReturnType<typeof useSafeTranslation>['t'];
+}) {
+  const selectedLevels = useWatch({
+    control,
+    name: 'config.reasoningEffortList'
+  });
+  const translate = t as (key: string) => string;
+  const options = useMemo(
+    () =>
+      reasoningEffortOptionList
+        .filter(
+          (item): item is { label: string; value: ReasoningEffortLevel } => item.value !== null
+        )
+        .map((item) => ({
+          value: item.value,
+          label: translate(item.label)
+        })),
+    [translate]
+  );
+
+  return (
+    <Field label={t('config_model:model.reasoning_effort_list')} colSpan={[1, 2]}>
+      <MultipleSelect<ReasoningEffortLevel>
+        list={options}
+        value={Array.isArray(selectedLevels) ? selectedLevels : []}
+        onSelect={(value) =>
+          setValue('config.reasoningEffortList', normalizeReasoningEffortList(value), {
+            shouldDirty: true
+          })
+        }
+        placeholder={t('config_model:model.reasoning_effort_list_placeholder')}
+        itemWrap
+        closeable
+        {...InputStyles}
+        h={'auto'}
+        minH={ControlHeight}
+        borderRadius={'md'}
+        tagStyle={{
+          bg: 'transparent',
+          color: 'myGray.700',
+          borderColor: 'myGray.200',
+          borderWidth: '1px',
+          borderRadius: '6px',
+          px: 2,
+          py: 1,
+          fontSize: '10px'
+        }}
+      />
+    </Field>
+  );
+});
+
 const DefaultConfigField = React.memo(function DefaultConfigField({
   control,
   setValue,
@@ -420,13 +490,17 @@ const ModelConfigForm = ({
         (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokensK !== undefined)
       )
         tiers.push(emptyPriceTier);
+      const initialReasoningEffortList = getSupportedReasoningEfforts(initialModelData);
+      const initialReasoningEffort = initialReasoningEffortList.length > 0;
       return {
         ...initialModelData,
         config: {
           ...initialModelData.config,
           quoteMaxToken: Number.isNaN(initialModelData.config.quoteMaxToken)
             ? undefined
-            : initialModelData.config.quoteMaxToken
+            : initialModelData.config.quoteMaxToken,
+          reasoningEffort: initialReasoningEffort,
+          reasoningEffortList: initialReasoningEffort ? initialReasoningEffortList : undefined
         },
         pricing: { tiers }
       };
@@ -441,6 +515,8 @@ const ModelConfigForm = ({
     };
   }, [getValues, getValuesRef]);
   const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
+  const reasoningEffortEnabled = useWatch({ control, name: 'config.reasoningEffort' });
+  const prevReasoningEffortRef = useRef<boolean | undefined>(reasoningEffortEnabled);
   const model = useWatch({ control, name: 'model' });
   const sttPriceType = useWatch({ control, name: 'pricing.type' }) ?? 'duration';
 
@@ -449,11 +525,31 @@ const ModelConfigForm = ({
   }, [model, onModelChange]);
 
   useEffect(() => {
-    // 仅在 reasoning 关闭且 reasoningEffort 实际为 true 时才清，避免挂载即把表单标 dirty
-    if (!reasoningEnabled && getValues('config.reasoningEffort')) {
-      setValue('config.reasoningEffort', false, { shouldDirty: false });
+    // 仅在 reasoning 关闭且思考配置开启时才清理，避免挂载即把表单标 dirty
+    if (!reasoningEnabled) {
+      if (getValues('config.reasoningEffort')) {
+        setValue('config.reasoningEffort', false, { shouldDirty: false });
+      }
+      if (getValues('config.reasoningEffortList') !== undefined) {
+        setValue('config.reasoningEffortList', undefined, { shouldDirty: false });
+      }
     }
   }, [reasoningEnabled, getValues, setValue]);
+
+  useEffect(() => {
+    const wasEnabled = prevReasoningEffortRef.current;
+    prevReasoningEffortRef.current = reasoningEffortEnabled;
+
+    // 仅在用户主动将「支持思考配置」从关闭切到开启且尚未配置等级时，默认填充全部 AI Proxy 思考等级
+    if (!wasEnabled && reasoningEffortEnabled) {
+      const currentList = getValues('config.reasoningEffortList');
+      if (!Array.isArray(currentList) || currentList.length === 0) {
+        setValue('config.reasoningEffortList', [...REASONING_EFFORT_LEVELS], {
+          shouldDirty: true
+        });
+      }
+    }
+  }, [reasoningEffortEnabled, getValues, setValue]);
 
   const isLLMModel = modelData?.type === ModelTypeEnum.llm;
   const isEmbeddingModel = modelData?.type === ModelTypeEnum.embedding;
@@ -500,6 +596,15 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
+        // 表单初始化已将存量模型展开为可见等级；用户主动清空全部等级等价于关闭思考配置。
+        if (
+          data.config.reasoning &&
+          data.config.reasoningEffort &&
+          normalizeReasoningEffortList(data.config.reasoningEffortList).length === 0
+        ) {
+          data.config.reasoningEffort = false;
+        }
+
         const tiers = getRuntimeResolvedPriceTiers(data);
         // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求有限阶梯上限为正整数（K Tokens）。
         if (
@@ -526,7 +631,7 @@ const ModelConfigForm = ({
         delete modelData.isUpcomingDeprecation;
       }
 
-      return onSubmit(normalizeModelPricingForSave(data));
+      return onSubmit(normalizeModelReasoningEffortForSave(normalizeModelPricingForSave(data)));
     },
     {
       onSuccess: () => {
@@ -771,6 +876,9 @@ const ModelConfigForm = ({
                 field={'config.reasoningEffort'}
                 register={register}
               />
+            )}
+            {reasoningEnabled && reasoningEffortEnabled && (
+              <ReasoningEffortListField control={control} setValue={setValue} t={t} />
             )}
           </Grid>
         </Section>

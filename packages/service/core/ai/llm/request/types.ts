@@ -83,6 +83,8 @@ export type CreateLLMResponseProps<
   teamId: string;
 } & ResponseEvents;
 
+export type BlockedToolCallReason = 'moderation' | 'length' | 'invalid_args';
+
 export type LLMResponse = {
   requestId: string;
   error?: any;
@@ -90,7 +92,7 @@ export type LLMResponse = {
   answerText: string;
   reasoningText: string;
   toolCalls?: ChatCompletionMessageToolCall[];
-  moderatedToolCallIds?: string[];
+  blockedToolCalls?: Record<string, BlockedToolCallReason>;
   finish_reason: CompletionFinishReason;
   responseEmptyTip?: string;
   usage: {
@@ -115,7 +117,7 @@ export type CompleteParams = Pick<CreateLLMResponseProps<ChatCompletionCreatePar
 
 export type CompleteResponse = Pick<
   LLMResponse,
-  'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
+  'answerText' | 'reasoningText' | 'toolCalls' | 'blockedToolCalls' | 'finish_reason'
 > & {
   usage?: LLMCompletionUsage;
   error?: any;

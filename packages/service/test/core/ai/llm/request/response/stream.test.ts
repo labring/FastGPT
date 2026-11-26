@@ -841,6 +841,39 @@ describe('createStreamResponse', () => {
       }
     );
 
+    it('should mark finish_reason as close when abort lands right before EOF', async () => {
+      const callbacks = createCallbacks();
+      let stopping = false;
+      callbacks.onToolCall.mockImplementation(() => {
+        stopping = true;
+      });
+      const { response, abort } = createStream([
+        {
+          ...chunk({
+            tool_calls: [
+              { index: 0, id: 'call_1', function: { name: 'search', arguments: '{"q":' } }
+            ]
+          }),
+          usage
+        }
+      ]);
+      const result = await createStreamResponse({
+        body: nativeBody,
+        response,
+        isAborted: () => stopping,
+        ...callbacks
+      });
+
+      expect(result.toolCalls).toEqual([
+        { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":' } }
+      ]);
+      expect(result.finish_reason).toBe('close');
+      expect(result.usage).toEqual(usage);
+      expect(abort).toHaveBeenCalledTimes(1);
+      expect(callbacks.onToolCall).toHaveBeenCalledTimes(1);
+      expect(callbacks.onToolParam).not.toHaveBeenCalled();
+    });
+
     it.each(
       modes.flatMap((mode) => [
         { ...mode, stage: 'before the first chunk', withController: false, stopImmediately: true },

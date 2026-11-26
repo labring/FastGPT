@@ -5,7 +5,11 @@ import {
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { getSupportedReasoningEfforts } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  UpdateSystemModelsWithJsonBodySchema,
+  type CreateModelBody
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,6 +46,7 @@ import {
   createModel as createSystemModel,
   createModelsFromTemplates as createSystemModelsFromTemplates,
   deleteModels as deleteSystemModels,
+  updateModel as updateSystemModel,
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
@@ -322,5 +327,193 @@ describe('system model management integration: MongoDB transactions and runtime 
     expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
     expect(await MongoAIModel.countDocuments({ model: 'concurrent' })).toBe(1);
     expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+  });
+
+  it('persists, updates, imports, and read-normalizes LLM reasoningEffortList across catalog lifecycle', async () => {
+    // 1. 插件模板批量创建（含未来未识别等级时，读取边界降级过滤而不阻断）
+    external.listModels.mockResolvedValue([
+      {
+        ...createDraft('template-reasoning'),
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['high', 'future_level', 'none']
+      }
+    ]);
+    const createdFromTemplate = await createSystemModelsFromTemplates({
+      templates: [{ type: ModelTypeEnum.llm, model: 'template-reasoning' }]
+    });
+    const templateModelId = createdFromTemplate.models[0].modelId;
+
+    expect(await MongoAIModel.findById(templateModelId).lean()).toMatchObject({
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['none', 'high']
+      }
+    });
+    const cachedTemplateModel = getCachedSystemModelHandle()?.findModelData(
+      { model: 'template-reasoning' },
+      { type: ModelTypeEnum.llm }
+    );
+    expect(cachedTemplateModel?.config.reasoningEffortList).toEqual(['none', 'high']);
+
+    // 2. 更新模型思考等级配置，并验证关闭思考等级时清空列表
+    await updateSystemModel({
+      modelId: templateModelId,
+      modelData: {
+        ...createDraft('template-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: ['low', 'medium', 'high']
+        }
+      }
+    });
+    expect(
+      getCachedSystemModelHandle()?.findModelData(
+        { model: 'template-reasoning' },
+        { type: ModelTypeEnum.llm }
+      )?.config.reasoningEffortList
+    ).toEqual(['low', 'medium', 'high']);
+
+    await updateSystemModel({
+      modelId: templateModelId,
+      modelData: {
+        ...createDraft('template-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: false,
+          reasoningEffortList: ['high']
+        }
+      }
+    });
+    expect(
+      getCachedSystemModelHandle()?.findModelData(
+        { model: 'template-reasoning' },
+        { type: ModelTypeEnum.llm }
+      )?.config.reasoningEffortList
+    ).toBeUndefined();
+    expect(
+      ((await MongoAIModel.findById(templateModelId).lean())?.config as any)?.reasoningEffortList
+    ).toBeUndefined();
+
+    // 3. JSON 导入保留合法等级，且导入 Schema 严格拒绝非法思考等级（共用真实序列化请求体与 modelId）
+    const buildJsonImportPayload = (reasoningEffortList: unknown[]) => ({
+      config: JSON.stringify([
+        {
+          ...createDraft('imported-reasoning'),
+          modelId: templateModelId,
+          config: {
+            maxContext: 32000,
+            maxResponse: 16000,
+            quoteMaxToken: 24000,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList
+          }
+        }
+      ])
+    });
+
+    const invalidImportParse = UpdateSystemModelsWithJsonBodySchema.safeParse(
+      buildJsonImportPayload(['invalid_level'])
+    );
+    expect(invalidImportParse.success).toBe(false);
+    if (!invalidImportParse.success) {
+      expect(
+        invalidImportParse.error.issues.some(
+          (issue) => issue.path.join('.') === 'config.0.config.reasoningEffortList.0'
+        )
+      ).toBe(true);
+    }
+
+    const validImportParse = UpdateSystemModelsWithJsonBodySchema.safeParse(
+      buildJsonImportPayload(['high', 'minimal', 'high'])
+    );
+    expect(validImportParse.success).toBe(true);
+    if (!validImportParse.success) throw validImportParse.error;
+
+    await importSystemModels({ config: validImportParse.data.config });
+    expect(
+      getCachedSystemModelHandle()?.findModelData(
+        { model: 'imported-reasoning' },
+        { type: ModelTypeEnum.llm }
+      )?.config.reasoningEffortList
+    ).toEqual(['minimal', 'high']);
+    expect(
+      ((await MongoAIModel.findById(templateModelId).lean())?.config as any)?.reasoningEffortList
+    ).toEqual(['minimal', 'high']);
+
+    // 4. 数据库中同时存在历史缺省、null 列表与含未知未来枚举记录时，loadInstalledModels 均能正常加载
+    await MongoAIModel.collection.insertMany([
+      {
+        ...createDraft('legacy-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: true
+        }
+      },
+      {
+        ...createDraft('null-list-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: null
+        }
+      },
+      {
+        ...createDraft('future-db-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: ['xhigh', 'unknown_v2', 'low']
+        }
+      }
+    ]);
+    await loadInstalledModels();
+
+    for (const modelName of ['legacy-reasoning', 'null-list-reasoning']) {
+      const loadedModel = getCachedSystemModelHandle()?.findModelData(
+        { model: modelName },
+        { type: ModelTypeEnum.llm }
+      );
+      expect(loadedModel?.config.reasoningEffortList).toEqual([
+        'none',
+        'minimal',
+        'low',
+        'medium',
+        'high',
+        'xhigh'
+      ]);
+      expect(getSupportedReasoningEfforts(loadedModel)).toEqual([
+        'none',
+        'minimal',
+        'low',
+        'medium',
+        'high',
+        'xhigh'
+      ]);
+    }
+
+    const futureModel = getCachedSystemModelHandle()?.findModelData(
+      { model: 'future-db-reasoning' },
+      { type: ModelTypeEnum.llm }
+    );
+    expect(futureModel?.config.reasoningEffortList).toEqual(['low', 'xhigh']);
   });
 });

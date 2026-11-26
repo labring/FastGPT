@@ -1092,7 +1092,12 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       const calls = [...truncated.toolCalls!, ...parallel.toolCalls!];
       const recovered = toolCall({ id: 'recovered', name: 'search', args: { q: 'short query' } });
       mockCreateLLMResponseQueue(createLLMResponseMock, [
-        { ...truncated, finishReason: 'length', toolCalls: calls },
+        {
+          ...truncated,
+          finishReason: 'length',
+          toolCalls: calls,
+          blockedToolCalls: Object.fromEntries(calls.map((c) => [c.id, 'length' as const]))
+        },
         ({ body }) => {
           // 下一轮请求前，整批工具只收到未执行说明；原始参数不能到达执行器。
           expect(onRunTool).not.toHaveBeenCalled();

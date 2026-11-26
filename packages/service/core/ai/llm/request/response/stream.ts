@@ -47,6 +47,9 @@ export const createStreamResponse = async ({
     }
   }
 
+  /** 用户中断时未完成的 tool call 不能作为有效调用返回或调度。 */
+  let aborted = false;
+
   /** 统一读取、取消和异常捕获；各模式按原有顺序消费解析后的正文、思考和工具增量。 */
   const consumeStream = async (
     onPart: (data: ReturnType<typeof parsePart>, part: ChatCompletionChunk) => void | Promise<void>
@@ -55,6 +58,7 @@ export const createStreamResponse = async ({
       for await (const part of readStream()) {
         if (isAborted?.()) {
           // 用户中断是正常关闭，保留已经收到的内容。
+          aborted = true;
           response.controller?.abort();
           updateFinishReason('close');
           break;
@@ -68,6 +72,14 @@ export const createStreamResponse = async ({
     } catch (error: any) {
       // 包含读取和消费回调异常，先保留 parser 状态，再由上层决定是否抛出。
       updateError(error?.error || error);
+    } finally {
+      // 流结束边界复查最终停止状态：若停止信号在最后一个 chunk 回调内转真且上游紧接着 EOF，
+      // 循环不会再进入下一轮检查，必须在此兜底判定 close。
+      if (isAborted?.() && !aborted) {
+        aborted = true;
+        updateFinishReason('close');
+        response.controller?.abort();
+      }
     }
   };
 
@@ -216,16 +228,18 @@ export const createStreamResponse = async ({
       });
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
-      // prompt tool 模式结束后用完整文本解析最终回答和工具调用。
+      // prompt tool 模式结束后用完整文本解析最终回答和工具调用；用户中断时不对外派发工具回调。
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
       if (streamAnswer) {
         await onStreaming?.({ text: streamAnswer });
       }
 
-      toolCalls?.forEach((call) => {
-        onToolCall?.({ call });
-      });
+      if (!aborted) {
+        toolCalls?.forEach((call) => {
+          onToolCall?.({ call });
+        });
+      }
 
       return {
         error,
