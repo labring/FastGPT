@@ -2,14 +2,18 @@ import handler, {
   type getTrainingErrorBody,
   type getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -33,62 +37,28 @@ describe('training error list test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id
     });
-    await MongoDatasetTraining.create([
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        retryCount: 0,
-        errorMsg: 'chunk first in insert order',
-        chunkIndex: 0
-      },
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.parse,
-        retryCount: 0,
-        errorMsg: 'parse should sort before chunk',
-        chunkIndex: 9,
-        dataId: new Types.ObjectId()
-      },
-      ...[...Array(10).keys()].map((i) => ({
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        retryCount: 0,
-        errorMsg: 'test',
-        chunkIndex: i
-      })),
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.parse,
-        retryCount: 3,
-        errorMsg: 'temporary failed'
-      },
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.qa,
-        retryCount: 0,
-        errorMsg: '   '
+    await collection.updateOne({
+      $set: {
+        training: {
+          status: 'active',
+          usageId: String(new Types.ObjectId()),
+          revision: 1,
+          parse: { status: 'error', errorMsg: 'parse should sort before rebuild' }
+        }
       }
-    ]);
+    });
+    await MongoDatasetData.insertMany(
+      Array.from({ length: 11 }, (_, chunkIndex) => ({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        indexStatus: DatasetDataIndexStageEnum.rebuildIndexRunning,
+        indexError: true,
+        indexErrorMsg: 'test',
+        chunkIndex
+      }))
+    );
 
     const res = await Call<getTrainingErrorBody, EmptyQuery, getTrainingErrorResponse>(handler, {
       auth: root,
@@ -106,7 +76,47 @@ describe('training error list test', () => {
       res.data.list.map((item) => ('mode' in item ? item.mode : undefined)).slice(0, 2)
     ).toEqual([TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex]);
     expect(res.data.list.every((item) => 'mode' in item)).toBe(true);
-    expect(typeof res.data.list[0].dataId).toBe('string');
+    expect(res.data.list[0]._id).toBe(String(collection._id));
+  });
+
+  it('reports unfinished parse, QA and index work as blocked while the collection is unpaid', async () => {
+    const { root, collection, scope } = await createDatasetCollectionFixture();
+    await collection.updateOne({
+      $set: {
+        training: {
+          status: 'paused_unpaid',
+          pausedAt: new Date(),
+          usageId: String(new Types.ObjectId()),
+          revision: 1,
+          parse: { status: 'active' }
+        }
+      }
+    });
+    const [qa, data] = await Promise.all([
+      MongoDatasetQaTraining.create({ ...scope, q: 'QA source', status: 'active' }),
+      MongoDatasetData.create({
+        ...scope,
+        q: 'Pending data',
+        indexStatus: DatasetDataIndexStageEnum.index
+      })
+    ]);
+
+    const res = await Call<getTrainingErrorBody, EmptyQuery, getTrainingErrorResponse>(handler, {
+      auth: root,
+      body: { collectionId: scope.collectionId, pageSize: 10, offset: 0 }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(3);
+    expect(res.data.list).toMatchObject([
+      { _id: scope.collectionId, mode: TrainingModeEnum.parse },
+      { _id: String(qa._id), mode: TrainingModeEnum.qa },
+      { _id: String(data._id), mode: TrainingModeEnum.index }
+    ]);
+    for (const item of res.data.list) {
+      expect(new Date(item.lockTime).toISOString()).toBe('2050-01-01T00:00:00.000Z');
+      expect(item.errorMsg).toBe(i18nT('common:code_error.team_error.ai_points_not_enough'));
+    }
   });
 
   it('should reject dataset scope request', async () => {

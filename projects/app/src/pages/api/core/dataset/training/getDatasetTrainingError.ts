@@ -1,11 +1,14 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { getDatasetTrainingErrorReadScope } from '@/service/core/dataset/training/errorScope';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { Types, type PipelineStage } from '@fastgpt/service/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -14,12 +17,14 @@ import {
   GetDatasetTrainingErrorResponseSchema,
   type GetDatasetTrainingErrorBody,
   type GetDatasetTrainingErrorResponse,
-  type TrainingErrorGroupType
+  type TrainingErrorGroupType,
+  type TrainingErrorItemType
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import {
-  finalErrorTrainingMatch,
-  trainingModeRanks
-} from '@fastgpt/service/core/dataset/training/query';
+  getTrainingErrorPage,
+  getTrainingErrorPipeline,
+  pageTrainingErrors
+} from '@fastgpt/service/core/dataset/training/errorQuery';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 
@@ -37,86 +42,44 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingErrorRes
   const itemLimit = Math.min(itemPageSize, DatasetTrainingErrorPaginationLimits.maxItemPageSize);
   const itemSkip = Math.min(itemOffset, DatasetTrainingErrorPaginationLimits.maxItemOffset);
 
-  const { teamId, dataset } = await authDataset({
+  const auth = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId,
     per: ReadPermissionVal
   });
-
-  const baseTrainingMatch = {
-    teamId: new Types.ObjectId(teamId),
-    datasetId: new Types.ObjectId(dataset._id),
-    ...finalErrorTrainingMatch
-  };
-
-  /**
-   * 复用集合内异常 chunk 查询流水线，确保首屏和“加载更多”的排序完全一致。
-   */
-  const buildItemPipeline = ({
-    match,
-    skip,
-    limit
-  }: {
-    match: Record<string, any>;
-    skip: number;
-    limit: number;
-  }): PipelineStage[] => [
-    { $match: match },
-    {
-      $addFields: {
-        modeRank: {
-          $switch: {
-            branches: trainingModeRanks.map(({ mode, rank }) => ({
-              case: { $eq: ['$mode', mode] },
-              then: rank
-            })),
-            default: 999
-          }
-        }
-      }
-    },
-    { $sort: { modeRank: 1, chunkIndex: 1, _id: 1 } },
-    { $skip: skip },
-    { $limit: limit },
-    { $project: { modeRank: 0 } }
-  ];
+  const { teamId, dataset } = auth;
 
   if (collectionId) {
-    const collection = await MongoDatasetCollection.findOne(
-      {
-        teamId: new Types.ObjectId(teamId),
-        datasetId: new Types.ObjectId(dataset._id),
-        _id: new Types.ObjectId(collectionId),
-        type: { $ne: DatasetCollectionTypeEnum.folder }
-      },
-      undefined,
-      readFromSecondary
-    ).lean();
+    const targetId = new Types.ObjectId(collectionId);
+    const scope = {
+      teamId: new Types.ObjectId(teamId),
+      datasetId: new Types.ObjectId(dataset._id)
+    };
+    const { collection } = await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
 
-    if (!collection) {
+    if (
+      String(collection.datasetId) !== String(dataset._id) ||
+      collection.type === DatasetCollectionTypeEnum.folder
+    ) {
       return GetDatasetTrainingErrorResponseSchema.parse({
         total: 0,
         list: []
       });
     }
 
-    const collectionMatch = {
-      ...baseTrainingMatch,
-      collectionId: new Types.ObjectId(collection._id)
-    };
-    const [items, errorCount] = await Promise.all([
-      MongoDatasetTraining.aggregate(
-        buildItemPipeline({
-          match: collectionMatch,
-          skip: itemSkip,
-          limit: itemLimit
-        }),
-        readFromSecondary
-      ),
-      MongoDatasetTraining.countDocuments(collectionMatch, { ...readFromSecondary })
-    ]);
+    const { items, total: errorCount } = await getTrainingErrorPage({
+      scope: { ...scope, collectionId: targetId },
+      offset: itemSkip,
+      limit: itemLimit
+    });
     const { sourceName, sourceId } = getCollectionSourceData(collection);
 
     return GetDatasetTrainingErrorResponseSchema.parse({
@@ -142,38 +105,27 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingErrorRes
     });
   }
 
-  const [collectionStats, totalResult] = await Promise.all([
-    MongoDatasetTraining.aggregate(
-      [
-        { $match: baseTrainingMatch },
-        {
-          $group: {
-            _id: '$collectionId',
-            errorCount: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } },
-        { $skip: offset },
-        { $limit: pageSize }
-      ],
-      readFromSecondary
-    ),
-    MongoDatasetTraining.aggregate(
-      [
-        { $match: baseTrainingMatch },
-        {
-          $group: {
-            _id: '$collectionId'
-          }
-        },
-        { $count: 'total' }
-      ],
-      readFromSecondary
-    )
-  ]);
-  const total = totalResult[0]?.total ?? 0;
+  const scope = await getDatasetTrainingErrorReadScope(auth);
+  const [result] = await MongoDatasetCollection.aggregate<{
+    list: { _id: Types.ObjectId; errorCount: number }[];
+    counts: { total: number }[];
+  }>(
+    [
+      ...(await getTrainingErrorPipeline(scope)),
+      { $group: { _id: '$collectionId', errorCount: { $sum: 1 } } },
+      {
+        $facet: {
+          list: [{ $sort: { _id: 1 } }, { $skip: offset }, { $limit: pageSize }],
+          counts: [{ $count: 'total' }]
+        }
+      }
+    ],
+    readFromSecondary
+  );
+  const { list: collectionStats = [], counts = [] } = result ?? {};
+  const total = counts[0]?.total ?? 0;
 
-  const collectionIds = collectionStats.map((item: { _id: any }) => item._id);
+  const collectionIds = collectionStats.map((item) => item._id);
   const collections = collectionIds.length
     ? await MongoDatasetCollection.find(
         {
@@ -189,31 +141,22 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingErrorRes
   const collectionMap = new Map(
     collections.map((collection) => [String(collection._id), collection])
   );
-  const statsMap = new Map(
-    collectionStats.map((item: { _id: any; errorCount: number }) => [
-      String(item._id),
-      item.errorCount
-    ])
-  );
+  const statsMap = new Map(collectionStats.map((item) => [String(item._id), item.errorCount]));
   const itemsList = collectionIds.length
     ? await Promise.all(
-        collectionIds.map((id: any) =>
-          MongoDatasetTraining.aggregate(
-            buildItemPipeline({
-              match: {
-                ...baseTrainingMatch,
-                collectionId: id
-              },
-              skip: 0,
-              limit: itemLimit
-            }),
+        collectionIds.map(async (collectionId) =>
+          MongoDatasetCollection.aggregate<TrainingErrorItemType>(
+            [
+              ...(await getTrainingErrorPipeline({ ...scope, collectionId })),
+              ...pageTrainingErrors(0, itemLimit)
+            ],
             readFromSecondary
           )
         )
       )
     : [];
 
-  const list = collectionIds.reduce<TrainingErrorGroupType[]>((groups, id: any, index: number) => {
+  const list = collectionIds.reduce<TrainingErrorGroupType[]>((groups, id, index) => {
     const collection = collectionMap.get(String(id));
     const errorCount = statsMap.get(String(id)) ?? 0;
     const items = itemsList[index] ?? [];

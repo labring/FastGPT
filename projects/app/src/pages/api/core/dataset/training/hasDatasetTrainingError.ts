@@ -1,12 +1,12 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
+import { getDatasetTrainingErrorReadScope } from '@/service/core/dataset/training/errorScope';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { getTrainingErrorPipeline } from '@fastgpt/service/core/dataset/training/errorQuery';
 import {
   HasDatasetTrainingErrorQuerySchema,
   HasDatasetTrainingErrorResponseSchema,
@@ -20,7 +20,7 @@ async function handler(req: ApiRequestProps): Promise<HasDatasetTrainingErrorRes
     querySchema: HasDatasetTrainingErrorQuerySchema
   }).query;
 
-  const { teamId, dataset } = await authDataset({
+  const auth = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -28,15 +28,12 @@ async function handler(req: ApiRequestProps): Promise<HasDatasetTrainingErrorRes
     per: ReadPermissionVal
   });
 
-  const errorRecord = await MongoDatasetTraining.findOne(
-    {
-      teamId: new Types.ObjectId(teamId),
-      datasetId: new Types.ObjectId(dataset._id),
-      ...finalErrorTrainingMatch
-    },
-    { _id: 1 },
+  const scope = await getDatasetTrainingErrorReadScope(auth);
+  const pipeline = await getTrainingErrorPipeline(scope);
+  const [errorRecord] = await MongoDatasetCollection.aggregate(
+    [...pipeline, { $limit: 1 }, { $project: { _id: 1 } }],
     readFromSecondary
-  ).lean();
+  );
 
   return HasDatasetTrainingErrorResponseSchema.parse({
     hasError: !!errorRecord

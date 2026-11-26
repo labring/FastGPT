@@ -1,5 +1,4 @@
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -13,6 +12,7 @@ import {
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
+import { findDocumentTrainingTask } from '@/service/core/dataset/training/documentActions';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -28,12 +28,12 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
     per: ReadPermissionVal
   });
 
-  const data = await MongoDatasetTraining.findOne({
+  const scope = {
     teamId: collection.teamId,
     datasetId: collection.datasetId,
-    collectionId: collection._id,
-    _id: dataId
-  }).lean();
+    collectionId: collection._id
+  };
+  const data = await findDocumentTrainingTask(dataId, scope);
 
   if (!data) {
     return GetTrainingDataDetailResponseSchema.parse(null);

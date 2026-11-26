@@ -170,6 +170,26 @@ export const GetTrainingErrorBodySchema = createPaginationSchema({
 export type GetTrainingErrorBody = z.infer<typeof GetTrainingErrorBodySchema>;
 
 export const TrainingErrorItemSchema = DatasetTrainingSchema.omit({ billId: true }).extend({
+  _id: DatasetTrainingSchema.shape._id.meta({
+    description: '异常工作项 ID。解析使用集合 ID，QA 原文和分块使用各自的记录 ID'
+  }),
+  expireAt: DatasetTrainingSchema.shape.expireAt.meta({
+    description: '旧队列兼容字段，固定返回 1970-01-01T00:00:00.000Z',
+    deprecated: true
+  }),
+  lockTime: DatasetTrainingSchema.shape.lockTime.meta({
+    description:
+      '旧队列兼容字段。文档因欠费暂停时返回 2050-01-01T00:00:00.000Z，其余返回 1970-01-01T00:00:00.000Z',
+    deprecated: true
+  }),
+  weight: DatasetTrainingSchema.shape.weight.meta({
+    description: '旧队列兼容字段，固定返回 0',
+    deprecated: true
+  }),
+  retryCount: DatasetTrainingSchema.shape.retryCount.meta({
+    description: '旧队列兼容字段，固定返回 0',
+    deprecated: true
+  }),
   billId: z.string().optional()
 });
 export type TrainingErrorItemType = z.infer<typeof TrainingErrorItemSchema>;

@@ -1,6 +1,7 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { getPublicDatasetDataIndexStatus } from '@fastgpt/global/core/dataset/data/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -58,7 +59,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
   const [list, total] = await Promise.all([
     MongoDatasetData.find(
       match,
-      '_id datasetId collectionId createTime q a chunkIndex imageId indexStatus indexErrorMsg'
+      '_id datasetId collectionId createTime q a chunkIndex imageId indexStatus indexError indexErrorMsg'
     )
       .sort({ chunkIndex: 1, _id: -1 })
       .skip(offset)
@@ -134,6 +135,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
         ...item,
         // 历史数据没有 createTime 字段，用 ObjectId 的生成时间兜底，避免要求用户先做数据迁移。
         createTime: item.createTime ?? new Types.ObjectId(String(item._id)).getTimestamp(),
+        indexStatus: getPublicDatasetDataIndexStatus(item),
         imageSize,
         imagePreviewUrl
       };

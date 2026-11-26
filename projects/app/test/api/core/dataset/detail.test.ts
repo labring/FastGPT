@@ -9,10 +9,9 @@ import handler from '@/pages/api/core/dataset/detail';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getUser } from '@test/datas/users';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -137,32 +136,26 @@ describe('GET /api/core/dataset/detail', () => {
       return result.data.hasTrainingTask;
     };
     expect(await read()).toBe(false);
-    const training = await MongoDatasetTraining.create({
+    const training = await MongoDatasetQaTraining.create({
       ...scope,
-      billId: 'test',
-      mode: TrainingModeEnum.index,
-      retryCount: 0,
+      q: 'QA source',
+      status: 'error',
       errorMsg: 'manual retry required'
     });
     expect(await read()).toBe(true);
-    await MongoDatasetTraining.deleteOne({ _id: training._id });
+    await MongoDatasetQaTraining.deleteOne({ _id: training._id });
 
     const data = await MongoDatasetData.create({ ...scope, q: 'saved' });
-    for (const indexStatus of [
-      DatasetDataIndexStatusEnum.rebuildIndexPending,
-      DatasetDataIndexStatusEnum.rebuildIndexRunning,
-      DatasetDataIndexStatusEnum.rebuildIndexFailed,
-      DatasetDataIndexStatusEnum.rebuildSynonymPending,
-      DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-      DatasetDataIndexStatusEnum.rebuildSynonymFailed
+    for (const stage of [
+      DatasetDataIndexStageEnum.rebuildIndexPending,
+      DatasetDataIndexStageEnum.rebuildIndexRunning,
+      DatasetDataIndexStageEnum.rebuildSynonymPending,
+      DatasetDataIndexStageEnum.rebuildSynonymRunning
     ]) {
-      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { indexStatus } });
+      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { indexStatus: stage } });
       expect(await read()).toBe(true);
     }
-    await MongoDatasetData.updateOne(
-      { _id: data._id },
-      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
-    );
+    await MongoDatasetData.updateOne({ _id: data._id }, { $unset: { indexStatus: '' } });
     expect(await read()).toBe(false);
   });
 

@@ -4,63 +4,13 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
-  BLOCKED_LOCK_TIME,
   compareTrainingModeBySlowest,
   getSlowestTrainingStatus,
   getCollectionTrainingStatusByMode,
-  getTrainingModeRank,
-  hasEffectiveErrorMsg,
-  isActiveTraining,
-  isFinalErrorTraining,
-  isRemainingTraining,
-  isTemporarilyFailedTraining
+  getTrainingModeRank
 } from '@fastgpt/service/core/dataset/training/query';
 
 describe('dataset training query helpers', () => {
-  it('treats empty or whitespace errorMsg as ineffective', () => {
-    expect(hasEffectiveErrorMsg({ errorMsg: undefined })).toBe(false);
-    expect(hasEffectiveErrorMsg({ errorMsg: '' })).toBe(false);
-    expect(hasEffectiveErrorMsg({ errorMsg: '   \n\t' })).toBe(false);
-    expect(hasEffectiveErrorMsg({ errorMsg: 'failed' })).toBe(true);
-  });
-
-  it('separates active, temporary failed and final error records', () => {
-    const active = {
-      retryCount: 1,
-      lockTime: new Date('2049-12-31'),
-      errorMsg: ''
-    };
-    const temporaryFailed = {
-      retryCount: 1,
-      lockTime: new Date('2049-12-31'),
-      errorMsg: ' failed '
-    };
-    const retryExhausted = {
-      retryCount: 0,
-      lockTime: new Date('2049-12-31'),
-      errorMsg: 'failed'
-    };
-    const permanentlyLocked = {
-      retryCount: 3,
-      lockTime: BLOCKED_LOCK_TIME,
-      errorMsg: 'failed'
-    };
-
-    expect(isActiveTraining(active)).toBe(true);
-    expect(isRemainingTraining(active)).toBe(true);
-
-    expect(isActiveTraining(temporaryFailed)).toBe(true);
-    expect(isTemporarilyFailedTraining(temporaryFailed)).toBe(true);
-    expect(isFinalErrorTraining(temporaryFailed)).toBe(false);
-
-    expect(isActiveTraining(retryExhausted)).toBe(false);
-    expect(isFinalErrorTraining(retryExhausted)).toBe(true);
-    expect(isRemainingTraining(retryExhausted)).toBe(true);
-
-    expect(isActiveTraining(permanentlyLocked)).toBe(false);
-    expect(isFinalErrorTraining(permanentlyLocked)).toBe(true);
-  });
-
   it('orders modes by the earliest remaining stage as slowest', () => {
     expect(getTrainingModeRank(TrainingModeEnum.parse)).toBeLessThan(
       getTrainingModeRank(TrainingModeEnum.imageParse)
