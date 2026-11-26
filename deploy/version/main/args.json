@@ -12,12 +12,12 @@
     "opensandbox-egress": "release-1.2.0",
 
     "aiproxy": "v0.7.7",
-    "aiproxy-pg": "0.8.0-pg15",
+    "aiproxy-pg": "18.7",
 
     "mongo": "8.0.38",
     "redis": "7.2-alpine",
     "rustfs": "1.0.4",
-    "pg": "0.8.0-pg15",
+    "pg": "0.8.7-pg18",
     "milvus-minio": "RELEASE.2023-03-20T20-16-18Z",
     "milvus-etcd": "v3.5.5",
     "milvus-standalone": "v2.6.22",
@@ -36,11 +36,11 @@
       "opensandbox-execd": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd",
       "opensandbox-egress": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress",
       "aiproxy": "registry.cn-hangzhou.aliyuncs.com/labring/aiproxy",
-      "aiproxy-pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
+      "aiproxy-pg": "docker.m.daocloud.io/library/postgres",
       "mongo": "docker.m.daocloud.io/library/mongo",
       "redis": "registry.cn-hangzhou.aliyuncs.com/fastgpt/redis",
       "rustfs": "docker.m.daocloud.io/rustfs/rustfs",
-      "pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
+      "pg": "docker.m.daocloud.io/pgvector/pgvector",
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
@@ -58,7 +58,7 @@
       "opensandbox-execd": "opensandbox/execd",
       "opensandbox-egress": "opensandbox/egress",
       "aiproxy": "ghcr.io/labring/aiproxy",
-      "aiproxy-pg": "pgvector/pgvector",
+      "aiproxy-pg": "postgres",
       "mongo": "mongo",
       "redis": "redis",
       "rustfs": "rustfs/rustfs",
@@ -69,5 +69,9 @@
       "oceanbase": "oceanbase/oceanbase-ce",
       "seekdb": "oceanbase/seekdb"
     }
+  },
+  "dataDirs": {
+    "aiproxy-pg": "/var/lib/postgresql",
+    "pg": "/var/lib/postgresql"
   }
 }

@@ -531,11 +531,11 @@ services:
       timeout: 5s
       retries: 10
   fastgpt-aiproxy-pg:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
+    image: docker.m.daocloud.io/library/postgres:18.7 # docker hub
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
-      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:/var/lib/postgresql
     networks:
       - aiproxy
     environment:

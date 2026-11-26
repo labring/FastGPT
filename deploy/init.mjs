@@ -146,7 +146,7 @@ const loadVectorConfigs = async () => {
 
 /**
  * @typedef {string} ServiceKey
- * @typedef {{ tag: string, image: {cn: string, global: string} }} ArgItemType
+ * @typedef {{ tag: string, image: {cn: string, global: string}, dataDir?: string }} ArgItemType
  */
 /**
  * 读取指定部署版本的镜像参数。
@@ -159,7 +159,7 @@ const loadVectorConfigs = async () => {
  */
 const loadArgs = (version) => {
   /**
-   * @type {{tags: Record<ServiceKey, string>, images: Record<string, Record<ServiceKey, string>>}}
+   * @type {{tags: Record<ServiceKey, string>, images: Record<string, Record<ServiceKey, string>>, dataDirs?: Record<ServiceKey, string>}}
    */
   const obj = JSON.parse(
     fs.readFileSync(path.join(process.cwd(), 'version', version, 'args.json'))
@@ -171,7 +171,8 @@ const loadArgs = (version) => {
       image: {
         cn: obj.images.cn[key],
         global: obj.images.global[key]
-      }
+      },
+      dataDir: obj.dataDirs?.[key]
     };
   }
   return args;
@@ -236,6 +237,11 @@ const replace = (source, region, vec, args, vectors, context) => {
         );
       }
       return image;
+    } else if (b === 'dataDir') {
+      if (!arg.dataDir) {
+        throw new Error(`Missing deploy dataDir "${a}" for ${formatExpr(expr)} in ${context}`);
+      }
+      return arg.dataDir;
     }
 
     throw new Error(`Unknown template expression: ${formatExpr(expr)} in ${context}`);

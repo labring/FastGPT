@@ -503,7 +503,7 @@ services:
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
-      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:${{aiproxy-pg.dataDir}}
     networks:
       - aiproxy
     environment:
