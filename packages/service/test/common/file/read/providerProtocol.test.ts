@@ -254,14 +254,14 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     expect(boundary.systemParse).toHaveBeenCalledTimes(2);
   });
 
-  it('applies the dedicated Sangfor timeout to a real slow HTTP response without falling back', async () => {
+  it('applies the unified document parse timeout to a real slow Sangfor HTTP response without falling back', async () => {
     const config = getSystemInstanceConfig().providers.documentParse;
     config.provider = 'sangfor';
+    config.customPdf.timeoutSeconds = 1;
     Object.assign(config.sangfor, {
       url: origin + '/sangfor-slow',
       key: 'synthetic-sangfor',
-      extensions: 'pdf',
-      timeoutSeconds: 1
+      extensions: 'pdf'
     });
     slowAborted = false;
     await expect(

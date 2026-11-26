@@ -688,6 +688,32 @@ describe('migration env wiring', () => {
     });
     expect(pick(smaller, 'performance.parse.fileTimeoutSeconds')).toBe(120);
     expect(pick(smaller, 'providers.documentParse.customPdf.timeoutSeconds')).toBeUndefined();
+
+    const sangforLarger = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 900
+      }
+    });
+    expect(pick(sangforLarger, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(900);
+    expect(pick(sangforLarger, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
+
+    const sangforSmaller = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 45
+      }
+    });
+    expect(
+      pick(sangforSmaller, 'providers.documentParse.customPdf.timeoutSeconds')
+    ).toBeUndefined();
+    expect(pick(sangforSmaller, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
   });
 
   /**
@@ -805,7 +831,6 @@ describe('migration env wiring', () => {
       ['providers.documentParse.customPdf.textinAppId', legacyEnv.TEXTIN_APP_ID],
       ['providers.documentParse.customPdf.textinSecretCode', legacyEnv.TEXTIN_SECRET_CODE],
       ['providers.documentParse.sangfor.extensions', legacyEnv.SANGFOR_PARSE_EXTENSIONS],
-      ['providers.documentParse.sangfor.timeoutSeconds', legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
       // subservice
       ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
       ['subservice.agentSandbox.enabled', true],

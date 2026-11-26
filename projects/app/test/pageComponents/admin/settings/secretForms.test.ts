@@ -106,6 +106,7 @@ vi.mock('@chakra-ui/react', () => {
     Icon: () => null,
     HStack: Box,
     Flex: Box,
+    Tag: Box,
     SimpleGrid: Box,
     Text: Box,
     Input,

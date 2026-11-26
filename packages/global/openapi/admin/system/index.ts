@@ -4,6 +4,7 @@ import { AdminAuditPath } from './audit';
 import { AdminSystemMigrationsPath } from './migrations';
 import { AdminInstanceConfigPath } from './instanceConfig/api';
 import { AdminInstanceConfigProbePath } from './instanceConfig/probe';
+import { AdminInstanceConfigTestDocumentParsePath } from './instanceConfig/testDocumentParse';
 import { DevApiTagsMap } from '../../tag';
 import { GetConfigResponseSchema } from './api';
 
@@ -33,5 +34,6 @@ export const AdminSystemPath: OpenAPIPath = {
   ...AdminAuditPath,
   ...AdminSystemMigrationsPath,
   ...AdminInstanceConfigPath,
-  ...AdminInstanceConfigProbePath
+  ...AdminInstanceConfigProbePath,
+  ...AdminInstanceConfigTestDocumentParsePath
 };

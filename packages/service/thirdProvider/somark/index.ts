@@ -26,7 +26,15 @@ type SomarkResponse = {
  * SoMark 的 API Key 通过 multipart body 传递，不使用 Authorization header。
  * 当前只请求 Markdown，图片保留为 URL，交由上层统一转存。
  */
-export const useSomarkServer = ({ apiKey, baseUrl }: { apiKey: string; baseUrl?: string }) => {
+export const useSomarkServer = ({
+  apiKey,
+  baseUrl,
+  timeoutMs
+}: {
+  apiKey: string;
+  baseUrl?: string;
+  timeoutMs?: number;
+}) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // somarkBaseUrl 由 root 管理员在系统配置中维护，可指向私有化部署或内网反代 SoMark 服务；
   // 与 codeSandbox / sangfor 保持一致，对管理员端点关闭用户侧 SSRF 拦截，同时保留代理路由与响应体上限保护。
@@ -34,7 +42,7 @@ export const useSomarkServer = ({ apiKey, baseUrl }: { apiKey: string; baseUrl?:
   const instance = createProxyAxios(
     {
       baseURL: resolveSomarkBaseUrl(baseUrl),
-      timeout: getPdfEnhancedParseTimeoutMs()
+      timeout: timeoutMs ?? getPdfEnhancedParseTimeoutMs()
     },
     false
   );

@@ -16,7 +16,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'providers.documentParse.customPdf.price',
     'providers.documentParse.sangfor.url',
     'providers.documentParse.sangfor.extensions',
-    'providers.documentParse.sangfor.timeoutSeconds',
     'providers.documentParse.customPdf.key',
     'providers.documentParse.customPdf.somarkApiKey',
     'providers.documentParse.customPdf.doc2xKey',

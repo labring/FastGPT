@@ -609,7 +609,7 @@ config.performance.workflow.parallelMaxConcurrency
 | `TEXTIN_SECRET_CODE` | `config.providers.documentParse.customPdf.textinSecretCode` | `secret: true` |
 | `DOCUMENT_PARSE_PROVIDER` | `config.providers.documentParse.provider` | 当前空字符串转换为 `none` |
 | `SANGFOR_PARSE_EXTENSIONS` | `config.providers.documentParse.sangfor.extensions` | 逗号分隔扩展名仍保持字符串或后续规范化为数组 |
-| `SANGFOR_PARSE_TIMEOUT_SECONDS` | `config.providers.documentParse.sangfor.timeoutSeconds` | 请求超时 |
+| `SANGFOR_PARSE_TIMEOUT_SECONDS` | `config.providers.documentParse.customPdf.timeoutSeconds`（仅 `> 600` 回填） | 与通用 PDF 增强解析共用请求超时 |
 | `SANGFOR_CHUNK_URL` | `config.providers.chunk.url` | 非空时 seed `config.providers.chunk.enabled=true` |
 | `SANGFOR_CHUNK_KEY` | `config.providers.chunk.key` | `secret: true` |
 | `SANGFOR_CHUNK_TIMEOUT_MINUTES` | `config.providers.chunk.timeoutMinutes` | 智能分块超时 |
@@ -1084,7 +1084,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **202 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **201 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1263,7 +1263,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `providers.documentParse.customPdf.price` | PDF 计费（积分 / 页） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `providers.documentParse.sangfor.url` | 深信服解析接口地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `providers.documentParse.sangfor.extensions` | 支持的格式扩展名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `providers.documentParse.sangfor.timeoutSeconds` | 请求超时时间 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `providers.externalProviderWorkflowVariables` | 外部工作流变量提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.url` | Code Sandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |

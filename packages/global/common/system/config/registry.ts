@@ -413,11 +413,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   // 深信服定制解析项默认隐藏，需 ENABLE_SANGFOR_ADMIN_CONFIG=true 才展示
   ...createEntries({
     section: 'providers',
-    keys: [
-      'documentParse.sangfor.url',
-      'documentParse.sangfor.extensions',
-      'documentParse.sangfor.timeoutSeconds'
-    ],
+    keys: ['documentParse.sangfor.url', 'documentParse.sangfor.extensions'],
     options: { edition: 'all', secret: false, applyMode: 'reload', isSangforOnly: true }
   }),
   ...createEntries({

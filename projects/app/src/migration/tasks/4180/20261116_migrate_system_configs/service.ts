@@ -366,6 +366,9 @@ export const buildLegacyDomainOverrides = ({
     legacy: legacyPdfCredentials,
     env: envPdfCredentials
   });
+  const legacyPdfTimeoutSeconds = isSangfor
+    ? optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+    : legacyFileTimeoutSeconds;
   const customPdf = {
     url: customPdfCredentials.url,
     key: customPdfCredentials.key,
@@ -375,12 +378,12 @@ export const buildLegacyDomainOverrides = ({
     textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
     textinSecretCode:
       optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE),
-    // 旧版 PDF 增强解析沿用 Math.max(600, PARSE_FILE_TIMEOUT_SECONDS)；
-    // 仅在旧值大于默认值（600 秒）时自动回填到独立超时，避免小值反向缩短 PDF 解析超时。
+    // 旧版文档增强解析（含深信服）统一复用 customPdf.timeoutSeconds；
+    // 仅在旧值大于默认值（600 秒）时自动回填到独立超时，避免小值反向缩短或触发最小 60 秒校验失败。
     timeoutSeconds:
-      typeof legacyFileTimeoutSeconds === 'number' &&
-      legacyFileTimeoutSeconds > PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
-        ? legacyFileTimeoutSeconds
+      typeof legacyPdfTimeoutSeconds === 'number' &&
+      legacyPdfTimeoutSeconds > PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+        ? legacyPdfTimeoutSeconds
         : undefined,
     price: optionalNumber(legacyCustomPdf.price)
   };
@@ -407,8 +410,7 @@ export const buildLegacyDomainOverrides = ({
       sangfor: compact({
         url: sangforCredentials.url,
         key: sangforCredentials.key,
-        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS),
-        timeoutSeconds: optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS)
       })
     }),
     externalProviderWorkflowVariables: Array.isArray(feConfigs.externalProviderWorkflowVariables)

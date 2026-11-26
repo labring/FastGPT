@@ -9,6 +9,7 @@ import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
+import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 import { appendIultmzhFileParseFields } from './parseConfig';
@@ -120,18 +121,18 @@ export const parseFromSangfor = async ({
     form.append('file', fileBuffer, { filename: `file.${extension}` });
     appendIultmzhFileParseFields(form, sangforFileParseConfig);
     // sangfor.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
-    const timeoutSeconds = getSystemInstanceConfig().providers.documentParse.sangfor.timeoutSeconds;
+    const timeoutMs = getPdfEnhancedParseTimeoutMs();
     logInstanceConfigRead({
       callsite: 'runtime.thirdProvider.sangfor.parseFromSangfor',
       fields: [
         {
-          path: 'providers.documentParse.sangfor.timeoutSeconds',
-          value: timeoutSeconds
+          path: 'providers.documentParse.customPdf.timeoutSeconds',
+          value: timeoutMs / 1000
         }
       ]
     });
     const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
-      timeout: timeoutSeconds * 1000,
+      timeout: timeoutMs,
       headers: {
         ...form.getHeaders(),
         Authorization: key ? `Bearer ${key}` : undefined

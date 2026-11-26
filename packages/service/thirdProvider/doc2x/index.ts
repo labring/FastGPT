@@ -40,7 +40,7 @@ type Doc2xImageUploadHandler = (
       }
 ) => Promise<UploadedFileResult>;
 
-export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
+export const useDoc2xServer = ({ apiKey, timeoutMs }: { apiKey: string; timeoutMs?: number }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = createProxyAxios({
@@ -116,7 +116,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   ) => {
     logger.debug('Doc2x PDF parse started');
     const startTime = Date.now();
-    const deadline = startTime + getPdfEnhancedParseTimeoutMs();
+    const deadline = startTime + (timeoutMs ?? getPdfEnhancedParseTimeoutMs());
     const getRemainingMs = () => Math.max(0, deadline - Date.now());
     const getRequestTimeout = (maxTimeoutMs: number): number => {
       const remainingMs = getRemainingMs();

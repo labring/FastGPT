@@ -426,13 +426,20 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
       ).toThrow();
     }
 
-    // 保留 v4.17.5 已发布的深信服超时范围（>= 1），确保 45 秒等旧配置升级后仍可通过严格保存校验。
+    // 已移除独立的 sangfor.timeoutSeconds，宽松读取应剥离历史字段且严格保存应拒绝再次写入。
     expect(
       resolveDomainEffectiveConfig({
         domain: 'providers',
-        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } }
-      }).documentParse.sangfor.timeoutSeconds
-    ).toBe(45);
+        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } } as any,
+        options: { strict: false }
+      }).documentParse.sangfor
+    ).not.toHaveProperty('timeoutSeconds');
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'providers',
+        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } } as any
+      })
+    ).toThrow();
 
     // somarkBaseUrl supports global, CN, custom HTTP(S) base URLs, and legacy empty string
     for (const somarkBaseUrl of [
@@ -717,7 +724,6 @@ describe('systemInstanceConfigRegistry', () => {
     const sangforKeys = [
       'providers.documentParse.sangfor.url',
       'providers.documentParse.sangfor.extensions',
-      'providers.documentParse.sangfor.timeoutSeconds',
       'providers.documentParse.sangfor.key'
     ];
     const sangforEnabledKeys = getSystemInstanceConfigRegistry('community', {

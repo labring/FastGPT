@@ -22,12 +22,20 @@ type TextinImageUploadHandler = (
       }
 ) => Promise<UploadedFileResult>;
 
-export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
+export const useTextinServer = ({
+  appId,
+  secretCode,
+  timeoutMs
+}: {
+  appId: string;
+  secretCode: string;
+  timeoutMs?: number;
+}) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = createProxyAxios({
     baseURL: 'https://api.textin.com/ai/service/v1',
-    timeout: getPdfEnhancedParseTimeoutMs(),
+    timeout: timeoutMs ?? getPdfEnhancedParseTimeoutMs(),
     headers: {
       'x-ti-app-id': appId,
       'x-ti-secret-code': secretCode

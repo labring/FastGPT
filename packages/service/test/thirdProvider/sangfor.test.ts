@@ -48,7 +48,7 @@ describe('Sangfor provider', () => {
       'http://sangfor-parser.test/parse';
     getTestInstanceConfig().providers.documentParse.sangfor.key = 'sangfor-key';
     getTestInstanceConfig().providers.documentParse.sangfor.extensions = 'pdf';
-    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 600;
+    getTestInstanceConfig().providers.documentParse.customPdf.timeoutSeconds = 600;
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -129,8 +129,8 @@ describe('Sangfor provider', () => {
     );
   });
 
-  it('uses the dedicated Sangfor timeout in seconds', async () => {
-    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 45;
+  it('reuses the unified document parse timeout in seconds', async () => {
+    getTestInstanceConfig().providers.documentParse.customPdf.timeoutSeconds = 120;
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed' } });
 
     await parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' });
@@ -138,7 +138,7 @@ describe('Sangfor provider', () => {
     expect(postMock).toHaveBeenCalledWith(
       'http://sangfor-parser.test/parse',
       expect.any(FormData),
-      expect.objectContaining({ timeout: 45000 })
+      expect.objectContaining({ timeout: 120000 })
     );
   });
 
@@ -249,8 +249,7 @@ describe('Sangfor provider', () => {
     snapshot.providers.documentParse.sangfor = {
       url: 'http://db-parser.test/parse',
       key: 'db-key',
-      extensions: 'docx',
-      timeoutSeconds: 600
+      extensions: 'docx'
     };
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'from-db' } });
 
@@ -280,8 +279,7 @@ describe('Sangfor provider', () => {
     snapshot.providers.documentParse.sangfor = {
       url: 'http://db-parser.test/parse',
       key: '',
-      extensions: 'docx',
-      timeoutSeconds: 600
+      extensions: 'docx'
     };
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'ok' } });
 

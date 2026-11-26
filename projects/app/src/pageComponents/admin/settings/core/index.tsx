@@ -28,7 +28,7 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
-import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
+import DocumentParseTestBar from '@/pageComponents/admin/settings/DocumentParseTestBar';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import { isValidHttpUrl, isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
@@ -153,8 +153,11 @@ const CoreSettingComponent = () => {
   const [emailClearSeq, setEmailClearSeq] = useState(0);
   const [phoneClearSeq, setPhoneClearSeq] = useState(0);
 
-  const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
-  const somarkBaseUrl = useWatch({ control, name: 'documentParse.customPdf.somarkBaseUrl' });
+  const documentParseDraft = useWatch({ control, name: 'documentParse' });
+  const documentParseProvider = documentParseDraft?.provider;
+  const somarkBaseUrl = documentParseDraft?.customPdf?.somarkBaseUrl;
+  const hasSecretValue = (draftValue: string | undefined, secretPath: string) =>
+    draftValue !== undefined ? Boolean(draftValue.trim()) : isSecretConfigured(secretPath);
   // 仅在当前配置快照内保留用户手动切换的区域状态；配置重新加载后自动按新值重新推导。
   const somarkRegion: SomarkRegionPreset =
     somarkRegionOverride?.config === providers.effectiveConfig
@@ -224,10 +227,7 @@ const CoreSettingComponent = () => {
   const supportsCdnEndpoint = storageCapabilities?.supportsCdnEndpoint ?? true;
   const showRedirectEndpoints =
     downloadMode === 'short-redirect' && (supportsExternalEndpoint || supportsCdnEndpoint);
-  const showCustomPdfTimeout =
-    Boolean(documentParseProvider) &&
-    documentParseProvider !== 'none' &&
-    documentParseProvider !== 'sangfor';
+  const showCustomPdfTimeout = Boolean(documentParseProvider) && documentParseProvider !== 'none';
   // 与订阅套餐开关一致：无套餐或空套餐均不展示计费，开源版始终隐藏。
   const showPdfPrice =
     isPro &&
@@ -641,7 +641,7 @@ const CoreSettingComponent = () => {
         }
         showDivider
       >
-        <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'} mb={6}>
+        <SimpleGrid columns={[1, showPdfPrice ? 3 : 2]} spacing={5} alignItems={'start'} mb={6}>
           <AdminFormItem
             label={t('admin:parsing_provider')}
             tooltip={t('admin:select_the_provider_used_to_parse_hard_formats_such_as_scann')}
@@ -849,6 +849,30 @@ const CoreSettingComponent = () => {
                 );
               }}
             />
+            <DocumentParseTestBar
+              payload={{
+                provider: 'somark',
+                somarkBaseUrl:
+                  somarkRegion === 'custom'
+                    ? (documentParseDraft?.customPdf?.somarkBaseUrl ?? '')
+                    : somarkRegion === 'cn'
+                      ? SOMARK_BASE_URL_CN
+                      : SOMARK_BASE_URL_GLOBAL,
+                ...(documentParseDraft?.customPdf?.somarkApiKey !== undefined
+                  ? { somarkApiKey: documentParseDraft.customPdf.somarkApiKey }
+                  : {})
+              }}
+              isDisabled={
+                !hasSecretValue(
+                  documentParseDraft?.customPdf?.somarkApiKey,
+                  'documentParse.customPdf.somarkApiKey'
+                ) ||
+                (somarkRegion === 'custom' &&
+                  !isValidServiceBaseUrl(
+                    documentParseDraft?.customPdf?.somarkBaseUrl?.trim() ?? ''
+                  ))
+              }
+            />
           </Box>
         )}
 
@@ -882,6 +906,20 @@ const CoreSettingComponent = () => {
                 )}
               />
             </AdminFormItem>
+            <DocumentParseTestBar
+              payload={{
+                provider: 'doc2x',
+                ...(documentParseDraft?.customPdf?.doc2xKey !== undefined
+                  ? { doc2xKey: documentParseDraft.customPdf.doc2xKey }
+                  : {})
+              }}
+              isDisabled={
+                !hasSecretValue(
+                  documentParseDraft?.customPdf?.doc2xKey,
+                  'documentParse.customPdf.doc2xKey'
+                )
+              }
+            />
           </Box>
         )}
 
@@ -899,6 +937,7 @@ const CoreSettingComponent = () => {
                 label="TextIn AppId"
                 tooltip={t('admin:intsig_textin_platform_appid')}
                 isRequired
+                mb={0}
               >
                 <Controller
                   name="documentParse.customPdf.textinAppId"
@@ -920,6 +959,7 @@ const CoreSettingComponent = () => {
                 label="TextIn Secret Code"
                 tooltip={t('admin:intsig_textin_platform_secret_code')}
                 isRequired
+                mb={0}
               >
                 <Controller
                   name="documentParse.customPdf.textinSecretCode"
@@ -937,6 +977,27 @@ const CoreSettingComponent = () => {
                 />
               </AdminFormItem>
             </SimpleGrid>
+            <DocumentParseTestBar
+              payload={{
+                provider: 'textin',
+                ...(documentParseDraft?.customPdf?.textinAppId !== undefined
+                  ? { textinAppId: documentParseDraft.customPdf.textinAppId }
+                  : {}),
+                ...(documentParseDraft?.customPdf?.textinSecretCode !== undefined
+                  ? { textinSecretCode: documentParseDraft.customPdf.textinSecretCode }
+                  : {})
+              }}
+              isDisabled={
+                !hasSecretValue(
+                  documentParseDraft?.customPdf?.textinAppId,
+                  'documentParse.customPdf.textinAppId'
+                ) ||
+                !hasSecretValue(
+                  documentParseDraft?.customPdf?.textinSecretCode,
+                  'documentParse.customPdf.textinSecretCode'
+                )
+              }
+            />
           </Box>
         )}
 
@@ -949,60 +1010,60 @@ const CoreSettingComponent = () => {
             borderColor={'myGray.200'}
             mb={6}
           >
-            <Controller
-              name="documentParse.customPdf.url"
-              control={control}
-              render={({ field }) => (
-                <ConnectivityTestInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  {...field}
-                  isEditable
-                  placeholder="https://pdf-parser.example.com/api"
-                  renderLayout={({ input, button, result }) => (
-                    <ConnectivityTestGroup
-                      address={
-                        <AdminFormItem
-                          label={t('admin:custom_pdf_parser_service_url')}
-                          tooltip={t(
-                            'admin:full_url_of_the_custom_pdf_parsing_service_connectivity_can'
-                          )}
-                          isRequired
-                          mb={4}
-                        >
-                          {input}
-                        </AdminFormItem>
-                      }
-                      credential={
-                        <AdminFormItem
-                          label={t('admin:custom_parser_auth_key')}
-                          tooltip={t(
-                            'admin:bearer_token_used_when_calling_the_custom_parsing_service'
-                          )}
-                          mb={4}
-                        >
-                          <Controller
-                            name="documentParse.customPdf.key"
-                            control={control}
-                            render={({ field }) => (
-                              <AdminSecretInput
-                                isInvalid={Boolean(
-                                  form.getFieldState(field.name, form.formState).error
-                                )}
-                                name={field.name}
-                                value={field.value}
-                                onChange={field.onChange}
-                                isConfigured={isSecretConfigured('documentParse.customPdf.key')}
-                              />
-                            )}
-                          />
-                        </AdminFormItem>
-                      }
-                      button={button}
-                      result={result}
+            <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'}>
+              <AdminFormItem
+                label={t('admin:custom_pdf_parser_service_url')}
+                tooltip={t('admin:full_url_of_the_custom_pdf_parsing_service_connectivity_can')}
+                isRequired
+                mb={0}
+              >
+                <Controller
+                  name="documentParse.customPdf.url"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      ref={field.ref}
+                      name={field.name}
+                      value={field.value ?? ''}
+                      onBlur={field.onBlur}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      placeholder="https://pdf-parser.example.com/api"
+                      bg={'white'}
                     />
                   )}
                 />
-              )}
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:custom_parser_auth_key')}
+                tooltip={t('admin:bearer_token_used_when_calling_the_custom_parsing_service')}
+                mb={0}
+              >
+                <Controller
+                  name="documentParse.customPdf.key"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('documentParse.customPdf.key')}
+                    />
+                  )}
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+            <DocumentParseTestBar
+              payload={{
+                provider: 'customPdf',
+                url: documentParseDraft?.customPdf?.url ?? '',
+                ...(documentParseDraft?.customPdf?.key !== undefined
+                  ? { key: documentParseDraft.customPdf.key }
+                  : {})
+              }}
+              isDisabled={!documentParseDraft?.customPdf?.url?.trim()}
             />
           </Box>
         )}
@@ -1016,64 +1077,57 @@ const CoreSettingComponent = () => {
             borderColor={'myGray.200'}
             mb={6}
           >
-            <Controller
-              name="documentParse.sangfor.url"
-              control={control}
-              render={({ field }) => (
-                <ConnectivityTestInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  {...field}
-                  isEditable
-                  placeholder="https://sangfor-parse.example.com"
-                  renderLayout={({ input, button, result }) => (
-                    <ConnectivityTestGroup
-                      address={
-                        <AdminFormItem
-                          label={t('admin:sangfor_parsing_api_endpoint')}
-                          tooltip={t(
-                            'admin:sangfor_document_parsing_microservice_url_connectivity_testi'
-                          )}
-                          isRequired
-                          mb={4}
-                        >
-                          {input}
-                        </AdminFormItem>
-                      }
-                      credential={
-                        <AdminFormItem
-                          label={t('admin:sangfor_service_key')}
-                          tooltip={t('admin:sangfor_service_credential')}
-                          mb={4}
-                        >
-                          <Controller
-                            name="documentParse.sangfor.key"
-                            control={control}
-                            render={({ field }) => (
-                              <AdminSecretInput
-                                isInvalid={Boolean(
-                                  form.getFieldState(field.name, form.formState).error
-                                )}
-                                name={field.name}
-                                value={field.value}
-                                onChange={field.onChange}
-                                isConfigured={isSecretConfigured('documentParse.sangfor.key')}
-                              />
-                            )}
-                          />
-                        </AdminFormItem>
-                      }
-                      button={button}
-                      result={result}
+            <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'}>
+              <AdminFormItem
+                label={t('admin:sangfor_parsing_api_endpoint')}
+                tooltip={t('admin:sangfor_document_parsing_microservice_url_connectivity_testi')}
+                isRequired
+                mb={0}
+              >
+                <Controller
+                  name="documentParse.sangfor.url"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      ref={field.ref}
+                      name={field.name}
+                      value={field.value ?? ''}
+                      onBlur={field.onBlur}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      placeholder="https://sangfor-parse.example.com"
+                      bg={'white'}
                     />
                   )}
                 />
-              )}
-            />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:sangfor_service_key')}
+                tooltip={t('admin:sangfor_service_credential')}
+                mb={0}
+              >
+                <Controller
+                  name="documentParse.sangfor.key"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('documentParse.sangfor.key')}
+                    />
+                  )}
+                />
+              </AdminFormItem>
+            </SimpleGrid>
 
             <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
               <AdminFormItem
                 label={t('admin:supported_file_extensions')}
                 tooltip={t('admin:comma_separated_extensions_e_g_pdf_docx')}
+                mb={0}
               >
                 <Input
                   isInvalid={Boolean(
@@ -1085,33 +1139,16 @@ const CoreSettingComponent = () => {
               </AdminFormItem>
             </SimpleGrid>
 
-            <AdminFormItem
-              label={t('admin:request_timeout_seconds')}
-              tooltip={t('admin:maximum_timeout_limit_default_600_seconds')}
-              mb={0}
-            >
-              <Controller
-                name="documentParse.sangfor.timeoutSeconds"
-                control={control}
-                render={({ field }) => (
-                  <NumberInput
-                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                    variant={'whiteOutline'}
-                    maxW={'400px'}
-                    min={1}
-                    max={PDF_PARSE_TIMEOUT_MAX_SECONDS}
-                    value={field.value ?? PDF_PARSE_TIMEOUT_DEFAULT_SECONDS}
-                    onChange={(_, val) => field.onChange(val || PDF_PARSE_TIMEOUT_DEFAULT_SECONDS)}
-                  >
-                    <NumberInputField />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
-                )}
-              />
-            </AdminFormItem>
+            <DocumentParseTestBar
+              payload={{
+                provider: 'sangfor',
+                url: documentParseDraft?.sangfor?.url ?? '',
+                ...(documentParseDraft?.sangfor?.key !== undefined
+                  ? { key: documentParseDraft.sangfor.key }
+                  : {})
+              }}
+              isDisabled={!documentParseDraft?.sangfor?.url?.trim()}
+            />
           </Box>
         )}
       </AdminSettingSection>
