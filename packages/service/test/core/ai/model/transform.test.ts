@@ -4,6 +4,7 @@ import {
   REASONING_EFFORT_LEVELS
 } from '@fastgpt/global/core/ai/constants';
 import { LLMModelConfigSchema } from '@fastgpt/global/core/ai/model/schema';
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import {
   flatModelToDocumentData,
   formatDbModelToDocumentData
@@ -104,32 +105,68 @@ describe('formatDbModelToDocumentData', () => {
     ).toBe(false);
   });
 
-  it.each([undefined, [], ['only_unknown_level']])(
-    'falls back to all reasoning effort levels on load when reasoningEffort is enabled and list is empty: %j',
-    (reasoningEffortList) => {
-      const parsed = formatDbModelToDocumentData({
-        ...document,
-        type: ModelTypeEnum.llm,
-        model: 'legacy-reasoning-llm',
-        config: {
-          maxContext: 64000,
-          maxResponse: 8000,
-          quoteMaxToken: 32000,
-          reasoning: true,
-          reasoningEffort: true,
-          ...(reasoningEffortList !== undefined ? { reasoningEffortList } : {})
-        }
-      });
+  it('preserves omitted reasoningEffortList in document transforms while falling back to all levels on runtime model load', () => {
+    const legacyRaw = {
+      ...document,
+      _id: '507f1f77bcf86cd799439011',
+      type: ModelTypeEnum.llm,
+      model: 'legacy-reasoning-llm',
+      config: {
+        maxContext: 64000,
+        maxResponse: 8000,
+        quoteMaxToken: 32000,
+        reasoning: true,
+        reasoningEffort: true
+      }
+    };
 
-      expect(parsed.type).toBe(ModelTypeEnum.llm);
-      if (parsed.type === ModelTypeEnum.llm) {
-        expect(parsed.config.reasoningEffortList).toEqual([...REASONING_EFFORT_LEVELS]);
+    // JSON 导出 / 持久化文档转换保留缺省语义，避免将运行期兜底六档写回数据库
+    const exportedDoc = formatDbModelToDocumentData(legacyRaw);
+    expect(exportedDoc.type).toBe(ModelTypeEnum.llm);
+    if (exportedDoc.type === ModelTypeEnum.llm) {
+      expect(exportedDoc.config.reasoningEffortList).toBeUndefined();
+    }
+
+    // 运行期模型加载对缺省、空数组及全未知枚举兜底为全部 6 档
+    for (const rawList of [undefined, [], ['only_unknown_level']]) {
+      const runtime = formatDbModelToRuntimeModel(
+        {
+          ...legacyRaw,
+          config: {
+            ...legacyRaw.config,
+            ...(rawList !== undefined ? { reasoningEffortList: rawList } : {})
+          }
+        },
+        { fallbackProvider: true }
+      );
+      expect(runtime.type).toBe(ModelTypeEnum.llm);
+      if (runtime.type === ModelTypeEnum.llm) {
+        expect(runtime.config.reasoningEffortList).toEqual([...REASONING_EFFORT_LEVELS]);
       }
     }
-  );
+  });
 });
 
 describe('flatModelToDocumentData', () => {
+  it('preserves omitted reasoningEffortList when installing legacy plugin templates', () => {
+    const doc = flatModelToDocumentData({
+      type: ModelTypeEnum.llm,
+      provider: 'ChatGLM',
+      model: 'glm-5.3',
+      name: 'GLM-5.3',
+      maxContext: 1000000,
+      maxTokens: 128000,
+      quoteMaxToken: 900000,
+      reasoning: true,
+      reasoningEffort: true
+    });
+
+    expect(doc.type).toBe(ModelTypeEnum.llm);
+    if (doc.type === ModelTypeEnum.llm) {
+      expect(doc.config.reasoningEffort).toBe(true);
+      expect(doc.config.reasoningEffortList).toBeUndefined();
+    }
+  });
   it('maps plugin flat reasoningEffortList into canonical LLM config and drops unknown future levels', () => {
     const doc = flatModelToDocumentData({
       type: ModelTypeEnum.llm,

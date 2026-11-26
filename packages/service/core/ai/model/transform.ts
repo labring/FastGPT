@@ -1,9 +1,5 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
-import {
-  ModelScopeEnum,
-  ModelTypeEnum,
-  REASONING_EFFORT_LEVELS
-} from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { normalizeReasoningEffortList } from '@fastgpt/global/core/ai/llm/utils';
 import {
   AIModelDocumentDataSchema,
@@ -53,10 +49,10 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 };
 
 /**
- * 读取边界兼容归一化：
- * - 过滤历史或高版本插件带来的未识别思考等级并按标准顺序去重，避免单个未知枚举值阻断目录或模板加载；
- * - 开启深度思考与思考配置但 `reasoningEffortList` 缺失或为空时，加载期统一兜底为全部思考等级；
- * - 写入 API 仍由 LLMModelConfigSchema 严格校验。
+ * 文档读取边界兼容归一化：
+ * - 过滤历史或高版本插件带来的未识别思考等级并按标准顺序去重，避免单个未知枚举值阻断目录、导出或模板加载；
+ * - 保留未配置时的 `undefined` 缺省语义，避免 JSON 导出保存或旧插件模板安装把运行期兜底六档固化到数据库；
+ * - 运行期空/缺省兜底由 `formatDbModelToRuntimeModel` 与 `getSupportedReasoningEfforts` 统一提供。
  */
 const normalizeLlmConfigForRead = (
   type: unknown,
@@ -71,25 +67,14 @@ const normalizeLlmConfigForRead = (
     return config;
   }
   const llmConfig = config as Record<string, unknown>;
-  const normalizedList = Array.isArray(llmConfig.reasoningEffortList)
-    ? normalizeReasoningEffortList(
-        llmConfig.reasoningEffortList.filter((item): item is string => typeof item === 'string')
-      )
-    : [];
-
-  if (llmConfig.reasoning === true && llmConfig.reasoningEffort === true) {
-    return {
-      ...llmConfig,
-      reasoningEffortList: normalizedList.length > 0 ? normalizedList : [...REASONING_EFFORT_LEVELS]
-    };
-  }
-
   if (!Array.isArray(llmConfig.reasoningEffortList)) {
     return config;
   }
   return {
     ...llmConfig,
-    reasoningEffortList: normalizedList
+    reasoningEffortList: normalizeReasoningEffortList(
+      llmConfig.reasoningEffortList.filter((item): item is string => typeof item === 'string')
+    )
   };
 };
 

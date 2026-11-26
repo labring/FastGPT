@@ -10,6 +10,10 @@ import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import {
+  flatModelToDocumentData,
+  formatDbModelToDocumentData
+} from '@fastgpt/service/core/ai/model/transform';
+import {
   MongoSystemMigrationFailedRecord,
   MongoSystemMigrationState
 } from '@/migration/mongoSchema';
@@ -666,5 +670,68 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     } finally {
       await runner.stop();
     }
+  });
+
+  it('still backfills upgraded plugin presets after JSON export/resave or legacy plugin template installation', async () => {
+    // 1) 管理员导出 JSON 并原样保存存量模型，不得固化运行期六档默认值
+    const legacy = await seedModel({ model: 'glm-5' });
+    const rawFromDb = await MongoAIModel.findById(legacy._id).lean();
+    const exportedDoc = formatDbModelToDocumentData(rawFromDb as Record<string, unknown>);
+    expect(exportedDoc.type).toBe(ModelTypeEnum.llm);
+    if (exportedDoc.type === ModelTypeEnum.llm) {
+      expect(exportedDoc.config.reasoningEffortList).toBeUndefined();
+      await MongoAIModel.collection.updateOne(
+        { _id: legacy._id },
+        { $set: { config: exportedDoc.config } }
+      );
+    }
+
+    // 2) 旧版插件未携带 reasoningEffortList 时安装新模板，也不得写入兜底六档
+    const installedFromLegacyPlugin = flatModelToDocumentData({
+      type: ModelTypeEnum.llm,
+      provider: 'ChatGLM',
+      model: 'glm-5.3',
+      name: 'GLM-5.3',
+      maxContext: 1000000,
+      maxTokens: 128000,
+      quoteMaxToken: 900000,
+      reasoning: true,
+      reasoningEffort: true
+    });
+    expect(installedFromLegacyPlugin.type).toBe(ModelTypeEnum.llm);
+    if (installedFromLegacyPlugin.type === ModelTypeEnum.llm) {
+      expect(installedFromLegacyPlugin.config.reasoningEffortList).toBeUndefined();
+    }
+    const inserted = await MongoAIModel.collection.insertOne(installedFromLegacyPlugin as any);
+
+    // 3) 升级插件后执行手动回填，两条记录均可准确回填插件预设（而非停留在含 none 的六档）
+    mocks.listModels.mockResolvedValue([
+      ...pluginPresets,
+      {
+        type: ModelTypeEnum.llm,
+        provider: 'ChatGLM',
+        model: 'glm-5.3',
+        name: 'GLM-5.3',
+        maxContext: 1000000,
+        maxTokens: 128000,
+        quoteMaxToken: 900000,
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'high', 'xhigh']
+      }
+    ]);
+
+    const { context } = createContext();
+    const result = await backfillModelReasoningEffortListMigration(context);
+    expect(result).toEqual({
+      presetCount: 3,
+      verifiedCount: 2
+    });
+    expect((await MongoAIModel.findById(legacy._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
+    expect((await MongoAIModel.findById(inserted.insertedId).lean())?.config).toMatchObject({
+      reasoningEffortList: ['low', 'high', 'xhigh']
+    });
   });
 });
