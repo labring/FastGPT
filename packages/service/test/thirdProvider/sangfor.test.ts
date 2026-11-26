@@ -233,7 +233,7 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] providers.documentParse.sangfor.url is required');
+    ).rejects.toThrow(/^providers\.documentParse\.sangfor\.url is required$/);
 
     expect(postMock).not.toHaveBeenCalled();
   });

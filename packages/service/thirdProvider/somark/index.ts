@@ -74,18 +74,18 @@ export const useSomarkServer = ({
 
       if (data?.code !== 0) {
         return Promise.reject(
-          new Error(`[SoMark] ${data?.message || `API error: ${data?.code ?? 'Unknown error'}`}`)
+          new Error(data?.message || `API error: ${data?.code ?? 'Unknown error'}`)
         );
       }
 
       const text = data.data?.result?.outputs?.markdown;
       if (!text) {
-        return Promise.reject(new Error('[SoMark] No markdown content in response'));
+        return Promise.reject(new Error('No markdown content in response'));
       }
 
       const pages = data.data?.metadata?.page_num;
       if (typeof pages !== 'number' || !Number.isInteger(pages) || pages < 1) {
-        return Promise.reject(new Error('[SoMark] Invalid page count in response'));
+        return Promise.reject(new Error('Invalid page count in response'));
       }
 
       logger.debug('SoMark PDF parse finished', {
@@ -98,11 +98,7 @@ export const useSomarkServer = ({
         text
       };
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('[SoMark]')) {
-        throw error;
-      }
-
-      return Promise.reject(new Error(`[SoMark] ${getErrText(error)}`));
+      return Promise.reject(error instanceof Error ? error : new Error(getErrText(error)));
     }
   };
 

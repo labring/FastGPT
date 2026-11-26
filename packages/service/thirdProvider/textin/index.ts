@@ -45,22 +45,22 @@ export const useTextinServer = ({
   // Response error handler
   const responseError = (err: any) => {
     if (!err) {
-      return Promise.reject({ message: '[Textin] Unknown error' });
+      return Promise.reject({ message: 'Unknown error' });
     }
     if (typeof err === 'string') {
-      return Promise.reject({ message: `[Textin] ${err}` });
+      return Promise.reject({ message: err });
     }
     if (err?.response?.data) {
       return Promise.reject({
-        message: `[Textin] ${getErrText(err?.response?.data)}`
+        message: getErrText(err?.response?.data)
       });
     }
     if (typeof err.message === 'string') {
-      return Promise.reject({ message: `[Textin] ${err.message}` });
+      return Promise.reject({ message: err.message });
     }
 
     logger.error('Textin request failed with unknown error', { error: err });
-    return Promise.reject({ message: `[Textin] ${getErrText(err)}` });
+    return Promise.reject({ message: getErrText(err) });
   };
 
   const parsePDF = async (
@@ -94,15 +94,13 @@ export const useTextinServer = ({
 
       // Check response code
       if (data.code !== 200) {
-        return Promise.reject(
-          `[Textin] API error: ${data.message || data.code || 'Unknown error'}`
-        );
+        return Promise.reject(`API error: ${data.message || data.code || 'Unknown error'}`);
       }
 
       // Get markdown content
       const rawMarkdown = data.result?.markdown;
       if (!rawMarkdown) {
-        return Promise.reject('[Textin] No markdown content in response');
+        return Promise.reject('No markdown content in response');
       }
       logger.debug('Textin markdown content received', { length: rawMarkdown.length });
       const text = await parseMarkdownBase64Images(rawMarkdown, {

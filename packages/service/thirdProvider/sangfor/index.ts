@@ -113,7 +113,7 @@ export const parseFromSangfor = async ({
 }) => {
   const { url, key } = resolveSangforEndpoint();
   if (!url) {
-    throw new Error('[sangfor] providers.documentParse.sangfor.url is required');
+    throw new Error('providers.documentParse.sangfor.url is required');
   }
 
   try {

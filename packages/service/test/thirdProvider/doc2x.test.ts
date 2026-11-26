@@ -221,7 +221,7 @@ describe('useDoc2xServer', () => {
 
     const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
     const resultAssertion = expect(resultPromise).rejects.toThrow(
-      '[Doc2x] Failed to get result (uid: uid-failed): invalid pdf'
+      /^Failed to get result \(uid: uid-failed\): invalid pdf$/
     );
     await vi.runAllTimersAsync();
 
@@ -255,7 +255,7 @@ describe('useDoc2xServer', () => {
 
     const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
     const resultAssertion = expect(resultPromise).rejects.toThrow(
-      '[Doc2x] Failed to get result (uid: uid-unknown): unknown status queued'
+      /^Failed to get result \(uid: uid-unknown\): unknown status queued$/
     );
     await vi.runAllTimersAsync();
 
@@ -347,7 +347,7 @@ describe('useDoc2xServer', () => {
 
     const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
     const resultAssertion = expect(resultPromise).rejects.toThrow(
-      '[Doc2x] Failed to get result (uid: uid-timeout): Process timeout'
+      /^Failed to get result \(uid: uid-timeout\): Process timeout$/
     );
     await vi.runAllTimersAsync();
 

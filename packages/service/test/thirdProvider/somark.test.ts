@@ -87,7 +87,7 @@ describe('useSomarkServer', () => {
     expect(body).toContain('"table":"markdown"');
   });
 
-  it('业务状态码非零时返回带 SoMark 前缀的错误', async () => {
+  it('业务状态码非零时返回原始错误信息（不带厂商前缀）', async () => {
     postMock.mockResolvedValueOnce({
       data: {
         code: 1107,
@@ -97,7 +97,7 @@ describe('useSomarkServer', () => {
 
     await expect(
       useSomarkServer({ apiKey: 'invalid-key' }).parsePDF(Buffer.from('pdf-content'))
-    ).rejects.toThrow('[SoMark] Invalid API Key');
+    ).rejects.toThrow(/^Invalid API Key$/);
   });
 
   it('成功响应缺少 Markdown 时拒绝结果', async () => {
@@ -117,7 +117,7 @@ describe('useSomarkServer', () => {
 
     await expect(
       useSomarkServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
-    ).rejects.toThrow('[SoMark] No markdown content in response');
+    ).rejects.toThrow(/^No markdown content in response$/);
   });
 
   it('成功响应页数无效时拒绝结果', async () => {
@@ -139,7 +139,7 @@ describe('useSomarkServer', () => {
 
     await expect(
       useSomarkServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
-    ).rejects.toThrow('[SoMark] Invalid page count in response');
+    ).rejects.toThrow(/^Invalid page count in response$/);
   });
 
   it('支持国内站与自定义 baseUrl 并在空值时回退国际站', async () => {
@@ -177,6 +177,6 @@ describe('useSomarkServer', () => {
 
     await expect(
       useSomarkServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
-    ).rejects.toThrow('[SoMark] network unavailable');
+    ).rejects.toThrow(/^network unavailable$/);
   });
 });

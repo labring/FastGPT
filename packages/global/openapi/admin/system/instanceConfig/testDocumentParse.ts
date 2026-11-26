@@ -66,7 +66,7 @@ export const TestDocumentParseResponseSchema = z.object({
   }),
   error: z.string().optional().meta({
     description: '解析失败时的错误说明',
-    example: '[SoMark] Invalid API key.'
+    example: 'Invalid API key.'
   })
 });
 export type TestDocumentParseResponse = z.infer<typeof TestDocumentParseResponseSchema>;
