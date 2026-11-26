@@ -111,8 +111,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 0
+      deletedZips: 0
     });
     expect(context.reportProgress).toHaveBeenCalledWith({
       key: 'validation',
@@ -366,7 +365,7 @@ describe('cleanupLegacySandboxResources', () => {
     );
   });
 
-  it('idempotently deletes v2 Devboxes, legacy PVCs, v2 rows, verified zips, and v2 orphans without harming live v3 containers or PVCs', async () => {
+  it('idempotently deletes legacy Devboxes, legacy PVCs, orphan containers, and verified zips while preserving v2 records and live v3 resources', async () => {
     const activeApp = await seedApp(false);
     const deletedApp = await seedApp(true);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.internal.example.com');
@@ -483,7 +482,7 @@ describe('cleanupLegacySandboxResources', () => {
       }
     });
 
-    // 5) v2 中的 deleting 墓碑行（分别覆盖 sealosdevbox 与 opensandbox）：无 targetV3，回收远端容器/旧 PVC 并删 v2 行计入 deletedOrphans。
+    // 5) v2 中的 deleting 墓碑行（分别覆盖 sealosdevbox 与 opensandbox）：无 targetV3，回收远端容器/旧 PVC，保留 v2 行。
     const deletingDevboxV2 = await insertLegacySandboxRow({
       provider: 'sealosdevbox',
       sourceId: activeApp.appId,
@@ -572,8 +571,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(context)).resolves.toEqual({
       deletedDevboxes: 4,
       deletedVolumes: 3,
-      deletedZips: 4,
-      deletedOrphans: 4
+      deletedZips: 4
     });
 
     // Devbox 清理验证
@@ -616,8 +614,8 @@ describe('cleanupLegacySandboxResources', () => {
     expect(s3State.objects.has(archivedZstKey)).toBe(true);
     expect([...s3State.objects.keys()].filter((key) => key.endsWith('/package.zip'))).toEqual([]);
 
-    // v2 集合全部清空，v3 活跃记录完好无损。
-    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(0);
+    // v2 旧集合全部保留只读不删除，v3 活跃记录完好无损。
+    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(8);
     expect(
       await MongoSandboxInstance.collection.findOne({ _id: migratedLegacyOsbV3._id })
     ).toMatchObject({
@@ -629,14 +627,14 @@ describe('cleanupLegacySandboxResources', () => {
       }
     });
 
-    // 幂等二次执行应全部返回 0。
+    // 幂等二次执行安全完成（Devbox 与 zip 已清空为 0，旧卷 DELETE 保持幂等），且 v2 记录仍然完好保留。
     const secondRun = createMigrationContext();
     await expect(cleanupLegacySandboxResources(secondRun.context)).resolves.toEqual({
       deletedDevboxes: 0,
-      deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 0
+      deletedVolumes: 3,
+      deletedZips: 0
     });
+    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(8);
   });
 
   it('clears stale preflight failure and retries validation zip failure on resume', async () => {
@@ -673,7 +671,6 @@ describe('cleanupLegacySandboxResources', () => {
       deletedDevboxes: 0,
       deletedVolumes: 0,
       deletedZips: 0,
-      deletedOrphans: 0,
       processedDocs: 0,
       processedZips: 0
     });
@@ -693,8 +690,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(state.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 1,
-      deletedOrphans: 0
+      deletedZips: 1
     });
 
     expect(state.failures()).toEqual([]);
@@ -767,8 +763,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 1,
-      deletedZips: 0,
-      deletedOrphans: 0
+      deletedZips: 0
     });
 
     expect(leaseMockState.sandboxIds).not.toContain(nativeRunningRow.sandboxId);
@@ -777,7 +772,7 @@ describe('cleanupLegacySandboxResources', () => {
     expect(resourceMockState.deletedVolumes.map((item) => item.claimName)).toEqual([
       'pvc-v2-archived'
     ]);
-    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(0);
+    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(1);
   });
 
   it('deletes legacy package.zip when concurrent wake-up moves v3 row to running inside recheck lease', async () => {
@@ -807,7 +802,7 @@ describe('cleanupLegacySandboxResources', () => {
     const leaseSpy = vi.mocked(leaseMod.withSandboxLease);
     const prevImpl = leaseSpy.getMockImplementation()!;
     leaseSpy.mockImplementationOnce(async (params) => {
-      if (params.label.startsWith('verify-legacy-zip:')) {
+      if (params.label.startsWith('cleanup-legacy-zip:')) {
         await MongoSandboxInstance.collection.updateOne(
           { _id: row._id },
           {
@@ -827,33 +822,32 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 1,
-      deletedOrphans: 0
+      deletedZips: 1
     });
 
     expect(leaseMockState.sandboxIds).toContain(row.sandboxId);
     expect(s3State.objects.has(zipKey)).toBe(false);
   });
 
-  it('preserves package.zip when a non-deleting active v2 row still exists during cleanupLegacyZips', async () => {
+  it('preserves package.zip when active v2 target v3 is missing or matched only by business identity with missing tar.zst', async () => {
     const activeApp = await seedApp(false);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
 
-    const v2Row = await insertLegacySandboxRow({
+    const v2MissingTarget = await insertLegacySandboxRow({
       provider: 'opensandbox',
       sourceId: activeApp.appId,
       teamId: activeApp.teamId,
       status: SandboxInstanceStatusEnum.archived
     });
-    const zstKey = buildSandboxArchiveObjectKey(v2Row.sandboxId, 'gen1');
+    const zstKey = buildSandboxArchiveObjectKey(v2MissingTarget.sandboxId, 'gen1');
     await insertV3SandboxRow({
-      _id: v2Row._id,
+      _id: v2MissingTarget._id,
       provider: 'opensandbox',
-      sandboxId: v2Row.sandboxId,
-      sourceType: v2Row.sourceType,
-      sourceId: v2Row.sourceId,
-      userId: v2Row.userId,
+      sandboxId: v2MissingTarget.sandboxId,
+      sourceType: v2MissingTarget.sourceType,
+      sourceId: v2MissingTarget.sourceId,
+      userId: v2MissingTarget.userId,
       teamId: activeApp.teamId,
       status: SandboxInstanceStatusEnum.archived,
       storage: {
@@ -866,155 +860,82 @@ describe('cleanupLegacySandboxResources', () => {
         }
       }
     });
-    const zipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2Row.sandboxId}/package.zip`;
+    const missingTargetZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2MissingTarget.sandboxId}/package.zip`;
     s3State.objects.set(zstKey, Buffer.from('zst-payload!!'));
-    s3State.objects.set(zipKey, Buffer.from('legacy-zip'));
+    s3State.objects.set(missingTargetZipKey, Buffer.from('legacy-zip'));
 
-    const state = createMigrationContext();
-    await state.context.saveCheckpoint({
-      lastDocId: String(v2Row._id),
-      devboxesDone: true,
-      lastZipKey: null,
-      zipsDone: false,
-      deletedDevboxes: 0,
-      deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 0,
-      processedDocs: 0,
-      processedZips: 0
-    });
-
-    await expect(cleanupLegacySandboxResources(state.context)).rejects.toThrow(
-      'failed safety verification'
-    );
-    expect(s3State.objects.has(zipKey)).toBe(true);
-    expect(state.failures()).toEqual([
-      expect.objectContaining({
-        stageKey: 'cleanupLegacyZips',
-        data: { key: zipKey, sandboxId: v2Row.sandboxId }
-      })
-    ]);
-  });
-
-  it('fails validation when residual v2 records remain and replays validation doc failures on retry', async () => {
-    const activeApp = await seedApp(false);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.internal.example.com');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'cleanup-secret');
-
-    const preMigratedV2 = await insertLegacySandboxRow({
+    // 业务身份一致但 sandboxId 不同的 v3 记录缺失 .tar.zst 时，同样不得绕过归档校验删掉旧 ZIP。
+    const v2Alias = await insertLegacySandboxRow({
       provider: 'opensandbox',
       sourceId: activeApp.appId,
       teamId: activeApp.teamId,
       status: SandboxInstanceStatusEnum.archived
     });
     await insertV3SandboxRow({
-      _id: preMigratedV2._id,
       provider: 'opensandbox',
-      sandboxId: preMigratedV2.sandboxId,
-      sourceType: preMigratedV2.sourceType,
-      sourceId: preMigratedV2.sourceId,
-      userId: preMigratedV2.userId,
+      sandboxId: `${v2Alias.sandboxId}-renamed`,
+      sourceType: v2Alias.sourceType,
+      sourceId: v2Alias.sourceId,
+      userId: v2Alias.userId,
       teamId: activeApp.teamId,
-      status: SandboxInstanceStatusEnum.running,
-      instanceId: 'already-migrated-1',
+      status: SandboxInstanceStatusEnum.archived,
       storage: {
-        volumes: [{ name: 'workspace', claimName: 'pvc-migrated-1', mountPath: '/home/sandbox' }]
+        archive: {
+          objectKey: buildSandboxArchiveObjectKey(`${v2Alias.sandboxId}-renamed`, 'gen1'),
+          generation: 'gen1',
+          format: 'tar.zst',
+          sizeBytes: 64,
+          archivedAt: new Date()
+        }
       }
     });
+    const aliasZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2Alias.sandboxId}/package.zip`;
+    s3State.objects.set(aliasZipKey, Buffer.from('legacy-alias-zip'));
 
     const state = createMigrationContext();
-    let lateRowId = '';
-    let lateSandboxId = '';
-    let injectedLateRow = false;
+    await state.context.saveCheckpoint({
+      lastDocId: String(v2Alias._id),
+      devboxesDone: true,
+      lastZipKey: null,
+      zipsDone: false,
+      deletedDevboxes: 0,
+      deletedVolumes: 0,
+      deletedZips: 0,
+      processedDocs: 2,
+      processedZips: 0
+    });
+    // 模拟 preflight 通过后 v3 记录被并发移除，验证 cleanupLegacyZips 在租约内单次查验后仍拒绝删旧 ZIP。
+    let removedV3 = false;
     vi.mocked(state.context.reportProgress).mockImplementation(async (progress) => {
-      if (
-        !injectedLateRow &&
-        progress.key === 'cleanupDevboxes' &&
-        progress.status === 'succeeded'
-      ) {
-        injectedLateRow = true;
-        const lateV2Row = await insertLegacySandboxRow({
-          provider: 'sealosdevbox',
-          sourceId: activeApp.appId,
-          teamId: activeApp.teamId,
-          status: SandboxInstanceStatusEnum.stopped
-        });
-        await insertV3SandboxRow({
-          _id: lateV2Row._id,
-          provider: 'opensandbox',
-          sandboxId: lateV2Row.sandboxId,
-          sourceType: lateV2Row.sourceType,
-          sourceId: lateV2Row.sourceId,
-          userId: lateV2Row.userId,
-          teamId: activeApp.teamId,
-          status: SandboxInstanceStatusEnum.archived,
-          storage: {
-            archive: {
-              objectKey: buildSandboxArchiveObjectKey(lateV2Row.sandboxId, 'gen1'),
-              generation: 'gen1',
-              format: 'tar.zst',
-              sizeBytes: 0,
-              archivedAt: new Date()
-            }
-          }
-        });
-        lateRowId = String(lateV2Row._id);
-        lateSandboxId = lateV2Row.sandboxId;
+      if (!removedV3 && progress.key === 'preflight' && progress.status === 'succeeded') {
+        removedV3 = true;
+        await MongoSandboxInstance.collection.deleteOne({ _id: v2MissingTarget._id });
       }
     });
 
     await expect(cleanupLegacySandboxResources(state.context)).rejects.toThrow(
-      'validation failed with remaining v2 records'
+      'failed safety verification'
     );
-    expect(state.failures()).toEqual([
-      expect.objectContaining({
-        stageKey: 'validation',
-        data: { id: lateRowId, sandboxId: lateSandboxId }
-      })
-    ]);
-
-    const deletedRemoteIds: string[] = [];
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const url =
-        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      const match = /^\/api\/v1\/devbox\/([^/]+)$/.exec(new URL(url).pathname);
-      if (init?.method === 'GET' && match) {
-        const name = decodeURIComponent(match[1]);
-        if (!deletedRemoteIds.includes(name)) {
-          return new Response(
-            JSON.stringify({
-              code: 200,
-              message: 'ok',
-              data: { name, state: { phase: 'Paused' } }
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-        return new Response(JSON.stringify({ code: 404, message: 'not found', data: null }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      if (init?.method === 'DELETE' && match) {
-        deletedRemoteIds.push(decodeURIComponent(match[1]));
-        return new Response(
-          JSON.stringify({ code: 200, message: 'deleted', data: { name: match[1] } }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      return new Response('Not Found', { status: 404 });
-    });
-
-    await expect(cleanupLegacySandboxResources(state.context)).resolves.toEqual({
-      deletedDevboxes: 1,
-      deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 0
-    });
-
-    expect(deletedRemoteIds).toEqual([lateSandboxId]);
-    expect(state.failures()).toEqual([]);
-    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(0);
+    expect(s3State.objects.has(missingTargetZipKey)).toBe(true);
+    expect(s3State.objects.has(aliasZipKey)).toBe(true);
+    expect(state.failures()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stageKey: 'cleanupLegacyZips',
+          data: { key: missingTargetZipKey, sandboxId: v2MissingTarget.sandboxId },
+          reason: {
+            message: expect.stringContaining('not migrated to v3')
+          }
+        }),
+        expect.objectContaining({
+          stageKey: 'cleanupLegacyZips',
+          data: { key: aliasZipKey, sandboxId: v2Alias.sandboxId },
+          reason: {
+            message: expect.stringContaining('missing in S3')
+          }
+        })
+      ])
+    );
   });
 
   it('propagates real S3 listObjects failures in preflight instead of silently skipping ghost zip cleanup', async () => {
@@ -1087,15 +1008,14 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(secondState.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 0
+      deletedZips: 0
     });
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(leaseMockState.sandboxIds).toEqual([]);
     expect(s3State.deleteArchiveObjectSpy).not.toHaveBeenCalled();
     expect(await MongoSandboxInstance.collection.countDocuments({ _id: liveV3Row._id })).toBe(1);
 
-    // 3. v2 restoring（operation.previousStatus = 'archived'）无 targetV3 时也必须携带 allowLegacyUnlabeled: true 清理残留容器。
+    // 3. v2 restoring（operation.previousStatus = 'archived'）无 targetV3 时也必须携带 allowLegacyUnlabeled: true 清理残留容器，且保留 v2 行。
     const restoringOrphanV2 = await insertLegacySandboxRow({
       provider: 'opensandbox',
       sourceId: deletedApp.appId,
@@ -1113,12 +1033,12 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(thirdState.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 0,
-      deletedOrphans: 1
+      deletedZips: 0
     });
     expect(resourceMockState.deletedContainers).toEqual([
       { sandboxId: restoringOrphanV2.sandboxId, allowLegacyUnlabeled: true }
     ]);
+    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(1);
   });
 
   it('reports current/total progress for cleanupDevboxes and cleanupLegacyZips including throttled intra-batch updates and zip retries', async () => {
@@ -1190,8 +1110,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(fullState.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 2,
-      deletedOrphans: 0
+      deletedZips: 2
     });
 
     const callsByStage = (
@@ -1302,8 +1221,7 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(retryRun.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 2,
-      deletedOrphans: 0
+      deletedZips: 2
     });
     expect(callsByStage(retryRun.context, 'cleanupLegacyZips')).toEqual([
       { key: 'cleanupLegacyZips', status: 'running', current: 1, total: 2 },
@@ -1372,7 +1290,6 @@ describe('cleanupLegacySandboxResources', () => {
       deletedDevboxes: 0,
       deletedVolumes: 0,
       deletedZips: 0,
-      deletedOrphans: 0,
       processedDocs: 0,
       processedZips: 0
     });
@@ -1405,10 +1322,10 @@ describe('cleanupLegacySandboxResources', () => {
     await expect(cleanupLegacySandboxResources(state.context)).resolves.toEqual({
       deletedDevboxes: 0,
       deletedVolumes: 0,
-      deletedZips: 2,
-      deletedOrphans: 0
+      deletedZips: 2
     });
     expect(state.failures()).toEqual([]);
+    expect(await getLegacySandboxInstanceCollection().countDocuments({})).toBe(2);
 
     const savedCheckpoints = vi
       .mocked(state.context.saveCheckpoint)

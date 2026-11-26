@@ -22,7 +22,7 @@ import { expectedOperationByStatus } from '../../constants';
  */
 export const collectionName = 'agent_sandbox_instances_v3';
 
-/** 4.17.x 旧版 sandbox 实例集合名称（仅用于只读迁移、运行期门禁/对账保护及 Step 8 最终清理）。 */
+/** 4.17.x 旧版 sandbox 实例集合名称（仅用于只读迁移、运行期门禁/对账保护及历史遗留资源清理的只读扫描，不删除旧集合及记录）。 */
 export const LEGACY_SANDBOX_INSTANCE_COLLECTION_NAME = 'agent_sandbox_instances_v2' as const;
 
 const SandboxOperationMongoSchema = new Schema(
