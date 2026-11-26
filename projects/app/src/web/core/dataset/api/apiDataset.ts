@@ -7,7 +7,9 @@ import type {
   GetApiDatasetFileListExistIdResponse,
   GetApiDatasetFileListResponse,
   GetApiDatasetPathNamesBody,
-  GetApiDatasetPathNamesResponse
+  GetApiDatasetPathNamesResponse,
+  GetApiDatasetSyncStateQuery,
+  GetApiDatasetSyncStateResponse
 } from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
 export const getApiDatasetFileList = (data: GetApiDatasetFileListBody) =>
@@ -15,6 +17,9 @@ export const getApiDatasetFileList = (data: GetApiDatasetFileListBody) =>
 
 export const getApiDatasetFileListExistId = (data: GetApiDatasetFileListExistIdQuery) =>
   GET<GetApiDatasetFileListExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
+
+export const getApiDatasetSyncState = (data: GetApiDatasetSyncStateQuery) =>
+  GET<GetApiDatasetSyncStateResponse>('/core/dataset/apiDataset/syncState', data);
 
 export const getApiDatasetCatalog = (data: GetApiDatasetCatalogBody) =>
   POST<GetApiDatasetCatalogResponse>('/core/dataset/apiDataset/getCatalog', data);

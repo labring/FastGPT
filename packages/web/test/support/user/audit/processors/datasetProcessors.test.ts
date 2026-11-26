@@ -273,10 +273,19 @@ describe('processDatasetConfigUpdateSpecific', () => {
     const chunkKeys = Object.keys(ChunkSettingsSchema.shape);
     const fileParseKeys = Object.keys(sangforFileParseConfigSchema.shape);
     const apiServerKeys = Object.entries(ApiDatasetServerSchema.shape).flatMap(
-      ([serverName, serverSchema]) => [
-        serverName,
-        ...Object.keys(serverSchema.unwrap().shape).map((field) => `${serverName}.${field}`)
-      ]
+      ([serverName, serverSchema]) => {
+        const unwrapped =
+          'unwrap' in serverSchema && typeof serverSchema.unwrap === 'function'
+            ? serverSchema.unwrap()
+            : serverSchema;
+        if ('shape' in unwrapped && unwrapped.shape && typeof unwrapped.shape === 'object') {
+          return [
+            serverName,
+            ...Object.keys(unwrapped.shape).map((field) => `${serverName}.${field}`)
+          ];
+        }
+        return [serverName];
+      }
     );
 
     const getMappedFields = (item: DatasetConfigAuditItemEnum) =>
@@ -302,8 +311,9 @@ describe('processDatasetConfigUpdateSpecific', () => {
         .filter(
           ([, schema]) =>
             schema.safeParse(true).success &&
+            schema.safeParse(false).success &&
             !schema.safeParse(123).success &&
-            !schema.safeParse('text').success
+            !schema.safeParse({}).success
         )
         .map(([key]) => key)
         .sort();
@@ -316,6 +326,9 @@ describe('processDatasetConfigUpdateSpecific', () => {
 
     expect(getMappedBooleanFields(DatasetConfigAuditItemEnum.CHUNK_SETTINGS)).toEqual(
       extractBooleanFields(ChunkSettingsSchema.shape)
+    );
+    expect(getMappedBooleanFields(DatasetConfigAuditItemEnum.API_DATASET_SERVER)).toEqual(
+      extractBooleanFields(ApiDatasetServerSchema.shape)
     );
     expect(getMappedBooleanFields(DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG)).toEqual(
       extractBooleanFields(sangforFileParseConfigSchema.shape)

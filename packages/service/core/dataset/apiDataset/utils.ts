@@ -1,7 +1,13 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { toApiFileDirId, type ApiFileRecord } from './tree';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+
+/**
+ * 已发布版本（<= v4.17.5）使用的整库同步哨兵节点 ID。
+ * 仅在升级过渡期（Pro 先于 App 迁移启动、旧导入客户端滚动发布）的读写边界做兼容，
+ * 待全量环境升级至 v4.18.0+ 并完成 SYSTEM_ROOT 清洗后可移除。
+ */
+export const LEGACY_SYSTEM_ROOT_API_FILE_ID = 'SYSTEM_ROOT';
 
 /** 本地 collection 的身份与父级快照；兼容 lean 字符串和 Mongoose ObjectId。 */
 export type ApiFileLocalCollection = {
@@ -11,6 +17,7 @@ export type ApiFileLocalCollection = {
   parentId?: unknown;
   type: DatasetCollectionTypeEnum;
   inheritPermission?: boolean;
+  syncChildren?: boolean;
   metadata?: Record<string, unknown>;
 };
 
@@ -190,25 +197,25 @@ export const resolveApiFileRecordParent = ({
   record,
   idMap,
   targetParentId,
-  rootCollectionId,
-  rootParentIds
+  rootParentIds,
+  syncAll = false
 }: {
   record: ApiFileRecord;
   idMap: Map<string, string>;
   targetParentId?: string | null;
-  rootCollectionId?: string;
-  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标和整库哨兵仍优先。 */
+  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标仍优先。 */
   rootParentIds?: Map<string, string | null>;
+  /** 整库同步（Dataset.syncAll=true）时根级记录明确归属知识库根，需校正脱离旧父级。 */
+  syncAll?: boolean;
 }) => ({
   parentId:
     record.parentDirId === null
       ? targetParentId !== undefined
         ? targetParentId
-        : (rootCollectionId ?? rootParentIds?.get(record.sourceId) ?? null)
+        : (rootParentIds?.get(record.sourceId) ?? null)
       : idMap.get(record.parentDirId),
-  apiFileParentId: record.apiFileParentId ?? (rootCollectionId ? RootCollectionId : null),
-  preserveExistingPlacement:
-    record.parentDirId === null && targetParentId === undefined && !rootCollectionId
+  apiFileParentId: record.apiFileParentId ?? null,
+  preserveExistingPlacement: !syncAll && record.parentDirId === null && targetParentId === undefined
 });
 
 /** 从远端记录和本地快照生成幂等移动计划；缺失父目录时保留原位，根字段通过 null 表达 unset。 */
@@ -268,11 +275,13 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
- * 构建本地集合到真实远端源身份的解析器。
- * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时归并，
- * 不盲目裁剪 provider ID 的 `#dir` 后缀。
+ * 历史派生目录的 `apiFileId` → 真实远端 ID。
+ *
+ * 新记录的来源写在 `metadata.apiFileSourceId`；更早的派生目录没有该字段，只能靠本地挂载
+ * 关系证明：正文挂在自己的目录内，或目录子节点的远端父级指向该正文。同名 `#dir` 后缀本身
+ * 不是证据（provider 允许真实节点就叫 `doc#dir`）。
  */
-export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[]) => {
+export const buildLegacyApiFileDirSourceMap = (collections: ApiFileLocalCollection[]) => {
   const localByApiId = new Map(
     collections.filter((item) => item.apiFileId).map((item) => [item.apiFileId!, item])
   );
@@ -290,13 +299,21 @@ export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[
     const dirId = toApiFileDirId(item.apiFileId, 'file');
     const directory = localByApiId.get(dirId);
     if (directory?.type !== DatasetCollectionTypeEnum.folder) continue;
-    // 同名后缀本身不是证据：真实 provider 允许 doc 和 doc#dir 同时存在。
-    // 只有正文挂在自己的目录内，或子文档的远端父级与本地目录对应，才按历史派生记录兼容。
     const isDerived =
       (String(item.parentId ?? '') === String(directory._id) && item.apiFileParentId !== dirId) ||
       remoteParentsByLocalParent.get(String(directory._id))?.has(item.apiFileId);
     if (isDerived) legacySources.set(dirId, item.apiFileId);
   }
+  return legacySources;
+};
+
+/**
+ * 构建本地集合到真实远端源身份的解析器。
+ * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时归并，
+ * 不盲目裁剪 provider ID 的 `#dir` 后缀。
+ */
+export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[]) => {
+  const legacySources = buildLegacyApiFileDirSourceMap(collections);
 
   const resolveIdentity = (item: ApiFileLocalCollection) => {
     if (!item.apiFileId) {
@@ -331,17 +348,21 @@ export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[
 /**
  * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
  * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ * 升级过渡期忽略历史 SYSTEM_ROOT 哨兵本身，并将 apiFileParentId === 'SYSTEM_ROOT' 视作根级。
  */
 export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
-  const { getSourceId } = createApiFileSourceResolver(collections);
-  const sourceIds = new Set(collections.map(getSourceId).filter(Boolean));
+  const effectiveCollections = collections.filter(
+    (item) => item.apiFileId !== LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
+  const { getSourceId } = createApiFileSourceResolver(effectiveCollections);
+  const sourceIds = new Set(effectiveCollections.map(getSourceId).filter(Boolean));
   return [
     ...new Set(
-      collections.flatMap((item) => {
+      effectiveCollections.flatMap((item) => {
         const sourceId = getSourceId(item);
-        return sourceId &&
-          sourceId !== RootCollectionId &&
-          (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
+        const effectiveParentId =
+          item.apiFileParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID ? null : item.apiFileParentId;
+        return sourceId && (!effectiveParentId || !sourceIds.has(effectiveParentId))
           ? [sourceId]
           : [];
       })

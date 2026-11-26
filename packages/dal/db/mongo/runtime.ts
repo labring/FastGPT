@@ -178,8 +178,9 @@ export const createMongoRuntimeDeps = ({
   }): TModel => {
     const def = collection as MongoCollectionDefinition<TDoc>;
     const client = resolveClient(datasource);
+    const modelKey = def.modelName ?? def.name;
 
-    const existing = client.models[def.name];
+    const existing = client.models[modelKey];
     if (existing !== undefined) {
       return existing as unknown as TModel;
     }
@@ -190,7 +191,7 @@ export const createMongoRuntimeDeps = ({
     });
 
     // 显式传入第三参数 collectionName，禁止 Mongoose 自动复数化或改写物理集合名
-    const compiled = client.model(def.name, def.schema, def.name);
+    const compiled = client.model(modelKey, def.schema, def.name);
     return compiled as unknown as TModel;
   };
 

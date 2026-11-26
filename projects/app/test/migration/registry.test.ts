@@ -24,7 +24,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261120_clean_api_dataset_system_root'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -34,7 +35,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261120_clean_api_dataset_system_root'
     ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
@@ -62,7 +64,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261120_clean_api_dataset_system_root'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -159,10 +162,17 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: false,
       dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
     });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261120_clean_api_dataset_system_root',
+      version: '4.18.0',
+      manual: true
+    });
   });
 
-  it('registers model reasoningEffortList backfill at tail as a manual background task', () => {
-    const task = systemMigrations.at(-1);
+  it('registers model reasoningEffortList backfill as a manual background task', () => {
+    const task = systemMigrations.find(
+      ({ id }) => id === '20261125_backfill_model_reasoning_effort_list'
+    );
     expect(task).toMatchObject({
       id: '20261125_backfill_model_reasoning_effort_list',
       version: '4.18.0',

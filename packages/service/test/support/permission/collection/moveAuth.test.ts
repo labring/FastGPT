@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -20,6 +20,7 @@ import {
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { getFakeUsers } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 /** 真实资源/ACL，只复用全局身份替身；便于比较批量与单条入口的权限语义和实际查询规模。 */
 const fixture = async (enabled = true) => {
@@ -82,6 +83,10 @@ const fixture = async (enabled = true) => {
   const move = { collectionId: String(file._id), targetParentId: String(target._id) };
   return { auth, move, actor, owner: users.owner, teamId, datasetId, file, source, target, grant };
 };
+
+afterEach(() => {
+  setDisableApiDatasetSuperAdmin(false);
+});
 
 describe('authDatasetCollectionMoves', () => {
   it('2001 次移动只解析一次身份，父级与 ACL 按唯一 ID 分批，单条返回完整源节点', async () => {
@@ -237,6 +242,53 @@ describe('authDatasetCollectionMoves', () => {
         newFolderIds: new Set([plannedId]),
         creationParentIds: [String(source._id)]
       })
+    ).resolves.toBeDefined();
+  });
+  it('托管模式下创建者身份不能旁路 collection ACL', async () => {
+    const { auth, move, datasetId, actor, file, source, target, grant } = await fixture();
+    await MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          permissionSync: true
+        }
+      }
+    );
+    // 全部由当前用户创建；源目录 manage、文件 read、目标目录只有 read
+    await MongoDatasetCollection.updateMany({ datasetId }, { tmbId: actor.tmbId });
+    await grant(String(source._id), ManageRoleVal);
+    await grant(String(file._id), ReadRoleVal);
+    await grant(String(target._id), ReadRoleVal);
+
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+  });
+  it('disableSuperAdmin 关闭 API 文件库移动鉴权里的团队 owner 旁路', async () => {
+    setDisableApiDatasetSuperAdmin(true);
+    const { auth, move, datasetId, owner } = await fixture();
+    await MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } },
+        // 创建者身份仍算 dataset owner（见 assertDatasetPermission），这里把创建者换掉，
+        // 让团队 owner 只剩下「超管旁路」这一条路径
+        tmbId: new Types.ObjectId()
+      }
+    );
+
+    await expect(
+      authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [move] })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+  });
+  it('disableSuperAdmin 不影响普通知识库的团队 owner 旁路', async () => {
+    setDisableApiDatasetSuperAdmin(true);
+    const { auth, move, datasetId, owner } = await fixture();
+    await MongoDataset.updateOne({ _id: datasetId }, { tmbId: new Types.ObjectId() });
+
+    await expect(
+      authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [move] })
     ).resolves.toBeDefined();
   });
   it.each(['source-root', 'target-root'])('根级移动 %s 仍要求团队创建权限', async (mode) => {

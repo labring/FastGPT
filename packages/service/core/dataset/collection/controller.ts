@@ -84,6 +84,8 @@ export type BulkInsertCollectionDoc = {
   apiFileId: string;
   apiFileParentId?: string | null;
   parentId: Types.ObjectId | null;
+  /** API 目录级同步范围标记；自动补建祖先为 false，显式或自动展开目录为 true */
+  syncChildren?: boolean;
   /**
    * 缺省 = 继承父级（与 schema default 一致）。必须与同一轮 file 的取值一致，
    * 否则一次导入里目录与文件权限口径不同：目录名与层级会按继承态外泄
@@ -102,12 +104,14 @@ export const bulkInsertFolderCollections = async ({
   teamId,
   tmbId,
   datasetId,
-  docs
+  docs,
+  session: externalSession
 }: {
   teamId: string;
   tmbId: string;
   datasetId: string;
   docs: BulkInsertCollectionDoc[];
+  session?: ClientSession;
 }): Promise<{ successApiFileIds: string[]; failedApiFileIds: string[] }> => {
   const successApiFileIds: string[] = [];
   const failedApiFileIds: string[] = [];
@@ -117,7 +121,7 @@ export const bulkInsertFolderCollections = async ({
     const batch = docs.slice(i, i + API_FILE_FOLDER_BATCH_SIZE);
 
     try {
-      await mongoSessionRun(async (session) => {
+      const insertBatch = async (writeSession: ClientSession) => {
         await createCollections({
           collections: batch.map((doc) => ({
             ...doc,
@@ -127,9 +131,15 @@ export const bulkInsertFolderCollections = async ({
             parentId: doc.parentId ? String(doc.parentId) : null,
             apiFileParentId: doc.apiFileParentId ?? undefined
           })),
-          session
+          session: writeSession
         });
-      });
+      };
+
+      if (externalSession) {
+        await insertBatch(externalSession);
+      } else {
+        await mongoSessionRun(insertBatch);
+      }
       successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
     } catch (error) {
       try {
@@ -707,6 +717,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   externalFileUrl?: string;
   apiFileId?: string;
   apiFileParentId?: string;
+  syncChildren?: boolean;
   rawTextLength?: number;
   hashRawText?: string;
   createTime?: Date;

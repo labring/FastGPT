@@ -549,7 +549,7 @@ _DATASETS_COLLECTIONS_UPDATE_SPEC = OperationSpec(
     identity_carrier=None,
     path_params=(),
     query_params=(),
-    body_params=("id", "parentId", "name", "tags", "forbid", "createTime", "datasetId", "externalFileId"),
+    body_params=("id", "parentId", "name", "tags", "forbid", "syncChildren", "createTime", "datasetId", "externalFileId"),
 )
 
 _DATASETS_CREATE_SPEC = OperationSpec(
@@ -692,7 +692,7 @@ _DATASETS_UPDATE_SPEC = OperationSpec(
     identity_carrier=None,
     path_params=(),
     query_params=(),
-    body_params=("id", "parentId", "name", "avatar", "intro", "agentModelId", "agentModel", "vlmModelId", "vlmModel", "websiteConfig", "externalReadUrl", "apiDatasetServer", "autoSync", "chunkSettings", "sangforFileParseConfig"),
+    body_params=("id", "parentId", "name", "avatar", "intro", "agentModelId", "agentModel", "vlmModelId", "vlmModel", "websiteConfig", "externalReadUrl", "apiDatasetServer", "autoSync", "syncAll", "chunkSettings", "sangforFileParseConfig"),
 )
 
 _MODELS_CATALOG_SPEC = OperationSpec(
@@ -2362,6 +2362,7 @@ class DatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         dataset_id: str | NotGiven = NOT_GIVEN,
         external_file_id: str | NotGiven = NOT_GIVEN,
@@ -2381,6 +2382,7 @@ class DatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
     ) -> None:
@@ -3017,6 +3019,7 @@ class DatasetsResource:
         external_read_url: str | NotGiven = NOT_GIVEN,
         api_dataset_server: DatasetsCreateReqApiDatasetServer | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         auto_sync: bool | NotGiven = NOT_GIVEN,
+        sync_all: bool | NotGiven = NOT_GIVEN,
         chunk_settings: DatasetsUpdateReqChunkSettings | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         sangfor_file_parse_config: DatasetsUpdateReqSangforFileParseConfig | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
@@ -4754,6 +4757,7 @@ class WithRawResponseDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         dataset_id: str | NotGiven = NOT_GIVEN,
         external_file_id: str | NotGiven = NOT_GIVEN,
@@ -4773,6 +4777,7 @@ class WithRawResponseDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
     ) -> APIResponse[None]:
@@ -5415,6 +5420,7 @@ class WithRawResponseDatasetsResource:
         external_read_url: str | NotGiven = NOT_GIVEN,
         api_dataset_server: DatasetsCreateReqApiDatasetServer | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         auto_sync: bool | NotGiven = NOT_GIVEN,
+        sync_all: bool | NotGiven = NOT_GIVEN,
         chunk_settings: DatasetsUpdateReqChunkSettings | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         sangfor_file_parse_config: DatasetsUpdateReqSangforFileParseConfig | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
@@ -7186,6 +7192,7 @@ class AsyncDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         dataset_id: str | NotGiven = NOT_GIVEN,
         external_file_id: str | NotGiven = NOT_GIVEN,
@@ -7205,6 +7212,7 @@ class AsyncDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
     ) -> None:
@@ -7841,6 +7849,7 @@ class AsyncDatasetsResource:
         external_read_url: str | NotGiven = NOT_GIVEN,
         api_dataset_server: DatasetsCreateReqApiDatasetServer | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         auto_sync: bool | NotGiven = NOT_GIVEN,
+        sync_all: bool | NotGiven = NOT_GIVEN,
         chunk_settings: DatasetsUpdateReqChunkSettings | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         sangfor_file_parse_config: DatasetsUpdateReqSangforFileParseConfig | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
@@ -9578,6 +9587,7 @@ class AsyncWithRawResponseDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         dataset_id: str | NotGiven = NOT_GIVEN,
         external_file_id: str | NotGiven = NOT_GIVEN,
@@ -9597,6 +9607,7 @@ class AsyncWithRawResponseDatasetsCollectionsResource:
         name: str | NotGiven = NOT_GIVEN,
         tags: Sequence[DatasetsCollectionsCreateReqTagsItem | Mapping[str, Any]] | NotGiven = NOT_GIVEN,
         forbid: bool | NotGiven = NOT_GIVEN,
+        sync_children: bool | NotGiven = NOT_GIVEN,
         create_time: str | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,
     ) -> APIResponse[None]:
@@ -10239,6 +10250,7 @@ class AsyncWithRawResponseDatasetsResource:
         external_read_url: str | NotGiven = NOT_GIVEN,
         api_dataset_server: DatasetsCreateReqApiDatasetServer | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         auto_sync: bool | NotGiven = NOT_GIVEN,
+        sync_all: bool | NotGiven = NOT_GIVEN,
         chunk_settings: DatasetsUpdateReqChunkSettings | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         sangfor_file_parse_config: DatasetsUpdateReqSangforFileParseConfig | Mapping[str, Any] | NotGiven = NOT_GIVEN,
         request_options: RequestOptions | None = None,

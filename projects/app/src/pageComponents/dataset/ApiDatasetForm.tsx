@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { Flex, Input, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
+import { Flex, Input, Button, ModalBody, ModalFooter, Box, Switch } from '@chakra-ui/react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api/apiDataset';
@@ -15,6 +15,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useBoolean, useMemoizedFn, useMount } from 'ahooks';
 import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
@@ -227,6 +228,27 @@ const ApiDatasetForm = ({
           </Flex>
           {renderBaseUrlSelector()}
           {renderDirectoryModal()}
+          {!datasetId && (
+            <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+              <Flex alignItems={'center'} flex={['', '0 0 110px']}>
+                <FormLabel fontSize={'sm'}>{t('dataset:permission_sync')}</FormLabel>
+                <QuestionTip ml={1} label={t('dataset:permission_sync_tip')} />
+              </Flex>
+              {controlWidth ? (
+                <Flex alignItems={'center'} w={controlWidth}>
+                  <Switch
+                    isChecked={Boolean(apiDatasetServer?.permissionSync)}
+                    onChange={(e) => setValue('apiDatasetServer.permissionSync', e.target.checked)}
+                  />
+                </Flex>
+              ) : (
+                <Switch
+                  isChecked={Boolean(apiDatasetServer?.permissionSync)}
+                  onChange={(e) => setValue('apiDatasetServer.permissionSync', e.target.checked)}
+                />
+              )}
+            </Flex>
+          )}
         </>
       )}
       {type === DatasetTypeEnum.feishu && (

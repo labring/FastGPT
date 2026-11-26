@@ -12,7 +12,7 @@ describe('getDatasetCollectionPaths', () => {
     const scope = { teamId: owner.teamId, datasetId: new Types.ObjectId().toHexString() };
     const create = (name: string, parentId?: string, type = DatasetCollectionTypeEnum.folder) =>
       MongoDatasetCollection.create({ ...scope, tmbId: owner.tmbId, name, parentId, type });
-    return { scope, create };
+    return { scope, owner, create };
   };
 
   it('returns empty paths for the root and missing collections', async () => {
@@ -79,4 +79,38 @@ describe('getDatasetCollectionPaths', () => {
       ]);
     }
   );
+
+  it('skips legacy SYSTEM_ROOT sentinel when building breadcrumb paths', async () => {
+    const { scope, owner } = await fixture();
+    const sentinel = await MongoDatasetCollection.create({
+      ...scope,
+      tmbId: owner.tmbId,
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const folder = await MongoDatasetCollection.create({
+      ...scope,
+      tmbId: owner.tmbId,
+      name: 'folder-a',
+      parentId: sentinel._id,
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-a',
+      apiFileParentId: 'SYSTEM_ROOT'
+    });
+    const file = await MongoDatasetCollection.create({
+      ...scope,
+      tmbId: owner.tmbId,
+      name: 'doc-1',
+      parentId: folder._id,
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'dir-a'
+    });
+
+    expect(await getDatasetCollectionPaths({ ...scope, parentId: String(file._id) })).toEqual([
+      { parentId: String(folder._id), parentName: 'folder-a' },
+      { parentId: String(file._id), parentName: 'doc-1' }
+    ]);
+  });
 });
