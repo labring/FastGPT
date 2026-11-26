@@ -218,6 +218,8 @@ describe('dispatchAgentDatasetSearch', () => {
       usage: {
         inputTokens: 7,
         outputTokens: 2,
+        cacheReadTokens: 5,
+        cacheCreationTokens: 1,
         usedUserOpenAIKey: false
       }
     });
@@ -265,6 +267,8 @@ describe('dispatchAgentDatasetSearch', () => {
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 8,
+        cacheCreationTokens: 3,
         usedUserOpenAIKey: false,
         embeddingModel: 'embedding-query',
         embeddingTokens: 6,
@@ -320,6 +324,8 @@ describe('dispatchAgentDatasetSearch', () => {
         llmRequestIds: ['req_query_extension'],
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 8,
+        cacheCreationTokens: 3,
         totalPoints: 0.15,
         textOutput: 'origin\nexpanded'
       }),
@@ -333,6 +339,8 @@ describe('dispatchAgentDatasetSearch', () => {
         llmRequestIds: ['req_chunk_selection'],
         inputTokens: 7,
         outputTokens: 2,
+        cacheReadTokens: 5,
+        cacheCreationTokens: 1,
         totalPoints: 0.09,
         textOutput: 'chunk_2'
       })

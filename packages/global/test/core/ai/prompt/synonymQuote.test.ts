@@ -32,15 +32,32 @@ describe('withSynonymQuoteTemplates', () => {
     expect(questionText).toContain('<SynonymMappings>\n{{synonymMappings}}\n</SynonymMappings>');
   });
 
-  it('inserts the explanation before the trailing "## 回答" heading of user role templates', () => {
+  it('inserts the explanation inside </system-reminder> before {{question}} for user role templates', () => {
     const result = withSynonymQuoteTemplates(Prompt_userQuotePromptList, {
       enabled: true,
       content: false
     });
     const text = getValue(result);
 
-    // 说明必须在回答标题之前，且回答标题仍是最后一段：追加到标题之后会落进回答区。
     expect(text.indexOf('## 词汇映射说明')).toBeGreaterThan(-1);
+    expect(text.indexOf('## 词汇映射说明')).toBeLessThan(text.lastIndexOf('</system-reminder>'));
+    expect(text.lastIndexOf('</system-reminder>')).toBeLessThan(text.indexOf('{{question}}'));
+    expect(text.trimEnd().endsWith('{{question}}')).toBe(true);
+  });
+
+  it('keeps legacy compatibility by inserting before a trailing heading when no system-reminder exists', () => {
+    const result = withSynonymQuoteTemplates(
+      [
+        {
+          title: 'legacy',
+          desc: '',
+          value: { '1.0': '参考：{{quote}}\n\n## 用户问题\n\n{{question}}\n\n## 回答\n' }
+        }
+      ],
+      { enabled: true, content: false }
+    );
+    const text = getValue(result);
+
     expect(text.indexOf('## 词汇映射说明')).toBeLessThan(text.lastIndexOf('## 回答'));
     expect(text.trimEnd().endsWith('## 回答')).toBe(true);
   });

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';

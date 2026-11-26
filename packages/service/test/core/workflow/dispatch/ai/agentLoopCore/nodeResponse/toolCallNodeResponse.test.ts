@@ -37,6 +37,8 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         totalPoints: 3,
         toolCallInputTokens: 10,
         toolCallOutputTokens: 5,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
         modelName: 'GPT-5',
         query: 'hello',
         completeMessages: [],
@@ -44,5 +46,39 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         requestIds: []
       })
     ).not.toHaveProperty('childTotalPoints');
+
+    const withCache = createAgentLoopCoreToolCallNodeResponse({
+      totalPoints: 3,
+      toolCallInputTokens: 100,
+      toolCallOutputTokens: 20,
+      cacheReadTokens: 60,
+      cacheCreationTokens: 15,
+      modelName: 'GPT-5',
+      query: 'hello',
+      completeMessages: [],
+      finishReason: 'stop',
+      requestIds: ['req_cache']
+    });
+    expect(withCache).toEqual(
+      expect.objectContaining({
+        cacheReadTokens: 60,
+        cacheCreationTokens: 15
+      })
+    );
+
+    const withoutCache = createAgentLoopCoreToolCallNodeResponse({
+      totalPoints: 3,
+      toolCallInputTokens: 100,
+      toolCallOutputTokens: 20,
+      cacheReadTokens: 0,
+      cacheCreationTokens: undefined,
+      modelName: 'GPT-5',
+      query: 'hello',
+      completeMessages: [],
+      finishReason: 'stop',
+      requestIds: []
+    });
+    expect(withoutCache).not.toHaveProperty('cacheReadTokens');
+    expect(withoutCache).not.toHaveProperty('cacheCreationTokens');
   });
 });

@@ -262,6 +262,75 @@ const LlmRequestIdsRow = ({
   );
 };
 
+type TokenUsageCounts = {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+};
+
+const hasPositiveTokenCount = (value?: number): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+const formatTokenNumber = (value: number) => value.toLocaleString('en-US');
+
+/**
+ * 统一展示 LLM Token 消耗明细（输入 / 输出 / 缓存读取 / 缓存创建），缺省或零值项自动省略。
+ */
+const TokenUsageRow = ({ label, usage }: { label: string; usage: TokenUsageCounts }) => {
+  const { t } = useSafeTranslation();
+  const candidates: { key: string; label: string; value?: number }[] = [
+    { key: 'input', label: t('chat:response.token_input'), value: usage.inputTokens },
+    { key: 'output', label: t('chat:response.token_output'), value: usage.outputTokens },
+    {
+      key: 'cacheRead',
+      label: t('chat:response.token_cache_read'),
+      value: usage.cacheReadTokens
+    },
+    {
+      key: 'cacheCreation',
+      label: t('chat:response.token_cache_creation'),
+      value: usage.cacheCreationTokens
+    }
+  ];
+  const items = candidates.filter((item): item is { key: string; label: string; value: number } =>
+    hasPositiveTokenCount(item.value)
+  );
+
+  if (items.length === 0) return null;
+
+  return (
+    <Row
+      label={label}
+      rawDomBoxProps={responseRowValueBoxStyles}
+      rawDom={
+        <Box lineHeight={'18px'} wordBreak={'break-word'}>
+          {items.map((item, index) => (
+            <React.Fragment key={item.key}>
+              {index > 0 && (
+                <Box as={'span'} color={'myGray.400'}>
+                  {' · '}
+                </Box>
+              )}
+              <Box as={'span'} color={'myGray.600'}>
+                {item.label}
+              </Box>{' '}
+              <Box
+                as={'span'}
+                color={'myGray.900'}
+                fontWeight={500}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {formatTokenNumber(item.value)}
+              </Box>
+            </React.Fragment>
+          ))}
+        </Box>
+      }
+    />
+  );
+};
+
 export const AiChatRows = ({
   activeModule,
   onOpenRequestIdDetail
@@ -271,6 +340,12 @@ export const AiChatRows = ({
 }) => {
   const { t } = useSafeTranslation();
   const hasError = Boolean(activeModule.error || activeModule.errorText);
+  const hasLlmTokens =
+    hasPositiveTokenCount(activeModule.inputTokens) ||
+    hasPositiveTokenCount(activeModule.outputTokens);
+  const hasToolCallTokens =
+    hasPositiveTokenCount(activeModule.toolCallInputTokens) ||
+    hasPositiveTokenCount(activeModule.toolCallOutputTokens);
 
   return (
     <>
@@ -281,19 +356,38 @@ export const AiChatRows = ({
         />
       )}
       <Row label={t('chat:response.model')} value={activeModule.model} />
-      {activeModule.tokens && (
-        <Row label={t('chat:response.llm_tokens')} value={`${activeModule.tokens}`} />
-      )}
-      {(!!activeModule.inputTokens || !!activeModule.outputTokens) && (
+      {hasPositiveTokenCount(activeModule.tokens) && (
         <Row
           label={t('chat:response.llm_tokens')}
-          value={`Input/Output = ${activeModule.inputTokens || 0}/${activeModule.outputTokens || 0}`}
+          value={formatTokenNumber(activeModule.tokens)}
+          renderStringAsMarkdown={false}
         />
       )}
-      {(!!activeModule.toolCallInputTokens || !!activeModule.toolCallOutputTokens) && (
-        <Row
+      <TokenUsageRow
+        label={t('chat:response.llm_tokens')}
+        usage={
+          !hasLlmTokens && hasToolCallTokens
+            ? {
+                inputTokens: activeModule.toolCallInputTokens,
+                outputTokens: activeModule.toolCallOutputTokens,
+                cacheReadTokens: activeModule.cacheReadTokens,
+                cacheCreationTokens: activeModule.cacheCreationTokens
+              }
+            : {
+                inputTokens: activeModule.inputTokens,
+                outputTokens: activeModule.outputTokens,
+                cacheReadTokens: activeModule.cacheReadTokens,
+                cacheCreationTokens: activeModule.cacheCreationTokens
+              }
+        }
+      />
+      {hasLlmTokens && hasToolCallTokens && (
+        <TokenUsageRow
           label={t('chat:response.tool_call_tokens')}
-          value={`Input/Output = ${activeModule.toolCallInputTokens || 0}/${activeModule.toolCallOutputTokens || 0}`}
+          usage={{
+            inputTokens: activeModule.toolCallInputTokens,
+            outputTokens: activeModule.toolCallOutputTokens
+          }}
         />
       )}
       {activeModule.compressTextAgent && (
@@ -302,9 +396,9 @@ export const AiChatRows = ({
             label={t('chat:response.compress_llm_usage_point')}
             value={`${activeModule.compressTextAgent.totalPoints}`}
           />
-          <Row
+          <TokenUsageRow
             label={t('chat:response.compress_llm_usage')}
-            value={`${activeModule.compressTextAgent.inputTokens}/${activeModule.compressTextAgent.outputTokens}`}
+            usage={activeModule.compressTextAgent}
           />
         </>
       )}

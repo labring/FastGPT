@@ -22,6 +22,10 @@ import {
   AiChatQuoteRole,
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
+import {
+  parseAiChatQuoteRole,
+  resolveAiChatQuoteRole
+} from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -113,6 +117,9 @@ export const appWorkflow2Form = ({
       defaultAppForm.aiSettings.sandboxEntrypoint = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.sandboxEntrypoint
+      );
+      defaultAppForm.aiSettings.aiChatQuoteRole = parseAiChatQuoteRole(
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.aiChatQuoteRole)
       );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
@@ -329,7 +336,11 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        AiChatQuoteRole,
+        // 存量简易应用可能显式保存了 system 角色；编辑保存往返经统一契约归一化，非法或缺失值回退默认 user。
+        {
+          ...AiChatQuoteRole,
+          value: resolveAiChatQuoteRole(formData.aiSettings.aiChatQuoteRole)
+        },
         AiChatQuoteTemplate,
         AiChatQuotePrompt,
         {

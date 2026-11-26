@@ -35,6 +35,8 @@ const NODE_RESPONSE_INCREMENT_NUMBER_FIELDS = [
   'tokens',
   'inputTokens',
   'outputTokens',
+  'cacheReadTokens',
+  'cacheCreationTokens',
   'toolCallInputTokens',
   'toolCallOutputTokens',
   'embeddingTokens',
@@ -193,6 +195,13 @@ const mergeNodeResponse = (
   }
 
   if (current.compressTextAgent || incoming.compressTextAgent) {
+    const hasCacheReadTokens =
+      typeof current.compressTextAgent?.cacheReadTokens === 'number' ||
+      typeof incoming.compressTextAgent?.cacheReadTokens === 'number';
+    const hasCacheCreationTokens =
+      typeof current.compressTextAgent?.cacheCreationTokens === 'number' ||
+      typeof incoming.compressTextAgent?.cacheCreationTokens === 'number';
+
     merged.compressTextAgent = {
       inputTokens:
         (current.compressTextAgent?.inputTokens || 0) +
@@ -200,6 +209,20 @@ const mergeNodeResponse = (
       outputTokens:
         (current.compressTextAgent?.outputTokens || 0) +
         (incoming.compressTextAgent?.outputTokens || 0),
+      ...(hasCacheReadTokens
+        ? {
+            cacheReadTokens:
+              (current.compressTextAgent?.cacheReadTokens ?? 0) +
+              (incoming.compressTextAgent?.cacheReadTokens ?? 0)
+          }
+        : {}),
+      ...(hasCacheCreationTokens
+        ? {
+            cacheCreationTokens:
+              (current.compressTextAgent?.cacheCreationTokens ?? 0) +
+              (incoming.compressTextAgent?.cacheCreationTokens ?? 0)
+          }
+        : {}),
       totalPoints:
         (current.compressTextAgent?.totalPoints || 0) +
         (incoming.compressTextAgent?.totalPoints || 0)
