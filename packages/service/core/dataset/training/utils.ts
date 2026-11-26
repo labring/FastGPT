@@ -1,29 +1,59 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type { DatasetDataDocumentTrainingStatus } from '@fastgpt/global/core/dataset/data/utils';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 
-/** 两种重建分别维护 data 状态，普通训练始终使用首次索引状态。 */
-export const getTrainingDataIndexStatuses = (mode: TrainingModeEnum) => {
-  if (mode === TrainingModeEnum.rebuildIndex)
-    return {
-      running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
-      failed: DatasetDataIndexStatusEnum.rebuildIndexFailed
-    };
-  if (mode === TrainingModeEnum.rebuildSynonym)
-    return {
-      running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-      failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed
-    };
-  return { running: DatasetDataIndexStatusEnum.indexing, failed: DatasetDataIndexStatusEnum.error };
+/** 建立训练记录前统一过滤空输入和超过当前阶段上限的分块。 */
+export const filterTrainingDataList = <T extends { q?: string; a?: string; imageId?: string }>({
+  data,
+  maxToken
+}: {
+  data: T[];
+  maxToken: number;
+}) =>
+  data.filter(
+    ({ q, a, imageId }) => Boolean(q || imageId) && (q?.length ?? 0) + (a?.length ?? 0) <= maxToken
+  );
+
+/** 保留各增强阶段原有长度限制，auto 超长分块直接进入普通索引。 */
+export const prepareDatasetIndexTrainingChunks = ({
+  data,
+  indexStatus,
+  agentModel,
+  vlmModel,
+  vlmModelConfigured = Boolean(vlmModel),
+  supportImageEmbedding = false
+}: {
+  data: PushDataChunkType[];
+  indexStatus: DatasetDataDocumentTrainingStatus;
+  agentModel?: LLMModelDataType;
+  vlmModel?: LLMModelDataType;
+  vlmModelConfigured?: boolean;
+  supportImageEmbedding?: boolean;
+}): (PushDataChunkType & { indexStatus: DatasetDataDocumentTrainingStatus })[] => {
+  if (indexStatus === DatasetDataIndexStageEnum.auto) {
+    const maxToken = agentModel ? getLLMMaxChunkSize(agentModel) : Infinity;
+    return filterTrainingDataList({ data, maxToken: Infinity }).map((item) => ({
+      ...item,
+      indexStatus:
+        (item.q?.length ?? 0) + (item.a?.length ?? 0) > maxToken
+          ? DatasetDataIndexStageEnum.index
+          : indexStatus
+    }));
+  }
+
+  const imageStage =
+    indexStatus === DatasetDataIndexStageEnum.image ||
+    indexStatus === DatasetDataIndexStageEnum.imageParse;
+  if (
+    imageStage &&
+    !vlmModelConfigured &&
+    !(indexStatus === DatasetDataIndexStageEnum.image && supportImageEmbedding)
+  ) {
+    throw i18nT('common:error_vlm_not_config');
+  }
+  const maxToken = imageStage && vlmModel ? getLLMMaxChunkSize(vlmModel) : Infinity;
+  return filterTrainingDataList({ data, maxToken }).map((item) => ({ ...item, indexStatus }));
 };
-
-/** 恢复可领取状态；是否重新启用 TTL 由业务入口明确决定，默认保留原过期策略。 */
-export const getTrainingTaskReadyUpdate = ({
-  restoreExpiration = false
-}: { restoreExpiration?: boolean } = {}) => ({
-  $set: {
-    retryCount: 3,
-    lockTime: new Date(0),
-    ...(restoreExpiration ? { expireAt: new Date() } : {})
-  },
-  $unset: { errorMsg: '' }
-});
