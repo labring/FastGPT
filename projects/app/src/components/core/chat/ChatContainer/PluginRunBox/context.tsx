@@ -425,20 +425,17 @@ const PluginRunContextInner = ({
             }));
             setChatRecords(normalizedRecords);
 
-            const lastAi = [...normalizedRecords]
+            // 仅按本轮 responseChatItemId 提取节点错误，避免新轮次落库前断流时误把上一轮失败当作本轮错误提示。
+            const currentRoundAi = [...normalizedRecords]
               .reverse()
-              .find((item) => item.obj === ChatRoleEnum.AI);
-            const lastNodeErrorText = getPluginRunErrorText(lastAi);
-            if (lastNodeErrorText) {
+              .find((item) => item.obj === ChatRoleEnum.AI && item.dataId === responseChatItemId);
+            const currentRoundErrorText = getPluginRunErrorText(currentRoundAi);
+            if (currentRoundErrorText) {
               toast({
-                title: t(lastNodeErrorText),
+                title: t(currentRoundErrorText),
                 status: 'error'
               });
-            } else if (
-              errorMsg &&
-              previousRecords.length > 0 &&
-              !normalizedRecords.some((item) => item.dataId === responseChatItemId)
-            ) {
+            } else if (errorMsg && previousRecords.length > 0 && !currentRoundAi) {
               toast({ title: errorMsg, status: 'error' });
             }
           } else {

@@ -835,10 +835,11 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
 
     for (const testCase of cases) {
       mocks.toast.mockClear();
+      let submittedResponseChatItemId = '';
       mocks.getChatHistoryStatus.mockResolvedValueOnce({
         list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
       });
-      refreshChatRecords.mockResolvedValueOnce([
+      refreshChatRecords.mockImplementationOnce(async () => [
         {
           dataId: 'human-persisted',
           obj: ChatRoleEnum.Human,
@@ -846,7 +847,7 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
           status: ChatStatusEnum.finish
         },
         {
-          dataId: 'ai-persisted',
+          dataId: submittedResponseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [],
           responseData: testCase.responseData as any,
@@ -854,7 +855,8 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
         }
       ]);
 
-      await renderProvider(async () => {
+      await renderProvider(async ({ responseChatItemId }) => {
+        submittedResponseChatItemId = responseChatItemId;
         throw new Error('stream dropped');
       });
 
@@ -876,5 +878,53 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
       }
       container?.remove();
     }
+  });
+
+  it('toasts transport error instead of previous round errorText when interrupted before persisting', async () => {
+    const previousFailedRecords: ChatSiteItemType[] = [
+      {
+        dataId: 'human-prev',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: '{}' } }],
+        status: ChatStatusEnum.finish
+      },
+      {
+        dataId: 'ai-prev',
+        obj: ChatRoleEnum.AI,
+        value: [],
+        responseData: [
+          {
+            id: 'agent-prev',
+            nodeId: 'agent-prev',
+            moduleName: 'Agent',
+            moduleType: FlowNodeTypeEnum.agent,
+            errorText: 'Previous round agent failure'
+          } as any
+        ],
+        status: ChatStatusEnum.finish
+      }
+    ];
+
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+    });
+    refreshChatRecords.mockResolvedValueOnce(previousFailedRecords);
+
+    await renderProvider(
+      async () => {
+        throw new Error('transport disconnected');
+      },
+      { chatRecords: previousFailedRecords }
+    );
+
+    await act(async () => {
+      await onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      title: 'transport disconnected',
+      status: 'error'
+    });
   });
 });
