@@ -13,7 +13,7 @@ import type {
   FlowNodeItemType,
   FlowNodeTemplateType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -40,7 +40,6 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
 import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
@@ -84,6 +83,43 @@ describe('checkWorkflowNodeIssues', () => {
         valueType: WorkflowIOValueTypeEnum.string
       }
     ]
+  });
+
+  it('allows a system tool configuration containing a variable reference when publishing', () => {
+    const tool = makeNode('tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.any,
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          inputList: [
+            { key: 'smtpHost', label: 'Host', inputType: 'input', required: true },
+            { key: 'smtpPort', label: 'Port', inputType: 'input', required: true },
+            { key: 'SSL', label: 'SSL', inputType: 'switch', required: false },
+            { key: 'smtpUser', label: 'User', inputType: 'input', required: true },
+            { key: 'smtpPass', label: 'Password', inputType: 'secret', required: true }
+          ],
+          value: {
+            type: 'manual',
+            value: {
+              smtpHost: { value: 'host' },
+              smtpPort: { value: '12313' },
+              SSL: { value: false },
+              smtpUser: { ref: [VARIABLE_NODE_ID, 'chatId'] },
+              smtpPass: { secret: 'cipher-placeholder' }
+            }
+          }
+        }
+      ]
+    });
+    expect(
+      checkWorkflowBeforeRunOrPublish({
+        nodes: [startNode, tool],
+        edges: [{ id: 'edge', source: 'start', target: 'tool' }]
+      })
+    ).toMatchObject({ hasError: false, issueMap: {} });
   });
 
   it('accepts the blank tag-filter row shown by the dataset-search editor under both checker policies', () => {
@@ -286,7 +322,17 @@ describe('checkWorkflowNodeIssues', () => {
   it('accepts sparse Agent tool and Skill snapshots and preserves explicit resource errors', () => {
     const values = new Map<string, unknown>([
       [NodeInputKeyEnum.aiModelId, 'llm-id'],
-      [NodeInputKeyEnum.selectedTools, [{ id: 'systemTool-search', config: {} }]],
+      [
+        NodeInputKeyEnum.selectedTools,
+        [
+          { id: 'systemTool-search', config: {}, inputs: [] },
+          {
+            id: 'plugin-search',
+            config: {},
+            inputs: [{ key: 'query', mode: 'agentGenerated' }]
+          }
+        ]
+      ],
       [NodeInputKeyEnum.skills, [{ skillId: 'skill-id' }]],
       [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]]
     ]);
@@ -310,6 +356,170 @@ describe('checkWorkflowNodeIssues', () => {
         inputKey: NodeInputKeyEnum.skills
       })
     ]);
+
+    const t = ((key: string, params?: Record<string, unknown>) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+    }) as TFunction;
+
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.skills)!.value = [
+      { skillId: 'skill-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }
+    ];
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)!.value = [
+      { datasetId: 'dataset-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }
+    ];
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)!.value = [
+      {
+        id: 'systemTool-search',
+        config: {},
+        inputs: [
+          {
+            key: 'apiKey',
+            label: 'API Key',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            required: true,
+            value: ''
+          }
+        ]
+      }
+    ];
+
+    const abnormalResult = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(abnormalResult.issueMap.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.agentToolAbnormal,
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: '引用的工具存在异常，请处理'
+        }),
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.resourceMissing,
+          inputKey: NodeInputKeyEnum.skills,
+          message: '引用的技能存在异常，请处理'
+        }),
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.resourceMissing,
+          inputKey: NodeInputKeyEnum.datasetSelectList,
+          message: '引用的知识库存在异常，请处理'
+        })
+      ])
+    );
+
+    agent.data.inputs.push({
+      key: NodeInputKeyEnum.datasetParams,
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      value: {
+        datasets: [{ datasetId: 'dataset-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }]
+      }
+    });
+
+    const deduplicatedResult = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(
+      deduplicatedResult.issueMap.agent.filter(
+        (issue) => issue.message === '引用的知识库存在异常，请处理'
+      )
+    ).toHaveLength(1);
+  });
+
+  it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.toolCall])(
+    'reports sandbox failures in scheduled and blocking checks for %s',
+    (flowNodeType) => {
+      const node = makeNode('sandbox-node', flowNodeType, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.useAgentSandbox,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.switch],
+            value: true
+          }
+        ]
+      });
+      for (const [sandbox, code] of [
+        [
+          { showSandbox: false, enableSandbox: true },
+          WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable
+        ],
+        [
+          { showSandbox: true, enableSandbox: false },
+          WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable
+        ]
+      ] as const) {
+        const args = { nodes: [node], edges: [], sandbox };
+        expect(checkWorkflowNodeIssues(args)['sandbox-node']).toEqual(
+          expect.arrayContaining([expect.objectContaining({ code })])
+        );
+        expect(checkWorkflowBeforeRunOrPublish(args)).toMatchObject({
+          hasError: true,
+          issueMap: { 'sandbox-node': expect.arrayContaining([expect.objectContaining({ code })]) }
+        });
+      }
+      const available = checkWorkflowNodeIssues({
+        nodes: [node],
+        edges: [],
+        sandbox: { showSandbox: true, enableSandbox: true }
+      });
+      expect(
+        available['sandbox-node']?.some((issue) => issue.code.startsWith('sandbox_')) ?? false
+      ).toBe(false);
+    }
+  );
+
+  it('retains tool and skill diagnostic details after canonical tool serialization', () => {
+    const node = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+          value: [{ id: 'missing', inputs: [], config: {} }]
+        },
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
+          value: [{ skillId: 'missing-skill' }]
+        },
+        {
+          key: NodeInputKeyEnum.useAgentSandbox,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.switch],
+          value: false
+        }
+      ]
+    });
+    const resourceNodes = [
+      {
+        nodeId: 'agent',
+        inputs: node.data.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.selectedTools
+            ? {
+                ...input,
+                value: [{ id: 'missing', inputs: [], pluginData: { error: 'tool_missing' } }]
+              }
+            : input.key === NodeInputKeyEnum.skills
+              ? { ...input, value: [{ skillId: 'missing-skill', error: 'resource_missing' }] }
+              : input
+        )
+      }
+    ];
+    const args = {
+      nodes: [node],
+      edges: [],
+      resourceNodes,
+      sandbox: { showSandbox: true, enableSandbox: true }
+    };
+    const expected = expect.arrayContaining([
+      expect.objectContaining({ code: WorkflowCheckIssueCodeEnum.agentToolAbnormal }),
+      expect.objectContaining({
+        code: WorkflowCheckIssueCodeEnum.resourceMissing,
+        inputKey: NodeInputKeyEnum.skills
+      }),
+      expect.objectContaining({ code: WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable })
+    ]);
+    expect(checkWorkflowBeforeRunOrPublish(args).issueMap.agent).toEqual(expected);
+    expect(checkWorkflowNodeIssues(args).agent).toEqual(expected);
   });
 
   it('collects multiple node errors in one pass', () => {
@@ -672,95 +882,6 @@ describe('checkWorkflowNodeIssues', () => {
     }
   );
 
-  it('filters unselectable single and multiple references when storing workflow data', () => {
-    const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
-      outputs: [
-        {
-          id: 'text',
-          key: 'text',
-          label: 'text',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.string
-        },
-        {
-          id: 'files',
-          key: 'files',
-          label: 'files',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.arrayString
-        },
-        {
-          id: 'count',
-          key: 'count',
-          label: 'count',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.number
-        }
-      ]
-    });
-    const node = makeNode('ref', FlowNodeTypeEnum.chatNode, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userChatInput,
-          label: '用户问题',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.reference],
-          value: ['source', 'count']
-        },
-        {
-          key: NodeInputKeyEnum.fileUrlList,
-          label: '文件链接',
-          valueType: WorkflowIOValueTypeEnum.arrayString,
-          renderTypeList: [FlowNodeInputTypeEnum.reference],
-          value: [
-            ['source', 'files'],
-            ['source', 'deleted'],
-            ['source', 'count']
-          ]
-        }
-      ]
-    });
-
-    const result = uiWorkflow2StoreWorkflow({
-      nodes: [sourceNode, node],
-      edges: [{ id: 'e1', source: 'source', target: 'ref', type: EDGE_TYPE }],
-      chatConfig: {}
-    });
-    const storedNode = result.nodes.find((item) => item.nodeId === 'ref');
-
-    expect(
-      storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toEqual(
-      expect.objectContaining({
-        value: undefined
-      })
-    );
-    expect(storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)).toEqual(
-      expect.objectContaining({
-        value: [['source', 'files']]
-      })
-    );
-  });
-
-  it('stores the canonical selectedType', () => {
-    const node = makeNode('input-node', FlowNodeTypeEnum.chatNode, {
-      inputs: [
-        {
-          key: 'query',
-          label: 'Query',
-          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference
-        }
-      ]
-    });
-
-    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
-
-    expect(result.nodes[0].inputs[0]).toMatchObject({
-      selectedType: FlowNodeInputTypeEnum.reference
-    });
-  });
-
   it('reports generic plugin load errors without telling users to delete the tool', () => {
     const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
       pluginData: {
@@ -833,6 +954,10 @@ describe('checkWorkflowNodeIssues', () => {
   });
 
   it('uses fixed design copy for mapped issue codes', () => {
+    const t = ((key: string, params?: Record<string, unknown>) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+    }) as TFunction;
     const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.textEditor);
     const unreachableNode = makeNode('unreachable', FlowNodeTypeEnum.answerNode);
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
@@ -850,22 +975,20 @@ describe('checkWorkflowNodeIssues', () => {
 
     const unreachableResult = checkWorkflowNodeIssues({
       nodes: [startNode, disconnectedNode, unreachableNode],
-      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }],
+      t
     });
     const requiredResult = checkWorkflowNodeIssues({
       nodes: [startNode, requiredNode],
-      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }],
+      t
     });
 
     expect(unreachableResult.unreachable[0]?.code).toBe(
       WorkflowCheckIssueCodeEnum.unreachableFromStart
     );
-    expect(unreachableResult.unreachable[0]?.message).toBe(
-      'common:core.workflow.check.no_upstream'
-    );
-    expect(requiredResult.required[0]?.message).toBe(
-      'common:core.workflow.check.required_input_empty'
-    );
+    expect(unreachableResult.unreachable[0]?.message).toBe('未与其他节点连线');
+    expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
   });
 
   it('does not treat non-latest tool versions as inactive', () => {
@@ -1307,7 +1430,11 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
-  it('reports unavailable datasets nested in Agent datasetParams', () => {
+  it.each([
+    undefined,
+    WorkflowCheckIssueCodeEnum.resourceNoPermission,
+    WorkflowCheckIssueCodeEnum.resourceMissing
+  ])('checks the effective nested Agent datasets before the canonical list: %s', (error) => {
     const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
       inputs: [
         {
@@ -1315,15 +1442,19 @@ describe('checkWorkflowNodeIssues', () => {
           label: '知识库配置',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: {
-            datasets: [
-              {
-                datasetId: 'd1',
-                name: 'no-perm',
-                error: WorkflowCheckIssueCodeEnum.resourceNoPermission
-              },
-              { datasetId: 'd2', name: 'gone', error: WorkflowCheckIssueCodeEnum.resourceMissing }
-            ]
+            datasets: [{ datasetId: 'legacy', error }]
           }
+        },
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          value: [
+            {
+              datasetId: 'canonical',
+              error: error ? undefined : WorkflowCheckIssueCodeEnum.resourceMissing
+            }
+          ]
         }
       ]
     });
@@ -1333,17 +1464,16 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
     });
 
-    expect(result.agent).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
-          inputKey: NodeInputKeyEnum.datasetParams
-        }),
-        expect.objectContaining({
-          code: WorkflowCheckIssueCodeEnum.resourceMissing,
-          inputKey: NodeInputKeyEnum.datasetParams
-        })
-      ])
+    expect(
+      (result.agent ?? []).filter(
+        ({ code }) =>
+          code === WorkflowCheckIssueCodeEnum.resourceNoPermission ||
+          code === WorkflowCheckIssueCodeEnum.resourceMissing
+      )
+    ).toEqual(
+      error
+        ? [expect.objectContaining({ code: error, inputKey: NodeInputKeyEnum.datasetParams })]
+        : []
     );
   });
 
@@ -2288,7 +2418,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         expect.objectContaining({
           code: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
           inputKey: NodeInputKeyEnum.aiModel,
-          message: `missing:i18n:${NodeInputKeyEnum.aiModel}`
+          message: `missing:${NodeInputKeyEnum.aiModel}`
         })
       ]);
     });
@@ -2438,6 +2568,10 @@ describe('Core validation and Web extension contract', () => {
       '「目标」需填写必填项 热榜来源',
       '「目标2」需填写必填项 热榜来源',
       '「目标3」需填写必填项 热榜来源'
+    ]);
+    expect(result.errorIssueMessages.map(({ message }) => message)).toEqual([
+      ...result.errorMessages,
+      '「目标4」需填写必填项 热榜来源'
     ]);
     expect(result.errorNodeIds).toEqual(['target', 'target-2', 'target-3', 'target-4']);
     expect(result.issueMap['target-4']).toEqual([
@@ -2622,6 +2756,9 @@ describe('Web external resource bindings', () => {
       edges: [{ id: 'edge', source: 'start', target: 'target' }]
     };
     const missing = checkWorkflowBeforeRunOrPublish(graph);
+    expect(
+      checkWorkflowBeforeRunOrPublish({ ...graph, checkAgentResources: false }).issueMap
+    ).toEqual(missing.issueMap);
     expect(missing.diagnostics).toEqual([]);
     expect(missing.issueMap.target).toEqual([
       expect.objectContaining({

@@ -3,6 +3,8 @@ import { once } from 'node:events';
 import { setImmediate } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { chats2GPTMessages, filterToolMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ChatCompletionMessageParam,
@@ -265,6 +267,81 @@ const body = (stream: boolean) => ({
 });
 
 describe('createLLMResponse HTTP/SSE contract', () => {
+  it.each(['toolChoice', 'prompt'] as const)(
+    'sends paired filtered history on %s initial and continuation requests',
+    async (toolCallMode) => {
+      rounds.push({ text: 'Partial', finish: 'length' }, { text: 'Complete.', finish: 'stop' });
+      const prompt = toolCallMode === 'prompt';
+      const searchCall = call('search');
+      const messages = filterToolMessages(
+        chats2GPTMessages({
+          reserveId: false,
+          reserveTool: true,
+          messages: [
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: message } }] },
+            {
+              obj: ChatRoleEnum.AI,
+              value: [
+                { name: 'old_index', text: 'Checking the old index.', response: 'Old data' },
+                { name: 'search', text: 'Searching.', response: 'Search result' }
+              ].map(({ name, text, response }) => ({
+                modelResponseId: name,
+                text: { content: text },
+                tools: [
+                  {
+                    id: searchCall.id,
+                    functionName: name,
+                    params: searchCall.function.arguments,
+                    response
+                  }
+                ]
+              }))
+            },
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Summarize.' } }] }
+          ]
+        }),
+        (name) => name === 'search'
+      );
+
+      const response = await createLLMResponse({
+        teamId,
+        maxRetries: 0,
+        maxContinuations: 2,
+        saveLLMResponseRecord: false,
+        body: { ...body(false), toolCallMode, messages }
+      });
+
+      expect(response.error).toBeUndefined();
+      expect(received).toHaveLength(2);
+      for (const request of received) {
+        expect(request.tools).toEqual(prompt ? undefined : tools);
+        if (prompt) {
+          expect(
+            request.messages?.some((message) => message.role === 'assistant' && message.tool_calls)
+          ).toBe(false);
+        }
+        const history = request.messages?.slice(prompt ? 2 : 1, prompt ? 6 : 3);
+        expect(history).toMatchObject(
+          prompt
+            ? [
+                { role: 'assistant', content: '0: Checking the old index.' },
+                { role: 'assistant', content: '0: Searching.' },
+                { role: 'assistant', content: `1: ${JSON.stringify(searchCall.function)}` },
+                { role: 'user', content: '<ToolResponse>\nSearch result\n</ToolResponse>' }
+              ]
+            : [
+                {
+                  role: 'assistant',
+                  content: 'Checking the old index.Searching.',
+                  tool_calls: [searchCall]
+                },
+                { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' }
+              ]
+        );
+      }
+    }
+  );
+
   it.each([true, false])(
     'preserves reasoning through tool rounds and serialized resume: stream=%s',
     async (stream) => {

@@ -1,4 +1,5 @@
-import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import ShareBrandSetting from './ShareBrandSetting';
+import type { OutLinkListResponseType } from '@fastgpt/global/openapi/support/outLink/api';
 import React, { useCallback, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -10,6 +11,7 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 
@@ -21,9 +23,11 @@ enum UsingWayEnum {
 
 const SelectUsingWayModal = ({
   share,
+  onBrandSaved,
   onClose
 }: {
-  share: OutLinkSchemaType;
+  share: OutLinkListResponseType[number];
+  onBrandSaved: (id: string, isShowBrand: boolean) => Promise<void>;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -34,6 +38,7 @@ const SelectUsingWayModal = ({
     fileType: 'image/*'
   });
   const { feConfigs } = useSystemStore();
+  const tmbId = useUserStore((state) => state.userInfo?.team.tmbId);
 
   const VariableTypeList = [
     {
@@ -168,6 +173,11 @@ const SelectUsingWayModal = ({
           mb={5}
           fontSize={'sm'}
         >
+          <ShareBrandSetting
+            key={`${share._id}-${tmbId}`}
+            share={share}
+            onBrandSaved={onBrandSaved}
+          />
           <Flex {...gridItemStyle}>
             <Box flex={1}>{t('common:core.app.outLink.Show History')}</Box>
             <Switch {...register('showHistory')} />

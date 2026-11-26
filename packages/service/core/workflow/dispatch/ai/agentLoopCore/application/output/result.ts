@@ -22,6 +22,8 @@ export type AgentLoopCoreOutputSummary<TChildrenResponse = unknown> = {
   usages: ChatNodeUsageType[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   llmTotalPoints: number;
   errorText?: string;
   finalText?: string;
@@ -37,11 +39,15 @@ const summarizeAgentCallUsages = (usages: ChatNodeUsageType[] = []) =>
       (summary, usage) => ({
         inputTokens: summary.inputTokens + (usage.inputTokens || 0),
         outputTokens: summary.outputTokens + (usage.outputTokens || 0),
+        cacheReadTokens: summary.cacheReadTokens + (usage.cacheReadTokens ?? 0),
+        cacheCreationTokens: summary.cacheCreationTokens + (usage.cacheCreationTokens ?? 0),
         llmTotalPoints: summary.llmTotalPoints + (usage.totalPoints || 0)
       }),
       {
         inputTokens: 0,
         outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
         llmTotalPoints: 0
       }
     );
@@ -63,6 +69,8 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   const parsedInteractive = InteractiveNodeResponseTypeSchema.safeParse(result.pause?.interactive);
   // abort 既用于用户主动停止，也可能是 provider 结束暂停轮次的控制信号，不应展示为错误。
   const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
+  const messageText = getAgentLoopCoreFinalMessageText(result.assistantMessages);
+  const finalText = [messageText, errorText].filter(Boolean).join('') || undefined;
 
   return {
     status: result.status,
@@ -74,9 +82,11 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     usages,
     inputTokens: usageSummary.inputTokens,
     outputTokens: usageSummary.outputTokens,
+    cacheReadTokens: usageSummary.cacheReadTokens,
+    cacheCreationTokens: usageSummary.cacheCreationTokens,
     llmTotalPoints: usageSummary.llmTotalPoints,
     errorText,
-    finalText: getAgentLoopCoreFinalMessageText(result.assistantMessages) || errorText,
+    finalText,
     reasoningText: getAgentLoopCoreFinalMessageReasoning(result.assistantMessages),
     providerState: result.providerState,
     interactive: parsedInteractive.success ? parsedInteractive.data : undefined

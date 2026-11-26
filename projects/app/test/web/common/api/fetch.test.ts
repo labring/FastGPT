@@ -209,6 +209,36 @@ describe('getStreamReasoningQueueConsumeCount', () => {
 });
 
 describe('createStreamFetchError', () => {
+  it('preserves only validated active-round metadata for a generation conflict', () => {
+    expect(
+      createStreamFetchError({
+        error: {
+          statusText: 'chatIsGenerating',
+          data: { responseChatItemId: 'active-A', extra: 'ignored' }
+        },
+        fallbackMessage: 'Fallback',
+        responseText: ''
+      })
+    ).toMatchObject({
+      statusText: 'chatIsGenerating',
+      data: { responseChatItemId: 'active-A' }
+    });
+    expect(
+      createStreamFetchError({
+        error: { statusText: 'other', data: { responseChatItemId: 'active-A' } },
+        fallbackMessage: 'Fallback',
+        responseText: ''
+      })
+    ).not.toHaveProperty('data');
+    expect(
+      createStreamFetchError({
+        error: { statusText: 'chatIsGenerating', data: { responseChatItemId: '' } },
+        fallbackMessage: 'Fallback',
+        responseText: ''
+      })
+    ).not.toHaveProperty('data');
+  });
+
   it('preserves business error metadata from an HTTP response', () => {
     expect(
       createStreamFetchError({

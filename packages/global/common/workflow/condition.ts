@@ -1,6 +1,9 @@
 import { IfElseResultEnum } from '../../core/workflow/template/system/ifElse/constant';
 import { getNanoid } from '../string/tools';
-import type { IfElseListItemType } from '../../core/workflow/template/system/ifElse/type';
+import type {
+  ConditionListItemType,
+  IfElseListItemType
+} from '../../core/workflow/template/system/ifElse/type';
 
 export const getElseIFLabel = (i: number) => {
   return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
@@ -9,8 +12,15 @@ export const getElseIFLabel = (i: number) => {
 export const createIfElseBranchId = () => getNanoid();
 
 /** 返回稳定分支 handle；旧数据没有 branchId 时回退到历史展示标签。 */
-export const getIfElseBranchHandleKey = (item: IfElseListItemType, index?: number) =>
-  item.branchId ?? (index === undefined ? '' : getElseIFLabel(index));
+export const getIfElseBranchHandleKey = (
+  { branchId }: Pick<IfElseListItemType, 'branchId'>,
+  index?: number
+) => branchId ?? (index === undefined ? '' : getElseIFLabel(index));
+
+/** 旧草稿的分支可能缺少条件列表，编辑时按空列表处理。 */
+export const getIfElseBranchConditions = (
+  branch: IfElseListItemType
+): readonly ConditionListItemType[] => (Array.isArray(branch?.list) ? branch.list : []);
 
 /** 新建条件分支补齐唯一 ID，已有唯一 ID 保持不变；重复 ID 重新生成。 */
 export const initNewIfElseList = (list: IfElseListItemType[] = []) => {

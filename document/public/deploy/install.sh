@@ -528,14 +528,14 @@ request_sandbox_proxy_url() {
     SANDBOX_PROXY_URL_INPUT="${input%/}"
 }
 
-is_v415_deploy() {
-    [ "$DEPLOY_VERSION" = "v4.15" ] ||
-        { [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] && grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null; }
+# 本地旧版 Compose 仍使用从 WebSocket 地址推导预览地址的方式。
+is_v415_local_deploy() {
+    [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] &&
+        grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null
 }
 
-# v4.14 以及未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
+# 未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
 is_sandbox_proxy_deploy() {
-    [ "$DEPLOY_VERSION" != "v4.14" ] || return 1
     [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ] ||
         grep -qE '^  fastgpt-agent-sandbox-proxy:[[:space:]]*(#.*)?$' "$LOCAL_COMPOSE_PATH"
 }
@@ -545,7 +545,7 @@ request_sandbox_preview_proxy_url() {
 
     if [ -n "$FASTGPT_SANDBOX_PREVIEW_PROXY_URL" ]; then
         input="$FASTGPT_SANDBOX_PREVIEW_PROXY_URL"
-    elif is_v415_deploy; then
+    elif is_v415_local_deploy; then
         if [[ "$SANDBOX_PROXY_URL_INPUT" == wss://* ]]; then
             input="https://${SANDBOX_PROXY_URL_INPUT#wss://}"
         else
@@ -838,6 +838,7 @@ randomize_compose_credentials() {
     local system_key file_token_key aes256_secret_key invoke_token_secret
     local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
     local root_password mongo_password redis_password minio_password
+    local rustfs_access_key rustfs_secret_key
     local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
 
     if supports_root_activation docker-compose.yml; then
@@ -865,6 +866,8 @@ randomize_compose_credentials() {
     mongo_password="$(random_hex 16)"
     redis_password="$(random_hex 16)"
     minio_password="$(random_hex 16)"
+    rustfs_access_key="$(random_hex 10)"
+    rustfs_secret_key="$(random_hex 16)"
     pg_password="$(random_hex 16)"
     aiproxy_pg_password="$(random_hex 16)"
     oceanbase_sys_password="$(random_hex 16)"
@@ -915,10 +918,17 @@ randomize_compose_credentials() {
     replace_text "'redis-cli', '-a', 'mypassword', 'ping'" "'redis-cli', '-a', '$redis_password', 'ping'"
     replace_text '"redis-cli", "-a", "mypassword", "ping"' "\"redis-cli\", \"-a\", \"$redis_password\", \"ping\""
 
-    # FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
+    # 本地旧版 Compose 可能使用 FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
     replace_text "STORAGE_SECRET_ACCESS_KEY: minioadmin" "STORAGE_SECRET_ACCESS_KEY: $minio_password"
     replace_text "MINIO_SECRET_KEY: minioadmin" "MINIO_SECRET_KEY: $minio_password"
     replace_text "- MINIO_ROOT_PASSWORD=minioadmin" "- MINIO_ROOT_PASSWORD=$minio_password"
+
+    # main 模板使用 FastGPT 自带 RustFS（S3 兼容）。RustFS 官方建议 Access Key 和 Secret Key 都不要保留 rustfsadmin。
+    # RUSTFS_ACCESS_KEY/STORAGE_ACCESS_KEY_ID 与 RUSTFS_SECRET_KEY/STORAGE_SECRET_ACCESS_KEY 各共用一个锚点，替换锚点即可同步两端。
+    replace_text "x-rustfs-access-key: &x-rustfs-access-key 'rustfsadmin'" "x-rustfs-access-key: &x-rustfs-access-key '$rustfs_access_key'"
+    replace_text 'x-rustfs-access-key: &x-rustfs-access-key "rustfsadmin"' "x-rustfs-access-key: &x-rustfs-access-key \"$rustfs_access_key\""
+    replace_text "x-rustfs-secret-key: &x-rustfs-secret-key 'rustfsadmin'" "x-rustfs-secret-key: &x-rustfs-secret-key '$rustfs_secret_key'"
+    replace_text 'x-rustfs-secret-key: &x-rustfs-secret-key "rustfsadmin"' "x-rustfs-secret-key: &x-rustfs-secret-key \"$rustfs_secret_key\""
 
     # 本地 PG 向量库，仅在选择 pg 时存在。
     replace_text "PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres" "PG_URL: postgresql://username:$pg_password@fastgpt-vector:5432/postgres"
@@ -946,8 +956,7 @@ randomize_compose_credentials() {
 # BEGIN GENERATED DEPLOY VERSIONS
 DEPLOY_VERSIONS=(
     "main"
-    "v4.15"
-    "v4.14"
+    "v4.16"
 )
 # END GENERATED DEPLOY VERSIONS
 LOCAL_DEPLOY_VERSION="local"
@@ -973,15 +982,13 @@ if [ -n "$FASTGPT_DEPLOY_BASE_URL" ]; then
     CUSTOM_DEPLOY_BASE_URL="$(normalize_deploy_base_url "$FASTGPT_DEPLOY_BASE_URL")"
 fi
 
-# 获取部署版本展示文案：main 对应当前稳定版，已停止维护的版本单独标记
+# 获取部署版本展示文案：main 对应当前稳定版，维护版本单独标记
 get_version_label() {
     local version="$1"
     if [ "$version" == "$LOCAL_DEPLOY_VERSION" ]; then
         echo "$LOCAL_DEPLOY_LABEL"
-    elif [ "$version" == "v4.14" ]; then
-        echo "稳定版 v4.14 (不再维护)"
     elif [ "$version" == "main" ]; then
-        echo "稳定版 v4.16"
+        echo "稳定版 v4.17 (main)"
     else
         echo "稳定版 $version"
     fi
@@ -1057,7 +1064,7 @@ if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
         REGION="cn"
         BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}"
     else
-        radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
+        radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "国内镜像源" "全球镜像源"
         case $RADIO_RESULT in
             1)
                 REGION="global"
@@ -1220,11 +1227,9 @@ select_address() {
     fi
 }
 
-# v4.14 使用旧版 MinIO 下载链路；本地 Compose 则以实际配置决定是否需要外部地址。
+# 本地旧版 Compose 以实际配置决定是否需要外部 S3 地址。
 NEEDS_S3_EXTERNAL_ENDPOINT=false
-if [ "$DEPLOY_VERSION" == "v4.14" ]; then
-    NEEDS_S3_EXTERNAL_ENDPOINT=true
-elif [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ] && LC_ALL=C grep -q "STORAGE_EXTERNAL_ENDPOINT" "$LOCAL_COMPOSE_PATH"; then
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ] && LC_ALL=C grep -q "STORAGE_EXTERNAL_ENDPOINT" "$LOCAL_COMPOSE_PATH"; then
     NEEDS_S3_EXTERNAL_ENDPOINT=true
 fi
 
@@ -1244,7 +1249,7 @@ fi
 request_fe_domain
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     request_sandbox_proxy_url
-    if ! is_v415_deploy; then
+    if ! is_v415_local_deploy; then
         request_sandbox_preview_proxy_url
     fi
 fi
@@ -1268,9 +1273,9 @@ fi
 # ========== 确认配置 ==========
 DEPLOY_VERSION_LABEL="$(get_version_label "$DEPLOY_VERSION")"
 
-REGION_LABEL="阿里云 (中国大陆)"
+REGION_LABEL="国内镜像源"
 if [ "$REGION" == "global" ]; then
-    REGION_LABEL="GitHub (全球)"
+    REGION_LABEL="全球镜像源"
 fi
 
 # 构建显示地址
@@ -1306,7 +1311,7 @@ echo "  FastGPT 宿主端口: $FASTGPT_HOST_PORT -> 容器 3000"
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
     echo "  Sandbox Proxy 宿主端口: $SANDBOX_PROXY_HOST_PORT -> 容器 1006"
-    if ! is_v415_deploy; then
+    if ! is_v415_local_deploy; then
         echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
     fi
 fi
@@ -1595,7 +1600,7 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     print_login_credentials
-    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+    echo "  6. 配置模型:   在 '管理员-系统资源-系统模型' 页面，进行模型配置"
 else
     echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
@@ -1606,7 +1611,7 @@ else
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     print_login_credentials
-    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+    echo "  6. 配置模型:   在 '管理员-系统资源-系统模型' 页面，进行模型配置"
 fi
 echo ""
 print_host_port docker-compose.yml fastgpt-app 3000 "FastGPT"
@@ -1616,7 +1621,7 @@ fi
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     echo "Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
 fi
-if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_deploy; then
+if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_local_deploy; then
     echo "Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
 fi
 echo "直连时按实际宿主机映射放行端口；使用反向代理时，公网端口由代理负责。"

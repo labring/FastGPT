@@ -2,7 +2,7 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   GetTeamPlanStatusQuerySchema,
-  GetTeamPlanStatusResponseSchema,
+  GetTeamPlanStatusApiResponseSchema,
   GetTeamPlansResponseSchema,
   GetTeamListQuerySchema,
   GetTeamListResponseSchema,
@@ -188,7 +188,8 @@ export const TeamPath: OpenAPIPath = {
   '/support/user/team/plan/getTeamPlanStatus': {
     get: {
       summary: '获取团队套餐状态',
-      description: '获取当前团队的套餐额度及成员、应用、知识库等资源用量',
+      description:
+        '默认获取套餐额度及资源用量；scope=entitlements 时仅查询当前团队权益，不统计资源用量',
       tags: [DevApiTagsMap.teamSubscription],
       requestParams: {
         query: GetTeamPlanStatusQuerySchema
@@ -198,7 +199,7 @@ export const TeamPath: OpenAPIPath = {
           description: '成功返回团队套餐状态',
           content: {
             'application/json': {
-              schema: GetTeamPlanStatusResponseSchema
+              schema: GetTeamPlanStatusApiResponseSchema
             }
           }
         }

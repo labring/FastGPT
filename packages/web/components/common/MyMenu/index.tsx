@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Menu,
-  MenuList,
   MenuItem,
   Box,
   useOutsideClick,
@@ -19,6 +18,7 @@ import { useSystem } from '../../../hooks/useSystem';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 import Avatar from '../Avatar';
 import MyTooltip from '../MyTooltip';
+import { CanvasMenuList, useCanvasMenuModifiers } from '../MySelect/CanvasMenuList';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
@@ -45,7 +45,7 @@ export type Props = {
   Button: React.ReactNode;
   buttonBoxProps?: BoxProps;
   menuListProps?: MenuListProps;
-  /** 滚动容器内的菜单使用 fixed 定位，避免弹层撑大滚动范围。 */
+  /** 默认使用 fixed，避免弹窗或滚动容器裁切菜单、撑大滚动范围。 */
   strategy?: 'absolute' | 'fixed';
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
@@ -208,21 +208,27 @@ const MyMenu = ({
   Button,
   buttonBoxProps,
   menuListProps,
-  strategy = 'absolute',
+  strategy = 'fixed',
   menuList,
   placement = 'bottom-start'
 }: Props) => {
   const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
   const [isOpen, setIsOpen] = useState(false);
+  const modifiers = useCanvasMenuModifiers({ isOpen, triggerRef: ref });
 
   const formatTrigger = !isPc ? 'click' : trigger;
 
   const closeOnOutsideClick = useCallback((event: Event) => {
-    const isIgnored = event.composedPath().some((target) => {
-      return target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined;
-    });
+    const isIgnored = event
+      .composedPath()
+      .some(
+        (target) =>
+          target === menuRef.current ||
+          (target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined)
+      );
     if (isIgnored) return;
     setIsOpen(false);
   }, []);
@@ -241,6 +247,7 @@ const MyMenu = ({
   return (
     <Menu
       strategy={strategy}
+      modifiers={modifiers}
       offset={computeOffset}
       isOpen={isOpen}
       autoSelect={false}
@@ -297,10 +304,13 @@ const MyMenu = ({
             {Button}
           </Box>
         </Box>
-        <MenuList
+        <CanvasMenuList
+          ref={menuRef}
           minW={isOpen ? `${width}px !important` : '80px'}
           zIndex={100}
           maxW={'300px'}
+          maxH={'45vh'}
+          overflowY={'auto'}
           p={'6px'}
           border={'1px solid #fff'}
           boxShadow={'3'}
@@ -386,7 +396,7 @@ const MyMenu = ({
               </Box>
             );
           })}
-        </MenuList>
+        </CanvasMenuList>
       </Box>
     </Menu>
   );

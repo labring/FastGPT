@@ -1,15 +1,20 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { parseHeaderCert } from './common';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { resolveApiKeyScope } from '../../openapi/utils';
+import { authAppByTmbId } from '../app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /**
  * 校验当前登录成员是否可以管理指定 APIKey。
  *
- * 新版 APIKey 只属于创建它的团队成员，team owner 或 app owner 不再拥有跨成员
- * 查看、复制、更新、删除的特权。返回的团队权限仅用于调用点判断 authProxy 开关。
+ * 个人密钥仅本人；应用 Key 要求绑定应用的管理权限，可跨归属成员管理。
+ * 此入口仅接受登录态，Key 自身不能管理其他密钥。团队权限仅用于个人 authProxy 开关。
  */
 export async function authOpenApiKeyCrud({
   id,
@@ -19,13 +24,14 @@ export async function authOpenApiKeyCrud({
 }): Promise<
   AuthResponseType & {
     openapi: OpenApiSchema;
+    app?: AppSchemaType;
   }
 > {
-  const result = await parseHeaderCert(props);
+  const result = await parseHeaderCert({ req: props.req, authToken: true });
   const { tmbId, teamId } = result;
   const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
-  const { openapi, permission } = await (async () => {
+  const { openapi, permission, app } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
     if (!openapi) {
       return Promise.reject(OpenApiErrEnum.unExist);
@@ -35,19 +41,26 @@ export async function authOpenApiKeyCrud({
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
-    if (String(openapi.tmbId) !== tmbId) {
+    const scope = resolveApiKeyScope(openapi);
+    let boundApp: AppSchemaType | undefined;
+    if (scope.type === ApiKeyTypeEnum.app) {
+      boundApp = (await authAppByTmbId({ tmbId, appId: scope.appId, per: ManagePermissionVal }))
+        .app;
+    } else if (String(openapi.tmbId) !== tmbId) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
     return {
       openapi,
-      permission: tmbPer
+      permission: tmbPer,
+      app: boundApp
     };
   })();
 
   return {
     ...result,
     openapi,
-    permission
+    permission,
+    app
   };
 }

@@ -22,7 +22,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/file', () => ({
   addDirectoryToArchive: mocks.addDirectoryToArchive,
-  isSandboxPathDirectory: vi.fn()
+  resolveSandboxDownloadTarget: vi.fn()
 }));
 
 class FakeArchive extends EventEmitter {
@@ -52,7 +52,12 @@ describe('writeDirectoryArchiveResponse', () => {
     });
 
     expect(archive.pipe).toHaveBeenCalledWith(res);
-    expect(mocks.addDirectoryToArchive).toHaveBeenCalledWith(sandbox, archive, '/workspace', '');
+    expect(mocks.addDirectoryToArchive).toHaveBeenCalledWith({
+      sandbox,
+      archive,
+      dirPath: '/workspace',
+      archivePath: ''
+    });
     expect(archive.finalize).toHaveBeenCalledTimes(1);
     expect(archive.destroy).not.toHaveBeenCalled();
   });

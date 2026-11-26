@@ -277,7 +277,10 @@ export const useChatInputDraft = ({
     applyForm(next);
   });
 
-  /** 未收到回复的失败只恢复本轮快照，不覆盖更新的草稿或已删除的会话。 */
+  /**
+   * 直接发送失败时从本轮发送快照回填，不读取已删除的草稿缓存；流恢复失败不调用此方法。
+   * 不覆盖更新的草稿或已删除的会话。
+   */
   const restoreSubmittedInput = useMemoizedFn((submission: ChatInputSubmission) => {
     if (
       !submission.clearedRevision ||

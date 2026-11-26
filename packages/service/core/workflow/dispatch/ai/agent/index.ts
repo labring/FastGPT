@@ -4,7 +4,7 @@ import type {
   SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -15,45 +15,59 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 import { useUserContext } from './adapter/userContext';
-import { getAgentDatasetParams, getSubapps } from './sub/utils';
+import { getAgentDatasetParams, getSubapps, type RuntimePromptRefMeta } from './sub/utils';
 
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
-import { getNodeErrResponse } from '../../utils';
-import { WorkflowMemoryState } from '../../../memory/state';
+import { stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
+import { getDispatchModerationContext } from '../../utils/runtime';
+import { getWorkflowNodeMemoryKey } from '../../context/memory';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import {
+  buildAgentLoopCoreRequestMessages,
+  filterAgentLoopCoreHistoryTools
+} from '../agentLoopCore/application/context/messages';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
-import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import { SubAppIds, getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  AgentPromptRefRegistry,
+  refFromBuiltin,
+  refFromSkill,
+  type AgentPromptRefEntry
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
+import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
+import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatAudio]?: boolean;
   [NodeInputKeyEnum.aiChatVideo]?: boolean;
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
+  [NodeInputKeyEnum.aiChatMaxToken]?: number;
+  [NodeInputKeyEnum.aiChatIsResponseText]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
@@ -76,6 +90,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   /** @deprecated */
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchRerankCandidateNum]?: number;
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   /** @deprecated */
@@ -85,9 +100,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
-}> & {
-  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
-};
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -95,32 +108,17 @@ type Response = DispatchNodeResultType<{
 
 /**
  * Agent 节点入口。
- * 负责准备历史、文件、工具和能力插件，并仅为 Pi 保留原生恢复状态，然后把实际循环执行交给统一 agentLoop 入口。
+ * 负责准备历史、文件、工具和能力插件，维护节点级交互恢复状态，然后把实际循环执行交给统一 agentLoop 入口。
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
-  // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
-  const assistantResponses: AIChatItemValueItemType[] = [];
-  const childNodeResponses: ChatHistoryItemResType[] = [];
-  const nodeResponseCollector = createAgentNodeResponseCollector({
-    nodeResponseSink: props.nodeResponseSink,
-    nodeResponses: childNodeResponses,
-    onNodeResponseSummary: (summary) =>
-      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
-  });
-  // Agent 的主模型、工具和压缩响应都是当前层的顶级详情行；只有工具压缩通过
-  // event collector 自己携带 parentId，不能挂到一个不存在的 Agent 根响应下。
-  const appendAgentNodeResponse = (response: ChatHistoryItemResType) =>
-    nodeResponseCollector.appendNodeResponse(response);
-
   const {
-    node: { nodeId, inputs },
+    node: { nodeId, inputs, catchError },
     lang,
     histories,
     query,
     lastInteractive,
     runningAppInfo,
     runningUserInfo,
-    workflowStreamResponse,
     agentSandboxPrepareActions,
     usagePush,
     chatId,
@@ -130,7 +128,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     params: {
       systemPrompt = '',
       userChatInput,
-      history = 6,
       agent_selectedTools: selectedTools = [],
       skills: selectedSkills = [],
       editSkillId,
@@ -138,10 +135,32 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxEntrypoint,
       modelId,
       model,
+      isResponseAnswerText = true,
       aiChatReasoning
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
+  // 简易模式（对话 Agent 表单转化出的单节点工作流）固定携带 agent_datasetParams，
+  // Skill 调试模式固定使用 skillEdit sourceType 或 editSkillId；这两类入口保持内部步骤平铺在顶层，
+  // 仅工作流画布上的 Agent 节点生成外层 Agent 根响应并收纳内部步骤。
+  const isSimpleChatAgent = Boolean(
+    props.params[NodeInputKeyEnum.datasetParams] ||
+    inputs.some((input) => input.key === NodeInputKeyEnum.datasetParams)
+  );
+  const shouldWrapNodeResponses =
+    runningAppInfo.sourceType !== ChatSourceTypeEnum.skillEdit &&
+    !editSkillId &&
+    !isSimpleChatAgent;
+
+  // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
+  const assistantResponses: AIChatItemValueItemType[] = [];
+  const nodeResponseCollector = createAgentNodeResponseCollector({
+    nodeResponseSink: getWorkflowContext().nodeResponseSink,
+    nodeResponseParentId: shouldWrapNodeResponses ? props.nodeResponseParentId : undefined
+  });
+  // 简易模式下主模型、工具和压缩响应平铺在当前层；工作流模式下未显式携带 parentId 的步骤统一挂在当前 Agent 节点响应下。
+  const appendAgentNodeResponse = (response: ChatHistoryItemResType) =>
+    nodeResponseCollector.appendNodeResponse(response);
   const agentModel = await loadWorkflowModelResource({
     appTeamId: runningAppInfo.teamId,
     userInfo: runningUserInfo,
@@ -163,11 +182,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
   const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
   const sandboxRequested = hasSandboxRuntimeDependency || !!useAgentSandbox;
-  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const memoryContext = getWorkflowContext().memoryContext;
+  const sandboxContext = getWorkflowSandboxContext({
+    sourceType: runningAppInfo.sourceType,
+    sourceId: runningAppInfo.sourceId,
+    teamId: runningAppInfo.teamId,
+    userId: uid,
+    chatId
+  });
+  const { sourceType: sandboxSourceType, sourceId: sandboxSourceId } = sandboxContext;
+  const isAppChat = sandboxSourceType === ChatSourceTypeEnum.app;
   const appSandboxAvailability = isAppChat
     ? await resolveAppSandboxAvailability({
         appEnabled: !!useAgentSandbox,
-        teamId: runningAppInfo.teamId
+        teamId: sandboxContext.teamId
       })
     : undefined;
   const effectiveUseAgentSandbox = isAppChat
@@ -185,26 +213,75 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
-  const memoryState = WorkflowMemoryState.fromWorkflow(props);
-  const agentMemoryState = memoryState.fork(`node:${nodeId}`, {
-    history,
-    hasInteractiveResume: !!lastInteractive
-  });
+  const agentMemoryContext = memoryContext.fork(`node:${nodeId}`);
+  // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
+  // 交互恢复时优先从节点作用域 memoryContext 恢复暂停前保存的完整 transcript，缺省再回退到历史。
+  const storedMemory =
+    provider === 'fastAgent' && lastInteractive
+      ? memoryContext.readNodeMemory<ChatItemMiniType[]>({
+          runningAppInfo,
+          nodeId
+        })
+      : undefined;
+  const restoredMessages =
+    Array.isArray(storedMemory) && storedMemory.length > 0 ? storedMemory : undefined;
+  const getRestoredAssistantResponses = (messages?: ChatItemMiniType[]) => {
+    if (!messages?.length) return [];
+
+    // fastAgent 仅在首次进入节点（!lastInteractive）时写入 inputContext；
+    // 最后一个携带 inputContext 的 AI 消息即本次节点运行的首个暂停轮次起点。
+    const startIndex = messages.findLastIndex(
+      (item) =>
+        item.obj === ChatRoleEnum.AI &&
+        item.value.some((value) => !value.displayOnly && value.inputContext !== undefined)
+    );
+    if (startIndex < 0) return [];
+
+    return messages
+      .slice(startIndex)
+      .flatMap((item) => (item.obj === ChatRoleEnum.AI ? item.value : []));
+  };
+  const buildClearedNodeMemories = () =>
+    provider === 'piAgent' || restoredMessages !== undefined
+      ? buildAgentLoopCoreDoneMemories({ memoryContext, runningAppInfo, nodeId })
+      : undefined;
   const buildAgentMemories = (ownMemories?: Record<string, any>) => {
     const merged = {
-      ...agentMemoryState.getDelta(),
+      ...agentMemoryContext.getDelta(),
       ...ownMemories
     };
     return Object.keys(merged).length > 0 ? merged : undefined;
   };
+  const cleanedInteractiveHistories = lastInteractive
+    ? removeUnfinishedInteractiveHistories(histories)
+    : undefined;
+  const buildAgentNodeResponse = ({
+    textOutput,
+    errorText
+  }: {
+    textOutput?: string;
+    errorText?: string;
+  } = {}) => {
+    if (!shouldWrapNodeResponses) return undefined;
+
+    const { childResponseCount } = nodeResponseCollector.getWorkflowRuntimeSummary();
+
+    return {
+      model: agentModel.name,
+      query: userChatInput,
+      ...(textOutput ? { textOutput } : {}),
+      ...(childResponseCount !== undefined ? { childResponseCount } : {}),
+      ...(errorText !== undefined ? { errorText } : {})
+    };
+  };
   try {
     if (!isAppChat && sandboxRequested) {
-      await assertSandboxAvailable(runningAppInfo.teamId);
+      await assertSandboxAvailable(sandboxContext.teamId);
     }
 
+    const { fileContext } = getWorkflowContext();
     const userContext = await useUserContext({
-      history,
-      histories,
+      histories: restoredMessages ? [] : histories,
       currentFiles: fileLinks,
       currentUserInput: userChatInput,
       currentQuery: query,
@@ -214,134 +291,239 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      maxFileAmount: getWorkflowFileMaxAmount()
+      maxFileAmount: fileContext.limits.maxFileAmount
     });
 
     // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
-    const prepareRuntime = () =>
+    const prepareRuntime = (runtimeOptions?: {
+      onUpgrade?: () => void;
+      onUpgradeComplete?: () => void;
+    }) =>
       ensureAgentSandboxRuntime({
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: uid,
-        chatId,
-        teamId: runningAppInfo.teamId,
+        sourceType: sandboxSourceType,
+        sourceId: sandboxSourceId,
+        userId: sandboxContext.userId,
+        chatId: sandboxContext.chatId,
         tmbId: runningUserInfo.tmbId,
         needSandboxRuntime: effectiveUseAgentSandbox,
         sandboxEntrypoint: effectiveSandboxEntrypoint,
+        sandboxEntrypointScope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
         skillIds: effectiveSkillIds,
         selectedSkills: effectiveSelectedSkills,
         editSkillId,
         prepareActions: agentSandboxPrepareActions,
-        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
+        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles,
+        onUpgrade: runtimeOptions?.onUpgrade,
+        onUpgradeComplete: runtimeOptions?.onUpgradeComplete
       });
     const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
       ? await ensureWorkflowSandboxReadyForUse({
-          workflowStreamResponse,
-          sourceType: runningAppInfo.sourceType,
-          sourceId: runningAppInfo.sourceId,
-          userId: uid,
-          chatId,
+          sourceType: sandboxSourceType,
+          sourceId: sandboxSourceId,
+          userId: sandboxContext.userId,
+          chatId: sandboxContext.chatId,
+          teamId: sandboxContext.teamId,
           prepareRuntime
         })
       : await prepareRuntime();
+    if (effectiveUseAgentSandbox) {
+      props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
+    }
 
     // 获取请求上下文
-    const { chatHistories, queryInput } = userContext;
+    const { queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
     });
+    const baseHistories = restoredMessages ?? rewrittenHistories;
 
     // 转化成请求的 messages
     // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
     // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
     const requestMessages =
       provider === 'fastAgent' && lastInteractive?.type === 'agentAsk'
-        ? [...rewrittenHistories, { ...currentUserMessage, value: query }]
+        ? [...baseHistories, { ...currentUserMessage, value: query }]
         : lastInteractive
-          ? rewrittenHistories
-          : [...rewrittenHistories, currentUserMessage];
-    const loopMessages = buildAgentLoopCoreRequestMessages({
-      messages: requestMessages,
-      removeSystemMessages: true
-    });
+          ? baseHistories
+          : [...baseHistories, currentUserMessage];
     // 汇总用户选择工具和知识库 runtime tool。
     // plan/ask/sandbox/readFile 由 agentLoop provider 根据 systemTools 注入，不混入业务 completionTools。
     const {
       completionTools: agentCompletionTools,
       subAppsMap: agentSubAppsMap,
-      promptToolReferenceInfoMap
+      promptToolRefEntries
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
       lang
     });
+    const loopMessages = buildAgentLoopCoreRequestMessages({ messages: requestMessages });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
       lang
     });
-    // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
-    // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
-    const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
-      text: systemPrompt,
-      resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
+    // 2. 创建 workflow adapter，获取本轮真正暴露给模型的 systemTools，确保内置引用注册与实际工具目录同源。
+    // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
+    // Agent 自身暂停态仍使用父层节点键；仅内部工具绑定派生后的记忆作用域。
+    const toolContext = getWorkflowContext().getChildContext({ memoryContext: agentMemoryContext });
+    const { runtime, artifacts } = runWithContext(toolContext, () =>
+      createWorkflowAgentLoopRuntime({
+        context: {
+          ...props,
+          modelData: agentModel,
+          getSubAppInfo,
+          getSubApp,
+          completionTools: agentCompletionTools,
+          currentFiles: userContext.currentFiles,
+          sandboxClient
+        },
+        usagePush,
+        assistantResponses,
+        appendNodeResponse: appendAgentNodeResponse,
+        onToolResult: (result) => {
+          props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
+        }
+      })
+    );
+    // 统一注册 Tools + 已授权部署的 Skills + runtime 实际启用的 Builtins，一步完成 V2/旧格式双读解析。
+    const selectedSkillSourceMap = new Map(
+      effectiveSelectedSkills
+        .filter((skill) => !skill.error && skill.source)
+        .map((skill) => [skill.skillId, skill.source])
+    );
+    const seenSkillIds = new Set<string>();
+    const runtimeSkillEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [];
+    skillInfos.forEach((info) => {
+      if (!info.appId || seenSkillIds.has(info.appId)) return;
+      seenSkillIds.add(info.appId);
+      const authoritativeSource = info.appSource ?? selectedSkillSourceMap.get(info.appId);
+      const { ref, sourceInferred } = refFromSkill({
+        skillId: info.appId,
+        source: authoritativeSource
+      });
+      const displayName = info.appName || info.name;
+      if (!displayName) return;
+      runtimeSkillEntries.push({
+        ref,
+        displayName,
+        sourceInferred,
+        meta: {}
+      });
     });
 
-    // 2. 创建 workflow adapter。
-    // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
-    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
-      context: {
-        ...props,
-        memoryState: agentMemoryState,
-        modelData: agentModel,
-        systemPrompt: formattedUserSystemPrompt,
-        getSubAppInfo,
-        getSubApp,
-        completionTools: agentCompletionTools,
-        currentFiles: userContext.currentFiles,
-        sandboxClient,
-        streamResponseFn: workflowStreamResponse
-      },
-      usagePush,
-      workflowStreamResponse,
-      assistantResponses,
-      nodeResponses: childNodeResponses,
-      appendNodeResponse: appendAgentNodeResponse,
-      onToolResult: (result) => {
-        props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
-      }
+    const runtimeBuiltinEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [
+      ...(runtime.systemTools?.datasetSearch?.enabled ? [SubAppIds.datasetSearch] : []),
+      ...(runtime.systemTools?.readFile?.enabled ? [SubAppIds.readFiles] : []),
+      ...(runtime.systemTools?.sandbox?.enabled ? [AGENT_SANDBOX_TOOLSET_ID] : [])
+    ].flatMap((builtinId) => {
+      const displayName =
+        getSubAppInfo(builtinId).name || getSystemToolInfo(builtinId, lang)?.name || '';
+      if (!displayName) return [];
+      return [
+        {
+          ref: refFromBuiltin(builtinId),
+          displayName,
+          meta: {}
+        }
+      ];
     });
-    const agentSystemPrompt = buildDefaultAgentSystemPrompt({
-      userSystemPrompt: formattedUserSystemPrompt,
-      sandboxEnabled: !!sandboxClient
+
+    const runtimeRefRegistry = AgentPromptRefRegistry.create([
+      ...promptToolRefEntries,
+      ...runtimeSkillEntries,
+      ...runtimeBuiltinEntries
+    ]);
+    const displayNameCount = new Map<string, number>();
+    runtimeRefRegistry.entries().forEach((entry) => {
+      displayNameCount.set(entry.displayName, (displayNameCount.get(entry.displayName) ?? 0) + 1);
+    });
+    // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按实际工具能力构建。
+    // PromptEditor 保存的是引用键，进入主 Agent 前转换为具体名称；同名不同源工具附带函数名消歧。
+    const formattedUserSystemPrompt = runtimeRefRegistry.renderForModel({
+      text: systemPrompt,
+      formatResolved: (entry) => {
+        if ((displayNameCount.get(entry.displayName) ?? 0) > 1) {
+          const modelToolNames = entry.meta.modelToolNames?.filter(Boolean) ?? [];
+          if (modelToolNames.length > 0) {
+            return `{{${entry.displayName} (${modelToolNames.join(', ')})}}`;
+          }
+          return `{{${entry.displayName} (${entry.canonicalKey})}}`;
+        }
+        return `{{${entry.displayName}}}`;
+      },
+      onAmbiguous: (rawKey, candidates) => {
+        getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent] ambiguous prompt ref', {
+          rawKey,
+          candidates: candidates.map((item) => item.canonicalKey)
+        });
+      }
     });
 
     // providerState 统一保存 provider 内部恢复信息。
-    // FastAgent 只使用 ChatItem；Pi 暂时保留其原生 providerState。
+    // FastAgent 使用 ChatItem 重建消息；Pi 暂时保留其原生 providerState。
     const restoredMemory =
       provider === 'piAgent'
         ? readAgentLoopCoreProviderStateMemory({
-            memoryState,
-            history,
-            hasInteractiveResume: !!lastInteractive,
-            histories: chatHistories,
+            memoryContext,
             runningAppInfo,
             nodeId
           })
         : {};
-    const activePlan = readAgentLoopCoreActivePlan({ histories });
+    const activePlan = readAgentLoopCoreActivePlan({
+      histories: restoredMessages ?? histories
+    });
     const { providerState: runtimeProviderState, isAskResume } =
       prepareAgentLoopCoreProviderRunState({
         restoredProviderState: restoredMemory.providerState,
         hasLastInteractive: !!lastInteractive
       });
+    const previousAssistantResponses = lastInteractive
+      ? provider === 'piAgent'
+        ? (restoredMemory.assistantResponses ?? [])
+        : getRestoredAssistantResponses(restoredMessages)
+      : [];
+
+    // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错
+    const hasCurrentTurnUserMessage =
+      !lastInteractive || (provider === 'fastAgent' && lastInteractive?.type === 'agentAsk');
+    const contextCheck = await checkModelContextModeration({
+      messages: loopMessages,
+      systemPrompt: formattedUserSystemPrompt,
+      includeLastUserMessage: hasCurrentTurnUserMessage,
+      extraUserText:
+        provider !== 'fastAgent' && isAskResume ? queryInput || userChatInput : undefined,
+      context: getDispatchModerationContext(props)
+    });
+    if (contextCheck.isBlocked) {
+      const errorText = contextCheck.blockErrorMessage ?? MODERATION_BLOCKED_ERROR_MESSAGE;
+      return {
+        ...getNodeErrResponse({
+          error: errorText,
+          responseData: buildAgentNodeResponse({ errorText }),
+          system_memories: buildAgentMemories(buildClearedNodeMemories())
+        }),
+        ...(cleanedInteractiveHistories
+          ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: cleanedInteractiveHistories }
+          : {}),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? assistantResponses
+          : undefined
+      };
+    }
+
+    const agentSystemPrompt = buildDefaultAgentSystemPrompt({
+      userSystemPrompt: formattedUserSystemPrompt,
+      sandboxEnabled: Boolean(runtime.systemTools?.sandbox?.enabled)
+    });
+
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({
       provider,
       runtime,
       input: buildAgentLoopCoreInput({
-        messages: loopMessages,
+        messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt: agentSystemPrompt,
         activePlan,
         providerState: provider === 'fastAgent' ? undefined : runtimeProviderState,
@@ -370,77 +552,104 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
       }
     });
-    const outputAssistantResponses = outputSummary.assistantResponses;
+    // 4. 输出归一化。
+    // done 正常落 answer；error/aborted 在未开启异常捕获时转成可见文本，开启 catchError 时仅通过 errorText 分支暴露。
+    const finalTextForBubble =
+      coreResult.status === 'error' && catchError ? '' : outputSummary.finalText;
+    const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
+      assistantResponses: outputSummary.assistantResponses,
+      previousAssistantResponses,
+      finalText: finalTextForBubble,
+      reasoningText: outputSummary.reasoningText,
+      hideReason: aiChatReasoning === false
+    });
+    const outputAssistantResponses = finalOutput.assistantResponses;
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
       const interactiveMemories = buildAgentMemories(
         provider === 'piAgent'
           ? buildAgentLoopCorePausedMemories({
-              memoryState,
+              memoryContext,
               runningAppInfo,
               nodeId,
-              providerState: outputSummary.providerState
+              providerState: outputSummary.providerState,
+              assistantResponses: [...previousAssistantResponses, ...outputAssistantResponses]
             })
-          : undefined
+          : {
+              [getWorkflowNodeMemoryKey({ memoryContext, runningAppInfo, nodeId })]: [
+                ...requestMessages,
+                {
+                  dataId: responseChatItemId,
+                  obj: ChatRoleEnum.AI,
+                  value: outputAssistantResponses
+                }
+              ] satisfies ChatItemMiniType[]
+            }
       );
+      const interactiveNodeResponse = buildAgentNodeResponse({
+        textOutput: finalOutput.answerText
+      });
       return {
-        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? outputAssistantResponses
+          : undefined,
         [DispatchNodeResponseKeyEnum.memories]: interactiveMemories,
+        ...(interactiveNodeResponse
+          ? { [DispatchNodeResponseKeyEnum.nodeResponse]: interactiveNodeResponse }
+          : {}),
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
     }
 
-    // 4. 结束态归一化。
-    // done 正常落 answer；error/aborted 转成可见文本，同时保留 error 输出给 workflow。
-    const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
-      assistantResponses: outputAssistantResponses,
-      finalText: outputSummary.finalText,
-      reasoningText: outputSummary.reasoningText,
-      hideReason: aiChatReasoning === false
+    const doneMemories = buildAgentMemories(buildClearedNodeMemories());
+    const errorText = outputSummary.errorText ?? '';
+    const doneNodeResponse = buildAgentNodeResponse({
+      textOutput: finalOutput.answerText,
+      ...(coreResult.status === 'error' ? { errorText } : {})
     });
-    const doneMemories = buildAgentMemories(
-      provider === 'piAgent'
-        ? buildAgentLoopCoreDoneMemories({
-            memoryState,
-            runningAppInfo,
-            nodeId
-          })
-        : undefined
-    );
 
     const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
+      [DispatchNodeResponseKeyEnum.toolResponse]: finalOutput.answerText,
       [DispatchNodeResponseKeyEnum.memories]: doneMemories,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? finalOutput.assistantResponses
+        : undefined,
+      ...(doneNodeResponse ? { [DispatchNodeResponseKeyEnum.nodeResponse]: doneNodeResponse } : {}),
+      ...(cleanedInteractiveHistories
+        ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: cleanedInteractiveHistories }
+        : {})
     };
     // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
     return coreResult.status === 'error'
       ? {
           ...result,
           rawError: coreResult.error,
-          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' }
+          error: { [NodeOutputKeyEnum.errorText]: errorText },
+          [DispatchNodeResponseKeyEnum.toolResponse]: {
+            error: errorText
+          }
         }
       : result;
   } catch (error) {
-    // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
+    // dispatch 层兜底：异常时清理当前节点的暂停恢复状态；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
-    const catchMemories = buildAgentMemories(
-      provider === 'piAgent'
-        ? buildAgentLoopCoreDoneMemories({
-            memoryState,
-            runningAppInfo,
-            nodeId
-          })
-        : undefined
-    );
     return {
-      ...getNodeErrResponse({ error }),
-      [DispatchNodeResponseKeyEnum.memories]: catchMemories,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
+      ...getNodeErrResponse({
+        error,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: buildAgentNodeResponse(),
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentMemories(buildClearedNodeMemories())
+      }),
+      ...(cleanedInteractiveHistories
+        ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: cleanedInteractiveHistories }
+        : {}),
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? assistantResponses
+        : undefined
     };
   } finally {
     await nodeResponseCollector.flush();

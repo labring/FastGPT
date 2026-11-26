@@ -9,6 +9,7 @@ import {
   CreateCollectionBodySchema,
   CreateCollectionByFileIdBodySchema,
   CreateCollectionByLocalFileFormSchema,
+  CreateCollectionResponseSchema,
   CreateCollectionWithResultResponseSchema,
   CreateImageCollectionMultipartSchema,
   CreateLinkCollectionBodySchema,
@@ -26,6 +27,10 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '创建空集合/目录',
       description: '创建空数据集合或者目录',
       tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'create'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -35,7 +40,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新创建的集合 ID'
+          description: '成功返回新创建的集合 ID',
+          content: {
+            'application/json': {
+              schema: CreateCollectionResponseSchema
+            }
+          }
         }
       }
     }
@@ -96,6 +106,10 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       description:
         '通过 multipart/form-data 上传文件，自动存储至 S3 后创建集合并触发训练。`file` 字段为二进制文件，`data` 字段为 JSON 序列化的集合参数对象',
       tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'createByLocalFile'
+      },
       requestBody: {
         content: {
           'multipart/form-data': {
@@ -108,7 +122,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合 ID 及数据插入结果'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }
@@ -122,6 +141,10 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '通过链接创建集合',
       description: '抓取指定 URL 内容创建集合并触发训练',
       tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'createByLink'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -131,7 +154,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合 ID 及数据插入结果'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }
@@ -145,6 +173,10 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '通过文本创建集合',
       description: '将文本内容存储为文件后创建集合并触发训练',
       tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.collections',
+        method: 'createByText'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -154,7 +186,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合 ID 及数据插入结果'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }
@@ -283,7 +320,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '导入模板文件创建集合',
       description:
-        '上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，`data` 为 JSON 序列化的集合参数对象',
+        '上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，multipart filename 使用原始 UTF-8 文件名；`data` 为 JSON 序列化的集合参数对象',
       tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {

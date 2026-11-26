@@ -2,6 +2,7 @@ import type { NextApiHandler } from '@fastgpt/next/type';
 import type { MockReqType } from '../mocks/request';
 import { vi } from 'vitest';
 
+/** 调用 API handler，并提供非流式路由所需的响应方法，收集 write/json 返回的数据。 */
 export async function Call<B = any, Q = any, R = any>(
   handler: NextApiHandler<R>,
   props?: MockReqType<B, Q>
@@ -12,6 +13,11 @@ export async function Call<B = any, Q = any, R = any>(
     setHeader: vi.fn(),
     write: vi.fn((data: any) => {
       raw = data;
+      return true;
+    }),
+    json: vi.fn((data: any) => {
+      raw = data;
+      return data;
     }),
     end: vi.fn(),
     on: vi.fn((event: string) => {
@@ -19,7 +25,10 @@ export async function Call<B = any, Q = any, R = any>(
         // 模拟 drain 事件
       }
     }),
-    status: vi.fn()
+    // 非流式调用只需提供生命周期回调的注册/清理接口。
+    once: vi.fn().mockReturnThis(),
+    off: vi.fn().mockReturnThis(),
+    status: vi.fn(() => res)
   };
   const response = (await handler(
     {

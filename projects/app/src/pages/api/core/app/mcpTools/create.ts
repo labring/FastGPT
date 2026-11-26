@@ -31,7 +31,8 @@ async function handler(
     toolList,
     url,
     headerSecret = {},
-    parentId
+    parentId,
+    inheritPermission
   } = parseApiInput({
     req,
     bodySchema: CreateMcpToolsBodySchema
@@ -62,6 +63,7 @@ async function handler(
       type: AppTypeEnum.mcpToolSet,
       nodes: [toolSetRuntimeNode],
       storageNodes: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
+      inheritPermission,
       session
     });
 

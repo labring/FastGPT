@@ -33,18 +33,30 @@ export const setRequiredRequestExamples = (
     const branches =
       schema.allOf ?? (schema.oneOf?.[0] ? [schema.oneOf[0]] : schema.anyOf?.slice(0, 1));
     if (branches?.length) {
-      const { allOf, oneOf, anyOf, ...base } = schema;
-      const merged = branches.reduce<oas31.SchemaObject>((result, branch) => {
-        const item = resolve<oas31.SchemaObject>(branch);
-        return {
-          ...result,
-          ...item,
-          ...((result.properties || item?.properties) && {
-            properties: { ...result.properties, ...item?.properties }
-          }),
-          required: [...new Set([...(result.required ?? []), ...(item?.required ?? [])])]
-        };
-      }, base);
+      /** 先分别选择每个组合内的分支，避免两个独立 union 的 anyOf 在合并时互相覆盖。 */
+      const selectBranches = (
+        input: oas31.SchemaObject | oas31.ReferenceObject,
+        visited = new Set<object>()
+      ): oas31.SchemaObject => {
+        const current = resolve<oas31.SchemaObject>(input);
+        if (!current || visited.has(current)) return {};
+        const trail = new Set(visited).add(current);
+        const children =
+          current.allOf ?? (current.oneOf?.[0] ? [current.oneOf[0]] : current.anyOf?.slice(0, 1));
+        const { allOf, oneOf, anyOf, ...base } = current;
+        return (children ?? []).reduce<oas31.SchemaObject>((result, branch) => {
+          const item = selectBranches(branch, trail);
+          return {
+            ...result,
+            ...item,
+            ...((result.properties || item.properties) && {
+              properties: { ...result.properties, ...item.properties }
+            }),
+            required: [...new Set([...(result.required ?? []), ...(item.required ?? [])])]
+          };
+        }, base);
+      };
+      const merged = selectBranches(schema);
       return sample(merged, seed, next);
     }
     const value = seed ?? schema.example ?? schema.examples?.[0] ?? schema.default;
@@ -54,8 +66,8 @@ export const setRequiredRequestExamples = (
           const property = schema.properties?.[key];
           if (!property) return [];
           const resolvedProperty = resolve<oas31.SchemaObject>(property);
-          // Zod preprocess 包装的默认值可能仍被导出为 required，调用时可省略这些字段。
-          if (resolvedProperty?.readOnly || resolvedProperty?.default !== undefined) return [];
+          // 必填性已经按运行时省略语义修正；仅文档 default 不代表请求可省略。
+          if (resolvedProperty?.readOnly) return [];
           const child = sample(
             property,
             value && typeof value === 'object' ? Reflect.get(value, key) : undefined,
@@ -101,6 +113,7 @@ export const setRequiredRequestExamples = (
       const source = sourcePaths?.[url]?.[method];
       const selected = new Set<string>();
       const requiredParameters = new Set<string>();
+      const declaredParameters = new Set<string>();
       for (const location of ['query', 'header', 'path', 'cookie'] as const) {
         const input = source?.requestParams?.[location];
         if (!input || !('_zod' in input)) continue;
@@ -122,6 +135,11 @@ export const setRequiredRequestExamples = (
             return;
           }
           const schema = input as oas31.SchemaObject;
+          if (unconditional) {
+            for (const key of Object.keys(schema.properties ?? {})) {
+              declaredParameters.add(`${location}:${key}`);
+            }
+          }
           for (const key of schema.required ?? []) {
             selected.add(`${location}:${key}`);
             if (unconditional) requiredParameters.add(`${location}:${key}`);
@@ -141,7 +159,11 @@ export const setRequiredRequestExamples = (
         const parameter = resolve<oas31.ParameterObject>(input);
         if (!parameter) continue;
         // zod-openapi 在 Schema override 前生成 parameters，需同步其必填信息。
-        if (requiredParameters.has(parameter.in + ':' + parameter.name)) {
+        const field = `${parameter.in}:${parameter.name}`;
+        if (declaredParameters.has(field)) {
+          // 同步可选和必填两种结果；路径参数按 OpenAPI 规范始终必填，组合参数保留原约束。
+          parameter.required = parameter.in === 'path' || requiredParameters.has(field);
+        } else if (requiredParameters.has(field)) {
           parameter.required = true;
         }
         const enabled =

@@ -5,6 +5,7 @@ import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { trackQueryExtensionPerf } from '../../../common/opsPerf/datasetSearch';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
   EmbeddingModelDataType,
@@ -135,177 +136,192 @@ export const queryExtension = async ({
   seconds: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   usedUserOpenAIKey: boolean;
   embeddingTokens: number;
-}> => {
-  const startTime = Date.now();
-  const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
-  // 1. Request model
-  const filterHistories = await filterGPTMessageByMaxContext({
-    messages: chats2GPTMessages({ messages: histories, reserveId: false }),
-    maxContext: llmModel.config.maxContext - 1000
-  });
+}> =>
+  trackQueryExtensionPerf({ teamId, model: llmModel }, async () => {
+    const startTime = Date.now();
+    const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
+    // 1. Request model
+    const filterHistories = await filterGPTMessageByMaxContext({
+      messages: chats2GPTMessages({ messages: histories, reserveId: false }),
+      maxContext: llmModel.config.maxContext - 1000
+    });
 
-  const historyFewShot = filterHistories
-    .map((item) => {
-      const role = item.role;
-      const content = item.content;
-      if ((role === 'user' || role === 'assistant') && content) {
-        if (typeof content === 'string') {
-          return `${role}: ${content}`;
-        } else {
-          return `${role}: ${content.map((item) => (item.type === 'text' ? item.text : '')).join('\n')}`;
+    const historyFewShot = filterHistories
+      .map((item) => {
+        const role = item.role;
+        const content = item.content;
+        if ((role === 'user' || role === 'assistant') && content) {
+          if (typeof content === 'string') {
+            return `${role}: ${content}`;
+          } else {
+            return `${role}: ${content.map((item) => (item.type === 'text' ? item.text : '')).join('\n')}`;
+          }
         }
-      }
-    })
-    .filter(Boolean)
-    .join('\n');
-  const messages = [
-    {
-      role: 'system',
-      content: queryExtensionSystemPrompt
-    },
-    {
-      role: 'user',
-      content: buildQueryExtensionUserPrompt({
-        chatBg,
-        histories: historyFewShot,
-        query,
-        count: generateCount
       })
-    }
-  ] as any;
+      .filter(Boolean)
+      .join('\n');
+    const messages = [
+      {
+        role: 'system',
+        content: queryExtensionSystemPrompt
+      },
+      {
+        role: 'user',
+        content: buildQueryExtensionUserPrompt({
+          chatBg,
+          histories: historyFewShot,
+          query,
+          count: generateCount
+        })
+      }
+    ] as any;
 
-  const {
-    answerText: answer,
-    requestId,
-    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
-  } = await createLLMResponse({
-    userKey,
-    teamId,
-    body: {
-      stream: true,
-      model: llmModel,
-      messages,
-      ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+    const {
+      answerText: answer,
+      requestId,
+      usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
+    } = await createLLMResponse({
+      userKey,
+      teamId,
+      body: {
+        stream: true,
+        model: llmModel,
+        messages,
+        ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+      }
+    });
+
+    if (!answer) {
+      return {
+        rawQuery: query,
+        extensionQueries: [],
+        llmModel: llmModel.model,
+        embeddingModel: embeddingModel.model,
+        requestId,
+        seconds: getSeconds(),
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
+        usedUserOpenAIKey,
+        embeddingTokens: 0
+      };
+    }
+
+    // 2. Parse answer
+    const start = answer.indexOf('[');
+    const end = answer.lastIndexOf(']');
+    if (start === -1 || end === -1) {
+      logger.warn('Query extension returned invalid JSON', {
+        answer
+      });
+      return {
+        rawQuery: query,
+        extensionQueries: [],
+        llmModel: llmModel.model,
+        embeddingModel: embeddingModel.model,
+        requestId,
+        seconds: getSeconds(),
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
+        usedUserOpenAIKey,
+        embeddingTokens: 0
+      };
+    }
+
+    // Intercept the content of [] and retain []
+    const jsonStr = answer
+      .substring(start, end + 1)
+      .replace(/(\\n|\\)/g, '')
+      .replace(/  /g, '');
+
+    try {
+      let queries = json5.parse(jsonStr) as string[];
+
+      if (!Array.isArray(queries) || queries.length === 0) {
+        return {
+          rawQuery: query,
+          extensionQueries: [],
+          llmModel: llmModel.model,
+          embeddingModel: embeddingModel.model,
+          requestId,
+          seconds: getSeconds(),
+          inputTokens,
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens,
+          usedUserOpenAIKey,
+          embeddingTokens: 0
+        };
+      }
+
+      // 3. 通过计算获取到最优的检索词
+      const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
+        embeddingModel
+      });
+      queries = queries.map((item) => String(item).trim()).filter(Boolean);
+      if (queries.length === 0) {
+        return {
+          rawQuery: query,
+          extensionQueries: [],
+          llmModel: llmModel.model,
+          embeddingModel: embeddingModel.model,
+          requestId,
+          seconds: getSeconds(),
+          inputTokens,
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens,
+          usedUserOpenAIKey,
+          embeddingTokens: 0
+        };
+      }
+
+      const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
+        originalText: query,
+        candidates: queries,
+        k: Math.min(3, queries.length), // 至多 3 个
+        alpha: 0.3
+      });
+
+      return {
+        rawQuery: query,
+        extensionQueries: selectedQueries,
+        llmModel: llmModel.model,
+        embeddingModel: useEmbeddingModel,
+        requestId,
+        seconds: getSeconds(),
+        inputTokens,
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
+        usedUserOpenAIKey,
+        embeddingTokens
+      };
+    } catch (error) {
+      logger.warn('Query extension failed', {
+        error,
+        answer
+      });
+      return {
+        rawQuery: query,
+        extensionQueries: [],
+        llmModel: llmModel.model,
+        embeddingModel: embeddingModel.model,
+        requestId,
+        seconds: getSeconds(),
+        inputTokens,
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
+        usedUserOpenAIKey,
+        embeddingTokens: 0
+      };
     }
   });
-
-  if (!answer) {
-    return {
-      rawQuery: query,
-      extensionQueries: [],
-      llmModel: llmModel.model,
-      embeddingModel: embeddingModel.model,
-      requestId,
-      seconds: getSeconds(),
-      inputTokens: inputTokens,
-      outputTokens: outputTokens,
-      usedUserOpenAIKey,
-      embeddingTokens: 0
-    };
-  }
-
-  // 2. Parse answer
-  const start = answer.indexOf('[');
-  const end = answer.lastIndexOf(']');
-  if (start === -1 || end === -1) {
-    logger.warn('Query extension returned invalid JSON', {
-      answer
-    });
-    return {
-      rawQuery: query,
-      extensionQueries: [],
-      llmModel: llmModel.model,
-      embeddingModel: embeddingModel.model,
-      requestId,
-      seconds: getSeconds(),
-      inputTokens: inputTokens,
-      outputTokens: outputTokens,
-      usedUserOpenAIKey,
-      embeddingTokens: 0
-    };
-  }
-
-  // Intercept the content of [] and retain []
-  const jsonStr = answer
-    .substring(start, end + 1)
-    .replace(/(\\n|\\)/g, '')
-    .replace(/  /g, '');
-
-  try {
-    let queries = json5.parse(jsonStr) as string[];
-
-    if (!Array.isArray(queries) || queries.length === 0) {
-      return {
-        rawQuery: query,
-        extensionQueries: [],
-        llmModel: llmModel.model,
-        embeddingModel: embeddingModel.model,
-        requestId,
-        seconds: getSeconds(),
-        inputTokens,
-        outputTokens,
-        usedUserOpenAIKey,
-        embeddingTokens: 0
-      };
-    }
-
-    // 3. 通过计算获取到最优的检索词
-    const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
-      embeddingModel
-    });
-    queries = queries.map((item) => String(item).trim()).filter(Boolean);
-    if (queries.length === 0) {
-      return {
-        rawQuery: query,
-        extensionQueries: [],
-        llmModel: llmModel.model,
-        embeddingModel: embeddingModel.model,
-        requestId,
-        seconds: getSeconds(),
-        inputTokens,
-        outputTokens,
-        usedUserOpenAIKey,
-        embeddingTokens: 0
-      };
-    }
-
-    const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
-      originalText: query,
-      candidates: queries,
-      k: Math.min(3, queries.length), // 至多 3 个
-      alpha: 0.3
-    });
-
-    return {
-      rawQuery: query,
-      extensionQueries: selectedQueries,
-      llmModel: llmModel.model,
-      embeddingModel: useEmbeddingModel,
-      requestId,
-      seconds: getSeconds(),
-      inputTokens,
-      outputTokens,
-      usedUserOpenAIKey,
-      embeddingTokens
-    };
-  } catch (error) {
-    logger.warn('Query extension failed', {
-      error,
-      answer
-    });
-    return {
-      rawQuery: query,
-      extensionQueries: [],
-      llmModel: llmModel.model,
-      embeddingModel: embeddingModel.model,
-      requestId,
-      seconds: getSeconds(),
-      inputTokens,
-      outputTokens,
-      usedUserOpenAIKey,
-      embeddingTokens: 0
-    };
-  }
-};

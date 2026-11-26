@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -18,10 +19,7 @@ describe('plugin debug channel connection key exchange handler', () => {
 
   beforeEach(() => {
     originalIsPlus = global.feConfigs?.isPlus;
-    global.feConfigs = {
-      ...global.feConfigs,
-      isPlus: true
-    } as any;
+    setTestLicenseActive(true);
     mocks.pluginClient.exchangeDebugSessionConnectionKey.mockReset();
     mocks.pluginClient.exchangeDebugSessionConnectionKey.mockResolvedValue({
       gatewayUrl: 'wss://gateway.example.com/debug',

@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/tracks/push';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
@@ -6,11 +7,11 @@ import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { Call } from '@test/utils/request';
-import type { PushTrackBodyType } from '@fastgpt/global/openapi/common/other/api';
+import type { PushClientTrackBodyType } from '@fastgpt/global/openapi/common/other/api';
 
 vi.unmock('@fastgpt/service/common/middle/tracks/utils');
 
-const clientTracks: PushTrackBodyType[] = [
+const clientTracks: PushClientTrackBodyType[] = [
   { event: TrackEnum.useAppTemplate, data: { id: 'app-1', name: 'Template' } },
   { event: TrackEnum.readSystemAnnouncement, data: { announcementId: 'announcement-1' } },
   {
@@ -30,7 +31,7 @@ const clientTracks: PushTrackBodyType[] = [
   }
 ];
 const clientEvents: TrackEnum[] = clientTracks.map(({ event }) => event);
-const boundaryClientTracks: PushTrackBodyType[] = [
+const boundaryClientTracks: PushClientTrackBodyType[] = [
   {
     event: TrackEnum.useAppTemplate,
     data: { id: 'i'.repeat(128), name: '模'.repeat(200) }
@@ -71,7 +72,7 @@ describe('client track reporting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.countTrackQueue = new Map();
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestLicenseActive(true);
   });
 
   it('stores every supported client event with the authenticated identity', async () => {
@@ -264,8 +265,41 @@ describe('client track reporting', () => {
     expect(await TrackModel.countDocuments()).toBe(0);
   });
 
+  it('rejects attempts to use external-link authentication for ordinary client events', async () => {
+    const response = await Call(handler, {
+      body: {
+        authType: 'outLink',
+        event: TrackEnum.clientError,
+        data: { route: '/dashboard', log: 'Render failed' },
+        outLinkAuthData: { shareId: 'share', outLinkUid: 'visitor' }
+      }
+    });
+
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(authCert).not.toHaveBeenCalled();
+    expect(await TrackModel.countDocuments()).toBe(0);
+  });
+
+  it('accepts an explicitly selected session mode for authenticated events', async () => {
+    const response = await Call(handler, {
+      auth,
+      body: {
+        authType: 'session',
+        event: TrackEnum.clientError,
+        data: { route: '/dashboard', log: 'Render failed' }
+      }
+    });
+
+    expect(response.error).toBeUndefined();
+    expect(authCert).toHaveBeenCalledOnce();
+    expect(await TrackModel.findOne({ event: TrackEnum.clientError }).lean()).toMatchObject({
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+  });
+
   it('skips reporting outside the Plus edition', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: false };
+    setTestLicenseActive(false);
     const response = await Call(handler, {
       auth,
       body: { event: TrackEnum.clientError, data: { route: '/dashboard', log: 'Render failed' } }

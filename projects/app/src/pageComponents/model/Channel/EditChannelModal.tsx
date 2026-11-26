@@ -1,5 +1,11 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
-import { type ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
+import {
+  CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES,
+  ChatUpstreamProtocolSchema,
+  type ChannelInfoType,
+  type ChatUpstreamProtocol
+} from '@fastgpt/global/core/ai/model/channel';
 import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -59,12 +65,24 @@ const EditChannelModal = ({
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;
 
-  const { configs: _configs, ...formDefaults } = defaultConfig;
-  const { register, handleSubmit, control, setValue } = useForm<Omit<ChannelInfoType, 'configs'>>({
-    defaultValues: formDefaults
+  const { register, handleSubmit, control, setValue } = useForm<ChannelInfoType>({
+    defaultValues: {
+      ...defaultConfig,
+      configs: {
+        ...defaultConfig.configs,
+        // 未配置时默认 auto，按模型选择上游协议；只在用户保存后写入，不主动迁移已有渠道。
+        chat_upstream_protocol: ChatUpstreamProtocolSchema.parse(
+          defaultConfig.configs?.chat_upstream_protocol
+        )
+      }
+    }
   });
 
   const providerType = useWatch({ control, name: 'type' });
+  const chatUpstreamProtocol = useWatch({ control, name: 'configs.chat_upstream_protocol' });
+  const supportsChatUpstreamProtocol = CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some(
+    (type) => type === providerType
+  );
   const { data: channelProviderMetas = {}, loading: loadingChannelProviderMetas } = useRequest(
     getChannelProviders,
     { manual: false }
@@ -103,7 +121,7 @@ const EditChannelModal = ({
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
-    return availableModels.map((item: any) => {
+    return sortModelSelectorModels(availableModels).map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
       return {
@@ -117,7 +135,15 @@ const EditChannelModal = ({
 
   const modelMapping = useWatch({ control, name: 'model_mapping' });
   const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
-    async (data: ChannelInfoType) => {
+    async (formData: ChannelInfoType) => {
+      const { chat_upstream_protocol, ...otherConfigs } = formData.configs ?? {};
+      const data = {
+        ...formData,
+        configs: {
+          ...otherConfigs,
+          ...(supportsChatUpstreamProtocol ? { chat_upstream_protocol } : {})
+        }
+      };
       if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
@@ -150,6 +176,25 @@ const EditChannelModal = ({
   const onSubmit = useLockFn(submitRequest);
 
   const isLoading = loadingModels || loadingChannelProviderMetas || loadingCreate;
+
+  const chatProtocolField = supportsChatUpstreamProtocol ? (
+    <Box>
+      <HStack spacing={1} mb={2}>
+        <FormLabel>{t('config_model:chat_upstream_protocol')}</FormLabel>
+        <QuestionTip label={t('config_model:chat_upstream_protocol_tip')} />
+      </HStack>
+      <MySelect<ChatUpstreamProtocol>
+        h={isCompactCreate ? '36px' : undefined}
+        value={chatUpstreamProtocol}
+        list={[
+          { label: t('config_model:chat_upstream_protocol_auto'), value: 'auto' },
+          { label: 'Responses', value: 'responses' },
+          { label: 'Chat Completions', value: 'chat_completions' }
+        ]}
+        onChange={(value) => setValue('configs.chat_upstream_protocol', value)}
+      />
+    </Box>
+  ) : null;
 
   return (
     <MyModal
@@ -217,6 +262,8 @@ const EditChannelModal = ({
               placeholder={t('config_model:api_key_placeholder')}
             />
           </Box>
+
+          {chatProtocolField}
 
           <Flex alignItems="center" gap={8} minH="36px">
             <HStack spacing={1} {...CompactLabelStyles}>
@@ -335,6 +382,7 @@ const EditChannelModal = ({
               placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
             />
           </Box>
+          {chatProtocolField && <Box mt={4}>{chatProtocolField}</Box>}
           {/* Model */}
           <Box mt={4}>
             <Flex alignItems={'center'}>

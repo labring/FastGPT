@@ -1,10 +1,8 @@
 import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import {
-  DatasetTagFilterValueSchema,
-  DatasetTagFilterVersionSchema
-} from '../dataset/search/tagFilter';
+import { DatasetTagFilterValueSchema } from '../dataset/search/tagFilter';
+import { rerankCandidateNumRange } from '../dataset/search/utils';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import {
@@ -340,7 +338,10 @@ export const ReferencedAppSchema = z
   .object({
     _id: ObjectIdSchema.meta({ example: referencedAppExample._id, description: '应用 ID' }),
     name: z.string().meta({ example: referencedAppExample.name, description: '应用名称' }),
-    avatar: z.string().meta({ example: referencedAppExample.avatar, description: '应用头像' }),
+    avatar: z
+      .string()
+      .optional()
+      .meta({ example: referencedAppExample.avatar, description: '应用头像' }),
     intro: z.string().meta({ example: referencedAppExample.intro, description: '应用简介' }),
     tmbId: ObjectIdSchema.meta({
       example: referencedAppExample.tmbId,
@@ -390,6 +391,7 @@ export type AppDetailType = AppSchemaType & {
   nodes: AppVersionSchemaType['nodes'];
   edges: AppVersionSchemaType['edges'];
   chatConfig: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   permission: AppPermission;
 };
 
@@ -411,6 +413,11 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   /** @deprecated */
   rerankModel: OptionalDatasetModelSchema,
   rerankWeight: NumSchema.optional(),
+  // 非法候选数回退默认值，关闭重排或读取旧配置时也不能因此中断检索。
+  rerankCandidateNum: IntSchema.min(rerankCandidateNumRange.min)
+    .max(rerankCandidateNumRange.max)
+    .catch(rerankCandidateNumRange.default)
+    .optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
   datasetSearchExtensionModelId: OptionalDatasetModelSchema,
@@ -419,8 +426,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
-  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional(),
-  [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionSchema.optional()
+  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 
@@ -481,6 +487,9 @@ export const AppTemplateStorageSchema = z.object({
   }),
   recommendText: z.string().optional().meta({
     description: '推荐文案'
+  }),
+  experienceUrl: z.string().optional().meta({
+    description: '体验地址；用户可在复制模板前打开该链接预览'
   }),
   userGuide: z
     .object({

@@ -1,3 +1,4 @@
+import { normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
@@ -25,7 +26,11 @@ async function handler(req: ApiRequestProps): Promise<updateLogKeysResponseType>
     per: WritePermissionVal
   });
 
-  await MongoAppLogKeys.findOneAndUpdate({ teamId, appId }, { logKeys }, { upsert: true });
+  await MongoAppLogKeys.findOneAndUpdate(
+    { teamId, appId },
+    { logKeys: normalizeAppLogKeys(logKeys) },
+    { upsert: true }
+  );
 
   return UpdateLogKeysResponseSchema.parse(undefined);
 }

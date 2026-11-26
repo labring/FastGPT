@@ -2,8 +2,8 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { HttpFormFieldType } from '@fastgpt/global/core/workflow/http/type';
 import { materializeFileSource } from '../../../../common/file/read/source';
 import { normalizeMimeType } from '../../../../common/s3/utils/mime';
-import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
-import { getWorkflowFileContext } from '../../utils/context';
+import { getServiceRequestMaxContentLength } from '../../../../common/system/constants';
+import { getWorkflowFileContext } from '../context';
 import { runWithHttpAbort } from './httpAbort';
 
 /**
@@ -17,6 +17,7 @@ export const buildHttpFormData = async ({
   fields: HttpFormFieldType[];
   signal: AbortSignal;
 }) => {
+  const serviceRequestMaxContentLength = getServiceRequestMaxContentLength();
   const formData = new FormData();
   const body: Record<string, unknown> = Object.create(null);
   const fileContext = getWorkflowFileContext();

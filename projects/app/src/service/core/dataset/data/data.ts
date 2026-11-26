@@ -27,6 +27,7 @@ import {
   DatasetDataIndexTypeEnum
 } from '@fastgpt/global/core/dataset/data/constants';
 import {
+  getCachedDatasetSynonymConfig,
   getDatasetSynonymMatcher,
   getDatasetSynonymTransformContext
 } from '@fastgpt/service/core/dataset/synonym/entity';
@@ -153,8 +154,16 @@ export class DatasetDataOperation {
   }
 
   /** 已提交的新索引不能因旧向量清理失败被补偿删除；清理失败记录原始 ID 以便排查。 */
-  private async cleanupReplacedVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
-    await this.indexOperation.deleteVectors({ teamId, idList }).catch((error) => {
+  private async cleanupReplacedVectors({
+    teamId,
+    datasetId,
+    idList
+  }: {
+    teamId: string;
+    datasetId: string;
+    idList: string[];
+  }) {
+    await this.indexOperation.deleteVectors({ teamId, datasetId, idList }).catch((error) => {
       logger.error('Failed to clean up replaced dataset vectors', { error, teamId, idList });
     });
   }
@@ -235,7 +244,7 @@ export class DatasetDataOperation {
       if (!synonymContext) return;
       if (await synonymContext.isCurrent()) return;
       await this.indexOperation
-        .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
+        .deleteVectors({ teamId, datasetId, idList: results.map((index) => index.dataId) })
         .catch(() => {});
       throw new Error('同义词配置已变化，请重试数据写入');
     };
@@ -295,7 +304,7 @@ export class DatasetDataOperation {
       });
     } catch (error) {
       await this.indexOperation
-        .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
+        .deleteVectors({ teamId, datasetId, idList: results.map((index) => index.dataId) })
         .catch(() => {});
       throw error;
     }
@@ -483,14 +492,22 @@ export class DatasetDataOperation {
     } catch (error) {
       if (synonymContext || commit || isFailed) {
         await this.indexOperation
-          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .deleteVectors({
+            teamId: mongoData.teamId,
+            datasetId: mongoData.datasetId,
+            idList: newVectorIdList
+          })
           .catch(() => {});
       }
       throw error;
     }
 
     // lease.complete 包含 training 删除和事务提交；此前必须保留旧向量供回滚或重跑使用。
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
+    await this.cleanupReplacedVectors({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      idList: deleteVectorIdList
+    });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,
@@ -532,6 +549,15 @@ export class DatasetDataOperation {
 
       // 未记录版本或历史快照已被清理时，全量生成，不能猜测旧向量的输入。
       if (mongoData.synonymVersion === undefined) return;
+
+      // 删除词表产生的空版本没有 mappings，但配置记录了它按原文索引，可安全差量比较。
+      const previousConfig = await getCachedDatasetSynonymConfig({
+        teamId: String(mongoData.teamId),
+        datasetId: String(mongoData.datasetId)
+      });
+      if (previousConfig?.emptyVersions?.includes(mongoData.synonymVersion)) {
+        return (text: string) => text;
+      }
 
       const matcher = await getDatasetSynonymMatcher({
         teamId: String(mongoData.teamId),
@@ -582,6 +608,14 @@ export class DatasetDataOperation {
         patchResult.filter((item) => item.type === 'create' || item.type === 'update')
       )
       .map((index) => index.dataId);
+    // 只有索引确实变化才算内容更新：差量重建时未受词表影响的索引会被复用，
+    // 此时仅推进 synonymVersion，不刷新数据与集合的更新时间。
+    const hasIndexChanges = patchResult.some(
+      (item) =>
+        item.type === 'delete' ||
+        item.type === 'update' ||
+        (item.type === 'create' && !item.skipped)
+    );
 
     // 8. 校验词表和数据快照后，原子提交索引、全文和任务完成状态。
     try {
@@ -598,7 +632,8 @@ export class DatasetDataOperation {
               $set: {
                 indexes,
                 indexStatus: DatasetDataIndexStatusEnum.indexed,
-                updateTime: new Date(),
+                // 索引未变化时保留原更新时间，避免同义词版本推进被误读为内容修改。
+                ...(hasIndexChanges && { updateTime: new Date() }),
                 ...(synonymContext && { synonymVersion: synonymContext.version })
               },
               $unset: {
@@ -631,18 +666,29 @@ export class DatasetDataOperation {
       });
     } catch (error) {
       await this.indexOperation
-        .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIds })
+        .deleteVectors({
+          teamId: mongoData.teamId,
+          datasetId: mongoData.datasetId,
+          idList: newVectorIds
+        })
         .catch(() => {});
       throw error;
     }
 
     // 9. 提交成功后再删除被替换的旧向量，并通知集合更新统计。
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: oldVectorIds });
-    this.pushCollectionUpdate({
+    await this.cleanupReplacedVectors({
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
-      collectionId: mongoData.collectionId
+      idList: oldVectorIds
     });
+    // 索引无变化时集合统计与更新时间都不变，无需投递去抖任务。
+    if (hasIndexChanges) {
+      this.pushCollectionUpdate({
+        teamId: mongoData.teamId,
+        datasetId: mongoData.datasetId,
+        collectionId: mongoData.collectionId
+      });
+    }
 
     return { tokens };
   }
@@ -829,13 +875,21 @@ export class DatasetDataOperation {
     } catch (error) {
       if (synonymContext || isFailed) {
         await this.indexOperation
-          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .deleteVectors({
+            teamId: mongoData.teamId,
+            datasetId: mongoData.datasetId,
+            idList: newVectorIdList
+          })
           .catch(() => {});
       }
       throw error;
     }
 
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
+    await this.cleanupReplacedVectors({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      idList: deleteVectorIdList
+    });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,
@@ -876,6 +930,7 @@ export class DatasetDataOperation {
         // data.indexes 中的 dataId 即向量 id，删除数据时需要全部清理。
         await this.indexOperation.deleteVectors({
           teamId: data.teamId,
+          datasetId: data.datasetId,
           idList: data.indexes.map((item) => item.dataId)
         });
       }

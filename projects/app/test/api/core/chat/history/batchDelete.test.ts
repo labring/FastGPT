@@ -149,6 +149,39 @@ describe('batchDelete api test', () => {
     expect(nonDeletedChat).toBeDefined();
   });
 
+  it('ignores user identities and authorizes physical deletion by the actual caller log permission', async () => {
+    const caller = await getUser('actual-log-caller', testUser.teamId);
+    const body = {
+      appId,
+      chatIds: [chatIds[0]],
+      customUid: 'ignored',
+      authProxy: { tmbId: testUser.tmbId }
+    };
+    const denied = await Call<any, EmptyQuery>(handler, { auth: caller, body });
+    expect(denied.code).toBe(500);
+    const target = { appId, chatId: chatIds[0] };
+    expect(await MongoChat.countDocuments(target)).toBe(1);
+    expect(await MongoChatItem.countDocuments(target)).toBe(1);
+    expect(await MongoChatItemResponse.countDocuments(target)).toBe(1);
+
+    await MongoResourcePermission.create({
+      teamId: testUser.teamId,
+      tmbId: caller.tmbId,
+      resourceId: appId,
+      resourceType: PerResourceTypeEnum.app,
+      permission: AppReadChatLogPerVal
+    });
+    const allowed = await Call<any, EmptyQuery>(handler, {
+      auth: caller,
+      body: { ...body, authProxy: 'ignored-invalid-value' }
+    });
+    expect(allowed.code).toBe(200);
+    expect(await MongoChat.countDocuments(target)).toBe(0);
+    expect(await MongoChatItem.countDocuments(target)).toBe(0);
+    expect(await MongoChatItemResponse.countDocuments(target)).toBe(0);
+    expect(await MongoChat.countDocuments({ appId })).toBe(2);
+  });
+
   it('should batch delete skill edit chats without deleting app chat sandboxes', async () => {
     const skill = await MongoAgentSkills.create({
       name: 'Batch Delete Skill',

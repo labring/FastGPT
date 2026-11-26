@@ -41,6 +41,7 @@ export async function handler(
   const [systemTools, tags] = await Promise.all([
     systemToolRepo.getSystemToolList({
       sources: ['system'],
+      includeDisabled: true,
       lang
     }),
     MongoPluginToolTag.find({}).lean()

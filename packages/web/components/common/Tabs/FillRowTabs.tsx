@@ -27,6 +27,7 @@ type Props<T = string> = Omit<BoxProps, 'onChange' | 'size'> & {
   scrollPositionKey?: string;
 };
 
+/** 通用分段选择按钮组；原生按钮提供 Tab、Enter/空格操作，aria-pressed 表达当前选择。 */
 const FillRowTabs = (
   {
     list,
@@ -64,7 +65,7 @@ const FillRowTabs = (
 
   const resolveSizeValue = (valueMap: Record<FillRowTabsSize, string | number>): BoxProps['px'] => {
     const resolveValue = (value: FillRowTabsSize | null | undefined) =>
-      value == null ? value : valueMap[value];
+      value === null || value === undefined ? value : valueMap[value];
 
     if (typeof size === 'string') {
       return resolveValue(size) as BoxProps['px'];
@@ -86,6 +87,7 @@ const FillRowTabs = (
   return (
     <Box
       ref={mergedRef}
+      role="group"
       display={'inline-flex'}
       maxW={'100%'}
       minW={0}
@@ -125,12 +127,20 @@ const FillRowTabs = (
     >
       {list.map((item) => (
         <HStack
+          as="button"
+          type="button"
+          aria-pressed={value === item.value}
           key={item.value}
           flex={'1 0 0'}
           alignItems={'center'}
           justifyContent={'center'}
           cursor={'pointer'}
           borderRadius={'xs'}
+          _focusVisible={{
+            outline: '2px solid',
+            outlineColor: 'primary.500',
+            outlineOffset: '-2px'
+          }}
           px={px ?? sizePx}
           py={py ?? sizePy}
           {...(itemHeight ? { h: itemHeight } : {})}
@@ -158,13 +168,16 @@ const FillRowTabs = (
         >
           {item.icon && (
             <MyIcon
+              aria-hidden
               name={item.icon as any}
               w={item.iconSize || iconSize}
               h={item.iconSize || iconSize}
             />
           )}
           {item.label !== undefined && item.label !== '' && (
-            <Box fontSize={labelSize}>{item.label}</Box>
+            <Box as="span" fontSize={labelSize}>
+              {item.label}
+            </Box>
           )}
         </HStack>
       ))}

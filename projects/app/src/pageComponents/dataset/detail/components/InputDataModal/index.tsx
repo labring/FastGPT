@@ -39,7 +39,7 @@ const InputDataModal = ({
     watchedIndexes,
     onDeleteIndex,
     onSaveIndex,
-    prependCustomIndex,
+    onAddIndex,
     setCurrentTab,
     clearFocusIndexClientId,
     markEditingIndex,
@@ -164,7 +164,7 @@ const InputDataModal = ({
                 maxToken={maxToken}
                 register={register}
                 watchedIndexes={watchedIndexes}
-                onAddIndex={prependCustomIndex}
+                onAddIndex={onAddIndex}
                 onDeleteIndex={onDeleteIndex}
                 onSaveIndex={onSaveIndex}
                 onAutoFocusIndex={clearFocusIndexClientId}

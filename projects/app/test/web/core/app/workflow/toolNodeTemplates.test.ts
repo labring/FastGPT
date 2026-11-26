@@ -16,14 +16,15 @@ import { ParallelRunNode } from '@fastgpt/global/core/workflow/template/system/p
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
+import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import {
   getInputComponentProps,
   nodeTemplate2FlowNode,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
 describe('workflow tool node templates', () => {
@@ -230,6 +231,31 @@ describe('workflow tool node templates', () => {
     });
   });
 
+  it('prefers external toolset avatars and falls back to the MCP icon', () => {
+    const createExternalToolSetNode = (avatar?: string) =>
+      storeNode2FlowNode({
+        item: {
+          nodeId: 'external-tool-set',
+          pluginId: 'external-plugin',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'External tools',
+          avatar,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpToolSet: {
+              toolId: 'http-tool-id',
+              toolList: []
+            }
+          }
+        } as any,
+        t: ((key: string) => key) as any
+      }).data;
+
+    expect(createExternalToolSetNode('external/avatar').avatar).toBe('external/avatar');
+    expect(createExternalToolSetNode().avatar).toBe(McpToolSetNode.avatar);
+  });
+
   it('only exposes custom tool params for HTTP and Code nodes', () => {
     const createNode = (flowNodeType: FlowNodeTypeEnum, hasToolInput = true) =>
       ({ flowNodeType, hasToolInput }) as Parameters<typeof hasDynamicToolInput>[0];
@@ -259,7 +285,7 @@ describe('workflow tool node templates', () => {
           t: ((key: string) => key) as any
         })
       );
-    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [], chatConfig: {} });
+    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [] });
 
     expect(CanonicalWorkflowDataSchema.safeParse({ ...workflow, chatConfig: {} }).success).toBe(
       true

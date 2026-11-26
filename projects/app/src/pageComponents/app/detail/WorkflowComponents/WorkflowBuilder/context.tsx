@@ -13,7 +13,6 @@ export type WorkflowBuilderActivity = {
   isChatGenerating: boolean;
   isBuildingWorkflow: boolean;
   pendingInteractiveKey?: string;
-  errorAttentionKey?: string;
   latestVersion?: WorkflowBuilderVersionTarget;
 };
 

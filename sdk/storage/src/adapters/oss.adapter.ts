@@ -2,17 +2,21 @@ import OSS from 'ali-oss';
 import type { IOssStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Readable } from 'node:stream';
+import type { ClientRequest } from 'node:http';
 import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  formatHttpByteRangeHeader,
+  getAbortSignalError,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
+  assertStorageDownloadRange,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix,
   assertMultipartContentLength,
@@ -22,6 +26,21 @@ import {
   containsStorageObjectControlCharacter,
   isNoSuchMultipartUploadError
 } from '../assert';
+
+type UrllibRequestCallback = (
+  err: Error | null,
+  data: unknown,
+  res: { statusCode?: number; headers?: Record<string, unknown> }
+) => void;
+
+type OssUrllib = {
+  request: (url: string, params: Record<string, unknown>) => Promise<unknown>;
+  requestWithCallback?: (
+    url: string,
+    params: Record<string, unknown>,
+    callback: UrllibRequestCallback
+  ) => ClientRequest;
+};
 
 export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;
@@ -39,10 +58,7 @@ export class OssStorageAdapter implements IStorage {
       bucket: options.bucket,
       cname: options.cname,
       internal: options.internal,
-      secure: options.secure,
-
-      // @ts-expect-error ali-oss SDK 类型未定义但存在此属性
-      enableProxy: options.proxy ? true : false
+      secure: options.secure
     });
   }
 
@@ -120,8 +136,10 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
     // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
     const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
 
@@ -141,11 +159,77 @@ export class OssStorageAdapter implements IStorage {
       }
     }
 
-    await this.client.put(key, uploadBody, {
-      headers,
-      mime: contentType,
-      meta
-    });
+    /**
+     * ali-oss 的 put 不暴露取消参数，但底层通过 this.urllib.request 发请求，而
+     * urllib.requestWithCallback 会同步返回 http.ClientRequest。
+     * 基于 Object.create(this.client) 仅覆写单次调用的 urllib，既可精准销毁本次请求
+     * （含 body 发送完毕后等待响应阶段），又完整保留全局 AgentKeepalive 连接池复用。
+     */
+    const activeRequests = new Set<ClientRequest>();
+    const baseUrllib = (this.client as unknown as { urllib?: OssUrllib }).urllib;
+    const uploadClient =
+      abortSignal && baseUrllib?.requestWithCallback
+        ? Object.assign(Object.create(this.client) as OSS, {
+            urllib: {
+              ...baseUrllib,
+              request: (url: string, reqParams: Record<string, unknown>) =>
+                new Promise((resolve, reject) => {
+                  if (abortSignal.aborted) {
+                    reject(getAbortSignalError(abortSignal));
+                    return;
+                  }
+                  const req = baseUrllib.requestWithCallback!(url, reqParams, (err, data, res) => {
+                    if (req) activeRequests.delete(req);
+                    if (err) {
+                      reject(err);
+                      return;
+                    }
+                    resolve({
+                      data,
+                      status: res?.statusCode,
+                      headers: res?.headers,
+                      res
+                    });
+                  });
+                  if (req) {
+                    activeRequests.add(req);
+                    if (abortSignal.aborted) req.destroy();
+                  }
+                })
+            }
+          })
+        : this.client;
+
+    const abortUpload = () => {
+      if (activeRequests.size > 0) {
+        // 优先销毁底层 ClientRequest，由 urllib/pump 统一收尾，避免同时销毁流触发 callback twice。
+        for (const req of activeRequests) {
+          req.destroy();
+        }
+      } else if (uploadBody instanceof Readable && !uploadBody.destroyed) {
+        uploadBody.destroy();
+      }
+    };
+    abortSignal?.addEventListener('abort', abortUpload, { once: true });
+
+    try {
+      await uploadClient.put(key, uploadBody, {
+        headers,
+        mime: contentType,
+        meta,
+        // ali-oss 对 Readable body 会走 putStream：未传 contentLength 时额外写入
+        // Transfer-Encoding: chunked，与上面的 Content-Length 冲突，provider 会直接拒绝请求。
+        ...(uploadBody instanceof Readable && contentLength !== undefined ? { contentLength } : {})
+      } as OSS.PutObjectOptions & { contentLength?: number });
+    } catch (error) {
+      throw abortSignal?.aborted ? getAbortSignalError(abortSignal) : error;
+    } finally {
+      abortSignal?.removeEventListener('abort', abortUpload);
+      activeRequests.clear();
+      if (abortSignal?.aborted && uploadBody instanceof Readable && !uploadBody.destroyed) {
+        uploadBody.destroy();
+      }
+    }
 
     return {
       key,
@@ -260,11 +344,18 @@ export class OssStorageAdapter implements IStorage {
   async downloadObject(
     params: Storage.DownloadObjectParams
   ): Promise<Storage.DownloadObjectResult> {
-    const { key, abortSignal } = params;
+    const { key, range, abortSignal } = params;
     assertStorageObjectKey(key);
+    assertStorageDownloadRange(range);
     throwIfStorageDownloadAborted(abortSignal);
 
-    const result = await this.client.getStream(key);
+    const result = range
+      ? await this.client.getStream(key, {
+          headers: {
+            Range: formatHttpByteRangeHeader(range)
+          }
+        })
+      : await this.client.getStream(key);
     const stream = result.stream as Readable;
     bindAbortSignalToReadable({ readable: stream, abortSignal });
 

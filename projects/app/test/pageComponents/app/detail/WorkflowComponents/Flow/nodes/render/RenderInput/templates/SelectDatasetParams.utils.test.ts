@@ -1,11 +1,32 @@
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 import {
   getDatasetSearchParamInputs,
-  getDatasetSearchParams
+  getDatasetSearchParams,
+  getStaticDatasetIds
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SelectDatasetParams.utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 
 describe('getDatasetSearchParams', () => {
+  it('preserves explicit false or zero values on inputs without falling back to defaults', () => {
+    const params = getDatasetSearchParams([
+      { key: 'similarity', value: 0 },
+      { key: 'usingReRank', value: false },
+      { key: 'rerankModelId', value: 'chosen-model' }
+    ]);
+    expect(params).toMatchObject({
+      similarity: 0,
+      usingReRank: false,
+      rerankModelId: 'chosen-model'
+    });
+  });
   it.each([undefined, null, false])(
     'keeps absent or disabled feature switches off in the summary (%s)',
     (value) => {
@@ -25,24 +46,27 @@ describe('getDatasetSearchParams', () => {
     }
   );
   it('shows only persisted model choices and can read initially empty keys', () => {
-    expect(getDatasetSearchParams([]).datasetSearchExtensionModelId).toBeUndefined();
+    const empty = getDatasetSearchParams([]);
+    expect(empty.datasetSearchExtensionModelId).toBeUndefined();
+    expect(empty.collectionFilterMatch).toBeUndefined();
     const input = { key: 'datasetSearchExtensionModelId', value: 'chosen' };
     expect(getDatasetSearchParams([input]).datasetSearchExtensionModelId).toBe('chosen');
     expect(
       getDatasetSearchParams([{ ...input, value: null }]).datasetSearchExtensionModelId
     ).toBeUndefined();
     expect(
-      getDatasetSearchParams([{ key: 'datasetSearchUsingExtensionQuery', value: false }])
-        .datasetSearchUsingExtensionQuery
-    ).toBe(false);
+      getDatasetSearchParams([{ key: 'collectionFilterMatch', value: '{"and":["tag1"]}' }])
+        .collectionFilterMatch
+    ).toBe('{"and":["tag1"]}');
   });
 });
 describe('getDatasetSearchParamInputs', () => {
-  it('materializes missing canonical model inputs and preserves existing metadata', () => {
+  it('materializes missing canonical model inputs as hidden and preserves existing metadata', () => {
     const values = {
       searchMode: DatasetSearchModeEnum.embedding,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModelId: 'chosen'
+      datasetSearchExtensionModelId: 'chosen',
+      collectionFilterMatch: '{"and":["tag1"]}'
     };
     const inputs = getDatasetSearchParamInputs({ inputs: [], values });
     expect(inputs).toEqual(
@@ -51,6 +75,11 @@ describe('getDatasetSearchParamInputs', () => {
           key: 'datasetSearchExtensionModelId',
           value: 'chosen',
           renderTypeList: ['hidden']
+        }),
+        expect.objectContaining({
+          key: 'collectionFilterMatch',
+          value: '{"and":["tag1"]}',
+          renderTypeList: ['hidden', 'reference']
         })
       ])
     );
@@ -66,6 +95,43 @@ describe('getDatasetSearchParamInputs', () => {
     expect(getDatasetSearchParams(next).datasetSearchExtensionModelId).toBe('changed');
     expect(original.find((i) => i.key === 'datasetSearchExtensionModelId')?.value).toBe('chosen');
   });
+  it.each([AgentNode, DatasetSearchModule])(
+    'syncs filter modes and settings for $flowNodeType',
+    (template) => {
+      const reference: ReferenceItemValueType = ['upstream', 'filterJson'];
+      const values = {
+        collectionFilterMatch: reference,
+        similarity: 0,
+        usingReRank: false
+      };
+      const inputs = getDatasetSearchParamInputs({
+        inputs: [...template.inputs],
+        values
+      });
+      expect(nodeInputIsReference(normalizeFlowNodeInputType(inputs[0]))).toBe(true);
+      expect(getDatasetSearchParams(inputs)).toMatchObject({
+        collectionFilterMatch: reference,
+        similarity: 0,
+        usingReRank: false
+      });
+
+      const [manualInput] = getDatasetSearchParamInputs({
+        inputs,
+        values: { collectionFilterMatch: { ...createEmptyTagFilterValue(), open: true } }
+      });
+      expect(manualInput.selectedType).toBe(
+        template.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterMatch)
+          ?.renderTypeList[0]
+      );
+
+      const clearedInputs = getDatasetSearchParamInputs({
+        inputs,
+        values: { collectionFilterMatch: undefined }
+      });
+      expect(getDatasetSearchParams(clearedInputs).collectionFilterMatch).toBeUndefined();
+    }
+  );
+
   it('does not create inputs for unknown legacy-only keys', () => {
     expect(
       getDatasetSearchParamInputs({
@@ -76,5 +142,41 @@ describe('getDatasetSearchParamInputs', () => {
         }
       }).some((i) => i.key === 'datasetSearchExtensionModel')
     ).toBe(false);
+  });
+});
+
+describe('getStaticDatasetIds', () => {
+  it('distinguishes empty static dataset selections from variable references', () => {
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.selectDataset,
+        value: [{ datasetId: 'ds_1' }, { datasetId: 'ds_2' }]
+      })
+    ).toEqual(['ds_1', 'ds_2']);
+
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.selectDataset,
+        value: []
+      })
+    ).toEqual([]);
+
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: ['upstream_node', 'datasets']
+      })
+    ).toBeUndefined();
+
+    expect(
+      getStaticDatasetIds({
+        value: ['upstream_node', 'datasets']
+      })
+    ).toBeUndefined();
+
+    expect(getStaticDatasetIds(undefined)).toBeUndefined();
   });
 });

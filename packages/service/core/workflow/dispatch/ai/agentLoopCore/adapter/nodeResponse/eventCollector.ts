@@ -26,6 +26,7 @@ export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   node: {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
+    catchError?: boolean;
   };
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
@@ -187,12 +188,19 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       llmRequestIds: [event.requestId],
       inputTokens: usage?.inputTokens,
       outputTokens: usage?.outputTokens,
+      cacheReadTokens: usage?.cacheReadTokens,
+      cacheCreationTokens: usage?.cacheCreationTokens,
       totalPoints: usage?.totalPoints,
       finishReason: event.finishReason,
       textOutput: event.answerText,
       reasoningText: event.reasoningText,
       firstTokenTime: event.firstTokenTime,
-      ...(event.error ? { errorText: getErrText(event.error) } : {})
+      ...(event.error
+        ? {
+            errorText: getErrText(event.error),
+            ...(node.catchError ? { errorCaptured: true } : {})
+          }
+        : {})
     });
   };
 

@@ -21,7 +21,7 @@ type State = {
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
   teamPlanStatus: ClientTeamPlanStatusType | null;
-  initTeamPlanStatus: () => Promise<any>;
+  initTeamPlanStatus: () => ReturnType<typeof getTeamPlanStatus>;
 
   teamOrgs: OrgType[];
 };
@@ -97,7 +97,7 @@ export const useUserStore = create<State>()(
         async initTeamPlanStatus() {
           return getTeamPlanStatus().then((res) => {
             set((state) => {
-              state.teamPlanStatus = res;
+              state.teamPlanStatus = res ?? null;
             });
             return res;
           });

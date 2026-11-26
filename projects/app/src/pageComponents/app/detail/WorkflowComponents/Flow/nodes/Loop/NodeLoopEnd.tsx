@@ -1,36 +1,22 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type NodeProps } from 'reactflow';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Reference from '../render/RenderInput/templates/Reference';
 import { Box } from '@chakra-ui/react';
-import React, { useEffect, useMemo } from 'react';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import React from 'react';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
-import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const typeMap = {
-  [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
-  [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
-  [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
-  [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
-  [WorkflowIOValueTypeEnum.any]: WorkflowIOValueTypeEnum.arrayAny
-};
-
-const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, inputs, parentNodeId } = data;
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+const NodeLoopEnd = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId, parentNodeId } = data;
+  const inputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
+  const parentId = parentNodeId ?? '';
+  const parentData = useNode<WorkflowNodeData>(parentId, (node) => node?.data);
+  const parentFlowNodeType = parentData?.flowNodeType;
   const { t } = useTranslation();
 
   const inputItem = useMemoEnhance(
@@ -39,67 +25,10 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   const parallelRunIntro = useMemoEnhance(() => {
-    const parentNode = getNodeById(parentNodeId);
-    return parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
+    return parentFlowNodeType === FlowNodeTypeEnum.parallelRun
       ? t('workflow:parallel_run_end_intro')
       : undefined;
-  }, [getNodeById, parentNodeId, t]);
-
-  // Get loopEnd input value type
-  const valueType = useMemo(() => {
-    if (!inputItem) return;
-
-    const targetId = inputItem.value[0];
-
-    const globalNode = getGlobalVariableNode({
-      t,
-      chatConfig: appDetail.chatConfig
-    });
-    const node = (() => {
-      if (targetId === globalNode.nodeId) return globalNode;
-      return getNodeById(targetId);
-    })();
-
-    return node?.outputs.find((output) => output.id === inputItem?.value[1])
-      ?.valueType as keyof typeof typeMap;
-  }, [appDetail.chatConfig, getNodeById, inputItem, t]);
-
-  useEffect(() => {
-    if (!valueType) return;
-
-    const parentNode = getNodeById(parentNodeId);
-    if (!parentNode) return;
-
-    const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
-
-    if (parentNode.flowNodeType === FlowNodeTypeEnum.parallelRun) {
-      // For parallelRun parent: update parallelSuccessResults output type
-      const successOutput = parentNode.outputs.find(
-        (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
-      );
-      if (successOutput && successOutput.valueType !== newArrayType) {
-        onChangeNode({
-          nodeId: parentNode.nodeId,
-          type: 'updateOutput',
-          key: NodeOutputKeyEnum.parallelSuccessResults,
-          value: { ...successOutput, valueType: newArrayType }
-        });
-      }
-    } else {
-      // For loop parent: update nestedArrayResult output type
-      const parentNodeOutput = parentNode.outputs.find(
-        (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
-      );
-      if (parentNodeOutput && parentNodeOutput.valueType !== newArrayType) {
-        onChangeNode({
-          nodeId: parentNode.nodeId,
-          type: 'updateOutput',
-          key: NodeOutputKeyEnum.nestedArrayResult,
-          value: { ...parentNodeOutput, valueType: newArrayType }
-        });
-      }
-    }
-  }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
+  }, [parentFlowNodeType, t]);
 
   return (
     <NodeCard

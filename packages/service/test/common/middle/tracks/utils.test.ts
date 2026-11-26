@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -53,7 +54,7 @@ const dailyActiveData = {
 describe('pushTrack identity fields', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { isPlus: true } as any;
+    setTestProLicense(true);
     mocks.shouldRecord.mockResolvedValue(true);
     mocks.trackCreate.mockResolvedValue({});
     mocks.getAppLatestVersion.mockResolvedValue({ nodes: [] });
@@ -130,7 +131,7 @@ describe('pushTrack.dailyUserActive', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-24T23:59:59.000Z'));
-    global.feConfigs = { isPlus: true } as any;
+    setTestProLicense(true);
     mocks.shouldRecord.mockResolvedValue(true);
     mocks.trackCreate.mockResolvedValue({});
   });
@@ -162,7 +163,7 @@ describe('pushTrack.dailyUserActive', () => {
   });
 
   it('keeps the existing plus-edition guard after claiming the key', async () => {
-    global.feConfigs = { isPlus: false } as any;
+    setTestProLicense(false);
 
     await pushTrack.dailyUserActive(dailyActiveData);
 
@@ -183,7 +184,7 @@ describe('pushTrack.dailyUserActive', () => {
 describe('pushTrack.workflowBuilder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { isPlus: true } as any;
+    setTestProLicense(true);
     mocks.trackCreate.mockResolvedValue({});
   });
 
@@ -204,7 +205,7 @@ describe('pushTrack.workflowBuilder', () => {
   });
 
   it('skips non-plus and isolates synchronous and asynchronous database failures', async () => {
-    global.feConfigs = { isPlus: false } as any;
+    setTestProLicense(false);
     await pushTrack.workflowBuilder({
       teamId: 'team-1',
       tmbId: 'member-1',
@@ -213,7 +214,7 @@ describe('pushTrack.workflowBuilder', () => {
       event: TrackEnum.workflowBuilderResultReady
     });
     expect(mocks.trackCreate).not.toHaveBeenCalled();
-    global.feConfigs = { isPlus: true } as any;
+    setTestProLicense(true);
     mocks.trackCreate.mockRejectedValueOnce(new Error('db failed'));
     await expect(
       pushTrack.workflowBuilder({

@@ -1,11 +1,18 @@
+import {
+  AppLogKeysEnum,
+  AppLogTimespanEnum,
+  DefaultAppLogKeys
+} from '@fastgpt/global/core/app/logs/constants';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { describe, expect, it } from 'vitest';
 import {
   formatDateByTimespan,
   calculateOffsetDates,
   isUnselectedLogUserFilter,
-  isUnselectedLogSourceFilter
+  isUnselectedLogSourceFilter,
+  getLogIdentity,
+  normalizeAppLogKeys
 } from '@fastgpt/global/core/app/logs/utils';
-import { AppLogTimespanEnum } from '@fastgpt/global/core/app/logs/constants';
 
 describe('formatDateByTimespan', () => {
   describe('day timespan', () => {
@@ -262,5 +269,84 @@ describe('isUnselectedLogSourceFilter', () => {
     expect(isUnselectedLogSourceFilter([])).toBe(true);
     expect(isUnselectedLogSourceFilter(undefined)).toBe(false);
     expect(isUnselectedLogSourceFilter(['api'])).toBe(false);
+  });
+});
+
+describe('normalizeAppLogKeys', () => {
+  it('defaults to user visible and authorizer hidden, without mutating defaults', () => {
+    const result = normalizeAppLogKeys();
+    expect(result).toEqual(DefaultAppLogKeys);
+    expect(result.find(({ key }) => key === AppLogKeysEnum.AUTH_USER)?.enable).toBe(false);
+    expect(result.find(({ key }) => key === AppLogKeysEnum.USER)?.enable).toBe(true);
+    expect(result[0]).not.toBe(DefaultAppLogKeys[0]);
+  });
+  it('preserves configured order and switches, removes invalid duplicates, and is idempotent', () => {
+    const saved = [
+      { key: 'title', enable: true },
+      { key: 'user', enable: false },
+      { key: 'title', enable: false },
+      { key: 'unknown', enable: true },
+      null
+    ];
+    const result = normalizeAppLogKeys(saved);
+    expect(result.slice(0, 3)).toEqual([
+      { key: 'title', enable: true },
+      { key: 'user', enable: false },
+      { key: 'authUser', enable: false }
+    ]);
+    expect(normalizeAppLogKeys(result)).toEqual(result);
+    expect(result).toHaveLength(DefaultAppLogKeys.length);
+    expect(normalizeAppLogKeys([{ key: 'authUser', enable: true }])[0]).toEqual({
+      key: 'authUser',
+      enable: true
+    });
+  });
+});
+
+describe('getLogIdentity', () => {
+  const authMember = { name: 'Member A', status: TeamMemberStatusEnum.active };
+  it.each(['customer-42', '0', ' Member A ', '68ad85a7463006c963799a05'])(
+    'uses raw external UID %j while keeping authorizer',
+    (outLinkUid) => {
+      expect(getLogIdentity({ tmbId: 'member-a', outLinkUid, authMember })).toEqual({
+        name: outLinkUid
+      });
+      expect(
+        getLogIdentity({ tmbId: 'member-a', outLinkUid, authMember, isAuthorizer: true })
+      ).toEqual({ name: 'Member A', member: authMember });
+    }
+  );
+  it.each([undefined, null, ''])('falls back for legacy UID %j', (outLinkUid) => {
+    expect(getLogIdentity({ tmbId: 'member-a', outLinkUid, authMember }).member).toBe(authMember);
+    expect(getLogIdentity({ tmbId: 'deleted-member', outLinkUid }).name).toBe('deleted-member');
+  });
+  it('keeps former member status and handles missing IDs', () => {
+    const member = { name: 'Former member', status: TeamMemberStatusEnum.leave };
+    expect(getLogIdentity({ authMember: member }).member).toBe(member);
+    expect(getLogIdentity({})).toEqual({ name: '-' });
+  });
+  it.each([TeamMemberStatusEnum.active, TeamMemberStatusEnum.leave])(
+    'keeps the resolved share visitor and status %s separate from the authorizer',
+    (status) => {
+      const visitor = { name: 'Share Visitor', avatar: '/share-visitor.svg', status };
+      const log = {
+        source: 'share',
+        tmbId: 'member-a',
+        outLinkUid: '68ad85a7463006c963799a05',
+        sourceMember: visitor,
+        authMember
+      };
+      expect(getLogIdentity(log)).toEqual({ name: 'Share Visitor', member: visitor });
+      expect(getLogIdentity({ ...log, isAuthorizer: true })).toEqual({
+        name: 'Member A',
+        member: authMember
+      });
+      expect(getLogIdentity({ ...log, source: 'api' })).toEqual({ name: log.outLinkUid });
+    }
+  );
+  it('keeps an unresolved share UID instead of falling back to its authorizer', () => {
+    expect(getLogIdentity({ source: 'share', outLinkUid: 'external-visitor', authMember })).toEqual(
+      { name: 'external-visitor' }
+    );
   });
 });

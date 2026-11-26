@@ -3,7 +3,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import type { DatasetTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
+import type { DatasetTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { useDatasetTagFilterPrune } from '@/components/core/dataset/DatasetTagFilterRows';
 

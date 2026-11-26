@@ -105,7 +105,8 @@ const findByIdDatasetDataMock = vi.fn();
 const findByIdCollectionMock = vi.fn();
 const formatDatasetDataValueMock = vi.fn();
 
-vi.mock('@fastgpt/service/core/chat/auth', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/chat/auth')>()),
   authChatTargetCrud: (props: any) => authChatTargetCrudMock(props)
 }));
 

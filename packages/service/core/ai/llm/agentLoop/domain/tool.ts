@@ -1,8 +1,11 @@
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
-  ChatCompletionTool
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
+import { maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
@@ -12,6 +15,25 @@ import type { AgentLoopUsage } from './usage';
 export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   batchToolSize?: number;
+};
+
+/** 保留完整模型内容，校验 parts 并限制单次工具返回的图片数量。 */
+export const buildToolMessageContent = ({
+  content,
+  text
+}: {
+  content?: ChatCompletionToolMessageContentPart[];
+  text: string;
+}): string | ChatCompletionToolMessageContentPart[] => {
+  if (!content?.length) return text;
+  let imageCount = 0;
+  const parts = content.flatMap((part) => {
+    const parsed = ChatCompletionToolMessageContentPartSchema.safeParse(part);
+    if (!parsed.success) return [];
+    if (parsed.data.type === 'image_url' && ++imageCount > maxToolImagePartAmount) return [];
+    return [parsed.data];
+  });
+  return parts.length ? parts : text;
 };
 
 /**
@@ -42,6 +64,8 @@ export type AgentLoopReadFileExecuteParams = {
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
+  /** 工具结果全部回填后追加的服务端 User 指令；沿用原消息链，不在暂停或停止后续跑。 */
+  continuationMessage?: string;
   /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
   assistantResponses?: AgentLoopAssistantResponse[];
   usages: AgentLoopUsage[];
@@ -53,6 +77,11 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   hideInUI?: boolean;
   /** 由调用方透传并在 agent-loop 外部解释的工具运行元数据。 */
   metadata?: unknown;
+  /**
+   * 写入 LLM tool message 的结构化 content（text / image_url parts）。
+   * 工具取到图片时可返回 image_url part，作为下一轮模型的视觉输入；缺省时按 response 字符串兜底。
+   */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 export type AgentLoopReadFileExecutionResult = {

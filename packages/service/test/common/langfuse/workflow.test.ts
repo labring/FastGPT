@@ -10,12 +10,14 @@ import {
 const mocks = vi.hoisted(() => ({
   enabled: true,
   prepareSpan: vi.fn(),
-  setAttributes: vi.fn()
+  setAttributes: vi.fn(),
+  setTraceAttributes: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/langfuse/index', () => ({
   isLangfuseEnabled: () => mocks.enabled,
   prepareLangfuseSpan: mocks.prepareSpan,
-  setActiveLangfuseAttributes: mocks.setAttributes
+  setActiveLangfuseAttributes: mocks.setAttributes,
+  setActiveLangfuseTraceAttributes: mocks.setTraceAttributes
 }));
 
 describe('Langfuse workflow lifecycle callbacks', () => {
@@ -40,7 +42,7 @@ describe('Langfuse workflow lifecycle callbacks', () => {
   ])('skips non-root, debug and unconfigured runs: %j', ({ configured, ...props }) => {
     mocks.enabled = configured;
     onWorkflowStart({ ...traceProps, ...props });
-    onWorkflowNodeStart({ ...props, appId: 'app' });
+    onWorkflowNodeStart({ ...props, appId: 'app', nodeId: 'node', nodeName: 'Chat' });
     onWorkflowNodeEnd({
       ...props,
       nodeType: FlowNodeTypeEnum.chatNode,
@@ -48,20 +50,33 @@ describe('Langfuse workflow lifecycle callbacks', () => {
       output: 'world'
     });
     onWorkflowEnd({ ...props, output: [{ text: { content: 'world' } }] });
-    expect(mocks.prepareSpan).toHaveBeenCalledWith(undefined);
+    expect(mocks.prepareSpan).toHaveBeenNthCalledWith(1, undefined, 'trace');
+    expect(mocks.prepareSpan).toHaveBeenNthCalledWith(2, undefined, 'observation');
     expect(mocks.setAttributes).not.toHaveBeenCalled();
+    expect(mocks.setTraceAttributes).not.toHaveBeenCalled();
   });
 
   it('returns root and node attributes at span creation time', () => {
     onWorkflowStart(traceProps);
-    onWorkflowNodeStart({ ...lifecycle, appId: 'app' });
+    onWorkflowNodeStart({ ...lifecycle, appId: 'app', nodeId: 'node', nodeName: 'Chat' });
     expect(mocks.prepareSpan).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ 'langfuse.trace.name': 'message' })
+      expect.objectContaining({
+        'langfuse.trace.name': 'message',
+        'langfuse.observation.metadata.app_id': 'app'
+      }),
+      'trace'
     );
-    expect(mocks.prepareSpan).toHaveBeenNthCalledWith(2, {
-      'langfuse.observation.metadata.app_id': 'app'
-    });
+    expect(mocks.prepareSpan).toHaveBeenNthCalledWith(
+      2,
+      {
+        'langfuse.observation.metadata.app_id': 'app',
+        'langfuse.observation.metadata.nodeId': 'node',
+        'langfuse.observation.metadata.nodeName': 'Chat',
+        'langfuse.trace.name': 'message'
+      },
+      'observation'
+    );
   });
 
   it('records visible workflow output without reasoning', () => {
@@ -69,7 +84,10 @@ describe('Langfuse workflow lifecycle callbacks', () => {
       ...lifecycle,
       output: [{ reasoning: { content: 'private' } }, { text: { content: 'world' } }]
     });
-    expect(mocks.setAttributes).toHaveBeenCalledWith({ 'langfuse.trace.output': '"world"' });
+    expect(mocks.setTraceAttributes).toHaveBeenCalledWith({
+      'langfuse.trace.output': '"world"'
+    });
+    expect(mocks.setAttributes).not.toHaveBeenCalled();
   });
 
   it('records filtered node data and generation usage including zero tokens', () => {
@@ -89,6 +107,63 @@ describe('Langfuse workflow lifecycle callbacks', () => {
     });
   });
 
+  it('keeps generation reasoning text in the observation output', () => {
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello' },
+      output: { answerText: 'world', reasoningText: 'think', history: ['private'] },
+      response: { model: 'gpt-4' }
+    });
+    expect(mocks.setAttributes).toHaveBeenCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world","reasoningText":"think"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'gpt-4'
+    });
+  });
+
+  it('keeps reasoning text only on generation outputs', () => {
+    // generation input still follows the default filter
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello', reasoningText: 'input-think' },
+      output: { answerText: 'world' },
+      response: { model: 'gpt-4' }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'gpt-4'
+    });
+
+    // non-LLM node output is filtered, including nested fields such as rawResponse
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.code,
+      input: {},
+      output: { answer: 'world', rawResponse: { reasoningText: 'leak' } }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{}',
+      'langfuse.observation.output': '{"answer":"world","rawResponse":{}}'
+    });
+
+    // LLM node without a model is not a generation, so its output keeps the default filter
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello' },
+      output: { answerText: 'world', reasoningText: 'think' }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world"}'
+    });
+  });
+
   it('handles absent spans, unsupported values and absent model usage', () => {
     const props = {
       ...lifecycle,
@@ -104,6 +179,57 @@ describe('Langfuse workflow lifecycle callbacks', () => {
       'langfuse.observation.output': '{}',
       'langfuse.observation.type': 'generation',
       'langfuse.observation.model.name': 'gpt-4'
+    });
+  });
+
+  it('marks agent nodes as generations using input model and summary usage', () => {
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.agent,
+      input: { model: 'agent-model', userChatInput: 'hello' },
+      output: { answerText: 'world' },
+      usage: { inputTokens: 100, outputTokens: 200 }
+    });
+    expect(mocks.setAttributes).toHaveBeenCalledWith({
+      'langfuse.observation.input': '{"model":"agent-model","userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'agent-model',
+      'langfuse.observation.usage_details': '{"input":100,"output":200}'
+    });
+  });
+
+  it('prefers node response model and tokens over fallbacks', () => {
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.agent,
+      input: { model: 'input-model' },
+      output: { answerText: 'world' },
+      response: { model: 'response-model', inputTokens: 1, outputTokens: 2 },
+      usage: { inputTokens: 100, outputTokens: 200 }
+    });
+    expect(mocks.setAttributes).toHaveBeenCalledWith({
+      'langfuse.observation.input': '{"model":"input-model"}',
+      'langfuse.observation.output': '{"answerText":"world"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'response-model',
+      'langfuse.observation.usage_details': '{"input":1,"output":2}'
+    });
+  });
+
+  it('omits usage details when fallback usage is zero', () => {
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.agent,
+      input: { model: 'agent-model' },
+      output: { answerText: 'world' },
+      usage: { inputTokens: 0, outputTokens: 0 }
+    });
+    expect(mocks.setAttributes).toHaveBeenCalledWith({
+      'langfuse.observation.input': '{"model":"agent-model"}',
+      'langfuse.observation.output': '{"answerText":"world"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'agent-model'
     });
   });
 

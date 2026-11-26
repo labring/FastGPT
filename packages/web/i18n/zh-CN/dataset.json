@@ -45,6 +45,12 @@
   "collection.permission.des.write": "可变更数据集内容（同步/调整训练参数）",
   "collection.permission.des.manage": "可管理整个数据集的信息与权限",
   "collection_data_count": "数据量",
+  "collection_list.create_time_asc": "创建时间正序",
+  "collection_list.create_time_desc": "创建时间倒序",
+  "collection_list.name_asc": "按首字母升序",
+  "collection_list.name_desc": "按首字母降序",
+  "collection_list.update_time_asc": "更新时间正序",
+  "collection_list.update_time_desc": "更新时间倒序",
   "collection_metadata_custom_pdf_parse": "PDF增强解析",
   "collection_name": "数据集名称",
   "collection_sync": "立即同步",
@@ -294,5 +300,10 @@
   "process.Synonym_Rebuild": "同义词重建",
   "data_index_status_synonym_pending": "同义词待重建",
   "data_index_status_synonym_running": "同义词重建中",
-  "data_index_status_synonym_failed": "同义词重建失败"
+  "data_index_status_synonym_failed": "同义词重建失败",
+  "search_targets_required": "至少选择一个知识库",
+  "search_targets_must_be_datasets": "搜索目标必须是知识库，不能选择文件夹",
+  "search_query_images_must_belong_to_team": "检索图片必须是当前团队上传的临时图片",
+  "search_filters_unsupported": "当前版本不支持知识库搜索筛选",
+  "search_embedding_models_must_match": "联合向量检索要求知识库使用相同的向量模型"
 }

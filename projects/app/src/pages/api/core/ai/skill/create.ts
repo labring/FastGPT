@@ -26,6 +26,7 @@ import {
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -42,8 +43,11 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     name,
     description,
     category = [],
-    avatar
+    avatar,
+    inheritPermission
   } = parseApiInput({ req, bodySchema: CreateSkillBodySchema }).body;
+
+  const inheritPermissionValue = inheritPermission ?? true;
 
   const requestedName = name.trim();
   const requestedDescription = description?.trim() || '';
@@ -91,6 +95,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         avatar,
         teamId,
         tmbId,
+        inheritPermission: inheritPermissionValue,
         creationStatus: AgentSkillCreationStatusEnum.creating
       },
       session
@@ -101,6 +106,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         _id: newSkillId,
         type: AgentSkillTypeEnum.skill,
         teamId,
+        inheritPermission: inheritPermissionValue,
         ...(parentId ? { parentId } : {})
       },
       tmbId,
@@ -141,6 +147,14 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL,
+      resources: [
+        buildSkillAuditResource({
+          _id: skillId,
+          name: requestedName,
+          avatar,
+          type: AgentSkillTypeEnum.skill
+        })
+      ],
       params: { skillName: requestedName, skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
     });
   })();

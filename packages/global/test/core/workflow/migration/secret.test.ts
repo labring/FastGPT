@@ -36,6 +36,107 @@ describe('migrateSecretStoreToCurrent', () => {
 });
 
 describe('migrateWorkflowSecretValues', () => {
+  it('omits invalid optional numeric and boolean values while preserving valid and required values', () => {
+    const inputList = [
+      { key: 'empty', inputType: 'numberInput' },
+      { key: 'invalidNumber', inputType: 'numberInput', required: false },
+      { key: 'invalidSwitch', inputType: 'switch' },
+      { key: 'emptySwitch', inputType: 'switch' },
+      { key: 'zero', inputType: 'numberInput' },
+      { key: 'disabled', inputType: 'switch' },
+      { key: 'reference', inputType: 'switch' },
+      { key: 'required', inputType: 'numberInput', required: true },
+      { key: 'requiredString', inputType: 'switch', required: 'true' },
+      { key: 'text', inputType: 'input' }
+    ];
+    const values = {
+      empty: { value: '' },
+      invalidNumber: { value: 'not a number' },
+      invalidSwitch: { value: 'maybe' },
+      emptySwitch: { value: '' },
+      zero: { value: '0' },
+      disabled: { value: 'false' },
+      reference: { ref: ['node', 'enabled'] },
+      required: { value: '' },
+      requiredString: { value: 'maybe' },
+      text: { value: '' }
+    };
+    const workflow = {
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.tool,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              inputList,
+              value: { type: 'manual', value: values }
+            }
+          ]
+        }
+      ]
+    };
+    const result = migrateWorkflowSecretValues(workflow);
+    expect(result.nodes[0].inputs[0].value.value).toEqual({
+      zero: { value: 0 },
+      disabled: { value: false },
+      reference: values.reference,
+      required: values.required,
+      requiredString: values.requiredString,
+      text: values.text
+    });
+    expect(workflow.nodes[0].inputs[0].value.value).toEqual(values);
+    expect(migrateWorkflowSecretValues(result)).toEqual(result);
+  });
+
+  it('converts legacy system tool strings by input type and preserves native values', () => {
+    const inputList = [
+      { key: 'count', inputType: 'numberInput', value: { value: '12' } },
+      { key: 'enabled', inputType: 'switch', value: { value: false } },
+      { key: 'mode', inputType: 'select' },
+      { key: 'token', inputType: 'secret' }
+    ];
+    const workflow = {
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.tool,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              inputList,
+              value: {
+                type: 'manual',
+                value: {
+                  count: { value: '0' },
+                  enabled: { value: 'false' },
+                  mode: { value: 'fast' },
+                  token: legacy
+                }
+              }
+            }
+          ]
+        }
+      ]
+    };
+    const result = migrateWorkflowSecretValues(workflow);
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      inputList: [
+        { value: { value: 12 } },
+        { value: { value: false } },
+        { key: 'mode' },
+        { key: 'token' }
+      ],
+      value: {
+        value: {
+          count: { value: 0 },
+          enabled: { value: false },
+          mode: { value: 'fast' },
+          token: current
+        }
+      }
+    });
+    expect(migrateWorkflowSecretValues(result)).toEqual(result);
+  });
+
   it('migrates explicit password declarations and HTTP auth without rewriting business JSON', () => {
     const workflow = {
       nodes: [

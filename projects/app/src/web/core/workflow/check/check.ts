@@ -1,13 +1,10 @@
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   WorkflowCheckIssueCodeEnum,
   WorkflowDiagnosticCodeEnum
 } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
-import type {
-  WorkflowCheckNodeIssueMap,
-  FlowNodeItemType,
-  WorkflowCheckIssue
-} from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType, WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { validateWorkflow } from '@fastgpt/workflow-core/validation';
@@ -16,17 +13,23 @@ import { checkWorkflowModels } from '@fastgpt/workflow-core/validation/model';
 import { collectWorkflowBindings } from '@fastgpt/workflow-core/binding/service';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import type { TFunction } from 'next-i18next';
 import { createWorkflowCheckDocument } from './document';
 import { formatWorkflowDiagnostic } from './diagnostic';
-import { checkWorkflowNodeResourceRules } from './resource';
+import { checkWorkflowNodeResourceRules, type WorkflowSandboxCheckData } from './resource';
 import { formatWorkflowRuleIssue } from './message';
+
+type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
 
 type WorkflowCheckInput = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge[];
+  edges: Pick<Edge, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[];
   modelData?: WorkflowModelCheckData;
+  sandbox?: WorkflowSandboxCheckData;
+  resourceNodes?: Pick<FlowNodeItemType, 'nodeId' | 'inputs'>[];
+  /** 表单已检查原始资源快照时，后续只检查模型、图、输入和绑定。 */
+  checkAgentResources?: boolean;
   nodeId?: string;
   t?: TFunction;
   chatConfig?: AppChatConfigType;
@@ -35,9 +38,19 @@ type WorkflowCheckInput = {
 /**
  * 所有 Web 场景共用一次 Core 扫描；Web 只补资源状态和展示，不维护另一套输入、模型或图规则。
  * 无节点归属的诊断单独保留，避免“已阻断但没有具体提示”；原始诊断原样返回供调用方排查。
- * 客户端把失效引用视为未引用，输入、模型和资源检查共用有效值快照，不改写画布。
+ * 客户端把普通失效引用视为未引用；Secret 引用保留，供发布校验拒绝，输入、模型和资源检查共用快照。
  */
-const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: WorkflowCheckInput) => {
+const checkWorkflow = ({
+  nodes,
+  edges,
+  modelData,
+  sandbox,
+  resourceNodes,
+  checkAgentResources,
+  nodeId,
+  t,
+  chatConfig
+}: WorkflowCheckInput) => {
   const projected = createWorkflowCheckDocument({ nodes, edges, chatConfig });
   const document = resolveWorkflowReferenceDocument({
     document: projected.document,
@@ -45,13 +58,14 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
   });
   const diagnostics = [
     ...projected.diagnostics,
-    // 快照已按 asEmpty 收敛；Core 直接校验有效值，不再次清理引用。
+    // 普通引用已按 asEmpty 收敛；Secret 引用保留给 Core 严格校验，不再次清理引用。
     ...validateWorkflow(document, {
       invalidReferencePolicy: 'error',
       modelCheck: { modelData, templates: moduleTemplatesFlat }
     })
   ];
   const nodeMap = new Map(nodes.map(({ data }) => [data.nodeId, data]));
+  const resourceInputs = new Map(resourceNodes?.map((node) => [node.nodeId, node.inputs]));
   const issueEntries = new Map<string, { issue: WorkflowCheckIssue; order: number }[]>();
   const chatConfigIssues: WorkflowCheckIssue[] = [];
   const workflowIssues: WorkflowCheckIssue[] = [];
@@ -112,8 +126,25 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
     const entries = issueEntries.get(data.nodeId) ?? [];
     entries.push(
       ...checkWorkflowNodeResourceRules({
-        data: { ...data, inputs: document.nodes[index].inputs },
-        bindings: bindingsByNode.get(data.nodeId) ?? []
+        data: {
+          ...data,
+          inputs: document.nodes[index].inputs.map((input) => {
+            // 持久化会剥离工具/技能诊断，预览校验从同一编辑快照补回，仅作用于本地资源检查。
+            if (
+              input.key !== NodeInputKeyEnum.selectedTools &&
+              input.key !== NodeInputKeyEnum.skills
+            )
+              return input;
+            return (
+              resourceInputs
+                .get(data.nodeId)
+                ?.find((resourceInput) => resourceInput.key === input.key) ?? input
+            );
+          })
+        },
+        bindings: bindingsByNode.get(data.nodeId) ?? [],
+        sandbox,
+        checkAgentResources
       }).map((issue) => ({
         issue: formatWorkflowRuleIssue({ issue, node: data, t }),
         order: 1
@@ -195,6 +226,18 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
     ...result.workflowIssues
   ];
   const errors = allIssues.filter((issue) => issue.level === 'error');
+  const errorIssueMessages = errors.map((issue) => {
+    const errorMessage = issue.message ?? issue.code;
+    const message =
+      !issue.nodeName || (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+        ? errorMessage
+        : `「${issue.nodeName}」${errorMessage}`;
+    return { issue, message };
+  });
+  const uniqueErrorMessages = [
+    ...new Map(errorIssueMessages.map((item) => [item.message, item])).values()
+  ].map((item) => item.message);
+
   return {
     ...result,
     hasError: errors.length > 0,
@@ -203,17 +246,8 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
       ? result.issueMap[firstErrorNodeId].find((issue) => issue.level === 'error')
       : errors[0],
     errorNodeIds,
+    errorIssueMessages,
     // 节点错误统一携带节点名；汇总去重后最多展示 3 条，节点诊断仍完整保留。
-    errorMessages: [
-      ...new Set(
-        errors.map((issue) => {
-          if (!issue.nodeName) return issue.message;
-          // 模型不可用的翻译文案已包含节点名，避免重复拼接。
-          if (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
-            return issue.message;
-          return `「${issue.nodeName}」${issue.message}`;
-        })
-      )
-    ].slice(0, 3)
+    errorMessages: uniqueErrorMessages.slice(0, 3)
   };
 };

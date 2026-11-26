@@ -84,9 +84,13 @@ const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/Memb
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
+
+  useEffect(() => {
+    void initTeamPlanStatus().catch(() => {});
+  }, [initTeamPlanStatus]);
 
   return (
     <AccountContainer>
@@ -327,11 +331,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Flex>
         )}
 
-        {feConfigs.isPlus && (
+        {(feConfigs.isPlus || userInfo?.username === 'root') && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'34px'} w={'100%'} showManage />
+              <TeamSelector height={'34px'} w={'100%'} />
             </Flex>
           </Flex>
         )}

@@ -19,11 +19,12 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLatest, useMemoizedFn } from 'ahooks';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxTargetId, tryResolveSandboxTarget } from './types';
-import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getLanguageByFileName,
   getIsBinaryByLanguage,
@@ -41,6 +42,7 @@ import {
   applySandboxMoveOperationsToExpandedDirs,
   getSandboxIdeSessionRoot,
   scopeSandboxIdeRpcParams,
+  isValidSandboxPathSegment,
   type SandboxMoveOperation
 } from './utils';
 
@@ -48,9 +50,9 @@ const SYSTEM_FILE_NAMES = ['.DS_Store'];
 const INITIAL_TREE_MAX_DEPTH = 20;
 const RPC_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_FILE_SIZE_MB = 10;
-const INVALID_PATH_SEGMENT_CHARS = /[\/\\\u0000]/;
 const RPC_READ_FILE_HTTP_MIN_BYTES = 5 * 1024 * 1024;
 const SANDBOX_RPC_FILE_TOO_LARGE_CODE = -32004;
+const SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE = -32005;
 
 type RefreshWorkspaceOptions = {
   preserveExpandedDirs?: boolean;
@@ -113,8 +115,11 @@ const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcErr
     ...(typeof rpcCode === 'number' ? { rpcCode } : {})
   });
 
-const isValidPathSegment = (name: string) =>
-  !!name && name !== '.' && name !== '..' && !INVALID_PATH_SEGMENT_CHARS.test(name);
+const isDiskQuotaExceededApiError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'statusText' in error &&
+  error.statusText === SandboxErrEnum.agentSandboxDiskQuotaExceeded;
 
 /**
  * useSandboxEditor —— UI Hook
@@ -440,6 +445,9 @@ export const useSandboxFileStore = ({
   const { toast } = useToast();
   const sandboxTargetId = getSandboxTargetId(sandboxTarget);
   const [maxFileBytes, setMaxFileBytes] = useState(DEFAULT_MAX_FILE_SIZE_MB * 1024 * 1024);
+  const [sessionWorkDirectory, setSessionWorkDirectory] = useState<string>(
+    OPEN_SANDBOX_DEFAULT_ROOT_PATH
+  );
   const maxFileSizeMB = Math.ceil(maxFileBytes / 1024 / 1024);
 
   const [fileTree, setFileTree] = useState<TreeNode[]>([]);
@@ -460,6 +468,8 @@ export const useSandboxFileStore = ({
   const fileTreeRef = useLatest(fileTree);
   const expandedDirsRef = useLatest(expandedDirs);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
+  // 编辑器连接会话版本号，连接重建或卸载时自增，用于统一丢弃失效的异步读取结果。
+  const lifecycleVersionRef = useRef(0);
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
   const saveFileQueuesRef = useRef<Map<string, Promise<{ etag?: string } | undefined>>>(new Map());
@@ -485,13 +495,11 @@ export const useSandboxFileStore = ({
     connectPromiseRef.current = promise;
   }, []);
 
-  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
-  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
-    const errMsg = t('chat:sandbox_connect_failed_max_attempts');
+  const stopConnectWithError = useMemoizedFn((errMsg: string, description?: string) => {
     if (!onError) {
       toast({
         title: errMsg,
-        description: t('chat:sandbox_refresh_page_to_retry'),
+        ...(description ? { description } : {}),
         status: 'error',
         duration: 5000,
         isClosable: true
@@ -502,6 +510,14 @@ export const useSandboxFileStore = ({
     stoppedConnectErrorRef.current = error;
     rejectConnectRef.current?.(error);
     onError?.(error);
+  });
+
+  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
+  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
+    stopConnectWithError(
+      t('chat:sandbox_connect_failed_max_attempts'),
+      t('chat:sandbox_refresh_page_to_retry')
+    );
   });
 
   const getWsCloseMessage = useMemoizedFn(
@@ -795,6 +811,8 @@ export const useSandboxFileStore = ({
     stoppedConnectErrorRef.current = null;
 
     if (isPreparing) {
+      lifecycleVersionRef.current += 1;
+      loadingFilePathsRef.current.clear();
       Promise.resolve().then(() => {
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
@@ -812,6 +830,7 @@ export const useSandboxFileStore = ({
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     const pendingRpcRequests = pendingRpcRequestsRef.current;
+    const loadingFilePaths = loadingFilePathsRef.current;
 
     const connect = async () => {
       if (reconnectAttemptsRef.current >= 5) {
@@ -834,6 +853,7 @@ export const useSandboxFileStore = ({
         });
         if (isDestroyed) return;
         setMaxFileBytes(res.maxFileBytes);
+        setSessionWorkDirectory(res.sessionWorkDirectory);
 
         ideSessionRootRef.current = getSandboxIdeSessionRoot(
           res.workspaceRoot,
@@ -864,12 +884,11 @@ export const useSandboxFileStore = ({
               if (pending) {
                 pendingRpcRequests.delete(rpcId);
                 if (data.error) {
-                  pending.reject(
-                    createSandboxRpcError(
-                      data.error.message || 'Sandbox RPC failed',
-                      data.error.code
-                    )
-                  );
+                  const errorMessage =
+                    data.error.code === SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE
+                      ? t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
+                      : data.error.message || 'Sandbox RPC failed';
+                  pending.reject(createSandboxRpcError(errorMessage, data.error.code));
                 } else {
                   pending.resolve(data.result);
                 }
@@ -910,14 +929,23 @@ export const useSandboxFileStore = ({
           ws?.close();
         };
       } catch (error) {
+        if (isDestroyed) return;
+        // 卷空间已满属于确定性业务错误，无需重复轮询 getTicket，直接反馈给用户。
+        if (isDiskQuotaExceededApiError(error)) {
+          stopConnectWithError(
+            getErrText(
+              error,
+              t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
+            )
+          );
+          return;
+        }
         console.error('[SandboxWS] Handshake failed, retrying in 5s:', error);
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
         rejectConnectRef.current?.(error instanceof Error ? error : new Error(getErrText(error)));
         resetConnectPromise();
-        if (!isDestroyed) {
-          reconnectTimer = setTimeout(connect, 5000);
-        }
+        reconnectTimer = setTimeout(connect, 5000);
       }
     };
 
@@ -925,6 +953,8 @@ export const useSandboxFileStore = ({
 
     return () => {
       isDestroyed = true;
+      lifecycleVersionRef.current += 1;
+      loadingFilePaths.clear();
       if (ws) {
         if (wsRef.current === ws) {
           wsRef.current = null;
@@ -967,10 +997,13 @@ export const useSandboxFileStore = ({
     return openedFiles.find((f) => f.path === activeFilePath);
   }, [openedFiles, activeFilePath]);
 
-  // 组件卸载时清理 Blob URL 内存
+  // 组件卸载时使在途异步读取失效并清理 Blob URL 内存
   useEffect(() => {
     const filesRef = openedFilesRef;
+    const loadingFilePaths = loadingFilePathsRef.current;
     return () => {
+      lifecycleVersionRef.current += 1;
+      loadingFilePaths.clear();
       filesRef.current?.forEach((file) => {
         if (file.isBinary && file.content.startsWith('blob:')) {
           URL.revokeObjectURL(file.content);
@@ -982,6 +1015,7 @@ export const useSandboxFileStore = ({
   // 加载目录 - 改造为普通异步函数，避免 useRequest 的并发竞态问题
   const loadDirectory = useCallback(
     async (path: string, level: number) => {
+      const lifecycleVersion = lifecycleVersionRef.current;
       setLoadingDirs((prev) => {
         const next = new Set(prev);
         next.add(path);
@@ -990,6 +1024,9 @@ export const useSandboxFileStore = ({
 
       try {
         const res = await rpcCall<SandboxDirEntry[]>('fs/read_dir', { path });
+        if (lifecycleVersionRef.current !== lifecycleVersion) {
+          return [];
+        }
         let filteredFiles = (res || []).map((item) => ({
           name: item.name,
           path: path === '.' ? item.name : `${path}/${item.name}`,
@@ -1019,18 +1056,22 @@ export const useSandboxFileStore = ({
 
         return sortedNodes;
       } catch (error) {
-        toast({
-          title: t('chat:sandbox_load_failed'),
-          description: getErrText(error),
-          status: 'error'
-        });
+        if (lifecycleVersionRef.current === lifecycleVersion) {
+          toast({
+            title: t('chat:sandbox_load_failed'),
+            description: getErrText(error),
+            status: 'error'
+          });
+        }
         throw error;
       } finally {
-        setLoadingDirs((prev) => {
-          const next = new Set(prev);
-          next.delete(path);
-          return next;
-        });
+        if (lifecycleVersionRef.current === lifecycleVersion) {
+          setLoadingDirs((prev) => {
+            const next = new Set(prev);
+            next.delete(path);
+            return next;
+          });
+        }
       }
     },
     [toast, t, setLoadingDirs, setFileTree, rpcCall]
@@ -1186,6 +1227,13 @@ export const useSandboxFileStore = ({
     setDownloadingFile(true);
     try {
       await downloadSandbox({ ...sandboxTarget, chatId, outLinkAuthData, path: activeFile.path });
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      toast({
+        title: t('chat:sandbox_download_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
     } finally {
       setDownloadingFile(false);
     }
@@ -1225,9 +1273,18 @@ export const useSandboxFileStore = ({
 
     if (isAlreadyLoading) return;
 
+    const lifecycleVersion = lifecycleVersionRef.current;
+
     try {
       loadingFilePathsRef.current.add(filePath);
       const { content, isUnknown, etag, readOnly } = await loadFile(filePath, language);
+
+      if (lifecycleVersionRef.current !== lifecycleVersion) {
+        if (isBinary && content.startsWith('blob:')) {
+          URL.revokeObjectURL(content);
+        }
+        return;
+      }
 
       // 加载成功后更新 Tab 状态
       setOpenedFiles((prev) =>
@@ -1245,7 +1302,15 @@ export const useSandboxFileStore = ({
         )
       );
     } catch (error) {
+      if (lifecycleVersionRef.current !== lifecycleVersion) {
+        return;
+      }
       console.error('Failed to open file:', error);
+      toast({
+        title: t('chat:sandbox_open_file_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
       // 如果加载失败，把这个临时的 tab 移出，并切到其他 tab 或清空
       setOpenedFiles((prev) => {
         const newOpenedFiles = prev.filter((f) => f.path !== filePath);
@@ -1258,7 +1323,9 @@ export const useSandboxFileStore = ({
         return newOpenedFiles;
       });
     } finally {
-      loadingFilePathsRef.current.delete(filePath);
+      if (lifecycleVersionRef.current === lifecycleVersion) {
+        loadingFilePathsRef.current.delete(filePath);
+      }
     }
   };
 
@@ -1338,7 +1405,7 @@ export const useSandboxFileStore = ({
   // 新建文件/目录 (乐观更新)
   const onCreateNode = useCallback(
     async (parentPath: string, name: string, type: 'file' | 'directory') => {
-      if (!isValidPathSegment(name)) {
+      if (!isValidSandboxPathSegment(name)) {
         toast({
           title: t('chat:sandbox_create_failed'),
           description: t('chat:sandbox_invalid_file_name'),
@@ -1431,7 +1498,7 @@ export const useSandboxFileStore = ({
   // 重命名完成 (乐观更新)
   const onRenameComplete = useCallback(
     async (oldPath: string, newName: string) => {
-      if (!isValidPathSegment(newName)) {
+      if (!isValidSandboxPathSegment(newName)) {
         toast({
           title: t('chat:sandbox_rename_failed'),
           description: t('chat:sandbox_invalid_file_name'),
@@ -1595,20 +1662,6 @@ export const useSandboxFileStore = ({
     [rpcCall, toast, t]
   );
 
-  const onExecCommand = useCallback(
-    async (command: string, timeoutMs?: number) => {
-      const execTimeoutMs = timeoutMs ?? RPC_TIMEOUT_MS;
-      return rpcCall<ExecuteResult>(
-        'fs/exec',
-        { command, timeoutMs },
-        {
-          timeoutMs: execTimeoutMs + 1000
-        }
-      );
-    },
-    [rpcCall]
-  );
-
   // 上传文件
   const onUploadFiles = useCallback(
     async (files: FileList, targetDirPath: string) => {
@@ -1616,7 +1669,7 @@ export const useSandboxFileStore = ({
       const pendingPaths = new Set<string>();
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!isValidPathSegment(file.name)) {
+        if (!isValidSandboxPathSegment(file.name)) {
           toast({
             title: t('chat:sandbox_upload_failed'),
             description: t('chat:sandbox_invalid_file_name'),
@@ -1754,7 +1807,7 @@ export const useSandboxFileStore = ({
     onMoveFiles,
     onDeleteFile,
     onUploadFiles,
-    onExecCommand,
+    sessionWorkDirectory,
     toggleDirectory
   };
 };

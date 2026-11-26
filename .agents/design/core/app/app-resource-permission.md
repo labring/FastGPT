@@ -184,7 +184,7 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 - 已在 baseline 中的资源：直接进入本版 `resources`。节点里删掉的引用不再保留。
 - 新增资源：按当前操作人做读权限校验。
 - 新增 `model`：先通过现有 typed model getter 校验模型存在、启用且符合调用点要求的类型，再按当前操作人的模型读权限校验。模型 ACL 的数据库权限主体仍是成员、组、组织；App 的正式使用权由 Version 快照表达，不给 `resource_permissions` 新增 `appId` 主体。
-- 创建 App（无上一版）视为全部新增，全量校验。
+- 创建 App（含工作台导入 JSON、创建副本、转为工作流副本）：使用 `filterAuthorizedAppResources` 仅将当前操作人有读取权限的资源写入初始 Version 的 `resources` 快照；无权限或不存在的资源保留在 `nodes` 中但不写入 `resources`，不阻断创建，进入详情页时由 `rewriteAppWorkflowToDetail` 标记错误状态。
 - Test/Debug 仍使用请求体 nodes 生成运行时资源上下文；主应用先按当前操作人校验，工作流资源只校验相对 draft baseline 的新增部分。已在草稿快照中的资源不重复校验当前操作人。
 
 ### 7.1 自动保存 / 普通保存：不阻断

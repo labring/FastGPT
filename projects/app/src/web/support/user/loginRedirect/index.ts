@@ -11,6 +11,7 @@ const DEFAULT_LOGIN_ROUTE = '/dashboard/agent';
 
 type RestoreWorkflowLocalDraft = (props: {
   user: UserType;
+  fallbackAppId?: string;
 }) => Promise<WorkflowLocalDraftRestoreResult>;
 
 /**
@@ -39,9 +40,8 @@ export const getSafeFallbackRouteAfterLogin = ({
  * 登录成功后的跳转协调层。
  *
  * 账号注销流程优先级最高；有效邀请路由优先于工作流草稿，避免用户明确打开的邀请
- * 被浏览器中的历史草稿覆盖。其余场景优先恢复草稿；如果草稿属于其他团队账号，
- * 直接回到 dashboard，避免继续打开旧团队的 workflow lastRoute。没有可恢复草稿时，
- * 再执行通用的 last tmbId 校验和 lastRoute 跳转。
+ * 被浏览器中的历史草稿覆盖。其余场景优先恢复当前成员的草稿。
+ * 无 lastTmbId 时，回跳应用的草稿可补充跨团队判断。
  */
 export const resolveLoginRedirectAfterLogin = async ({
   user,
@@ -68,7 +68,16 @@ export const resolveLoginRedirectAfterLogin = async ({
     return fallbackRoute;
   }
 
-  const draftResult = await restoreWorkflowLocalDraft({ user });
+  const fallbackAppId = (() => {
+    if (lastTmbId) return;
+    try {
+      const url = new URL(fallbackRoute, 'http://fastgpt.local');
+      if (url.pathname.endsWith('/app/detail')) return url.searchParams.get('appId') ?? undefined;
+    } catch {
+      // 回跳地址无法解析时，仍允许恢复当前成员自己的草稿。
+    }
+  })();
+  const draftResult = await restoreWorkflowLocalDraft({ user, fallbackAppId });
 
   if (draftResult.status === 'restored') {
     return draftResult.route;

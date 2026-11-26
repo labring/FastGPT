@@ -30,8 +30,6 @@ const isNonEmptyString = (val: unknown): val is string => typeof val === 'string
 const isStringArray = (val: unknown): val is string[] =>
   Array.isArray(val) && val.every(isNonEmptyString);
 
-const endpointUrl = `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
-
 const parsePayload = <T>(payload: unknown, checker: (value: unknown) => value is T): T => {
   if (!checker(payload)) {
     throw ERROR_ENUM.unAuthFile;

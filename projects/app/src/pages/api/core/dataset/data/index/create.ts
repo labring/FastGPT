@@ -1,3 +1,7 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { createDatasetDataIndex } from '@/service/core/dataset/data/dataIndex';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
@@ -11,9 +15,10 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
   const { dataId, type, text } = parseApiInput({
@@ -21,7 +26,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     bodySchema: CreateDatasetDataIndexBodySchema
   }).body;
 
-  const { datasetData, tmbId, teamId, collection } = await authDatasetData({
+  const { datasetData, tmbId, teamId, isRoot, collection } = await authDatasetData({
     req,
     authToken: true,
     authApiKey: true,
@@ -30,9 +35,19 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     assertWritable: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const embeddingModel = modelHandle.getModelData(
-    getDatasetModelReference(collection.dataset, 'embedding'),
-    { type: 'embedding' }
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
+  const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+    resources: [{ type: 'dataset', id: String(collection.datasetId) }],
+    teamId,
+    modelHandle,
+    authorizedIds
+  });
+  const embeddingModel = getAssertedDatasetEmbeddingModel(
+    embeddingModels,
+    String(collection.datasetId)
   );
   const { index, tokens } = await createDatasetDataIndex({
     data: datasetData,
@@ -54,6 +69,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_DATA,
+    resources: [buildCollectionAuditResource(collection)],
     params: {
       collectionName: collection.name,
       datasetName: collection.dataset?.name || '',

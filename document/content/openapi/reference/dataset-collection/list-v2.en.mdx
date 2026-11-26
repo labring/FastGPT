@@ -1,0 +1,91 @@
+---
+title: 'List Dataset Collections (V2)'
+seoTitle: 'List Dataset Collections (V2) - POST /api/core/dataset/collection/listV2 | FastGPT OpenAPI'
+description: 'Query paginated collections and folders inside a dataset with keyword search, structured tag filters, and permission checks.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/collection/listV2`
+- **Module** : Datasets / Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/listV2) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/listV2` )
+
+## Description & Notes
+
+List collections in a dataset with pagination, search, and tag filters (requires dataset read permission and parent folder read permission when `parentId` is specified). When collection-level permissions are enabled, results are filtered per collection with effective permissions returned.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field                 | Type                 | Required | Default        | Constraints & Description                                                                                                                               |
+| --------------------- | -------------------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `datasetId`           | `string`             | Yes      | -              | Dataset ID                                                                                                                                              |
+| `parentId`            | `string \| null`     | No       | `null`         | Parent folder ID                                                                                                                                        |
+| `searchText`          | `string`             | No       | `""`           | Search query text. maxLength: 100                                                                                                                       |
+| `selectFolder`        | `boolean`            | No       | `false`        | Return folders only                                                                                                                                     |
+| `tagFilters`          | `object[]`           | No       | -              | Filter by tag values (OR across values of the same tag, AND across distinct tags)                                                                       |
+| `tagFilters[].tagId`  | `string`             | Yes      | -              | Tag ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                    |
+| `tagFilters[].values` | `string \| number[]` | Yes      | -              | Selected tag values (strings for text/select, numbers for numeric, UTC millisecond timestamps for dates; OR across values of the same tag). minItems: 1 |
+| `sortBy`              | `string` (enum)      | No       | `"updateTime"` | Sort field supporting name, creation time, and update time. Allowed values: `name` , `createTime` , `updateTime`                                        |
+| `sortOrder`           | `string` (enum)      | No       | `"desc"`       | Sort direction. Allowed values: `asc` , `desc`                                                                                                          |
+| `simple`              | `boolean`            | No       | `false`        | Simple mode (skips total item counts)                                                                                                                   |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Offset Pagination**
+
+Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Page-Number Pagination**
+
+Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/collection/listV2" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "offset": 0,
+  "datasetId": "string"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "offset": 0,
+  "datasetId": "string"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully returned collection list and total count
+
+Returns the standard FastGPT success envelope ( `{ "code": 200, "statusText": "", "message": "", "data": ... }` ). The exact `data` payload schema is not declared in this OpenAPI contract; refer to the status description above or inspect runtime responses.

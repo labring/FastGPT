@@ -6,6 +6,7 @@
 import { createHash } from 'crypto';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
+import { getRunningSandboxId } from './id';
 
 type HashContent = string | Buffer | Uint8Array;
 
@@ -78,9 +79,9 @@ export const getSandboxRuntimePaths = ({
 };
 
 /**
- * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认不限制其 workspace 范围。
+ * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认限制在 `workspaceRoot` 内。
  *
- * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径直接按 sandbox 文件系统路径使用。
+ * 相对路径始终以 sessionWorkDirectory 为基准；只读内置 Skill 等受控入口需显式传入 `allowOutsideWorkspace: true`。
  */
 export const resolveSandboxRuntimePath = (
   path: string | undefined,
@@ -88,7 +89,7 @@ export const resolveSandboxRuntimePath = (
   options: ResolveSandboxRuntimePathOptions = {}
 ) => {
   const rawPath = path || '.';
-  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? true;
+  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? false;
   const sessionWorkDirectory = trimSandboxPathRight(runtimePaths.sessionWorkDirectory);
 
   if (rawPath === '.' || rawPath === './' || rawPath === '') {
@@ -121,15 +122,112 @@ export const resolveSandboxRuntimePath = (
 export const buildRuntimeHash = (content: HashContent): string =>
   `sha256:${createHash('sha256').update(content).digest('hex')}`;
 
+export type SandboxInputFileNameAllocation = {
+  usedNames: Map<string, number>;
+  urlByFilename: Map<string, string>;
+  filenameByUrlAndBaseName: Map<string, string>;
+};
+
+const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
+  usedNames: new Map<string, number>(),
+  urlByFilename: new Map<string, string>(),
+  filenameByUrlAndBaseName: new Map<string, string>()
+});
+
+const allocationsByOwner = new WeakMap<object, Map<string, SandboxInputFileNameAllocation>>();
+
+/** 生成单个会话沙盒工作目录的输入文件去重作用域键。 */
+export const buildSandboxInputFileScopeKey = ({
+  sourceType,
+  sourceId,
+  userId,
+  chatId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId: string;
+  chatId?: string;
+}) => `${getRunningSandboxId({ sourceType, sourceId, userId })}:${chatId ?? ''}`;
+
+/**
+ * 获取或创建同一沙盒会话工作目录下的输入文件名分配状态。
+ *
+ * 状态仅通过 WeakMap 绑定到当前请求上下文对象（contextOwner）或沙盒实例（sandbox），
+ * 请求或实例释放后随 GC 自动回收，不在进程级 Map 中永久保留历史会话数据。
+ */
+export const getSandboxInputFileNameAllocation = ({
+  scopeKey,
+  contextOwner,
+  sandbox,
+  workDirectory = ''
+}: {
+  scopeKey?: string;
+  contextOwner?: object;
+  sandbox?: object | null;
+  workDirectory?: string;
+}): SandboxInputFileNameAllocation => {
+  const setOwnerAllocation = ({
+    owner,
+    allocation
+  }: {
+    owner: object;
+    allocation: SandboxInputFileNameAllocation;
+  }) => {
+    let byScope = allocationsByOwner.get(owner);
+    if (!byScope) {
+      byScope = new Map<string, SandboxInputFileNameAllocation>();
+      allocationsByOwner.set(owner, byScope);
+    }
+    byScope.set(key, allocation);
+  };
+
+  const key = scopeKey || workDirectory;
+  const sandboxObject = sandbox && typeof sandbox === 'object' ? sandbox : undefined;
+
+  if (contextOwner) {
+    let allocation = allocationsByOwner.get(contextOwner)?.get(key);
+    if (!allocation) {
+      allocation = createSandboxInputFileNameAllocation();
+      setOwnerAllocation({ owner: contextOwner, allocation });
+    }
+    if (sandboxObject) {
+      setOwnerAllocation({ owner: sandboxObject, allocation });
+    }
+    return allocation;
+  }
+
+  if (sandboxObject) {
+    let allocation = allocationsByOwner.get(sandboxObject)?.get(key);
+    if (!allocation) {
+      allocation = createSandboxInputFileNameAllocation();
+      setOwnerAllocation({ owner: sandboxObject, allocation });
+    }
+    return allocation;
+  }
+
+  return createSandboxInputFileNameAllocation();
+};
+
 /**
  * 将外部文件名收敛为可写入 sandbox user_files 的单个 path segment。
  * URL query、API body 和模型上下文都可能携带文件名，因此调用方不能信任原始 name。
+ * 当提供会话级 allocation 时，相同 URL 复用原文件名，不同 URL 的同名文件自动递增后缀。
  */
-export const getSafeSandboxInputFilename = (
-  filename: string,
-  index: number,
-  usedNames: Map<string, number>
-) => {
+export const getSafeSandboxInputFilename = ({
+  filename,
+  index,
+  usedNames,
+  url,
+  allocation,
+  batchUsedFilenames
+}: {
+  filename: string;
+  index: number;
+  usedNames: Map<string, number>;
+  url?: string;
+  allocation?: SandboxInputFileNameAllocation;
+  batchUsedFilenames?: Set<string>;
+}) => {
   const fallbackName = `file-${index}`;
   const normalized = filename.replace(/\\/g, '/').split('/').pop()?.trim() || fallbackName;
   const withoutControlChars = normalized.replace(/[\u0000-\u001F\u007F]/g, '').trim();
@@ -137,11 +235,59 @@ export const getSafeSandboxInputFilename = (
     withoutControlChars && withoutControlChars !== '.' && withoutControlChars !== '..'
       ? withoutControlChars
       : fallbackName;
+
+  const normalizedUrl = url?.trim() || undefined;
+  if (allocation && normalizedUrl) {
+    const existing = allocation.filenameByUrlAndBaseName.get(`${baseName}\0${normalizedUrl}`);
+    if (existing && !batchUsedFilenames?.has(existing)) {
+      batchUsedFilenames?.add(existing);
+      return existing;
+    }
+  }
+
   const firstDotIndex = baseName.indexOf('.');
   const stem = firstDotIndex > 0 ? baseName.slice(0, firstDotIndex) : baseName;
   const extension = firstDotIndex > 0 ? baseName.slice(firstDotIndex) : '';
-  const count = usedNames.get(baseName) || 0;
-  usedNames.set(baseName, count + 1);
+  const targetUsedNames = allocation?.usedNames ?? usedNames;
+  let count = targetUsedNames.get(baseName) || 0;
+  let candidate = count === 0 ? baseName : `${stem}-${count}${extension}`;
+  while (
+    batchUsedFilenames?.has(candidate) ||
+    (allocation &&
+      allocation.urlByFilename.has(candidate) &&
+      allocation.urlByFilename.get(candidate) !== normalizedUrl)
+  ) {
+    count += 1;
+    candidate = `${stem}-${count}${extension}`;
+  }
+  targetUsedNames.set(baseName, count + 1);
+  batchUsedFilenames?.add(candidate);
+  if (allocation && normalizedUrl) {
+    allocation.urlByFilename.set(candidate, normalizedUrl);
+    allocation.filenameByUrlAndBaseName.set(`${baseName}\0${normalizedUrl}`, candidate);
+    allocation.filenameByUrlAndBaseName.set(`${candidate}\0${normalizedUrl}`, candidate);
+  }
 
-  return count === 0 ? baseName : `${stem}-${count}${extension}`;
+  return candidate;
+};
+
+/** 批量为本轮输入文件分配去重且安全的文件名，统一 runtime/toolCall/useToolMessages 三处复用。 */
+export const allocateSandboxInputFiles = <T extends { url?: string }>(params: {
+  items: readonly T[];
+  getFilename: (item: T) => string;
+  allocation?: SandboxInputFileNameAllocation;
+}): Array<{ item: T; filename: string }> => {
+  const usedNames = new Map<string, number>();
+  const batchUsedFilenames = new Set<string>();
+  return params.items.map((item, index) => ({
+    item,
+    filename: getSafeSandboxInputFilename({
+      filename: params.getFilename(item),
+      index,
+      usedNames,
+      url: item.url,
+      allocation: params.allocation,
+      batchUsedFilenames
+    })
+  }));
 };

@@ -1,16 +1,68 @@
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from './migrationCoverageLog';
 import { serviceEnv } from '../../env';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import { getSystemConfigRuntimeState } from './systemInstanceConfig/runtime';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
-export const FastGPTPluginUrl = serviceEnv.PLUGIN_BASE_URL ?? '';
-// @ts-ignore
-export const isFastGPTProService = () => !!global.systemConfig;
+/** @deprecated 插件地址由插件服务连接环境变量管理，业务调用使用插件客户端。 */
+export const FastGPTPluginUrl = '';
+/** 判断当前授权是否允许商业功能；部署是否接入 Pro 使用 PRO_URL 单独判定。 */
+export const isProVersion = () =>
+  (getSystemConfigRuntimeState().frontendContext.commercialService ??
+    Boolean(serviceEnv.PRO_URL)) &&
+  isLicenseActive(getSystemInstanceConfig().license.data);
 
-export const isProVersion = () => {
-  return !!global.feConfigs?.isPlus;
+/**
+ * 工作流 HTTP 节点的响应体大小上限（MB → 字节），按解压后的大小计算。
+ * 不限制服务端接收的请求体或节点发出的请求体。
+ * 实例配置 resource.serviceRequestMaxContentLength 是唯一运行时来源；ENV 只在启动迁移时 seed。
+ */
+export const getServiceRequestMaxContentLength = () => {
+  const value = getSystemInstanceConfig().resource.serviceRequestMaxContentLength;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getServiceRequestMaxContentLength',
+    fields: [{ path: 'resource.serviceRequestMaxContentLength', value }]
+  });
+  return value * 1024 * 1024;
 };
 
-export const serviceRequestMaxContentLength =
-  serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;
+/**
+ * 媒体是否需要在服务端转 base64（兼容不支持远程 URL 的模型）。
+ * 统一 helper 防止各消费点写法漂移；来源只有实例配置。
+ */
+export const getMultipleDataToBase64 = () => {
+  const value = getSystemInstanceConfig().feature.multipleDataToBase64;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getMultipleDataToBase64',
+    fields: [{ path: 'feature.multipleDataToBase64', value }]
+  });
+  return value;
+};
+
+/**
+ * 密码登录/验证短信的每分钟限流次数。
+ * create/consume 两处限流与改密接口共用本 helper，避免同一配置多处读取漂移。
+ */
+export const getPasswordLoginMinuteLimitCount = () => {
+  const value = getSystemInstanceConfig().security.passwordLoginMinuteLimitCount;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getPasswordLoginMinuteLimitCount',
+    fields: [{ path: 'security.passwordLoginMinuteLimitCount', value }]
+  });
+  return value;
+};
+
+/**
+ * 共享 axios 实例的默认响应体上限（MiB → 解压后字节数），仅作用于缓冲型响应。
+ *
+ * axios 默认不限制响应大小，且会自动解压并完整缓冲响应体；请求攻击者控制的
+ * URL 时，gzip 炸弹可以按约 1000 倍放大占用内存。流式下载不受该默认值影响，
+ * 由调用方或业务层配额限制；调用方也可以按请求显式覆盖 maxContentLength。
+ * 每次请求读取实例快照，使表单保存后的上限作用于已创建的共享客户端。
+ */
+export const getServiceAxiosMaxContentLength = () =>
+  getSystemInstanceConfig().resource.serviceAxiosMaxContentLength * 1024 * 1024;
 
 export const InitialErrorEnum = {
   S3_ERROR: 's3_error',

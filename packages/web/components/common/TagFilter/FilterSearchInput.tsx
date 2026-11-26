@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useCallback, useRef, useState } from 'react';
 import { Flex, Input } from '@chakra-ui/react';
 import MyIconButton from '../Icon/button';
 import { shadowLight } from '../../../styles/theme';
@@ -28,11 +28,50 @@ type Props = {
   onChange: (next: string) => void;
 };
 
-/** TagFilter 下拉里 32px 搜索框，有内容时显示清空。 */
+/** 输入框显示组合中的文本，搜索只接收已确认的值。 */
+export const useComposedSearchInput = (value: string, onChange: (next: string) => void) => {
+  const [draft, setDraft] = useState<string>();
+  const isComposingRef = useRef(false);
+  const resetInput = useCallback(() => {
+    isComposingRef.current = false;
+    setDraft(undefined);
+  }, []);
+
+  const updateInput = (next: string) => {
+    if (isComposingRef.current) {
+      setDraft(next);
+    } else {
+      resetInput();
+      onChange(next);
+    }
+  };
+
+  return {
+    inputValue: draft ?? value,
+    isComposingRef,
+    resetInput,
+    updateInput,
+    compositionProps: {
+      onCompositionStart: () => {
+        isComposingRef.current = true;
+      },
+      onCompositionEnd: (event: React.CompositionEvent<HTMLInputElement>) => {
+        isComposingRef.current = false;
+        updateInput(event.currentTarget.value);
+      },
+      onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+        updateInput(event.currentTarget.value)
+    }
+  };
+};
+
+/** TagFilter 下拉里 32px 搜索框，有内容时显示清空，并在中文输入法组合结束后再触发搜索。 */
 const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSearchInput(
   { value, placeholder, onChange },
   ref
 ) {
+  const { inputValue, resetInput, compositionProps } = useComposedSearchInput(value, onChange);
+
   return (
     <Flex
       w={'100%'}
@@ -49,8 +88,8 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
         bg: 'white'
       }}
       onKeyDown={(e) => {
-        // 文本输入由搜索框处理，方向键和 Escape 交给菜单导航、关闭。
-        if (!['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
+        // 组合输入期间按键均交给输入法候选框；非组合状态下方向键和 Escape 交给外层菜单。
+        if (e.nativeEvent.isComposing || !['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
           e.stopPropagation();
         }
       }}
@@ -65,11 +104,11 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
         variant={'unstyled'}
         fontSize={'xs'}
         lineHeight={'16px'}
-        value={value}
+        value={inputValue}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        {...compositionProps}
       />
-      {!!value && (
+      {!!inputValue && (
         <MyIconButton
           icon={'common/closeLight'}
           flex={'0 0 auto'}
@@ -77,7 +116,10 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
           zIndex={1}
           size={'14px'}
           hoverColor={'myGray.700'}
-          onClick={() => onChange('')}
+          onClick={() => {
+            resetInput();
+            onChange('');
+          }}
         />
       )}
     </Flex>

@@ -5,6 +5,7 @@ import { getTestMaxWorkers } from '../../test/vitestWorkers';
 export default defineConfig({
   resolve: {
     alias: {
+      '@fastgpt/workflow-core': resolve('../workflow-core/src'),
       '@fastgpt': resolve('..')
     }
   },

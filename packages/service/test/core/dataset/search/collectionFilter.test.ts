@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const collectionFindMock = vi.hoisted(() => vi.fn());
@@ -303,14 +304,28 @@ describe('filterCollectionByKeyValueTags', () => {
 describe('filterCollectionByMetadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).feConfigs = { isPlus: true };
+    setTestProLicense(false);
     mockTagsAndCollections({
       tags: [{ _id: 'tag-1', datasetId: 'dataset-1', tag: 'field', tagType: 'string' }],
       collections: [{ _id: 'match', tags: [{ tagId: 'tag-1', value: 'A' }] }]
     });
   });
   afterEach(() => {
-    (global as any).feConfigs = {};
+    setTestProLicense(false);
+  });
+
+  it('honors explicit disabled capability even when the global edition allows filters', async () => {
+    setTestProLicense(true);
+    await expect(
+      filterCollectionByMetadata({
+        teamId: 'team-1',
+        datasetIds: ['dataset-1'],
+        collectionFilterMatch: '{}',
+        metadataFilterEnabled: false
+      })
+    ).resolves.toBeUndefined();
+    expect(collectionFindMock).not.toHaveBeenCalled();
+    expect(tagFindMock).not.toHaveBeenCalled();
   });
 
   it('accepts structured conditions, defensively normalizes legacy strings, and returns undefined on malformed inputs', async () => {
@@ -333,6 +348,7 @@ describe('filterCollectionByMetadata', () => {
 
     await expect(
       filterCollectionByMetadata({
+        metadataFilterEnabled: true,
         teamId: 'team-1',
         datasetIds: ['dataset-1'],
         collectionFilterMatch: JSON.stringify({ tags: { $and: [{ field: { $eq: 'A' } }] } })
@@ -342,6 +358,7 @@ describe('filterCollectionByMetadata', () => {
     // 防御性归一化直接调用的老版字符串
     await expect(
       filterCollectionByMetadata({
+        metadataFilterEnabled: true,
         teamId: 'team-1',
         datasetIds: ['dataset-1'],
         collectionFilterMatch: JSON.stringify({ tags: { $and: ['legacy-tag'] } })
@@ -351,6 +368,7 @@ describe('filterCollectionByMetadata', () => {
     // malformed JSON 优雅降级返回 undefined
     await expect(
       filterCollectionByMetadata({
+        metadataFilterEnabled: true,
         teamId: 'team-1',
         datasetIds: ['dataset-1'],
         collectionFilterMatch: 'not-json{'

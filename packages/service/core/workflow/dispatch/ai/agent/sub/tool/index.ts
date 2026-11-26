@@ -1,19 +1,19 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
 import {
   getToolNameCandidates,
-  getToolRawId,
   isDebugToolSource,
-  isTeamPluginSource
+  isTeamPluginSource,
+  parseToolsetToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../../../../app/tool/secretConfig';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ChatDispatchProps } from '../../../../../types/runtime';
+import type { WorkflowDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -36,11 +36,18 @@ import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/util
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
+import { getWorkflowContext } from '../../../../context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  projectPluginModelContent,
+  maskToolImagePayload
+} from '../../../agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -57,13 +64,12 @@ export type Props = {
     [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
     [key: string]: any;
   };
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  chatId: ChatDispatchProps['chatId'];
-  uid: ChatDispatchProps['uid'];
-  variableState: ChatDispatchProps['variableState'];
+  runningUserInfo: WorkflowDispatchProps['runningUserInfo'];
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  chatId: WorkflowDispatchProps['chatId'];
+  usageId?: WorkflowDispatchProps['usageId'];
+  uid: WorkflowDispatchProps['uid'];
   runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
-  workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
 /** 执行 Agent 选择的工具；协议执行错误保留原结果，并返回模型可处理的错误标记。 */
@@ -73,11 +79,11 @@ export const dispatchTool = async ({
   runningUserInfo,
   runningAppInfo,
   chatId,
+  usageId,
   uid,
-  variableState,
-  runtimeNodesMap,
-  workflowStreamResponse
+  runtimeNodesMap
 }: Props): Promise<DispatchSubAppResponse> => {
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
   const resolveReference = (value: ReferenceValueType) =>
     getReferenceVariableValue({
       value,
@@ -189,7 +195,9 @@ export const dispatchTool = async ({
         }
       })();
 
-      const formatToolId = getToolRawId(tool.id);
+      const { parentId: pluginId, toolName: childId } = parseToolsetToolId(
+        toolConfig.systemTool.toolId
+      );
       const appId = getWorkflowAppId(runningAppInfo);
 
       // 系统工具的用户信息反向调用必须使用实际运行成员，不能使用应用 owner。
@@ -200,14 +208,13 @@ export const dispatchTool = async ({
             uId: uid,
             permissions: tool.permissions ?? [],
             teamId: String(runningUserInfo.teamId),
-            tmbId: String(runningUserInfo.tmbId)
+            tmbId: String(runningUserInfo.tmbId),
+            usageId
           }).generateToken()
         : undefined;
 
-      const childId = toolConfig.systemTool.toolId.split('/')[1];
-
       const res = await pluginClient.runToolStream({
-        pluginId: formatToolId,
+        pluginId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
@@ -220,10 +227,12 @@ export const dispatchTool = async ({
           },
           chat: {
             chatId,
-            uid
+            uid,
+            usageId
           },
           time: String(variableState.get('cTime') ?? ''),
-          invokeToken: invokeToken || ''
+          invokeToken: invokeToken || '',
+          usageId
         },
         onMessage: ({ type, content }) => {
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
@@ -258,8 +267,17 @@ export const dispatchTool = async ({
         msg: result[NodeOutputKeyEnum.systemError]
       });
 
+      // 插件多模态字段由当前执行版本的 outputSchema 标记。
+      const projected = projectPluginModelContent({
+        result,
+        outputSchema: toolDetail?.outputSchema,
+        onInvalidField: (field, reason) =>
+          logger.warn('Invalid plugin model content field', { field, reason })
+      });
+
       return {
-        response: JSON.stringify(result),
+        response: JSON.stringify(projected.responseResult),
+        ...(projected.content ? { content: projected.content } : {}),
         nodeResponse: getNodeResponse({
           result
         }),
@@ -270,7 +288,7 @@ export const dispatchTool = async ({
           }
         ]
       };
-    } else if (toolConfig?.mcpTool?.toolId) {
+    } else if (toolConfig?.mcpTool && 'toolId' in toolConfig.mcpTool) {
       const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
@@ -312,15 +330,22 @@ export const dispatchTool = async ({
         params
       });
       const errorMessage = getMCPToolErrorText(result);
+      // MCP 图片块是 { type: 'image', data, mimeType }，需要先转成 data URI image_url。
+      const content = convertMcpToolContentToToolContent(
+        (result as { content?: unknown } | undefined)?.content
+      );
+      // 图片走 image_url part；文本里把 base64 换成占位。
+      const response = JSON.stringify(maskToolImagePayload(result));
       return {
-        response: JSON.stringify(result),
+        response,
+        ...(content ? { content: [{ type: 'text' as const, text: response }, ...content] } : {}),
         ...(errorMessage !== undefined ? { errorMessage } : {}),
         nodeResponse: {
           ...getNodeResponse({ result }),
           ...(errorMessage !== undefined ? { errorText: errorMessage } : {})
         }
       };
-    } else if (toolConfig?.httpTool?.toolId) {
+    } else if (toolConfig?.httpTool && 'toolId' in toolConfig.httpTool) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
@@ -376,11 +401,30 @@ export const dispatchTool = async ({
         };
       }
 
+      const content = extractAgentLoopCoreToolContent(data);
+      // 图片数据只保留在 content 通道里一份，业务文本里换成占位。
+      const responseData =
+        content && data && typeof data === 'object'
+          ? maskToolImagePayload(data, { maskDataUrlParts: true })
+          : data;
+
       return {
         nodeResponse: getNodeResponse({
           result: data
         }),
-        response: typeof data === 'object' ? JSON.stringify(data) : data
+        response: typeof responseData === 'object' ? JSON.stringify(responseData) : responseData,
+        ...(content
+          ? {
+              content: [
+                {
+                  type: 'text' as const,
+                  text:
+                    typeof responseData === 'object' ? JSON.stringify(responseData) : responseData
+                },
+                ...content.filter((part) => part.type === 'image_url')
+              ]
+            }
+          : {})
       };
     } else {
       return getErrResponse("Can't find the tool");

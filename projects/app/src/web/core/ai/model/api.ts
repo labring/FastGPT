@@ -5,15 +5,20 @@ import type {
   CreateModelResponse,
   CreateModelsFromTemplatesBody,
   CreateModelsFromTemplatesResponse,
+  ImportFromChannelBody,
+  ImportFromChannelResponse,
   DeleteModelsBody,
   GetModelTemplatesResponse,
   GetModelDetailResponse,
   GetSystemModelConfigResponse,
   GetTeamModelsResponse,
+  PreviewImportFromChannelQuery,
+  PreviewImportFromChannelResponse,
   TestModelQuery,
   TestDraftModelBody,
   UpdateModelBody,
   UpdateModelChannelsBody,
+  UpdateModelOrderBody,
   UpdateModelStatusBody,
   UpdateDefaultModelsBody,
   UpdateSystemModelsWithJsonBody
@@ -44,6 +49,14 @@ export const getModelConfig = <
 export const getModelTemplates = (data: { channelType: ChannelType }) =>
   GET<GetModelTemplatesResponse>(`${coreModelPath}/templates`, data);
 
+/** Preview upstream models and their local/template matches for one system channel. */
+export const getImportPreviewFromChannel = (data: PreviewImportFromChannelQuery) =>
+  GET<PreviewImportFromChannelResponse>(coreModelPath + '/previewImportFromChannel', data);
+
+/** Apply selected channel import operations and return one result per operation. */
+export const postImportModelsFromChannel = (data: ImportFromChannelBody) =>
+  POST<ImportFromChannelResponse>(coreModelPath + '/importFromChannel', data, { timeout: 0 });
+
 /** 创建模型（系统模型或团队私有模型），强制显式传递 channelType */
 export const postCreateModel = (data: CreateModelBody) =>
   POST<CreateModelResponse>(`${coreModelPath}/create`, data);
@@ -69,6 +82,10 @@ export const postUpdateModelChannels = (data: UpdateModelChannelsBody) =>
 /** 批量启停模型，强制显式传递 channelType */
 export const putModelsStatus = (data: UpdateModelStatusBody) =>
   PUT(`${coreModelPath}/updateStatus`, data);
+
+/** 保存当前作用域的完整模型顺序，强制显式传递 channelType */
+export const putUpdateModelOrder = (data: UpdateModelOrderBody) =>
+  PUT(`${coreModelPath}/updateOrder`, data);
 
 /** 单个删除模型，内部统一转为批量格式并通过 Body 发送 */
 export const deleteModel = ({ modelId, channelType }: ModelReference) =>

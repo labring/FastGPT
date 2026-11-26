@@ -16,7 +16,6 @@ import {
   getFolderAncestorIdsFromParentId,
   rewriteFolderSubtreeAncestorIds
 } from '@fastgpt/service/common/parentFolder/ancestorIds';
-import { serviceEnv } from '@fastgpt/service/env';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   syncChildrenPermission,
@@ -26,7 +25,9 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const logDatasetMove = ({
   tmbId,
@@ -43,6 +44,7 @@ const logDatasetMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_DATASET,
+    resources: [buildDatasetAuditResource(dataset)],
     params: {
       datasetName: dataset.name,
       targetFolderName: targetName,
@@ -89,11 +91,15 @@ export const moveDataset = async ({
       datasetId: dataset.parentId,
       per: ManagePermissionVal
     });
+  } else if (!dataset.permission.hasManagePer) {
+    return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
   if (parentId === null || !dataset.parentId) {
+    // 根目录移动仍需校验创建权限，认证方式与前面的资源鉴权保持一致。
     await authUserPer({
       req,
       authToken: true,
+      authApiKey: true,
       per: TeamDatasetCreatePermissionVal
     });
   }
@@ -113,7 +119,6 @@ export const moveDataset = async ({
     const ancestorIds = isPathFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
-          maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
           findFolder: (parentFolderId) =>
             MongoDataset.findOne({
               _id: parentFolderId,
@@ -130,8 +135,8 @@ export const moveDataset = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: id,
         rootAncestorIds: ancestorIds,
-        // 路径重写也按目标祖先加子树的绝对层级校验，不能沿用只读遍历上限。
-        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+        // 不显式传 maxDepth：路径重写要用实例配置的绝对层级上限，
+        // 不能沿用只读遍历的 defaultSubtreeMaxDepth。
         findChildFolders: (parentIds) =>
           MongoDataset.find({
             teamId: dataset.teamId,

@@ -1,14 +1,24 @@
 import { POST } from '@/web/common/api/request';
 import type {
-  GetUsageDashboardProps,
-  GetUsageDashboardResponseItem,
-  GetUsageProps
-} from '@fastgpt/global/support/wallet/usage/api';
-import type { UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
+  GetUsageBodyType,
+  GetUsageDashboardBodyType,
+  GetUsageDashboardResponseType,
+  GetUsageResponseType,
+  UsageFilterOptionsBody,
+  UsageFilterOptionsResponse
+} from '@fastgpt/global/openapi/support/wallet/usage/api';
 
-export const getUserUsages = (data: PaginationProps<GetUsageProps>) =>
-  POST<PaginationResponse<UsageListItemType>>(`/proApi/support/wallet/usage/getUsage`, data);
+/** 用量列表只保留最新请求，翻页或切换筛选时取消上一次读取。 */
+export const getUserUsages = (data: GetUsageBodyType) =>
+  POST<GetUsageResponseType>(`/proApi/support/wallet/usage/getUsage`, data, { maxQuantity: 1 });
 
-export const getDashboardData = (data: GetUsageDashboardProps) =>
-  POST<GetUsageDashboardResponseItem[]>(`/proApi/support/wallet/usage/getDashboardData`, data);
+/** 趋势查询独立保留最新请求，避免快速切换筛选时累积读取。 */
+export const getDashboardData = (data: GetUsageDashboardBodyType) =>
+  POST<GetUsageDashboardResponseType>(`/proApi/support/wallet/usage/getDashboardData`, data, {
+    maxQuantity: 1
+  });
+
+export const getUsageFilterOptions = (body: UsageFilterOptionsBody, controller?: AbortController) =>
+  POST<UsageFilterOptionsResponse>(`/proApi/support/wallet/usage/filterOptions`, body, {
+    cancelToken: controller
+  });

@@ -1,17 +1,40 @@
 import handler from '@/pages/api/core/app/version/publish';
+import versionDetailHandler from '@/pages/api/core/app/version/detail';
+import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
+import type { TFunction } from 'i18next';
 import datasetListHandler from '@/pages/api/core/dataset/listV2';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { RerankModelDataType, TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import {
+  AIModelDataSchema,
+  type AIModelDataType,
+  type RerankModelDataType,
+  type TTSModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { PublishAppBodyType } from '@fastgpt/global/openapi/core/app/version/api';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
+import type {
+  GetAppVersionDetailQueryType,
+  GetAppVersionDetailResponseType,
+  PublishAppBodyType,
+  PublishAppResponseType
+} from '@fastgpt/global/openapi/core/app/version/api';
 import type {
   GetDatasetListV2Body,
   GetDatasetListV2Response
@@ -26,9 +49,12 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import {
   loadWorkflowDatasetResource,
   loadWorkflowModelResource
@@ -38,9 +64,244 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
+describe('publish legacy Agent tool configuration', () => {
+  it('preserves a constructor parameter through publish, version hydration and canvas save', async () => {
+    const auth = await getRootUser();
+    const toolApp = await MongoApp.create({
+      name: 'Constructor workflow tool',
+      type: AppTypeEnum.workflowTool,
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+    const toolVersion = await MongoAppVersion.create({
+      appId: toolApp._id,
+      tmbId: auth.tmbId,
+      isPublish: true,
+      nodes: [
+        {
+          nodeId: 'tool-input',
+          name: 'Tool input',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [
+            {
+              key: 'constructor',
+              label: 'Constructor',
+              valueType: 'string',
+              toolDescription: 'Constructor business parameter',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    await MongoApp.updateOne(
+      { _id: toolApp._id },
+      { $set: { publishedVersionId: toolVersion._id } }
+    );
+    const app = await MongoApp.create({
+      name: 'Agent with constructor parameter',
+      type: AppTypeEnum.workflow,
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            outputs: [],
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  {
+                    id: String(toolApp._id),
+                    inputs: [
+                      {
+                        key: 'constructor',
+                        selectedType: FlowNodeInputTypeEnum.input,
+                        value: 'fixed constructor value'
+                      }
+                    ],
+                    config: {}
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    });
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const workflow = await getAppLatestVersion(String(app._id));
+    expect(workflow.nodes[0].inputs[0].value).toEqual([
+      {
+        id: String(toolApp._id),
+        inputs: [{ key: 'constructor', mode: 'manual' }],
+        config: { constructor: 'fixed constructor value' }
+      }
+    ]);
+
+    const loaded = await Call<
+      Record<string, never>,
+      GetAppVersionDetailQueryType,
+      GetAppVersionDetailResponseType
+    >(versionDetailHandler, {
+      auth,
+      headers: {},
+      query: { appId: String(app._id), versionId: workflow.versionId! }
+    });
+    expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+    const tools = loaded.data.nodes[0].inputs[0].value as SelectedToolItemType[];
+    expect(tools[0].pluginData?.error).toBeUndefined();
+    expect(tools[0].inputs.find(({ key }) => key === 'constructor')?.value).toBe(
+      'fixed constructor value'
+    );
+    const editor = hydrateRuntime({
+      input: loaded.data,
+      t: ((key: string) => key) as TFunction
+    });
+    const saved = serializeRuntime(editor);
+    editor.dispose();
+    expect(
+      saved.nodes[0].inputs.find(({ key }) => key === NodeInputKeyEnum.selectedTools)?.value
+    ).toMatchObject([{ config: { constructor: 'fixed constructor value' } }]);
+  });
+});
+
+describe('publish toolset App workflow', () => {
+  const createApp = (type: AppTypeEnum, user: Awaited<ReturnType<typeof getUser>>) =>
+    MongoApp.create({
+      name: `publish ${type}`,
+      type,
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+
+  it.each([
+    {
+      type: AppTypeEnum.mcpToolSet,
+      node: getMCPToolSetRuntimeNode({
+        url: 'https://mcp.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'mcpToolSet'
+    },
+    {
+      type: AppTypeEnum.httpToolSet,
+      node: getHTTPToolSetRuntimeNode({
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'httpToolSet'
+    }
+  ] as const)('preserves runtime schema for $type App', async ({ type, node, configKey }) => {
+    const user = await getUser(`publish-${type}`);
+    const app = await createApp(type, user);
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const workflow = await getAppLatestVersion(String(app._id), app);
+    expect(workflow.nodes[0].toolConfig?.[configKey]?.toolList[0]).toHaveProperty('inputSchema');
+  });
+
+  it('rejects a complete toolset root on a normal workflow App', async () => {
+    const user = await getUser('publish-workflow-toolset-reject');
+    const app = await createApp(AppTypeEnum.workflow, user);
+    const node = getMCPToolSetRuntimeNode({
+      url: 'https://mcp.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object' }
+        }
+      ]
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code).toBe(500);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+});
+
+const PUBLISH_TEST_EMBEDDING_MODEL_ID = 'publish-test-embedding';
+const createEmbeddingTestModel = (baseModel: AIModelDataType, modelId: string) =>
+  AIModelDataSchema.parse({
+    ...baseModel,
+    modelId,
+    model: 'publish-test-embedding',
+    name: 'Publish test embedding',
+    type: ModelTypeEnum.embedding,
+    config: { defaultToken: 512, maxToken: 8192, batchSize: 64 }
+  });
 
 describe('publish manually selected datasets', () => {
+  let previousModels: AIModelDataType[];
+  let previousDefaults: ReturnType<typeof getModelTestDefaults>;
+
+  beforeEach(() => {
+    previousModels = getCachedSystemModelHandle()?.getAllModels() ?? [];
+    previousDefaults = getModelTestDefaults();
+    const embeddingModel = createEmbeddingTestModel(
+      previousDefaults.llm!,
+      PUBLISH_TEST_EMBEDDING_MODEL_ID
+    );
+    setModelTestSnapshot({
+      models: [
+        ...previousModels.filter(({ modelId }) => modelId !== embeddingModel.modelId),
+        embeddingModel
+      ],
+      defaultModels: { ...previousDefaults, embedding: embeddingModel }
+    });
+  });
+
+  afterEach(() => {
+    setModelTestSnapshot({ models: previousModels, defaultModels: previousDefaults });
+  });
+
+  const withAvailableIndexModel = <T extends Record<string, unknown>>(dataset: T) => ({
+    ...dataset,
+    vectorModelId: PUBLISH_TEST_EMBEDDING_MODEL_ID
+  });
+
   const createDatasetNode = (
     datasetId: string,
     nodeId = 'search'
@@ -86,12 +347,14 @@ describe('publish manually selected datasets', () => {
       'dataset-creator',
       scenario.sameTeam ? publisher.teamId : undefined
     );
-    const dataset = await MongoDataset.create({
-      name: 'Manually selected dataset',
-      teamId: creator.teamId,
-      tmbId: creator.tmbId,
-      type: DatasetTypeEnum.dataset
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Manually selected dataset',
+        teamId: creator.teamId,
+        tmbId: creator.tmbId,
+        type: DatasetTypeEnum.dataset
+      })
+    );
     if (scenario.granted) {
       await MongoResourcePermission.create({
         teamId: publisher.teamId,
@@ -141,14 +404,72 @@ describe('publish manually selected datasets', () => {
     }
   });
 
+  it('rejects publishing a knowledge base reference without an available index model', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without an index model',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'missing-embedding-model'
+    });
+    const app = await MongoApp.create({
+      name: 'Missing dataset index model',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [createDatasetNode(String(dataset._id))]
+      }
+    });
+
+    expect(result.code).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+
+  it('allows saving a knowledge base reference without an available index model', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without an index model',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'missing-embedding-model'
+    });
+    const app = await MongoApp.create({
+      name: 'Save without dataset index model',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: false,
+        nodes: [createDatasetNode(String(dataset._id))]
+      }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(1);
+  });
+
   it('rejects a foreign dataset in an old authorized snapshot and removes it from autosave authorization', async () => {
     const root = await getRootUser();
     const other = await getUser('old-cross-team-dataset-owner');
-    const dataset = await MongoDataset.create({
-      name: 'Old foreign dataset',
-      teamId: other.teamId,
-      tmbId: other.tmbId
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Old foreign dataset',
+        teamId: other.teamId,
+        tmbId: other.tmbId
+      })
+    );
     const app = await MongoApp.create({
       name: 'Old root snapshot',
       type: AppTypeEnum.workflow,
@@ -188,11 +509,13 @@ describe('publish manually selected datasets', () => {
 
   it('uses the application team when root publishes an application from another team', async () => {
     const { root, owner, app } = await createAppInAnotherTeam();
-    const dataset = await MongoDataset.create({
-      name: 'Application team dataset',
-      teamId: owner.teamId,
-      tmbId: owner.tmbId
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Application team dataset',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      })
+    );
 
     const result = await Call<PublishAppBodyType>(handler, {
       auth: root,
@@ -206,6 +529,8 @@ describe('publish manually selected datasets', () => {
     const loadedDataset = await runWithContext(
       {
         mcpClientMemory: {},
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         resourceContext: createWorkflowResourceContext({
           resources: version.resources,
           teamId: owner.teamId
@@ -220,11 +545,13 @@ describe('publish manually selected datasets', () => {
     'rejects root login-team resources in another application team, including snapshots (%s)',
     async (hasSnapshot) => {
       const { root, app } = await createAppInAnotherTeam();
-      const dataset = await MongoDataset.create({
-        name: 'Root login-team dataset',
-        teamId: root.teamId,
-        tmbId: root.tmbId
-      });
+      const dataset = await MongoDataset.create(
+        withAvailableIndexModel({
+          name: 'Root login-team dataset',
+          teamId: root.teamId,
+          tmbId: root.tmbId
+        })
+      );
       const nodes = [createDatasetNode(String(dataset._id))];
       if (hasSnapshot) {
         await MongoAppVersion.create({
@@ -253,8 +580,16 @@ describe('publish manually selected datasets', () => {
     async (autoSave) => {
       const { root, owner, app } = await createAppInAnotherTeam();
       const [appDataset, loginDataset] = await MongoDataset.create([
-        { name: 'Application team dataset', teamId: owner.teamId, tmbId: owner.tmbId },
-        { name: 'Root login-team dataset', teamId: root.teamId, tmbId: root.tmbId }
+        withAvailableIndexModel({
+          name: 'Application team dataset',
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        }),
+        withAvailableIndexModel({
+          name: 'Root login-team dataset',
+          teamId: root.teamId,
+          tmbId: root.tmbId
+        })
       ]);
       const nodes = [
         createDatasetNode(String(appDataset._id)),
@@ -308,8 +643,9 @@ describe('publish optional model defaults', () => {
       type: ModelTypeEnum.tts,
       config: { voices: [{ label: 'Voice', value: 'voice' }] }
     };
-    setModelTestSnapshot({ models: [llm, rerank, tts] });
-    setModelTestSnapshot({ defaultModels: { llm, rerank, tts } });
+    const embedding = createEmbeddingTestModel(llm, PUBLISH_TEST_EMBEDDING_MODEL_ID);
+    setModelTestSnapshot({ models: [llm, embedding, rerank, tts] });
+    setModelTestSnapshot({ defaultModels: { llm, embedding, rerank, tts } });
   });
   afterEach(() => {
     setModelTestSnapshot({ models: previousModels });
@@ -461,6 +797,88 @@ describe('publish optional model defaults', () => {
     ).toEqual([{ type: 'model', id: restrictedModel.modelId }]);
   });
 
+  it('stores nested MCP and HTTP tool-set IDs in published resource snapshots', async () => {
+    const root = await getRootUser();
+    const workflowApp = await MongoApp.create({
+      name: 'tool-set-resource-snapshot',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    const [parentMcp, nestedMcp, parentHttp, nestedHttp] = await Promise.all([
+      MongoApp.create({
+        name: 'parent MCP tool set',
+        type: AppTypeEnum.mcpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'nested MCP tool set',
+        type: AppTypeEnum.mcpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'parent HTTP tool set',
+        type: AppTypeEnum.httpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'nested HTTP tool set',
+        type: AppTypeEnum.httpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      })
+    ]);
+
+    const result = await Call<PublishAppBodyType, { appId: string }, undefined>(handler, {
+      auth: root,
+      query: { appId: String(workflowApp._id) },
+      body: {
+        isPublish: true,
+        versionName: 'tool set resources',
+        edges: [],
+        nodes: [
+          {
+            nodeId: 'external-mcp-set',
+            name: 'External MCP',
+            flowNodeType: FlowNodeTypeEnum.toolSet,
+            pluginId: String(parentMcp._id),
+            inputs: [],
+            outputs: [],
+            toolConfig: { mcpToolSet: { toolId: String(nestedMcp._id), toolList: [] } }
+          },
+          {
+            nodeId: 'external-http-set',
+            name: 'External HTTP',
+            flowNodeType: FlowNodeTypeEnum.toolSet,
+            pluginId: String(parentHttp._id),
+            inputs: [],
+            outputs: [],
+            toolConfig: { httpToolSet: { toolId: String(nestedHttp._id), toolList: [] } }
+          }
+        ] as any
+      }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const version = await MongoAppVersion.findOne({
+      appId: workflowApp._id,
+      isPublish: true
+    }).lean();
+    const nestedIds = [String(nestedMcp._id), String(nestedHttp._id)].sort();
+    expect(version?.resources).toEqual(nestedIds.map((id) => ({ type: 'tool', id })));
+  });
+
   it('preserves restricted model references when saving a draft', async () => {
     const { member, app, restrictedModel } = await createRestrictedModelScenario();
     const result = await Call(handler, {
@@ -519,6 +937,51 @@ describe('publish optional model defaults', () => {
     }
   );
 
+  it.each([
+    { autoSave: true, isPublish: false },
+    { autoSave: false, isPublish: false },
+    { autoSave: false, isPublish: true }
+  ])(
+    'returns the normalized saved workflow when requested (autoSave=$autoSave, isPublish=$isPublish)',
+    async ({ autoSave, isPublish }) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Save receipt',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+        handler,
+        {
+          auth: root,
+          headers: {},
+          query: { appId: String(app._id) },
+          body: { ...makeBody(true), autoSave, isPublish, returnWorkflow: true }
+        }
+      );
+
+      expect(result.code, String(result.error ?? JSON.stringify(result))).toBe(200);
+      const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
+      expect(result.data?.workflow.chatConfig.questionGuide?.modelId).toBe(
+        previousDefaults.llm!.modelId
+      );
+      const loaded = await Call<
+        Record<string, never>,
+        GetAppVersionDetailQueryType,
+        GetAppVersionDetailResponseType
+      >(versionDetailHandler, {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id), versionId: String(version?._id) }
+      });
+      expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+      expect(result.data?.workflow.chatConfig).toEqual(loaded.data.chatConfig);
+      expect(result.data?.workflow.nodes).toEqual(loaded.data.nodes);
+      expect(result.data?.workflow.edges).toEqual(loaded.data.edges);
+    }
+  );
+
   it('allows disabled features to retain unavailable models without replacement', async () => {
     const root = await getRootUser();
     const app = await MongoApp.create({
@@ -554,6 +1017,303 @@ describe('publish optional model defaults', () => {
     expect(await MongoAppVersion.countDocuments({ appId: app._id, isPublish: true })).toBe(0);
   });
 
+  it.each([true, false])(
+    'rejects a circular workflow parent chain before saving (%s)',
+    async (autoSave) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Loop workflow',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: {
+          nodes: [
+            { nodeId: 'loop-a', parentNodeId: 'loop-b' },
+            { nodeId: 'loop-b', parentNodeId: 'loop-a' }
+          ].map((node) => ({
+            ...node,
+            flowNodeType: FlowNodeTypeEnum.loopRun,
+            name: node.nodeId,
+            inputs: [],
+            outputs: []
+          })),
+          autoSave,
+          isPublish: !autoSave
+        }
+      });
+
+      // Call 使用测试 HTTP 入口；生产响应按同一业务异常映射为可读的 400。
+      const { processError } = await vi.importActual<
+        typeof import('@fastgpt/service/common/response')
+      >('@fastgpt/service/common/response');
+      expect(processError({ error: result.error })).toMatchObject({
+        code: 400,
+        httpStatus: 400,
+        message: 'Circular workflow parent: loop-a'
+      });
+      expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+    }
+  );
+
+  type ReferenceSnapshot = NonNullable<PublishAppBodyType['referenceSnapshots']>[number];
+  const snapshot = (
+    reference: ReferenceSnapshot['reference'],
+    labels: { sourceLabel: string; outputLabel?: string }
+  ): ReferenceSnapshot => ({ reference, ...labels });
+
+  const referenceSnapshots = [
+    snapshot(['deleted-source', 'text'], { sourceLabel: 'Deleted source', outputLabel: 'Text' }),
+    snapshot(['source-without-output', 'removed-output'], {
+      sourceLabel: 'Source without output',
+      outputLabel: 'Removed output'
+    }),
+    snapshot(['default-source', 'text'], { sourceLabel: 'Default source', outputLabel: 'Text' }),
+    snapshot(['restored-source', 'text'], {
+      sourceLabel: 'Old restored source',
+      outputLabel: 'Text'
+    }),
+    snapshot([VARIABLE_NODE_ID, 'restored-variable'], { sourceLabel: 'Old global variable' }),
+    snapshot(['http-source', 'tool-param'], {
+      sourceLabel: 'HTTP tool',
+      outputLabel: 'Old parameter'
+    }),
+    snapshot(['unused-source', 'text'], { sourceLabel: 'Unused source', outputLabel: 'Text' }),
+    snapshot(['ordinary-array-source', 'text'], {
+      sourceLabel: 'Ordinary array source',
+      outputLabel: 'Text'
+    })
+  ];
+  const loopReferenceSnapshots = [
+    snapshot(['stale-loop', 'sample'], { sourceLabel: 'Removed Loop result' }),
+    snapshot(['restored-loop', 'sample'], { sourceLabel: 'Restored Loop result' })
+  ];
+  const storedReferenceSnapshots = [...referenceSnapshots, ...loopReferenceSnapshots];
+
+  const referenceNodes: NonNullable<PublishAppBodyType['nodes']> = [
+    {
+      nodeId: 'source-without-output',
+      name: 'Source without output',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: []
+    },
+    {
+      nodeId: 'restored-source',
+      name: 'Restored source',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          type: FlowNodeOutputTypeEnum.source,
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: 'Text'
+        }
+      ]
+    },
+    {
+      nodeId: 'tool-caller',
+      name: 'Tool caller',
+      flowNodeType: FlowNodeTypeEnum.toolCall,
+      inputs: [],
+      outputs: []
+    },
+    {
+      nodeId: 'http-source',
+      name: 'HTTP tool',
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: 'tool-param',
+          label: 'Parameter',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          canEdit: true,
+          defaultToAgentGenerated: true
+        }
+      ],
+      outputs: []
+    },
+    {
+      nodeId: 'stale-loop',
+      name: 'Loop with a removed declaration',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      inputs: [],
+      outputs: [{ id: 'sample', key: 'sample', type: FlowNodeOutputTypeEnum.dynamic }]
+    },
+    {
+      nodeId: 'restored-loop',
+      name: 'Loop with a restored declaration',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      inputs: [
+        {
+          key: 'sample',
+          label: 'Sample',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          canEdit: true
+        }
+      ],
+      outputs: []
+    },
+    {
+      nodeId: 'consumer',
+      name: 'Consumer',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'Answer',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [
+            ['deleted-source', 'text'],
+            ['source-without-output', 'removed-output'],
+            ['restored-source', 'text'],
+            [VARIABLE_NODE_ID, 'restored-variable'],
+            ['http-source', 'tool-param']
+          ]
+        },
+        {
+          key: 'defaultReference',
+          label: 'Default reference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          defaultValue: [['default-source', 'text']]
+        },
+        {
+          key: 'loopReferences',
+          label: 'Loop results',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: loopReferenceSnapshots.map(({ reference }) => reference)
+        },
+        {
+          key: 'ordinaryArray',
+          label: 'Ordinary array',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          value: ['ordinary-array-source', 'text']
+        }
+      ],
+      outputs: []
+    }
+  ];
+
+  const referenceWorkflow = {
+    nodes: referenceNodes,
+    edges: [
+      {
+        source: 'tool-caller',
+        target: 'http-source',
+        sourceHandle: 'source',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ],
+    chatConfig: {
+      variables: [
+        {
+          key: 'restored-variable',
+          label: 'Restored variable',
+          description: '',
+          type: VariableInputEnum.input,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    }
+  };
+
+  const createReferenceSnapshotApp = async () => {
+    const root = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'reference-snapshot-publish',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: root.tmbId,
+      nodes: referenceNodes.filter(({ nodeId }) => nodeId !== 'restored-source'),
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots: storedReferenceSnapshots,
+      isAutoSave: true,
+      versionName: 'Reference snapshot draft'
+    });
+
+    return { root, app };
+  };
+
+  const saveReferenceSnapshots = async (
+    autoSave: boolean,
+    options: Pick<PublishAppBodyType, 'referenceSnapshots' | 'returnWorkflow'> = {}
+  ) => {
+    const { root, app } = await createReferenceSnapshotApp();
+    const versionName = 'Reference snapshot publish';
+    const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+      handler,
+      {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id) },
+        body: {
+          ...referenceWorkflow,
+          ...options,
+          ...(autoSave ? { autoSave: true } : { isPublish: true, versionName })
+        }
+      }
+    );
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne(
+      autoSave
+        ? { appId: app._id, isAutoSave: true }
+        : { appId: app._id, isPublish: true, versionName }
+    ).lean();
+    return { result, snapshots: version?.referenceSnapshots };
+  };
+
+  it.each([true, false])(
+    'inherits the same missing-source snapshots as the editor for autoSave=%s',
+    async (autoSave) => {
+      const { result, snapshots } = await saveReferenceSnapshots(autoSave, {
+        returnWorkflow: true
+      });
+      expect(snapshots).toEqual([...referenceSnapshots.slice(0, 3), loopReferenceSnapshots[0]]);
+      expect(result.data?.workflow.referenceSnapshots).toEqual(snapshots);
+
+      const editor = createWorkflowEditor(
+        migrateWorkflowToCurrent({
+          ...referenceWorkflow,
+          referenceSnapshots: storedReferenceSnapshots
+        })
+      );
+      expect(snapshots).toEqual(editor.getWorkflowData().referenceSnapshots);
+      editor.dispose();
+    }
+  );
+
+  it('compacts supplied snapshots and keeps the last snapshot for each missing source', async () => {
+    const updated = { ...referenceSnapshots[0], sourceLabel: 'Updated label' };
+    const { snapshots } = await saveReferenceSnapshots(false, {
+      referenceSnapshots: [referenceSnapshots[0], ...referenceSnapshots.slice(3), updated]
+    });
+    expect(snapshots).toEqual([updated]);
+  });
+
+  it.each([true, false])(
+    'clears reference snapshots when explicitly empty for autoSave=%s',
+    async (autoSave) => {
+      const { snapshots } = await saveReferenceSnapshots(autoSave, { referenceSnapshots: [] });
+      expect(snapshots).toEqual([]);
+    }
+  );
+
   it('keeps preview and published runtime consistent when nodes carry legacy rerankModel gte-rerank-v2', async () => {
     const root = await getRootUser();
     const llm = previousDefaults.llm!;
@@ -564,14 +1324,16 @@ describe('publish optional model defaults', () => {
       type: ModelTypeEnum.rerank,
       config: {}
     };
-    setModelTestSnapshot({ models: [llm, gteRerank] });
-    setModelTestSnapshot({ defaultModels: { llm, rerank: gteRerank } });
+    const embedding = createEmbeddingTestModel(llm, PUBLISH_TEST_EMBEDDING_MODEL_ID);
+    setModelTestSnapshot({ models: [llm, embedding, gteRerank] });
+    setModelTestSnapshot({ defaultModels: { llm, embedding, rerank: gteRerank } });
 
     const dataset = await MongoDataset.create({
       name: 'test-dataset',
       teamId: root.teamId,
       tmbId: root.tmbId,
       type: DatasetTypeEnum.dataset,
+      vectorModelId: embedding.modelId,
       vectorModel: 'text-embedding-3-small',
       agentModel: llm.model
     });
@@ -638,28 +1400,37 @@ describe('publish optional model defaults', () => {
         resolveInputFile: async () => ''
       });
 
-      await runWithContext({ mcpClientMemory: {}, resourceContext }, async () => {
-        for (const node of runtimeNodes) {
-          const params = getWorkflowNodeRunParams({
-            node,
-            runtimeNodesMap,
-            variableState
-          });
-          if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
-            await loadWorkflowModelResource({
-              appTeamId: String(root.teamId),
-              userInfo: {
-                teamId: String(root.teamId),
-                tmbId: String(root.tmbId)
-              },
-              type: 'rerank',
-              modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
-              model: params[NodeInputKeyEnum.datasetSearchRerankModel],
-              fallbackToDefault: true
+      await runWithContext(
+        {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+          mcpClientMemory: {},
+          resourceContext,
+          variableContext: variableState
+        },
+        async () => {
+          for (const node of runtimeNodes) {
+            const params = getWorkflowNodeRunParams({
+              node,
+              runtimeNodesMap,
+              variableState
             });
+            if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
+              await loadWorkflowModelResource({
+                appTeamId: String(root.teamId),
+                userInfo: {
+                  teamId: String(root.teamId),
+                  tmbId: String(root.tmbId)
+                },
+                type: 'rerank',
+                modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
+                model: params[NodeInputKeyEnum.datasetSearchRerankModel],
+                fallbackToDefault: true
+              });
+            }
           }
         }
-      });
+      );
     };
 
     // 1. 预览链路：prepareAppWorkflowResources + 运行时节点模型校验通过

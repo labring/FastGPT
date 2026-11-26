@@ -2,6 +2,8 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   AIModelDocumentDataSchema,
+  ModelPricingSchema,
+  STTModelPricingSchema,
   type AIModelDataType,
   type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
@@ -42,6 +44,32 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
   [ModelTypeEnum.rerank]: ['maxToken', 'defaultConfig'],
   [ModelTypeEnum.tts]: ['voices'],
   [ModelTypeEnum.stt]: []
+};
+
+/**
+ * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
+ * 历史 STT 价格缺少类型时按时长读取；无法识别的价格按免费处理，避免阻断业务。
+ * 不回写数据库；后台迁移记录坏数据，新 API/JSON 写入仍严格校验。
+ */
+export const formatDbModelToDocumentData = (
+  dbModel: Record<string, unknown>
+): AIModelDocumentDataType => {
+  const pricing = (() => {
+    const { pricing } = dbModel;
+    if (pricing === undefined || pricing === null) return undefined;
+    if (dbModel.type === ModelTypeEnum.stt) {
+      const missingType =
+        typeof pricing === 'object' && !Array.isArray(pricing) && !('type' in pricing);
+      const result = STTModelPricingSchema.safeParse(
+        missingType ? { ...pricing, type: 'duration' } : pricing
+      );
+      return result.success ? result.data : undefined;
+    }
+    // 旧阶梯上限由迁移读取。这里仅保留新上限及价格，尚未回填时首档按无限上限计费。
+    const result = ModelPricingSchema.safeParse(pricing);
+    return result.success ? result.data : undefined;
+  })();
+  return AIModelDocumentDataSchema.parse({ ...dbModel, pricing });
 };
 
 /** 将插件扁平模型协议转换为 `ai_models` 使用的 canonical 文档。 */

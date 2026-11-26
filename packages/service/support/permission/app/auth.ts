@@ -26,6 +26,8 @@ import {
 } from '../resourcePermissionPolicy';
 import { checkIsAgentUser } from '../../user/systemUser';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getAppByApiKey } from '../../openapi/auth';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -152,35 +154,40 @@ export const authAppByTmbId = async ({
   return { app };
 };
 
+/**
+ * 校验凭证及应用访问权限，返回应用详情和规范化的字符串 appId。
+ * appId 始终取已鉴权应用的实际 ID；应用 Key 使用绑定应用，不回传请求中的目标或凭证解析值。
+ */
 export const authApp = async ({
   appId,
   per,
   ...props
 }: AuthModeType & {
-  appId: ParentIdType;
+  appId?: ParentIdType;
   per: PermissionValueType;
 }): Promise<
   AuthResponseType<AppPermission> & {
     app: AppWithPermissionType;
+    appId: string;
   }
 > => {
   const result = await parseHeaderCert(props);
   const { tmbId } = result;
 
-  if (!appId) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
-  const { app } = await authAppByTmbId({
-    tmbId,
-    appId,
-    per,
-    isRoot: result.isRoot
-  });
+  const app = await (async () => {
+    if (result.apiKeyType === ApiKeyTypeEnum.app) {
+      const app = await getAppByApiKey(result);
+      // 这表示凭证可读应用基础信息，不把归属成员伪装成 owner；对话管理范围由可信 Key 类型表达。
+      return { ...app, permission: new AppPermission({ role: ReadRoleVal }) };
+    }
+    if (!appId) throw AppErrEnum.unExist;
+    return (await authAppByTmbId({ tmbId, appId, per, isRoot: result.isRoot })).app;
+  })();
 
   return {
     ...result,
     permission: app.permission,
-    app
+    app,
+    appId: String(app._id)
   };
 };

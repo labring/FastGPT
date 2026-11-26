@@ -8,6 +8,7 @@ export type WechatPollJobData = {
 
 export type WechatReplyJobData = {
   shareId: string;
+  bindingKey?: string;
   userId: string;
   items?: unknown[];
   contextToken: string;
@@ -21,11 +22,11 @@ export const WECHAT_REPLY_JOB_NAME = 'wechatPublishReply';
 export class WechatMQService {
   constructor(private readonly binding: BullMQBinding = bullMQ) {}
 
-  getPollQueue(): Queue<WechatPollJobData> {
+  private getPollQueue(): Queue<WechatPollJobData> {
     return this.binding.getQueue<WechatPollJobData>(QueueNames.wechatPoll);
   }
 
-  getReplyQueue(): Queue<WechatReplyJobData> {
+  private getReplyQueue(): Queue<WechatReplyJobData> {
     return this.binding.getQueue<WechatReplyJobData>(QueueNames.wechatReply);
   }
 
@@ -49,7 +50,7 @@ export class WechatMQService {
     return this.binding.getWorker<WechatReplyJobData>(QueueNames.wechatReply, processor, opts);
   }
 
-  /** 投递微信回复任务，具体幂等键由调用方根据消息 id 生成。 */
+  /** 投递微信回复任务，具体幂等键由调用方根据绑定与消息 id 生成。 */
   addReplyJob(
     data: WechatReplyJobData,
     opts: {
@@ -61,16 +62,13 @@ export class WechatMQService {
   }
 
   /** 投递下一轮微信轮询任务。 */
-  addPollJob(
-    data: WechatPollJobData,
-    opts: {
-      jobId: string;
-      delay?: number;
-      removeOnComplete?: boolean;
-      removeOnFail?: boolean;
-    }
-  ) {
-    return this.getPollQueue().add(WECHAT_POLL_JOB_NAME, data, opts);
+  addPollJob(data: WechatPollJobData, opts: { jobId: string; delay?: number }) {
+    // 固定 jobId 必须在终态立即释放，Worker 事件才能投递下一轮。
+    return this.getPollQueue().add(WECHAT_POLL_JOB_NAME, data, {
+      ...opts,
+      removeOnComplete: true,
+      removeOnFail: true
+    });
   }
 
   /** 删除指定渠道的轮询任务。active 任务由 BullMQ 自身状态决定是否可移除。 */

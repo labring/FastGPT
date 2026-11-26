@@ -36,12 +36,51 @@ function embedChatbot() {
   iframe.referrerPolicy = 'no-referrer';
   iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;
+  iframe.name = 'fastgpt-chatbot-window';
   iframe.src = botSrc;
   iframe.style.cssText =
     'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
   iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
 
   document.body.appendChild(iframe);
+
+  // 子页以固定 name 等待握手，只有可信子窗口可以请求宿主可见状态。
+  let iframeIntersectsViewport = false;
+  const sendHostVisibility = () => {
+    const childOrigin = new URL(iframe.src, window.location.href).origin;
+    const style = window.getComputedStyle(iframe);
+    iframe.contentWindow?.postMessage(
+      {
+        type: 'fastgpt:host-visibility',
+        handshake: true,
+        visible:
+          iframeIntersectsViewport &&
+          document.visibilityState === 'visible' &&
+          style.visibility !== 'hidden' &&
+          style.display !== 'none'
+      },
+      childOrigin
+    );
+  };
+  const visibilityObserver = new IntersectionObserver(([entry]) => {
+    iframeIntersectsViewport = entry.isIntersecting && entry.intersectionRatio > 0;
+    sendHostVisibility();
+  });
+  visibilityObserver.observe(iframe);
+  iframe.addEventListener('load', sendHostVisibility);
+  window.addEventListener('message', (event) => {
+    const childOrigin = new URL(iframe.src, window.location.href).origin;
+    if (
+      event.source !== iframe.contentWindow ||
+      event.origin !== childOrigin ||
+      event.data?.type !== 'fastgpt:visibility-ready'
+    )
+      return;
+    sendHostVisibility();
+  });
+  document.addEventListener('visibilitychange', sendHostVisibility);
+  const iframeStyleObserver = new MutationObserver(sendHostVisibility);
+  iframeStyleObserver.observe(iframe, { attributes: true, attributeFilter: ['style'] });
 
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -105,6 +144,7 @@ function embedChatbot() {
       chatWindow.style.visibility = 'hidden';
       ChatBtnDiv.src = MessageIcon;
     }
+    sendHostVisibility();
   });
 
   ChatBtn.addEventListener('mousedown', (e) => {
@@ -145,5 +185,9 @@ function embedChatbot() {
   ChatBtn.appendChild(ChatBtnDiv);
   document.body.appendChild(ChatBtn);
   updateChatWindowPosition();
+  window.addEventListener('resize', () => {
+    updateChatWindowPosition();
+    sendHostVisibility();
+  });
 }
 window.addEventListener('load', embedChatbot);

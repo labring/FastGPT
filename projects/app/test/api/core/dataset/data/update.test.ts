@@ -9,6 +9,7 @@ const {
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
   mockReplaceS3KeysToPreviewUrls,
+  mockGetAuthorizedModelIds,
   mockEmbeddingModel
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
@@ -17,6 +18,7 @@ const {
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
   mockReplaceS3KeysToPreviewUrls: vi.fn(),
+  mockGetAuthorizedModelIds: vi.fn(),
   mockEmbeddingModel: {
     modelId: '68ad85a7463006c963799a06',
     model: 'vision-embedding',
@@ -35,6 +37,17 @@ vi.mock('@/service/middleware/entry', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetData: mockAuthDatasetData
+}));
+
+vi.mock('@fastgpt/service/core/dataset/entity', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/entity')>()),
+  findDatasetIndexModelReferences: vi.fn(async ({ datasetIds }: { datasetIds: string[] }) =>
+    datasetIds.map((_id) => ({ _id, vectorModel: 'vision-embedding' }))
+  )
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
 
 vi.mock('@/service/core/dataset/data/data', () => ({
@@ -67,7 +80,9 @@ const dataId = '68ad85a7463006c963799a05';
 const buildAuthResult = () => ({
   teamId: 'team-id',
   tmbId: 'tmb-id',
+  isRoot: false,
   collection: {
+    _id: '68ad85a7463006c963799a07',
     datasetId: 'dataset-id',
     name: 'Collection',
     indexPrefixTitle: true,
@@ -75,6 +90,7 @@ const buildAuthResult = () => ({
     imageIndex: true,
     type: DatasetCollectionTypeEnum.images,
     dataset: {
+      _id: 'dataset-id',
       name: 'Dataset',
       type: 'dataset',
       vectorModel: 'vision-embedding',
@@ -103,6 +119,7 @@ const buildAuthResult = () => ({
 describe('PUT /api/core/dataset/data/update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthorizedModelIds.mockResolvedValue(new Set<string>());
     mockAuthDatasetData.mockResolvedValue(buildAuthResult());
     mockReplaceS3KeysToPreviewUrls.mockImplementation((texts: string[]) => texts);
     mockUpdateDatasetDataByIndexes.mockResolvedValue({ tokens: 12 });
@@ -145,6 +162,18 @@ describe('PUT /api/core/dataset/data/update', () => {
       indexPrefix: '# Collection'
     });
     expect(mockUpdateDatasetDataSystemIndexes).not.toHaveBeenCalled();
+    expect(mockAddAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            type: 'collection',
+            id: '68ad85a7463006c963799a07',
+            name: 'Collection',
+            collectionType: DatasetCollectionTypeEnum.images
+          }
+        ]
+      })
+    );
     expect(mockPushGenerateVectorUsage).toHaveBeenCalledWith({
       teamId: 'team-id',
       tmbId: 'tmb-id',

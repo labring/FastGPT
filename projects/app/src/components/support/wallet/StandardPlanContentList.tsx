@@ -1,3 +1,4 @@
+import ShareBrandFeature from './ShareBrandFeature';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -22,11 +23,17 @@ const ModelPriceModal = dynamic(() =>
 const StandardPlanContentList = ({
   level,
   mode,
-  standplan
+  standplan,
+  shareBrandPlacement = 'last',
+  highlightShareBrand = false,
+  showShareBrandTip = highlightShareBrand
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
+  shareBrandPlacement?: 'first' | 'last';
+  highlightShareBrand?: boolean;
+  showShareBrandTip?: boolean;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -109,8 +116,19 @@ const StandardPlanContentList = ({
     feConfigs.limit.uploadFileMaxAmount
   ]);
 
+  // 个人套餐使用团队实际权益；购买页没有订阅快照，继续展示套餐模板配置。
+  const canHideShareBrand = standplan ? standplan.canHideShareBrand === true : undefined;
+
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
+      {shareBrandPlacement === 'first' && (
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
+          canHideShareBrand={canHideShareBrand}
+        />
+      )}
       <Flex alignItems={'center'}>
         <MyIcon
           name={'price/right'}
@@ -276,6 +294,14 @@ const StandardPlanContentList = ({
           <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
           <Box color={'myGray.600'}>{t('common:enable_sandbox')}</Box>
         </Flex>
+      )}
+      {shareBrandPlacement === 'last' && (
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
+          canHideShareBrand={canHideShareBrand}
+        />
       )}
     </Grid>
   ) : null;

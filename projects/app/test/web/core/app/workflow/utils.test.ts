@@ -1,39 +1,40 @@
-import {
-  filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
-} from '@fastgpt/global/common/workflow/reference';
 import { describe, it, expect, vi } from 'vitest';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType,
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Edge } from 'reactflow';
+import type { Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  LoopRunModeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
-} from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource
 } from '@/web/core/workflow/utils';
+import {
+  filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {
@@ -41,7 +42,7 @@ describe('nodeTemplate2FlowNode', () => {
     const node = nodeTemplate2FlowNode({
       template: DatasetSearchModule,
       position: { x: 0, y: 0 },
-      initialModelId: 'default-llm',
+      defaultModelIds: { llm: 'default-llm', rerank: 'default-rerank' },
       t: ((key: string) => key) as any
     });
     const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
@@ -74,18 +75,20 @@ describe('nodeTemplate2FlowNode', () => {
   });
 
   it.each([AiChatModule, ToolCallNode, ClassifyQuestionModule])(
-    'stores the initial model on a new $flowNodeType node without changing its template',
+    'initializes $flowNodeType models once at node creation',
     (template) => {
-      const node = nodeTemplate2FlowNode({
-        template,
-        position: { x: 0, y: 0 },
-        t: ((key: string) => key) as any,
-        initialModelId: 'selected-model-id'
-      });
-      const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
-      expect(stored.nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value).toBe(
-        'selected-model-id'
-      );
+      for (const expected of ['remembered', 'system']) {
+        const node = nodeTemplate2FlowNode({
+          template,
+          position: { x: 0, y: 0 },
+          t: ((key: string) => key) as any,
+          initialModelId: expected
+        });
+        const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        expect(
+          stored.nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
+        ).toBe(expected);
+      }
       expect(
         template.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
       ).toBeUndefined();
@@ -193,7 +196,136 @@ describe('nodeTemplate2FlowNode', () => {
   });
 });
 
+describe('auto-fill inputs from workflow start', () => {
+  const question = ['start', NodeOutputKeyEnum.userChatInput];
+  const fill = (template: FlowNodeTemplateType, workflowStartOutputs = WorkflowStart.outputs) =>
+    applyWorkflowStartInputAutoFill({
+      inputs: template.inputs.map((input) => ({
+        ...input,
+        value: input.value ?? input.defaultValue
+      })),
+      workflowStartNodeId: 'start',
+      workflowStartOutputs
+    });
+
+  it.each([
+    { template: AiChatModule, inputKey: NodeInputKeyEnum.userChatInput, expected: question },
+    {
+      template: DatasetSearchModule,
+      inputKey: NodeInputKeyEnum.datasetSearchInput,
+      expected: [question]
+    },
+    {
+      template: ClassifyQuestionModule,
+      inputKey: NodeInputKeyEnum.userChatInput,
+      expected: question
+    },
+    { template: ToolCallNode, inputKey: NodeInputKeyEnum.userChatInput, expected: question }
+  ])('fills the question input of $template.flowNodeType', ({ template, inputKey, expected }) => {
+    expect(fill(template).find(({ key }) => key === inputKey)?.value).toEqual(expected);
+  });
+
+  it('fills a selectable file reference when file upload is enabled', () => {
+    const outputs = [...WorkflowStart.outputs, userFilesInput];
+    const fileInput = fill(AiChatModule, outputs).find(
+      ({ key }) => key === NodeInputKeyEnum.fileUrlList
+    );
+    expect(fileInput?.value).toEqual([['start', NodeOutputKeyEnum.userFiles]]);
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: fileInput?.value,
+        sourceNodes: [{ nodeId: 'start', outputs }],
+        valueType: WorkflowIOValueTypeEnum.arrayString
+      })
+    ).toBe(true);
+  });
+
+  it('preserves a manually selected question reference', () => {
+    const manualReference = [VARIABLE_NODE_ID, 'customQuestion'];
+    const template = {
+      ...AiChatModule,
+      inputs: AiChatModule.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.userChatInput ? { ...input, value: manualReference } : input
+      )
+    };
+    expect(fill(template).find(({ key }) => key === NodeInputKeyEnum.userChatInput)?.value).toEqual(
+      manualReference
+    );
+  });
+});
+
 describe('storeNode2FlowNode', () => {
+  it.each([
+    { datasets: [], expected: [] },
+    {
+      datasets: [{ datasetId: 'dataset-1', name: 'Dataset' }],
+      expected: [{ datasetId: 'dataset-1', name: 'Dataset' }]
+    }
+  ])('Agent 知识库手动选择模式下清理混入的旧引用值 %#', ({ datasets, expected }) => {
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'legacy-agent',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                renderTypeList: [
+                  FlowNodeInputTypeEnum.selectDataset,
+                  FlowNodeInputTypeEnum.reference
+                ],
+                selectedType: FlowNodeInputTypeEnum.selectDataset,
+                value: [['source-a', 'datasets'], ['source-b', 'datasets'], ...datasets]
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.selectDataset,
+      value: expected
+    });
+    expect(
+      stored.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+        ?.value
+    ).toEqual(expected);
+  });
+
+  it('Agent 知识库引用模式下保留引用值', () => {
+    const referenceValue = [
+      ['source-a', 'datasets'],
+      ['source-b', 'datasets']
+    ];
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'agent-reference-datasets',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: referenceValue
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: referenceValue
+    });
+  });
+
   it('preserves saved query extension settings despite the new disabled template default', () => {
     const node = storeNode2FlowNode({
       item: {
@@ -320,14 +452,30 @@ describe('storeNode2FlowNode', () => {
     expect(result.data.showSourceHandle).toBe(false);
   });
 
-  it('should materialize stored editable text when it matches an i18n key', () => {
+  it('restores custom HTTP tool sets with the HTTP icon', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        ...HttpToolSetNode,
+        nodeId: 'http-tool-set',
+        avatar: 'core/app/type/httpToolsFill'
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.avatar).toBe('core/app/type/httpPluginFill');
+  });
+
+  it.each([
+    ['app:workflow.form_input', 'Form Input'],
+    ['common:Delete', 'common:Delete']
+  ])('localizes only the built-in default node name (%s)', (name, expectedName) => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',
       flowNodeType: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
       inputs: [],
       outputs: [],
-      name: 'workflow:stored_name',
+      name,
       intro: 'workflow:stored_intro',
       version: '1.0'
     };
@@ -337,7 +485,8 @@ describe('storeNode2FlowNode', () => {
       selected: true,
       t: ((key: string) =>
         ({
-          'workflow:stored_name': 'Stored Name',
+          'app:workflow.form_input': 'Form Input',
+          'common:Delete': 'Delete',
           'workflow:stored_intro': 'Stored Intro'
         })[key] ?? key) as any
     });
@@ -348,7 +497,7 @@ describe('storeNode2FlowNode', () => {
       position: { x: 100, y: 100 },
       selected: true,
       data: {
-        name: 'Stored Name',
+        name: expectedName,
         intro: 'Stored Intro'
       }
     });
@@ -512,19 +661,16 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'legacy-model'
           },
           {
-            label: '',
             key: NodeInputKeyEnum.aiModelId,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: ''
           },
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'duplicate-legacy-model'
@@ -553,7 +699,6 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             selectedType: FlowNodeInputTypeEnum.settingLLMModel,
@@ -588,7 +733,6 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [
               FlowNodeInputTypeEnum.settingLLMModel,
@@ -683,7 +827,7 @@ describe('storeNode2FlowNode', () => {
       item: storeNode,
       t: ((key: string) => key) as any
     });
-    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
+    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
 
     expect(result.nodes[0].inputs[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.input,
@@ -837,7 +981,7 @@ describe('storeNode2FlowNode', () => {
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('should filter outputs by type', () => {
+  it('only keeps string outputs for string references', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -859,13 +1003,26 @@ describe('filterWorkflowNodeOutputsByType', () => {
         key: '3',
         label: '3',
         type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '4',
+        valueType: WorkflowIOValueTypeEnum.object,
+        key: '4',
+        label: '4',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '5',
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        key: '5',
+        label: '5',
+        type: FlowNodeOutputTypeEnum.static
       }
     ];
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('1');
+    expect(result.map((output) => output.id)).toEqual(['1']);
   });
 
   it('should return all outputs for any type', () => {
@@ -932,6 +1089,7 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       makeOutput('text', WorkflowIOValueTypeEnum.string),
       makeOutput('count', WorkflowIOValueTypeEnum.number),
+      makeOutput('object', WorkflowIOValueTypeEnum.object),
       makeOutput(NodeOutputKeyEnum.addOutputParam, WorkflowIOValueTypeEnum.string),
       makeOutput('invalid', WorkflowIOValueTypeEnum.string, { invalid: true }),
       makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
@@ -939,11 +1097,11 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
 
     const result = filterSelectableWorkflowNodeOutputs({
       outputs,
-      valueType: WorkflowIOValueTypeEnum.string,
+      valueType: WorkflowIOValueTypeEnum.arrayObject,
       catchError: false
     });
 
-    expect(result.map((output) => output.id)).toEqual(['text']);
+    expect(result.map((output) => output.id)).toEqual(['object']);
   });
 
   it('keeps error output only when source node can catch error', () => {
@@ -1015,12 +1173,12 @@ describe('workflowReferenceValueIsSelectable', () => {
     ).toBe(false);
   });
 
-  it('returns false when referenced output type is not selectable for current value type', () => {
+  it('returns false when referenced output type cannot be converted for current value type', () => {
     expect(
       workflowReferenceValueIsSelectable({
         value: ['source', 'count'],
         sourceNodes,
-        valueType: WorkflowIOValueTypeEnum.string
+        valueType: WorkflowIOValueTypeEnum.arrayString
       })
     ).toBe(false);
   });
@@ -1061,7 +1219,6 @@ describe('workflowReferenceValueIsSelectable', () => {
     ).toBe(false);
   });
 });
-
 describe('getNodeAllSource', () => {
   const makeNode = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
     ({

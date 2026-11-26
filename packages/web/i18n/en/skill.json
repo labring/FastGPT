@@ -23,6 +23,7 @@
   "export_config": "Export Config",
   "export_failed": "Export failed",
   "export_success": "Exported successfully",
+  "export_sandbox_wait": "Please wait for the sandbox to be ready before exporting the skill.",
   "history_versions": "History Versions",
   "import_existing_skill": "Import existing Skill",
   "import_existing_skill_desc": "Import common Skills from outside directly into the platform. Supports .zip format.",
@@ -59,13 +60,6 @@
   "sandbox_ready": "Sandbox is ready",
   "sandbox_ready_warm": "Sandbox is ready (warm start)",
   "sandbox_retry": "Retry",
-  "sandbox_runtime_upgrade_archived": "Outdated virtual machine is ready. Rebuilding runtime...",
-  "sandbox_runtime_upgrade_archiving": "Archiving outdated virtual machine...",
-  "sandbox_runtime_upgrade_confirm": "Upgrade now",
-  "sandbox_runtime_upgrade_desc": "A newer version of the virtual machine runtime is required. Upgrading does not affect files in the workspace, but you will need to reinstall dependencies.",
-  "sandbox_runtime_upgrade_failed": "Upgrade failed. Please try again.",
-  "sandbox_runtime_upgrade_in_progress": "Sandbox is upgrading...",
-  "sandbox_runtime_upgrade_required": "Virtual machine runtime upgrade notice",
   "sandbox_skill_plan_not_supported_content": "Skills depend on the virtual machine runtime. The current plan does not support virtual machine features. Upgrade your plan to continue.",
   "sandbox_skill_system_not_configured_toast": "Skills depend on the virtual machine runtime. The current system has not configured a virtual machine, so related features are temporarily unavailable. Contact an administrator to configure it.",
   "sandbox_skill_unavailable_toast": "Skills depend on the virtual machine runtime. This Agent has Skills configured. Remove all Skills before turning off the virtual machine.",
@@ -101,5 +95,7 @@
   "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_skills_tip": "Deleting the following skills cannot be undone.",
-  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted."
+  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted.",
+  "generating": "Generating",
+  "version_publish_tips": "Save this Skill version to the team cloud, share it with the entire team, and publish it as the latest active Skill version."
 }

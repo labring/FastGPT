@@ -162,6 +162,10 @@ export const ChannelListItemSchema = z.object({
   status: z.number().int().meta({ description: '1=启用 / 2=禁用' }),
   models: z.array(z.string()).meta({ description: '上游模型名列表' }),
   model_mapping: z.record(z.string(), z.string()).optional(),
+  configs: ChannelConfigSchema.shape.configs.meta({
+    description: '可公开的渠道配置，仅包含聊天上游协议，不返回其他提供商配置',
+    example: { chat_upstream_protocol: 'responses' }
+  }),
   base_url: z.string().optional(),
   priority: z.number().int().optional(),
   sets: z.array(z.string()).optional(),
@@ -365,6 +369,12 @@ export const ChannelDashboardSummarySchema = z.object({
   output_tokens: IntSchema.optional()
     .default(0)
     .meta({ example: 200, description: '输出 Token 数' }),
+  cached_tokens: IntSchema.optional()
+    .default(0)
+    .meta({ example: 600, description: '缓存读取 Token 数，包含在输入 Token 数内' }),
+  cache_creation_tokens: IntSchema.optional()
+    .default(0)
+    .meta({ example: 100, description: '缓存创建 Token 数，包含在输入 Token 数内' }),
   total_tokens: IntSchema.optional().default(0).meta({ example: 1200, description: '总 Token 数' }),
   max_rpm: IntSchema.optional().default(0).meta({ example: 10, description: '最大 RPM' }),
   max_tpm: IntSchema.optional().default(0).meta({ example: 1200, description: '最大 TPM' }),

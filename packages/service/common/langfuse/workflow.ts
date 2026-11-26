@@ -4,7 +4,12 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { isLangfuseEnabled, prepareLangfuseSpan, setActiveLangfuseAttributes } from './index';
+import {
+  isLangfuseEnabled,
+  prepareLangfuseSpan,
+  setActiveLangfuseAttributes,
+  setActiveLangfuseTraceAttributes
+} from './index';
 import {
   getLangfuseAssistantOutput,
   getLangfuseStepStartAttributes,
@@ -35,7 +40,7 @@ export const onWorkflowStart = ({
   ...traceProps
 }: WorkflowLifecycleProps & Parameters<typeof getLangfuseTraceAttributes>[0]) => {
   const enabled = isRootChatWorkflow({ isRootRuntime, mode }) && isLangfuseEnabled();
-  prepareLangfuseSpan(enabled ? getLangfuseTraceAttributes(traceProps) : undefined);
+  prepareLangfuseSpan(enabled ? getLangfuseTraceAttributes(traceProps) : undefined, 'trace');
 };
 
 /** 记录工作流最终可见回复，不上传内部推理消息。 */
@@ -50,18 +55,33 @@ export const onWorkflowEnd = ({
     getLangfuseAssistantOutput(normalizeAIChatValue(output))
   );
   if (serializedOutput !== undefined) {
-    setActiveLangfuseAttributes({ 'langfuse.trace.output': serializedOutput });
+    setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': serializedOutput });
   }
 };
 
 /** 在 Langfuse 私有上下文中启动节点，不把 observation 标记写入通用 OTEL span。 */
 export const onWorkflowNodeStart = ({
   appId,
+  nodeId,
+  nodeName,
   ...lifecycleProps
-}: WorkflowLifecycleProps & { appId: string }) => {
+}: WorkflowLifecycleProps & { appId: string; nodeId: string; nodeName?: string }) => {
   const enabled = isRootChatWorkflow(lifecycleProps) && isLangfuseEnabled();
-  prepareLangfuseSpan(enabled ? getLangfuseStepStartAttributes(appId) : undefined);
+  prepareLangfuseSpan(
+    enabled ? getLangfuseStepStartAttributes({ appId, nodeId, nodeName }) : undefined,
+    'observation'
+  );
 };
+
+/** 节点入参里可能已带规范化模型名（如 agent 节点），作为 response 缺失时的兜底。 */
+const getInputModelName = (input: unknown) => {
+  if (!input || typeof input !== 'object') return undefined;
+  const model = (input as { model?: unknown }).model;
+  return typeof model === 'string' && model.trim() ? model : undefined;
+};
+
+/** generation 输出按上报契约保留的推理字段；输入与其他节点仍走默认过滤。 */
+const generationOutputAllowedKeys = new Set(['reasoningText']);
 
 /** 记录有界节点输入输出；仅模型节点附加 generation 和 token 计量。 */
 export const onWorkflowNodeEnd = ({
@@ -69,17 +89,26 @@ export const onWorkflowNodeEnd = ({
   input,
   output,
   response,
+  usage,
   ...lifecycleProps
 }: WorkflowLifecycleProps & {
   nodeType: FlowNodeTypeEnum;
   input: unknown;
   output: unknown;
   response?: Pick<ChatHistoryItemResType, 'model' | 'inputTokens' | 'outputTokens'>;
+  /** 节点自身响应未带 token 时的用量兜底（如 agent 节点的子调用汇总）。 */
+  usage?: { inputTokens?: number; outputTokens?: number };
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
 
+  const model = response?.model ?? getInputModelName(input);
+  const isGeneration = llmNodeTypes.has(nodeType) && !!model;
+  // 输入始终走默认过滤；只有 generation 输出放行 reasoningText。
   const serializedInput = serializeLangfuseValue(input);
-  const serializedOutput = serializeLangfuseValue(output ?? {});
+  const serializedOutput = serializeLangfuseValue(
+    output ?? {},
+    isGeneration ? { keepExcludedKeys: generationOutputAllowedKeys } : undefined
+  );
   const attributes: Record<string, string> = {};
   if (serializedInput !== undefined) {
     attributes['langfuse.observation.input'] = serializedInput;
@@ -87,14 +116,19 @@ export const onWorkflowNodeEnd = ({
   if (serializedOutput !== undefined) {
     attributes['langfuse.observation.output'] = serializedOutput;
   }
-  if (llmNodeTypes.has(nodeType) && response?.model) {
+  if (isGeneration && model) {
     attributes['langfuse.observation.type'] = 'generation';
-    attributes['langfuse.observation.model.name'] = String(response.model);
-    const usage: Record<string, number> = {};
-    if (response.inputTokens != null) usage.input = response.inputTokens;
-    if (response.outputTokens != null) usage.output = response.outputTokens;
-    if (Object.keys(usage).length) {
-      attributes['langfuse.observation.usage_details'] = JSON.stringify(usage);
+    attributes['langfuse.observation.model.name'] = String(model);
+    // 优先使用节点自身响应里的 token；agent 等节点没有 response 时回退到调用方汇总的用量。
+    const inputTokens =
+      response?.inputTokens ?? (usage?.inputTokens ? usage.inputTokens : undefined);
+    const outputTokens =
+      response?.outputTokens ?? (usage?.outputTokens ? usage.outputTokens : undefined);
+    const usageDetails: Record<string, number> = {};
+    if (inputTokens != null) usageDetails.input = inputTokens;
+    if (outputTokens != null) usageDetails.output = outputTokens;
+    if (Object.keys(usageDetails).length) {
+      attributes['langfuse.observation.usage_details'] = JSON.stringify(usageDetails);
     }
   }
   setActiveLangfuseAttributes(attributes);

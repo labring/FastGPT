@@ -4,6 +4,8 @@ import { Types } from '../../../common/mongo';
 import { MongoOpenApi } from '../schema';
 import { MongoOpenApiTag, type OpenApiTagSchemaType } from './schema';
 import { findOpenApiTagsByIds, findOpenApiTagsByMember } from './entity';
+import { getOpenApiTypeFilter } from '../utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 const toStringId = (value: unknown) => String(value || '');
 
@@ -55,6 +57,7 @@ export async function listOpenApiTags({
   const keyCountAgg = await MongoOpenApi.aggregate<{ _id: Types.ObjectId; keyCount: number }>([
     {
       $match: {
+        ...getOpenApiTypeFilter(ApiKeyTypeEnum.personal),
         teamId: new Types.ObjectId(teamId),
         tmbId: new Types.ObjectId(tmbId),
         tagIds: { $in: tagObjectIds }
@@ -216,6 +219,7 @@ export async function deleteOpenApiTag({
   await MongoOpenApiTag.deleteOne({ _id: tagId, teamId, tmbId });
   await MongoOpenApi.updateMany(
     {
+      ...getOpenApiTypeFilter(ApiKeyTypeEnum.personal),
       teamId,
       tmbId
     },

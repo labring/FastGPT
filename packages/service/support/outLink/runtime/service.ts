@@ -1,16 +1,12 @@
 import { Readable } from 'node:stream';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
@@ -25,7 +21,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { createWorkflowResourceContext } from '../../../core/workflow/resource/context';
+import { createWorkflowResourceContext } from '../../../core/workflow/dispatch/context/resource';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -34,9 +30,7 @@ import {
   type Props as SaveChatProps
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileLimits
@@ -384,10 +378,14 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: {
+        type: getChatSourceByPublishChannel(outLinkConfig.type),
+        id: String(outLinkConfig._id)
+      },
       sourceName: outLinkConfig.name,
-      shareId: outLinkConfig.shareId,
       outLinkUid: chatUserId,
       userContent,
+      variables,
       responseChatItemId: messageId
     });
     roundState.preparedRound = preparedRound;
@@ -429,7 +427,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       retainDatasetCite: false,
       nodeResponseWriteConfig: {
         persistToDb: true,
@@ -438,14 +435,20 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     });
 
     // The terminal event carries the authoritative full reply for final correction or delivery.
-    const responseContent =
-      removeAIResponseCite(assistantResponses, false)
-        .map((response) => response.text?.content)
-        .filter(Boolean)
-        .join('\n')
-        .trim() || DEFAULT_REPLY;
+    const responseContent = removeAIResponseCite(assistantResponses, false)
+      .map((response) => response.text?.content)
+      .filter(Boolean)
+      .join('\n')
+      .trim();
 
-    responseController.push({ type: 'done', content: responseContent });
+    if (workflowRuntimeSummary.errorCount > 0) {
+      responseController.push({
+        type: 'error',
+        content: `App run error: ${getErrText(workflowRuntimeSummary.errorText)}`
+      });
+    } else {
+      responseController.push({ type: 'done', content: responseContent || DEFAULT_REPLY });
+    }
     // Wait for delivery so responder failures can be persisted with the final chat round.
     const respondResult = await responseController.result;
     if (!respondResult.success) {
@@ -467,8 +470,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: preparedRound.publishSource,
       sourceName: outLinkConfig.name,
       userContent,
       aiContent: {
@@ -506,20 +509,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
             error: saveError
           });
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
-        }).catch((saveError) => {
-          logger.error('Outlink runtime unlock failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
       }
     }
 
@@ -544,5 +533,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       });
     }
     return { status: 'handled' };
+  } finally {
+    await roundState.preparedRound?.releaseGenerationLease?.();
   }
 }

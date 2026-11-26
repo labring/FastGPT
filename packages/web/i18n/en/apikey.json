@@ -31,5 +31,16 @@
   "edit_api_key": "Edit Key Details",
   "key_alias": "Key alias, for display only",
   "create_link_error": "Error creating link",
-  "update_link_error": "Error updating link"
+  "update_link_error": "Error updating link",
+  "app_key": "App keys",
+  "personal_key": "Personal keys",
+  "app_key_tip": "For conversations and conversation management in this app. The app owner takes over when a member leaves.",
+  "personal_key_tip": "Call open APIs as yourself. Access depends on your member permissions.",
+  "app_key_manage_required": "Only app managers can view, create, and manage app keys.",
+  "create_app_key": "Create app key",
+  "owner_member": "Owner",
+  "bound_app_id": "Bound app ID",
+  "app_key_empty": "No app keys yet. Create one to connect your backend to this app.",
+  "call_example": "Request example",
+  "delete_key_tip": "Deleting this key immediately revokes calls that use it."
 }

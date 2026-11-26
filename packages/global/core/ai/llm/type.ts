@@ -1,6 +1,8 @@
 import type openai from 'openai';
+import type { CompletionUsage as OpenAICompletionUsage } from 'openai/resources';
 import type { Stream } from 'openai/streaming';
 import { audioFileType } from '../../../common/file/constants';
+import { isInlineImageDataUri } from '../../../common/file/image/utils';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { UserChatSelectSchema } from '../../chat/input/type';
@@ -59,6 +61,16 @@ export const ChatCompletionContentPartImageSchema = z.object({
   }),
   key: z.string().optional()
 });
+/** 工具图片只接受可发送的 http(s) URL 或非空图片 data URI。 */
+const ChatCompletionToolImageUrlSchema = z.string().refine((url) => {
+  if (isInlineImageDataUri(url)) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}, 'Tool image url must be an http(s) URL or base64 image data URI');
 export const ChatCompletionContentPartInputAudioSchema = z.object({
   type: z.literal('input_audio'),
   input_audio: z.object({
@@ -130,12 +142,32 @@ export type ChatCompletionUserMessageParam = z.infer<typeof ChatCompletionUserMe
 /* ========= User end ===== */
 
 /**
- * Tool message: 对齐 openai SDK 的 ChatCompletionToolMessageParam，新增可选 `name`
- * SDK content 仅允许纯文本 part
+ * Tool message content part: FastGPT 内部扩展契约。
+ *
+ * 模型供应商的 tool message content 只接受字符串或文本 parts，openai SDK 的类型同样是
+ * `string | ChatCompletionContentPartText[]`，不接受 image_url。这里允许 image_url
+ * 是为了让工具能在内部链路里声明“取到的图片”，出站前由 loadRequestMessages 把图片
+ * 拆成这一轮 tool 结果之后的 user 视觉消息，不会把图片直接发给供应商。
+ */
+export const ChatCompletionToolMessageContentPartSchema = z.union([
+  ChatCompletionContentPartTextSchema,
+  ChatCompletionContentPartImageSchema.extend({
+    image_url: ChatCompletionContentPartImageSchema.shape.image_url.extend({
+      url: ChatCompletionToolImageUrlSchema
+    })
+  })
+]);
+export type ChatCompletionToolMessageContentPart = z.infer<
+  typeof ChatCompletionToolMessageContentPartSchema
+>;
+
+/**
+ * Tool message: 对齐 openai SDK 的 ChatCompletionToolMessageParam，新增可选 `name`。
+ * content 在内部允许带 image_url part（见上），出站时会转换；供应商只认字符串或文本 parts。
  */
 export const ChatCompletionToolMessageParamSchema = z.object({
   role: z.literal('tool'),
-  content: z.union([z.string(), z.array(ChatCompletionContentPartTextSchema)]),
+  content: z.union([z.string(), z.array(ChatCompletionToolMessageContentPartSchema)]),
   tool_call_id: z.string(),
   name: z.string().optional()
 });
@@ -255,12 +287,27 @@ export type ChatCompletionMessageParam = z.infer<typeof ChatCompletionMessagePar
 /* ========= Message end ===== */
 
 /* ===== 一些自定义扩展类型 ===== */
+/** OpenAI 兼容渠道的缓存扩展；prompt_tokens 包含缓存读取与创建。 */
+export type LLMCompletionUsage = OpenAICompletionUsage & {
+  cache_creation_tokens?: number;
+  prompt_cache_hit_tokens?: number;
+  prompt_tokens_details?: OpenAICompletionUsage['prompt_tokens_details'] & {
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
+    cache_creation_tokens?: number;
+  };
+};
+
 // Stream response
 export type StreamResponseType = Stream<
-  openai.Chat.Completions.ChatCompletionChunk & { error?: any }
+  Omit<openai.Chat.Completions.ChatCompletionChunk, 'usage'> & {
+    error?: any;
+    usage?: LLMCompletionUsage | null;
+  }
 >;
-export type UnStreamResponseType = openai.Chat.Completions.ChatCompletion & {
+export type UnStreamResponseType = Omit<openai.Chat.Completions.ChatCompletion, 'usage'> & {
   error?: any;
+  usage?: LLMCompletionUsage;
 };
 
 export const CompletionFinishReasonSchema = z

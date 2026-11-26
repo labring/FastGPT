@@ -16,6 +16,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type ResumeInheritPermissionQuery = ResumeSkillInheritPermissionQuery;
@@ -62,7 +63,7 @@ async function handler(
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
-    resources: [{ skillId: String(skill._id) }],
+    resources: [buildSkillAuditResource(skill)],
     params: {
       targetResource: skill.name,
       ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})

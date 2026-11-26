@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   effect: undefined as undefined | (() => void | (() => void)),
   member: 'member',
   generation: 0,
+  modelMap: {} as Record<string, unknown>,
   request: vi.fn()
 }));
 vi.mock('react', async (importOriginal) => ({
@@ -36,7 +37,7 @@ vi.mock('@/web/support/user/useUserStore', () => {
   };
 });
 vi.mock('@/web/core/ai/model/useUserModelStore', () => {
-  const getState = () => ({ loginGeneration: mocks.generation, modelMap: {} });
+  const getState = () => ({ loginGeneration: mocks.generation, modelMap: mocks.modelMap });
   return {
     useUserModelStore: Object.assign(
       (selector: (state: unknown) => unknown) => selector(getState()),
@@ -53,6 +54,7 @@ describe('useModelSummary request lifecycle', () => {
     mocks.effect = undefined;
     mocks.member = 'member';
     mocks.generation++;
+    mocks.modelMap = {};
     mocks.request.mockResolvedValue({ models: [{ modelId: 'a', name: 'A', status: 'active' }] });
   });
   const render = (modelId?: string, outLinkAuthData?: { shareId: string; outLinkUid: string }) => {
@@ -115,10 +117,15 @@ describe('useModelSummary request lifecycle', () => {
     render('a');
     mocks.effect?.();
     await flush();
-    render('a').setFromCatalog({ modelId: 'b', name: 'Catalog B', avatar: 'b.svg' });
+    render('a').setFromCatalog({
+      modelId: 'b',
+      name: 'Catalog B',
+      avatar: 'b.svg',
+      isUpcomingDeprecation: true
+    });
     expect(render('b')).toMatchObject({
       loading: false,
-      detail: { modelId: 'b', name: 'Catalog B' }
+      detail: { modelId: 'b', name: 'Catalog B', isUpcomingDeprecation: true }
     });
     mocks.effect?.();
     await flush();

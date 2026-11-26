@@ -91,7 +91,14 @@ const MemberNameFormModal = ({
           _placeholder={{ color: '#667085', fontSize: 'sm' }}
           onChange={onNameChange}
           onKeyDown={(event) => {
-            if (event.key !== 'Enter' || loading) return;
+            // 保留输入法回车上屏行为，组合输入结束后再次回车才提交。
+            if (
+              event.nativeEvent.isComposing ||
+              event.keyCode === 229 ||
+              event.key !== 'Enter' ||
+              loading
+            )
+              return;
             event.preventDefault();
             submit();
           }}

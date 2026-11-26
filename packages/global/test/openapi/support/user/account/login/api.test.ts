@@ -22,7 +22,7 @@ import {
   ShortAuthStringSchema
 } from '../../../../../../support/user/account/verification/type';
 
-const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
+const captchaPath = '/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
 const wecomRedirectPath = '/proApi/support/user/account/login/wecom/getRedirectUrl';
 const updatePasswordByCodePath = '/proApi/support/user/account/password/updateByCode';
@@ -33,6 +33,10 @@ describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
     expect(openAPIPaths[captchaPath]).toBeDefined();
     expect(openAPIDocument.paths?.[captchaPath]).toBeDefined();
+    expect(openAPIPaths['/proApi/support/user/account/captcha/getImgCaptcha']).toBeUndefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/account/captcha/getImgCaptcha']
+    ).toBeUndefined();
     expect(openAPIPaths['/api/support/user/account/captcha/getImgCaptcha']).toBeUndefined();
   });
 

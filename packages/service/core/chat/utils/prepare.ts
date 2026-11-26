@@ -1,19 +1,26 @@
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
+import { updateChatPublishSource } from '../publishSource/service';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { isModerationBlockErrorMessage } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { writePrimary } from '../../../common/mongo/utils';
 import { MongoChatItem } from '../chatItemSchema';
 import { MongoChat } from '../chatSchema';
-import { tryStartGenerateChat, updateChatGenerateStatus } from '../chatGenerateStatus';
 import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
 import { canWriteGeneratedTitle, syncGeneratedChatTitleFromUserContent } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
+import { tryStartChatGenerationLease } from '../generationLease';
+import { delAgentRuntimeStopSign } from '../stop';
+import { checkEntryModeration, markEntryModerationChecked } from '../../plugin/moderation/entry';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -50,8 +57,8 @@ export type PrepareChatRoundParams = ChatSourceParams & {
   teamId: string;
   tmbId: string;
   source: `${ChatSourceEnum}`;
+  publishSource?: ChatPublishSourceType;
   sourceName?: string;
-  shareId?: string;
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;
@@ -65,14 +72,19 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   chatId?: string;
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
+  variables?: Record<string, any>;
+  requestId?: string;
   fixedTitle?: string;
   /** 固定标题语言；无请求上下文的入口缺省并由标题模块回退 zh-CN。 */
   locale?: localeType;
 };
 
 export type PreChatRoundResult = {
+  publishSource?: ChatPublishSourceType;
   chatId: string;
   responseChatItemId: string;
+  /** 请求退出时释放独立续租；不持久化或向 workflow 传递租约身份。 */
+  releaseGenerationLease?: () => Promise<void>;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
   titleGeneration?: Promise<string | undefined>;
@@ -113,8 +125,7 @@ export const getPreparedRoundDataIds = ({
 export const prepareChatRound = async (
   params: PrepareChatRoundParams
 ): Promise<PrepareChatRoundResult> => {
-  const { chatId, teamId, tmbId, source, sourceName, shareId, outLinkUid, responseChatItemId } =
-    params;
+  const { chatId, teamId, tmbId, responseChatItemId } = params;
   const chatSource = {
     sourceType: params.sourceType,
     sourceId: params.sourceId
@@ -128,8 +139,6 @@ export const prepareChatRound = async (
   }
 
   params.userContent.dataId = responseChatItemId;
-  const now = new Date();
-
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
     value: params.userContent.value.map((item) => ({
@@ -149,41 +158,11 @@ export const prepareChatRound = async (
   let shouldGenerateTitle = false;
 
   await mongoSessionRun(async (session) => {
-    const previousChat = await MongoChat.findOneAndUpdate(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId
-      },
-      {
-        $set: {
-          teamId,
-          tmbId,
-          ...sourceWriteFields,
-          chatId,
-          source,
-          sourceName,
-          shareId,
-          outLinkUid,
-          updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.generating
-        },
-        $setOnInsert: {
-          createTime: now,
-          summary: {
-            llmInputTokens: 0,
-            llmOutputTokens: 0
-          }
-        }
-      },
-      {
-        session,
-        upsert: true,
-        new: false
-      }
-    )
+    const previousChat = await MongoChat.findOne({ ...buildChatSourceQuery(chatSource), chatId })
       .select('title customTitle')
+      .session(session)
       .lean();
+    if (!previousChat) throw new Error(`Chat was not initialized by preChatRound: ${chatId}`);
 
     shouldGenerateTitle = canWriteGeneratedTitle(previousChat);
 
@@ -216,9 +195,10 @@ export const prepareChatRound = async (
 /**
  * 业务入口进入 workflow 前的唯一准备方法。
  *
- * 它负责解析最终 chatId/responseChatItemId、占用生成槽、检查 AI dataId 冲突，并在
- * 需要持久化时预创建本轮 Human/AI placeholder。失败时如果已经占用生成槽，会立刻将
- * chatGenerateStatus 标记为 error，避免会话长期停留在 generating。
+ * 它负责解析最终 chatId/responseChatItemId、获取 Redis 生成租约、检查 AI dataId 冲突，
+ * 并在需要持久化时预创建本轮 Human/AI placeholder。仅明确占用时拦截，租约获取异常降级放行。
+ * 准备失败立即释放已获取的租约；
+ * 成功时将释放函数交给请求 finally，Mongo 不持久化运行状态。
  */
 export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatRoundResult> => {
   const chatId = resolvePreChatRoundChatId(params.chatId);
@@ -230,7 +210,39 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
   });
   const isInteractiveContinue = !!params.interactive && interactiveStatus !== 'query';
 
+  // 入口审核必须在获取生成租约和落库 Human/AI 占位消息之前执行：违规直接拒绝，并通过专用错误标识尚未创建持久化轮次。
+  try {
+    await checkEntryModeration({
+      query: params.userContent.value,
+      variables: params.variables,
+      context: {
+        teamId: params.teamId,
+        tmbId: params.tmbId,
+        appId: params.sourceId,
+        chatId,
+        responseChatItemId,
+        requestId: params.requestId
+      }
+    });
+  } catch (error) {
+    if (error instanceof UserError && isModerationBlockErrorMessage(error.message)) {
+      throw new ChatEntryModerationError(error.message);
+    }
+    throw error;
+  }
+  markEntryModerationChecked({
+    chatId,
+    responseChatItemId,
+    variablesChecked: params.variables !== undefined
+  });
+
   if (!shouldPersistChatRound) {
+    // 不落库的入口没有 lease，在准备阶段重置旧信号；执行器启动后不再清理主动停止。
+    await delAgentRuntimeStopSign({
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatId
+    });
     return {
       chatId,
       responseChatItemId,
@@ -239,21 +251,14 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     };
   }
 
-  const canStartGenerate = await tryStartGenerateChat({
+  const releaseGenerationLease = await tryStartChatGenerationLease({
     sourceType: params.sourceType,
     sourceId: params.sourceId,
     chatId,
-    teamId: params.teamId,
-    tmbId: params.tmbId,
-    source: params.source,
-    sourceName: params.sourceName,
-    shareId: params.shareId,
-    outLinkUid: params.outLinkUid
+    responseChatItemId,
+    reusePreviousAi: isInteractiveContinue
   });
-
-  if (!canStartGenerate) {
-    throw ChatErrEnum.chatIsGenerating;
-  }
+  if (!releaseGenerationLease) throw ChatErrEnum.chatIsGenerating;
 
   try {
     if (isInteractiveContinue) {
@@ -273,9 +278,14 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         throw new Error(`Interactive continue chat item not found: ${chatId}`);
       }
 
+      // 交互续跑复用原 AI，先确认记录有效，再在 preChat 中记录本次来源。
+      const publishSource = await updateChatPublishSource({ ...params, chatId });
+
       return {
         chatId,
         responseChatItemId: previousAiItem.dataId,
+        releaseGenerationLease,
+        publishSource,
         shouldPersistChatRound: true,
         shouldFinalizePreparedRound: false
       };
@@ -288,6 +298,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       userContent: params.userContent,
       responseChatItemId
     });
+
+    const publishSource = await updateChatPublishSource({ ...params, chatId });
 
     const preparedChatRound = await prepareChatRound({
       ...params,
@@ -313,17 +325,14 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     return {
       chatId,
       responseChatItemId,
+      releaseGenerationLease,
+      publishSource,
       shouldPersistChatRound: true,
       shouldFinalizePreparedRound: true,
       titleGeneration
     };
   } catch (error) {
-    await updateChatGenerateStatus({
-      sourceType: params.sourceType,
-      sourceId: params.sourceId,
-      chatId,
-      status: ChatGenerateStatusEnum.error
-    });
+    await releaseGenerationLease();
     throw error;
   }
 };

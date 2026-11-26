@@ -1,4 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { withApiI18n } from '@/service/middleware/i18n';
+import { translateApiMessage } from '@fastgpt/service/common/i18n/request';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -122,14 +124,15 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
         };
       } catch (error) {
         markProfileError(error);
+        const message = translateApiMessage(getErrText(error), res);
         return {
           content: [
             {
               type: 'text',
-              text: getErrText(error)
+              text: message
             }
           ],
-          message: getErrText(error),
+          message,
           isError: true
         };
       }
@@ -165,7 +168,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
           ...(requestId === undefined ? {} : { id: requestId }),
           error: {
             code: -32000,
-            message: getErrText(error)
+            message: translateApiMessage(getErrText(error), res)
           }
         });
         return;
@@ -207,11 +210,11 @@ async function handleMcpRequest(
   return;
 }
 
-/** 原生 MCP 不经过 NextAPI；复用相同的按 header 开启的观测层，保持 JSON-RPC 响应。 */
+/** 原生 MCP 保留独立采集与 JSON-RPC 响应，入口仅补齐 i18n，不引入通用 JSON 包装。 */
 async function handler(req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponseType<any>) {
   return withHttpRequestProfile({ headers: req.headers, kind: 'mcp' }, () =>
     handleMcpRequest(req, res)
   );
 }
 
-export default handler;
+export default withApiI18n(handler);

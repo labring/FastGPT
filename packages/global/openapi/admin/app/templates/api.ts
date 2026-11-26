@@ -11,6 +11,8 @@ import {
   OpenAPIFlowNodeOutputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../../core/workflow/node';
+import { WorkflowReferenceSnapshotsSchema } from '../../../../core/workflow/type/io';
+import { isValidHttpUrl } from '../../../../common/string/url';
 import z from 'zod';
 import { OpenAPIAppTemplateSchema } from '../../../core/app/template/api';
 
@@ -23,23 +25,36 @@ const AdminTemplateTypeSchema = z
   .string()
   .refine((type) => adminTemplateTypes.has(type), '不支持的模板类型');
 
+const AdminTemplateExperienceUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || isValidHttpUrl(value), {
+    message: '请输入以 http:// 或 https:// 开头的有效体验地址'
+  })
+  .optional()
+  .meta({
+    description: '体验地址；用户可在复制模板前打开该链接预览，传空字符串可清空'
+  });
+
 const AdminTemplateBaseSchema = AppTemplateStorageSchema.omit({
   templateId: true,
   type: true,
   workflow: true,
   isQuickTemplate: true,
   order: true
+}).extend({
+  experienceUrl: AdminTemplateExperienceUrlSchema
 });
 
-const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
-  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
-});
+const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema;
 
 const AdminWorkflowTemplateSchema = z.object({
   nodes: z.array(AdminWorkflowNodeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: OpenAPIAppChatConfigSchema.optional()
+  chatConfig: OpenAPIAppChatConfigSchema.optional(),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    description: '已丢失引用来源的历史展示信息，旧模板可以省略'
+  })
 });
 
 const AdminSelectedToolItemSchema = SelectedToolItemTypeSchema.omit({

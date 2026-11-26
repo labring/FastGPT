@@ -1,9 +1,58 @@
 ---
-title: Introduction
-description: FastGPT Community Edition Introduction
+title: FastGPT Community Edition Overview
+description: Learn about FastGPT Community Edition core capabilities for Agent building, visual workflows, Knowledge base retrieval, and open-source licensing.
 ---
 
 FastGPT Community Edition is the free version of FastGPT, designed for individual developers and small delivery teams. It includes all core FastGPT features: Agent building, workflows, and datasets. Please use it in compliance with the [FastGPT Open Source License](/en/guide/version/opensource/license).
+
+## Community Edition vs. Commercial Edition
+
+The checklist below details every capability included in FastGPT Community Edition (✅) alongside the enterprise capabilities available in [Commercial Edition](/en/guide/version/commercial) and [FastGPT Cloud](/en/guide/version/cloud/intro) (❌):
+
+| Category | Feature | Community Edition (Open Source) | Commercial Edition (Self-Hosted) | Cloud Service |
+| --- | --- | --- | --- | --- |
+| **App Building** | Chat Agent, Chat Agent V2, Visual Workflow orchestration | ✅ | ✅ | ✅ |
+| **App Building** | System Tools, HTTP Tools, MCP Tools, and Agent Skills | ✅ | ✅ | ✅ |
+| **App Building** | Login-free share window, OpenAPI, and MCP service publishing | ✅ | ✅ | ✅ |
+| **App Building** | Share link security controls (QPM/point quotas, expiration, auth webhooks) | ❌ | ✅ | ✅ |
+| **App Building** | Third-party channel publishing (Lark, WeCom, DingTalk, Official Account) | ❌ | ✅ | ✅ |
+| **App Building** | Application run log and analytics dashboard | ❌ | ✅ | ✅ |
+| **App Building** | Automated App Evaluation | ❌ | ✅ | ✅ |
+| **App Building** | AI-assisted Workflow, Agent, and Skill generation | ❌ | ✅ | ✅ |
+| **App Building** | System tool remote debugging suite | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Local file, single-URL fetch, and CSV template import | ✅ | ✅ | ✅ |
+| **Datasets & RAG** | Semantic, full-text, hybrid search (RRF), and Rerank | ✅ | ✅ | ✅ |
+| **Datasets & RAG** | Third-party datasets (Lark, Yuque, DingTalk, API File Library) & scheduled sync | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Website Dataset (crawler synchronization) | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Image Dataset and index enhancement (auto-summary, QA generation, image indexing) | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Collection-level permissions and tag filtering | ❌ | ✅ | ✅ |
+| **Models & General** | Multi-model configuration and parameter tuning | ✅ | ✅ | ✅ |
+| **Models & General** | Model call logs and monitoring dashboard | ✅ | ✅ | ✅ |
+| **Models & General** | Model input/output content moderation | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Single-team workspace | ✅ | ✅ | ✅ |
+| **Enterprise Governance** | Multi-team spaces, department trees, member groups, and granular RBAC | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Multi-tenant billing, subscription plans, and resource packs | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Custom domain binding | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Enterprise SSO login and custom branding | ❌ | ✅ | Planned |
+| **Enterprise Governance** | [Root Platform Administration Console](/en/guide/admin/platform-console) and audit logs | Basic (Models / Tools / Upgrade / License) | ✅ | Managed |
+
+### Features Exclusive to Commercial Edition and FastGPT Cloud
+
+In a default Community Edition deployment, the following enterprise and commercial capabilities are hidden or unavailable unless you upgrade to [Commercial Edition](/en/guide/version/commercial) or use [FastGPT Cloud](/en/guide/version/cloud/intro):
+
+- **Workspace & Team Governance**: Multi-team workspaces, department trees, member groups, the **Team / Usage Records / Bills & Invoices / Custom Domain / Model Providers / Notifications** menus under **Account**, enterprise SSO, and directory synchronization.
+- **App & Tooling Extensions**: Run log analytics dashboards, automated App Evaluation, AI-assisted Workflow/Agent/Skill generation, third-party channel publishing (Lark, WeCom, DingTalk, Official Account), share link quotas/auth webhooks, team plugin uploads, and remote tool debugging.
+- **Dataset Extensions**: Website Datasets, Image Datasets, third-party datasets (Lark, Yuque, DingTalk, API File Library) with scheduled sync, index enhancement (auto-summary, QA generation, image parsing), collection-level permissions, and tag filtering.
+- **Platform Operations Console**: Global dashboards, announcements, user/team/plan/order/invoice governance, template market curation, security/auth settings, and platform audit logs.
+
+## Open Source License and Commercial Terms
+
+FastGPT Community Edition is licensed under the **Apache License 2.0** with the following supplementary commercial conditions (see the full [Open Source License](/en/guide/version/opensource/license)):
+
+- **Permitted direct use**: Personal development, internal enterprise deployment as an AI application platform, or backend-as-a-service (BaaS) for single-tenant applications.
+- **Scenarios requiring a commercial license**:
+  1. **Multi-tenant SaaS operation**: Operating a multi-tenant SaaS service similar to `fastgpt.io` or `fastgpt.cn` using FastGPT source code requires explicit written authorization.
+  2. **Branding and copyright modification**: Removing or replacing the official FastGPT logo or copyright notice in the console requires a [Commercial Edition license](/en/guide/version/commercial).
 
 **Related Links**
 

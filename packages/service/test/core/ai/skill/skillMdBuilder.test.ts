@@ -1,70 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildSkillMd,
-  extractSkillNameFromSkillMd,
-  parseSkillMarkdown,
-  parseGitignoreRules
+  extractSkillMetadataFromMarkdown,
+  findSkillMdEntries,
+  parseSkillMarkdown
 } from '@fastgpt/service/core/ai/skill/utils';
 
 describe('skillMd utilities', () => {
-  // ==================== buildSkillMd ====================
-  describe('buildSkillMd', () => {
-    it('should generate valid SKILL.md with frontmatter', () => {
-      const result = buildSkillMd({
-        name: 'my-skill',
-        description: 'A test skill description'
-      });
-
-      // Should contain frontmatter
-      expect(result).toMatch(/^---\n/);
-      expect(result).toContain('name: my-skill');
-      expect(result).toContain('description: A test skill description');
-      expect(result).toMatch(/---$/);
-    });
-
-    it('should escape special characters in YAML frontmatter', () => {
-      const result = buildSkillMd({
-        name: 'test-skill',
-        description: 'Description with "quotes" and [brackets]'
-      });
-
-      expect(result).toContain('description: "Description with \\"quotes\\" and [brackets]"');
-    });
-
-    it('should handle multi-line description', () => {
-      const result = buildSkillMd({
-        name: 'test-skill',
-        description: 'Line 1\nLine 2\nLine 3'
-      });
-
-      // Multi-line strings should use YAML literal block
-      expect(result).toContain('description: |');
-      expect(result).toContain('  Line 1');
-      expect(result).toContain('  Line 2');
-      expect(result).toContain('  Line 3');
-    });
-
-    it('should handle empty description', () => {
-      const result = buildSkillMd({
-        name: 'test-skill',
-        description: ''
-      });
-
-      expect(result).toContain('description: ""');
-    });
-
-    it('should only contain frontmatter without body', () => {
-      const result = buildSkillMd({
-        name: 'test-skill',
-        description: 'Test'
-      });
-
-      // Result should be just frontmatter, no body content
-      expect(result).toMatch(/^---\n[\s\S]+\n---$/);
-      expect(result).toBe('---\nname: test-skill\ndescription: Test\n---');
-    });
-  });
-
   // ==================== parseSkillMarkdown ====================
   describe('parseSkillMarkdown', () => {
     it('should parse nested fields and handle pop stack correctly on indent change', () => {
@@ -103,89 +44,63 @@ description: 123
       expect(result.frontmatter.description).toBe('123');
     });
   });
+  // ==================== extractSkillMetadataFromMarkdown ====================
+  describe('extractSkillMetadataFromMarkdown', () => {
+    it('should extract trimmed name and optional description', () => {
+      expect(
+        extractSkillMetadataFromMarkdown(
+          '---\nname:   writer  \ndescription:   Write docs  \n---\n# Body'
+        )
+      ).toEqual({ valid: true, name: 'writer', description: 'Write docs' });
 
-  // ==================== extractSkillNameFromSkillMd ====================
-  describe('extractSkillNameFromSkillMd', () => {
-    it('should extract name from valid frontmatter', () => {
-      const content = '---\nname: my-skill\ndescription: A skill\n---\n\n# Overview';
-      expect(extractSkillNameFromSkillMd(content)).toBe('my-skill');
+      expect(extractSkillMetadataFromMarkdown('---\nname: minimal\n---\n')).toEqual({
+        valid: true,
+        name: 'minimal',
+        description: ''
+      });
     });
 
-    it('should fall back to first heading when frontmatter is missing', () => {
-      const content = '# My Skill Heading\n\nSome content here.';
-      expect(extractSkillNameFromSkillMd(content)).toBe('my-skill-heading');
-    });
-
-    it('should return "unnamed-skill" when no frontmatter and no heading', () => {
-      const content = 'Just plain text with no structure.';
-      expect(extractSkillNameFromSkillMd(content)).toBe('unnamed-skill');
+    it('should fail when frontmatter is missing or name is blank', () => {
+      expect(extractSkillMetadataFromMarkdown('# No frontmatter')).toMatchObject({ valid: false });
+      expect(extractSkillMetadataFromMarkdown('---\nname:   \ndescription: Desc\n---\n')).toEqual({
+        valid: false,
+        error: 'frontmatter name is required'
+      });
     });
   });
 
-  // ==================== parseGitignoreRules ====================
-  describe('parseGitignoreRules', () => {
-    it('should handle empty gitignore lists', () => {
-      const result = parseGitignoreRules([]);
-      expect(result.customExcludes).toEqual([]);
-      expect(result.pruneClause).toBe('');
+  // ==================== findSkillMdEntries ====================
+  describe('findSkillMdEntries', () => {
+    it('should match SKILL.md recursively across depths, normalize ./, deduplicate, and sort', () => {
+      const result = findSkillMdEntries([
+        { path: 'skills/writer/helpers/review/SKILL.md', isDir: false, tag: 'deep' },
+        { path: './SKILL.md', isDir: false, tag: 'root-first' },
+        { path: 'SKILL.md', isDir: false, tag: 'root-dup' },
+        { path: 'foo/skill.md', isDir: false, tag: 'lower' },
+        { path: 'SKILLS/upper/SKILL.MD', isDir: false, tag: 'upper' },
+        { path: 'README.md', isDir: false, tag: 'other' }
+      ]);
+
+      expect(result).toEqual([
+        { path: 'foo/skill.md', isDir: false, tag: 'lower' },
+        { path: 'SKILL.md', isDir: false, tag: 'root-first' },
+        { path: 'SKILLS/upper/SKILL.MD', isDir: false, tag: 'upper' },
+        { path: 'skills/writer/helpers/review/SKILL.md', isDir: false, tag: 'deep' }
+      ]);
     });
 
-    it('should ignore comments and empty lines', () => {
-      const gitignore = `
-        # This is a comment
-        
-        # Another comment
-      `;
-      const result = parseGitignoreRules([gitignore]);
-      expect(result.customExcludes).toEqual([]);
-      expect(result.pruneClause).toBe('');
-    });
+    it('should skip pruned directories, directory entries, and literal backslash names', () => {
+      const result = findSkillMdEntries([
+        { path: 'node_modules/a/SKILL.md', isDir: false },
+        { path: 'pkg/.venv/b/SKILL.md', isDir: false },
+        { path: 'venv/c/SKILL.md', isDir: false },
+        { path: 'skills/example/SKILL.md', isDir: true },
+        { path: 'skills/trailing/SKILL.md/', isDir: false },
+        { path: 'notes\\SKILL.md', isDir: false },
+        { path: 'kept/SKILL.md', isDir: false }
+      ]);
 
-    it('should parse directory pattern and generate find -name prune clauses', () => {
-      const gitignore = `
-        node_modules/
-        dist
-      `;
-      const result = parseGitignoreRules([gitignore]);
-
-      expect(result.customExcludes).toContain('node_modules/*');
-      expect(result.customExcludes).toContain('*/node_modules/*');
-      expect(result.customExcludes).toContain('dist/*');
-      expect(result.customExcludes).toContain('*/dist/*');
-
-      // Linux find prune command segment verification
-      expect(result.pruneClause).toBe("-name 'node_modules' -o -name 'dist'");
-    });
-
-    it('should parse compound sub-path pattern and generate find -path prune clauses', () => {
-      const gitignore = `
-        packages/service/dist/
-        packages/service/tmp/
-      `;
-      const result = parseGitignoreRules([gitignore]);
-
-      expect(result.customExcludes).toContain('packages/service/dist/*');
-      expect(result.customExcludes).toContain('packages/service/tmp/*');
-
-      expect(result.pruneClause).toBe(
-        "-path './packages/service/dist' -o -path './packages/service/tmp'"
-      );
-    });
-
-    it('should parse standard files without path prunes', () => {
-      const gitignore = `
-        .env
-        secrets.json
-      `;
-      const result = parseGitignoreRules([gitignore]);
-
-      expect(result.customExcludes).toContain('.env');
-      expect(result.customExcludes).toContain('*/.env');
-      expect(result.customExcludes).toContain('secrets.json');
-      expect(result.customExcludes).toContain('*/secrets.json');
-
-      // Standard file matchings shouldn't be put into find's -prune directories list
-      expect(result.pruneClause).toBe('');
+      expect(result.map((entry) => entry.path)).toEqual(['kept/SKILL.md']);
     });
   });
 });

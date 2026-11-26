@@ -109,7 +109,7 @@ export const authDatasetCollectionMoves = async ({
   for (const move of moves) {
     const collection = collections.get(move.collectionId)!;
     const oldParentId = collection.parentId ? String(collection.parentId) : null;
-    requireCollection(move.collectionId, ReadPermissionVal);
+    requireCollection(move.collectionId, oldParentId ? ReadPermissionVal : ManagePermissionVal);
     if (oldParentId) requireCollection(oldParentId, ManagePermissionVal);
     if (move.targetParentId && !newFolderIds.has(move.targetParentId)) {
       requireCollection(move.targetParentId, ManagePermissionVal);

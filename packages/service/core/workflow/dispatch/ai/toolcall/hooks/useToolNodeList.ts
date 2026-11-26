@@ -1,6 +1,6 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { getAgentToolRuntimeStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import { filterToolNodeIdByEdges } from '../../../utils';
 import type { DispatchToolModuleProps, ToolNodeItemType } from '../type';
 
@@ -9,10 +9,8 @@ type RuntimeNode = DispatchToolModuleProps['runtimeNodes'][number];
 const isRunnableToolNode = (tool?: RuntimeNode): tool is RuntimeNode => {
   if (!tool) return false;
 
-  const configStatus = getToolConfigStatus({
-    tool
-  });
-  return configStatus.status !== 'invalid' && configStatus.status !== 'waitingForConfig';
+  const status = getAgentToolRuntimeStatus(tool);
+  return status !== 'invalid' && status !== 'offline' && status !== 'waitingForConfig';
 };
 
 export const useToolNodeList = ({

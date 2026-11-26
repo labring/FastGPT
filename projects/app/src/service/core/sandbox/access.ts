@@ -1,4 +1,9 @@
-import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
+import {
+  APP_SANDBOX_ENABLED_CHAT_METADATA_KEY,
+  SandboxUnavailableReasonEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
 import {
@@ -21,8 +26,9 @@ import {
 /**
  * 解析已鉴权 Sandbox Session 的产品可用性。
  *
- * App Chat Test 使用服务端保存的本轮调试开关，旧测试会话回退到草稿节点；其他 App Chat
- * 使用已发布版本。Skill Edit 和辅助调试属于强依赖场景，不返回静默降级原因。
+ * App Chat 优先使用服务端累计的 Sandbox 成功标记；尚未启用时，Chat Test 使用本轮调试开关，
+ * 旧测试会话回退到草稿节点，其他 App Chat 使用已发布版本。
+ * Skill Edit 和辅助调试属于强依赖场景，不返回静默降级原因。
  */
 export async function resolveSandboxSessionAvailability(
   session: SandboxSessionAuthResult
@@ -32,37 +38,39 @@ export async function resolveSandboxSessionAvailability(
     return { available: true };
   }
 
-  if (!global.feConfigs?.show_agent_sandbox) {
-    return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
+  if (!getSystemInstanceConfig().subservice.agentSandbox.enabled) {
+    return {
+      available: false,
+      reason: SandboxUnavailableReasonEnum.systemDisabled
+    };
   }
 
-  const isChatTest = session.chat?.source === ChatSourceEnum.test;
+  if (session.chat?.summary?.hasAgentSandbox === true) {
+    return resolveAppSandboxAvailability({
+      appEnabled: true,
+      teamId: session.teamId
+    });
+  }
+
+  const isChatTest = getChatPublishSourceType(session.chat ?? {}) === ChatSourceEnum.test;
   const chatTestEnabled = session.chat?.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
   if (isChatTest && typeof chatTestEnabled === 'boolean') {
-    return resolveAppSandboxAvailability({ appEnabled: chatTestEnabled, teamId: session.teamId });
+    return resolveAppSandboxAvailability({
+      appEnabled: chatTestEnabled,
+      teamId: session.teamId
+    });
   }
 
   const app = await MongoApp.findById(session.sourceId).lean();
   const appEnabled = isChatTest
-    ? isAppSandboxEnabledInNodes((await getAppDraftWorkflow(session.sourceId)).nodes)
+    ? isAppSandboxEnabledInNodes(
+        (await getAppDraftWorkflow(session.sourceId, app ?? undefined)).nodes
+      )
     : isAppSandboxEnabledInNodes(
         (await getAppLatestVersion(session.sourceId, app ?? undefined)).nodes
       );
 
   return resolveAppSandboxAvailability({ appEnabled, teamId: session.teamId });
-}
-
-/** 统一记录并拒绝已经完成身份鉴权、但产品态不允许继续访问的 Sandbox Session。 */
-async function assertSandboxRuntimeSessionAvailable({
-  session
-}: {
-  session: SandboxSessionAuthResult;
-}): Promise<void> {
-  const availability = await resolveSandboxSessionAvailability(session);
-
-  if (!availability.available) {
-    throw createAgentSandboxPermissionDeniedError();
-  }
 }
 
 /**
@@ -74,7 +82,10 @@ export async function authSandboxRuntimeSession(
   authParams: AuthSandboxSessionParams
 ): Promise<SandboxSessionAuthResult> {
   const session = await authSandboxSession(authParams);
-  await assertSandboxRuntimeSessionAvailable({ session });
+  const availability = await resolveSandboxSessionAvailability(session);
+  if (!availability.available) {
+    throw createAgentSandboxPermissionDeniedError();
+  }
 
   return session;
 }

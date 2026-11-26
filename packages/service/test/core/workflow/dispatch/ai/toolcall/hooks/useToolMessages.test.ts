@@ -1,20 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  runWithTestWorkflowContext as runWithContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { type WorkflowSandboxContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
 
-const useToolMessages: typeof useToolMessagesWithoutContext = (props) =>
+const useToolMessages = async (
+  props: Parameters<typeof useToolMessagesWithoutContext>[0],
+  sandboxContext?: WorkflowSandboxContext
+) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-        resolve: () => undefined,
-        resolveChatFile: () => undefined,
-        getIdentity: () => undefined
-      } as any
+      sandboxContext,
+      fileContext: await createTestWorkflowFileContext()
     },
     () => useToolMessagesWithoutContext(props)
   );
@@ -248,5 +256,45 @@ describe('useToolMessages', () => {
         url: 'https://files.example.com/old.png'
       }
     ]);
+  });
+
+  it('deduplicates same-named different-URL files across child ToolCall runs sharing a root sandboxContext', async () => {
+    const sandboxContext = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'root-app',
+      teamId: 'team-1',
+      userId: 'user-1',
+      chatId: 'chat-1'
+    };
+    const runInSharedSandbox = (fileUrl: string) =>
+      useToolMessages(
+        {
+          chatHistories: [],
+          responseChatItemId: 'response_1',
+          userChatInput: 'analyze csv',
+          fileLinks: [fileUrl],
+          parseHistoryFiles: false,
+          lastInteractive: undefined,
+          isEntry: true,
+          chatConfig: {},
+          useSandbox: true
+        },
+        sandboxContext
+      );
+
+    const first = await runInSharedSandbox('https://files.example.com/a/report.csv');
+    const second = await runInSharedSandbox('https://files.example.com/b/report.csv');
+
+    expect(first.currentInputFiles[0]).toMatchObject({
+      name: 'report.csv',
+      sandboxPath: `${SANDBOX_USER_FILES_PATH}report.csv`
+    });
+    expect(second.currentInputFiles[0]).toMatchObject({
+      name: 'report-1.csv',
+      sandboxPath: `${SANDBOX_USER_FILES_PATH}report-1.csv`
+    });
+    expect(chatValue2RuntimePrompt(second.messages[0].value).text).toContain(
+      `<sandboxPath>${SANDBOX_USER_FILES_PATH}report-1.csv</sandboxPath>`
+    );
   });
 });

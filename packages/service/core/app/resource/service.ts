@@ -4,6 +4,7 @@ import {
   type AppChatConfigType,
   type AppResource
 } from '@fastgpt/global/core/app/type';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -33,6 +34,11 @@ import {
   resolveStoredAppResources
 } from './utils';
 
+type AppDraftResourceSource = Pick<
+  AppVersionSchemaType,
+  'appId' | 'nodes' | 'chatConfig' | 'resources'
+> & { resourceRefs?: unknown };
+
 /**
  * 读取应用草稿授权基线。合法快照直接沿用；非法数组按空基线处理，避免提升未授权引用。
  * 历史缺字段记录先提取资源，再按应用所有者权限过滤；事务重试会重新读取版本与所有者。
@@ -41,16 +47,23 @@ export const getAppDraftResourceBaseline = async ({
   appId,
   teamId,
   session,
+  draftVersion,
   isRoot = false,
   modelHandle
 }: {
   appId: string;
   teamId?: string;
   session?: ClientSession;
+  /** 同一事务内已读取的目标应用草稿；null 表示确认无草稿。 */
+  draftVersion?: AppDraftResourceSource | null;
   isRoot?: boolean;
   modelHandle?: ModelHandle;
 }): Promise<AppResourcesType> => {
-  const draft = await getAppDraftVersion(appId, session);
+  if (draftVersion && String(draftVersion.appId).toLowerCase() !== appId.toLowerCase()) {
+    throw new Error('Draft version belongs to another app');
+  }
+  const draft: AppDraftResourceSource | null =
+    draftVersion === undefined ? await getAppDraftVersion(appId, session) : draftVersion;
   if (!draft) return [];
   if (Array.isArray(draft.resources)) {
     const parsed = AppResourcesSchema.safeParse(draft.resources);
@@ -61,7 +74,7 @@ export const getAppDraftResourceBaseline = async ({
     resources: draft.resources,
     nodes: decodeToolSetNodesFromStorage(draft.nodes),
     chatConfig: draft.chatConfig,
-    resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs
+    resourceRefs: draft.resourceRefs
   });
   if (resources.length === 0) return [];
 
@@ -91,7 +104,8 @@ export const resolveAppResourcesByPermission = async ({
   isRoot = false,
   blockOnUnauthorized,
   modelHandle,
-  session
+  session,
+  draftVersion
 }: {
   appId: string;
   extracted: AppResource[];
@@ -102,11 +116,13 @@ export const resolveAppResourcesByPermission = async ({
   /** 调用方已读取的团队模型目录；不传时按需读取。 */
   modelHandle?: ModelHandle;
   session?: ClientSession;
+  draftVersion?: AppDraftResourceSource | null;
 }) => {
   const baseline = await getAppDraftResourceBaseline({
     appId,
     teamId,
     session,
+    draftVersion,
     isRoot,
     modelHandle
   });

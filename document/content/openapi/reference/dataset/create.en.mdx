@@ -1,0 +1,99 @@
+---
+title: 'Create Dataset'
+seoTitle: 'Create Dataset - POST /api/core/dataset/create | FastGPT OpenAPI'
+description: 'Create a new FastGPT dataset or folder supporting standard, website, external file, and third-party API dataset configurations.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/create`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/create) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/create` )
+
+## Description & Notes
+
+Create a new dataset or folder supporting standard, site sync, external file, and API datasets.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field                                           | Type             | Required | Default | Constraints & Description                                                                                                                                                                                  |
+| ----------------------------------------------- | ---------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parentId`                                      | `string \| null` | No       | -       | Parent folder ID; omit to create at the root level                                                                                                                                                         |
+| `type`                                          | `string` (enum)  | Yes      | -       | Dataset type. Allowed values: `folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk`                                                                    |
+| `name`                                          | `string`         | Yes      | -       | Dataset name                                                                                                                                                                                               |
+| `intro`                                         | `string`         | Yes      | -       | Dataset introduction                                                                                                                                                                                       |
+| `avatar`                                        | `string`         | No       | -       | Dataset avatar URL (optional; uses default icon when omitted)                                                                                                                                              |
+| `vectorModelId`                                 | `string`         | No       | -       | Embedding model ID; uses the system default if omitted                                                                                                                                                     |
+| `vectorModel`                                   | `string`         | No       | -       | **Deprecated** . Embedding model identifier; uses the system default if omitted                                                                                                                            |
+| `agentModelId`                                  | `string`         | No       | -       | Dataset Agent model ID; uses the default model if omitted                                                                                                                                                  |
+| `agentModel`                                    | `string`         | No       | -       | **Deprecated** . Dataset Agent model identifier; uses the default model if omitted                                                                                                                         |
+| `vlmModelId`                                    | `string \| null` | No       | -       | Vision-Language Model (VLM) ID; keeps default when omitted, `null` or empty string clears it                                                                                                               |
+| `vlmModel`                                      | `string`         | No       | -       | **Deprecated** . Vision-Language Model (VLM) identifier                                                                                                                                                    |
+| `apiDatasetServer`                              | `object`         | No       | -       | Third-party dataset server configuration (API / Lark / Yuque / DingTalk)                                                                                                                                   |
+| `apiDatasetServer.apiServer`                    | `object`         | No       | -       | API dataset server configuration                                                                                                                                                                           |
+| `apiDatasetServer.apiServer.baseUrl`            | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.apiServer.authorization`      | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.apiServer.basePath`           | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.feishuServer`                 | `object`         | No       | -       | Lark (Feishu) server configuration                                                                                                                                                                         |
+| `apiDatasetServer.feishuServer.appId`           | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.feishuServer.appSecret`       | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.feishuServer.folderToken`     | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.yuqueServer`                  | `object`         | No       | -       | Yuque server configuration                                                                                                                                                                                 |
+| `apiDatasetServer.yuqueServer.userId`           | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.yuqueServer.token`            | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.yuqueServer.basePath`         | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer`               | `object`         | No       | -       | DingTalk dataset configuration                                                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.appKey`        | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.appSecret`     | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.userId`        | `string`         | Yes      | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.operatorId`    | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.workspaceId`   | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.rootNodeId`    | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `apiDatasetServer.dingtalkServer.workspaceName` | `string`         | No       | -       | -                                                                                                                                                                                                          |
+| `sangforFileParseConfig`                        | `object`         | No       | -       | External PDF parsing switches (header/footer, appendix, image OCR, chart-to-table); applies only when `customPdfParse` is enabled                                                                          |
+| `sangforFileParseConfig.keep_header_footer`     | `boolean`        | No       | -       | Whether to keep page headers and footers (default `false` , strips headers/footers)                                                                                                                        |
+| `sangforFileParseConfig.keep_appendix`          | `boolean`        | No       | -       | Whether to keep appendix sections (default `true` )                                                                                                                                                        |
+| `sangforFileParseConfig.image_analysis`         | `boolean`        | No       | -       | Whether to retain OCR/image recognition results including stamps (default `false` )                                                                                                                        |
+| `sangforFileParseConfig.chart_analysis`         | `boolean`        | No       | -       | Whether to keep chart-to-table extraction results alongside original images (default `false` )                                                                                                             |
+| `inheritPermission`                             | `boolean`        | No       | -       | Whether to inherit parent permissions (default `true` ). `true` merges the parent permission snapshot and tracks future changes; `false` creates an isolated Node.js with only creator `owner` permission. |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "type": "folder",
+  "name": "My Dataset",
+  "intro": "A knowledge base dataset for storing product documentation."
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "type": "folder",
+  "name": "My Dataset",
+  "intro": "A knowledge base dataset for storing product documentation."
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully returned the newly created dataset ID
+
+Returns the standard FastGPT success envelope ( `{ "code": 200, "statusText": "", "message": "", "data": ... }` ). The exact `data` payload schema is not declared in this OpenAPI contract; refer to the status description above or inspect runtime responses.

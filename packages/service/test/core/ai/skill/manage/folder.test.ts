@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi } from 'vitest';
 import {
   createSkillFolder,
@@ -7,7 +8,7 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { Types } from '@fastgpt/service/common/mongo';
 
 const fixture = () => ({
@@ -38,6 +39,21 @@ describe('createSkillFolder', () => {
     expect(await MongoAgentSkills.countDocuments({ _id: child._id })).toBe(1);
   });
 
+  it('persists inheritPermission and defaults it to true', async () => {
+    const scope = fixture();
+    const inherited = await createSkillFolder({ ...scope, name: 'inherited-folder' });
+    expect(inherited.inheritPermission).toBe(true);
+    const independent = await createSkillFolder({
+      ...scope,
+      name: 'independent-folder',
+      inheritPermission: false
+    });
+    expect(independent.inheritPermission).toBe(false);
+    await expect(MongoAgentSkills.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+  });
+
   it('rejects leaf parents and enforces the folder creation depth boundary', async () => {
     const scope = fixture();
     const leaf = await MongoAgentSkills.create({
@@ -50,7 +66,7 @@ describe('createSkillFolder', () => {
       createSkillFolder({ ...scope, name: 'invalid', parentId: String(leaf._id) })
     ).rejects.toBe(CommonErrEnum.invalidParams);
     let parentId: string | null = null;
-    for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH; i++) {
+    for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth; i++) {
       const folder = await createSkillFolder({ ...scope, name: `level-${i}`, parentId });
       parentId = String(folder._id);
     }

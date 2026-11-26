@@ -18,13 +18,14 @@ export type DraggableInputListItemType = {
 
 type DraggableInputListProps<T extends DraggableInputListItemType> = {
   items: T[];
-  zoom?: number;
   placeholder?: string;
   /** 指定新建后需要自动聚焦的项 key，仅对列表内真实输入项生效 */
   autoFocusKey?: string;
   addText: string;
   /** 输入框最大字符数，超出后无法继续输入 */
   maxLength?: number;
+  /** 列表最大项数，达到上限后禁用新增按钮 */
+  maxItems?: number;
   /** 改用自动撑高的多行文本框，长文本会在框内换行而不是横向溢出 */
   multiline?: boolean;
   onDragEnd: (items: T[]) => void;
@@ -42,11 +43,11 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
  */
 function DraggableInputList<T extends DraggableInputListItemType>({
   items,
-  zoom,
   placeholder,
   autoFocusKey,
   addText,
   maxLength,
+  maxItems,
   multiline,
   onDragEnd,
   onBeforeCapture,
@@ -57,13 +58,13 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   renderRight
 }: DraggableInputListProps<T>) {
   const canDrag = items.length > 1;
+  const isMaxItemsReached = maxItems !== undefined && items.length >= maxItems;
 
   return (
     <Box>
       {/* 关闭 DndDrag 在列表底部追加的整行空白占位，改用 rbd 原生 placeholder 精确占位 */}
       <DndDrag<T>
         dataList={items}
-        zoom={zoom}
         onDragEndCb={onDragEnd}
         onBeforeCapture={onBeforeCapture}
         onDragEnd={onDragFinish}
@@ -125,6 +126,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
         lineHeight={5}
         letterSpacing={0}
         leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'myGray.600'} />}
+        isDisabled={isMaxItemsReached}
         onClick={onAdd}
       >
         {addText}

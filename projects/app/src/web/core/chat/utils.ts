@@ -2,7 +2,7 @@ import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api'
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { useMemo } from 'react';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatAuthProxy, OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { OptionalChatAuthTargetInput, ResolvedChatAuthTargetInput } from './type';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>> & {
@@ -18,6 +18,7 @@ type OptionalChatSourceInput = {
 type ChatAuthQueryInputSource = Partial<Record<'appId' | 'skillId', string>> &
   OptionalChatSourceInput & {
     outLinkAuthData?: OutLinkChatAuthProps;
+    authProxy?: ChatAuthProxy;
   };
 export type ChatAuthTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: OutLinkChatAuthProps;
@@ -100,7 +101,7 @@ export const toChatAuthApiTarget = ({
  * 从已是 OpenAPI raw 格式的对象中提取 chat 鉴权 target。
  *
  * 引用详情、原文件读取等 metadata 会把数据集 sourceId/sourceName 一起携带；
- * 这里只保留 chat 鉴权字段，避免和数据集来源字段混用。
+ * 这里只保留 Web 登录态或分享的 chat 鉴权字段，避免和数据集来源字段混用。
  */
 export function getChatAuthTargetInput(
   target: ResolvedChatAuthTargetInput
@@ -157,11 +158,13 @@ export const toChatAuthQueryTarget = (target: ChatAuthTargetInput): ChatAuthQuer
 /** 保留 chat API 其它 query 字段，只把鉴权 target 转成 query 传输形态。 */
 export const toChatAuthQueryInput = <T extends ChatAuthQueryInputSource>(
   data: T
-): Omit<T, 'appId' | 'skillId' | 'sourceType' | 'outLinkAuthData'> & ChatAuthQueryTargetInput => {
-  const { appId, skillId, sourceType, outLinkAuthData, ...rest } = data;
+): Omit<T, 'appId' | 'skillId' | 'sourceType' | 'outLinkAuthData' | 'authProxy'> &
+  ChatAuthQueryTargetInput & { authProxy?: string } => {
+  const { appId, skillId, sourceType, outLinkAuthData, authProxy, ...rest } = data;
 
   return {
     ...rest,
+    ...(authProxy !== undefined ? { authProxy: JSON.stringify(authProxy) } : {}),
     ...(!appId && !skillId && sourceType ? { sourceType } : {}),
     ...toChatAuthQueryTarget({
       appId,

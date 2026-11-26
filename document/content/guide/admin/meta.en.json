@@ -2,6 +2,7 @@
   "title": "Admin Console",
   "root": false,
   "pages": [
+    "platform-console",
     "sso",
     "teamMode"
   ]

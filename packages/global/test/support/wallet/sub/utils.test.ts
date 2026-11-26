@@ -4,6 +4,22 @@ import type { SubPlanType } from '../../../../support/wallet/sub/type';
 import { getRuntimeSubPlansConfig } from '../../../../support/wallet/sub/utils';
 
 describe('getRuntimeSubPlansConfig', () => {
+  it.each([undefined, false, true])(
+    'keeps custom branding entitlement independent: %s',
+    (value) => {
+      const source = {
+        standard: {
+          advanced: { canHideShareBrand: true, maxTeamMember: 50 },
+          custom: { canHideShareBrand: value }
+        }
+      } as SubPlanType;
+      expect(getRuntimeSubPlansConfig(source)?.standard?.custom).toMatchObject({
+        canHideShareBrand: value === true,
+        maxTeamMember: 50
+      });
+    }
+  );
+
   it('inherits upload limits for zero custom overrides while preserving other zero values', () => {
     const source = {
       standard: {

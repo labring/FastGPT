@@ -54,6 +54,8 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   lang?: localeType;
   maxRunAgentTimes?: number;
   completionPolicy?: AgentLoopCompletionPolicy;
+  /** 真正压缩时读取业务恢复入口，结果随 checkpoint 固化。 */
+  getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;
   systemTools?: AgentLoopSystemTools;
@@ -90,6 +92,8 @@ export type FastAgentLoopResultBase = {
   assistantMessages: ChatCompletionMessageParam[];
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   llmTotalPoints?: number;
   finishReason?: CompletionFinishReason;
   requestIds: string[];

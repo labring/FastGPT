@@ -1,11 +1,22 @@
 'use client';
 
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Grid,
+  Input,
+  InputGroup,
+  Text,
+  VStack
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useDebounceFn, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
@@ -31,10 +42,24 @@ import {
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
 import {
+  getAdminModerationPluginList,
+  postAdminDeleteModerationPlugin,
+  postAdminRestoreModerationPlugin
+} from '@/web/core/plugin/admin/moderation/api';
+import {
+  MarketplaceOfficialSource,
+  MarketplaceCommunitySource,
+  type MarketplaceSourceFilterType
+} from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import {
   getBatchUpdateFailures,
+  getInstallErrorReason,
+  getInstallFailureMessage,
+  hasMarketplaceToolUpdate,
+  parseTeamInstallFailure,
+  summarizeBatchUpdateResult,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
-import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAdminSystemTools, putAdminUpdateSystemTool } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
@@ -47,9 +72,11 @@ import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
+export type MarketplaceTab = 'tool' | 'moderation';
 const TOOL_GRID_TEMPLATE_COLUMNS =
   'repeat(auto-fill, minmax(min(max(300px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
@@ -67,8 +94,10 @@ const isSameQuery = (currentQuery: QueryRecord, nextQuery: QueryRecord) => {
 // Custom hook for managing URL search params
 const useSearchParams = () => {
   const router = useRouter();
-  const { search, tags, source } = router.query;
+  const { search, tags, source, type, tab } = router.query;
 
+  const activeTab: MarketplaceTab =
+    type === 'moderation' || tab === 'moderation' ? 'moderation' : 'tool';
   const searchText = typeof search === 'string' ? search : '';
   const tagIds = useMemoEnhance(() => {
     return typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
@@ -84,10 +113,20 @@ const useSearchParams = () => {
       newSearch?: string;
       newTags?: string[];
       newSource?: MarketplaceSourceFilterValue;
+      newTab?: MarketplaceTab;
     }) => {
-      const { newSearch, newTags, newSource } = params;
+      const { newSearch, newTags, newSource, newTab } = params;
       const nextQuery = { ...router.query };
 
+      if (newTab !== undefined) {
+        if (newTab === 'moderation') {
+          nextQuery.type = 'moderation';
+          delete nextQuery.tags;
+        } else {
+          delete nextQuery.type;
+          delete nextQuery.tab;
+        }
+      }
       if (newSearch !== undefined) {
         if (newSearch) {
           nextQuery.search = newSearch;
@@ -123,40 +162,13 @@ const useSearchParams = () => {
     [router]
   );
 
-  return { searchText, tagIds, sourceFilter, updateParams };
-};
-
-const hasMarketplaceToolUpdate = ({
-  installedVersion,
-  installedEtag,
-  marketplaceVersion,
-  marketplaceEtag
-}: {
-  installedVersion?: string;
-  installedEtag?: string;
-  marketplaceVersion?: string;
-  marketplaceEtag?: string;
-}) => {
-  if (marketplaceVersion && installedVersion !== marketplaceVersion) return true;
-  if (marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag) return true;
-
-  return false;
+  return { activeTab, searchText, tagIds, sourceFilter, updateParams };
 };
 
 const getSystemToolRawPluginId = (toolId: string) => {
   try {
     const { source, pluginId } = splitCombineToolId(toolId);
     return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
-  if (typeof error !== 'string') return;
-  try {
-    const parsed = JSON.parse(error);
-    return Array.isArray(parsed) ? (parsed as PluginInstallFailureType[]) : undefined;
   } catch {
     return undefined;
   }
@@ -171,7 +183,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   const { toast } = useToast();
 
   // Use custom hook for URL params management
-  const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
+  const { activeTab, searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
@@ -249,15 +261,16 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       getMarketplaceTools({
         pageNum,
         pageSize,
+        type: activeTab,
         searchKey: searchText || undefined,
-        tags: tagIds.length > 0 ? tagIds : undefined,
+        tags: activeTab === 'tool' && tagIds.length > 0 ? tagIds : undefined,
         source: sourceFilter
       }),
     {
       type: 'scroll',
       defaultPageSize: 20,
-      pageSizeCacheKey: 'dashboard-system-tool-marketplace-tools',
-      refreshDeps: [searchText, tagIds, sourceFilter]
+      pageSizeCacheKey: `dashboard-system-tool-marketplace-${activeTab}`,
+      refreshDeps: [activeTab, searchText, tagIds, sourceFilter]
     }
   );
 
@@ -267,28 +280,66 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     runAsync: refreshInstalledPlugins
   } = useRequest(
     async () => {
-      const tools =
-        mode === 'team'
-          ? await getTeamSystemPluginList({ source: 'all' })
-          : await getAdminSystemTools({});
+      if (mode === 'team') {
+        const tools = await getTeamSystemPluginList({ source: 'all' });
+        const allSystemPluginTools = tools.flatMap((tool) => {
+          const id = getSystemToolRawPluginId(tool.id);
+          if (!id) return [];
+          const teamTool = tool as typeof tool & {
+            source?: string;
+            teamInstallStatus?: string;
+          };
+          if (!isTeamPluginSource(teamTool.source) || teamTool.teamInstallStatus !== 'installed') {
+            return [];
+          }
+
+          return [
+            {
+              id,
+              type: 'tool' as 'tool' | 'moderation',
+              systemToolId: tool.id,
+              source: tool.source,
+              enabled: false,
+              status: tool.status,
+              version: teamTool.installedVersion ?? tool.version,
+              etag: teamTool.installedEtag ?? tool.etag,
+              name: tool.name,
+              description: tool.intro,
+              icon: tool.avatar,
+              author: tool.author,
+              tags: tool.tags
+            }
+          ];
+        });
+        const list = allSystemPluginTools.filter(
+          (tool) => tool.status !== PluginStatusEnum.Offline
+        );
+
+        return {
+          ids: new Set(list.map((item) => item.id)),
+          map: new Map(list.map((item) => [item.id, item])),
+          allMap: new Map(allSystemPluginTools.map((item) => [item.id, item])),
+          list
+        };
+      }
+
+      // mode === 'admin'
+      const [tools, moderationList] = await Promise.all([
+        getAdminSystemTools({}),
+        getAdminModerationPluginList({ includeDeleted: true }).catch(() => [])
+      ]);
+
       const allSystemPluginTools = tools.flatMap((tool) => {
         const id = getSystemToolRawPluginId(tool.id);
         if (!id) return [];
-        const teamTool = tool as typeof tool & {
-          source?: string;
-          teamInstallStatus?: string;
-        };
-        if (
-          mode === 'team' &&
-          (!isTeamPluginSource(teamTool.source) || teamTool.teamInstallStatus !== 'installed')
-        ) {
-          return [];
-        }
 
         return [
           {
             id,
+            type: 'tool' as 'tool' | 'moderation',
             systemToolId: tool.id,
+            source: undefined as string | undefined,
+            enabled: false,
             status: tool.status,
             version: tool.version,
             etag: tool.etag,
@@ -300,18 +351,35 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           }
         ];
       });
+
+      const moderationInstalledTools = moderationList.map((item) => ({
+        id: item.pluginId,
+        type: 'moderation' as 'tool' | 'moderation',
+        systemToolId: item.pluginId,
+        source: item.source,
+        enabled: Boolean(item.enabled),
+        status: item.deleted ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
+        version: item.version || '',
+        etag: item.etag || '',
+        name: { en: item.name, 'zh-CN': item.name },
+        description: item.description ? { en: item.description, 'zh-CN': item.description } : '',
+        icon: item.icon || '',
+        author: item.author || '',
+        tags: []
+      }));
+
+      allSystemPluginTools.push(...moderationInstalledTools);
       const list = allSystemPluginTools.filter((tool) => tool.status !== PluginStatusEnum.Offline);
 
       return {
         ids: new Set(list.map((item) => item.id)),
         map: new Map(list.map((item) => [item.id, item])),
         allMap: new Map(allSystemPluginTools.map((item) => [item.id, item])),
-        list: list
+        list
       };
     },
     {
-      manual: false,
-      refreshDeps: [mode]
+      manual: false
     }
   );
 
@@ -319,9 +387,77 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     manual: false
   });
 
-  const { data: marketplaceVersions } = useRequest(getMarketplaceToolVersions, {
-    manual: false
-  });
+  const { data: marketplaceVersions } = useRequest(
+    () => getMarketplaceToolVersions(undefined, activeTab),
+    {
+      manual: false,
+      refreshDeps: [activeTab]
+    }
+  );
+
+  const installPluginByDownloadUrl = useCallback(
+    async ({
+      tool,
+      downloadUrl,
+      version,
+      fallbackError
+    }: {
+      tool: ToolCardItemType;
+      downloadUrl: string;
+      version?: string;
+      fallbackError: string;
+    }) => {
+      if (mode === 'team') {
+        try {
+          const installResult = await installTeamPluginWithUrl({
+            downloadUrls: [downloadUrl],
+            plugins: [
+              {
+                pluginId: tool.id,
+                version: version || tool.version || '',
+                etag: tool.etag || '',
+                marketplaceToolId: tool.id,
+                marketplaceSource: tool.source
+              }
+            ]
+          });
+          const failureMessage = getInstallFailureMessage({
+            installResult,
+            language: i18n.language,
+            fallback: fallbackError
+          });
+          if (failureMessage) {
+            return Promise.reject(failureMessage);
+          }
+        } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
+          return Promise.reject(
+            getInstallErrorReason({
+              error,
+              language: i18n.language,
+              fallback: fallbackError
+            })
+          );
+        }
+        return;
+      }
+
+      const installResult = await intallPluginWithUrl({
+        downloadUrls: [downloadUrl]
+      });
+      const failureMessage = getInstallFailureMessage({
+        installResult,
+        language: i18n.language,
+        fallback: fallbackError
+      });
+      if (failureMessage) {
+        return Promise.reject(failureMessage);
+      }
+    },
+    [i18n.language, mode]
+  );
 
   // Controler
   const { runAsync: handleInstallTool } = useRequest(
@@ -353,28 +489,58 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           if (mode === 'team') {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-            if (!downloadUrl) return;
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
+            const downloadUrl = await getMarketplaceDownloadURL({
+              toolId: tool.id,
+              version,
+              type: tool.type
             });
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
+            }
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
+            });
+          } else if (activeTab === 'moderation' && shouldReinstallOfflineTool) {
+            try {
+              await postAdminRestoreModerationPlugin({ pluginId: tool.id });
+            } catch (err) {
+              if (err instanceof ToastHandledError) {
+                throw err;
+              }
+              const downloadUrl = await getMarketplaceDownloadURL({
+                toolId: tool.id,
+                version,
+                type: tool.type || 'moderation'
+              });
+              if (!downloadUrl) throw err;
+
+              await installPluginByDownloadUrl({
+                tool,
+                downloadUrl,
+                version,
+                fallbackError: t('common:Error')
+              });
+            }
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-            if (!downloadUrl) return;
+            const downloadUrl = await getMarketplaceDownloadURL({
+              toolId: tool.id,
+              version,
+              type: tool.type
+            });
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
+            }
 
-            await intallPluginWithUrl({
-              downloadUrls: [downloadUrl]
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
             });
           }
 
@@ -383,7 +549,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
-          if (mode === 'team' || !shouldReinstallOfflineTool) {
+          if (mode === 'team' || activeTab === 'moderation' || !shouldReinstallOfflineTool) {
             await refreshInstalledPlugins();
           }
           toast({
@@ -417,26 +583,22 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           // Get download URL
-          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-          if (!downloadUrl) return;
+          const downloadUrl = await getMarketplaceDownloadURL({
+            toolId: tool.id,
+            version,
+            type: tool.type
+          });
+          if (!downloadUrl) {
+            return Promise.reject(t('app:toolkit_update_failed'));
+          }
 
           // Call install interface for update
-          if (mode === 'team') {
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
-            });
-          } else {
-            await intallPluginWithUrl({ downloadUrls: [downloadUrl] });
-          }
+          await installPluginByDownloadUrl({
+            tool,
+            downloadUrl,
+            version,
+            fallbackError: t('app:toolkit_update_failed')
+          });
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
@@ -452,11 +614,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [mode, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+    [installPluginByDownloadUrl, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins, t]
   );
 
-  const { runAsync: handleUpdateToolFromCard } = useRequest(
-    (tool: ToolCardItemType) => handleUpdateTool(tool),
+  const { runAsync: handleSingleUpdateTool } = useRequest(
+    (tool: ToolCardItemType, version?: string) => handleUpdateTool(tool, version),
     {
       manual: true,
       successToast: t('common:update_success')
@@ -471,7 +633,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         return;
       }
 
-      const installedTool = systemInstalledPlugins?.map.get(tool.id);
+      const targetType = tool.type ?? activeTab;
+      const installedTool =
+        systemInstalledPlugins?.list.find(
+          (item) => item.id === tool.id && item.type === targetType
+        ) ?? systemInstalledPlugins?.map.get(tool.id);
       const systemToolId = tool.associatedPluginId || installedTool?.systemToolId;
       if (!systemToolId) return;
 
@@ -479,7 +645,12 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         installingOrDeletingToolIdsDispatch.add(tool.id);
 
         try {
-          if (mode === 'team') {
+          if (activeTab === 'moderation') {
+            await postAdminDeleteModerationPlugin({
+              pluginId: tool.id,
+              ...(installedTool?.source ? { source: installedTool.source } : {})
+            });
+          } else if (mode === 'team') {
             await deleteTeamPlugin({
               pluginId: systemToolId
             });
@@ -500,7 +671,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
           }
-          if (mode === 'team') {
+          if (mode === 'team' || activeTab === 'moderation') {
             await refreshInstalledPlugins();
           }
         } finally {
@@ -521,17 +692,49 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   const openMarketplaceUninstallConfirm = useCallback(
     (tool: ToolCardItemType) => {
       const toolName = selectPluginText(tool.name, i18n.language) || tool.id;
+      const targetType = tool.type ?? activeTab;
+      const installedTool = systemInstalledPlugins?.list.find(
+        (item) => item.id === tool.id && item.type === targetType
+      );
+      const isLastModerationPlugin =
+        activeTab === 'moderation' &&
+        (systemInstalledPlugins?.list.filter((item) => item.type === 'moderation').length ?? 0) <=
+          1;
+
+      if (activeTab === 'moderation' && !isLastModerationPlugin && installedTool?.enabled) {
+        toast({
+          status: 'warning',
+          title: t('admin:moderation.disable_before_delete')
+        });
+        return;
+      }
 
       openUninstallConfirm({
-        title: t('app:toolkit_uninstall'),
-        customContent: t('app:confirm_uninstall_tool'),
+        title:
+          activeTab === 'moderation' && isLastModerationPlugin
+            ? t('admin:moderation.uninstall_last_plugin_title')
+            : t('app:toolkit_uninstall'),
+        customContent:
+          activeTab === 'moderation'
+            ? isLastModerationPlugin
+              ? t('admin:moderation.confirm_uninstall_last_plugin')
+              : t('app:confirm_uninstall_moderation')
+            : t('app:confirm_uninstall_tool'),
         confirmText: t('app:toolkit_uninstall'),
         confirmButtonVariant: 'dangerOutline',
         inputConfirmText: toolName,
         onConfirm: () => handleUninstallTool(tool)
       })();
     },
-    [handleUninstallTool, i18n.language, openUninstallConfirm, t]
+    [
+      activeTab,
+      handleUninstallTool,
+      i18n.language,
+      openUninstallConfirm,
+      systemInstalledPlugins,
+      t,
+      toast
+    ]
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -562,7 +765,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       tools
         ?.map((tool) => {
           const toolId = tool.toolId || tool.pluginId;
-          const installedTool = systemInstalledPlugins?.map.get(toolId);
+          const targetType = tool.type ?? activeTab;
+          const installedTool =
+            systemInstalledPlugins?.list.find(
+              (item) => item.id === toolId && item.type === targetType
+            ) ?? systemInstalledPlugins?.map.get(toolId);
           const isInstalled = !!installedTool;
           const update = installedTool
             ? hasMarketplaceToolUpdate({
@@ -589,7 +796,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             etag: tool.etag,
             source: tool.source,
             associatedPluginId: installedTool?.systemToolId,
-            downloadCount: tool.downloadCount
+            downloadCount: tool.downloadCount,
+            type: tool.type
           };
         })
         ?.filter((tool) => {
@@ -597,7 +805,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           return !tool.installed;
         }) || []
     );
-  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins]);
+  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins, activeTab]);
 
   // Calculate updatable tools based on full version data from marketplace
   const updatableTools = useMemo(() => {
@@ -606,9 +814,10 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     // Create a map for quick lookup of marketplace versions
     const marketplaceVersionMap = new Map(marketplaceVersions.map((item) => [item.toolId, item]));
 
-    // Filter installed plugins that have updates available
+    // Filter installed plugins that match the current tab and have updates available
     const updatableList = systemInstalledPlugins.list
       .filter((installedPlugin) => {
+        if ((installedPlugin.type ?? 'tool') !== activeTab) return false;
         const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
         return hasMarketplaceToolUpdate({
           installedVersion: installedPlugin.version,
@@ -632,12 +841,13 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           update: true,
           version: marketplaceTool?.version,
           etag: marketplaceTool?.etag,
-          downloadCount: 0
+          downloadCount: 0,
+          type: installedPlugin.type ?? marketplaceTool?.type
         };
       });
 
     return updatableList;
-  }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
+  }, [systemInstalledPlugins, marketplaceVersions, i18n.language, activeTab]);
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
@@ -645,13 +855,23 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
-      const selectedTools = updatableTools.filter((tool) => toolIds.includes(tool.id));
+      if (
+        downloadUrls.length !== toolIds.length ||
+        downloadUrls.some((url) => typeof url !== 'string' || !url)
+      ) {
+        return Promise.reject(t('app:toolkit_update_failed'));
+      }
+
+      const updatableToolMap = new Map(updatableTools.map((tool) => [tool.id, tool]));
+      const selectedTools = toolIds
+        .map((id) => updatableToolMap.get(id))
+        .filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
 
       // 2. Batch install (update)
       let failures: ReturnType<typeof getBatchUpdateFailures> = [];
       if (mode === 'team') {
         try {
-          await installTeamPluginWithUrl({
+          const installResult = await installTeamPluginWithUrl({
             downloadUrls,
             plugins: selectedTools.map((tool) => ({
               pluginId: tool.id,
@@ -660,7 +880,18 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               marketplaceToolId: tool.id
             }))
           });
+          failures = installResult?.failed
+            ? getBatchUpdateFailures({
+                toolIds,
+                downloadUrls,
+                installResult,
+                language: i18n.language
+              })
+            : [];
         } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
           const failed = parseTeamInstallFailure(error);
           if (!failed) throw error;
           failures = getBatchUpdateFailures({
@@ -680,17 +911,40 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         });
       }
 
-      // 3. Refresh installed plugins list
-      await refreshInstalledPlugins();
+      const summary = summarizeBatchUpdateResult({
+        totalCount: toolIds.length,
+        failures
+      });
 
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
+      // 3. Refresh installed plugins list when any item succeeded
+      if (summary.status !== 'error') {
+        await refreshInstalledPlugins();
+      }
+
+      // 4. Show toast and close drawer only on full success
+      if (summary.status === 'success') {
+        setShowBatchUpdateDrawer(false);
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
+      } else if (summary.status === 'partial') {
+        toast({
+          title: t('common:batch_partial_failed'),
+          description: summary.firstReason,
+          status: 'warning'
+        });
+      } else {
+        toast({
+          title: summary.firstReason || t('app:toolkit_update_failed'),
+          status: 'error'
+        });
+      }
 
       return failures;
     },
     {
-      manual: true,
-      successToast: t('common:Success')
+      manual: true
     }
   );
 
@@ -759,7 +1013,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           />
           {!showCompactSearch && (
             <Flex gap={3} position={'absolute'} right={4} top={4}>
-              {updatableTools.length > 0 && (
+              {activeTab === 'tool' && updatableTools.length > 0 && (
                 <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
                   {t('marketplace:toolkit_updatable')} ({updatableTools.length})
                 </Button>
@@ -767,6 +1021,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               {feConfigs?.docUrl && (
                 <>
                   <Button
+                    variant="primary"
                     onClick={() => {
                       const url = getDocPath('/plugin/system-tool-development');
                       if (url) {
@@ -796,7 +1051,51 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex mt={2} pt={4} alignItems={'start'}>
+              <Flex mt={2} pt={4} alignItems={'center'}>
+                {mode === 'admin' && (
+                  <Flex
+                    p={'2px'}
+                    bg={'myGray.100'}
+                    borderRadius={'6px'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    alignItems={'center'}
+                    mr={3}
+                    flexShrink={0}
+                    userSelect={'none'}
+                  >
+                    <Button
+                      size={'xs'}
+                      h={'26px'}
+                      px={3}
+                      borderRadius={'4px'}
+                      fontSize={'12px'}
+                      fontWeight={activeTab === 'tool' ? 'semibold' : 'normal'}
+                      bg={activeTab === 'tool' ? 'white' : 'transparent'}
+                      color={activeTab === 'tool' ? 'myGray.900' : 'myGray.600'}
+                      boxShadow={activeTab === 'tool' ? 'sm' : 'none'}
+                      _hover={{ color: 'myGray.900' }}
+                      onClick={() => updateParams({ newTab: 'tool' })}
+                    >
+                      {t('marketplace:tab_system_tool')}
+                    </Button>
+                    <Button
+                      size={'xs'}
+                      h={'26px'}
+                      px={3}
+                      borderRadius={'4px'}
+                      fontSize={'12px'}
+                      fontWeight={activeTab === 'moderation' ? 'semibold' : 'normal'}
+                      bg={activeTab === 'moderation' ? 'white' : 'transparent'}
+                      color={activeTab === 'moderation' ? 'myGray.900' : 'myGray.600'}
+                      boxShadow={activeTab === 'moderation' ? 'sm' : 'none'}
+                      _hover={{ color: 'myGray.900' }}
+                      onClick={() => updateParams({ newTab: 'moderation' })}
+                    >
+                      {t('marketplace:tab_moderation')}
+                    </Button>
+                  </Flex>
+                )}
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
@@ -862,14 +1161,45 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                   )}
                 </Flex>
                 <Box overflow={'auto'} mr={6} mb={-1}>
-                  <ToolTagFilterBox
-                    tags={allTags}
-                    selectedTagIds={tagIds}
-                    onTagSelect={handleTagSelect}
-                    selectedSource={sourceFilter}
-                    onSourceSelect={(source) => updateParams({ newSource: source })}
-                    variant="marketplace"
-                  />
+                  {activeTab === 'tool' ? (
+                    <ToolTagFilterBox
+                      tags={allTags}
+                      selectedTagIds={tagIds}
+                      onTagSelect={handleTagSelect}
+                      selectedSource={sourceFilter}
+                      onSourceSelect={(source) => updateParams({ newSource: source })}
+                      variant="marketplace"
+                    />
+                  ) : (
+                    <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
+                      <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
+                        {t('app:logs_source')}:
+                      </Text>
+                      <MySelect
+                        w={'110px'}
+                        h={'32px'}
+                        fontSize={'xs'}
+                        value={sourceFilter ?? 'all'}
+                        list={[
+                          { label: t('common:All'), value: 'all' },
+                          {
+                            label: t('app:toolkit_official'),
+                            value: MarketplaceOfficialSource
+                          },
+                          {
+                            label: t('app:toolkit_community'),
+                            value: MarketplaceCommunitySource
+                          }
+                        ]}
+                        onChange={(val) =>
+                          updateParams({
+                            newSource:
+                              val === 'all' ? undefined : (val as MarketplaceSourceFilterType)
+                          })
+                        }
+                      />
+                    </Flex>
+                  )}
                 </Box>
               </Flex>
             </Box>
@@ -910,6 +1240,51 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
               {t('marketplace:toolkit_marketplace_title')}
             </Box>
+
+            {mode === 'admin' && (
+              <Flex
+                p={'3px'}
+                bg={'myGray.100'}
+                borderRadius={'8px'}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                alignItems={'center'}
+                gap={1}
+                userSelect={'none'}
+              >
+                <Button
+                  size={'sm'}
+                  h={'28px'}
+                  px={4}
+                  borderRadius={'6px'}
+                  fontSize={'13px'}
+                  fontWeight={activeTab === 'tool' ? 'semibold' : 'normal'}
+                  bg={activeTab === 'tool' ? 'white' : 'transparent'}
+                  color={activeTab === 'tool' ? 'myGray.900' : 'myGray.600'}
+                  boxShadow={activeTab === 'tool' ? 'sm' : 'none'}
+                  _hover={{ color: 'myGray.900' }}
+                  onClick={() => updateParams({ newTab: 'tool' })}
+                >
+                  {t('marketplace:tab_system_tool')}
+                </Button>
+                <Button
+                  size={'sm'}
+                  h={'28px'}
+                  px={4}
+                  borderRadius={'6px'}
+                  fontSize={'13px'}
+                  fontWeight={activeTab === 'moderation' ? 'semibold' : 'normal'}
+                  bg={activeTab === 'moderation' ? 'white' : 'transparent'}
+                  color={activeTab === 'moderation' ? 'myGray.900' : 'myGray.600'}
+                  boxShadow={activeTab === 'moderation' ? 'sm' : 'none'}
+                  _hover={{ color: 'myGray.900' }}
+                  onClick={() => updateParams({ newTab: 'moderation' })}
+                >
+                  {t('marketplace:tab_moderation')}
+                </Button>
+              </Flex>
+            )}
+
             <Box>
               <InputGroup position={'relative'}>
                 <MyIcon
@@ -951,14 +1326,45 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               userSelect={'none'}
             >
               <Box flex={'1'} overflow={'auto'} mb={-1}>
-                <ToolTagFilterBox
-                  tags={allTags}
-                  selectedTagIds={tagIds}
-                  onTagSelect={handleTagSelect}
-                  selectedSource={sourceFilter}
-                  onSourceSelect={(source) => updateParams({ newSource: source })}
-                  variant="marketplace"
-                />
+                {activeTab === 'tool' ? (
+                  <ToolTagFilterBox
+                    tags={allTags}
+                    selectedTagIds={tagIds}
+                    onTagSelect={handleTagSelect}
+                    selectedSource={sourceFilter}
+                    onSourceSelect={(source) => updateParams({ newSource: source })}
+                    variant="marketplace"
+                  />
+                ) : (
+                  <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
+                    <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
+                      {t('app:logs_source')}:
+                    </Text>
+                    <MySelect
+                      w={'110px'}
+                      h={'32px'}
+                      fontSize={'xs'}
+                      value={sourceFilter ?? 'all'}
+                      list={[
+                        { label: t('common:All'), value: 'all' },
+                        {
+                          label: t('app:toolkit_official'),
+                          value: MarketplaceOfficialSource
+                        },
+                        {
+                          label: t('app:toolkit_community'),
+                          value: MarketplaceCommunitySource
+                        }
+                      ]}
+                      onChange={(val) =>
+                        updateParams({
+                          newSource:
+                            val === 'all' ? undefined : (val as MarketplaceSourceFilterType)
+                        })
+                      }
+                    />
+                  </Flex>
+                )}
               </Box>
               <Checkbox
                 size={'sm'}
@@ -993,7 +1399,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
-                      onUpdate={() => handleUpdateToolFromCard(tool)}
+                      onUpdate={() => handleSingleUpdateTool(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />
@@ -1017,7 +1423,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             openMarketplaceUninstallConfirm(selectedTool);
             return Promise.resolve();
           }}
-          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
+          onUpdate={(version) => handleSingleUpdateTool(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"
@@ -1025,9 +1431,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version })
+            await getMarketplaceToolDetail({ toolId, version, type: selectedTool.type })
           }
-          onFetchVersions={getMarketplaceToolVersions}
+          onFetchVersions={(toolId?: string) =>
+            getMarketplaceToolVersions(toolId, selectedTool.type)
+          }
         />
       )}
 
@@ -1043,10 +1451,14 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           singleUpdatingToolIds={updatingToolIds}
           deletingToolIds={installingOrDeletingToolIds}
           //@ts-ignore
-          onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version })
-          }
-          onFetchVersions={getMarketplaceToolVersions}
+          onFetchDetail={async (toolId: string, version?: string) => {
+            const current = updatableTools.find((t) => t.id === toolId);
+            return await getMarketplaceToolDetail({ toolId, version, type: current?.type });
+          }}
+          onFetchVersions={(toolId?: string) => {
+            const current = updatableTools.find((t) => t.id === toolId);
+            return getMarketplaceToolVersions(toolId, current?.type);
+          }}
         />
       )}
       <UninstallConfirmModal />

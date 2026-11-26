@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, type DefaultValues, useForm } from 'react-hook-form';
 import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -25,35 +25,47 @@ const RenderInput = () => {
   const { t } = useTranslation();
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
-  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
 
-  const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  // 插件入参表单与会话级全局变量表单（ChatItemContext.variablesForm）语义不同：
+  // 后者会被 getInitChatInfo、clearChatRecords 及 SSE updateVariables 写入，且跨 Tab 卸载持续存活；
+  // 由 RenderInput 独立持有表单实例，既防止运行时变量覆盖已提交入参，也避免跨挂载残留旧值。
+  const inputForm = useForm<ChatBoxInputFormType>();
+
+  const hasHistory = useContextSelector(ChatRecordContext, (v) => v.chatRecords.length > 0);
+  const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
+  const historyInputSnapshot = useContextSelector(ChatRecordContext, (v) => {
+    const historyValue = v.chatRecords[0]?.value as UserChatItemValueItemType[] | undefined;
+    return Array.isArray(historyValue)
+      ? historyValue.find((item) => item.text?.content)?.text?.content
+      : undefined;
+  });
 
   const onStartChat = useContextSelector(PluginRunContext, (v) => v.onStartChat);
   const onNewChat = useContextSelector(PluginRunContext, (v) => v.onNewChat);
   const onSubmit = useContextSelector(PluginRunContext, (v) => v.onSubmit);
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+  const isReady = useContextSelector(PluginRunContext, (v) => v.isReady ?? true);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
-  const { control, handleSubmit, reset } = variablesForm;
+  const { control, handleSubmit, reset } = inputForm;
 
-  // Get plugin input components
-  const formatPluginInputs = useMemoEnhance(() => {
-    if (histories.length === 0) return pluginInputs;
+  const parsedHistoryInputs = useMemoEnhance(() => {
+    if (!hasHistory || !historyInputSnapshot) return undefined;
     try {
-      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
-
-      if (!inputValueString) return pluginInputs;
-      return JSON.parse(inputValueString) as FlowNodeInputItemType[];
+      const parsed = JSON.parse(historyInputSnapshot);
+      return Array.isArray(parsed) ? (parsed as FlowNodeInputItemType[]) : undefined;
     } catch (error) {
       console.error('Failed to parse input value:', error);
-      return pluginInputs;
+      return undefined;
     }
-  }, [histories, pluginInputs]);
+  }, [hasHistory, historyInputSnapshot]);
+
+  // Get plugin input components
+  const formatPluginInputs = parsedHistoryInputs ?? pluginInputs;
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
+  const [fieldResetKeys, setFieldResetKeys] = useState<Record<string, number>>({});
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
       setRestartData(e);
@@ -62,8 +74,32 @@ const RenderInput = () => {
     [onNewChat]
   );
 
+  const resetFormVariables = useCallback(
+    (nextValues: DefaultValues<ChatBoxInputFormType>) => {
+      const nextVariables = nextValues.variables ?? {};
+      reset(nextValues);
+      // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
+      // 仅当 reset 将字段设为 undefined 时，get(..., defaultValue) 会回退到旧值并被 register 写回。
+      // 按字段粒度仅重建目标值为 undefined 的 Controller，避免已赋值字段（如附件选择器）被无谓卸载。
+      const keysToRemount = formatPluginInputs
+        .map((input) => input.key)
+        .filter((key) => nextVariables[key] === undefined);
+
+      if (keysToRemount.length > 0) {
+        setFieldResetKeys((prev) => {
+          const next = { ...prev };
+          keysToRemount.forEach((key) => {
+            next[key] = (prev[key] ?? 0) + 1;
+          });
+          return next;
+        });
+      }
+    },
+    [formatPluginInputs, reset]
+  );
+
   const onResetDefault = useCallback(() => {
-    reset({
+    resetFormVariables({
       variables: formatPluginInputs.reduce(
         (acc, input) => {
           acc[input.key] = input.defaultValue;
@@ -72,14 +108,14 @@ const RenderInput = () => {
         {} as Record<string, any>
       )
     });
-  }, [reset, formatPluginInputs]);
+  }, [formatPluginInputs, resetFormVariables]);
 
   // Reset input value
   useDeepCompareEffect(() => {
     // Set config default value
-    if (histories.length === 0) {
+    if (!hasHistory) {
       if (restartData) {
-        reset(restartData);
+        resetFormVariables(restartData);
         setRestartData(undefined);
         return;
       }
@@ -89,42 +125,18 @@ const RenderInput = () => {
     }
 
     // Set history to default value
-    const historyVariables = (() => {
-      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      if (!historyValue) return undefined;
-
-      try {
-        const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
-        return (
-          inputValueString &&
-          JSON.parse(inputValueString).reduce(
-            (
-              acc: Record<string, any>,
-              {
-                key,
-                value
-              }: {
-                key: string;
-                value: any;
-              }
-            ) => ({ ...acc, [key]: value }),
-            {}
-          )
-        );
-      } catch (error) {
-        console.error('Failed to parse input value:', error);
-        return undefined;
-      }
-    })();
-    reset({
+    const historyVariables = parsedHistoryInputs?.reduce(
+      (acc: Record<string, any>, { key, value }) => ({ ...acc, [key]: value }),
+      {}
+    );
+    resetFormVariables({
       variables: historyVariables
     });
-  }, [histories, formatPluginInputs]);
+  }, [hasHistory, historyInputSnapshot, formatPluginInputs]);
 
   const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   const fileUploading = formFileUploading;
-  const hasHistory = histories.length > 0;
   const isDisabledInput = !!hasHistory;
 
   return (
@@ -194,7 +206,7 @@ const RenderInput = () => {
                 )}
               </Flex>
               <Controller
-                key={inputKey}
+                key={`${inputKey}-${fieldResetKeys[input.key] ?? 0}`}
                 control={control}
                 name={inputKey}
                 rules={{
@@ -234,7 +246,7 @@ const RenderInput = () => {
                         isDisabled={isDisabledInput}
                         isInvalid={!!error}
                         inputType={nodeInputTypeToInputType(input.renderTypeList)}
-                        form={variablesForm}
+                        form={inputForm}
                         fieldName={inputKey}
                         outLinkAuthData={outLinkAuthData}
                         isRichText={false}
@@ -259,7 +271,7 @@ const RenderInput = () => {
 
           <Button
             isLoading={isChatting}
-            isDisabled={fileUploading}
+            isDisabled={fileUploading || isLoadingRecords || !isReady}
             onClick={() => {
               handleSubmit((e) => {
                 if (hasHistory) {

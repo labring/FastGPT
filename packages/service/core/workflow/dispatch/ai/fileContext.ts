@@ -2,7 +2,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { getSafeSandboxInputFilename } from '../../../ai/sandbox/utils';
-import { prepareWorkflowFiles } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 import {
   rewriteAgentLoopCoreUserMessageWithFiles,
   type AgentLoopCoreInputFile,
@@ -46,7 +46,7 @@ export const parseWorkflowAIInputFiles = async ({
   files,
   maxFileAmount
 }: ParseWorkflowAIInputFilesParams): Promise<AgentLoopCoreInputFile[]> => {
-  const parsedFiles = await prepareWorkflowFiles({
+  const parsedFiles = await getWorkflowContext().fileContext.prepareFiles({
     files,
     maxFiles: maxFileAmount,
     allowDataUrl: false
@@ -55,7 +55,11 @@ export const parseWorkflowAIInputFiles = async ({
   // 分类可以并发，但文件名必须按输入顺序分配，保持沙箱路径稳定。
   const usedNames = new Map<string, number>();
   return parsedFiles.map((file, index) => ({
-    name: getSafeSandboxInputFilename(file.name || file.url, index, usedNames),
+    name: getSafeSandboxInputFilename({
+      filename: file.name || file.url,
+      index,
+      usedNames
+    }),
     ...(file.filename ? { filename: file.filename } : {}),
     type: file.type,
     url: file.url

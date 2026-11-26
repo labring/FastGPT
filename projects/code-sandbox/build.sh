@@ -37,6 +37,9 @@ fi
 if [ -f src/isolated/fastgpt_js_sandbox.node ]; then
   cp src/isolated/fastgpt_js_sandbox.node dist/fastgpt_js_sandbox.node
 fi
+if [ -f src/isolated/fastgpt_js_launcher ]; then
+  cp src/isolated/fastgpt_js_launcher dist/fastgpt_js_launcher
+fi
 
 echo ""
 echo "Build complete!"
@@ -49,6 +52,9 @@ if [ -f dist/fastgpt_python_sandbox.so ]; then
 fi
 if [ -f dist/fastgpt_js_sandbox.node ]; then
   echo "  - fastgpt_js_sandbox.node: $(du -h dist/fastgpt_js_sandbox.node | cut -f1)"
+fi
+if [ -f dist/fastgpt_js_launcher ]; then
+  echo "  - fastgpt_js_launcher: $(du -h dist/fastgpt_js_launcher | cut -f1)"
 fi
 echo ""
 echo "ℹ️  worker 通过 safeRequire(name) 在运行时动态加载白名单模块"

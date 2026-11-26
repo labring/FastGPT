@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { PublishChannelEnum } from './constant';
+import type { OutLinkBrandConfigType } from './branding';
 import { BoolSchema } from '../../common/zod';
 
 export const FeishuAppSchema = z.object({
@@ -78,10 +79,19 @@ export const WechatAppSchema = z.object({
   userId: z.string().optional(),
   syncBuf: z.string().default(''),
   status: z.enum(['online', 'offline', 'error']).default('offline'),
+  bindingId: z.uuid().optional(),
+  qrAttemptId: z.uuid().optional(),
   loginTime: z.string().optional(),
   lastError: z.string().optional()
 });
 export type WechatAppType = z.infer<typeof WechatAppSchema>;
+
+export const WechatConnectionErrorSchema = z.enum([
+  'invalid_url',
+  'private_address',
+  'request_failed'
+]);
+export type WechatConnectionErrorType = z.infer<typeof WechatConnectionErrorSchema>;
 
 /**
  * WeChat Official Account app config.
@@ -107,7 +117,7 @@ export type OutlinkAppType =
   | WechatAppType
   | undefined;
 
-export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
+export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = OutLinkBrandConfigType & {
   _id: string;
   shareId: string;
   teamId: string;

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT 集成测试用例'
+  short_description: '生成按业务归档的接口、UI 与集成测试用例，支持单页阅读和查询'
+  default_prompt: '使用 $fastgpt-integration-test-case 为本次 FastGPT 需求生成可复现的集成测试用例，并检查用例库。'

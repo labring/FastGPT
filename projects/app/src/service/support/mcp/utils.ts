@@ -1,3 +1,4 @@
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -29,10 +30,9 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
@@ -50,7 +50,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { markProfileError, profileStage, setProfileMeta } from '@fastgpt/service/common/profiling';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import {
   LimitTypeEnum,
   assertTeamFrequencyLimit
@@ -213,11 +213,19 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
  */
 export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
   setProfileMeta({ toolName });
-  const dispatchApp = async (
-    app: AppSchemaType,
-    variables: Record<string, any>,
-    effectiveTmbId: string
-  ) => {
+  const dispatchApp = async ({
+    app,
+    variables,
+    effectiveTmbId,
+    publishSource,
+    sourceName
+  }: {
+    app: AppSchemaType;
+    variables: Record<string, any>;
+    effectiveTmbId: string;
+    publishSource: ChatPublishSourceType;
+    sourceName: string;
+  }) => {
     const isPlugin = app.type === AppTypeEnum.workflowTool;
     const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
@@ -260,6 +268,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     })();
 
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes));
+    const entryVariables = { ...variables };
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
@@ -268,6 +277,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     } else {
       delete variables.question;
       delete variables.fileUrlList;
+      delete entryVariables.question;
+      delete entryVariables.fileUrlList;
     }
 
     const chatId = getNanoid();
@@ -298,7 +309,10 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         teamId: String(app.teamId),
         tmbId: effectiveTmbId,
         source: ChatSourceEnum.mcp,
+        publishSource,
+        sourceName,
         userContent: workflowUserQuestion,
+        variables: entryVariables,
         responseChatItemId,
         fixedTitle: pluginFixedTitle
       })
@@ -348,7 +362,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
             chatConfig,
             histories: [],
             stream: false,
-            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             nodeResponseWriteConfig: {
               persistToDb: true,
               retainInMemory: false
@@ -379,6 +392,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         appChatConfig: chatConfig,
         variables: newVariables,
         source: ChatSourceEnum.mcp,
+        publishSource: preparedRound.publishSource,
+        sourceName,
         userContent: workflowUserQuestion,
         aiContent: aiResponse,
         durationSeconds,
@@ -414,11 +429,13 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         });
       }
       throw error;
+    } finally {
+      await preparedRound?.releaseGenerationLease?.();
     }
   };
 
   const mcp = await profileStage({ event: 'mcpKey.read' }, () =>
-    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }).lean()
+    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1, authProxy: 1, name: 1 }).lean()
   );
 
   if (!mcp) {
@@ -469,5 +486,11 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     })
   );
 
-  return await dispatchApp(app, inputs, effectiveTmbId);
+  return await dispatchApp({
+    app,
+    variables: inputs,
+    effectiveTmbId,
+    publishSource: { type: ChatSourceEnum.mcp, id: String(mcp._id) },
+    sourceName: mcp.name
+  });
 };

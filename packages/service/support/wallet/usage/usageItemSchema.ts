@@ -1,6 +1,7 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { UsageItemSchemaType } from '@fastgpt/global/support/wallet/usage/type';
+import { getUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 
@@ -33,6 +34,9 @@ const UsageItemSchema = new Schema({
   // Params
   inputTokens: Number,
   outputTokens: Number,
+  totalTokens: Number,
+  cacheReadTokens: { type: Number, set: getUsedCacheTokens },
+  cacheCreationTokens: { type: Number, set: getUsedCacheTokens },
   charsLength: Number,
   duration: Number,
   pages: Number,

@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { UploadFileByBodySchema } from '../../contracts/type';
@@ -10,7 +11,7 @@ export type ChatS3SourceType = z.infer<typeof ChatS3SourceTypeSchema>;
 export const ChatFileUploadSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
   sourceId: ObjectIdSchema,
-  chatId: z.string().nonempty(),
+  chatId: ChatIdSchema.nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
   contentType: UploadFileHintSchema.shape.contentType,
@@ -27,7 +28,7 @@ export type CheckChatFileKeys = z.input<typeof ChatFileUploadSchema>;
 export const DelChatFileByPrefixSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
   sourceId: ObjectIdSchema,
-  chatId: z.string().nonempty().optional(),
+  chatId: ChatIdSchema.nonempty().optional(),
   uId: z.string().nonempty().optional()
 });
 export type DelChatFileByPrefixParams = z.input<typeof DelChatFileByPrefixSchema>;
@@ -35,7 +36,7 @@ export type DelChatFileByPrefixParams = z.input<typeof DelChatFileByPrefixSchema
 export const UploadChatFileSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
   sourceId: ObjectIdSchema,
-  chatId: z.string().nonempty(),
+  chatId: ChatIdSchema.nonempty(),
   uId: z.string().nonempty(),
   filename: UploadFileByBodySchema.shape.filename,
   body: UploadFileByBodySchema.shape.body,

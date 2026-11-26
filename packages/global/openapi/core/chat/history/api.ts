@@ -1,10 +1,11 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
-import { ChatSourceEnum } from '../../../../core/chat/constants';
+import { CHAT_GENERATION_STATUS_BATCH_SIZE, ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationResponseSchema } from '../../../api';
 import {
   ChatGenerateStatusSchema,
   createChatTargetResponseSchema,
-  createChatTargetInputSchema,
+  createChatManagementTargetInputSchema,
   createPaginatedChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
   createOutLinkChatTargetQuerySchema,
@@ -14,7 +15,10 @@ import {
 
 // Get chat sessions schema
 const GetHistoriesPropsSchema = {
-  source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
+  source: z
+    .enum(ChatSourceEnum)
+    .optional()
+    .describe('对话来源筛选；应用 API Key 固定查询 API 来源，无需传入'),
   startCreateTime: z.string().optional().describe('创建时间开始'),
   endCreateTime: z.string().optional().describe('创建时间结束'),
   startUpdateTime: z.string().optional().describe('更新时间开始'),
@@ -29,7 +33,7 @@ export type GetHistoriesBodyType = z.infer<typeof GetHistoriesBodyRawSchema>;
 export type GetHistoriesBodyRuntimeType = z.infer<typeof GetHistoriesBodySchema>;
 
 const GetHistoriesResponseItemSchema = createChatTargetResponseSchema({
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   updateTime: z.coerce.date(),
   customTitle: z.string().optional(),
   title: z.string(),
@@ -41,7 +45,11 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(GetHistoriesR
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
 const GetHistoryStatusPropsSchema = {
-  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的会话 ID 列表')
+  chatIds: z
+    .array(ChatIdSchema.min(1))
+    .min(1)
+    .max(CHAT_GENERATION_STATUS_BATCH_SIZE)
+    .describe('需要刷新状态的会话 ID 列表')
 };
 export const GetHistoryStatusBodyRawSchema = createOutLinkChatTargetInputSchema(
   GetHistoryStatusPropsSchema
@@ -55,7 +63,7 @@ export type GetHistoryStatusBodyRuntimeType = z.infer<typeof GetHistoryStatusBod
 export const GetHistoryStatusResponseSchema = z.object({
   list: z.array(
     z.object({
-      chatId: z.string(),
+      chatId: ChatIdSchema,
       updateTime: z.coerce.date(),
       chatGenerateStatus: ChatGenerateStatusSchema.optional(),
       hasBeenRead: z.boolean().optional()
@@ -65,7 +73,7 @@ export const GetHistoryStatusResponseSchema = z.object({
 export type GetHistoryStatusResponseType = z.infer<typeof GetHistoryStatusResponseSchema>;
 
 const MarkChatReadPropsSchema = {
-  chatId: z.string().min(1).describe('会话ID')
+  chatId: ChatIdSchema.min(1).describe('会话ID')
 };
 export const MarkChatReadBodyRawSchema =
   createOutLinkChatTargetInputSchema(MarkChatReadPropsSchema);
@@ -77,7 +85,7 @@ export type MarkChatReadBodyRuntimeType = z.infer<typeof MarkChatReadBodySchema>
 
 // Update chat session schema
 const UpdateHistoryPropsSchema = {
-  chatId: z.string().min(1).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   title: z.string().optional().describe('标题'),
   customTitle: z.string().optional().describe('自定义标题'),
   top: z.boolean().optional().describe('是否置顶')
@@ -92,7 +100,7 @@ export type UpdateHistoryBodyRuntimeType = z.infer<typeof UpdateHistoryBodySchem
 
 // Delete single chat session schema
 export const DelChatHistoryRawSchema = createOutLinkChatTargetQuerySchema({
-  chatId: z.string().min(1).describe('会话ID')
+  chatId: ChatIdSchema.min(1).describe('会话ID')
 });
 export const DelChatHistorySchema = DelChatHistoryRawSchema.transform(transformChatAuthTargetInput);
 export type DelChatHistoryType = z.infer<typeof DelChatHistoryRawSchema>;
@@ -107,9 +115,9 @@ export type ClearChatHistoriesType = z.infer<typeof ClearChatHistoriesRawSchema>
 export type ClearChatHistoriesRuntimeType = z.infer<typeof ClearChatHistoriesSchema>;
 
 // Batch delete chat sessions schema (for log manager)
-export const ChatBatchDeleteBodyRawSchema = createChatTargetInputSchema({
+export const ChatBatchDeleteBodyRawSchema = createChatManagementTargetInputSchema({
   chatIds: z
-    .array(z.string().min(1))
+    .array(ChatIdSchema.min(1))
     .min(1)
     .meta({
       description: '会话 ID 列表',

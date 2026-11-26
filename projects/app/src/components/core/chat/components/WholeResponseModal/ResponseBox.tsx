@@ -20,11 +20,13 @@ const sideTabDeepTreeMinDepth = 4;
 export const ResponseBox = React.memo(function ResponseBox({
   response,
   dataId,
-  hideTabs = false
+  hideTabs = false,
+  isFullscreen = false
 }: {
   response: ChatHistoryItemResType[];
   dataId?: string;
   hideTabs?: boolean;
+  isFullscreen?: boolean;
 }) {
   const { t } = useSafeTranslation();
   const { isPc } = useSystem();
@@ -88,8 +90,10 @@ export const ResponseBox = React.memo(function ResponseBox({
           borderRadius={'12px'}
         >
           <Box
-            w={sideTabWidth}
-            flexShrink={0}
+            w={isFullscreen ? 0 : sideTabWidth}
+            minW={sideTabWidth}
+            flex={isFullscreen ? '1 1 0' : undefined}
+            flexShrink={isFullscreen ? 1 : 0}
             borderRight={'1px solid'}
             borderColor={'myGray.200'}
             p={`${WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING}px`}
@@ -102,11 +106,20 @@ export const ResponseBox = React.memo(function ResponseBox({
               onChange={setCurrentNodeId}
             />
           </Box>
-          <Box ref={contentPanelRef} flex={'1 0 0'} w={0} h={'100%'} minH={0} overflow={'hidden'}>
+          <Box
+            ref={contentPanelRef}
+            flex={isFullscreen ? '3 1 0' : '1 0 0'}
+            w={0}
+            h={'100%'}
+            minH={0}
+            minW={0}
+            overflow={'hidden'}
+          >
             <WholeResponseContent
               dataId={dataId}
               activeModule={activeModule}
               hideTabs={hideTabs}
+              isFullscreen={isFullscreen}
               contentHeight={contentPanelSize?.height}
               onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
@@ -172,7 +185,12 @@ export const ResponseBox = React.memo(function ResponseBox({
                   borderRadius={'sm'}
                 />
 
-                <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
+                <Box
+                  ml={1.5}
+                  lineHeight={'1.25rem'}
+                  alignItems={'center'}
+                  color={activeModule.error || activeModule.errorText ? 'red.500' : 'myGray.900'}
+                >
                   {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>

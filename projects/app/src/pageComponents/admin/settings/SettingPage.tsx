@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Children, Fragment, isValidElement, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import BoxCard from '@/components/admin/BoxContainer/Card';
@@ -147,6 +148,7 @@ function SettingPage({
   /** 配置页内容的统一最大宽度，标题与表单字段共同受此约束。 */
   maxW?: BoxProps['maxW'];
 }) {
+  const { t } = useSafeTranslation();
   const [activeTitle, setActiveTitle] = useState('');
 
   const handleScroll = throttle(() => {
@@ -276,13 +278,12 @@ function SettingPage({
           <Box w={'100%'} p={4}>
             <Box>
               {/* <ImportModal value={rawData} setFormData={reset} setRawData={setRawData}>
-              <Button variant={'whiteBase'} mb={3} w={'100%'} isLoading={isLoading}>
-                配置文件
+              <Button variant={'whiteBase'} mb={3} w={'100%'} isLoading={isLoading}>{t('admin:config_file')}
               </Button>
             </ImportModal> */}
             </Box>
             <Button onClick={onSubmit} w={'100%'}>
-              保存
+              {t('admin:save')}
             </Button>
           </Box>
         </Flex>

@@ -1,6 +1,7 @@
 import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { blockPrivateDalRepoImports } from '../../packages/dal/vitestBoundary';
 
 /**
  * Keep this helper local to the app project because the app Docker build context
@@ -20,12 +21,13 @@ const getTestMaxWorkers = () => {
 };
 
 export default defineConfig({
+  plugins: [blockPrivateDalRepoImports()],
   resolve: {
     alias: {
       '@': resolve('src'),
       '@fastgpt/workflow-core/test': resolve('../../packages/workflow-core/test'),
       '@fastgpt/workflow-core': resolve('../../packages/workflow-core/src'),
-      '@fastgpt/workflow-cli': resolve('../../packages/workflow-cli/src'),
+      '@fastgpt/cli': resolve('../../cli/src'),
       '@fastgpt-sdk/storage/access-link': resolve('../../sdk/storage/src/access-link/index.ts'),
       '@fastgpt-sdk/storage': resolve('../../sdk/storage/src/index.ts'),
       '@fastgpt-sdk/otel/logger': resolve('../../sdk/otel/src/logger-entry.ts'),

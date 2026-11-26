@@ -1,37 +1,43 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { serviceEnv } from '@fastgpt/service/env';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type SynonymRebuildContext = Pick<
   DatasetTrainingSchemaType,
   'teamId' | 'tmbId' | 'datasetId' | 'billId'
 >;
 
-/**
- * 原子领取同义词待重建数据并创建独立 training，不在任务中保存词表版本。
- * 词表版本从当前配置读取，仅写入 data 的领取标记；已入队或失败的数据不会再次被领取。
- * 删除词表仍保留递增版本的配置，需重建为未经同义词转换的原始索引。
- */
-export const enqueueNextDatasetSynonymRebuildTask = async (
-  context: SynonymRebuildContext,
-  session?: ClientSession
-) => {
-  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return false;
-  const enqueue = async (session: ClientSession) => {
+const enqueueOneSynonymRebuildTask = async ({
+  context,
+  session,
+  emitWakeup = true
+}: {
+  context: SynonymRebuildContext;
+  session?: ClientSession;
+  emitWakeup?: boolean;
+}) => {
+  if (!isDatasetSynonymEnabled()) return false;
+  const enqueue = async (activeSession: ClientSession) => {
     const config = await MongoDatasetSynonym.findOne({
       teamId: context.teamId,
       datasetId: context.datasetId
     })
       .select('version')
-      .session(session)
+      .session(activeSession)
       .lean();
     if (!config) throw new Error('同义词配置不存在，无法继续重建');
     while (true) {
@@ -51,17 +57,17 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
           ]
         },
         {
+          // 领取只标记重建状态，不刷新 updateTime：差量重建可能不会改写索引内容。
           $set: {
             indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-            synonymRebuildingVersion: config.version,
-            updateTime: new Date()
+            synonymRebuildingVersion: config.version
           }
         },
-        { session }
+        { session: activeSession }
       ).select('_id collectionId chunkIndex');
       if (!data) return false;
       const collection = await MongoDatasetCollection.exists({ _id: data.collectionId }).session(
-        session
+        activeSession
       );
       if (!collection) {
         // 集合删除中间态只跳过入队，数据的删除由集合清理负责。
@@ -74,7 +80,7 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
             },
             $unset: { synonymRebuildingVersion: '' }
           },
-          { session }
+          { session: activeSession }
         );
         continue;
       }
@@ -90,25 +96,59 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
             retryCount: 3
           }
         ],
-        { session, ordered: true }
+        { session: activeSession, ordered: true }
       );
+      if (emitWakeup) {
+        await publishTrainingWakeup({
+          modes: [TrainingModeEnum.rebuildSynonym],
+          tx: bridgeClientSessionToDbSession(activeSession)
+        });
+      }
       return true;
     }
   };
   return session ? enqueue(session) : mongoSessionRun(enqueue);
 };
 
+/**
+ * 原子领取同义词待重建数据并创建独立 training，不在任务中保存词表版本。
+ * 词表版本从当前配置读取，仅写入 data 的领取标记；已入队或失败的数据不会再次被领取。
+ * 删除词表仍保留递增版本的配置，需重建为未经同义词转换的原始索引。
+ */
+export const enqueueNextDatasetSynonymRebuildTask = async (
+  context: SynonymRebuildContext,
+  session?: ClientSession
+) => enqueueOneSynonymRebuildTask({ context, session, emitWakeup: true });
+
 /** 创建同义词重建首批任务，后续由同义词 Worker 续接；与词表和待重建状态同事务提交。 */
 export const seedDatasetSynonymRebuildTasks = async (
   context: SynonymRebuildContext,
   session?: ClientSession
 ) => {
-  const seed = async (session: ClientSession) => {
-    const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+  const seed = async (activeSession: ClientSession) => {
+    const seedCount = (getSystemInstanceConfig().performance.dataset.vectorMaxProcess ?? 10) * 2;
+    logInstanceConfigRead({
+      callsite: 'runtime.app.dataset.queue.rebuildSynonym',
+      source: 'bridged-system-env',
+      fields: [{ path: 'performance.dataset.vectorMaxProcess', value: seedCount / 2 }]
+    });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
-      if (!(await enqueueNextDatasetSynonymRebuildTask(context, session))) break;
+      if (
+        !(await enqueueOneSynonymRebuildTask({
+          context,
+          session: activeSession,
+          emitWakeup: false
+        }))
+      )
+        break;
       createdCount += 1;
+    }
+    if (createdCount > 0) {
+      await publishTrainingWakeup({
+        modes: [TrainingModeEnum.rebuildSynonym],
+        tx: bridgeClientSessionToDbSession(activeSession)
+      });
     }
     return createdCount;
   };

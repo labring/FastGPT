@@ -7,12 +7,12 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { ChatDispatchProps } from '../../../types/runtime';
+import type { WorkflowDispatchProps } from '../../../types/runtime';
 import {
   parseFileContentFromUrls,
   rewriteChatMessagesWithFileContext
 } from '../../../../chat/fileContext';
-import { getWorkflowFileContext } from '../../../utils/context';
+import { getWorkflowFileContext } from '../../context';
 
 /**
  * 组装系统提示、历史、当前输入和文件上下文，并按模型上下文限制裁剪为 LLM 消息。
@@ -45,7 +45,7 @@ export const getChatMessages = async ({
   maxFileAmount: number;
   customPdfParse?: boolean;
   usageId?: string;
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
+  runningUserInfo: WorkflowDispatchProps['runningUserInfo'];
 }) => {
   const concatenateSystemPrompt = [
     model.config.defaultSystemChatPrompt,

@@ -6,6 +6,7 @@ export enum FlowNodeTemplateTypeEnum {
   ai = 'ai',
   interactive = 'interactive',
   tools = 'tools',
+  toolCall = 'toolCall',
   other = 'other',
 
   // Team app type
@@ -193,6 +194,7 @@ export enum NodeInputKeyEnum {
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
+  datasetSearchRerankCandidateNum = 'rerankCandidateNum',
   datasetSearchRerankModelId = 'rerankModelId',
   /** @deprecated */
   datasetSearchRerankModel = 'rerankModel',
@@ -492,11 +494,7 @@ export const variableMap: Record<VariableInputEnum, VariableConfigType> = {
   }
 };
 
-// Keep backward compatibility
-export const variableMapGroups = variableConfigs;
-
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';
-export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';
 
 // http node body content type
 export enum ContentTypes {

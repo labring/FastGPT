@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../core/chat/schema';
 import { TrackEnum } from './constants';
 import { z } from 'zod';
 
@@ -6,7 +7,7 @@ export const WorkflowBuilderTrackDataSchema = z.object({
   teamId: z.string(),
   tmbId: z.string(),
   appId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   event: z.enum([
     TrackEnum.workflowBuilderMessageAccepted,
     TrackEnum.workflowBuilderPreviewGenerated,
@@ -38,6 +39,8 @@ export type PushTrackUserType = {
 
 export type TrackSchemaType = {
   event: TrackEnum;
+  /** 页面级随机曝光 ID，仅用于重试去重，不标识访客。 */
+  eventId?: string;
   createTime: Date;
   /** 仅账号级事件保存全局用户身份，例如登录、日活和账号注销。 */
   uid?: string;

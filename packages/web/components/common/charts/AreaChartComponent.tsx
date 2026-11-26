@@ -29,6 +29,8 @@ type TooltipItem = {
   color: string;
   formatter?: (value: number) => string;
   customValue?: (data: Record<string, any>) => number;
+  /** 累积模式下累计仅在提示中展示的数值。 */
+  accumulate?: boolean;
 };
 
 type AreaChartComponentProps = {
@@ -121,14 +123,19 @@ const AreaChartComponent = ({
       return data;
     }
 
-    // Cumulative mode: accumulate values for each line's dataKey
+    // 曲线和显式参与累积的提示项使用同一时间口径。
     const cloneData = cloneDeep(data);
-
-    const dataKeys = lines.map((item) => item.dataKey);
+    const dataKeys = new Set(lines.map((item) => item.dataKey));
+    tooltipItems?.forEach(({ dataKey, accumulate }) => {
+      if (accumulate) dataKeys.add(dataKey);
+    });
+    const firstLineKey = lines[0]?.dataKey;
 
     return cloneData.map((item, index) => {
       if (index === 0) {
-        item[dataKeys[0]] = startDateValue + item[dataKeys[0]];
+        if (firstLineKey !== undefined) {
+          item[firstLineKey] = startDateValue + item[firstLineKey];
+        }
         return item;
       }
 
@@ -140,7 +147,7 @@ const AreaChartComponent = ({
 
       return item;
     });
-  }, [displayMode, data, lines, startDateValue]);
+  }, [displayMode, data, lines, tooltipItems, startDateValue]);
 
   // Generate gradient definitions
   const gradientDefs = useMemo(

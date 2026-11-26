@@ -45,6 +45,12 @@ describe('sanitizeCsvField', () => {
     expect(sanitizeCsvField(0 as any)).toBe('0');
   });
 
+  it('neutralizes formulas hidden behind whitespace and control characters', () => {
+    for (const value of [' =SUM(A1:A2)', '\t=1+1', '\r=1+1', '\n@SUM(1)', '\uFEFF+cmd', '\ttext']) {
+      expect(sanitizeCsvField(value).replace(/^"|"$/g, '').startsWith("'")).toBe(true);
+    }
+  });
+
   it('should handle empty string', () => {
     expect(sanitizeCsvField('' as any)).toBe('');
   });

@@ -26,6 +26,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 import type { SkillLabelItemType } from '../SkillLabelPlugin';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { formatPromptRefToken } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 
 const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
 const MENU_HEIGHT = '337px';
@@ -178,6 +179,7 @@ export default function SkillPickerPlugin({
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const menuAnchorRef = useRef<HTMLElement | null>(null);
   const menuElementRef = useRef<HTMLDivElement | null>(null);
+  const [menuElement, setMenuElementState] = useState<HTMLDivElement | null>(null);
   const menuPositionFrameRef = useRef<number | null>(null);
   const matchingStringRef = useRef<string | null>(null);
 
@@ -258,6 +260,7 @@ export default function SkillPickerPlugin({
         menuElementRef.current?.style.removeProperty('transform');
       }
       menuElementRef.current = element;
+      setMenuElementState(element);
       if (element && isMenuOpenRef.current) {
         setIsMenuPositioned(false);
         scheduleMenuPosition();
@@ -270,7 +273,6 @@ export default function SkillPickerPlugin({
     if (!isFocus || !isMenuOpen) return;
 
     const anchorElement = menuAnchorRef.current;
-    const menuElement = menuElementRef.current;
     if (!anchorElement || !menuElement) return;
 
     scheduleMenuPosition();
@@ -303,6 +305,7 @@ export default function SkillPickerPlugin({
   }, [
     isFocus,
     isMenuOpen,
+    menuElement,
     menuQueryVersion,
     scheduleMenuPosition,
     skillOptions.length,
@@ -786,7 +789,7 @@ export default function SkillPickerPlugin({
           }
         }
 
-        selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+        selection.insertNodes([$createTextNode(formatPromptRefToken(skillId))]);
         inserted = true;
       });
 
@@ -1521,6 +1524,7 @@ export default function SkillPickerPlugin({
         return ReactDOM.createPortal(
           <Box
             ref={setMenuElement}
+            position={'relative'}
             visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
             w={'max-content'}

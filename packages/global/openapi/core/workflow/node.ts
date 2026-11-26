@@ -3,10 +3,16 @@ import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
 } from '../../../core/workflow/type/io';
+import { FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import {
+  HttpToolRuntimeConfigSchema,
+  HttpToolSetNodeConfigSchema,
+  McpToolRuntimeConfigSchema,
+  McpToolSetNodeConfigSchema,
   NodeToolConfigTypeSchema,
-  StoreNodeItemTypeSchema,
-  ToolDataSchema
+  StoreNodeItemBaseSchema,
+  ToolDataSchema,
+  ToolSetPreviewReferenceSchema
 } from '../../../core/workflow/type/node';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
@@ -66,7 +72,7 @@ const OpenAPIToolDataSchema = ToolDataSchema.meta({
   description: '节点关联工具展示信息'
 });
 
-const OpenAPIToolRefSchema = z
+export const OpenAPIToolRefSchema = z
   .object({
     toolId: z.string().meta({
       description: '节点引用的工具 ID'
@@ -80,31 +86,31 @@ const OpenAPIToolRefSchema = z
   });
 
 const OpenAPINodeToolConfigTypeSchema = NodeToolConfigTypeSchema.extend({
-  mcpTool: OpenAPIToolRefSchema.optional().meta({
-    description: '节点绑定的 MCP 单工具配置'
+  mcpTool: z.union([OpenAPIToolRefSchema, McpToolRuntimeConfigSchema]).optional().meta({
+    description: '节点绑定的 MCP 单工具引用或运行时内联配置'
   }),
   systemTool: OpenAPIToolRefSchema.optional().meta({
     description: '节点绑定的系统单工具配置'
   }),
-  httpTool: OpenAPIToolRefSchema.optional().meta({
-    description: '节点绑定的 HTTP 单工具配置'
+  httpTool: z.union([OpenAPIToolRefSchema, HttpToolRuntimeConfigSchema]).optional().meta({
+    description: '节点绑定的 HTTP 单工具引用或运行时内联配置'
   })
 }).meta({
   description: '节点工具配置'
 });
 
-export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
+export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemBaseSchema.omit({
   inputs: true,
   outputs: true,
   pluginData: true,
   toolConfig: true,
   position: true
 })
-  .extend({
+  .safeExtend({
     parentNodeId: z.string().optional().meta({
       description: '父节点 ID，用于循环、分组等嵌套节点场景'
     }),
-    flowNodeType: StoreNodeItemTypeSchema.shape.flowNodeType.meta({
+    flowNodeType: StoreNodeItemBaseSchema.shape.flowNodeType.meta({
       description: '工作流节点类型'
     }),
     abandon: BoolSchema.optional().meta({
@@ -116,7 +122,7 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     avatarLinear: z.string().optional().meta({
       description: '节点头像渐变色配置'
     }),
-    colorSchema: StoreNodeItemTypeSchema.shape.colorSchema.meta({
+    colorSchema: StoreNodeItemBaseSchema.shape.colorSchema.meta({
       description: '节点在编辑器中的配色方案'
     }),
     name: z.string().meta({
@@ -190,3 +196,77 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
   .meta({
     description: '应用工作流节点配置'
   });
+
+const OpenAPIPersistedNodeToolConfigTypeSchema = OpenAPINodeToolConfigTypeSchema.extend({
+  mcpTool: OpenAPIToolRefSchema.strict().optional().meta({
+    description: '节点引用的 MCP 单工具配置'
+  }),
+  httpTool: OpenAPIToolRefSchema.strict().optional().meta({
+    description: '节点引用的 HTTP 单工具配置'
+  }),
+  mcpToolSet: z.union([ToolSetPreviewReferenceSchema, McpToolSetNodeConfigSchema]).optional().meta({
+    description: '节点引用的 MCP 工具集或节点内摘要配置'
+  }),
+  httpToolSet: z
+    .union([ToolSetPreviewReferenceSchema, HttpToolSetNodeConfigSchema])
+    .optional()
+    .meta({
+      description: '节点引用的 HTTP 工具集或节点内摘要配置'
+    })
+});
+
+const PersistedOpenAPIStoreNodeItemTypeBaseSchema = OpenAPIStoreNodeItemTypeSchema.omit({
+  toolConfig: true
+}).safeExtend({
+  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema).meta({
+    description: '持久化节点输入配置列表'
+  }),
+  toolConfig: OpenAPIPersistedNodeToolConfigTypeSchema.optional().meta({
+    description: '持久化节点工具配置'
+  })
+});
+
+export const PersistedOpenAPIStoreNodeItemTypeSchema =
+  PersistedOpenAPIStoreNodeItemTypeBaseSchema.superRefine((node, ctx) => {
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null && !Array.isArray(value);
+    const { pluginId } = node;
+    const toolConfig = isRecord(node.toolConfig) ? node.toolConfig : undefined;
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      toolConfig?.mcpToolSet &&
+      toolConfig.httpToolSet
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['toolConfig', 'httpToolSet'],
+        message: '工具集节点只能配置 MCP 或 HTTP 工具集'
+      });
+    }
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig?.[key];
+      if (!toolSet) return;
+
+      const reference = ToolSetPreviewReferenceSchema.safeParse(toolSet);
+      const isInlineConfig =
+        key === 'mcpToolSet'
+          ? McpToolSetNodeConfigSchema.safeParse(toolSet).success
+          : HttpToolSetNodeConfigSchema.safeParse(toolSet).success;
+      const isValid = pluginId ? reference.success : isInlineConfig;
+
+      if (!isValid) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['toolConfig', key],
+          message: pluginId
+            ? '外部工具集节点必须使用工具集引用配置'
+            : '节点内工具集必须使用完整配置'
+        });
+      }
+    });
+  }).meta({ description: '持久化应用工作流节点配置' });
+
+export type PersistedOpenAPIStoreNodeItemType = z.infer<
+  typeof PersistedOpenAPIStoreNodeItemTypeSchema
+>;

@@ -1,4 +1,4 @@
 {
   "title": "Local Models",
-  "pages": ["marker","mineru","oxr","xinference","ollama"]
+  "pages": ["oxr", "mineru", "xinference", "ollama", "legacy"]
 }

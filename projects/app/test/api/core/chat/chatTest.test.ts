@@ -22,7 +22,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: mocks.dispatchWorkFlow
 }));
 
-vi.mock('@fastgpt/service/core/workflow/resource/context', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/resource', () => ({
   createWorkflowResourceContext: mocks.createWorkflowResourceContext
 }));
 
@@ -55,7 +55,7 @@ vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', () => ({
   prepareWorkflowFileQuery: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: vi.fn()
 }));
 
@@ -75,10 +75,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
 
 vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
   preChatRound: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({

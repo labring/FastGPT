@@ -109,7 +109,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 
 ## 💪 Dự Án & Liên Kết Của Chúng Tôi
 
-- [Bắt Đầu Phát Triển Địa Phương](https://doc.fastgpt.io/self-host/dev/)
+- [Bắt Đầu Phát Triển Địa Phương](https://doc.fastgpt.io/self-host/dev)
 - [Tài Liệu OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Dịch Vụ Cân Bằng Tải Tổng Hợp Mô Hình](https://github.com/labring/aiproxy)

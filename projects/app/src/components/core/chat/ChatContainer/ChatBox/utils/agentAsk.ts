@@ -28,7 +28,7 @@ export const getAIChatDisplayGroups = ({
 }): AIChatDisplayGroup[] => {
   /** 只隐藏问答交互本身，混合 value 的正文、思考和工具输出仍按原样展示。 */
   const isReplyInteractive = (value: AIChatItemValueItemType) => {
-    if (value.hideInUI || !value.interactive) return false;
+    if (!value.interactive) return false;
 
     const interactive = extractDeepestInteractive(value.interactive);
     return isAskInteractive(interactive);
@@ -47,14 +47,14 @@ export const getAIChatDisplayGroups = ({
     }).forEach((values) => {
       const hasVisibleContent = values.some(
         (value) =>
-          !value.hideInUI &&
-          (hasAiAnswerContent(value) ||
-            hasAiProcessingContent(value) ||
-            value.workflowBuilderVersion ||
-            value.chatAgentBuilderVersion ||
-            (value.interactive &&
-              (!isReplyInteractive(value) ||
-                extractDeepestInteractive(value.interactive)?.type === 'workflowBuilderPreview')))
+          (!value.hideInUI &&
+            (hasAiAnswerContent(value) ||
+              hasAiProcessingContent(value) ||
+              value.workflowBuilderVersion ||
+              value.chatAgentBuilderVersion)) ||
+          (value.interactive &&
+            (!isReplyInteractive(value) ||
+              extractDeepestInteractive(value.interactive)?.type === 'workflowBuilderPreview'))
       );
       if (
         !hasVisibleContent &&

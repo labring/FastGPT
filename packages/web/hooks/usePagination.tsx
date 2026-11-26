@@ -54,6 +54,10 @@ const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
   }
 };
 
+/**
+ * 管理分页数据与加载状态，仅允许最新一次查询回写；底层 API 负责按需取消网络请求。
+ * 请求乱序或组件卸载后，旧响应及错误均不影响当前分页状态。
+ */
 export function usePagination<DataT, ResT = unknown>(
   api: (data: PaginationProps<DataT>) => Promise<PaginationResponse<ResT>>,
   {
@@ -62,7 +66,9 @@ export function usePagination<DataT, ResT = unknown>(
     params,
     type = 'button',
     onChange,
+    onError,
     refreshDeps,
+    forceFirstPage = false,
     scrollLoadType = 'bottom',
     EmptyTip,
     pollingInterval,
@@ -76,7 +82,11 @@ export function usePagination<DataT, ResT = unknown>(
     params?: DataT;
     type?: 'button' | 'scroll';
     onChange?: (pageNum: number) => void;
+    /** 最新请求未能加载列表时调用，包括取消。 */
+    onError?: (error: unknown) => void;
     refreshDeps?: any[];
+    /** 首页刷新尚未完成时，将并发分页请求也发到第一页。 */
+    forceFirstPage?: boolean;
     throttleWait?: number;
     scrollLoadType?: 'top' | 'bottom';
     EmptyTip?: React.JSX.Element;
@@ -135,15 +145,25 @@ export function usePagination<DataT, ResT = unknown>(
 
   const isEmpty = total === 0 && !isLoading && !error;
   const noMore = data.length > 0 && data.length >= totalDataLength;
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      requestIdRef.current += 1;
+    };
+  }, []);
 
   const fetchData = useMemoizedFn(
     async (
-      num: number = pageNum,
+      requestedPage: number = pageNum,
       ScrollContainerRef?: RefObject<HTMLDivElement>,
       scrollToTop = false
     ) => {
+      const num = forceFirstPage ? 1 : requestedPage;
       if (noMore && num !== 1) return;
 
+      // 取消请求与响应完成可能同时发生，仅允许最新请求回写分页状态。
+      const requestId = ++requestIdRef.current;
       setTrue();
       setError(null);
 
@@ -153,6 +173,7 @@ export function usePagination<DataT, ResT = unknown>(
           pageSize,
           ...params
         });
+        if (requestId !== requestIdRef.current) return;
 
         // 异常响应不能写入列表状态；保留上一页有效数据，并交给请求错误提示处理。
         if (!Array.isArray(res?.list)) {
@@ -202,7 +223,7 @@ export function usePagination<DataT, ResT = unknown>(
           setData(res.list);
         }
 
-        if (type === 'button' && scrollToTop) {
+        if (type === 'button' && (scrollToTop || forceFirstPage)) {
           window.requestAnimationFrame(() => {
             scrollPaginationContentToTop(scrollContainerRef?.current ?? paginationRef.current);
           });
@@ -210,15 +231,17 @@ export function usePagination<DataT, ResT = unknown>(
 
         onChange?.(num);
       } catch (error: any) {
+        if (requestId !== requestIdRef.current) return;
+        onError?.(error);
+        if (error?.code === 'ERR_CANCELED') return;
         setError(error);
-        if (error?.code !== 'ERR_CANCELED') {
-          toast({
-            title: getErrText(error, t('common:core.chat.error.data_error')),
-            status: 'error'
-          });
-        }
+        toast({
+          title: getErrText(error, t('common:core.chat.error.data_error')),
+          status: 'error'
+        });
       } finally {
-        setFalse();
+        // 旧请求的取消或完成不能提前结束新请求的 loading。
+        if (requestId === requestIdRef.current) setFalse();
       }
     }
   );

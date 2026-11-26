@@ -1,18 +1,29 @@
-export interface CommonMetadataFields {
+export type CommonMetadataFields = {
   appType?: string;
   datasetType?: string;
   operationName?: string;
   itemName?: string;
   newItemNames?: string[] | string;
   [key: string]: any;
-}
+};
 
-export const defaultMetadataProcessor = (metadata: CommonMetadataFields, t: any): any => {
+/** Translate only system i18n keys; preserve arbitrary user/plugin names containing colons. */
+export const defaultMetadataProcessor = (metadata: CommonMetadataFields = {}, t: any): any => {
   const result = { ...metadata };
 
+  const labelFields = new Set([
+    'appType',
+    'datasetType',
+    'skillType',
+    'operationName',
+    'itemName',
+    'objectName',
+    'level'
+  ]);
+
   Object.entries(metadata).forEach(([key, value]) => {
-    if (typeof value === 'string' && value.includes(':')) {
-      result[key] = t(value as any);
+    if (labelFields.has(key) && typeof value === 'string' && value.includes(':')) {
+      result[key] = t(value, { defaultValue: value });
     }
   });
 

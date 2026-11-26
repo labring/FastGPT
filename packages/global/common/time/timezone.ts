@@ -81,19 +81,20 @@ export const getTimeZoneList = () => {
 };
 export const timeZoneList = getTimeZoneList();
 
+/**
+ * 优先使用时间字符串自带的偏移，Z 明确表示 UTC。
+ * 无偏移字符串及 Date 使用该时刻的服务器本地偏移；无效值回落到当前服务器偏移，输入合法性由 API 校验。
+ * 返回固定偏移，不尝试根据起止时间反推 IANA 时区或中途的 DST 规则。
+ */
 export const getTimezoneCodeFromStr = (timeString: string | Date) => {
-  if (typeof timeString !== 'string' || !timeString.includes(':')) {
-    return '+00:00';
+  if (typeof timeString === 'string') {
+    const timezoneMatch = timeString.match(/([+-]\d{2}:\d{2})$/);
+    if (timezoneMatch) return timezoneMatch[1];
+    if (/Z$/i.test(timeString)) return '+00:00';
   }
 
-  // Match timezone offset pattern at the end of string: +HH:MM or -HH:MM
-  const timezoneMatch = timeString.match(/([+-]\d{2}:\d{2})$/);
-
-  if (timezoneMatch) {
-    return timezoneMatch[1];
-  }
-
-  return '+00:00';
+  const localDate = dayjs(timeString);
+  return (localDate.isValid() ? localDate : dayjs()).format('Z');
 };
 
 export const getSystemTime = (timeZone: string) => {

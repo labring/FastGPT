@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import type { UpdateApiKeyBodyType } from '@fastgpt/global/openapi/support/openapi/api';
 import handler from '@/pages/api/support/openapi/update';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -8,10 +9,34 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('support/openapi/update', () => {
+  it('owner cannot enable proxy on a historical personal key with a default app', async () => {
+    const { owner } = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      name: 'default app',
+      type: 'simple',
+      tmbId: owner.tmbId,
+      teamId: owner.teamId
+    });
+    const key = await MongoOpenApi.create({
+      type: 'personal',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      apiKey: 'default-app-proxy',
+      appId: String(app._id)
+    });
+    const result = await Call(handler, {
+      auth: owner,
+      body: { _id: String(key._id), authProxy: true }
+    });
+    expect(result.error).toBeDefined();
+    expect((await MongoOpenApi.findById(key._id).lean())?.authProxy).toBe(false);
+  });
+
   it('member can update their own APIKey base fields', async () => {
     const { members } = await getFakeUsers(1);
     const [member] = members;
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: member.teamId,
       tmbId: member.tmbId,
       apiKey: 'fastgpt-member-update-own',
@@ -44,6 +69,7 @@ describe('support/openapi/update', () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: member.teamId,
       tmbId: member.tmbId,
       apiKey: 'fastgpt-member-update-private',
@@ -67,6 +93,7 @@ describe('support/openapi/update', () => {
   it('team owner can enable authProxy for global APIKey', async () => {
     const { owner } = await getFakeUsers(1);
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: owner.teamId,
       tmbId: owner.tmbId,
       apiKey: 'fastgpt-owner-auth-proxy',
@@ -93,6 +120,7 @@ describe('support/openapi/update', () => {
     const { members } = await getFakeUsers(1);
     const [member] = members;
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: member.teamId,
       tmbId: member.tmbId,
       apiKey: 'fastgpt-member-auth-proxy',
@@ -123,6 +151,7 @@ describe('support/openapi/update', () => {
       teamId: owner.teamId
     });
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: owner.teamId,
       tmbId: owner.tmbId,
       appId: String(app._id),
@@ -166,6 +195,7 @@ describe('support/openapi/update', () => {
       }
     ]);
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: owner.teamId,
       tmbId: owner.tmbId,
       apiKey: 'fastgpt-tag-update',
@@ -210,6 +240,7 @@ describe('support/openapi/update', () => {
       order: 100
     });
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: owner.teamId,
       tmbId: owner.tmbId,
       apiKey: 'fastgpt-invalid-tag-update',

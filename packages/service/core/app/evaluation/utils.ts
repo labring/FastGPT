@@ -1,4 +1,5 @@
-import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -7,6 +8,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.APP.EVALUATION);
 
+/** 解析评测 CSV；语法错误保留诊断日志，并以稳定业务标识返回文件校验失败。 */
 export const parseEvaluationCSV = (rawText: string) => {
   const parseResult = Papa.parse(rawText.trim(), {
     skipEmptyLines: true,
@@ -16,12 +18,13 @@ export const parseEvaluationCSV = (rawText: string) => {
 
   if (parseResult.errors.length > 0) {
     logger.error('CSV parsing failed', { errors: parseResult.errors });
-    throw new Error('CSV parsing failed');
+    throw new UserError(AppErrEnum.invalidEvaluationFile);
   }
 
   return parseResult.data as string[][];
 };
 
+/** 校验表头、1～1000 条数据行及变量约束；所有文件内容错误使用统一业务标识。 */
 export const validateEvaluationFile = async (
   rawText: string,
   appVariables?: VariableItemType[]
@@ -35,13 +38,13 @@ export const validateEvaluationFile = async (
   const actualHeader = csvData[0]?.join(',') || '';
   if (actualHeader !== expectedHeader) {
     logger.error('Evaluation file header mismatch', { expectedHeader, actualHeader });
-    return Promise.reject(evaluationFileErrors);
+    throw new UserError(AppErrEnum.invalidEvaluationFile);
   }
 
   // Validate data rows count
   if (dataLength <= 1) {
     logger.error('Evaluation file has no data rows');
-    return Promise.reject(evaluationFileErrors);
+    throw new UserError(AppErrEnum.invalidEvaluationFile);
   }
 
   const maxRows = 1000;
@@ -50,7 +53,7 @@ export const validateEvaluationFile = async (
       maxRows,
       rowCount: dataLength - 1
     });
-    return Promise.reject(evaluationFileErrors);
+    throw new UserError(AppErrEnum.invalidEvaluationFile);
   }
 
   const headers = csvData[0];
@@ -86,7 +89,7 @@ export const validateEvaluationFile = async (
 
   if (errors.length > 0) {
     logger.error('Evaluation file validation failed', { errors });
-    return Promise.reject(evaluationFileErrors);
+    throw new UserError(AppErrEnum.invalidEvaluationFile);
   }
 
   return { csvData, dataLength };

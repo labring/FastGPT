@@ -13,11 +13,11 @@ const uploadRateLimit = defineRateLimitInterface<UploadRateLimitParams>({
   policy: 'presign',
   failureMode: 'open',
   getKeySegments: ({ identity }) => ['identity', identity],
-  getLimit: ({ limit }) => limit,
+  getLimit: ({ limit }) => limit * 3,
   getWindowSeconds: () => 60,
   getIncrement: ({ increment }) => increment ?? 1,
   createError: () => ERROR_ENUM.tooManyRequest
 });
 
-/** 按调用方已解析的上传身份，限制每分钟签发上传 URL 的次数。 */
+/** 按上传身份限制每分钟上传额度，上限为文件数量 limit 的 3 倍，批量上传按文件数累计。 */
 export const assertUploadRateLimit = uploadRateLimit.assert;

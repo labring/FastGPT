@@ -27,6 +27,10 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual', value: { appSecret: { value: '', secret: 'existing-ciphertext' } } },
     { type: 'manual', value: { appSecret: { value: 'demo-secret', secret: '' } } },
     { type: 'manual', value: { limit: { value: 0 }, enabled: { value: false } } },
+    {
+      type: 'manual',
+      value: { appId: { ref: ['node', 'output'] }, limit: { ref: [['node', 'output']] } }
+    },
     { type: 'manual', value: { region: { value: 'us' }, custom: { value: 'custom' } } },
     {
       type: 'manual',
@@ -48,6 +52,11 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual' },
     { type: 'manual', value: { appSecret: 'not-a-secret-wrapper' } },
     { type: 'manual', value: { appSecret: { secret: 42 } } },
+    { type: 'manual', value: { appId: { ref: [] } } },
+    { type: 'manual', value: { appId: { ref: ['node'] } } },
+    { type: 'manual', value: { appId: { ref: ['node', ''] } } },
+    { type: 'manual', value: { appId: { ref: ['node', 'output'], value: 'mixed' } } },
+    { type: 'manual', value: { appId: { ref: ['node', 'output'], secret: 'mixed' } } },
     { type: 'manual', value: { unknownKey: { value: 'unknown-field' } } },
     { type: 'manual', value: { limit: { value: 'not-a-number' } } },
     { type: 'manual', value: { enabled: { value: 'not-a-boolean' } } },
@@ -73,6 +82,46 @@ describe('getNodeInputValueSchema', () => {
 });
 
 describe('valueMatchesSchema', () => {
+  it('matches object constants and enum entries regardless of key order', () => {
+    const expected = { name: 'tool', options: { enabled: true, limit: 1 } };
+    const reordered = { options: { limit: 1, enabled: true }, name: 'tool' };
+
+    expect(valueMatchesSchema(reordered, { const: expected })).toBe(true);
+    expect(valueMatchesSchema(reordered, { enum: [expected] })).toBe(true);
+    expect(valueMatchesSchema({ ...reordered, extra: true }, { const: expected })).toBe(false);
+  });
+
+  it('treats reordered objects as duplicates but preserves array order', () => {
+    const schema = { type: 'array', uniqueItems: true };
+    expect(
+      valueMatchesSchema(
+        [
+          { a: 1, b: 2 },
+          { b: 2, a: 1 }
+        ],
+        schema
+      )
+    ).toBe(false);
+    expect(
+      valueMatchesSchema(
+        [
+          { a: 1, b: 2 },
+          { b: 3, a: 1 }
+        ],
+        schema
+      )
+    ).toBe(true);
+    expect(
+      valueMatchesSchema(
+        [
+          [1, 2],
+          [2, 1]
+        ],
+        schema
+      )
+    ).toBe(true);
+  });
+
   it('honors boolean schema branches and properties in tool input contracts', () => {
     expect(valueMatchesSchema('anything', true)).toBe(true);
     expect(valueMatchesSchema('anything', false)).toBe(false);

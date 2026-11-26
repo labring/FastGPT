@@ -1,3 +1,4 @@
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -122,9 +123,12 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
-import { serviceEnv } from '../../../../../../../env';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
+import { dispatchAgentDatasetSearch as dispatchAgentDatasetSearchWithoutContext } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+
+const dispatchAgentDatasetSearch = createTestWorkflowDispatch(
+  dispatchAgentDatasetSearchWithoutContext
+);
 
 const llmModelData = (model: string) =>
   ({
@@ -170,6 +174,13 @@ describe('dispatchAgentDatasetSearch', () => {
             usingReRank: false
           }
         });
+        expect(pushTrack.datasetSearch).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team_1',
+          datasetIds: ['dataset_1']
+        });
+        expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+          expect.objectContaining({ metadataFilterEnabled: false })
+        );
         const response = JSON.parse(result.response);
         expect(response.cites[0].content).toBe('alias\nanswer');
         if (enabled) {
@@ -207,6 +218,8 @@ describe('dispatchAgentDatasetSearch', () => {
       usage: {
         inputTokens: 7,
         outputTokens: 2,
+        cacheReadTokens: 5,
+        cacheCreationTokens: 1,
         usedUserOpenAIKey: false
       }
     });
@@ -254,6 +267,8 @@ describe('dispatchAgentDatasetSearch', () => {
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 8,
+        cacheCreationTokens: 3,
         usedUserOpenAIKey: false,
         embeddingModel: 'embedding-query',
         embeddingTokens: 6,
@@ -274,6 +289,7 @@ describe('dispatchAgentDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
+        rerankCandidateNum: 30,
         datasetSearchUsingExtensionQuery: true,
         collectionFilterMatch: {
           logic: 'AND',
@@ -290,6 +306,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         textQueries: ['origin'],
+        rerankCandidateNum: 30,
         collectionFilterMatch: JSON.stringify({
           tags: { $and: [{ price: { $gte: 10 } }] }
         })
@@ -307,6 +324,8 @@ describe('dispatchAgentDatasetSearch', () => {
         llmRequestIds: ['req_query_extension'],
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 8,
+        cacheCreationTokens: 3,
         totalPoints: 0.15,
         textOutput: 'origin\nexpanded'
       }),
@@ -320,6 +339,8 @@ describe('dispatchAgentDatasetSearch', () => {
         llmRequestIds: ['req_chunk_selection'],
         inputTokens: 7,
         outputTokens: 2,
+        cacheReadTokens: 5,
+        cacheCreationTokens: 1,
         totalPoints: 0.09,
         textOutput: 'chunk_2'
       })
@@ -689,3 +710,6 @@ describe('dispatchAgentDatasetSearch', () => {
     );
   });
 });
+
+import { serviceEnv } from '../../../../../../../env';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';

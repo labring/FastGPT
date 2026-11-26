@@ -2,6 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   chatItemResponsePreviewProjection,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -11,7 +12,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -19,11 +20,14 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetRecordsV2BodySchema,
+  GetRecordsV2ResponseSchema,
   type GetRecordsV2ResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 
 async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -38,15 +42,19 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   } = parseApiInput({ req, bodySchema: GetRecordsV2BodySchema }).body;
 
   if (!chatId) {
-    return {
+    return GetRecordsV2ResponseSchema.parse({
       list: [],
       total: 0,
       hasMorePrev: false,
-      hasMoreNext: false
-    };
+      hasMoreNext: false,
+      prevCursor: null,
+      nextCursor: null
+    });
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -88,6 +96,7 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     initialId,
     prevId,
     nextId,
+    completeRound: true,
     nodeResponseMode: isPlugin ? 'full' : 'preview',
     nodeResponsePreviewProjection: chatItemResponsePreviewProjection
   });
@@ -100,26 +109,29 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
 
   // Remove important information
   if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
-    result.histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({
-          nodeRespones: item.responseData,
-          responseDetail: authRes.showCite
-        });
+    result.histories = result.histories.map((rawItem) => {
+      if (rawItem.obj !== ChatRoleEnum.AI) return rawItem;
 
-        if (authRes.showRunningStatus === false) {
-          item.value = item.value.filter(
-            (v) =>
-              v.text?.content ||
-              v.reasoning?.content ||
-              v.interactive ||
-              v.plan ||
-              // 不返回 tool 和 skill
-              (!v.tools && !v.skills)
-          );
-        } else if (authRes.showSkillReferences === false) {
-          item.value = item.value.filter((v) => !v.skills);
-        }
+      const item = sanitizeOutLinkChatHistoryItem(rawItem, authRes.showCite);
+      if (authRes.showRunningStatus === false) {
+        item.value = item.value.filter(
+          (v) =>
+            v.text?.content ||
+            v.reasoning?.content ||
+            v.interactive ||
+            v.plan ||
+            // 不返回 tool 和 skill
+            (!v.tools && !v.skills)
+        );
+      } else if (authRes.showSkillReferences === false) {
+        item.value = item.value.filter((v) => !v.skills);
+      }
+      return item;
+    });
+  } else if (authRes.canWrite === false) {
+    result.histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI && item.responseData) {
+        item.responseData = stripModerationRecordsFromNodeResponses(item.responseData);
       }
     });
   }
@@ -134,16 +146,22 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   const list = isPlugin
     ? result.histories
     : transformPreviewHistories(result.histories, authRes.showCite);
+  const first = list[0];
+  const last = list.at(-1);
 
-  return {
+  return GetRecordsV2ResponseSchema.parse({
     list: list.map((item) => ({
       ...item,
+      // 已弃用的兼容别名；聊天业务使用 dataId，旧客户端暂时继续接收 id。
       id: item.dataId!
     })),
     total: result.total,
     hasMorePrev: result.hasMorePrev,
-    hasMoreNext: result.hasMoreNext
-  };
+    hasMoreNext: result.hasMoreNext,
+    // 分页结果已补齐轮次边界，游标只需携带 dataId，角色由翻页方向确定。
+    prevCursor: result.hasMorePrev && first ? first.dataId : null,
+    nextCursor: result.hasMoreNext && last ? last.dataId : null
+  });
 }
 
 export default NextAPI(handler);

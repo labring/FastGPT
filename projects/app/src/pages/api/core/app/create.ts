@@ -4,7 +4,8 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
+import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -31,16 +32,18 @@ import {
 } from '@fastgpt/service/core/app/controller';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/service';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
@@ -53,8 +56,20 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, nodes, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    nodes,
+    edges,
+    chatConfig,
+    referenceSnapshots,
+    templateId,
+    utmParams,
+    inheritPermission
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, isRoot } = parentId
@@ -88,11 +103,13 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
     username: tmb?.user?.username,
     templateId,
+    inheritPermission,
     isRoot
   });
 
@@ -117,6 +134,57 @@ export const config = {
 };
 
 /**
+ * 将创建、复制或转换传入的工作流统一迁移为当前 canonical 结构，
+ * 按应用类型保留源工具集 App 的完整根配置，再按团队模型目录与操作人可用模型完成 fallback 及敏感字段处理。
+ */
+const formatAppWorkflowForSave = async ({
+  nodes,
+  edges,
+  chatConfig,
+  referenceSnapshots,
+  teamId,
+  tmbId,
+  isRoot,
+  appType
+}: {
+  appType?: AppTypeEnum;
+  nodes?: unknown[];
+  edges?: AppVersionSchemaType['edges'];
+  chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
+  teamId: string;
+  tmbId: string;
+  isRoot?: boolean;
+}) => {
+  const workflow = normalizeAppWorkflow(
+    {
+      nodes: nodes ?? [],
+      edges: edges ?? [],
+      chatConfig,
+      referenceSnapshots
+    },
+    appType
+  );
+  assertWorkflowDocumentStructure(workflow);
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
+    handle: modelHandle
+  });
+  formatModels({
+    nodes: workflow.nodes,
+    chatConfig: workflow.chatConfig,
+    models: modelHandle.getActiveModels(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
+    modelReferencePolicy: 'fallback'
+  });
+  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  workflow.referenceSnapshots = compactWorkflowReferenceSnapshots(workflow);
+
+  return { workflow, modelHandle };
+};
+
+/**
  * 新建应用及初始版本、默认协作者。所有新增入口统一校验配额、父链与目录深度，
  * 新建文件夹同时写入祖先路径；
  * 复制、转换新建和工具集创建传入的 session 会继续复用，原地转换不走此入口。
@@ -131,12 +199,14 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
   username,
   userAvatar,
   templateId,
+  inheritPermission,
   isRoot,
   session
 }: {
@@ -148,6 +218,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -155,17 +226,16 @@ export const onCreateApp = async ({
   username?: string;
   userAvatar?: string;
   templateId?: string;
+  inheritPermission?: boolean;
   isRoot?: boolean;
   session?: ClientSession;
 }) => {
+  const isFolder = AppFolderTypeList.includes(type);
+
   // 配额属于新增资源的约束，放在共享入口，避免复制或转换新建绕过路由校验。
   await checkTeamAppTypeLimit({
     teamId,
-    appCheckType: AppFolderTypeList.includes(type)
-      ? 'folder'
-      : ToolTypeList.includes(type)
-        ? 'tool'
-        : 'app'
+    appCheckType: isFolder ? 'folder' : ToolTypeList.includes(type) ? 'tool' : 'app'
   });
 
   // 普通应用与工具分属两棵目录树，父文件夹类型必须是同一棵树内的文件夹。
@@ -178,44 +248,39 @@ export const onCreateApp = async ({
       MongoApp.findOne({ _id: id, teamId }, '_id parentId type')
         .session(session ?? null)
         .lean(),
-    isFolder: AppFolderTypeList.includes(type),
+    isFolder,
     isFolderType: (parentType) =>
       AppFolderTypeList.includes(parentType as AppTypeEnum) &&
       (!folderTree || getAppFolderTree(parentType) === folderTree)
   });
 
-  // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
-    chatConfig
-  });
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
-    handle: modelHandle
-  });
-  formatModels({
-    nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
-    modelReferencePolicy: 'fallback'
-  });
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
-  const resources = extractAppResources({
-    nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
-  });
-  if (!AppFolderTypeList.includes(type!)) {
-    await checkAppResourceReadPermissions({
-      resources,
-      tmbId,
-      teamId,
-      isRoot,
-      modelHandle
-    });
-  }
+  // 文件夹不创建版本记录，跳过工作流迁移、模型目录读取与资源权限过滤。
+  const preparedVersion = isFolder
+    ? undefined
+    : await (async () => {
+        const { workflow, modelHandle } = await formatAppWorkflowForSave({
+          appType: type,
+          nodes,
+          edges,
+          chatConfig,
+          referenceSnapshots,
+          teamId,
+          tmbId,
+          isRoot
+        });
+        // 新建、导入或复制应用时，仅将操作人有权限读取的资源写入初始快照，无权限或不存在的资源不阻断创建。
+        const resources = await filterAuthorizedAppResources({
+          resources: extractAppResources({
+            nodes: workflow.nodes,
+            chatConfig: workflow.chatConfig
+          }),
+          tmbId,
+          teamId,
+          isRoot,
+          modelHandle
+        });
+        return { workflow, resources };
+      })();
 
   const create = async (session: ClientSession) => {
     const _avatar = await (async () => {
@@ -237,7 +302,7 @@ export const onCreateApp = async ({
       });
     })();
 
-    const ancestorIds = AppFolderTypeList.includes(type)
+    const ancestorIds = isFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
           findFolder: (id) =>
@@ -261,7 +326,8 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          templateId
+          templateId,
+          inheritPermission: inheritPermission ?? true
         }
       ],
       { session, ordered: true }
@@ -269,20 +335,21 @@ export const onCreateApp = async ({
 
     const appId = String(app._id);
 
-    if (!AppFolderTypeList.includes(type!)) {
+    if (preparedVersion) {
       const [version] = await MongoAppVersion.create(
         [
           {
             tmbId,
             appId,
-            nodes: storageNodes ?? normalizedWorkflow.nodes,
-            edges: normalizedWorkflow.edges,
-            chatConfig: normalizedWorkflow.chatConfig,
+            nodes: storageNodes ?? preparedVersion.workflow.nodes,
+            edges: preparedVersion.workflow.edges,
+            chatConfig: preparedVersion.workflow.chatConfig,
+            referenceSnapshots: preparedVersion.workflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
             isPublish: true,
-            resources
+            resources: preparedVersion.resources
           }
         ],
         { session, ordered: true }
@@ -317,6 +384,7 @@ export const onCreateApp = async ({
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_APP,
+        resources: [buildAppAuditResource({ _id: appId, name, avatar: _avatar, type: app.type })],
         params: {
           appName: name!,
           appType: getI18nAppType(type!)
@@ -346,38 +414,33 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
+  isRoot,
   session
 }: {
   appId: string;
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
+  isRoot?: boolean;
   session?: ClientSession;
 }) => {
-  const workflow = migrateWorkflowToCurrent({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
-    chatConfig
+  const { workflow } = await formatAppWorkflowForSave({
+    nodes,
+    edges,
+    chatConfig,
+    referenceSnapshots,
+    teamId,
+    tmbId,
+    isRoot
   });
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot: false },
-    handle: modelHandle
-  });
-  formatModels({
-    nodes: workflow.nodes,
-    chatConfig: workflow.chatConfig,
-    models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
-    modelReferencePolicy: 'fallback'
-  });
-  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 
   await MongoAppVersion.findOneAndUpdate(
     { appId, isAutoSave: true },
@@ -388,6 +451,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

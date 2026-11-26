@@ -9,13 +9,15 @@ import {
   getLastInteractiveValue,
   storeEdges2RuntimeEdges,
   getWorkflowEntryNodeIds,
-  storeNodes2RuntimeNodes,
   filterWorkflowEdges,
-  getReferenceVariableValue as baseGetReferenceVariableValue,
   formatVariableValByType,
   textAdaptGptResponse,
   rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getReferenceVariableValue as baseGetReferenceVariableValue,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/common/workflow/runtime';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -27,12 +29,16 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  WorkflowInteractiveResponseTypeSchema,
+  type WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
   RuntimeEdgeItemType,
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
@@ -1145,6 +1151,43 @@ describe('getLastInteractiveValue', () => {
     expect(memoryEdges[0].status).toBe('active');
   });
 
+  it('should keep persisted selected tool parent edges when resuming', () => {
+    const edges: StoreEdgeItemType[] = [
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+    const memoryEdges: RuntimeEdgeItemType[] = [
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set0',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'active'
+      }
+    ];
+    const lastInteractive = {
+      type: 'userSelect',
+      entryNodeIds: ['tool-call'],
+      memoryEdges,
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as WorkflowInteractiveResponseType;
+
+    const result = storeEdges2RuntimeEdges(edges, lastInteractive);
+
+    expect(result).toEqual([
+      memoryEdges[0],
+      {
+        ...edges[0],
+        status: 'waiting'
+      }
+    ]);
+  });
+
   it('should return converted edges when lastInteractive has empty memoryEdges', () => {
     const edges: StoreEdgeItemType[] = [
       { source: 'node1', sourceHandle: 'out1', target: 'node2', targetHandle: 'in1' }
@@ -1328,6 +1371,7 @@ describe('storeNodes2RuntimeNodes', () => {
     const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1351,6 +1395,7 @@ describe('storeNodes2RuntimeNodes', () => {
     expect(result).toEqual([
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1383,6 +1428,7 @@ describe('storeNodes2RuntimeNodes', () => {
     ];
     const result = storeNodes2RuntimeNodes(nodes, ['other']);
     expect(result[0].isEntry).toBe(false);
+    expect(result[0]).not.toHaveProperty('parentNodeId');
   });
 });
 
@@ -1486,22 +1532,14 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should return original value when node not found', () => {
-    const result = getReferenceVariableValue({
-      value: ['nonexistent', 'out1'],
-      nodesMap: {},
-      variables: {}
-    });
-    expect(result).toEqual(['nonexistent', 'out1']);
-  });
-
-  it('should return non-reference value as-is', () => {
-    const result = getReferenceVariableValue({
-      value: 'plain string' as any,
-      nodesMap: {},
-      variables: {}
-    });
-    expect(result).toBe('plain string');
+  it.each([
+    { name: 'a two-string tuple with a missing source', value: ['nonexistent', 'out1'] },
+    { name: 'a plain string', value: 'plain string' },
+    { name: 'an ordinary array', value: ['plain value', 1] }
+  ])('preserves $name as a literal', ({ value }) => {
+    expect(
+      getReferenceVariableValue({ value: value as ReferenceValueType, nodesMap: {}, variables: {} })
+    ).toBe(value);
   });
 
   it('should keep two-column table data as a two-dimensional array', () => {
@@ -1510,13 +1548,12 @@ describe('getReferenceVariableValue', () => {
       ['资产总额（期末余额）', '22,701,764,055.63'],
       ['负债总额（期末余额）', '4,809,415,705.17']
     ];
-
     const result = getReferenceVariableValue({
       value: tableData,
       nodesMap: {},
-      variables: {}
+      variables: {},
+      isReferenceVal: false
     });
-
     expect(result).toEqual(tableData);
   });
 
@@ -1603,6 +1640,34 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toEqual(['value1']);
+  });
+
+  it('should preserve a mixed reference array when one source is missing', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
+        ]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [
+        ['node1', 'out1'],
+        ['missingNode', 'out1'],
+        [VARIABLE_NODE_ID, 'var1']
+      ],
+      nodesMap,
+      variables: { var1: 'hello' }
+    });
+    expect(result).toEqual([
+      ['node1', 'out1'],
+      ['missingNode', 'out1'],
+      [VARIABLE_NODE_ID, 'var1']
+    ]);
   });
 
   it('should flatten array output values in reference array', () => {
@@ -1832,29 +1897,32 @@ describe('rewriteNodeOutputByHistories', () => {
     expect(result).toBe(nodes);
   });
 
-  it('should rewrite node outputs from lastInteractive', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
-        nodeId: 'node1',
-        name: 'test',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: [
-          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'original' }
-        ]
-      }
-    ];
-    const lastInteractive = {
-      type: 'userSelect',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [{ nodeId: 'node1', key: 'output1' as any, value: 'newValue' }],
-      params: { description: '', userSelectOptions: [] }
-    } as WorkflowInteractiveResponseType;
+  it.each(['newValue', 0, false, '', null])(
+    'restores custom output values from a validated interactive snapshot: %j',
+    (value) => {
+      const nodes: RuntimeNodeItemType[] = [
+        {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [
+            { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'original' }
+          ]
+        }
+      ];
+      const lastInteractive = WorkflowInteractiveResponseTypeSchema.parse({
+        type: 'userSelect',
+        entryNodeIds: ['node1'],
+        memoryEdges: [],
+        nodeOutputs: [{ nodeId: 'node1', key: 'output1', value }],
+        params: { description: '', userSelectOptions: [] }
+      });
 
-    const result = rewriteNodeOutputByHistories(nodes, lastInteractive);
-    expect(result[0].outputs[0].value).toBe('newValue');
-  });
+      const result = rewriteNodeOutputByHistories(nodes, lastInteractive);
+      expect(result[0].outputs[0].value).toBe(value);
+    }
+  );
 
   it('should keep original value when no matching nodeOutput', () => {
     const nodes: RuntimeNodeItemType[] = [

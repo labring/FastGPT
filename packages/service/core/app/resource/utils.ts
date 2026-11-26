@@ -276,15 +276,22 @@ export const extractAppResources = ({
       addResource({ type: 'agent', id: node.pluginId });
     }
     if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) addTool(node.pluginId);
-    if (
-      (node.flowNodeType === FlowNodeTypeEnum.tool ||
-        node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
-      node.pluginId
-    ) {
-      addTool(node.pluginId);
+    if (node.flowNodeType === FlowNodeTypeEnum.tool && node.pluginId) addTool(node.pluginId);
+    if (node.flowNodeType === FlowNodeTypeEnum.toolSet && node.pluginId) {
+      const mcpToolSet = node.toolConfig?.mcpToolSet;
+      const httpToolSet = node.toolConfig?.httpToolSet;
+      if (mcpToolSet) {
+        if ('toolId' in mcpToolSet) addTool(mcpToolSet.toolId);
+      } else if (httpToolSet) {
+        if ('toolId' in httpToolSet) addTool(httpToolSet.toolId);
+      } else {
+        addTool(node.pluginId);
+      }
     }
-    addTool(node.toolConfig?.mcpTool?.toolId);
-    addTool(node.toolConfig?.httpTool?.toolId);
+    const mcpTool = node.toolConfig?.mcpTool;
+    if (mcpTool && 'toolId' in mcpTool) addTool(mcpTool.toolId);
+    const httpTool = node.toolConfig?.httpTool;
+    if (httpTool && 'toolId' in httpTool) addTool(httpTool.toolId);
 
     const inputs = node.inputs ?? [];
     for (const slot of workflowSystemModelSlots) {

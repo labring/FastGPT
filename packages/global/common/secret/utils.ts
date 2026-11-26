@@ -3,10 +3,13 @@ import {
   CompatibleSecretValueSchema,
   SecretValueParseSchema,
   type ReferenceValue,
-  type SecretValueType
+  type SecretValueType,
+  SecretValueTypeSchema
 } from './type';
 
 export type SecretValueReferenceResolver = (ref: ReferenceValue) => unknown;
+
+const ScalarInputValueSchema = z.object({ value: z.union([z.number(), z.boolean()]) }).strict();
 
 /** 凭据识别的唯一入口：先兼容旧数据，再严格校验整个互斥 wrapper。 */
 export const parseSecretValue = (value: unknown): SecretValueType | undefined => {
@@ -14,8 +17,9 @@ export const parseSecretValue = (value: unknown): SecretValueType | undefined =>
   return parsed.success ? parsed.data : undefined;
 };
 
-/** 配置状态只看合法来源：空明文/密文未配置，合法引用已绑定；引用可用性由工作流检查。 */
+/** 空明文/密文未配置；数字、布尔值和合法引用已配置。 */
 export const isSecretValueConfigured = (value: unknown): boolean => {
+  if (ScalarInputValueSchema.safeParse(value).success) return true;
   const secretValue = parseSecretValue(value);
   if (!secretValue) return false;
   if ('ref' in secretValue) return true;
@@ -23,7 +27,10 @@ export const isSecretValueConfigured = (value: unknown): boolean => {
 };
 
 /** API 凭据表先归一化旧双字段及空 wrapper，再按当前密钥格式严格校验。 */
-export const StoreSecretValueTypeApiInputSchema = z.record(z.string(), CompatibleSecretValueSchema);
+export const StoreSecretValueTypeApiInputSchema = z.record(
+  z.string(),
+  CompatibleSecretValueSchema.pipe(SecretValueTypeSchema)
+);
 
 /** 从统一解析结果中提取明文，空字符串仍保留。 */
 export const getSecretPlainValue = (value: unknown): string | undefined => {

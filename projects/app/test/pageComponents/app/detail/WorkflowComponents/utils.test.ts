@@ -1,19 +1,40 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  uiWorkflow2StoreWorkflow,
   filterExportModules,
   getEditorVariables
 } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
+import { getWorkflowReferenceDisplayLabels } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { AppDetailType } from '@fastgpt/global/core/app/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { filterSensitiveNodesData, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+
+const parseChatTestWorkflow = (nodes: any[]) =>
+  ChatTestPropsSchema.safeParse({
+    messages: [],
+    nodes,
+    edges: [],
+    chatConfig: {},
+    appId: '68ad85a7463006c963799a05',
+    appName: 'Test app',
+    chatId: 'chat-1'
+  });
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
@@ -149,7 +170,7 @@ describe('WorkflowComponents utils', () => {
       });
     });
 
-    it('preserves selected plugin tool metadata locale when saving an Agent node', () => {
+    it('preserves expanded and stored Agent tools without requiring display-only metadata', () => {
       const nodes = [
         {
           data: {
@@ -166,11 +187,36 @@ describe('WorkflowComponents utils', () => {
                     id: 'search',
                     pluginId: 'search',
                     name: 'Search',
+                    avatar: 'icon/search',
                     flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
                     version: '1.0.0',
                     metadataLocale: 'zh-CN',
+                    inputs: []
+                  },
+                  {
+                    id: 'deleted-tool',
+                    pluginId: 'deleted-tool',
+                    name: 'Deleted Tool',
+                    avatar: 'icon/deleted',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
+                    version: '1.0.0',
                     inputs: [],
-                    outputs: []
+                    rawInputs: [{ key: 'query', mode: 'agentGenerated' }],
+                    config: { apiKey: 'secret-val' },
+                    outputs: [],
+                    pluginData: { error: 'tool_missing' }
+                  },
+                  {
+                    id: 'imported-sparse-tool',
+                    name: 'Imported Sparse Tool',
+                    avatar: 'icon/sparse',
+                    version: '1.0.0',
+                    inputs: [{ key: 'topic', mode: 'manual' }],
+                    config: { topic: 'ai' }
                   }
                 ]
               }
@@ -184,8 +230,196 @@ describe('WorkflowComponents utils', () => {
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
       expect(result.nodes[0].inputs[0].value).toEqual([
-        expect.objectContaining({ metadataLocale: 'zh-CN' })
+        expect.objectContaining({
+          id: 'search',
+          name: 'Search',
+          avatar: 'icon/search',
+          metadataLocale: 'zh-CN'
+        }),
+        expect.objectContaining({
+          id: 'deleted-tool',
+          name: 'Deleted Tool',
+          avatar: 'icon/deleted',
+          inputs: [{ key: 'query', mode: 'agentGenerated' }],
+          config: { apiKey: 'secret-val' }
+        }),
+        expect.objectContaining({
+          id: 'imported-sparse-tool',
+          name: 'Imported Sparse Tool',
+          avatar: 'icon/sparse',
+          inputs: [{ key: 'topic', mode: 'manual' }],
+          config: { topic: 'ai' }
+        })
       ]);
+    });
+
+    it('normalizes full NodeIO Agent tools without requiring flowNodeType', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'systemTool-delay',
+                    name: 'Delay',
+                    version: '1.0',
+                    inputs: [
+                      {
+                        key: 'ms',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.agentGenerated,
+                          FlowNodeInputTypeEnum.numberInput
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.numberInput,
+                        value: 1000
+                      }
+                    ],
+                    config: {}
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const value = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0].inputs[0].value as any;
+
+      expect(value[0]).toMatchObject({
+        id: 'systemTool-delay',
+        inputs: [{ key: 'ms', mode: 'manual' }],
+        config: { ms: 1000 }
+      });
+      expect(value[0]).not.toHaveProperty('flowNodeType');
+    });
+
+    it('keeps empty-input Agent tools valid for chat test requests', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'search',
+                    pluginId: 'search',
+                    name: 'Search',
+                    avatar: 'icon/search',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
+                    version: '1.0.0',
+                    metadataLocale: 'zh-CN',
+                    inputs: []
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const storedNode = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0];
+      const value = storedNode.inputs[0].value as any;
+
+      expect(value[0].config).toEqual({});
+      expect(parseChatTestWorkflow([storedNode]).success).toBe(true);
+    });
+
+    it('prefers current NodeIO values over stale tool config when saving', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'search',
+                    pluginId: 'search',
+                    name: 'Search',
+                    avatar: 'icon/search',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
+                    version: '1.0.0',
+                    inputs: [
+                      {
+                        key: 'query',
+                        renderTypeList: [FlowNodeInputTypeEnum.input],
+                        selectedType: FlowNodeInputTypeEnum.input,
+                        value: 'edited'
+                      }
+                    ],
+                    config: { query: 'old' },
+                    outputs: []
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const value = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0].inputs[0].value as any;
+
+      expect(value[0].inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(value[0].config).toEqual({ query: 'edited' });
+    });
+
+    it('keeps the missing-inputs Agent tool marker unchanged', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'legacy-tool',
+                    config: { query: 'saved' }
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const value = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0].inputs[0].value as any;
+
+      expect(value).toEqual([{ id: 'legacy-tool', config: { query: 'saved' } }]);
     });
 
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {
@@ -427,7 +661,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[1].inputs[0].value).toEqual(referenceValue);
     });
 
-    it('should filter only unselectable values from reference inputs', () => {
+    it('should keep unselectable reference values when saving workflow', () => {
       const nodes = [
         {
           data: {
@@ -526,11 +760,16 @@ describe('WorkflowComponents utils', () => {
         'sourceNode',
         'text'
       ]);
-      expect(
-        storedInputs.find((input) => input.key === 'invalidSingleReference')?.value
-      ).toBeUndefined();
+      // 失效引用原样持久化：抹掉它会让 Reference Snapshots 失去 consumer，
+      // 重开后连“这里曾引用过什么”都无从展示。
+      expect(storedInputs.find((input) => input.key === 'invalidSingleReference')?.value).toEqual([
+        'missingNode',
+        'text'
+      ]);
       expect(storedInputs.find((input) => input.key === 'multipleReferences')?.value).toEqual([
-        ['sourceNode', 'files']
+        ['sourceNode', 'files'],
+        ['sourceNode', 'count'],
+        ['missingNode', 'files']
       ]);
       expect(storedInputs.find((input) => input.key === 'textareaValue')?.value).toBe(
         '{{missingNode.text}}'
@@ -590,7 +829,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
     });
 
-    it('should remove code node custom input references to its own tool params', () => {
+    it('should keep code node custom input references to its own tool params', () => {
       const nodes = [
         {
           data: {
@@ -626,9 +865,10 @@ describe('WorkflowComponents utils', () => {
 
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
-      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toBe(
-        undefined
-      );
+      expect(result.nodes[0].inputs.find((input) => input.key === 'customInput')?.value).toEqual([
+        'codeNode',
+        'arg1'
+      ]);
     });
 
     it('should preserve a canonical input selection when saving workflow', () => {
@@ -658,34 +898,6 @@ describe('WorkflowComponents utils', () => {
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
       expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
-    });
-
-    it('should preserve the canonical selectedType when saving workflow', () => {
-      const nodes = [
-        {
-          data: {
-            nodeId: 'chatNode',
-            name: 'Chat node',
-            intro: '',
-            avatar: '',
-            flowNodeType: FlowNodeTypeEnum.chatNode,
-            showStatus: true,
-            inputs: [
-              {
-                key: NodeInputKeyEnum.userChatInput,
-                renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-                selectedType: FlowNodeInputTypeEnum.reference
-              }
-            ],
-            outputs: []
-          },
-          position: { x: 0, y: 0 }
-        }
-      ];
-
-      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
-
-      expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
     });
 
     it('should keep selected dataset snapshot for later server-side save formatting', () => {
@@ -779,8 +991,90 @@ describe('WorkflowComponents utils', () => {
 
       expect(parsed[0].inputs[0].value).toEqual(['value1']);
     });
-  });
 
+    it('should filter skills, tools, datasets and prompt mentions for Agent nodes', () => {
+      const nodes = [
+        {
+          nodeId: 'agent',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          position: { x: 0, y: 0 },
+          inputs: [
+            {
+              key: NodeInputKeyEnum.skills,
+              label: '',
+              renderTypeList: [],
+              value: [{ skillId: 'skill-1', name: 'Skill 1' }]
+            },
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: '',
+              renderTypeList: [],
+              value: [{ id: 'tool-1', name: 'Tool 1' }]
+            },
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: '',
+              renderTypeList: [],
+              value: [{ datasetId: 'dataset-1' }]
+            },
+            {
+              key: NodeInputKeyEnum.datasetParams,
+              label: '',
+              renderTypeList: [],
+              value: {
+                datasets: [{ datasetId: 'dataset-1' }],
+                similarity: 0.4
+              }
+            },
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              label: '',
+              renderTypeList: [],
+              value: '请结合 {{@dataset-1@}} 和 {{@skill-1@}} 回答 {{$start.userChatInput$}}'
+            }
+          ],
+          outputs: []
+        }
+      ] as any;
+
+      const filtered = filterSensitiveNodesData(nodes);
+      const inputMap = new Map(filtered[0].inputs.map((item: any) => [item.key, item.value]));
+
+      expect(inputMap.get(NodeInputKeyEnum.skills)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.selectedTools)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.datasetSelectList)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.datasetParams)).toEqual({
+        datasets: [],
+        similarity: 0.4
+      });
+      expect(inputMap.get(NodeInputKeyEnum.aiSystemPrompt)).toBe(
+        '请结合  和  回答 {{$start.userChatInput$}}'
+      );
+
+      const referenceNodes = [
+        {
+          nodeId: 'agent-ref',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: '',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: ['upstream_node', 'datasets_out']
+            }
+          ],
+          outputs: []
+        }
+      ] as any;
+      const filteredRef = filterSensitiveNodesData(referenceNodes);
+      expect(filteredRef[0].inputs[0].value).toEqual(['upstream_node', 'datasets_out']);
+    });
+  });
   describe('getEditorVariables', () => {
     it('should return variables for node', () => {
       const nodeId = 'node1';
@@ -799,19 +1093,14 @@ describe('WorkflowComponents utils', () => {
           outputs: []
         }
       ];
-      const edges = [];
-      const appDetail = {
-        chatConfig: {}
-      } as AppDetailType;
       const t = (key: string) => key;
 
       const result = getEditorVariables({
         nodeId,
-        nodeList,
-        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
-        edges,
-        appDetail,
-        t
+        getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
+        chatConfig: {},
+        t,
+        getSourceNodeIds: () => []
       });
 
       expect(result[0]).toEqual({
@@ -828,14 +1117,70 @@ describe('WorkflowComponents utils', () => {
     it('should return empty array when node not found', () => {
       const result = getEditorVariables({
         nodeId: 'nonexistent',
-        nodeList: [],
         getNodeById: () => undefined,
-        edges: [],
-        appDetail: {} as AppDetailType,
-        t: (key: string) => key
+        chatConfig: {},
+        t: (key: string) => key,
+        getSourceNodeIds: () => []
       });
 
       expect(result).toEqual([]);
+    });
+
+    it('restores a deleted template output label with a legacy output ID', () => {
+      const output = { ...TextEditorNode.outputs[0], id: 'legacy-result' };
+      const field = { nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText };
+      const runtime = createWorkflowEditor({
+        nodes: [
+          { ...TextEditorNode, nodeId: 'source', name: 'Source', outputs: [output] },
+          {
+            nodeId: field.nodeId,
+            name: 'Answer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: field.fieldKey,
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                value: ['source', output.id]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'source',
+            target: field.nodeId,
+            sourceHandle: 'source-source-right',
+            targetHandle: 'answer-target-left'
+          }
+        ],
+        chatConfig: {}
+      });
+      const t = (key: string) => (key === output.label ? '拼接结果' : key);
+      expect(runtime.getReferenceOptions(field)).toContainEqual(
+        expect.objectContaining({ reference: ['source', output.id], localizeOutputLabel: true })
+      );
+
+      expect(runtime.getWorkflowActions().removeNodes(['source']).ok).toBe(true);
+      const saved = migrateWorkflowToCurrent(JSON.parse(JSON.stringify(runtime.getWorkflowData())));
+      expect(saved.referenceSnapshots).toEqual([
+        expect.objectContaining({
+          reference: ['source', output.id],
+          outputLabel: output.label,
+          localizeOutputLabel: true
+        })
+      ]);
+      const restored = createWorkflowEditor(saved);
+      const label = (editor: typeof restored) =>
+        getWorkflowReferenceDisplayLabels(editor.getField(field)?.references, t)?.[0]?.outputLabel;
+      expect(label(restored)).toBe('拼接结果');
+
+      const literal = createWorkflowEditor({
+        ...saved,
+        referenceSnapshots: [{ reference: ['source', output.id], outputLabel: output.label }]
+      });
+      expect(label(literal)).toBe(output.label);
     });
 
     it('should preserve custom labels while translating system variable labels', () => {
@@ -850,23 +1195,107 @@ describe('WorkflowComponents utils', () => {
 
       const result = getEditorVariables({
         nodeId: 'node1',
-        nodeList,
-        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
-        edges: [],
-        appDetail: {
-          chatConfig: {
-            variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
-          }
-        } as AppDetailType,
+        getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
+        chatConfig: {
+          variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
+        },
         t: (key: string) =>
           ({
             name: '名称',
             'workflow:use_user_id': '用户 ID'
-          })[key] || key
+          })[key] || key,
+        getSourceNodeIds: () => []
       });
 
       expect(result.find((item) => item.key === 'name')?.label).toBe('name');
       expect(result.find((item) => item.key === 'userId')?.label).toBe('用户 ID');
+    });
+
+    it('localizes built-in output labels and preserves custom labels in live and historical references', () => {
+      const codeOutputId = 'arg123';
+      const customLabel = 'common:Delete';
+      const userQuestionLabel = 'common:core.module.input.label.user question';
+      const chatConfig = {
+        variables: [{ key: 'topic', label: customLabel, description: '', type: 'input' as const }]
+      };
+      const field = { nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText };
+      const t = (key: string) =>
+        ({ [userQuestionLabel]: '用户问题', [customLabel]: '删除' })[key] ?? key;
+      const runtime = createWorkflowEditor({
+        nodes: [
+          { ...WorkflowStart, nodeId: 'start', name: '流程开始' },
+          {
+            ...CodeNode,
+            nodeId: 'code',
+            name: 'Code',
+            outputs: [
+              ...CodeNode.outputs,
+              {
+                id: codeOutputId,
+                key: customLabel,
+                label: customLabel,
+                type: FlowNodeOutputTypeEnum.dynamic
+              }
+            ]
+          },
+          {
+            nodeId: field.nodeId,
+            name: 'Answer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: field.fieldKey,
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.textarea],
+                value: `{{$start.${NodeOutputKeyEnum.userChatInput}$}} {{$code.${codeOutputId}$}} {{$${VARIABLE_NODE_ID}.topic$}}`
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'code',
+            sourceHandle: 'start-source-right',
+            targetHandle: 'code-target-left'
+          },
+          {
+            source: 'code',
+            target: field.nodeId,
+            sourceHandle: 'code-source-right',
+            targetHandle: 'answer-target-left'
+          }
+        ],
+        chatConfig
+      });
+
+      const variables = getEditorVariables({
+        nodeId: field.nodeId,
+        getNodeById: (nodeId) => (nodeId ? runtime.getNode(nodeId) : undefined),
+        chatConfig,
+        t,
+        getSourceNodeIds: (nodeId) => runtime.getGraphQueries().getSourceNodeIds({ nodeId })
+      });
+      expect(variables.find(({ key }) => key === NodeOutputKeyEnum.userChatInput)?.label).toBe(
+        '用户问题'
+      );
+      expect(variables.find(({ key }) => key === codeOutputId)?.label).toBe(customLabel);
+      expect(variables.find(({ key }) => key === 'topic')?.label).toBe(customLabel);
+
+      expect(
+        runtime.dispatch([
+          { type: 'removeNodes', nodeIds: ['code'] },
+          { type: 'updateChatConfig', chatConfig: { variables: [] } }
+        ]).ok
+      ).toBe(true);
+      const references = runtime.getField(field)?.references;
+      expect(getWorkflowReferenceDisplayLabels(references, t)).toMatchObject([
+        { code: 'unreachable_reference', outputLabel: '用户问题' },
+        { code: 'invalid_reference', outputLabel: customLabel },
+        { code: 'invalid_reference', outputLabel: customLabel }
+      ]);
+      expect(references?.[0].outputLabel).toBe(userQuestionLabel);
     });
   });
 });

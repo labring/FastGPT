@@ -1,21 +1,21 @@
-import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 
 export type SearchTestFormType = {
   inputText: string;
-  searchParams: {
-    searchMode: DatasetSearchModeEnum;
-    embeddingWeight?: number;
-
-    usingReRank?: boolean;
-    rerankModel?: string;
-    rerankWeight?: number;
-
-    similarity?: number;
-    limit?: number;
-    datasetSearchUsingExtensionQuery?: boolean;
-    datasetSearchExtensionModel?: string;
-    datasetSearchExtensionBg?: string;
-  };
+  searchParams: Pick<
+    AppDatasetSearchParamsType,
+    | 'searchMode'
+    | 'embeddingWeight'
+    | 'usingReRank'
+    | 'rerankModelId'
+    | 'rerankWeight'
+    | 'rerankCandidateNum'
+    | 'similarity'
+    | 'limit'
+    | 'datasetSearchUsingExtensionQuery'
+    | 'datasetSearchExtensionModelId'
+    | 'datasetSearchExtensionBg'
+  >;
 };
 
 export type SearchTestImageRef = {

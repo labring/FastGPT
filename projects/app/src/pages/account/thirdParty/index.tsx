@@ -4,7 +4,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 import WorkflowVariableModal from '@/pageComponents/account/thirdParty/WorkflowVariableModal';
@@ -48,7 +47,7 @@ const ThirdParty = () => {
 
   const { userInfo } = useUserStore();
 
-  const isOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const isOwner = Boolean(userInfo?.team?.permission.isOwner);
 
   const defaultAccountList: ThirdPartyAccountType[] = useMemo(
     () => [

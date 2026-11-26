@@ -1,3 +1,6 @@
+import { ObjectIdSchema } from '../../common/type/mongo';
+import { optionalNullToUndefined } from '../../common/zod';
+import type { ZodOpenApiMetadata } from 'zod-openapi';
 import z from 'zod';
 
 export const OutLinkChatAuthSchema = z.object({
@@ -42,3 +45,60 @@ export const OutLinkChatAuthQuerySchema = z
     description: '外链鉴权数据的 JSON 字符串，包含 shareId 和 outLinkUid。'
   });
 export type OutLinkChatAuthQuery = z.input<typeof OutLinkChatAuthQuerySchema>;
+
+export const ChatAuthProxySchema = z
+  .union([
+    z
+      .object({
+        tmbId: ObjectIdSchema.meta({
+          description: 'API Key 代理调用的团队成员 ID，优先于 username'
+        })
+      })
+      .meta({ title: '按团队成员 ID' }),
+    z
+      .object({
+        username: z.string().trim().min(1).max(128).meta({
+          example: 'user@example.com',
+          description: 'API Key 代理调用的团队成员用户名'
+        }),
+        // 兼容 tmbId: null，但禁止无效 ID 回退到用户名查询。
+        tmbId: optionalNullToUndefined(z.never())
+      })
+      .meta({
+        title: '按用户名',
+        override: ({ jsonSchema }) => {
+          // 仅用于运行时校验的守卫字段，不作为用户名模式的文档参数展示。
+          delete jsonSchema.properties?.tmbId;
+        }
+      } satisfies ZodOpenApiMetadata)
+  ])
+  .meta({
+    type: 'object',
+    description:
+      'API Key 代理调用身份。仅开启 authProxy 的个人密钥可用；按团队成员 ID 或用户名指定，二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名'
+  });
+export type ChatAuthProxy = z.infer<typeof ChatAuthProxySchema>;
+
+/** Query 将代理对象编码为 JSON 字符串；格式错误必须拒绝，不回退默认成员。 */
+export const ChatAuthProxyQuerySchema = z
+  .string()
+  .transform((value, ctx) => {
+    let input: unknown;
+    try {
+      input = JSON.parse(value);
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'authProxy must be a JSON string' });
+      return z.NEVER;
+    }
+    const result = ChatAuthProxySchema.safeParse(input);
+    if (!result.success) {
+      ctx.addIssue({ code: 'custom', message: 'Invalid authProxy' });
+      return z.NEVER;
+    }
+    return result.data;
+  })
+  .meta({
+    example: '{"tmbId":"68ad85a7463006c963799a06"}',
+    description: '代理身份的 JSON 字符串，例如 {"tmbId":"团队成员ID"} 或 {"username":"用户名"}'
+  });
+export type ChatAuthProxyQuery = z.input<typeof ChatAuthProxyQuerySchema>;

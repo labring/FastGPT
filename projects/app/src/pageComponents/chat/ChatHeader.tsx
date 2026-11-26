@@ -243,7 +243,7 @@ const MobileHeader = ({
   appId
 }: {
   showHistory?: boolean;
-  avatar: string;
+  avatar?: string;
   name: string;
   appId: string;
 }) => {

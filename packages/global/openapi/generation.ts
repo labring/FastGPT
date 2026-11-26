@@ -1,20 +1,6 @@
 import z from 'zod';
 import type { CreateDocumentOptions } from 'zod-openapi';
-import { ObjectIdSchema } from '../common/type/mongo';
-
-/** 识别 ObjectId 的公开包装类型；保留 optional/default 等运行时的可省略语义。 */
-const isObjectIdInput = (schema: z.core.$ZodType): boolean => {
-  if (
-    schema instanceof z.ZodOptional ||
-    schema instanceof z.ZodNullable ||
-    schema instanceof z.ZodDefault
-  ) {
-    return isObjectIdInput(schema.unwrap());
-  }
-  return schema instanceof z.ZodPipe && schema.out === ObjectIdSchema.out;
-};
-
-/** 仅在文档生成时隐藏 never 字段并修正 ObjectId 入参必填标记，不修改共享 Zod Schema。 */
+/** 仅在文档生成时隐藏禁用字段，并按请求实际可省略语义修正必填标记；不修改运行时校验和响应契约。 */
 export const openApiDocumentOptions: CreateDocumentOptions = {
   override: ({ jsonSchema, zodSchema, io }) => {
     if (!(zodSchema instanceof z.ZodObject)) return;
@@ -34,11 +20,16 @@ export const openApiDocumentOptions: CreateDocumentOptions = {
         required.delete(key);
         continue;
       }
-      if (io !== 'input' || !isObjectIdInput(schema)) continue;
-      if (schema.safeParse(undefined).success) {
-        required.delete(key);
-      } else {
-        required.add(key);
+      if (io !== 'input') continue;
+      try {
+        // preprocess/default 等包装会影响静态识别；以 Schema 是否接受省略为准，default 注解不代表可选。
+        if (schema.safeParse(undefined).success) {
+          required.delete(key);
+        } else {
+          required.add(key);
+        }
+      } catch {
+        // 异步校验或自定义转换不能同步探测时沿用生成器结果，避免阻断整份文档生成。
       }
     }
     if (required.size > 0) jsonSchema.required = [...required];

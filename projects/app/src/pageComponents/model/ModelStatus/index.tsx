@@ -2,7 +2,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Flex,
   FormControl,
   FormHelperText,
@@ -27,6 +26,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type {
   GetModelStatusResponse,
@@ -42,6 +42,7 @@ import {
 } from '@/web/core/ai/model/statusApi';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 
 const statusColorMap = {
   green: 'green',
@@ -59,6 +60,32 @@ const formatTimeToMinute = (time?: string | null) => {
   if (!time) return '-';
   const d = dayjs(time);
   return d.isValid() ? d.format('YYYY/MM/DD HH:mm') : '-';
+};
+
+const PROBE_ERROR_CODE_PATTERN = /^(?:(.+): )?([A-Za-z][A-Za-z0-9_]*)(?: \(HTTP (\d{3})\))?$/;
+
+/**
+ * 后台探活记录与 Webhook 只保存英文/错误码，状态页展示时将已登记业务错误码映射为当前语言提示，
+ * 历史记录及普通上游错误文本原样保留。
+ */
+export const formatModelProbeError = ({
+  error,
+  t
+}: {
+  error?: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}): string | undefined => {
+  if (!error) return undefined;
+  const match = PROBE_ERROR_CODE_PATTERN.exec(error.trim());
+  if (!match) return error;
+
+  const [, prefix, errorCode, httpStatus] = match;
+  const entry = Object.hasOwn(ERROR_RESPONSE, errorCode) ? ERROR_RESPONSE[errorCode] : undefined;
+  if (!entry?.message) return error;
+
+  const translated = t(entry.message);
+  const suffix = httpStatus ? ` (${errorCode}, HTTP ${httpStatus})` : ` (${errorCode})`;
+  return prefix ? `${prefix}: ${translated}${suffix}` : `${translated}${suffix}`;
 };
 
 const TIMELINE_BAR_MIN_WIDTH = 4;
@@ -210,7 +237,8 @@ const ProbeTimeline = ({
       );
     }
 
-    const errorMsg = point.error || t('config_model:model_status_red');
+    const errorMsg =
+      formatModelProbeError({ error: point.error, t }) || t('config_model:model_status_red');
 
     return (
       <Box maxW={'320px'} fontSize={'xs'}>
@@ -318,7 +346,7 @@ const ModelStatusCard = ({
       </Flex>
       {model.latest?.error && (
         <Text mt={2} color={'red.500'} fontSize={'xs'} noOfLines={2}>
-          {model.latest.error}
+          {formatModelProbeError({ error: model.latest.error, t })}
         </Text>
       )}
     </MyBox>
@@ -341,8 +369,8 @@ const ProbeConfigModal = ({
     config.intervalMinutes
   );
   const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl ?? '');
-  const [webhookToken, setWebhookToken] = useState('');
-  const [clearWebhookToken, setClearWebhookToken] = useState(false);
+  // undefined 表示保留已存令牌，空字符串表示用户明确清空。
+  const [webhookToken, setWebhookToken] = useState<string>();
 
   const { runAsync, loading } = useRequest(
     async (data: UpdateModelStatusProbeConfigBody) => putModelStatusProbeConfig(data),
@@ -364,7 +392,7 @@ const ProbeConfigModal = ({
       }
       return postTestModelStatusWebhook({
         ...(trimmedUrl ? { webhookUrl: trimmedUrl } : {}),
-        ...(webhookToken ? { webhookToken } : {})
+        ...(webhookToken !== undefined ? { webhookToken } : {})
       });
     },
     {
@@ -395,7 +423,7 @@ const ProbeConfigModal = ({
       intervalMinutes,
       webhookUrl,
       ...(webhookToken ? { webhookToken } : {}),
-      clearWebhookToken
+      clearWebhookToken: webhookToken === ''
     });
   };
 
@@ -473,30 +501,16 @@ const ProbeConfigModal = ({
             {t('config_model:model_status_webhook_token')}
             <QuestionTip ml={1} label={t('config_model:model_status_webhook_token_tip')} />
           </FormLabel>
-          <Input
+          <SecretValueInput
             h={'36px'}
             bg={'white'}
-            type={'password'}
-            autoComplete={'new-password'}
             name={'model-status-webhook-token'}
-            placeholder={
-              config.webhookTokenConfigured
-                ? t('config_model:model_status_token_configured')
-                : t('config_model:model_status_token_placeholder')
-            }
-            value={webhookToken}
-            onChange={(event) => setWebhookToken(event.target.value)}
+            placeholder={t('config_model:model_status_token_placeholder')}
+            value={webhookToken ?? ''}
+            isConfigured={config.webhookTokenConfigured && webhookToken === undefined}
+            onChange={setWebhookToken}
           />
         </FormControl>
-
-        {config.webhookTokenConfigured && (
-          <Checkbox
-            isChecked={clearWebhookToken}
-            onChange={(event) => setClearWebhookToken(event.target.checked)}
-          >
-            {t('config_model:model_status_clear_token')}
-          </Checkbox>
-        )}
       </Stack>
     </MyModal>
   );

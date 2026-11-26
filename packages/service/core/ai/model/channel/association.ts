@@ -45,7 +45,8 @@ export const getOwnerAssociableModels = async ({
   return handle.getTeamModels(tmbId).map((item) => ({
     id: item.modelId,
     model: item.model,
-    name: item.name
+    name: item.name,
+    hasRequestUrl: hasLegacyRequestUrl(item)
   }));
 };
 

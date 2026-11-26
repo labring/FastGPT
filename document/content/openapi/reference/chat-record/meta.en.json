@@ -1,0 +1,11 @@
+{
+  "title": "Chat Records",
+  "pages": [
+    "get-pagination-records",
+    "get-records-v2",
+    "get-res-data",
+    "get-quote",
+    "get-collection-quote",
+    "delete"
+  ]
+}

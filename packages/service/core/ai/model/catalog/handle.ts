@@ -1,6 +1,6 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
@@ -44,6 +44,7 @@ const defaultSlots = [
 /**
  * 按候选系统模型集合计算有效默认模型 ID。
  * 管理员配置的默认模型不可用（或不在候选集合内）时，必填槽位在同类型启用系统模型内回退；
+ * 回退遵循运行时目录顺序，与管理列表的展示 rank 无关，有效的显式默认值优先。
  * 图片知识库与对话标题属于可选增强能力，只校验已配置模型，不做隐式回退。
  */
 export const resolveDefaultModelIds = ({
@@ -212,7 +213,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
     if (!options?.authorizedIds) {
       if (!isConfiguredValid && isOptionalSlot) return undefined as Result;
       if (!rawConfigured) throw new UserError(ModelErrEnum.unConfigured);
-      assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+      assertModelAvailable({
+        model: rawConfigured,
+        type: expectedType,
+        vision: needVision,
+        isServerDefault: true
+      });
       return rawConfigured as Result;
     }
 
@@ -226,7 +232,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
     ) {
       if (isOptionalSlot) return undefined as Result;
       if (rawConfigured) {
-        assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+        assertModelAvailable({
+          model: rawConfigured,
+          type: expectedType,
+          vision: needVision,
+          isServerDefault: true
+        });
       }
     }
 
@@ -238,7 +249,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
       throw new UserError(ModelErrEnum.unAuthModel);
     }
     if (rawConfigured) {
-      assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+      assertModelAvailable({
+        model: rawConfigured,
+        type: expectedType,
+        vision: needVision,
+        isServerDefault: true
+      });
     }
     throw new UserError(ModelErrEnum.unConfigured);
   };
@@ -269,7 +285,9 @@ export const createModelHandle = (input: ModelSnapshot) => {
         if (options?.optional && !options?.fallbackToDefault) {
           return undefined;
         }
-        throw new UserError(ModelErrEnum.unConfigured);
+        // 请求或调用方配置未提供模型引用：抛出 UserConfigError 保留 513001 业务码并映射为 HTTP 400，
+        // 与 getDefaultModelData 服务端缺少默认模型（HTTP 500）区分开。
+        throw new UserConfigError(ModelErrEnum.unConfigured);
       }
       const model = resolve(reference);
       assertModelAvailable({ model, type: options?.type, vision: options?.vision });

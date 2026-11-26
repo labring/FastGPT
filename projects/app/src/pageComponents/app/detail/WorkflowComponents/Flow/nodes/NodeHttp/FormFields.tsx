@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, Table, Thead, Tbody, Tr, Th, Td, IconButton } from '@chakra-ui/react';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -10,7 +9,8 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { HttpFormFieldType as PropsArrType } from '@fastgpt/global/core/workflow/http/type';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const HTTP_PARAM_NAME_COLUMN_WIDTH = '170px';
 const HTTP_OPERATION_COLUMN_WIDTH = '46px';
@@ -34,12 +34,11 @@ export const HttpFormFields = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: input.key, kind: 'input' });
   const draftValuesRef = React.useRef<Record<number, PropsArrType>>({});
 
   const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
   const latestListRef = useRef(list);
-  const inputRef = useRef(input);
   const pendingListRef = useRef<PropsArrType[] | undefined>();
   const pendingFrameRef = useRef<number | undefined>(undefined);
   const [rowKeys, setRowKeys] = useState<string[]>(() =>
@@ -49,7 +48,6 @@ export const HttpFormFields = ({
   useEffect(() => {
     draftValuesRef.current = {};
     latestListRef.current = list;
-    inputRef.current = input;
   }, [input, list]);
 
   useEffect(
@@ -65,17 +63,9 @@ export const HttpFormFields = ({
 
   const updateListAndNode = useCallback(
     (nextList: PropsArrType[]) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: inputRef.current.key,
-        value: {
-          ...inputRef.current,
-          value: nextList
-        }
-      });
+      fieldActions.setValue(nextList);
     },
-    [nodeId, onChangeNode]
+    [fieldActions]
   );
 
   const scheduleListUpdate = useCallback(
@@ -307,5 +297,9 @@ export const HttpFormFields = ({
     variables
   ]);
 
-  return Render;
+  return (
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={input.key}>
+      {Render}
+    </WorkflowFieldScope>
+  );
 };

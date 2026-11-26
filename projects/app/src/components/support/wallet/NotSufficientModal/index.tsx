@@ -89,10 +89,12 @@ export default NotSufficientModal;
 export const RechargeModal = ({
   onClose,
   onPaySuccess,
+  highlightShareBrand = false,
   title
 }: {
   onClose: () => void;
   onPaySuccess: () => void;
+  highlightShareBrand?: boolean;
   title?: string;
 }) => {
   const { t } = useSafeTranslation();
@@ -114,6 +116,7 @@ export const RechargeModal = ({
   }, [currentSubLevel, subPlans?.standard, t]);
 
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
+  const [shareBrandHighlightActive, setShareBrandHighlightActive] = useState(true);
   const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
   const selectSubMode = subPlans?.activityExpirationTime ? SubModeEnum.year : userSubMode;
   const isWecomTeam = !!userInfo?.team?.isWecomTeam;
@@ -126,6 +129,7 @@ export const RechargeModal = ({
       isCentered
       minW={'90%'}
       maxH={'90%'}
+      onClickCapture={() => setShareBrandHighlightActive(false)}
     >
       <Flex alignItems={'center'} mb={6}>
         <Flex>
@@ -259,6 +263,9 @@ export const RechargeModal = ({
             <StandardPlan
               standardPlan={teamPlanStatus?.standard}
               onPaySuccess={onPaySuccess}
+              highlightShareBrand={highlightShareBrand}
+              shareBrandHighlightActive={shareBrandHighlightActive}
+              shareBrandPlacement="first"
               selectSubMode={selectSubMode}
               onSelectSubModeChange={setUserSubMode}
               hideBillingToggle

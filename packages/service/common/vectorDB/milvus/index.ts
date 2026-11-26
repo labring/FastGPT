@@ -124,7 +124,7 @@ export class MilvusCtrl implements VectorControllerType {
           index_name: 'vector_HNSW',
           index_type: 'HNSW',
           metric_type: 'IP',
-          params: { efConstruction: 128, M: 32 }
+          params: { efConstruction: 256, M: 32 }
         },
         ...createFullTextIndexParams()
       ],
@@ -301,6 +301,7 @@ export class MilvusCtrl implements VectorControllerType {
         // 单表含 dense vector + BM25 sparse 两个 ANN 字段,SDK 缺省取 schema 第一个(依赖字段顺序),必须显式指定 dense
         anns_field: 'vector',
         limit,
+        params: { ef: props.hnswEfSearch },
         expr: filterStr,
         // SDK 不自动回填主键:search 结果只含 output_fields 指定的字段,id 需显式列出
         output_fields: ['id', 'collectionId']

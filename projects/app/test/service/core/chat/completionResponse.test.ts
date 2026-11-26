@@ -274,6 +274,35 @@ describe('formatCompletionResponseContent', () => {
     ]);
   });
 
+  it('preserves interactive payload while hiding silent text and reasoning when hideInUI is true', () => {
+    const interactive = {
+      type: 'agentAsk',
+      params: {
+        toolCallId: 'call_ask_silent',
+        arguments: '{"reason":"Need choice","blockerType":"user_choice","questions":[]}'
+      }
+    } as unknown as AIChatItemValueItemType['interactive'];
+
+    const result = formatCompletionResponseContent({
+      detail: true,
+      includeLegacyType: false,
+      responseContent: [
+        {
+          hideInUI: true,
+          reasoning: { content: 'hidden reasoning' },
+          text: { content: 'hidden answer' },
+          interactive
+        }
+      ]
+    });
+
+    expect(result).toEqual([
+      {
+        interactive
+      }
+    ]);
+  });
+
   it('stops extracting cyclic child interactive and strips childrenResponse', () => {
     const interactive = {
       type: 'childrenInteractive',

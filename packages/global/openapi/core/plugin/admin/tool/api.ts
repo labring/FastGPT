@@ -163,18 +163,12 @@ export const CreateAppToolBodySchema = UpdateWorkflowToolBodySchema.omit({
   id: true
 }).extend({
   name: z.string(),
-  avatar: z.string(),
+  avatar: z.string().optional(),
   intro: z.string(),
   associatedPluginId: z.string(),
   originCost: z.number().optional()
 });
 export type CreateAppToolBodyType = z.infer<typeof CreateAppToolBodySchema>;
-
-// Delete system Tool
-export const DeleteSystemToolQuerySchema = z.object({
-  toolId: z.string()
-});
-export type DeleteSystemToolQueryType = z.infer<typeof DeleteSystemToolQuerySchema>;
 
 /* ======= App type tool ====== */
 // Get all system plugin apps
@@ -185,7 +179,7 @@ export type GetAllSystemAppsBodyType = z.infer<typeof GetAllSystemAppsBodySchema
 export const GetAllSystemAppsResponseSchema = z.array(
   z.object({
     _id: z.string(),
-    avatar: z.string(),
+    avatar: z.string().optional(),
     name: z.string()
   })
 );

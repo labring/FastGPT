@@ -1,19 +1,34 @@
-import { source } from '@/lib/source';
+import { hasPublishedLocalePage, source } from '@/lib/source';
+import { searchPath } from 'fumadocs-core/breadcrumb';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
-import { i18n } from '@/lib/i18n';
-import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { defaultHomePath, getLocalizedPath } from '@/lib/i18n';
+import {
+  generateArticleSchema,
+  generateBreadcrumbSchema,
+  generateFaqSchema,
+  generateWebSiteSchema,
+  resolvePageSeoTitle
+} from '@/lib/schema';
+import {
+  getFastGPTDocsOriginForLocale,
+  getPublishedDocsLocales,
+  isPreviewDocsSite,
+  stripDocsLocalePrefix,
+  type FastGPTDocsLocale
+} from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
+import { LocalizedLink } from '@/components/docs/LocalizedLink';
+import DocsTocCta from '@/components/docs/DocsTocCta';
 import {
   UpgradeVersionTimeline,
   type UpgradeVersionTimelineItem
 } from '@/components/docs/UpgradeVersionTimeline';
 
-// 在构建时导入静态数据
+// Import static file modification metadata at build time.
 import docLastModifiedData from '@/data/doc-last-modified.json';
 
 export default async function Page({
@@ -21,20 +36,10 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
+  // 1. Resolve target documentation page and upgrade timeline entries while matching physical locale file suffix.
   const { lang, slug } = await params;
-  let page = source.getPage(slug, lang);
-
-  // If page not found in current language, fallback to default language
-  // This allows showing Chinese content when English translation is not available
-  // while keeping the URL unchanged (e.g., /en/docs/faq shows Chinese content)
-  if (!page || !page.data || !page.file) {
-    page = source.getPage(slug, i18n.defaultLanguage);
-  }
-
-  // If still not found in default language, show 404
-  if (!page || !page.data || !page.file) {
-    return <NotFound />;
-  }
+  const page = source.getPage(slug, lang);
+  if (page?.data === undefined || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
@@ -56,32 +61,85 @@ export default async function Page({
         }))
     : [];
 
-  // Use the physical locale file; the route path omits the language suffix.
+  // 2. Resolve file modification timestamp and canonical host-aligned URLs for the active variant.
   const filePath = `content/${page.data._file.path}`;
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
-  const domain = getFastGPTDocsOrigin();
-  const url = `${domain}${page.url}`;
+  const locale: FastGPTDocsLocale = lang === 'en' ? 'en' : 'zh-CN';
+  const mainSiteOrigin = locale === 'zh-CN' ? 'https://fastgpt.cn' : 'https://fastgpt.io';
+  const domain = getFastGPTDocsOriginForLocale(locale);
+  const routePath = stripDocsLocalePrefix(page.url).pathname;
+  const isPreview = isPreviewDocsSite();
+  const pagePath = isPreview ? getLocalizedPath(routePath, locale) : routePath;
+  const url = `${domain}${pagePath}`;
+  const homePath = isPreview ? getLocalizedPath(defaultHomePath, locale) : defaultHomePath;
+  const homeUrl = `${domain}${homePath}`;
 
-  // 生成面包屑导航
-  const breadcrumbItems = [
-    { name: 'FastGPT', url: domain },
-    { name: 'Docs', url: `${domain}/${lang}` }
+  // 3. Build hierarchy breadcrumbs from main site root through intermediate folders without collapsing shared fallback URLs.
+  const tree = source.pageTree[lang];
+  const findFirstPageUrl = (node: (typeof tree.children)[number]): string | undefined => {
+    if (node.type === 'page') return node.url;
+    if (node.type === 'folder') {
+      if (node.index?.url !== undefined && node.index.url !== '') return node.index.url;
+      for (const child of node.children) {
+        const found = findFirstPageUrl(child);
+        if (found !== undefined) return found;
+      }
+    }
+    return undefined;
+  };
+  const toAbsoluteDocUrl = (rawNodeUrl: string): string => {
+    const cleanRoute = stripDocsLocalePrefix(rawNodeUrl).pathname;
+    const localizedRoute = isPreview ? getLocalizedPath(cleanRoute, locale) : cleanRoute;
+    return `${domain}${localizedRoute}`;
+  };
+  const breadcrumbItems: Array<{ name: string; url: string }> = [
+    { name: 'FastGPT', url: mainSiteOrigin }
   ];
-  if (slug && slug.length > 0) {
-    slug.forEach((segment, index) => {
-      const segmentUrl = `${domain}/${lang}/${slug.slice(0, index + 1).join('/')}`;
-      breadcrumbItems.push({ name: segment, url: segmentUrl });
-    });
+  for (const node of searchPath(tree.children, page.url) ?? []) {
+    const resolvedUrl = findFirstPageUrl(node);
+    if (
+      resolvedUrl !== undefined &&
+      typeof node.name === 'string' &&
+      node.name.trim().length > 0
+    ) {
+      const item = {
+        name: String(node.name).trim(),
+        url: toAbsoluteDocUrl(resolvedUrl)
+      };
+      const previous = breadcrumbItems[breadcrumbItems.length - 1];
+      if (previous !== undefined && previous.name === item.name && previous.url === item.url) {
+        continue;
+      }
+      breadcrumbItems.push(item);
+    }
+  }
+  if (breadcrumbItems.length < 2) {
+    breadcrumbItems.push({ name: page.data.title, url });
   }
 
-  // 生成结构化数据
-  const articleSchema = generateArticleSchema({
+  // 4. Build JSON-LD structured data and gate output to indexable production pages.
+  const shouldNoIndex =
+    Boolean(page.data.deprecated) || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
+  const isDocsHome = routePath === defaultHomePath;
+  const seoTitle = resolvePageSeoTitle({
+    path: page.path,
     title: page.data.title,
-    description: page.data.description || '',
+    seoTitle: page.data.seoTitle,
+    lang
+  });
+  const publishedDate = releaseTime
+    ? new Date(`${releaseTime}T00:00:00.000+08:00`)
+    : lastModified
+      ? new Date(lastModified)
+      : undefined;
+
+  const articleSchema = generateArticleSchema({
+    title: seoTitle,
+    description: page.data.description ?? '',
     url,
-    datePublished: releaseTime ? new Date(`${releaseTime}T00:00:00.000+08:00`) : undefined,
+    datePublished: publishedDate,
     dateModified: lastModified ? new Date(lastModified) : undefined,
     lang
   });
@@ -89,22 +147,47 @@ export default async function Page({
   const breadcrumbSchema = generateBreadcrumbSchema({
     items: breadcrumbItems
   });
+  const isFaqPage =
+    /(?:^|\/)faq(?:\.en)?\.mdx$/.test(page.data._file.path) ||
+    page.data._file.path.startsWith('faq/');
+  const faqSchema = isFaqPage
+    ? generateFaqSchema({ ...page.data.structuredData, toc: page.data.toc })
+    : null;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      {!shouldNoIndex && !isPreview && (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+          />
+          {faqSchema !== null && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+            />
+          )}
+          {isDocsHome && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify(generateWebSiteSchema({ url: homeUrl, lang }))
+              }}
+            />
+          )}
+        </>
+      )}
       <DocsPage
         toc={page.data.toc}
         full={page.data.full}
         tableOfContent={{
-          style: 'clerk'
+          style: 'clerk',
+          footer: <DocsTocCta lang={lang} />
         }}
         editOnGithub={{
           owner: 'labring',
@@ -115,7 +198,14 @@ export default async function Page({
         lastUpdate={lastModified ? new Date(lastModified) : undefined}
       >
         <div className="flex items-start justify-between gap-4">
-          <DocsTitle>{page.data.title}</DocsTitle>
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <DocsTitle>{page.data.title}</DocsTitle>
+            {page.data.draft && (
+              <span className="shrink-0 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+                {lang === 'en' ? 'Draft' : '草稿'}
+              </span>
+            )}
+          </div>
           {releaseTime && (
             <div className="mt-2 flex shrink-0 items-center gap-1.5 text-sm tabular-nums text-fd-muted-foreground">
               <CalendarDays aria-hidden="true" className="size-3.5" />
@@ -127,7 +217,7 @@ export default async function Page({
         <DocsBody>
           <MDXContent
             components={getMDXComponents({
-              a: createRelativeLink(source, page)
+              a: createRelativeLink(source, page, LocalizedLink)
             })}
           />
           {isUpgradeTimeline && (
@@ -139,46 +229,112 @@ export default async function Page({
   );
 }
 
+/** Generate static route params filtered to locales published by the active site variant. */
 export async function generateStaticParams() {
-  return source.generateParams();
+  const published = new Set<string>(getPublishedDocsLocales());
+  return source
+    .generateParams()
+    .filter((item) => item.lang === undefined || published.has(item.lang));
 }
 
+/** Build page-level SEO metadata with canonical URLs, cross-domain hreflang alternates, and brand title deduplication. */
 export async function generateMetadata(props: {
   params: Promise<{ lang: string; slug?: string[] }>;
-}) {
+}): Promise<Metadata> {
   const { lang, slug } = await props.params;
   const page = source.getPage(slug, lang);
-  if (!page || !page.data) notFound();
+  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
-  const domain = getFastGPTDocsOrigin();
-  const url = `${domain}${page.url}`;
+  const locale: FastGPTDocsLocale = lang === 'en' ? 'en' : 'zh-CN';
+  const domain = getFastGPTDocsOriginForLocale(locale);
+  const routePath = stripDocsLocalePrefix(page.url).pathname;
+  const isPreview = isPreviewDocsSite();
+  const pagePath = isPreview ? getLocalizedPath(routePath, locale) : routePath;
+  const url = `${domain}${pagePath}`;
+  const filePath = `content/${page.data._file.path}`;
+  const lastModified =
+    (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
 
-  // 构建多语言 alternates
+  const shouldNoIndex =
+    Boolean(page.data.deprecated) || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
+
   const languages: Record<string, string> = {};
-  i18n.languages.forEach((locale) => {
-    const localePage = source.getPage(slug, locale);
-    if (localePage) {
-      languages[locale] = `${domain}/${locale}/${slug?.join('/') || ''}`;
+  if (!isPreview && !shouldNoIndex) {
+    for (const targetLocale of ['zh-CN', 'en'] as const) {
+      if (hasPublishedLocalePage({ slugs: slug, locale: targetLocale })) {
+        languages[targetLocale] = `${getFastGPTDocsOriginForLocale(targetLocale)}${routePath}`;
+      }
     }
+    if (languages['zh-CN'] !== undefined) {
+      languages.zh = languages['zh-CN'];
+    }
+    if (languages.en !== undefined) {
+      languages['x-default'] = languages.en;
+    }
+  }
+
+  const robots = (() => {
+    if (isPreview) {
+      return { index: false, follow: false };
+    }
+    if (shouldNoIndex) {
+      return { index: false, follow: true };
+    }
+    return undefined;
+  })();
+
+  const seoTitle = resolvePageSeoTitle({
+    path: page.path,
+    title: page.data.title,
+    seoTitle: page.data.seoTitle,
+    lang
   });
+  const hasBrandInTitle = /fastgpt/i.test(seoTitle);
+  const socialTitle = hasBrandInTitle ? seoTitle : `${seoTitle} | FastGPT`;
 
   return {
-    title: page.data.title,
+    title: hasBrandInTitle ? { absolute: seoTitle } : seoTitle,
     description: page.data.description,
-    alternates: {
-      canonical: url,
-      languages
-    },
+    ...(robots !== undefined ? { robots } : {}),
+    alternates:
+      isPreview || shouldNoIndex
+        ? {
+            canonical: url
+          }
+        : {
+            canonical: url,
+            languages,
+            types: {
+              'text/markdown': `${url}.md`
+            }
+          },
     openGraph: {
-      title: `${page.data.title} | FastGPT`,
+      title: socialTitle,
       description: page.data.description,
       url,
       siteName: 'FastGPT',
-      locale: lang,
+      locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',
       type: 'article',
       publishedTime: page.data.releaseTime
         ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()
-        : undefined
+        : lastModified
+          ? new Date(lastModified).toISOString()
+          : undefined,
+      modifiedTime: lastModified ? new Date(lastModified).toISOString() : undefined,
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: page.data.title
+        }
+      ]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: socialTitle,
+      description: page.data.description,
+      images: ['/og-image.png']
     }
   };
 }

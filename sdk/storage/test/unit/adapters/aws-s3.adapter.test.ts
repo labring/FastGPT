@@ -92,6 +92,37 @@ describe('AwsS3StorageAdapter.downloadObject', () => {
     expect(result.body.errored).toBe(abortReason);
     expect(result.body.destroyed).toBe(true);
   });
+
+  it('forwards HTTP byte range header when range is provided and rejects invalid range', async () => {
+    const adapter = createAdapter();
+    const body = Readable.from([Buffer.from('cd')]);
+    const send = vi.fn().mockResolvedValue({ Body: body });
+    (adapter as any).client.send = send;
+
+    const result = await adapter.downloadObject({
+      key: 'dataset/team/file.txt',
+      range: { start: 2, end: 3 }
+    });
+
+    expect(result.body).toBe(body);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.txt',
+          Range: 'bytes=2-3'
+        }
+      }),
+      { abortSignal: undefined }
+    );
+
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.txt',
+        range: { start: 5, end: 3 }
+      })
+    ).rejects.toThrow('Download range end must be a safe integer >= start');
+  });
 });
 
 describe('AwsS3StorageAdapter.multipartUpload', () => {
@@ -504,5 +535,54 @@ describe('AwsS3StorageAdapter.generatePublicGetUrl', () => {
     expect(() => adapter.generatePublicGetUrl({ key: 'file.txt' })).toThrow(
       'publicEndpoint must not contain query or hash'
     );
+  });
+});
+
+describe('AwsS3StorageAdapter.uploadObject', () => {
+  it('rejects a pre-aborted upload without dispatching a request', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client = { config: {}, send };
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      adapter.uploadObject({
+        key: 'dataset/team/file.txt',
+        body: Buffer.from('file'),
+        abortSignal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('aborts an in-flight upload when the caller aborts', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn(() => new Promise(() => {}));
+    (adapter as any).client = {
+      config: {
+        requestHandler: undefined,
+        forcePathStyle: false,
+        endpoint: () => ({
+          protocol: 'https:',
+          hostname: 's3.test',
+          port: '',
+          path: '/'
+        })
+      },
+      send
+    };
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+
+    const uploadPromise = adapter.uploadObject({
+      key: 'dataset/team/file.txt',
+      body: Readable.from([Buffer.from('file')]),
+      abortSignal: controller.signal
+    });
+    await vi.waitFor(() => expect(send).toHaveBeenCalled());
+    controller.abort(abortReason);
+
+    await expect(uploadPromise).rejects.toBe(abortReason);
   });
 });

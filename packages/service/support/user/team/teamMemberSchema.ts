@@ -50,6 +50,9 @@ const TeamMemberSchema = new Schema({
   updateTime: {
     type: Date
   },
+  lastSwitchTime: {
+    type: Date
+  },
 
   /** @deprecated
    * But some code still use this to judge whether the member is a owner.
@@ -85,12 +88,6 @@ defineIndex(TeamMemberSchema, {
 defineIndex(TeamMemberSchema, {
   key: { userId: 1, teamId: 1 },
   options: { unique: true, background: true }
-});
-
-defineIndex(TeamMemberSchema, {
-  key: { userId: 1 },
-  deprecated: true,
-  options: { background: true }
 });
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

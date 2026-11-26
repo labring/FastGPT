@@ -123,6 +123,7 @@ export async function checkInvalidVector(start: Date, end: Date) {
       if (hasData === 0) {
         await deleteDatasetDataVector({
           teamId: item.teamId,
+          datasetId: item.datasetId,
           id: item.id
         });
         logger.info('Deleted orphan vector record', {

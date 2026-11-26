@@ -1,3 +1,7 @@
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
@@ -7,6 +11,7 @@ import {
   filterToolNodeIdByEdges,
   getAgentLoopHistories,
   getHistories,
+  removeUnfinishedInteractiveHistories,
   checkQuoteQAValue,
   filterSystemVariables,
   formatHttpError,
@@ -22,16 +27,16 @@ import {
   runtimeSummaryToNodeSummary,
   stripNodeSummaryErrorFields
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
   DispatchNodeResponseKeyEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import { appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   FlowNodeInputTypeEnum,
@@ -39,7 +44,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -70,16 +74,6 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
 const mockGetHTTPToolList = vi.fn();
 vi.mock('@fastgpt/service/core/app/http', () => ({
   getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
-}));
-
-const mockPresignVariablesFileUrls = vi.fn();
-vi.mock('@fastgpt/service/core/chat/utils', () => ({
-  presignVariablesFileUrls: (...args: any[]) => mockPresignVariablesFileUrls(...args)
-}));
-
-const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://example.com/${key}`);
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  createChatFilePreviewUrlGetter: () => mockGetChatFilePreviewUrl
 }));
 
 describe('getWorkflowResponseWrite', () => {
@@ -764,6 +758,10 @@ describe('getHistories', () => {
     expect(getAgentLoopHistories(0, [...pendingRound.slice(0, -1), checkpointAsk])).toEqual([
       checkpointAsk
     ]);
+    expect(removeUnfinishedInteractiveHistories([...MockHistories, ...pendingRound])).toEqual(
+      MockHistories
+    );
+    expect(removeUnfinishedInteractiveHistories(MockHistories)).toEqual(MockHistories);
   });
 
   it('should use default empty histories', () => {
@@ -907,70 +905,6 @@ describe('checkQuoteQAValue', () => {
   it('should return undefined when some items are invalid', () => {
     const data = [{ q: 'question' }, { a: 'no-q' }] as any;
     expect(checkQuoteQAValue(data)).toBeUndefined();
-  });
-});
-
-describe('WorkflowVariableState file store conversion', () => {
-  const createFileVariableState = (inputVariables: Record<string, unknown> = {}) =>
-    WorkflowVariableState.create({
-      timezone: 'Asia/Shanghai',
-      runningAppInfo: {
-        id: 'appId',
-        teamId: 'teamId',
-        tmbId: 'tmbId',
-        name: 'app'
-      },
-      uid: 'uid',
-      chatId: 'chatId',
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables
-    });
-
-  it('should convert unknown runtime urls to external file store values', async () => {
-    const state = await createFileVariableState();
-
-    await state.set('files', ['https://preview.example.com/doc.pdf']);
-
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        url: 'https://preview.example.com/doc.pdf',
-        name: 'doc.pdf',
-        type: ChatFileTypeEnum.document
-      }
-    ]);
-  });
-
-  it('should preserve private file metadata when updating with its runtime url', async () => {
-    const state = await createFileVariableState({
-      files: [
-        {
-          key: 'chat/app/a.png',
-          name: 'a.png',
-          type: ChatFileTypeEnum.image
-        }
-      ]
-    });
-    const runtimeUrls = state.get('files') as string[];
-
-    await state.set('files', [runtimeUrls[0], 'https://external.example.com/report.unknown']);
-
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        key: 'chat/app/a.png',
-        name: 'a.png',
-        type: ChatFileTypeEnum.image
-      },
-      {
-        url: 'https://external.example.com/report.unknown',
-        name: 'report.unknown',
-        type: ChatFileTypeEnum.unknown
-      }
-    ]);
   });
 });
 
@@ -1189,6 +1123,9 @@ describe('rewriteRuntimeWorkFlow', () => {
 
       await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,
@@ -1287,7 +1224,9 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+    const childNodeId = edges.find((edge) => edge.source === 'parent')?.target;
+    expect(childNodeId).toBe('ts20');
+    expect(nodes.find((n) => n.nodeId === childNodeId)).toMatchObject({
       intro: 'desc',
       toolConfig: {
         mcpTool: {
@@ -1296,7 +1235,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
     expect(edges.find((e) => e.target === 'ts2')).toBeUndefined();
-    expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
+    expect(edges.find((e) => e.target === childNodeId)).toBeDefined();
   });
 
   it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
@@ -1348,9 +1287,12 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).not.toHaveProperty('mcpToolSet');
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
+    expect(edges[0].target).toBe('ts20');
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.jsonSchema).toEqual(fullSchema);
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.toolConfig).not.toHaveProperty(
+      'mcpToolSet'
+    );
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
       renderTypeList: [
@@ -1360,7 +1302,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       ]
     });
     expect(filteredEdges).toHaveLength(1);
-    expect(filteredEdges[0].target).toBe('ts20');
+    expect(filteredEdges[0].target).toBe(edges[0].target);
   });
 
   it('should skip MCP toolSet when app not found', async () => {
@@ -1430,7 +1372,9 @@ describe('rewriteRuntimeWorkFlow', () => {
       await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
       expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
-      expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
+      const childNodeIds = edges.map((edge) => edge.target);
+      expect(childNodeIds).toEqual(['ts40', 'ts41']);
+      expect(nodes.find((n) => n.nodeId === childNodeIds[0])?.inputs).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             key: 'manual',
@@ -1442,10 +1386,10 @@ describe('rewriteRuntimeWorkFlow', () => {
           })
         ])
       );
-      expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
-      expect(nodes.find((n) => n.nodeId === 'ts40')?.intro).toBe('desc1');
-      expect(nodes.find((n) => n.nodeId === 'ts41')?.intro).toBe('desc2');
-      expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+      expect(nodes.find((n) => n.nodeId === childNodeIds[1])).toBeDefined();
+      expect(nodes.find((n) => n.nodeId === childNodeIds[0])?.intro).toBe('desc1');
+      expect(nodes.find((n) => n.nodeId === childNodeIds[1])?.intro).toBe('desc2');
+      expect(edges.filter((e) => childNodeIds.includes(e.target)).length).toBe(2);
     }
   );
 
@@ -1497,10 +1441,10 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
-    expect(nodes.find((node) => node.nodeId === 'mcpToolSet0')?.intro).toBe(
+    expect(nodes.find((node) => node.name === 'MCP ToolSet/search')?.intro).toBe(
       'Saved MCP description'
     );
-    expect(nodes.find((node) => node.nodeId === 'httpToolSet0')?.intro).toBe(
+    expect(nodes.find((node) => node.name === 'HTTP ToolSet/search')?.intro).toBe(
       'Saved HTTP description'
     );
   });
@@ -1570,6 +1514,56 @@ describe('rewriteRuntimeWorkFlow', () => {
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
+    });
+  });
+
+  it('defaults newly discovered MCP inputs to AI while preserving saved input choices', async () => {
+    const node = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } },
+      inputs: [
+        {
+          key: 'query',
+          valueType: 'string',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'fixed query'
+        }
+      ]
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolA',
+                    inputSchema: {
+                      type: 'object',
+                      properties: { query: { type: 'string' }, locale: { type: 'string' } },
+                      required: ['query', 'locale']
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes: [node], edges: [] });
+
+    expect(node.inputs.find((input) => input.key === 'query')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: 'fixed query'
+    });
+    expect(node.inputs.find((input) => input.key === 'locale')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      required: true
     });
   });
 
@@ -2444,5 +2438,52 @@ describe('runtimeSummaryToNodeSummary', () => {
       errorCount: 1,
       errorText: 'failed'
     });
+  });
+});
+
+describe('appendWorkflowInteractiveValue', () => {
+  it('does not create circular references when nodeOutputs share the existing interactive value item', () => {
+    const childAskInteractive = {
+      type: 'agentAsk' as const,
+      params: {
+        toolCallId: 'call_ask_1',
+        arguments: '{"questions":[]}'
+      }
+    };
+    const sharedValueItem: any = {
+      interactive: childAskInteractive
+    };
+    const values: any[] = [sharedValueItem];
+    const rootInteractive: any = {
+      type: 'childrenInteractive',
+      params: {
+        childrenResponse: childAskInteractive
+      },
+      entryNodeIds: ['sub_wf'],
+      memoryEdges: [],
+      nodeOutputs: [
+        {
+          nodeId: 'sub_wf',
+          key: NodeOutputKeyEnum.history,
+          value: [
+            {
+              obj: ChatRoleEnum.AI,
+              value: [sharedValueItem]
+            }
+          ]
+        }
+      ]
+    };
+
+    appendWorkflowInteractiveValue({
+      values,
+      interactive: rootInteractive
+    });
+
+    expect(values[0]).not.toBe(sharedValueItem);
+    expect(values[0].interactive).toBe(rootInteractive);
+    expect(sharedValueItem.interactive).toBe(childAskInteractive);
+    expect(() => JSON.stringify(values)).not.toThrow();
+    expect(() => JSON.stringify(rootInteractive)).not.toThrow();
   });
 });

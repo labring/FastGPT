@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { AIModelDocumentDataSchema } from '../../../../core/ai/model/schema';
 import {
   ModelReferenceSchema,
+  ImportFromChannelBodySchema,
+  ImportFromChannelResponseSchema,
   CreateModelBodySchema,
   CreateModelsFromTemplatesBodySchema,
   DeleteModelsBodySchema,
   TestModelQuerySchema,
   UpdateModelBodySchema,
+  UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
-  ImportedSystemModelSchema
+  ImportedSystemModelSchema,
+  MyLLMModelItemSchema,
+  PreviewImportFromChannelResponseSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
+import { GetModelSummariesResponseSchema } from '../../../../openapi/core/ai/model/summary';
 import { GetAffectedModelsQuerySchema } from '../../../../openapi/core/ai/model/channel/api';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
@@ -46,6 +53,37 @@ describe('admin system model API schemas', () => {
     expect(modelData?.oneOf).toHaveLength(5);
   });
 
+  it('documents both STT price types with their actual fields', () => {
+    const operation = openAPIDocument.paths?.['/core/ai/model/create']?.post;
+    const body = operation?.requestBody as any;
+    const variants = body.content['application/json'].schema.properties.modelData.oneOf;
+    const stt = variants.find((variant: any) => variant.properties.type.const === 'stt');
+    const priceVariants = stt.properties.pricing.anyOf;
+    expect(priceVariants).toHaveLength(2);
+    expect(priceVariants[0].properties.type.const).toBe('duration');
+    expect(priceVariants[0].properties).not.toHaveProperty('secondsPerUnit');
+    expect(priceVariants[0].properties.unitPrice.description).toContain('60');
+    expect(priceVariants[1].properties.type.const).toBe('tokens');
+    expect(priceVariants[1].properties).not.toHaveProperty('secondsPerUnit');
+  });
+
+  it.each([
+    { path: '/core/ai/model/create', method: 'post' as const },
+    { path: '/core/ai/model/update', method: 'put' as const }
+  ])('documents both STT price modes in $path', ({ path, method }) => {
+    const body = openAPIDocument.paths?.[path]?.[method]?.requestBody as any;
+    const models = body?.content['application/json'].schema.properties.modelData.oneOf as any[];
+    const stt = models.find(
+      (model) =>
+        model.properties.type.const === 'stt' || model.properties.type.enum?.includes('stt')
+    );
+    const pricing = JSON.stringify(stt?.properties.pricing);
+    expect(pricing).not.toContain('secondsPerUnit');
+    expect(pricing).toContain('duration');
+    expect(pricing).toContain('tokens');
+    expect(pricing).toContain('unitPrice');
+  });
+
   it('validates unique model IDs for batch status and delete operations', () => {
     const modelIds = ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'];
 
@@ -65,6 +103,47 @@ describe('admin system model API schemas', () => {
     ).toThrow('modelIds must be unique');
   });
 
+  it('parses channel imports with the shared model creation contract', () => {
+    const modelData = {
+      type: 'llm',
+      provider: 'openai',
+      model: 'openai/gpt-5.4',
+      name: 'GPT-5.4',
+      scope: 'system',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    };
+
+    const body = ImportFromChannelBodySchema.parse({
+      channelId: 1,
+      models: [{ ...modelData, isActive: false, sortOrder: 10 }, modelData]
+    });
+
+    expect(body.models).toEqual([
+      CreateModelBodySchema.parse({
+        modelData: { ...modelData, isActive: false, sortOrder: 10 },
+        channelType: 'system'
+      }).modelData,
+      modelData
+    ]);
+    expect(body.models[0]).not.toHaveProperty('sortOrder');
+  });
+
+  it('rejects associating an existing model through channel import', () => {
+    expect(() =>
+      ImportFromChannelBodySchema.parse({
+        channelId: 1,
+        channelType: 'system',
+        operations: [
+          {
+            action: 'associate',
+            providerModelSlug: 'openai/gpt-5.4',
+            modelId: '68ad85a7463006c963799a05'
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
   it('enforces the batch model ID boundaries', () => {
     const modelIds = Array.from({ length: 501 }, (_, index) =>
       (index + 1).toString(16).padStart(24, '0')
@@ -78,6 +157,27 @@ describe('admin system model API schemas', () => {
     expect(() =>
       UpdateModelStatusBodySchema.parse({ modelIds: [], isActive: true, channelType: 'system' })
     ).toThrow();
+  });
+
+  it('validates a complete model order without the batch-operation limit', () => {
+    const first = '68ad85a7463006c963799a05';
+    const second = '68ad85a7463006c963799a06';
+
+    expect(
+      UpdateModelOrderBodySchema.parse({
+        modelIds: [second, first],
+        channelType: 'team'
+      })
+    ).toEqual({
+      modelIds: [second, first],
+      channelType: 'team'
+    });
+    expect(() =>
+      UpdateModelOrderBodySchema.parse({
+        modelIds: [first, first],
+        channelType: 'system'
+      })
+    ).toThrow('modelIds must be unique');
   });
 
   it('enforces the template creation batch boundary', () => {
@@ -127,6 +227,38 @@ describe('admin system model API schemas', () => {
     ).toEqual({ modelData, channelType: 'system' });
   });
 
+  it.each([
+    { type: 'llm', config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 } },
+    { type: 'embedding', config: { defaultToken: 512, maxToken: 8192, weight: 0 } },
+    { type: 'rerank', config: {} },
+    { type: 'tts', config: { voices: [] } },
+    { type: 'stt', config: {} }
+  ])(
+    'excludes display ranks from $type configuration writes and JSON exports',
+    ({ type, config }) => {
+      const modelId = '68ad85a7463006c963799a05';
+      const modelData = {
+        type,
+        config,
+        provider: 'OpenAI',
+        model: 'test-model',
+        name: 'Test',
+        scope: 'system',
+        sortOrder: 123
+      };
+
+      expect(
+        CreateModelBodySchema.parse({ modelData, channelType: 'system' }).modelData
+      ).not.toHaveProperty('sortOrder');
+      expect(
+        UpdateModelBodySchema.parse({ modelId, modelData, channelType: 'system' }).modelData
+      ).not.toHaveProperty('sortOrder');
+      expect(ImportedSystemModelSchema.parse({ ...modelData, modelId })).not.toHaveProperty(
+        'sortOrder'
+      );
+    }
+  );
+
   it('accepts optional model identifier in update data and rejects empty strings', () => {
     const modelId = '68ad85a7463006c963799a05';
     const modelData = {
@@ -162,12 +294,181 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
+  it('round-trips the upcoming deprecation flag through model configuration and display schemas', () => {
+    const modelId = '68ad85a7463006c963799a05';
+    const modelData = {
+      type: 'llm' as const,
+      provider: 'OpenAI',
+      name: 'GPT',
+      scope: 'system' as const,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 },
+      isUpcomingDeprecation: true
+    };
+
+    const updated = UpdateModelBodySchema.parse({
+      modelId,
+      modelData,
+      channelType: 'system'
+    });
+    expect(updated.modelData.isUpcomingDeprecation).toBe(true);
+
+    const omittedUpdate = UpdateModelBodySchema.parse({
+      modelId,
+      modelData: {
+        ...modelData,
+        plannedDeprecationAt: '2026-10-31T00:00:00.000Z'
+      },
+      channelType: 'system'
+    });
+    expect(omittedUpdate.modelData.isUpcomingDeprecation).toBe(true);
+    expect(omittedUpdate.modelData).not.toHaveProperty('plannedDeprecationAt');
+    expect(() =>
+      CreateModelBodySchema.parse({
+        modelData: {
+          ...modelData,
+          model: 'gpt-create',
+          isUpcomingDeprecation: 'false',
+          plannedDeprecationAt: '2026-10-31T00:00:00.000Z'
+        },
+        channelType: 'system'
+      })
+    ).toThrow();
+    expect(() =>
+      AIModelDocumentDataSchema.parse({ ...modelData, isUpcomingDeprecation: 'false' })
+    ).toThrow();
+
+    const candidate = MyLLMModelItemSchema.parse({
+      modelId,
+      model: 'gpt-test',
+      name: 'GPT',
+      provider: 'OpenAI',
+      scope: 'system',
+      type: 'llm',
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 },
+      isUpcomingDeprecation: true
+    });
+    expect(candidate.isUpcomingDeprecation).toBe(true);
+
+    const currentValue = GetModelSummariesResponseSchema.parse({
+      models: [{ modelId, name: 'GPT', status: 'active', isUpcomingDeprecation: true }]
+    });
+    expect(currentValue.models[0].isUpcomingDeprecation).toBe(true);
+  });
+
   it('loads every core model route into the DevAPI document under model resources', () => {
     for (const [path, operations] of Object.entries(AIModelPath ?? {})) {
       expect(openAPIDocument.paths?.[path]).toBeDefined();
       for (const operation of Object.values(operations ?? {})) {
         expect(operation?.tags).toContain(DevApiTagsMap.model);
       }
+    }
+  });
+
+  it('preserves the created model ID when the channel binding fails', () => {
+    const results = [
+      {
+        status: 'failed',
+        modelId: '68ad85a7463006c963799a05',
+        model: 'provider/model',
+        error: 'binding failed'
+      },
+      { status: 'failed', model: 'provider/other-model', error: 'modelAlreadyExists' }
+    ];
+    expect(ImportFromChannelResponseSchema.parse({ results }).results).toEqual(results);
+  });
+
+  it('accepts template and blank channel import drafts', () => {
+    const blankModelData = {
+      type: 'llm' as const,
+      model: 'openai/gpt-4o',
+      name: 'GPT-4o',
+      config: { maxContext: 32000 }
+    };
+    const result = PreviewImportFromChannelResponseSchema.parse({
+      items: [
+        {
+          providerModelSlug: 'openai/gpt-4o',
+          contextLength: 64000,
+          maxCompletionTokens: 8000,
+          candidate: {
+            category: 'template',
+            template: { type: 'llm', model: 'gpt-4o' },
+            modelData: {
+              type: 'llm',
+              provider: 'openai',
+              model: 'gpt-4o',
+              name: 'GPT-4o',
+              scope: 'system',
+              config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 12000 }
+            },
+            blankModelData
+          }
+        },
+        {
+          providerModelSlug: 'unknown/embedding',
+          contextLength: 32000,
+          candidate: {
+            category: 'blank',
+            modelData: { model: 'unknown/embedding', name: 'Unknown embedding model' }
+          }
+        }
+      ]
+    });
+
+    expect(result.items[0]).toMatchObject({ contextLength: 64000, maxCompletionTokens: 8000 });
+    expect(result.items[0].candidate).toMatchObject({
+      category: 'template',
+      template: { type: 'llm', model: 'gpt-4o' },
+      blankModelData
+    });
+    expect(result.items[1]).toMatchObject({
+      contextLength: 32000,
+      candidate: { category: 'blank' }
+    });
+    expect(result.items[1].candidate).not.toHaveProperty('contextLength');
+  });
+
+  it('requires a candidate for each upstream model', () => {
+    expect(() =>
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [{ providerModelSlug: 'unknown/model', candidates: [] }]
+      })
+    ).toThrow();
+  });
+
+  it('rejects existing local-model candidates from channel preview', () => {
+    expect(() =>
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [
+          {
+            providerModelSlug: 'vendor/model',
+            candidate: { category: 'existing', modelId: '68ad85a7463006c963799a05' }
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
+  it('accepts zero and rejects negative or fractional context lengths', () => {
+    const baseItem = { category: 'blank' };
+    expect(
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [{ providerModelSlug: 'unknown/model', contextLength: 0, candidate: baseItem }]
+      }).items[0]
+    ).toMatchObject({ contextLength: 0 });
+
+    for (const contextLength of [-1, 32000.5]) {
+      expect(() =>
+        PreviewImportFromChannelResponseSchema.parse({
+          items: [
+            {
+              providerModelSlug: 'unknown/model',
+              contextLength,
+              candidate: baseItem
+            }
+          ]
+        })
+      ).toThrow();
     }
   });
 

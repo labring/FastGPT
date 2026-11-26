@@ -35,7 +35,7 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { PriceLine } from '../PriceTiersLabel';
+import PriceTiersLabel from '../PriceTiersLabel';
 import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 
 type MultimodalValue =
@@ -94,6 +94,7 @@ const SettingRow = ({
 );
 
 export type AIChatSettingsModalProps = {
+  appId?: string;
   showMaxToken?: boolean;
   showTemperature?: boolean;
   showTopP?: boolean;
@@ -104,6 +105,7 @@ export type AIChatSettingsModalProps = {
 };
 
 const AIChatSettingsModal = ({
+  appId,
   onClose,
   onSuccess,
   defaultData,
@@ -284,6 +286,7 @@ const AIChatSettingsModal = ({
           <SettingRow label={t('common:core.ai.Model')}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
+              appId={appId}
               width={'100%'}
               h={'36px'}
               value={modelId}
@@ -345,35 +348,23 @@ const AIChatSettingsModal = ({
                   <Tr>
                     <Td>
                       {!!selectedModel && (
-                        <PriceLine
+                        <PriceTiersLabel
                           config={selectedModel}
                           unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
-                          priceKey={'input'}
                           fontSize={'mini'}
+                          showCachePrices
                         />
                       )}
                     </Td>
-                    <Td rowSpan={2}>
+                    <Td>
                       {selectedModel
                         ? `${Math.round(selectedModel.config.maxContext / 1000)}K`
                         : '—'}
                     </Td>
-                    <Td rowSpan={2}>
+                    <Td>
                       {selectedModel?.config.toolChoice || selectedModel?.config.functionCall
                         ? t('common:support')
                         : t('common:not_support')}
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      {!!selectedModel && (
-                        <PriceLine
-                          config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
-                          priceKey={'output'}
-                          fontSize={'mini'}
-                        />
-                      )}
                     </Td>
                   </Tr>
                 </Tbody>

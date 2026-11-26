@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
@@ -29,6 +29,10 @@ export const PlanItemSchema = z.object({
   customDomain: z.number().nullish().meta({ description: '自定义域名数' }),
   maxUploadFileSize: z.number().nullish().meta({ description: '最大上传文件大小' }),
   maxUploadFileCount: z.number().nullish().meta({ description: '最大上传文件数' }),
+  canHideShareBrandOverride: z.boolean().optional().meta({
+    description: '品牌标识控制权限覆盖，未设置时跟随套餐',
+    example: true
+  }),
   enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
 });
 export type PlanItemType = z.infer<typeof PlanItemSchema>;
@@ -37,12 +41,19 @@ export type PlanItemType = z.infer<typeof PlanItemSchema>;
  * API: 获取套餐列表
  * Route: POST /proApi/admin/wallet/plan/getPlans
  * Method: POST
- * Description: 分页获取套餐订阅列表，支持按团队所有者用户名搜索
+ * Description: 分页获取套餐订阅列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索
  * Tags: ['Admin', 'Plans', 'Read']
  * ============================================================================ */
 
 export const GetPlansBodySchema = createPaginationSchema({
-  search: z.string().trim().max(100).optional().meta({ description: '搜索关键词（用户名）' })
+  username: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .meta({ description: '团队所有者用户名（模糊匹配）' }),
+  teamName: z.string().trim().max(100).optional().meta({ description: '团队名称（模糊匹配）' }),
+  teamId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '团队ID（精确匹配）' })
 });
 export type GetPlansBodyType = z.infer<typeof GetPlansBodySchema>;
 
@@ -61,7 +72,7 @@ export const AddPlansBodySchema = z.discriminatedUnion('type', [
   AddPlansBaseSchema.extend({
     type: z.literal(SubTypeEnum.standard).meta({ description: '标准套餐' }),
     level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级' }),
-    totalPoints: NumSchema.optional().meta({ description: '总积分' }),
+    totalPoints: IntSchema.optional().meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.optional().meta({ description: '剩余积分' })
   }),
   AddPlansBaseSchema.extend({
@@ -70,7 +81,7 @@ export const AddPlansBodySchema = z.discriminatedUnion('type', [
   }),
   AddPlansBaseSchema.extend({
     type: z.literal(SubTypeEnum.extraPoints).meta({ description: '额外积分' }),
-    totalPoints: NumSchema.meta({ description: '总积分' }),
+    totalPoints: IntSchema.meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.meta({ description: '剩余积分' })
   })
 ]);
@@ -88,7 +99,7 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
   UpdatePlanBaseSchema.extend({
     type: z.literal(SubTypeEnum.standard).meta({ description: '标准套餐' }),
     level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级' }),
-    totalPoints: NumSchema.optional().meta({ description: '总积分' }),
+    totalPoints: IntSchema.optional().meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.optional().meta({ description: '剩余积分' }),
     maxTeamMember: optionalEmptyToUndefined(NumSchema).meta({ description: '最大团队成员数' }),
     maxApp: optionalEmptyToUndefined(NumSchema).meta({ description: '最大应用数' }),
@@ -111,6 +122,10 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
       description: '最大上传文件大小'
     }),
     maxUploadFileCount: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件数' }),
+    canHideShareBrandOverride: BoolSchema.optional().meta({
+      description: '品牌标识控制权限覆盖，未设置时跟随套餐',
+      example: true
+    }),
     enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
   }),
   UpdatePlanBaseSchema.extend({
@@ -119,7 +134,7 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
   }),
   UpdatePlanBaseSchema.extend({
     type: z.literal(SubTypeEnum.extraPoints).meta({ description: '额外积分' }),
-    totalPoints: NumSchema.meta({ description: '总积分' }),
+    totalPoints: IntSchema.meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.meta({ description: '剩余积分' })
   })
 ]);

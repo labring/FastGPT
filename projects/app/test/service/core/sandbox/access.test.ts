@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_SANDBOX_ENABLED_CHAT_METADATA_KEY,
@@ -6,6 +7,13 @@ import {
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { ensureWorkflowSandboxReadyForUse } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({
   assertSandboxAvailable: vi.fn(),
@@ -29,7 +37,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
   createAgentSandboxPermissionDeniedError: mocks.createAgentSandboxPermissionDeniedError
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/app/schema')>()),
   MongoApp: {
     findById: mocks.findAppById
   }
@@ -61,7 +70,7 @@ const appSession = {
 describe('resolveSandboxSessionAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.resolveAppSandboxAvailability.mockImplementation(async ({ appEnabled }) =>
       appEnabled
         ? { available: true }
@@ -75,20 +84,13 @@ describe('resolveSandboxSessionAvailability', () => {
   });
 
   it('short-circuits before App queries when the system feature is disabled', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
-    mocks.resolveAppSandboxAvailability.mockResolvedValueOnce({
-      available: false,
-      reason: SandboxUnavailableReasonEnum.systemDisabled
-    });
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(resolveSandboxSessionAvailability(appSession)).resolves.toEqual({
       available: false,
       reason: SandboxUnavailableReasonEnum.systemDisabled
     });
-    expect(mocks.resolveAppSandboxAvailability).toHaveBeenCalledWith({
-      appEnabled: true,
-      teamId: 'team_1'
-    });
+    expect(mocks.resolveAppSandboxAvailability).not.toHaveBeenCalled();
     expect(mocks.findAppById).not.toHaveBeenCalled();
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
   });
@@ -154,6 +156,48 @@ describe('resolveSandboxSessionAvailability', () => {
     });
   });
 
+  it('allows non-test App sessions when a nested child agent enabled sandbox in server chat summary', async () => {
+    await resolveSandboxSessionAvailability({
+      ...appSession,
+      chat: {
+        source: ChatSourceEnum.online,
+        summary: {
+          llmInputTokens: 0,
+          llmOutputTokens: 0,
+          hasAgentSandbox: true
+        }
+      } as any
+    });
+
+    expect(mocks.resolveAppSandboxAvailability).toHaveBeenCalledWith({
+      appEnabled: true,
+      teamId: 'team_1'
+    });
+    expect(mocks.findAppById).not.toHaveBeenCalled();
+    expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
+  });
+
+  it('ignores client-writable chat metadata on non-test App sessions', async () => {
+    await expect(
+      resolveSandboxSessionAvailability({
+        ...appSession,
+        chat: {
+          source: ChatSourceEnum.api,
+          metadata: { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: true }
+        } as any
+      })
+    ).resolves.toEqual({
+      available: false,
+      reason: SandboxUnavailableReasonEnum.appDisabled
+    });
+
+    expect(mocks.getAppLatestVersion).toHaveBeenCalled();
+    expect(mocks.resolveAppSandboxAvailability).toHaveBeenCalledWith({
+      appEnabled: false,
+      teamId: 'team_1'
+    });
+  });
+
   it('uses strong system and plan authorization for non-App sources', async () => {
     const skillSession = {
       ...appSession,
@@ -171,9 +215,28 @@ describe('resolveSandboxSessionAvailability', () => {
 });
 
 describe('authSandboxRuntimeSession', () => {
+  const source = {
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: new Types.ObjectId().toString(),
+    teamId: new Types.ObjectId().toString(),
+    userId: new Types.ObjectId().toString(),
+    chatId: 'streaming-chat'
+  };
+  const createChat = (teamId = source.teamId) =>
+    MongoChat.create({
+      appId: source.sourceId,
+      sourceType: source.sourceType,
+      teamId,
+      tmbId: source.userId,
+      chatId: source.chatId,
+      source: ChatSourceEnum.test,
+      metadata: { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: false, custom: 'keep' },
+      summary: { llmInputTokens: 10, llmOutputTokens: 5 }
+    });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.authSandboxSession.mockResolvedValue({
       ...appSession,
       chat: {
@@ -199,5 +262,66 @@ describe('authSandboxRuntimeSession', () => {
         chatId: 'chat_1'
       })
     ).rejects.toThrow('sandbox denied');
+  });
+
+  it('allows access from the ready event through later rounds without replacing chat metadata or totals', async () => {
+    await createChat();
+    mocks.authSandboxSession.mockImplementation(async () => ({
+      ...source,
+      uid: source.userId,
+      chat: await MongoChat.findOne({ chatId: source.chatId }).lean()
+    }));
+    mocks.resolveAppSandboxAvailability.mockImplementation(async ({ appEnabled }) =>
+      appEnabled
+        ? { available: true }
+        : { available: false, reason: SandboxUnavailableReasonEnum.appDisabled }
+    );
+    const authParams = { req: {} as any, ...source };
+    await expect(authSandboxRuntimeSession(authParams)).rejects.toThrow('sandbox denied');
+
+    let runtimeAccess: ReturnType<typeof authSandboxRuntimeSession> | undefined;
+    await runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === 'sandboxStatus' &&
+            typeof event.data === 'object' &&
+            event.data !== null &&
+            'phase' in event.data &&
+            event.data.phase === 'ready'
+          ) {
+            runtimeAccess = authSandboxRuntimeSession(authParams);
+          }
+        }
+      },
+      () => ensureWorkflowSandboxReadyForUse({ ...source, prepareRuntime: async () => 'runtime' })
+    );
+    expect(runtimeAccess).toBeDefined();
+    await expect(runtimeAccess).resolves.toMatchObject({
+      chat: {
+        summary: { hasAgentSandbox: true },
+        metadata: { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: false }
+      }
+    });
+
+    await MongoChat.updateOne(
+      { chatId: source.chatId },
+      {
+        $set: { [`metadata.${APP_SANDBOX_ENABLED_CHAT_METADATA_KEY}`]: false }
+      }
+    );
+    const nextRound = await authSandboxRuntimeSession(authParams);
+    expect(nextRound.chat?.summary).toEqual({
+      llmInputTokens: 10,
+      llmOutputTokens: 5,
+      hasAgentSandbox: true
+    });
+    expect(nextRound.chat?.metadata).toEqual({
+      [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: false,
+      custom: 'keep'
+    });
   });
 });

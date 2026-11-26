@@ -1,5 +1,10 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType, STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import {
+  STTBillableUsageSchema,
+  type STTBillableUsageType
+} from '@fastgpt/global/core/ai/audio/type';
+import { calculateModelPrice, resolveSTTPricing } from '@fastgpt/global/core/ai/model/pricing';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
   ConcatUsageProps,
@@ -10,7 +15,7 @@ import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wall
 import { getLogger, LogCategories } from '../../../common/logger';
 import { type ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { getSystemModelHandle } from '../../../core/ai/model/catalog/service';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { MongoUsage } from './schema';
 import { MongoUsageItem } from './usageItemSchema';
 import { formatModelChars2Points } from './utils';
@@ -50,7 +55,7 @@ export const createPdfParseUsage = async ({
   pages: number;
   usageId?: string;
 }) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const unitPrice = getSystemInstanceConfig().providers.documentParse.customPdf.price;
   const totalPoints = pages * unitPrice;
 
   if (usageId) {
@@ -81,6 +86,8 @@ export const pushLLMTrainingUsage = async ({
   model,
   inputTokens,
   outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   usageId,
   type
 }: {
@@ -88,6 +95,8 @@ export const pushLLMTrainingUsage = async ({
   model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   usageId: string;
   type: UsageItemTypeEnum;
 }) => {
@@ -95,7 +104,9 @@ export const pushLLMTrainingUsage = async ({
   const { totalPoints } = formatModelChars2Points({
     model,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   concatUsage({
@@ -104,7 +115,9 @@ export const pushLLMTrainingUsage = async ({
     itemType: type,
     totalPoints,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   return { totalPoints };
@@ -164,34 +177,40 @@ export const pushChatItemUsage = ({
       modelId: item.modelId,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens,
+      cacheReadTokens: item.cacheReadTokens,
+      cacheCreationTokens: item.cacheCreationTokens,
       pages: item.pages
     }))
   });
 };
 
-/** 记录 STT 音频用量；source 由调用方显式指定，区分 API 与各 outLink 渠道。 */
-export const pushWhisperUsage = async ({
+/**
+ * 使用本次实际模型及明确的秒数/Tokens 用量生成账单，不重新查询默认模型。
+ * 价格类型与用量不一致属于内部错误；上游缺失用量应由适配器转为同口径的 0。
+ * 明细只记录本次计费用量与金额，不重复保存价格；即使数量为 0 也保留所选用量字段。
+ */
+export const pushSTTUsage = async ({
   teamId,
   tmbId,
-  duration,
+  model,
+  usage,
   source
 }: {
   teamId: string;
   tmbId: string;
-  duration: number;
+  model: STTModelDataType;
+  usage: STTBillableUsageType;
   source: UsageSourceEnum;
 }) => {
-  const modelHandle = await getSystemModelHandle();
-  const whisperModel = modelHandle.getDefaultModelData('stt');
-
-  const { totalPoints, modelId } = formatModelChars2Points({
-    model: whisperModel,
-    inputTokens: duration
-  });
+  const pricing = resolveSTTPricing(model.pricing);
+  const billableUsage = STTBillableUsageSchema.parse(usage);
+  if (pricing.type !== billableUsage.type)
+    throw new Error('STT pricing and usage types do not match');
+  const { totalPoints } = calculateModelPrice({ config: model, sttUsage: billableUsage });
 
   const name = i18nT('common:support.wallet.usage.Whisper');
 
-  createUsage({
+  await createUsage({
     teamId,
     tmbId,
     appName: name,
@@ -201,8 +220,10 @@ export const pushWhisperUsage = async ({
       {
         moduleName: name,
         amount: totalPoints,
-        modelId,
-        duration
+        modelId: model.modelId,
+        ...(billableUsage.type === 'duration'
+          ? { duration: billableUsage.seconds }
+          : { inputTokens: billableUsage.inputTokens, outputTokens: billableUsage.outputTokens })
       }
     ]
   });

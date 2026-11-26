@@ -71,6 +71,69 @@ const scalarApiReferenceCss = `
   display: none;
 }
 
+/* Scalar 用直属 .pt-2 提示空对象；这类卡片没有子字段，隐藏其无内容可展开的按钮。 */
+.scalar-app .schema-card:has(> .pt-2) > .schema-properties > button.schema-card-title {
+  display: none;
+}
+
+/* 扩展标记是字段的直接子项，只突出当前字段，避免把父级 union 或嵌套对象整块染色。 */
+.scalar-app .property:has(> .text-base > .fastgpt-union-parameter-marker) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 10px 18px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--scalar-color-accent) 28%, var(--scalar-border-color));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--scalar-color-accent) 5%, var(--scalar-background-1));
+}
+
+.scalar-app .property > .text-base:has(> .fastgpt-union-parameter-marker) {
+  order: -1;
+}
+
+.scalar-app .property:has(> .text-base > .fastgpt-union-parameter-marker[data-position='first']) {
+  margin-bottom: 0;
+  padding-bottom: 8px;
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.scalar-app .property:has(> .text-base > .fastgpt-union-parameter-marker[data-position='last']) {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.scalar-app .property:has(> .text-base > .fastgpt-union-parameter-marker[data-position='middle']) {
+  margin-block: 0;
+  border-block: 0;
+  border-radius: 0;
+}
+
+.scalar-app .property > .text-base:has(> .fastgpt-union-parameter-marker:empty),
+.scalar-app .text-base:has(> .fastgpt-union-layout-marker),
+.scalar-app .property:has(> .text-base > .fastgpt-union-layout-marker) > .property-heading:not(:has(.property-name)) {
+  display: none;
+}
+
+.scalar-app .fastgpt-union-parameter-label {
+  display: block;
+  color: var(--scalar-color-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* 组合布局的匿名对象只负责分段，选项说明已显示在上方，不再重复标题和描述。 */
+.scalar-app .property:has(> .text-base > .fastgpt-union-layout-marker):not(:has(> .property-heading .property-name))
+  > .property-rule > .schema-card > .schema-card-description {
+  display: none;
+}
+
 .scalar-app
   [data-sidebar-id*='/tag-group/']:not([data-sidebar-id*='/tag/'])
   > [aria-selected] {

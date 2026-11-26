@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   preChatRound: vi.fn(),
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
-  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   createChatUsageRecord: vi.fn(),
   getWorkflowEntryNodeIds: vi.fn(),
@@ -59,10 +58,6 @@ vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
   preChatRound: mocks.preChatRound
 }));
 
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: mocks.updateChatGenerateStatus
-}));
-
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: mocks.dispatchWorkFlow
 }));
@@ -77,8 +72,11 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
 
 vi.mock('@fastgpt/global/core/workflow/runtime/utils', () => ({
   getWorkflowEntryNodeIds: mocks.getWorkflowEntryNodeIds,
-  storeNodes2RuntimeNodes: mocks.storeNodes2RuntimeNodes,
   storeEdges2RuntimeEdges: mocks.storeEdges2RuntimeEdges
+}));
+
+vi.mock('@fastgpt/global/common/workflow/runtime', () => ({
+  storeNodes2RuntimeNodes: mocks.storeNodes2RuntimeNodes
 }));
 
 vi.mock('@fastgpt/global/common/string/time', () => ({
@@ -143,7 +141,6 @@ describe('getScheduleTriggerApp', () => {
     });
     mocks.finalizeChatRound.mockResolvedValue(undefined);
     mocks.failChatRound.mockResolvedValue(undefined);
-    mocks.updateChatGenerateStatus.mockResolvedValue(undefined);
     mocks.getNextTimeByCronStringAndTimezone.mockReturnValue(new Date('2026-06-08T00:00:00.000Z'));
   });
 

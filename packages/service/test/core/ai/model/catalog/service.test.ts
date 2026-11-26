@@ -16,7 +16,6 @@ vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
 const reloadMocks = vi.hoisted(() => ({
-  updateFastGPTConfigBuffer: vi.fn(),
   delay: vi.fn()
 }));
 
@@ -36,10 +35,6 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOrigi
 });
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: { listModels: pluginMocks.listModels }
-}));
-vi.mock('@fastgpt/service/common/system/config/controller', () => ({
-  reloadFastGPTConfigBuffer: vi.fn(),
-  updateFastGPTConfigBuffer: reloadMocks.updateFastGPTConfigBuffer
 }));
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
@@ -67,7 +62,6 @@ describe('loadSystemModels', () => {
   beforeEach(async () => {
     pluginMocks.listModels.mockReset().mockResolvedValue([]);
     vi.mocked(preloadModelProviders).mockReset().mockResolvedValue(undefined);
-    reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
     await Promise.all([MongoAIModel.deleteMany({}), MongoAIModelCatalog.deleteMany({})]);
     publishSystemModelHandle(undefined);
@@ -88,6 +82,27 @@ describe('loadSystemModels', () => {
     expect(pluginMocks.listModels).not.toHaveBeenCalled();
     expect(getCachedSystemModelHandle()?.revision).toBeUndefined();
     expect(getCachedSystemModelHandle()?.getAllModels()).toBeUndefined();
+  });
+
+  it('loads provider metadata when an early request has already populated the installed catalog', async () => {
+    const previousProviders = global.ModelProviderRawCache;
+    try {
+      global.ModelProviderRawCache = undefined;
+      await loadInstalledModels();
+      expect(getCachedSystemModelHandle()).toBeDefined();
+      vi.mocked(preloadModelProviders).mockImplementationOnce(async () => {
+        global.ModelProviderRawCache = [];
+      });
+
+      await loadSystemModels();
+
+      expect(preloadModelProviders).toHaveBeenCalledOnce();
+      expect(global.ModelProviderRawCache).toEqual([]);
+      await loadSystemModels();
+      expect(preloadModelProviders).toHaveBeenCalledOnce();
+    } finally {
+      global.ModelProviderRawCache = previousProviders;
+    }
   });
 
   it('loads installed models without requesting plugin templates', async () => {
@@ -151,12 +166,13 @@ describe('loadSystemModels', () => {
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 
-  it('keeps the MongoDB newest-first order and derives the active list', async () => {
+  it('keeps MongoDB _id order and active defaults independent from management ranks', async () => {
     const installedModels = [
       {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-first',
+        sortOrder: 1,
         name: 'Plugin first',
         isActive: true,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -165,6 +181,7 @@ describe('loadSystemModels', () => {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-second',
+        sortOrder: 0,
         name: 'Plugin second',
         isActive: false,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -173,6 +190,7 @@ describe('loadSystemModels', () => {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-third',
+        sortOrder: 2,
         name: 'Plugin third',
         isActive: true,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -185,6 +203,7 @@ describe('loadSystemModels', () => {
       {
         ...installedModels[0],
         model: 'custom-model',
+        sortOrder: 3,
         name: 'Custom model',
         scope: 'system'
       }
@@ -202,6 +221,7 @@ describe('loadSystemModels', () => {
         ?.getActiveModels()
         .map((model) => model.model)
     ).toEqual(['custom-model', 'plugin-third', 'plugin-first']);
+    expect(getModelTestDefaults().llm?.model).toBe('custom-model');
   });
 
   it('loads configured system defaults from ai_default_models', async () => {
@@ -246,7 +266,6 @@ describe('loadSystemModels', () => {
   it('reloads the model catalog without changing the system init buffer', async () => {
     await updatedReloadSystemModel();
 
-    expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
     expect(reloadMocks.delay).not.toHaveBeenCalled();
     expect(getCachedSystemModelHandle()?.revision).toBe(0);
   });

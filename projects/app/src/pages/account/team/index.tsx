@@ -9,7 +9,6 @@ import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/team/context';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -70,7 +69,12 @@ const Team = () => {
         ]}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
+          if (
+            userInfo?.username !== 'root' &&
+            e === TeamTabEnum.audit &&
+            planContent &&
+            !planContent?.auditLogStoreDuration
+          ) {
             toast({
               status: 'warning',
               title: t('common:not_permission')
@@ -86,7 +90,15 @@ const Team = () => {
         }}
       />
     ),
-    [planContent, router, t, teamTab, toast, userInfo?.team.permission.hasManagePer]
+    [
+      planContent,
+      router,
+      t,
+      teamTab,
+      toast,
+      userInfo?.team.permission.hasManagePer,
+      userInfo?.username
+    ]
   );
 
   return (
@@ -111,7 +123,7 @@ const Team = () => {
             <Flex align={'center'} ml={[0, 6]}>
               <TeamSelector height={'34px'} />
             </Flex>
-            {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
+            {Boolean(userInfo?.team?.permission.isOwner) && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>
                 <MyIcon
                   name="edit"

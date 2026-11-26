@@ -1,73 +1,74 @@
 import React from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import SandboxConfigButton from '@/pageComponents/app/detail/components/SandboxConfigButton';
-import InputLabel from '../render/RenderInput/Label';
-import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import type { RenderInputProps } from '../render/RenderInput/type';
 
-const getRenderType = (input: FlowNodeInputItemType) =>
-  getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;
-
-export const createSandboxEntrypointInput = (value: string): FlowNodeInputItemType => ({
+/** 旧节点缺少启动脚本输入时补齐隐藏配置，不额外产生空表单行。 */
+const createSandboxEntrypointInput = (value: string): FlowNodeInputItemType => ({
   key: NodeInputKeyEnum.sandboxEntrypoint,
-  renderTypeList: [FlowNodeInputTypeEnum.custom],
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
   value
 });
 
-/**
- * 工作流节点里的 sandbox 开关与启动脚本编辑区。
- *
- * 启动脚本依赖 sandbox 开关，放在同一个组件里能避免 custom input
- * 被通用 RenderInput 空渲染后无法编辑。
- */
-const WorkflowSandboxConfig = ({
+/** 通用 RenderInput 入口读取系统状态，并通过 Runtime node action 写回沙盒字段。 */
+export const SandboxInputConfig = ({
   nodeId,
-  sandboxInput,
-  sandboxEntrypointInput,
-  showSandbox,
-  enableSandbox,
-  isPlus,
-  onChangeSandbox,
-  onChangeEntrypoint
-}: {
-  nodeId: string;
-  sandboxInput?: FlowNodeInputItemType;
-  sandboxEntrypointInput?: FlowNodeInputItemType;
-  showSandbox: boolean;
-  enableSandbox: boolean;
-  isPlus?: boolean;
-  onChangeSandbox: (checked: boolean) => void;
-  onChangeEntrypoint: (value: string) => void;
-}) => {
-  if (!sandboxInput) return null;
-
-  const sandboxRenderType = getRenderType(sandboxInput);
-  const showSandboxInput =
-    !(sandboxInput.isPro && !isPlus) &&
-    sandboxRenderType !== FlowNodeInputTypeEnum.hidden &&
-    !sandboxInput.canEdit;
-  if (!showSandboxInput) return null;
+  item,
+  inputs = [],
+  onChangeSandbox
+}: RenderInputProps & { onChangeSandbox?: (checked: boolean) => void }) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { showSandbox, enableSandbox } = useAgentSandboxCapability();
+  const nodeActions = useNodeActions(nodeId);
+  const sandboxActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
 
   return (
-    <Box mb={5} position={'relative'}>
-      <Flex alignItems={'center'} justifyContent={'space-between'}>
-        <InputLabel nodeId={nodeId} input={sandboxInput} />
-        <SandboxConfigButton
-          className={'nodrag'}
-          showSandbox={showSandbox}
-          enableSandbox={enableSandbox}
-          isEnabled={!!sandboxInput.value}
-          entrypoint={(sandboxEntrypointInput?.value as string) || ''}
-          onChangeSandbox={onChangeSandbox}
-          onChangeEntrypoint={onChangeEntrypoint}
-        />
-      </Flex>
-    </Box>
+    <SandboxConfigButton
+      className={'nodrag'}
+      showSandbox={showSandbox}
+      enableSandbox={enableSandbox}
+      isEnabled={Boolean(item.value)}
+      entrypoint={inputs.find((input) => input.key === NodeInputKeyEnum.sandboxEntrypoint)?.value}
+      onChangeSandbox={
+        onChangeSandbox ??
+        ((checked) => {
+          if (checked && (!showSandbox || !enableSandbox)) {
+            toast({
+              status: 'warning',
+              title: showSandbox
+                ? t('app:sandbox_free_not_support')
+                : t('skill:sandbox_system_not_configured_toast')
+            });
+            return;
+          }
+          sandboxActions.setValue(checked);
+        })
+      }
+      onChangeEntrypoint={(value) => {
+        nodeActions?.updateNode((current) => {
+          const index = current.inputs.findIndex(
+            (input) => input.key === NodeInputKeyEnum.sandboxEntrypoint
+          );
+          if (index === -1) {
+            return { inputs: [...current.inputs, createSandboxEntrypointInput(value)] };
+          }
+          return {
+            inputs: current.inputs.map((input, inputIndex) =>
+              inputIndex === index ? { ...input, value } : input
+            )
+          };
+        });
+      }}
+    />
   );
 };
-
-export default React.memo(WorkflowSandboxConfig);

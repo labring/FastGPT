@@ -134,4 +134,40 @@ describe('adminUpdate api test', () => {
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
   });
+  it('only updates AI when Human and AI share the round dataId', async () => {
+    const original = await MongoChatItem.findOne({
+      appId,
+      chatId,
+      dataId,
+      obj: ChatRoleEnum.AI
+    }).lean();
+    await MongoChatItem.deleteOne({ _id: original!._id });
+    const human = await MongoChatItem.create({
+      ...original,
+      _id: undefined,
+      obj: ChatRoleEnum.Human,
+      adminFeedback: undefined,
+      customFeedbacks: ['human-keep']
+    });
+    const ai = await MongoChatItem.create({ ...original, _id: undefined });
+    const res = await Call(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        datasetId: 'fixture-dataset',
+        feedbackDataId: 'fixture-reference',
+        q: 'question',
+        a: 'answer'
+      }
+    });
+    expect(res.code).toBe(200);
+    const afterHuman = await MongoChatItem.findById(human._id).lean();
+    expect(afterHuman?.adminFeedback).toBeUndefined();
+    expect(afterHuman?.customFeedbacks).toEqual(['human-keep']);
+    expect((await MongoChatItem.findById(ai._id).lean())?.adminFeedback?.dataId).toBe(
+      'fixture-reference'
+    );
+  });
 });

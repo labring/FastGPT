@@ -3,18 +3,14 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import {
-  getSandboxClient,
-  type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { getAuthorizedSandboxClient } from '@/service/core/sandbox/runtime';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  isSandboxPathDirectory,
-  addDirectoryToArchive
+  addDirectoryToArchive,
+  resolveSandboxDownloadTarget
 } from '@fastgpt/service/core/ai/sandbox/application/file';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -43,7 +39,7 @@ export const writeDirectoryArchiveResponse = async ({
 
   archive.pipe(res);
   try {
-    await addDirectoryToArchive(sandbox, archive, path, '');
+    await addDirectoryToArchive({ sandbox, archive, dirPath: path, archivePath: '' });
     if (archiveError) {
       throw archiveError;
     }
@@ -61,20 +57,14 @@ export const writeDirectoryArchiveResponse = async ({
 const writeFileStreamResponse = async ({
   sandbox,
   res,
-  path
+  providerPath,
+  fileSize
 }: {
   sandbox: SandboxClient;
   res: NextApiResponse;
-  path: string;
+  providerPath: string;
+  fileSize?: number;
 }) => {
-  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-  const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]).catch(() => undefined);
-  const fileInfo = fileInfoMap?.get(providerPath);
-
-  if (fileInfo?.isDirectory) {
-    return Promise.reject('Cannot read a directory as a file');
-  }
-
   const fileName = providerPath.split('/').pop() || 'file';
   const encodedFileName = encodeURIComponent(fileName);
 
@@ -83,24 +73,23 @@ const writeFileStreamResponse = async ({
     'Content-Disposition',
     `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
   );
-  if (typeof fileInfo?.size === 'number') {
-    res.setHeader('Content-Length', String(fileInfo.size));
+  if (typeof fileSize === 'number') {
+    res.setHeader('Content-Length', String(fileSize));
   }
 
-  await pipeline(Readable.from(sandbox.provider.readFileStream(providerPath)), res);
+  await pipeline(Readable.from(sandbox.opensandbox.readFileStream(providerPath)), res);
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: SandboxDownloadBodySchema
-  }).body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: SandboxDownloadBodySchema
+    }).body;
 
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
+  const { sandbox } = await getAuthorizedSandboxClient({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,
@@ -109,16 +98,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     per: ReadPermissionVal
   });
 
-  const sandbox = await getSandboxClient(
-    buildSandboxClientQueryFromChatSource({
-      sourceType: resolvedSourceType,
-      sourceId: resolvedSourceId,
-      userId: uid,
-      chatId
-    })
-  );
-
-  const isDirectory = await isSandboxPathDirectory(sandbox, path);
+  const { providerPath, isDirectory, size } = await resolveSandboxDownloadTarget(sandbox, path);
 
   if (isDirectory) {
     const isRoot = path === '.' || path === '';
@@ -138,7 +118,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       path
     });
   } else {
-    await writeFileStreamResponse({ sandbox, res, path });
+    await writeFileStreamResponse({ sandbox, res, providerPath, fileSize: size });
   }
 }
 

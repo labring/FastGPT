@@ -13,6 +13,7 @@ import React from 'react';
 export const useToast = (props?: UseToastOptions & { containerStyle?: CSSProperties }) => {
   const { containerStyle, ...toastProps } = props || {};
   const { t } = useTranslation();
+  const translate = t as (key: string) => string;
 
   const toast = uToast({
     position: 'top',
@@ -35,12 +36,12 @@ export const useToast = (props?: UseToastOptions & { containerStyle?: CSSPropert
       toast({
         ...options,
         ...(options.title && {
-          title: typeof options.title === 'string' ? t(options.title as any) : options.title
+          title: typeof options.title === 'string' ? translate(options.title) : options.title
         }),
         ...(options.description && {
           description:
             typeof options.description === 'string'
-              ? React.createElement(Box, { whiteSpace: 'pre-wrap' }, t(options.description as any))
+              ? React.createElement(Box, { whiteSpace: 'pre-wrap' }, translate(options.description))
               : options.description
         }),
         duration

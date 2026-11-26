@@ -1,6 +1,10 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { ChatAgentConfigFormDataSchema } from '../../../../core/ai/auxiliaryGeneration/type';
+import {
+  ChatAgentConfigFormDataSchema,
+  ChatAgentPromptRefVersionSchema
+} from '../../../../core/ai/auxiliaryGeneration/type';
 
 /* ============================================================================
  * API: 加载 Chat Agent 辅助生成配置
@@ -14,14 +18,15 @@ export const ChatAgentConfigLoadBodySchema = z.object({
     description: '应用 ID',
     example: '67f4c91c79a4d61b1f116b2a'
   }),
-  chatId: z.string().min(1).meta({
+  chatId: ChatIdSchema.min(1).meta({
     description: 'Chat Agent 辅助生成会话 ID',
     example: 'helper-chat-id'
   }),
   responseChatItemId: z.string().min(1).meta({
     description: '包含生成配置引用的 AI 消息 dataId',
     example: 'response-chat-item-id'
-  })
+  }),
+  promptRefVersion: ChatAgentPromptRefVersionSchema.optional()
 });
 export type ChatAgentConfigLoadBody = z.infer<typeof ChatAgentConfigLoadBodySchema>;
 

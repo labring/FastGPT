@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import {
   isChatGeneratingError,
+  getChatGeneratingConflictData,
   safeAbortController,
   shouldRestoreSubmittedChatInput
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/generate';
@@ -22,6 +23,28 @@ describe('isChatGeneratingError', () => {
     expect(isChatGeneratingError({ statusText: ChatErrEnum.unAuthChat })).toBe(false);
     expect(isChatGeneratingError(new Error('Other error'))).toBe(false);
     expect(isChatGeneratingError(undefined)).toBe(false);
+  });
+});
+
+describe('getChatGeneratingConflictData', () => {
+  it('extracts the server response ID from direct and wrapped errors', () => {
+    const data = { responseChatItemId: 'active-A' };
+    expect(getChatGeneratingConflictData({ data })).toEqual(data);
+    expect(getChatGeneratingConflictData({ response: { data: { data } } })).toEqual(data);
+    expect(getChatGeneratingConflictData({ data: { reusePreviousAi: true } })).toEqual({
+      reusePreviousAi: true
+    });
+  });
+
+  it.each([
+    undefined,
+    { data: null },
+    { data: {} },
+    { data: { reusePreviousAi: false } },
+    { data: { responseChatItemId: '' } },
+    { data: { responseChatItemId: 1 } }
+  ])('ignores missing or invalid recovery targets %#', (error) => {
+    expect(getChatGeneratingConflictData(error)).toBeUndefined();
   });
 });
 

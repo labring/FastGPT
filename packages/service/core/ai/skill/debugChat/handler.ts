@@ -4,7 +4,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import {
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
@@ -35,7 +34,6 @@ import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
 import { getChatItems } from '../../../chat/controller';
 import {
   failChatRound,
@@ -44,15 +42,14 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { createWorkflowResourceContext } from '../../../workflow/resource/context';
+import { createWorkflowResourceContext } from '../../../workflow/dispatch/context/resource';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '../../../workflow/utils/streamResponseContext';
+} from '../../../workflow/dispatch/context/streamResponse';
 import { getRunningSkillEditSandbox } from '../../sandbox/application/skillEdit/runtime';
 import { buildDebugRuntimeNodes } from './runtime';
 
@@ -262,7 +259,6 @@ export async function runSkillDebugChat({
       chatConfig,
       histories: newHistories,
       stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
       nodeResponseWriteConfig: {
@@ -289,7 +285,9 @@ export async function runSkillDebugChat({
           const { totalPoints } = formatModelChars2Points({
             model: usageModel,
             inputTokens: item.inputTokens ?? 0,
-            outputTokens: item.outputTokens ?? 0
+            outputTokens: item.outputTokens ?? 0,
+            cacheReadTokens: item.cacheReadTokens,
+            cacheCreationTokens: item.cacheCreationTokens
           });
           if (totalPoints > 0) {
             return {
@@ -349,14 +347,6 @@ export async function runSkillDebugChat({
     }
     roundState.finalized = true;
 
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
-      });
-    }
-
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
     const { preparedRound } = roundState;
@@ -375,13 +365,6 @@ export async function runSkillDebugChat({
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: roundState.sourceType,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
 
@@ -389,8 +372,12 @@ export async function runSkillDebugChat({
 
     streamResponseContext.writeStreamError(err);
   } finally {
-    // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
-    await streamResponseContext?.flushResume();
+    try {
+      // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
+      await streamResponseContext?.flushResume();
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
+    }
   }
 }
 

@@ -17,6 +17,7 @@ export enum WorkflowDiagnosticCodeEnum {
   changesetChunksEmpty = 'WORKFLOW_CHANGESET_CHUNKS_EMPTY',
   changesetChunkDependencyCycle = 'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_CYCLE',
   changesetChunkDependencyMissing = 'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_MISSING',
+  changesetChunkIdDuplicate = 'WORKFLOW_CHANGESET_CHUNK_ID_DUPLICATE',
   changesetCommandConflict = 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
   chatConfigPathNotAllowed = 'WORKFLOW_CHAT_CONFIG_PATH_NOT_ALLOWED',
   codeInputIncomplete = 'WORKFLOW_CODE_INPUT_INCOMPLETE',
@@ -121,6 +122,12 @@ export enum WorkflowDiagnosticCodeEnum {
 
 /** 编辑器展示层的问题码，保留已有 UI 文案和资源状态标记的协议值。 */
 export enum WorkflowCheckIssueCodeEnum {
+  agentDatasetAbnormal = 'agent_dataset_abnormal',
+  agentSkillAbnormal = 'agent_skill_abnormal',
+  agentToolAbnormal = 'agent_tool_abnormal',
+  sandboxSkillUnavailable = 'sandbox_skill_unavailable',
+  sandboxSystemUnavailable = 'sandbox_system_unavailable',
+  sandboxPlanUnavailable = 'sandbox_plan_unavailable',
   classifyQuestionEmpty = 'classify_question_empty',
   classifyQuestionValueEmpty = 'classify_question_value_empty',
   codeInputIncomplete = 'code_input_incomplete',
@@ -144,6 +151,7 @@ export enum WorkflowCheckIssueCodeEnum {
   toolMissing = 'tool_missing',
   toolNoPermission = 'tool_no_permission',
   toolOffline = 'tool_offline',
+  toolSetNotConfigured = 'tool_set_not_configured',
   toolWaitingConfig = 'tool_waiting_config',
   unreachableFromStart = 'unreachable_from_start',
   userSelectEmpty = 'user_select_empty',

@@ -1,7 +1,9 @@
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
   AGENT_SANDBOX_PROXY_HEADER,
   authAgentSandboxProxy,
@@ -17,25 +19,39 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authApp: vi.fn()
 }));
 
-const originalSecret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+const originalSecret = getTestInstanceConfig().subservice.agentSandbox.proxy.secret;
 
 describe('authAgentSandboxProxy', () => {
   beforeEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = 'proxy-secret';
+    getTestInstanceConfig().subservice.agentSandbox.proxy.secret =
+      'proxy-secret-at-least-32-characters';
   });
 
   afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = originalSecret;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.secret = originalSecret;
   });
 
   it('returns proxy secret when header token matches', () => {
     const result = authAgentSandboxProxy({
       headers: {
-        [AGENT_SANDBOX_PROXY_HEADER]: 'proxy-secret'
+        [AGENT_SANDBOX_PROXY_HEADER]: 'proxy-secret-at-least-32-characters'
       }
     } as any);
 
-    expect(result).toBe('proxy-secret');
+    expect(result).toBe('proxy-secret-at-least-32-characters');
+  });
+
+  it('uses a rotated secret immediately and rejects an unconfigured secret', () => {
+    const req = {
+      headers: { [AGENT_SANDBOX_PROXY_HEADER]: 'proxy-secret-at-least-32-characters' }
+    } as any;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.secret =
+      'rotated-secret-at-least-32-characters';
+    expect(() => authAgentSandboxProxy(req)).toThrow(ERROR_ENUM.unAuthorization);
+    req.headers[AGENT_SANDBOX_PROXY_HEADER] = 'rotated-secret-at-least-32-characters';
+    expect(authAgentSandboxProxy(req)).toBe('rotated-secret-at-least-32-characters');
+    getTestInstanceConfig().subservice.agentSandbox.proxy.secret = '';
+    expect(() => authAgentSandboxProxy(req)).toThrow('proxy secret is not configured');
   });
 
   it('throws authorization error when header token is missing or invalid', () => {
@@ -53,6 +69,31 @@ describe('authAgentSandboxProxy', () => {
 describe('authSandboxSession', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('keeps the already checked proxy write permission without re-authenticating the key creator', async () => {
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      teamId: 'team',
+      tmbId: 'member-B',
+      uid: 'member-B',
+      isProxy: true
+    } as any);
+    await expect(
+      authSandboxSession({
+        req: {} as any,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
+        chatId: 'chat',
+        authProxy: { tmbId: 'member-B' },
+        per: WritePermissionVal
+      })
+    ).resolves.toMatchObject({ uid: 'member-B' });
+    expect(authApp).not.toHaveBeenCalled();
+    expect(authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({ per: WritePermissionVal, authProxy: { tmbId: 'member-B' } })
+    );
   });
 
   it('returns the source resolved by authChatTargetCrud for share chat sessions', async () => {

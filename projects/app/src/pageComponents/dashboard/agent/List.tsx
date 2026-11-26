@@ -430,9 +430,8 @@ const List = () => {
                       : []),
                     ...(!app.permission?.hasWritePer ||
                     app.type === AppTypeEnum.mcpToolSet ||
-                    app.type === AppTypeEnum.folder ||
-                    app.type === AppTypeEnum.httpToolSet ||
-                    app.type === AppTypeEnum.httpPlugin
+                    isFolder ||
+                    app.type === AppTypeEnum.httpToolSet
                       ? []
                       : [
                           {

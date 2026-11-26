@@ -63,6 +63,7 @@ export const readModelCatalogSnapshot = (context: ModelCatalogScope) =>
       const defaults = await MongoAIModelCatalog.findOne(filter).session(session).lean();
       const models = await MongoAIModel.find(filter).sort({ _id: -1 }).session(session).lean();
       return {
+        // ModelHandle 保持 `_id DESC` 的运行时顺序；自定义 rank 只用于管理列表展示。
         models,
         defaultModelIds: ModelDefaultIdsSchema.parse(defaults?.defaultModelIds ?? {}),
         revision: defaults?.catalogRevision ?? 0

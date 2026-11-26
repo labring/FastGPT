@@ -1,12 +1,21 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   ResumeStreamParamsSchema,
+  StreamNoNeedToBeResumeSchema,
   type StreamNoNeedToBeResumeType
 } from '@fastgpt/global/openapi/core/ai/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -14,7 +23,7 @@ import {
   StreamResumeUnavailableEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  STREAM_RESUME_TTL_SECONDS,
+  getStreamResumeTtlSeconds,
   catchUpAllHistoryItems,
   _resume,
   getStreamResumeUnavailableState
@@ -23,18 +32,24 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
   chatItemResponsePreviewProjection,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  removeAIResponseCite,
+  stripModerationRecordsFromNodeResponses
+} from '@fastgpt/global/core/chat/utils';
+import { getChatItemValueType } from '@/service/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { translateApiMessage } from '@fastgpt/service/common/i18n/request';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
-const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
-const resumeGeneratingRequiresSseMessage =
-  'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
+const resumeGeneratingRequiresSseMessage = i18nT('common:api_error.resume_requires_sse');
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
@@ -87,13 +102,15 @@ export const config = {
 
 // GET /api/core/chat/resume?chatId=xxx&appId=xxx 或 skillId=xxx（断线续传）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
+  const { customUid, authProxy, chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
     req,
     querySchema: ResumeStreamParamsSchema
   }).query;
   const respondWithSse = shouldRespondWithSse(req);
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     req,
@@ -101,25 +118,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     outLinkAuthData,
     authToken: true
   });
-  const { teamId, showCite = true } = authRes;
+  const { teamId, showCite = true, canWrite = false } = authRes;
+  const isOutLink = authRes.authType === AuthUserTypeEnum.outLink;
+  const canReadModerationRecords = Boolean(canWrite);
   const resolvedSourceId = authRes.sourceId;
 
   const findCurrentChat = async (): Promise<CurrentChatState> => {
     const chat = await MongoChat.findOne(
       { chatId, ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }) },
-      { hasBeenRead: 1, chatGenerateStatus: 1 }
+      { hasBeenRead: 1 }
     ).lean();
     if (!chat) {
       return Promise.reject(new Error('Chat not found'));
     }
+    // 恢复沿用默认空闲降级：读取异常可能提前结束当前连接，后台任务仍可继续执行。
+    // Redis 恢复正常且原任务 lease 仍有效时，后续发送会被 chatIsGenerating 拦截；
+    // 启用自动恢复的客户端会保留输入、刷新记录并重新恢复原任务。持续 Redis 故障仍按降级处理。
+    const generationStatuses = await getChatGenerationStatuses({
+      sourceType,
+      sourceId: resolvedSourceId,
+      chatIds: [chatId]
+    });
     return {
       hasBeenRead: chat.hasBeenRead ?? false,
-      chatGenerateStatus: chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done
+      chatGenerateStatus: generationStatuses.get(chatId) ?? ChatGenerateStatusEnum.done
     };
   };
 
   const findCompletedChat = async (): Promise<StreamNoNeedToBeResumeType> => {
-    const chat = await findCurrentChat();
+    const [chat, app] = await Promise.all([
+      findCurrentChat(),
+      sourceType === ChatSourceTypeEnum.app
+        ? (authRes.app ?? MongoApp.findById(resolvedSourceId, 'type').lean())
+        : null
+    ]);
+    const isPlugin = app?.type === AppTypeEnum.workflowTool;
     const result = await getChatItems({
       sourceType,
       sourceId: resolvedSourceId,
@@ -127,18 +160,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       field:
         'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
       limit: completedChatPageSize,
-      nodeResponseMode: 'preview',
+      nodeResponseMode: isPlugin ? 'full' : 'preview',
       nodeResponsePreviewProjection: chatItemResponsePreviewProjection
     });
 
-    const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    const previewHistories = await addPreviewUrlToChatItems(
+      result.histories,
+      isPlugin ? 'workflowTool' : 'chatFlow'
+    );
+    const histories =
+      isOutLink && !isPlugin
+        ? previewHistories.map((item) => sanitizeOutLinkChatHistoryItem(item, showCite))
+        : previewHistories;
 
-    const list = transformPreviewHistories(histories, showCite).map((item) => ({
-      ...item,
-      id: item.dataId!
-    }));
+    const rawList = isPlugin ? histories : transformPreviewHistories(histories, showCite);
+    const list = rawList.map((item) => {
+      const chatItem = {
+        ...item,
+        // 已弃用的兼容别名；客户端聊天业务统一使用 dataId。
+        id: item.dataId!
+      };
+      if (isPlugin && !showCite && chatItem.obj === ChatRoleEnum.AI) {
+        chatItem.value = removeAIResponseCite(chatItem.value, false);
+      }
+      if (isPlugin) {
+        chatItem.value = chatItem.value.map((value) => ({
+          ...value,
+          type: getChatItemValueType(value)
+        }));
+      }
+      if (!canReadModerationRecords && chatItem.obj === ChatRoleEnum.AI && chatItem.responseData) {
+        chatItem.responseData = stripModerationRecordsFromNodeResponses(chatItem.responseData);
+      }
+      return chatItem;
+    });
 
-    return {
+    return StreamNoNeedToBeResumeSchema.parse({
       ...chat,
       hasBeenRead: true,
       records: {
@@ -147,7 +204,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         hasMorePrev: result.hasMorePrev,
         hasMoreNext: result.hasMoreNext
       }
-    };
+    });
   };
 
   const makeSureTheCompletedChatHasBeenRead = async () => {
@@ -158,7 +215,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   const waitForCompletedChat = async () => {
-    const deadlineAt = Date.now() + resumeUnavailableMaxWaitMs;
+    const deadlineAt = Date.now() + getStreamResumeTtlSeconds() * 1000;
 
     while (!isResponseClosed(res)) {
       const chat = await findCurrentChat();
@@ -200,7 +257,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(406).json({
       code: 406,
       statusText: 'error',
-      message: resumeGeneratingRequiresSseMessage,
+      message: translateApiMessage(resumeGeneratingRequiresSseMessage, res),
       data: null
     });
     return;
@@ -237,12 +294,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamId,
     sourceType,
     sourceId: resolvedSourceId,
-    chatId
+    chatId,
+    canReadModerationRecords
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
-  await _resume({ res, teamId, sourceType, sourceId: resolvedSourceId, chatId, cursor });
+  await _resume({
+    res,
+    teamId,
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatId,
+    cursor,
+    canReadModerationRecords
+  });
 
+  // 进程退出不会再写 done 事件；阻塞读取发现 lease 失效后，补齐持久化记录并结束恢复。
+  if (!isResponseClosed(res)) {
+    const chat = await findCurrentChat();
+    if (chat.chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+      await makeSureTheCompletedChatHasBeenRead();
+      writeSseEvent(res, StreamResumeCompletedEvent, JSON.stringify(await findCompletedChat()));
+      writeSseEvent(res, 'done', '[DONE]');
+    }
+  }
   res.end();
 }
 

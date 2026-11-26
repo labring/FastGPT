@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import createHandler from '@/pages/api/support/openapi/tag/create';
 import deleteHandler from '@/pages/api/support/openapi/tag/delete';
 import listHandler from '@/pages/api/support/openapi/tag/list';
@@ -181,6 +182,7 @@ describe('support/openapi/tag', () => {
       }
     ]);
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-system-tagged',
@@ -219,6 +221,7 @@ describe('support/openapi/tag', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: owner.teamId,
         tmbId: owner.tmbId,
         apiKey: 'fastgpt-owner-tagged',
@@ -226,6 +229,7 @@ describe('support/openapi/tag', () => {
         tagIds: [ownerTag.data._id]
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: member.teamId,
         tmbId: member.tmbId,
         apiKey: 'fastgpt-member-tagged',
@@ -259,6 +263,7 @@ describe('support/openapi/tag', () => {
       }
     });
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-count-tagged',

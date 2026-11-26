@@ -17,7 +17,7 @@ export type THelperLine = {
 };
 
 /** 规则输出不携带节点展示信息；汇总边界统一补全节点与翻译文案。 */
-export type WorkflowRuleIssue = Pick<WorkflowCheckIssue, 'code' | 'inputKey'> & {
+export type WorkflowRuleIssue = Pick<WorkflowCheckIssue, 'code' | 'inputKey' | 'params'> & {
   input?: FlowNodeInputItemType;
   fallbackLabel?: string;
   fieldLabel?: 'variable' | 'value' | 'dataset_quote' | 'question_guide' | 'tts';

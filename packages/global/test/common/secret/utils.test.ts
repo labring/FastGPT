@@ -103,7 +103,14 @@ describe('isSecretValueConfigured', () => {
     [{ value: 'plain' }, true],
     [{ secret: 'cipher' }, true],
     [{ ref: ['node', 'token'] }, true],
-    [{ value: '', secret: 'cipher' }, true]
+    [{ value: '', secret: 'cipher' }, true],
+    [{ value: 0 }, true],
+    [{ value: 12 }, true],
+    [{ value: false }, true],
+    [{ value: true }, true],
+    [{ value: NaN }, false],
+    [{ value: false, ref: ['node', 'token'] }, false],
+    [{ value: 0, extra: true }, false]
   ])('judges configured sources without decrypting them: %j', (value, expected) => {
     expect(isSecretValueConfigured(value)).toBe(expected);
   });

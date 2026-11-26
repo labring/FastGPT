@@ -6,12 +6,13 @@ import { isChatScrollAtBottom, shouldShowChatScrollToBottomButton } from '../uti
  * 管理 ChatBox 的滚动容器和生成中跟随底部逻辑。
  *
  * 这个 hook 只提供滚动能力，不决定哪些业务时机要滚动。records loaded、发送消息、
- * 恢复生成、问题引导等流程仍由调用方判断时机后调用 `scrollToBottom` 或
+ * 恢复生成、问题引导等流程仍由调用方判断时机后调用 `autoScrollToBottom` 或
  * `generatingScroll`。
  *
  * 输出约定：
  * - `ScrollContainerRef` 绑定到聊天记录滚动容器。
- * - `scrollToBottom` 用于明确要求滚到底部，支持 smooth/auto 和延迟。
+ * - `scrollToBottom` 用于用户明确要求滚到底部，支持 smooth/auto 和延迟。
+ * - `autoScrollToBottom` 在存在阅读锚点时改为一次定位，随后保留用户的阅读位置。
  * - `generatingScroll` 用于流式生成中根据用户意图跟随底部，避免打断用户查看历史。
  * - `isScrollAtBottom` 只描述当前滚动位置。
  * - `isScrollToBottomButtonVisible` 只在用户主动离开底部后展示，避免流式内容追加或图片
@@ -23,11 +24,14 @@ import { isChatScrollAtBottom, shouldShowChatScrollToBottomButton } from '../uti
  * - 用户主动向上滚动后，当前轮生成不再自动吸附底部；滚回底部或显式点击回到底部后恢复。
  * - 内容高度变化时只看 `shouldFollowGeneratingRef`，不再用底部距离反推吸底意图，避免图片加载等
  *   异步撑高内容时丢失吸底。
+ * - 带 `data-chat-scroll-anchor` 的内容优先从顶部阅读；标记值变化代表新方案，自动滚动
+ *   和尺寸补偿都遵循该约定，用户主动回到底部仍然有效。
  */
 export const useChatScroll = () => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastScrollTopRef = useRef(0);
   const shouldFollowGeneratingRef = useRef(true);
+  const positionedAnchorRef = useRef<{ element: HTMLElement; key: string | null }>();
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
   const ScrollContainerRef = useMemo(
     () =>
@@ -93,6 +97,32 @@ export const useChatScroll = () => {
     }
   );
 
+  /** 每个阅读锚点只定位一次，后续内容渲染不再抢占用户的滚动位置。 */
+  const syncScrollAnchor = useMemoizedFn(({ position = true }: { position?: boolean } = {}) => {
+    const container = scrollContainerRef.current;
+    const anchor = container?.querySelector<HTMLElement>('[data-chat-scroll-anchor]');
+    if (!container || !anchor) {
+      positionedAnchorRef.current = undefined;
+      return false;
+    }
+
+    const key = anchor.getAttribute('data-chat-scroll-anchor');
+    const previous = positionedAnchorRef.current;
+    positionedAnchorRef.current = { element: anchor, key };
+    if (position && (previous?.element !== anchor || previous?.key !== key)) {
+      shouldFollowGeneratingRef.current = false;
+      container.scrollTo({
+        top:
+          container.scrollTop +
+          anchor.getBoundingClientRect().top -
+          container.getBoundingClientRect().top -
+          container.clientTop,
+        behavior: 'auto'
+      });
+    }
+    return true;
+  });
+
   /**
    * 内容尺寸变化后的吸底补偿。
    *
@@ -101,6 +131,10 @@ export const useChatScroll = () => {
    * 为 false，不会打断阅读历史。
    */
   const syncAfterContentChange = useMemoizedFn(() => {
+    if (syncScrollAnchor()) {
+      syncScrollAtBottom();
+      return;
+    }
     syncScrollAtBottom();
     if (!shouldFollowGeneratingRef.current) return;
 
@@ -115,37 +149,64 @@ export const useChatScroll = () => {
   });
 
   /**
-   * 滚动到底部。
+   * 调度到底部的滚动；自动请求执行时重新检查锚点，避免旧延迟回调覆盖新方案的位置。
    *
    * `delay` 用于等待 React 渲染新消息或新高度；内部 `runScroll` 的二次重试用于等待
    * scroll 容器挂载完成。这里不把失败暴露给调用方，因为原 ChatBox 行为就是尽力滚动。
    */
+  const scheduleScrollToBottom = useMemoizedFn(
+    ({
+      behavior,
+      delay,
+      automatic
+    }: {
+      behavior: 'smooth' | 'auto';
+      delay: number;
+      automatic: boolean;
+    }) => {
+      const runScroll = () => {
+        if (!scrollContainerRef.current) {
+          setTimeout(runScroll, 500);
+          return;
+        }
+
+        if (automatic && syncScrollAnchor()) {
+          syncScrollAtBottom();
+          return;
+        }
+        // 用户显式回到底部时仅记录当前锚点，避免后续自动请求再次把同一方案拉回顶部。
+        if (!automatic) syncScrollAnchor({ position: false });
+        shouldFollowGeneratingRef.current = true;
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior
+        });
+        syncScrollAtBottom();
+      };
+
+      setTimeout(() => {
+        runScroll();
+      }, delay);
+    }
+  );
+
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
-    const runScroll = () => {
-      if (!scrollContainerRef.current) {
-        setTimeout(runScroll, 500);
-        return;
-      }
-
-      shouldFollowGeneratingRef.current = true;
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
-        behavior
-      });
-      syncScrollAtBottom();
-    };
-
-    setTimeout(() => {
-      runScroll();
-    }, delay);
+    scheduleScrollToBottom({ behavior, delay, automatic: false });
+  });
+  const autoScrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
+    scheduleScrollToBottom({ behavior, delay, automatic: true });
   });
 
   const { run: generatingScroll } = useThrottleFn(
     (force?: boolean) => {
       if (!scrollContainerRef.current) return;
+      if (syncScrollAnchor()) {
+        syncScrollAtBottom();
+        return;
+      }
       if (!shouldFollowGeneratingRef.current && !force) return;
 
-      scrollToBottom('auto');
+      autoScrollToBottom('auto');
     },
     {
       wait: 100
@@ -159,6 +220,7 @@ export const useChatScroll = () => {
       return;
     }
 
+    syncScrollAnchor();
     syncScrollAtBottom();
     const handleScroll = () => syncScrollAtBottom({ fromScroll: true });
     const handleResize = () => syncAfterContentChange();
@@ -183,7 +245,9 @@ export const useChatScroll = () => {
     mutationObserver?.observe(container, {
       childList: true,
       subtree: true,
-      characterData: true
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['data-chat-scroll-anchor']
     });
 
     return () => {
@@ -192,11 +256,12 @@ export const useChatScroll = () => {
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
-  }, [scrollContainer, syncAfterContentChange, syncScrollAtBottom]);
+  }, [scrollContainer, syncAfterContentChange, syncScrollAnchor, syncScrollAtBottom]);
 
   return {
     ScrollContainerRef,
     scrollToBottom,
+    autoScrollToBottom,
     generatingScroll,
     isScrollAtBottom,
     isScrollToBottomButtonVisible

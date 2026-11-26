@@ -17,9 +17,10 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
-  getToolNameCandidates,
+  findToolByNameCandidates,
   isDebugToolSource,
   isTeamPluginSource,
+  parseUntypedV2ChildToolLookupId,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -69,6 +70,7 @@ import {
 } from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
+  type?: AppTypeEnum;
   status?: PluginStatusType;
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
@@ -270,7 +272,10 @@ export async function getClientToolPreviewNode({
   source?: string;
   teamId?: string;
 }): Promise<FlowNodeTemplateType> {
-  const { source: idSource, pluginId } = splitCombineToolId(appId);
+  const untypedChildLookup = parseUntypedV2ChildToolLookupId(appId);
+  const { source: idSource, pluginId } = untypedChildLookup
+    ? { source: AppToolSourceEnum.personal, pluginId: appId }
+    : splitCombineToolId(appId);
 
   const data = await (async () => {
     if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
@@ -286,6 +291,89 @@ export async function getClientToolPreviewNode({
 
     // 存在 app 里面的插件的情况
     const app: AppToolType = await (async () => {
+      const isTypedPrefix =
+        idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http;
+      const isChildToolsetLookup = isTypedPrefix || Boolean(untypedChildLookup);
+
+      if (isChildToolsetLookup) {
+        const { parentId, toolName } = untypedChildLookup ?? splitToolsetToolPluginId(pluginId);
+        const item = isTypedPrefix
+          ? await MongoApp.findById(parentId).lean()
+          : await MongoApp.findOne({ _id: parentId, deleteTime: null }).lean();
+        if (!item) return Promise.reject(PluginErrEnum.unExist);
+
+        const childKind =
+          idSource === AppToolSourceEnum.mcp ||
+          (!isTypedPrefix && item.type === AppTypeEnum.mcpToolSet)
+            ? AppToolSourceEnum.mcp
+            : idSource === AppToolSourceEnum.http ||
+                (!isTypedPrefix && item.type === AppTypeEnum.httpToolSet)
+              ? AppToolSourceEnum.http
+              : undefined;
+        if (!childKind) return Promise.reject(PluginErrEnum.unExist);
+
+        // 无类型 V2 反查严格按完整工具名匹配；带类型前缀的旧 mcp-/http- 保留主干历史三段式候选兼容（v4.14.8）。
+        const { toolName: matchedName, runtimeNode } = await (async () => {
+          if (childKind === AppToolSourceEnum.mcp) {
+            const tool = findToolByNameCandidates({
+              tools: await getMCPChildren(item),
+              toolName,
+              exactOnly: !isTypedPrefix
+            });
+            if (!tool) return Promise.reject(PluginErrEnum.unExist);
+            return {
+              toolName: tool.name,
+              runtimeNode: getMCPToolRuntimeNode({
+                nodeId: getNanoid(6),
+                toolSetId: item._id,
+                toolsetName: item.name,
+                avatar: item.avatar,
+                tool: {
+                  description: tool.description,
+                  inputSchema: tool.inputSchema,
+                  name: tool.name
+                }
+              })
+            };
+          }
+
+          const tool = findToolByNameCandidates({
+            tools: await getHTTPToolList(item),
+            toolName,
+            exactOnly: !isTypedPrefix
+          });
+          if (!tool) return Promise.reject(PluginErrEnum.unExist);
+          return {
+            toolName: tool.name,
+            runtimeNode: getHTTPToolRuntimeNode({
+              nodeId: getNanoid(6),
+              toolSetId: item._id,
+              toolsetName: item.name,
+              avatar: item.avatar,
+              tool: {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema,
+                name: tool.name
+              }
+            })
+          };
+        })();
+
+        return {
+          avatar: item.avatar,
+          id: isTypedPrefix ? appId : `${childKind}-${String(item._id)}/${matchedName}`,
+          name: matchedName,
+          templateType: FlowNodeTemplateTypeEnum.tools,
+          workflow: {
+            nodes: [runtimeNode],
+            edges: []
+          },
+          version: '',
+          isLatestVersion: true
+        };
+      }
+
       // App / Mcp toolset / Http toolset
       if (idSource === AppToolSourceEnum.personal) {
         const item = await MongoApp.findOne({ _id: pluginId, deleteTime: null }).lean();
@@ -314,6 +402,7 @@ export async function getClientToolPreviewNode({
         return {
           id: String(item._id),
           teamId: String(item.teamId),
+          type: item.type,
           name: item.name,
           avatar: item.avatar,
           intro: item.intro,
@@ -333,84 +422,6 @@ export async function getClientToolPreviewNode({
           currentCost: 0,
           hasTokenFee: false,
           pluginOrder: 0
-        };
-      }
-      // mcp tool
-      else if (idSource === AppToolSourceEnum.mcp) {
-        const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
-        // 1. get parentApp
-        const item = await MongoApp.findById(parentId).lean();
-        if (!item) return Promise.reject(PluginErrEnum.unExist);
-
-        const tool = await (async () => {
-          const matchTool = <T extends { name: string }>(tools: T[]) =>
-            getToolNameCandidates(toolName)
-              .map((name) => tools.find((item) => item.name === name))
-              .find(Boolean);
-
-          return matchTool(await getMCPChildren(item));
-        })();
-        if (!tool) return Promise.reject(PluginErrEnum.unExist);
-        return {
-          avatar: item.avatar,
-          id: appId,
-          name: tool.name,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          workflow: {
-            nodes: [
-              getMCPToolRuntimeNode({
-                nodeId: getNanoid(6),
-                toolSetId: item._id,
-                toolsetName: item.name,
-                avatar: item.avatar,
-                tool: {
-                  description: tool.description,
-                  inputSchema: tool.inputSchema,
-                  name: tool.name
-                }
-              })
-            ],
-            edges: []
-          },
-          version: '',
-          isLatestVersion: true
-        };
-      }
-      // http tool
-      else if (idSource === AppToolSourceEnum.http) {
-        const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
-        const item = await MongoApp.findById(parentId).lean();
-        if (!item) return Promise.reject(PluginErrEnum.unExist);
-
-        const toolList = await getHTTPToolList(item);
-        const tool = getToolNameCandidates(toolName)
-          .map((name) => toolList.find((item) => item.name === name))
-          .find(Boolean);
-        if (!tool) return Promise.reject(PluginErrEnum.unExist);
-        return {
-          avatar: item.avatar,
-          id: appId,
-          name: tool.name,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          workflow: {
-            nodes: [
-              getHTTPToolRuntimeNode({
-                nodeId: getNanoid(6),
-                toolSetId: item._id,
-                toolsetName: item.name,
-                tool: {
-                  description: tool.description,
-                  inputSchema: tool.inputSchema,
-                  outputSchema: tool.outputSchema,
-                  name: tool.name
-                },
-                avatar: item.avatar
-              })
-            ],
-            edges: []
-          },
-          version: '',
-          isLatestVersion: true
         };
       }
       // System Tools/ Commercial system tools
@@ -465,7 +476,10 @@ export async function getClientToolPreviewNode({
       // Chat workflow
       return {
         flowNodeType: FlowNodeTypeEnum.appModule,
-        nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
+        nodeIOConfig: appData2FlowNodeIO({
+          chatConfig: app.workflow.chatConfig,
+          isChatAgent: app.type === AppTypeEnum.chatAgent
+        })
       };
     })();
 
@@ -474,8 +488,9 @@ export async function getClientToolPreviewNode({
       forceDefaultMode: true,
       allowUserChatInputAgentGenerated: true
     });
+    const resolvedIdSource = splitCombineToolId(app.id).source;
     const intro =
-      idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http
+      resolvedIdSource === AppToolSourceEnum.mcp || resolvedIdSource === AppToolSourceEnum.http
         ? app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool)?.intro
         : app.intro;
 

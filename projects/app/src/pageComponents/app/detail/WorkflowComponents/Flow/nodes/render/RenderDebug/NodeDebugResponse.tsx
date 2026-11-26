@@ -3,7 +3,6 @@ import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -18,8 +17,8 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
+import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { useWorkflowDebugValue } from '../../../../debug/workflowDebugSession';
 
 type NodeDebugResponseProps = {
   nodeId: string;
@@ -69,11 +68,11 @@ const RenderUserFormInteractive = function RenderFormInput({
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
 
-  const { onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowDebugContext,
-    (v) => v
-  );
-  const { onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
+  // 按字段订阅：debug context 里还有 debugChatId、onOpenNodeDebug 等本组件不读的字段。
+  const onStopNodeDebug = useWorkflowDebugValue((v) => v.onStopNodeDebug);
+  const onNextNodeDebug = useWorkflowDebugValue((v) => v.onNextNodeDebug);
+  const workflowDebugData = useWorkflowDebugValue((v) => v.workflowDebugData);
+  const patchViewData = useWorkflowOverlayActions();
 
   const statusData = {
     running: {
@@ -104,7 +103,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const interactive = isValidInteractive(rawInteractive) ? rawInteractive : undefined;
   const onNextInteractive = useCallback(
     (userContent: string) => {
-      if (!workflowDebugData || !workflowDebugData || !interactive) return;
+      if (!workflowDebugData || !interactive) return;
 
       const updatedQuery: UserChatItemValueItemType[] = [
         {
@@ -119,7 +118,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             {
               interactive: {
                 ...interactive,
-                entryNodeIds: workflowDebugData.entryNodeIds,
+                // 其它下一步节点继续按运行边调度，只有当前交互接收本次回答。
+                entryNodeIds: [nodeId],
                 memoryEdges: [],
                 nodeOutputs: []
               }
@@ -135,7 +135,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         history: mockHistory
       });
     },
-    [workflowDebugData, interactive, onNextNodeDebug]
+    [workflowDebugData, interactive, nodeId, onNextNodeDebug]
   );
 
   return !!debugResult && !!statusData ? (
@@ -153,15 +153,12 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             cursor={'pointer'}
             fontSize={'sm'}
             onClick={() =>
-              onChangeNode({
-                nodeId,
-                type: 'attr',
-                key: 'debugResult',
-                value: {
-                  ...debugResult,
-                  showResult: !debugResult.showResult
+              patchViewData([
+                {
+                  nodeId,
+                  values: { debugResult: { ...debugResult, showResult: !debugResult.showResult } }
                 }
-              })
+              ])
             }
           >
             {debugResult.showResult
@@ -206,7 +203,10 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             )}
             {!interactive && (
               <>
-                {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
+                {/* 节点错误可能已进入 catch 分支，或同轮其他分支仍有待执行节点。 */}
+                {(debugResult.status === 'success' ||
+                  debugResult.status === 'skipped' ||
+                  (debugResult.status === 'failed' && !!response)) &&
                   !debugResult.isExpired &&
                   workflowDebugData?.entryNodeIds &&
                   workflowDebugData.entryNodeIds.length > 0 && (

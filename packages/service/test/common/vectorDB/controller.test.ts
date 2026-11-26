@@ -1,3 +1,8 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { setTestProLicense } from '../../utils/instanceConfig';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   mockVectorInsert,
@@ -16,6 +21,12 @@ import {
   RedisLeaseLostError,
   RedisLeaseWaitTimeoutError
 } from '@fastgpt/dal/redis/caches/lease';
+import {
+  getOpsPerfBufferSnapshotForTest,
+  resetOpsPerfBufferForTest
+} from '@fastgpt/service/common/opsPerf/collector';
+import { withPerfContext } from '@fastgpt/service/common/opsPerf/context';
+import { trackDatasetSearchStage } from '@fastgpt/service/common/opsPerf/datasetSearch';
 
 const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
 vi.mock('@fastgpt/dal/redis/caches/lease', async (importOriginal) => {
@@ -46,23 +57,21 @@ const mockRedisStringSet = vi.fn();
 const mockRedisStringDelete = vi.fn();
 const mockLoggerWarn = vi.fn();
 
-vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
-  const { RedisCacheAdapter } = await import('@fastgpt/dal/redis/adapter');
-  const redis = new RedisCacheAdapter({
-    getCommandClient: () => {
-      throw new Error('Unexpected raw Redis command in vector cache unit test');
-    }
-  });
-  redis.set = (...args) => mockRedisStringSet(...args);
-  redis.get = (...args) => mockRedisStringGet(...args);
-  redis.delete = (...args) => mockRedisStringDelete(...args);
+vi.mock('@fastgpt/dal/redis/caches/vectorCount', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches/vectorCount')>();
 
   return {
     ...actual,
-    TeamVectorCountCache: class MockTeamVectorCountCache extends actual.TeamVectorCountCache {
-      constructor({ logger }: ConstructorParameters<typeof actual.TeamVectorCountCache>[0]) {
-        super({ logger, redis });
+    VectorCountCache: class MockVectorCountCache extends actual.VectorCountCache {
+      constructor({ logger }: ConstructorParameters<typeof actual.VectorCountCache>[0]) {
+        super({
+          logger,
+          redis: {
+            set: (...args: any[]) => mockRedisStringSet(...args),
+            get: (...args: any[]) => mockRedisStringGet(...args),
+            delete: (...args: any[]) => mockRedisStringDelete(...args)
+          }
+        });
       }
     }
   };
@@ -85,9 +94,12 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
-    global.feConfigs = { ...global.feConfigs, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, vectorRecallConcurrency: 0 };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    setTestProLicense(false);
     withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
+    mockVectorInsert.mockReset().mockResolvedValue({ insertIds: ['id_1', 'id_2', 'id_3'] });
+    mockVectorDelete.mockReset().mockResolvedValue(undefined);
+    mockGetVectorCount.mockReset().mockResolvedValue(50);
     mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     mockRedisStringGet.mockReset();
     mockRedisStringSet.mockReset();
@@ -98,7 +110,8 @@ describe('VectorDB Controller', () => {
     mockGetVectors.mockClear();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await initVectorStore();
     vi.useRealTimers();
   });
 
@@ -138,10 +151,11 @@ describe('VectorDB Controller', () => {
       datasetIds: ['dataset'],
       vector: [0.1],
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: []
     };
 
-    it.each(['pg', 'milvus', 'oceanbase', 'seekdb', 'opengauss'])(
+    it.each(['mongo', 'pg', 'milvus', 'oceanbase', 'seekdb', 'opengauss'])(
       'applies the same shared limit to the %s provider',
       async (provider) => {
         vi.resetModules();
@@ -154,8 +168,8 @@ describe('VectorDB Controller', () => {
             embRecall = mockVectorEmbRecall;
           }
         }));
-        global.feConfigs.isPlus = true;
-        global.systemEnv.vectorRecallConcurrency = 8;
+        setTestProLicense(true);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
         try {
           const { recallFromVectorStore: recall } =
             await import('@fastgpt/service/common/vectorDB/controller');
@@ -177,17 +191,26 @@ describe('VectorDB Controller', () => {
       }
     );
 
+    it.each([false, true])(
+      'uses configured recall concurrency with Pro license=%s',
+      async (isPlus) => {
+        setTestProLicense(isPlus);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
+        await recallFromVectorStore(props);
+        expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(8);
+        expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+      }
+    );
+
     it.each([
-      { isPlus: false, concurrency: 8 },
+      { isPlus: false, concurrency: 0 },
       { isPlus: true, concurrency: 0 },
       { isPlus: true, concurrency: undefined }
     ])(
       'bypasses coordination for edition/default configuration %j',
       async ({ isPlus, concurrency }) => {
-        global.feConfigs.isPlus = isPlus;
-        if (concurrency === undefined)
-          Reflect.deleteProperty(global.systemEnv, 'vectorRecallConcurrency');
-        else global.systemEnv.vectorRecallConcurrency = concurrency;
+        setTestProLicense(isPlus);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = concurrency ?? 0;
         await recallFromVectorStore(props);
         expect(withConcurrency).toHaveBeenCalledOnce();
         expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(0);
@@ -196,11 +219,11 @@ describe('VectorDB Controller', () => {
     );
 
     it('exposes the latest Admin limit to queued work', async () => {
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 4;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 4;
       withConcurrency.mockImplementation(async ({ concurrency, fn }) => {
         expect(concurrency()).toBe(4);
-        global.systemEnv.vectorRecallConcurrency = 1;
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 1;
         expect(concurrency()).toBe(1);
         return fn();
       });
@@ -213,18 +236,155 @@ describe('VectorDB Controller', () => {
       new RedisLeaseLostError({ key: 'recall', label: 'recall' }),
       new RedisLeaseAcquireError({ key: 'recall', label: 'recall', cause: new Error('Redis down') })
     ])('does not start or retry recall when coordination fails: $name', async (error) => {
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 8;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
       withConcurrency.mockRejectedValueOnce(error);
       await expect(recallFromVectorStore(props)).rejects.toBe(error);
       expect(withConcurrency).toHaveBeenCalledOnce();
       expect(mockVectorEmbRecall).not.toHaveBeenCalled();
     });
 
+    it('attributes wait timeout, acquire failure, and mid-execution lease loss to distinct opsPerf stages and error codes', async () => {
+      const baseDims = {
+        searchMode: 'embedding' as const,
+        indexScale: 's_10k' as const,
+        usingReRank: false,
+        usingExtension: false,
+        vectorEngine: 'pg' as const
+      };
+
+      // 1. Wait timeout before entering provider -> vectorLeaseWait failed + VECTOR_LEASE_TIMEOUT
+      resetOpsPerfBufferForTest();
+      const timeoutErr = new RedisLeaseWaitTimeoutError({ key: 'vector:recall', label: 'recall' });
+      withConcurrency.mockRejectedValueOnce(timeoutErr);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(timeoutErr);
+      let ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_TIMEOUT');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall).toBeUndefined();
+
+      // 2. Acquire failure before entering provider -> vectorLeaseWait failed + VECTOR_LEASE_ACQUIRE_ERROR
+      resetOpsPerfBufferForTest();
+      const acquireErr = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('ECONNREFUSED')
+      });
+      withConcurrency.mockRejectedValueOnce(acquireErr);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(acquireErr);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_ACQUIRE_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall).toBeUndefined();
+
+      // 3. Renewal lost during/after provider execution -> vectorLeaseWait stays clean (1 call, wait only),
+      //    vectorRecall fails, and errorCode is VECTOR_LEASE_LOST (not VECTOR_LEASE_TIMEOUT)
+      resetOpsPerfBufferForTest();
+      const lostErr = new RedisLeaseLostError({ key: 'vector:recall', label: 'recall' });
+      withConcurrency.mockImplementationOnce(async ({ fn }) => {
+        const result = await fn({
+          signal: new AbortController().signal,
+          assertValid: () => {
+            throw lostErr;
+          }
+        });
+        return result;
+      });
+      mockVectorEmbRecall.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return { results: [] };
+      });
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(lostErr);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_LOST');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBeUndefined();
+      expect(ev?.stages.vectorLeaseWait?.ms).toBeLessThan(20);
+      expect(ev?.stages.vectorRecall?.callCount).toBe(1);
+      expect(ev?.stages.vectorRecall?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall?.ms).toBeGreaterThanOrEqual(20);
+    });
+
+    it('lets the actually thrown parallel branch determine final errorCode when fullText and vector lease both fail', async () => {
+      const baseDims = {
+        searchMode: 'mixedRecall' as const,
+        indexScale: 's_10k' as const,
+        usingReRank: false,
+        usingExtension: false,
+        vectorEngine: 'pg' as const
+      };
+
+      // Case A: vector lease acquire fails BEFORE withPerfContext settles, while fullTextRecall's error is what
+      // actually rejects Promise.all -> BOTH stages record errorCount=1 and FULLTEXT_RECALL_ERROR wins
+      resetOpsPerfBufferForTest();
+      const acquireErrA = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('Redis down')
+      });
+      const fullTextErrA = new Error('Mongo fulltext failure');
+      withConcurrency.mockRejectedValueOnce(acquireErrA);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, async () => {
+          const vectorBranch = recallFromVectorStore(props);
+          void vectorBranch.catch(() => {});
+          const fullTextBranch = trackDatasetSearchStage('fullTextRecall', async () => {
+            // Let vectorBranch enter its lease catch first, then reject with fullTextErrA as the Promise.all winner
+            await Promise.resolve();
+            throw fullTextErrA;
+          });
+          await Promise.all([fullTextBranch, vectorBranch.catch(() => {})]);
+        })
+      ).rejects.toBe(fullTextErrA);
+      let ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('FULLTEXT_RECALL_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.fullTextRecall?.errorCount).toBe(1);
+
+      // Case B: lease acquire fails before fullTextRecall in the same turn -> VECTOR_LEASE_ACQUIRE_ERROR wins,
+      // even when both reject synchronously in Promise.all
+      resetOpsPerfBufferForTest();
+      const acquireErrB = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('Redis down')
+      });
+      const fullTextErrB = new Error('Mongo fulltext failure');
+      withConcurrency.mockRejectedValueOnce(acquireErrB);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, async () => {
+          const vectorBranch = recallFromVectorStore(props);
+          const fullTextBranch = trackDatasetSearchStage('fullTextRecall', async () => {
+            await vectorBranch.catch(() => {});
+            throw fullTextErrB;
+          });
+          void fullTextBranch.catch(() => {});
+          await Promise.all([vectorBranch, fullTextBranch]);
+        })
+      ).rejects.toBe(acquireErrB);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_ACQUIRE_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+    });
+
     it('reacquires shared capacity for every database retry', async () => {
       vi.useFakeTimers();
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 8;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
       mockVectorEmbRecall.mockRejectedValueOnce(new Error('temporary database failure'));
       const result = recallFromVectorStore(props);
       await vi.advanceTimersByTimeAsync(500);
@@ -246,6 +406,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).rejects.toBe(error);
@@ -261,6 +422,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).resolves.toHaveProperty('results');
@@ -273,6 +435,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1', 'dataset_2'],
         vector: [0.1, 0.2, 0.3],
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['col_forbidden']
       };
 
@@ -293,6 +456,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1'],
         vector: [0.1, 0.2],
         limit: 5,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [],
         filterCollectionIdList: ['col_1', 'col_2']
       };
@@ -405,16 +569,148 @@ describe('VectorDB Controller', () => {
   });
 
   describe('getVectorCount', () => {
-    it('should call Vector.getVectorCount', async () => {
-      mockGetVectorCount.mockResolvedValue(50);
+    it('keeps startup count notifications available to independently loaded route modules', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
 
-      const result = await getVectorCount({ teamId: 'team_1', datasetId: 'dataset_1' });
+      // Next 的 instrumentation 和 API bundle 分别加载模块，但必须使用同一进程级回调。
+      vi.resetModules();
+      const routeController = await import('@fastgpt/service/common/vectorDB/controller');
+      await expect(
+        routeController.getVectorCount({ teamId: 'team', datasetId: 'dataset' })
+      ).resolves.toBe(50);
+      await vi.waitFor(() =>
+        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team',
+          datasetId: 'dataset',
+          rows: 50
+        })
+      );
+    });
 
-      expect(mockGetVectorCount).toHaveBeenCalledWith({
-        teamId: 'team_1',
-        datasetId: 'dataset_1'
+    it('notifies fresh dataset counts once, excluding cache hits, team and collection totals', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
+      await vi.waitFor(() =>
+        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team',
+          datasetId: 'dataset',
+          rows: 50
+        })
+      );
+      mockRedisStringGet.mockResolvedValue('50');
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
+      await getVectorCountByTeamId('team');
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset', collectionId: 'file' });
+      expect(onDatasetCounted).toHaveBeenCalledOnce();
+    });
+
+    it('allows migration scans to refresh a cache hit without sending unfenced notifications', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+      mockRedisStringGet.mockResolvedValue('10');
+      await expect(
+        getVectorCount(
+          { teamId: 'team', datasetId: 'dataset' },
+          {
+            refresh: true,
+            notifyDatasetCounted: false
+          }
+        )
+      ).resolves.toBe(50);
+      expect(mockGetVectorCount).toHaveBeenCalledOnce();
+      expect(onDatasetCounted).not.toHaveBeenCalled();
+    });
+
+    it('coalesces concurrent cache misses into one database count and recovers after failure', async () => {
+      let resolveCount!: (count: number) => void;
+      mockGetVectorCount.mockImplementationOnce(
+        () =>
+          new Promise<number>((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+      const scope = { teamId: 'team', datasetId: 'dataset' };
+      const results = Array.from({ length: 20 }, () => getVectorCount(scope));
+      await vi.waitFor(() => expect(mockGetVectorCount).toHaveBeenCalledOnce());
+      resolveCount(40);
+      expect(await Promise.all(results)).toEqual(Array(20).fill(40));
+      mockGetVectorCount.mockRejectedValueOnce(new Error('database down'));
+      await expect(getVectorCount(scope)).rejects.toThrow('database down');
+      await expect(getVectorCount(scope)).resolves.toBe(50);
+    });
+
+    it('keeps successful counts when the queue hook rejects or times out', async () => {
+      const onDatasetCounted = vi.fn(async () => {
+        throw new Error('MQ unavailable');
       });
-      expect(result).toBe(50);
+      await initVectorStore({ onDatasetCounted });
+      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
+      await vi.waitFor(() =>
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+          'Dataset vector count notification failed',
+          expect.objectContaining({ datasetId: 'dataset' })
+        )
+      );
+      vi.useFakeTimers();
+      onDatasetCounted.mockImplementation(() => new Promise(() => {}));
+      mockLoggerWarn.mockClear();
+      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        'Dataset vector count notification failed',
+        expect.anything()
+      );
+    });
+
+    it.each(['77', '0'])(
+      'returns a cached dataset count (%s) without querying vectors',
+      async (cached) => {
+        mockRedisStringGet.mockResolvedValue(cached);
+        await expect(getVectorCount({ teamId: 'team_1', datasetId: 'dataset_1' })).resolves.toBe(
+          Number(cached)
+        );
+        expect(mockRedisStringGet).toHaveBeenCalledWith(
+          'cache:dataset_vector_count:team_1:dataset_1'
+        );
+        expect(mockGetVectorCount).not.toHaveBeenCalled();
+      }
+    );
+
+    it('fills only the requested dataset cache after a miss and propagates count failures', async () => {
+      mockRedisStringGet.mockResolvedValue(null);
+      mockGetVectorCount.mockResolvedValueOnce(12);
+      const scope = { teamId: 'team_1', datasetId: 'dataset_1' };
+      await expect(getVectorCount(scope)).resolves.toBe(12);
+      expect(mockGetVectorCount).toHaveBeenCalledExactlyOnceWith(scope);
+      expect(mockRedisStringSet).toHaveBeenCalledWith({
+        key: 'cache:dataset_vector_count:team_1:dataset_1',
+        value: '12',
+        ttlMs: 1_800_000
+      });
+      mockRedisStringSet.mockClear();
+      mockGetVectorCount.mockRejectedValueOnce(new Error('database unavailable'));
+      await expect(getVectorCount(scope)).rejects.toThrow('database unavailable');
+      expect(mockRedisStringSet).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {},
+      { datasetId: 'dataset_1' },
+      { teamId: 'team_1', datasetId: 'dataset_1', collectionId: 'collection_1' }
+    ])('queries narrower or unscoped counts directly (%j)', async (props) => {
+      await expect(getVectorCount(props)).resolves.toBe(50);
+      expect(mockGetVectorCount).toHaveBeenCalledWith(props);
+      expect(mockRedisStringGet).not.toHaveBeenCalled();
+      expect(mockRedisStringSet).not.toHaveBeenCalled();
+    });
+
+    it('shares the original team cache when no dataset filter is supplied', async () => {
+      mockRedisStringGet.mockResolvedValue('66');
+      await expect(getVectorCount({ teamId: 'team_1' })).resolves.toBe(66);
+      expect(mockRedisStringGet).toHaveBeenCalledWith('cache:team_vector_count:team_1');
+      expect(mockGetVectorCount).not.toHaveBeenCalled();
     });
   });
 
@@ -540,6 +836,9 @@ describe('VectorDB Controller', () => {
       });
 
       expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith(
+        'cache:dataset_vector_count:team_abc:dataset_def'
+      );
     });
 
     it('should return insert result when team vector cache invalidation fails', async () => {
@@ -663,13 +962,44 @@ describe('VectorDB Controller', () => {
   });
 
   describe('deleteDatasetDataVector', () => {
+    it('invalidates the team and each affected dataset once after a batch deletion', async () => {
+      await deleteDatasetDataVector({ teamId: 'team_1', datasetIds: ['a', 'b', 'a'] });
+      expect(mockRedisStringDelete.mock.calls.map(([key]) => key).sort()).toEqual([
+        'cache:dataset_vector_count:team_1:a',
+        'cache:dataset_vector_count:team_1:b',
+        'cache:team_vector_count:team_1'
+      ]);
+    });
+
+    it.each(['insert', 'delete'])('keeps cached counts if a vector %s fails', async (operation) => {
+      vi.useFakeTimers();
+      const error = new Error('database unavailable');
+      mockVectorInsert.mockRejectedValue(error);
+      mockVectorDelete.mockRejectedValue(error);
+      mockGetVectors.mockResolvedValue({ vectors: [[0.1]], tokens: 1 });
+      const pending =
+        operation === 'insert'
+          ? insertDatasetDataVector({
+              teamId: 't',
+              datasetId: 'a',
+              collectionId: 'c',
+              model: {} as any,
+              inputs: ['text']
+            })
+          : deleteDatasetDataVector({ teamId: 't', datasetId: 'a', id: '1' });
+      const rejected = expect(pending).rejects.toThrow(error);
+      await vi.advanceTimersByTimeAsync(2000);
+      await rejected;
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
+    });
+
     it('should delete by single id', async () => {
       const props = {
         teamId: 'team_123',
         id: 'vector_id_1'
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ datasetId: 'dataset_456', ...props });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -703,7 +1033,7 @@ describe('VectorDB Controller', () => {
         idList: ['id_1', 'id_2', 'id_3']
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ datasetId: 'dataset_456', ...props });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -716,7 +1046,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector(props);
+      const result = await deleteDatasetDataVector({ datasetId: 'dataset_456', ...props });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -732,7 +1062,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector(props);
+      const result = await deleteDatasetDataVector({ datasetId: 'dataset_456', ...props });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -753,7 +1083,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const resultPromise = deleteDatasetDataVector(props);
+      const resultPromise = deleteDatasetDataVector({ datasetId: 'dataset_456', ...props });
 
       await vi.advanceTimersByTimeAsync(3000);
 

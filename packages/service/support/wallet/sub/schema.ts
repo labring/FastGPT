@@ -69,6 +69,7 @@ const SubSchema = new Schema({
   maxUploadFileSize: Number,
   maxUploadFileCount: Number,
 
+  canHideShareBrandOverride: Boolean,
   enableSandbox: Boolean, // 虚拟机
 
   // stand sub and extra points sub. Plan total points

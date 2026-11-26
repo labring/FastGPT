@@ -57,6 +57,9 @@ import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 
 const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
+const ImportModelFromChannelModal = dynamic(() => import('./ImportModelFromChannelModal'), {
+  ssr: false
+});
 
 /** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
 const createBlankModelData = ({
@@ -111,18 +114,21 @@ const createBlankModelData = ({
   if (type === ModelTypeEnum.tts) {
     return { ...base, type, config: { voices: [] } };
   }
-  if (type === ModelTypeEnum.stt) return { ...base, type, config: {} };
+  if (type === ModelTypeEnum.stt)
+    return { ...base, type, config: {}, pricing: { type: 'duration' } };
   return { ...base, type: ModelTypeEnum.rerank, config: { maxToken: 8000 } };
 };
 
 const AddModelButton = ({
   onCreateFromBlank,
   onCreateFromTemplate,
+  onCreateFromChannel,
   buttonBoxProps,
   ...props
 }: {
   onCreateFromBlank: () => void;
   onCreateFromTemplate?: () => void;
+  onCreateFromChannel?: () => void;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const { t } = useSafeTranslation();
@@ -139,6 +145,14 @@ const AddModelButton = ({
       menuList={[
         {
           children: [
+            ...(onCreateFromChannel
+              ? [
+                  {
+                    label: t('config_model:create_from_channel'),
+                    onClick: onCreateFromChannel
+                  }
+                ]
+              : []),
             ...(onCreateFromTemplate
               ? [
                   {
@@ -913,6 +927,7 @@ const AddModel = ({
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
   const [showTemplateCreate, setShowTemplateCreate] = useState(false);
+  const [showChannelImport, setShowChannelImport] = useState(false);
   const [templateForConfig, setTemplateForConfig] = useState<AIModelDocumentDataType | null>(null);
   const getBlankModelData = useCallback(
     (type: ModelTypeEnum) => createBlankModelData({ type, channelType }),
@@ -926,6 +941,9 @@ const AddModel = ({
         buttonBoxProps={buttonBoxProps}
         onCreateFromBlank={() => setShowBlankCreate(true)}
         onCreateFromTemplate={() => setShowTemplateCreate(true)}
+        onCreateFromChannel={
+          channelType === 'system' ? () => setShowChannelImport(true) : undefined
+        }
       />
       {showBlankCreate && (
         <BlankModelCreateModal
@@ -935,6 +953,16 @@ const AddModel = ({
           channelType={channelType}
           onClose={() => setShowBlankCreate(false)}
           onRefreshChannels={onSuccess}
+          onSuccess={onSuccess}
+        />
+      )}
+      {showChannelImport && (
+        <ImportModelFromChannelModal
+          channels={channels}
+          installedModels={installedModels}
+          providers={providers}
+          createModelData={getBlankModelData}
+          onClose={() => setShowChannelImport(false)}
           onSuccess={onSuccess}
         />
       )}

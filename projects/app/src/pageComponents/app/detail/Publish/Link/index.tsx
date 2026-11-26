@@ -19,21 +19,16 @@ import {
   HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useQuery } from '@tanstack/react-query';
-import {
-  getShareChatList,
-  delShareChatById,
-  createShareChat,
-  putShareChat
-} from '@/web/support/outLink/api';
+import { delShareChatById, createShareChat, putShareChat } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { formatOutLinkUsagePoints } from '../utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
@@ -46,6 +41,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useShareLinkSelection } from './useShareLinkSelection';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -61,7 +57,6 @@ const Share = ({
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
-  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchemaType>();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({
     content: t('common:support.outlink.Delete link tip'),
@@ -70,11 +65,16 @@ const Share = ({
 
   const {
     isFetching,
-    data: shareChatList = [],
-    refetch: refetchShareChatList
-  } = useQuery(['initShareChatList', appId], () =>
-    getShareChatList({ appId, type: PublishChannelEnum.share })
-  );
+    shareChatList,
+    refetchShareChatList,
+    selectedLinkData,
+    openLink,
+    closeLink,
+    onBrandSaved
+  } = useShareLinkSelection({
+    appId,
+    onLoadError: () => toast({ status: 'error', title: t('common:load_failed') })
+  });
 
   const { runAsync: onDelShareChat } = useRequest(
     async (id: string) => {
@@ -108,7 +108,7 @@ const Share = ({
               </Box>
               {feConfigs?.docUrl && (
                 <Link
-                  href={getDocPath('/openapi/share')}
+                  href={getDocPath('/guide/build/publish/link')}
                   target={'_blank'}
                   ml={2}
                   color={'primary.500'}
@@ -158,14 +158,12 @@ const Share = ({
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>
-                  {Math.round(item.usagePoints)}
-                  {feConfigs?.isPlus
-                    ? `${
-                        item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
-                          ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:Unlimited')}`
-                      }`
-                    : ''}
+                  {formatOutLinkUsagePoints({
+                    usagePoints: item.usagePoints,
+                    maxUsagePoints: item.limit?.maxUsagePoints,
+                    isPlus: feConfigs?.isPlus,
+                    unlimitedLabel: t('common:Unlimited')
+                  })}
                 </Td>
                 {feConfigs?.isPlus && (
                   <Td>
@@ -179,7 +177,7 @@ const Share = ({
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
-                    onClick={() => setSelectedLinkData(item as OutLinkSchemaType)}
+                    onClick={() => void openLink(item._id)}
                     size={'sm'}
                     mr={3}
                     variant={'whitePrimary'}
@@ -263,7 +261,8 @@ const Share = ({
       {!!selectedLinkData && (
         <SelectUsingWayModal
           share={selectedLinkData}
-          onClose={() => setSelectedLinkData(undefined)}
+          onBrandSaved={onBrandSaved}
+          onClose={closeLink}
         />
       )}
       <ConfirmModal />
@@ -417,7 +416,7 @@ function EditLinkModal({
                 />
               </Flex>
               <Link
-                href={getDocPath('/openapi/share')}
+                href={getDocPath('/guide/build/publish/link')}
                 target={'_blank'}
                 fontSize={'xs'}
                 color={'myGray.500'}

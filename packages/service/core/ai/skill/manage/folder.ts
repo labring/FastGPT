@@ -132,10 +132,11 @@ export async function createSkillFolder(
     parentId?: string | null;
     teamId: string;
     tmbId: string;
+    inheritPermission?: boolean;
   },
   session?: ClientSession
 ): Promise<AgentSkillSchemaType> {
-  const { name, description, parentId, teamId, tmbId } = data;
+  const { name, description, parentId, teamId, tmbId, inheritPermission } = data;
 
   await checkCreateResourceParent({
     parentId,
@@ -156,6 +157,7 @@ export async function createSkillFolder(
     category: [],
     teamId,
     tmbId,
+    inheritPermission: inheritPermission ?? true,
     createTime: new Date(),
     updateTime: new Date()
   });

@@ -6,6 +6,14 @@ import {
 } from '../../../../src/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
+describe('proxy Query encoding', () => {
+  it('encodes the normalized proxy as a JSON string while keeping chat fields', () => {
+    expect(
+      toChatAuthQueryInput({ appId: 'app', chatId: 'chat', authProxy: { tmbId: 'member' } })
+    ).toEqual({ appId: 'app', chatId: 'chat', authProxy: '{"tmbId":"member"}' });
+  });
+});
+
 describe('web/core/chat/utils', () => {
   it('recognizes only one complete chat context and preserves external priority when building requests', () => {
     const outLinkAuthData = { shareId: 'share-1', outLinkUid: 'uid-1' };

@@ -8,6 +8,7 @@ import {
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -252,6 +253,44 @@ describe('authDatasetCollectionMoves', () => {
     await expect(
       authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [selectedMove] })
     ).resolves.toBeDefined();
+  });
+  it('根级集合移动要求对集合自身具备 manage 权限（开启态）', async () => {
+    const { auth, move, file, grant } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { parentId: null });
+    await grant(
+      null as unknown as string,
+      TeamDatasetCreatePermissionVal,
+      PerResourceTypeEnum.team
+    );
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await grant(String(file._id), WriteRoleVal);
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await grant(String(file._id), ManageRoleVal);
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).resolves.toBeDefined();
+  });
+  it('根级集合移动要求对集合自身具备 manage 权限（关闭态）', async () => {
+    const { auth, move, file, target, actor, datasetId, grant } = await fixture(false);
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { parentId: null });
+    await MongoDatasetCollection.updateOne({ _id: target._id }, { tmbId: actor.tmbId });
+    await grant(
+      null as unknown as string,
+      TeamDatasetCreatePermissionVal,
+      PerResourceTypeEnum.team
+    );
+    await grant(datasetId, ReadRoleVal, PerResourceTypeEnum.dataset);
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await grant(datasetId, WriteRoleVal, PerResourceTypeEnum.dataset);
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await grant(datasetId, ManageRoleVal, PerResourceTypeEnum.dataset);
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).resolves.toBeDefined();
   });
   it('HTTP 层以空串表示根目录，等价于 null', async () => {
     const { auth, move, owner } = await fixture();

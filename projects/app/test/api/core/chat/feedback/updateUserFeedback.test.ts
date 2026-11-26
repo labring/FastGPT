@@ -16,13 +16,15 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 
 describe('updateUserFeedback api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let appId: string;
   let chatId: string;
   let dataId: string;
+
+  afterEach(() => vi.restoreAllMocks());
 
   beforeEach(async () => {
     testUser = await getUser(`test-user-update-feedback-${Math.random()}`);
@@ -82,6 +84,60 @@ describe('updateUserFeedback api test', () => {
         }
       ]
     });
+  });
+
+  it.each<{
+    name: string;
+    feedback: Pick<UpdateUserFeedbackBodyType, 'userGoodFeedback' | 'userBadFeedback'>;
+    update: { $set?: Record<string, string | null>; $unset?: Record<string, ''> };
+  }>([
+    {
+      name: 'both feedback fields',
+      feedback: { userGoodFeedback: 'Good', userBadFeedback: 'Bad' },
+      update: { $set: { userGoodFeedback: 'Good', userBadFeedback: 'Bad' } }
+    },
+    {
+      name: 'neither feedback field',
+      feedback: {},
+      update: { $unset: { userGoodFeedback: '', userBadFeedback: '' } }
+    },
+    {
+      name: 'nullable feedback fields',
+      feedback: { userGoodFeedback: null, userBadFeedback: null },
+      update: { $set: { userGoodFeedback: null, userBadFeedback: null } }
+    },
+    {
+      name: 'nullable and omitted feedback',
+      feedback: { userGoodFeedback: null },
+      update: { $set: { userGoodFeedback: null }, $unset: { userBadFeedback: '' } }
+    },
+    {
+      name: 'empty feedback strings',
+      feedback: { userGoodFeedback: '', userBadFeedback: '' },
+      update: { $set: { userGoodFeedback: '', userBadFeedback: '' } }
+    }
+  ])('sends only non-empty MongoDB operators for $name', async ({ feedback, update }) => {
+    const updateOne = vi.spyOn(MongoChatItem, 'updateOne');
+
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: { appId, chatId, dataId, ...feedback }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+    expect(updateOne).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ appId, chatId, dataId, obj: ChatRoleEnum.AI }),
+      update,
+      expect.objectContaining({ session: null })
+    );
+    const item = await MongoChatItem.findOne({ appId, chatId, dataId }).lean();
+    expect(item?.userGoodFeedback).toBe(feedback.userGoodFeedback);
+    expect(item?.userBadFeedback).toBe(feedback.userBadFeedback);
   });
 
   it('should add good feedback', async () => {

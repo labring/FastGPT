@@ -8,11 +8,13 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
+import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
-import { getHistories } from '../utils';
+import { getHistories, getNodeErrResponse } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModelId]?: string;
@@ -49,7 +51,14 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({
+  const {
+    extensionQueries,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
+    embeddingTokens
+  } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
@@ -62,7 +71,9 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({
     model: queryExtensionModel,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   const { totalPoints: embeddingPoints, modelId: embeddingModelId } = formatModelChars2Points({
@@ -77,7 +88,9 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
       totalPoints: llmPoints,
       modelId: llmModelId,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     },
     {
       moduleName: `${node.name} - Embedding`,
@@ -97,18 +110,40 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
     return true;
   });
 
+  const textOutput = JSON.stringify(filterSameQueries);
+  const outputCheck = await checkOutputTextModeration({
+    text: textOutput,
+    targetField: 'queryExtension',
+    context: {
+      teamId: runningUserInfo.teamId,
+      tmbId: runningUserInfo.tmbId,
+      appId: props.runningAppInfo.sourceId,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      nodeId: node.nodeId,
+      nodeName: node.name
+    }
+  });
+  if (!outputCheck.isPass) {
+    return getNodeErrResponse({
+      error: outputCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+    });
+  }
+
   return {
     data: {
-      [NodeOutputKeyEnum.text]: JSON.stringify(filterSameQueries)
+      [NodeOutputKeyEnum.text]: textOutput
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       model: queryExtensionModel.name,
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       embeddingTokens,
       query: userChatInput,
-      textOutput: JSON.stringify(filterSameQueries)
+      textOutput
     }
   };
 };

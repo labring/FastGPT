@@ -110,7 +110,6 @@ describe('useWorkflowBuilderUI', () => {
         isChatGenerating: true,
         isBuildingWorkflow: false,
         pendingInteractiveKey: 'ask-1',
-        errorAttentionKey: 'error-1',
         latestVersion: { version: version(), responseChatItemId: 'response-1' }
       });
     });
@@ -148,7 +147,7 @@ describe('useWorkflowBuilderUI', () => {
       });
       await act(async () => consumers[0].openLeftPanel('workflowBuilder'));
       await act(async () =>
-        consumers[1].setActivity((current) => ({ ...current, errorAttentionKey: 'error-2' }))
+        consumers[1].setActivity((current) => ({ ...current, pendingInteractiveKey: 'ask-2' }))
       );
       expect(consumers.every((ui) => !ui.showAttentionDot && !ui.showLatestBanner)).toBe(true);
 
@@ -169,7 +168,7 @@ describe('useWorkflowBuilderUI', () => {
       consumers[0].setActivity({
         isChatGenerating: false,
         isBuildingWorkflow: false,
-        errorAttentionKey: 'error-1'
+        pendingInteractiveKey: 'ask-1'
       })
     );
     await act(async () => consumers[0].toggleLeftPanel('nodeTemplates'));
@@ -335,7 +334,7 @@ describe('useWorkflowBuilderUI', () => {
       consumers[0].setActivity({
         isChatGenerating: false,
         isBuildingWorkflow: false,
-        errorAttentionKey: 'error-1'
+        pendingInteractiveKey: 'ask-1'
       })
     );
     await act(async () => consumers[1].closeLeftPanel());

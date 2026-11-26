@@ -1,4 +1,5 @@
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -6,6 +7,7 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
@@ -24,12 +26,18 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     bodySchema: ReTrainingCollectionBodySchema
   }).body;
 
-  const { collection, teamId, tmbId } = await authDatasetCollection({
+  const { collection, teamId, tmbId, isRoot } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
     collectionId: inputCollectionId,
     per: WritePermissionVal
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset: collection.dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
 
   return mongoSessionRun(async (session) => {
@@ -51,6 +59,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       session,
+      modelAuthContext,
       createCollectionParams: {
         ...collection,
         ...data,
@@ -78,6 +87,14 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
         tmbId,
         teamId,
         event: AuditEventEnum.RETRAIN_COLLECTION,
+        resources: [
+          buildCollectionAuditResource({
+            _id: collectionId,
+            datasetId: collection.datasetId,
+            name: collection.name,
+            type: collection.type
+          })
+        ],
         params: {
           collectionName: collection.name,
           datasetName: collection.dataset?.name || '',

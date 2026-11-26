@@ -7,8 +7,10 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   lockTrainingDataByTeamId,
+  preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue
 } from '@fastgpt/service/core/dataset/training/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   BLOCKED_LOCK_TIME,
   finalErrorTrainingMatch,
@@ -41,6 +43,130 @@ describe('dataset training controller', () => {
       expect(await MongoDatasetTraining.findOne({ mode }).lean()).toMatchObject({ q });
     }
   );
+  it('preserves input order and data mappings when auto tasks fall back to index', async () => {
+    const root = await getRootUser();
+    const { llm, embedding } = getModelTestDefaults();
+    if (!llm || !embedding) throw new Error('Default test models are not initialized');
+
+    const datasetId = '507f1f77bcf86cd799439021';
+    const collectionId = '507f1f77bcf86cd799439022';
+    const maxLength = Math.max(llm.config.maxContext, 4000);
+    const data = [
+      { q: 'x'.repeat(maxLength + 1), chunkIndex: 0 },
+      { q: 'short question', chunkIndex: 1 },
+      { q: 'q', a: 'a'.repeat(maxLength - 1), chunkIndex: 2 },
+      { q: 'q', a: 'a'.repeat(maxLength), chunkIndex: 3 },
+      { q: 'last question', chunkIndex: 4 }
+    ].map((item) => ({ ...item, metadata: { sourceRow: item.chunkIndex } }));
+
+    const result = await mongoSessionRun((session) =>
+      preCreateDatasetDataAndPushToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId,
+        collectionId,
+        agentModel: llm,
+        vectorModel: embedding,
+        billId: 'test',
+        mode: TrainingModeEnum.auto,
+        data: [...data, { q: '', a: 'answer without a question' }],
+        session
+      })
+    );
+
+    expect(result.insertLen).toBe(data.length);
+    expect(result.dataIds).toHaveLength(data.length);
+    await expect(MongoDatasetData.countDocuments({ datasetId, collectionId })).resolves.toBe(
+      data.length
+    );
+    const expectedModes = [
+      TrainingModeEnum.index,
+      TrainingModeEnum.auto,
+      TrainingModeEnum.auto,
+      TrainingModeEnum.index,
+      TrainingModeEnum.auto
+    ];
+    for (const [index, item] of data.entries()) {
+      const dataId = result.dataIds[index];
+      expect(await MongoDatasetData.findById(dataId).lean()).toMatchObject(item);
+      expect(await MongoDatasetTraining.findOne({ dataId }).lean()).toMatchObject({
+        q: item.q,
+        ...(item.a && { a: item.a }),
+        chunkIndex: item.chunkIndex,
+        dataMetadata: item.metadata,
+        mode: expectedModes[index],
+        weight: expectedModes[index] === TrainingModeEnum.index ? embedding.config.weight : 0
+      });
+    }
+  });
+
+  it('keeps data rows and tasks when every auto item exceeds the limit', async () => {
+    const root = await getRootUser();
+    const { llm, embedding } = getModelTestDefaults();
+    if (!llm || !embedding) throw new Error('Default test models are not initialized');
+    const q = 'x'.repeat(Math.max(llm.config.maxContext, 4000) + 1);
+
+    const result = await mongoSessionRun((session) =>
+      preCreateDatasetDataAndPushToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: '507f1f77bcf86cd799439021',
+        collectionId: '507f1f77bcf86cd799439022',
+        agentModel: llm,
+        vectorModel: embedding,
+        billId: 'test',
+        mode: TrainingModeEnum.auto,
+        data: [{ q }],
+        session
+      })
+    );
+
+    expect(result.insertLen).toBe(1);
+    expect(result.dataIds).toHaveLength(1);
+    expect(await MongoDatasetData.findById(result.dataIds[0]).lean()).toMatchObject({ q });
+    expect(await MongoDatasetTraining.findOne({ dataId: result.dataIds[0] }).lean()).toMatchObject({
+      q,
+      mode: TrainingModeEnum.index,
+      weight: embedding.config.weight
+    });
+  });
+
+  it.each([
+    { mode: TrainingModeEnum.auto, inserted: 1 },
+    { mode: TrainingModeEnum.index, inserted: 1 },
+    { mode: TrainingModeEnum.qa, inserted: 0 },
+    { mode: TrainingModeEnum.imageParse, inserted: 0 }
+  ])('handles oversized direct queue input in $mode mode', async ({ mode, inserted }) => {
+    const root = await getRootUser();
+    const { llm, embedding } = getModelTestDefaults();
+    if (!llm || !embedding) throw new Error('Default test models are not initialized');
+    const q = 'x'.repeat(Math.max(llm.config.maxContext, 4000) + 1);
+
+    const result = await pushDataListToTrainingQueue({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: '507f1f77bcf86cd799439021',
+      collectionId: '507f1f77bcf86cd799439022',
+      agentModel: llm,
+      vectorModel: embedding,
+      vlmModel: llm,
+      vlmModelConfigured: true,
+      billId: 'test',
+      mode,
+      data: [{ q }]
+    });
+
+    expect(result.insertLen).toBe(inserted);
+    expect(await MongoDatasetTraining.countDocuments()).toBe(inserted);
+    if (inserted) {
+      expect(await MongoDatasetTraining.findOne().lean()).toMatchObject({
+        q,
+        mode: TrainingModeEnum.index,
+        weight: embedding.config.weight
+      });
+    }
+  });
+
   it('keeps missing VLM checks for callers that do not defer validation', async () => {
     const root = await getRootUser();
     await expect(

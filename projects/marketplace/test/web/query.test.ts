@@ -39,6 +39,18 @@ describe('marketplace page query helpers', () => {
     ).toBe('/?pluginId=tool-a');
   });
 
+  it('includes type=moderation and omits tool tags when moderation tab is active', () => {
+    expect(
+      buildMarketplacePageUrl({
+        pathname: '/',
+        type: 'moderation',
+        search: 'keyword',
+        tags: ['search'],
+        source: 'official'
+      })
+    ).toBe('/?type=moderation&search=keyword&source=official');
+  });
+
   it('normalizes next query values', () => {
     expect(getSingleQueryValue([' tool-a ', 'tool-b'])).toBe('tool-a');
     expect(getSingleQueryValue('')).toBeUndefined();

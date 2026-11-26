@@ -3,17 +3,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 
 const mocks = vi.hoisted(() => ({ onChangeNode: vi.fn() }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('use-context-selector', () => ({
-  useContextSelector: (_context: unknown, select: (state: any) => unknown) =>
-    select({ onChangeNode: mocks.onChangeNode })
+vi.mock('@/web/core/workflow/editor/react/useField', () => ({
+  useFieldActions: () => ({ setValue: mocks.onChangeNode })
 }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
-  WorkflowActionsContext: {}
+vi.mock('@/web/core/workflow/editor/WorkflowFieldScope', () => ({
+  WorkflowFieldScope: ({ children }: { children: ReactNode }) => children
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
@@ -122,7 +121,9 @@ describe('HTTP multipart field configuration', () => {
       select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     });
     await flush();
-    const saved = JSON.parse(JSON.stringify(mocks.onChangeNode.mock.calls[0][0].value));
+    const saved = JSON.parse(
+      JSON.stringify({ ...input, value: mocks.onChangeNode.mock.calls[0][0] })
+    );
     expect(saved.value).toEqual([
       { key: 'attachment', value: '{{uploadedFiles}}', type: 'file' },
       { key: 'note', value: 'hello' }
@@ -152,7 +153,7 @@ describe('HTTP multipart field configuration', () => {
       select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     });
     await flush();
-    expect(mocks.onChangeNode.mock.lastCall?.[0].value.value).toEqual([
+    expect(mocks.onChangeNode.mock.lastCall?.[0]).toEqual([
       { key: 'attachment', value: '{{newFile}}', type: 'string' }
     ]);
   });

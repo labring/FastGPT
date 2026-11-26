@@ -1,4 +1,5 @@
 import handler from '@/pages/api/core/chat/record/getRecords_v2';
+import paginationHandler from '@/pages/api/core/chat/record/getPaginationRecords';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -6,6 +7,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type {
   GetRecordsV2BodyType,
@@ -15,6 +17,8 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -128,6 +132,57 @@ describe('getRecords_v2 skill edit target', () => {
       id: keepId,
       dataId: keepId
     });
+    expect(res.data.prevCursor).toBeNull();
+    expect(res.data.nextCursor).toBeNull();
+  });
+
+  it('returns null cursors when no conversation is selected', async () => {
+    const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      auth: testUser,
+      body: { skillId }
+    });
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual({
+      list: [],
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false,
+      prevCursor: null,
+      nextCursor: null
+    });
+  });
+
+  it('returns readable history when a persisted Preview reply has no recognized action', async () => {
+    const human = await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      appId: skillId,
+      chatId,
+      dataId: getNanoid(),
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          text: { content: 'Continue with the previous plan' },
+          select: {
+            type: 'workflowBuilderPreview',
+            questions: [{ question: 'Continue?', value: 'confirm' }]
+          }
+        }
+      ]
+    });
+    await createSkillItem({ text: 'Existing answer' });
+
+    const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      auth: testUser,
+      body: { skillId, chatId, pageSize: 10 }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    const message = res.data.list.find((item) => item.dataId === human.dataId);
+    expect(message?.value).toEqual([{ text: { content: 'Continue with the previous plan' } }]);
   });
 
   it('should support linked pagination for skill edit records', async () => {
@@ -150,6 +205,8 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.total).toBe(5);
     expect(res.data.list.length).toBeLessThanOrEqual(3);
     expect(res.data.hasMorePrev).toBe(true);
+    expect(res.data.prevCursor).toBe(res.data.list[0].dataId);
+    expect(res.data.nextCursor).toBeNull();
   });
 
   it('should read chatAgentHelper records through generic records api', async () => {
@@ -209,5 +266,123 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.total).toBe(2);
     expect(res.data.list.map((item) => item.id)).toEqual([humanItem.dataId, aiItem.dataId]);
     expect(res.data.list.map((item) => item.dataId)).toEqual(['helper-round-1', 'helper-round-1']);
+
+    // 锚点角色由方向决定，pageSize=1 也需返回完整轮次。
+    for (const direction of ['nextId', 'prevId', 'initialId'] as const) {
+      const page = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+        auth: testUser,
+        body: {
+          appId: String(app._id),
+          sourceType: ChatSourceTypeEnum.chatAgentHelper,
+          chatId: helperChatId,
+          pageSize: 1,
+          [direction]: 'helper-round-1'
+        }
+      });
+      expect(page.code).toBe(200);
+      expect(page.data.list.map((item) => item.obj)).toEqual(
+        direction === 'initialId' ? [ChatRoleEnum.Human, ChatRoleEnum.AI] : []
+      );
+      expect(page.data.prevCursor).toBeNull();
+      expect(page.data.nextCursor).toBeNull();
+    }
+  });
+
+  it('sanitizes public/nested errors and hides internal diagnostics for outLink share history', async () => {
+    const app = await MongoApp.create({
+      name: 'Share Error Records App',
+      type: AppTypeEnum.simple,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      modules: []
+    });
+    const shareId = `share_${getNanoid(8)}`;
+    const outLinkUid = `uid_${getNanoid(8)}`;
+    const shareChatId = getNanoid();
+    const outLink = await MongoOutLink.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId: app._id,
+      shareId,
+      type: 'share',
+      name: 'Share Error Test',
+      allowAnonymous: true
+    });
+
+    const base = {
+      teamId: testUser.teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      appId: String(app._id),
+      chatId: shareChatId
+    };
+    await Promise.all([
+      MongoChat.create({
+        ...base,
+        tmbId: testUser.tmbId,
+        source: ChatSourceEnum.share,
+        shareId,
+        outLinkUid,
+        publishSource: { type: ChatSourceEnum.share, id: String(outLink._id) }
+      }),
+      MongoChatItem.create({
+        ...base,
+        tmbId: testUser.tmbId,
+        dataId: 'nested',
+        obj: ChatRoleEnum.AI,
+        value: []
+      }),
+      MongoChatItemResponse.create({
+        ...base,
+        chatItemDataId: 'nested',
+        data: {
+          id: 'run-app-err',
+          nodeId: 'run-app-node',
+          moduleName: '子应用',
+          moduleType: FlowNodeTypeEnum.runApp,
+          errorText: '500\n{"secret":"nested-leak"}'
+        }
+      }),
+      MongoChatItem.create({
+        ...base,
+        tmbId: testUser.tmbId,
+        dataId: 'internal',
+        obj: ChatRoleEnum.AI,
+        value: []
+      }),
+      MongoChatItemResponse.create({
+        ...base,
+        chatItemDataId: 'internal',
+        data: {
+          id: 'http-err',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: '500\n{"secret":"http-leak"}'
+        }
+      })
+    ]);
+
+    const outLinkAuthData = { shareId, outLinkUid };
+    const [v2Res, pageRes] = await Promise.all([
+      Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+        body: { chatId: shareChatId, outLinkAuthData, pageSize: 10 }
+      }),
+      Call<any, any, { list: any[] }>(paginationHandler, {
+        body: { chatId: shareChatId, outLinkAuthData, offset: 0, pageSize: 10 }
+      })
+    ]);
+
+    for (const res of [v2Res, pageRes]) {
+      expect(res.code).toBe(200);
+      expect(res.data.list.find((item: any) => item.dataId === 'nested')?.errorText).toEqual({
+        moduleName: '子应用',
+        errorText: 'common:core.chat.error.Chat error'
+      });
+      expect(
+        res.data.list.find((item: any) => item.dataId === 'internal')?.errorText
+      ).toBeUndefined();
+      expect(JSON.stringify(res.data)).not.toContain('nested-leak');
+      expect(JSON.stringify(res.data)).not.toContain('http-leak');
+    }
   });
 });

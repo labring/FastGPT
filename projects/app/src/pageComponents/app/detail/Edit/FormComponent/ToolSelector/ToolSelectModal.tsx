@@ -31,19 +31,17 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  getToolConfigStatus,
-  validateToolConfiguration
-} from '@fastgpt/global/core/app/formEdit/utils';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
+import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
+import { validateToolConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { getAgentToolIdentityKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { inheritToolInputConfig } from './utils';
@@ -54,7 +52,6 @@ type Props = {
   generatedSelectedTools?: SelectedToolItemType[];
   selectedTools: FlowNodeTemplateType[];
   fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
-  selectedModel: MyLLMModelItemType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
@@ -78,7 +75,7 @@ const teamToolTypes = [
   AppTypeEnum.httpToolSet
 ];
 
-const teamAgentTypes = [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+const teamAgentTypes = [AppTypeEnum.folder, ...AppTypeList];
 
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -348,13 +345,7 @@ const RenderList = React.memo(function RenderList({
       const toolValid = validateToolConfiguration({
         toolTemplate: res,
         isAppTool: true,
-        canUploadFile: !!(
-          fileSelectConfig?.canSelectFile ||
-          fileSelectConfig?.canSelectImg ||
-          fileSelectConfig?.canSelectVideo ||
-          fileSelectConfig?.canSelectAudio ||
-          fileSelectConfig?.canSelectCustomFileExtension
-        )
+        canUploadFile: hasEnabledFileSelect(fileSelectConfig)
       });
       if (!toolValid) {
         return toast({
@@ -365,25 +356,17 @@ const RenderList = React.memo(function RenderList({
 
       // 添加与已生成工具相同的配置
       const generatedTool = generatedSelectedTools.find(
-        (tool) =>
-          getToolIdentityKey(tool.pluginId, tool.source) ===
-          getToolIdentityKey(res.pluginId, res.source)
+        (tool) => getAgentToolIdentityKey(tool) === getAgentToolIdentityKey(res)
       );
       const tool = inheritToolInputConfig({ tool: res, sourceTool: generatedTool });
-      onAddTool({
-        ...tool,
-        configStatus: getToolConfigStatus({ tool }).status
-      });
+      onAddTool(tool);
     }
   );
 
   const renderTemplate = useMemoizedFn((template: NodeTemplateListItemType) => {
     const isSystemTool = type === TemplateTypeEnum.systemTools;
-    const selected = selectedTools.some(
-      (tool) =>
-        getToolIdentityKey(tool.pluginId, tool.source) ===
-        getToolIdentityKey(template.id, template.source)
-    );
+    const templateKey = getAgentToolIdentityKey(template);
+    const selected = selectedTools.some((tool) => getAgentToolIdentityKey(tool) === templateKey);
     const name = t(selectPluginText(template.name, i18n.language));
     const intro =
       t(selectPluginText(template.intro, i18n.language)) || t('common:core.workflow.Not intro');
@@ -392,7 +375,7 @@ const RenderList = React.memo(function RenderList({
 
     return (
       <MyTooltip
-        key={getToolIdentityKey(template.id, template.source)}
+        key={templateKey}
         isDisabled={!isTooltipEnabled}
         label={
           <Box py={2} minW={['auto', '250px']}>

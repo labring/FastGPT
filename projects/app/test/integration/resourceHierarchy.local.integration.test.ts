@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { performance } from 'node:perf_hooks';
@@ -191,13 +192,13 @@ describe.skipIf(!process.env.FASTGPT_RESOURCE_ENV_FILE)(
       )?.[1];
       initGlobalVariables();
       global.agentUserTmbIds = new Set();
-      global.systemEnv = {} as any;
+      global.systemInstanceConfig = resolveSystemInstanceConfig();
       global.feConfigs = {
         isPlus: true,
         teamMode: 'multi',
         limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 }
       } as any;
-      global.licenseData = {
+      getSystemInstanceConfig().license.data = {
         startTime: '2000-01-01',
         expiredTime: '2099-01-01',
         licenseType: 'commercial',

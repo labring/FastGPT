@@ -2,12 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { stopWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { removeWechatPollJob } from '@fastgpt/service/support/outLink/wechat/mq';
 import handler from '@/pages/api/support/outLink/delete';
 
 vi.mock('@fastgpt/service/support/outLink/schema', () => ({
-  MongoOutLink: { findById: vi.fn() }
+  MongoOutLink: { deleteOne: vi.fn() }
 }));
 
 vi.mock('@fastgpt/service/support/permission/publish/authLink', () => ({
@@ -15,7 +14,7 @@ vi.mock('@fastgpt/service/support/permission/publish/authLink', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/outLink/wechat/mq', () => ({
-  stopWechatPolling: vi.fn().mockResolvedValue(undefined)
+  removeWechatPollJob: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -42,13 +41,6 @@ describe('delete outlink', () => {
   });
 
   it('authenticates with ManagePermissionVal and deletes outlink', async () => {
-    const deleteOneMock = vi.fn().mockResolvedValue({});
-    vi.mocked(MongoOutLink.findById).mockResolvedValue({
-      _id: id,
-      type: 'share',
-      deleteOne: deleteOneMock
-    } as any);
-
     await request({ id });
 
     expect(authOutLinkCrud).toHaveBeenCalledWith(
@@ -58,21 +50,20 @@ describe('delete outlink', () => {
         per: ManagePermissionVal
       })
     );
-    expect(deleteOneMock).toHaveBeenCalled();
+    expect(MongoOutLink.deleteOne).toHaveBeenCalledWith({ _id: id, teamId: 'team-id' });
   });
 
-  it('stops wechat polling when outlink type is wechat', async () => {
-    const deleteOneMock = vi.fn().mockResolvedValue({});
-    vi.mocked(MongoOutLink.findById).mockResolvedValue({
-      _id: id,
-      type: 'wechat',
-      shareId: 'wechat-share-id',
-      deleteOne: deleteOneMock
+  it('removes the pending WeChat job after deleting the authorized channel', async () => {
+    vi.mocked(authOutLinkCrud).mockResolvedValue({
+      tmbId: 'tmb-id',
+      teamId: 'team-id',
+      outLink: { _id: id, type: 'wechat', shareId: 'wechat-share-id', name: 'link' },
+      app: { name: 'app', type: 'workflow' }
     } as any);
 
     await request({ id });
 
-    expect(stopWechatPolling).toHaveBeenCalledWith('wechat-share-id');
-    expect(deleteOneMock).toHaveBeenCalled();
+    expect(MongoOutLink.deleteOne).toHaveBeenCalledBefore(vi.mocked(removeWechatPollJob));
+    expect(removeWechatPollJob).toHaveBeenCalledWith('wechat-share-id');
   });
 });

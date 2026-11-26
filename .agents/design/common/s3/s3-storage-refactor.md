@@ -43,16 +43,19 @@ flowchart LR
 
 ### 3.1 下载
 
-默认 URL：
+默认 URL（v2）：
 
 ```text
-/api/system/file/d/<aliasId>.<expMinute36>.<sig>
+/api/system/file/d/v2-<aliasId>-<expMinute36>-<sig>[.<ext>]
 ```
 
-- `aliasId`：16 位随机 Base64URL ID，用于查询对象映射。
+- `v2-`：显式版本前缀，避免与普通连字符外链文件名冲突，并为后续协议演进预留版本位。
+- `aliasId`：16 位随机 Base62 ID，用于查询对象映射（兼容存量含 `-` / `_` 的 aliasId）。
 - `expMinute36`：Unix 分钟的 36 进制编码，过期时间直接参与签名。
-- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, version + aliasId + expiry)` 的前 22 位 Base64URL。
-- `.` 是 URL path-safe 分隔符，三段长度固定且易于严格解析。
+- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, "s3-download:v2:" + aliasId + ":" + expMinute36 + ":" + ext)` 数值对 `62^22` 取模并固定编码为 22 位 Base62（不含 `.` / `-` / `_`），防止上游把签名误识别为扩展名，也避免 `-` 分隔符冲突。
+- `.<ext>`：可选真实扩展名，按原始 `filename` → URI 解码后的 `objectKey` basename → 明确 MIME 兜底推导，统一小写且满足 `/^(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}$/`；参与 HMAC 签名防止篡改，无合法扩展名时省略。
+- 校验端同时向后兼容存量 `v1` 点分格式（`<aliasId>.<expMinute36>.<sig>`，`base64url` 签名）；签发端固定输出 `v2` 格式。
+- 本实例短链识别（`resolveS3DownloadAliasFromUrl`）与签发端共用完整端点规则：相对路径匹配本实例下载路由，绝对 URL 仅精确匹配已配置的 `storage.fileDomain`、`site.publicUrl` 或 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`；未配置公开域名时不对任意外部 origin 做归属猜测，避免误拦其他 FastGPT 实例或外部 CDN 的 v2 链接。
 
 Mongo 集合 `s3_download_aliases` 只保存对象映射，不保存可直接使用的 bearer URL：
 
@@ -114,17 +117,30 @@ Mongo 是跨实例一致性的必要状态，不使用进程内缓存。性能�
 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | 可选下载短链公开前缀，只影响下载 |
 | `STORAGE_EXTERNAL_ENDPOINT` / `STORAGE_S3_CDN_ENDPOINT` | `short-redirect` 使用的客户端可访问地址 |
 
-使用 nginx 缩短公开下载路径时，可配置：
+使用 nginx 缩短公开下载路径时，需要注意两点：
+
+1. 正则中包含 `{12,32}` 等花括号量词，表达式**必须使用引号包裹**；
+2. `proxy_pass` 目标 URL 包含变量 `$1` 时，Nginx 不会自动用系统 `/etc/hosts` 解析裸主机名，**必须通过命名 `upstream`（推荐）或显式 `resolver` 指令解析后端**，否则虽然 `nginx -t` 通过，但实际请求会返回 `502`（`no resolver defined`）。
+
+可直接加载并转发的示例配置如下：
 
 ```nginx
-location ~ ^/([A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64})$ {
-  proxy_pass http://host.docker.internal:3000/api/system/file/d/$1;
-  proxy_set_header Host $host;
-  proxy_set_header X-Forwarded-Proto $scheme;
+upstream fastgpt_app {
+  server 127.0.0.1:3000; # 容器部署可替换为 host.docker.internal:3000 或 FastGPT App Service 地址
+}
+
+server {
+  listen 8088;
+
+  location ~ "^/((?:v2-[A-Za-z0-9_-]{12,32}-[0-9a-z]{1,8}-[A-Za-z0-9]{16,64}(?:\.(?=[a-z0-9]*[a-z])[a-z0-9]{1,16})?|[A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64}))$" {
+    proxy_pass http://fastgpt_app/api/system/file/d/$1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
 }
 ```
 
-同时设置 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX=http://localhost:8088`。Plugin、Pro 和浏览器拿到的仍是主 App 生成的 URL，不需要各自配置或实现文件下载 public API。
+同时设置 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX=http://localhost:8088`。下载公开 API（`/api/system/file/d/*`）统一由主 App（`projects/app`）承接，Plugin、Pro 和浏览器都不需要各自实现文件下载路由。
 
 ## 5. 上传策略与内容校验
 
@@ -238,4 +254,5 @@ Route 必须捕获可预期文件代理错误并映射状态码，不能全部�
 2. 默认使用 `short-proxy`；外部 S3/CDN 部署可切换 `short-redirect`。旧配置 `presigned` 必须在升级前改为其中一种模式。
 3. nginx 根路径短链是可选展示层，App 的 `/api/system/file/d/*` 必须始终可达。
 4. 历史 JWT 路由和历史 Chat key 在兼容期继续工作；新写入统一使用短链和 source-aware key。
-5. 回滚前必须评估已写入消息、dataset 或工具结果的新 `/d` 链接；直接移除新路由会使历史内容不可访问。
+5. **自定义 Nginx 短路径代理升级**：若配置了自定义 Nginx 根路径正则 rewrite，升级前需先更新为上文带引号的双格式正则与命名 `upstream`（或显式 `resolver`），执行 `nginx -t` 并 reload 后验证 v1、带后缀 v2、无后缀 v2 三种格式均可正确转发至 `/api/system/file/d/$1`（使用 `/api/system/file/d/` 或 `/f/` 前缀转发的无需改代理）；已签发的存量 v1 链接在有效期内持续可用。
+6. **回滚约束**：直接把 `projects/app` 回滚到仅支持 v1 的旧版本会使已签发到消息、dataset 预览或缓存中的 v2 链接返回 403；直接移除 `/d` 路由同样会使历史内容不可访问。

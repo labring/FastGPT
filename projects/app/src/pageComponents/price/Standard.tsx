@@ -1,3 +1,4 @@
+import ShareBrandFeature from '@/components/support/wallet/ShareBrandFeature';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
@@ -135,6 +136,9 @@ export const BillingModeSwitch = ({
 const Standard = ({
   standardPlan: myStandardPlan,
   onPaySuccess,
+  highlightShareBrand = false,
+  shareBrandHighlightActive = true,
+  shareBrandPlacement = 'last',
   selectSubMode: controlledSubMode,
   onSelectSubModeChange,
   onLoginRequired,
@@ -145,6 +149,9 @@ const Standard = ({
 }: {
   standardPlan?: TeamPlanStandardType;
   onPaySuccess?: () => void;
+  highlightShareBrand?: boolean;
+  shareBrandHighlightActive?: boolean;
+  shareBrandPlacement?: 'first' | 'last';
   selectSubMode?: `${SubModeEnum}`;
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
   onLoginRequired?: (intent: PricePurchaseIntent) => void;
@@ -172,6 +179,8 @@ const Standard = ({
     isWecomTeam ? SubModeEnum.year : SubModeEnum.month
   );
   const planContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToShareBrandRef = useRef(false);
+  const [isResponsiveLayoutReady, setIsResponsiveLayoutReady] = useState(false);
   const [responsivePlanLayout, setResponsivePlanLayout] = useState<ResponsivePlanLayout>({
     columnCount: 4,
     cardWidth: PLAN_CARD_MIN_WIDTH,
@@ -236,6 +245,7 @@ const Standard = ({
           ? previous
           : nextLayout
       );
+      setIsResponsiveLayoutReady(true);
     };
 
     updatePlanLayout();
@@ -319,6 +329,34 @@ const Standard = ({
     myStandardPlan?.maxTeamMember,
     myStandardPlan?.maxAppAmount,
     myStandardPlan?.maxDatasetAmount
+  ]);
+
+  useEffect(() => {
+    if (
+      !highlightShareBrand ||
+      !shareBrandHighlightActive ||
+      !feConfigs.show_outlink_brand ||
+      hasScrolledToShareBrandRef.current ||
+      (responsiveCardLayout && !isResponsiveLayoutReady)
+    ) {
+      return;
+    }
+
+    // 等待卡片完成响应式排布，仅在高级版实际展示该权益时定位一次。
+    const feature = planContainerRef.current?.querySelector(
+      `[data-plan-feature="share-brand"][data-plan-level="${StandardSubLevelEnum.advanced}"]`
+    );
+    if (!feature) return;
+
+    hasScrolledToShareBrandRef.current = true;
+    feature.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  }, [
+    highlightShareBrand,
+    shareBrandHighlightActive,
+    feConfigs.show_outlink_brand,
+    standardSubList,
+    responsiveCardLayout,
+    isResponsiveLayoutReady
   ]);
 
   // Pay code
@@ -446,7 +484,7 @@ const Standard = ({
                 alignItems={'flex-start'}
                 flexShrink={0}
                 w={responsiveCardLayout ? '100%' : ['100%', '300px']}
-                h={['auto', '777px']}
+                minH={['auto', '777px']}
                 p={'28px'}
                 borderRadius={'16px'}
                 borderWidth={isCurrentPlan ? '2px' : '1.5px'}
@@ -786,6 +824,13 @@ const Standard = ({
                 {/* function list */}
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
+                    {shareBrandPlacement === 'first' && (
+                      <ShareBrandFeature
+                        level={item.level}
+                        highlight={highlightShareBrand && shareBrandHighlightActive}
+                        showTip={highlightShareBrand}
+                      />
+                    )}
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_1')}</Box>
@@ -802,9 +847,22 @@ const Standard = ({
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_4')}</Box>
                     </Flex>
+                    {shareBrandPlacement === 'last' && (
+                      <ShareBrandFeature
+                        level={item.level}
+                        highlight={highlightShareBrand && shareBrandHighlightActive}
+                        showTip={highlightShareBrand}
+                      />
+                    )}
                   </Grid>
                 ) : (
-                  <StandardPlanContentList level={item.level} mode={selectSubMode} />
+                  <StandardPlanContentList
+                    level={item.level}
+                    mode={selectSubMode}
+                    shareBrandPlacement={shareBrandPlacement}
+                    highlightShareBrand={highlightShareBrand && shareBrandHighlightActive}
+                    showShareBrandTip={highlightShareBrand}
+                  />
                 )}
               </Box>
             );

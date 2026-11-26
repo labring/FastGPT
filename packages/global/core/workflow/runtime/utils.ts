@@ -3,12 +3,7 @@ import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
 import type { NodeOutputItemType, RuntimeNodeItemType } from './type';
 import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID,
-  WorkflowIOValueTypeEnum
-} from '../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
 import {
   InteractiveNodeResponseTypeSchema,
@@ -16,9 +11,8 @@ import {
   type WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
-import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
+import type { FlowNodeOutputItemType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
 import { parseSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
@@ -267,7 +261,24 @@ export const storeEdges2RuntimeEdges = (
   if (lastInteractive) {
     const memoryEdges = lastInteractive.memoryEdges || [];
     if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges.map((edge) => ({ ...edge }));
+      const runtimeEdges = memoryEdges.map((edge) => ({ ...edge }));
+      // 工具集父边属于持久化图结构，暂停快照只保存展开后的子工具边。
+      edges?.forEach((edge) => {
+        if (
+          edge.sourceHandle === NodeOutputKeyEnum.selectedTools &&
+          edge.targetHandle === NodeOutputKeyEnum.selectedTools &&
+          !runtimeEdges.some(
+            (runtimeEdge) =>
+              runtimeEdge.source === edge.source &&
+              runtimeEdge.sourceHandle === edge.sourceHandle &&
+              runtimeEdge.target === edge.target &&
+              runtimeEdge.targetHandle === edge.targetHandle
+          )
+        ) {
+          runtimeEdges.push({ ...edge, status: 'waiting' });
+        }
+      });
+      return runtimeEdges;
     }
   }
 
@@ -296,96 +307,12 @@ export const getWorkflowEntryNodeIds = (
     .map((item) => item.nodeId);
 };
 
-export const storeNodes2RuntimeNodes = (
-  nodes: StoreNodeItemType[],
-  entryNodeIds: string[]
-): RuntimeNodeItemType[] => {
-  return (
-    nodes.map<RuntimeNodeItemType>((node) => {
-      return {
-        nodeId: node.nodeId,
-        name: node.name,
-        avatar: node.avatar,
-        intro: node.intro,
-        flowNodeType: node.flowNodeType,
-        showStatus: node.showStatus,
-        isEntry: entryNodeIds.includes(node.nodeId),
-        inputs: node.inputs,
-        outputs: node.outputs,
-        pluginId: node.pluginId,
-        version: node.version,
-        ...(node.metadataLocale !== undefined ? { metadataLocale: node.metadataLocale } : {}),
-        toolConfig: node.toolConfig,
-        catchError: node.catchError
-      };
-    }) || []
-  );
-};
-
 export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
   return edges.filter(
     (edge) =>
       edge.sourceHandle !== NodeOutputKeyEnum.selectedTools &&
       edge.targetHandle !== NodeOutputKeyEnum.selectedTools
   );
-};
-
-/*
-  Get the value of the reference variable/node output
-  1. [string,string]
-  2. [string,string][]
-*/
-export const getReferenceVariableValue = ({
-  value,
-  nodesMap,
-  variables,
-  isReferenceVal = true
-}: {
-  value?: ReferenceValueType;
-  nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
-  variables: Record<string, unknown>;
-  isReferenceVal?: boolean;
-}) => {
-  if (!value || !isReferenceVal) return value;
-
-  const resoleValue = (value: [string, string | undefined]) => {
-    const sourceNodeId = value[0];
-    const outputId = value[1];
-
-    if (sourceNodeId === VARIABLE_NODE_ID) {
-      if (!outputId) return undefined;
-      return variables[outputId];
-    }
-
-    // 避免 value 刚好就是二个元素的字符串数组
-    const node = nodesMap instanceof Map ? nodesMap.get(sourceNodeId) : nodesMap[sourceNodeId];
-    if (!node) {
-      return value;
-    }
-
-    return node.outputs.find((output) => output.id === outputId)?.value;
-  };
-
-  // handle single reference value
-  if (isValidReferenceValueFormat(value)) {
-    return resoleValue(value as [string, string | undefined]);
-  }
-
-  // handle reference array
-  if (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => isValidReferenceValueFormat(item, nodesMap))
-  ) {
-    return value
-      .map<any>((val) => {
-        return resoleValue(val as [string, string | undefined]);
-      })
-      .flat()
-      .filter((item) => item !== undefined);
-  }
-
-  return value;
 };
 
 export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {
@@ -472,7 +399,7 @@ export const appendWorkflowInteractiveValue = ({
 }) => {
   const latest = extractDeepestInteractive(interactive);
   if (isAskInteractive(latest)) {
-    const existing = values.find((value) => {
+    const existingIndex = values.findIndex((value) => {
       if (value.displayOnly || !value.interactive) return false;
       const current = extractDeepestInteractive(value.interactive);
       return isAgentAskInteractive(latest)
@@ -482,8 +409,12 @@ export const appendWorkflowInteractiveValue = ({
         : current?.type === 'workflowBuilderPreview' &&
             current.params.toolCallId === latest.params.toolCallId;
     });
-    if (existing) {
-      existing.interactive = interactive;
+    if (existingIndex !== -1) {
+      // 避免原地修改被子流程 nodeOutputs（如 history 输出）共享引用的 item，防止形成循环引用
+      values[existingIndex] = {
+        ...values[existingIndex],
+        interactive
+      };
       return;
     }
   }

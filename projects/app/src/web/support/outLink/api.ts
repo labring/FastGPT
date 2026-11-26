@@ -17,10 +17,11 @@ import type {
   OutLinkDeleteResponseType,
   OutLinkListQueryType,
   OutLinkListResponseType,
+  WechatOutLinkListItemType,
   OutLinkUpdateBodyType,
   OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
-import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 
 type LegacyOutLinkCreateBodyType =
@@ -38,6 +39,9 @@ export const putShareChat = (data: OutLinkUpdateBodyType) =>
   PUT<OutLinkUpdateResponseType>(`/support/outLink/update`, data);
 
 // get shareChat
+export function getShareChatList(
+  data: OutLinkListQueryType & { type: PublishChannelEnum.wechat }
+): Promise<WechatOutLinkListItemType[]>;
 export function getShareChatList(data: OutLinkListQueryType): Promise<OutLinkListResponseType>;
 export function getShareChatList<T extends OutlinkAppType>(
   data: OutLinkListQueryType

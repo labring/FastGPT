@@ -14,7 +14,11 @@ const isMaskedValue = (value: unknown) => value === SystemToolSecretMaskedValue;
 /** 管理员表单允许提交原始标量；仅在此边界包装明文，凭据识别仍由统一解析器负责。 */
 const normalizeSystemToolSecret = (value: unknown) => {
   if (isMaskedValue(value)) return undefined;
-  return normalizeToolInputValue({ value, inputType: 'input' });
+  const normalized = normalizeToolInputValue({ value, inputType: 'input' });
+  if (normalized && 'value' in normalized) {
+    return { value: String(normalized.value) };
+  }
+  return normalized;
 };
 
 /** 从插件 secret schema 生成需要加密的字段集合。 */

@@ -37,6 +37,30 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 describe('assertExecutionConnection', () => {
+  it('reconnects an edge against the graph after removing the replaced edge', async () => {
+    const document = WorkflowDocumentSchema.parse(fixture);
+    const text = document.nodes.find((node) => node.nodeId === 'text')!;
+    document.nodes.push({ ...structuredClone(text), nodeId: 'second' });
+    const oldEdge: WorkflowExecutionEdge = {
+      source: { kind: 'next', nodeId: 'text' },
+      target: { kind: 'target', nodeId: 'second' }
+    };
+    const newEdge: WorkflowExecutionEdge = {
+      source: { kind: 'next', nodeId: 'second' },
+      target: { kind: 'target', nodeId: 'text' }
+    };
+    document.executionEdges = [oldEdge];
+
+    const result = await applyWorkflowCommand({
+      document,
+      command: { type: 'edge.reconnect', oldEdge, newEdge },
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+
+    expect(result.document.executionEdges).toEqual([newEdge]);
+    expect(document.executionEdges).toEqual([oldEdge]);
+  });
+
   it('isolates main and different tool flows in both directions without deleting edges', async () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     document.nodes = [
@@ -360,6 +384,35 @@ describe('checkExecutionConnection', () => {
       expect(edges).toEqual(before);
     }
   );
+
+  it.each(['left', 'top', 'bottom'])(
+    'rejects a duplicate of a historical ordinary %s source',
+    (position) => {
+      const connection = ordinary('source', 'target');
+      const edges = [
+        {
+          ...connection,
+          sourceHandle: `source-source-${position}`,
+          targetHandle: 'target-target-right'
+        }
+      ];
+      expect(evaluate({ connection, edges })).toMatchObject({
+        allowed: false,
+        reason: { code: WorkflowDiagnosticCodeEnum.edgeDuplicated }
+      });
+    }
+  );
+
+  it('keeps an explicit source output distinct from the default source', () => {
+    const connection = ordinary('source', 'target');
+    const edges = [{ ...connection, sourceHandle: 'source-source-left' }];
+    const source = node('source', FlowNodeTypeEnum.toolCall);
+    source.outputs.push({ id: 'left', key: 'left', type: FlowNodeOutputTypeEnum.source });
+
+    expect(evaluate({ connection, edges, nodes: [source, node('target')] })).toEqual({
+      allowed: true
+    });
+  });
 
   it('keeps raw and semantic candidates, command validation and existing-edge validation consistent', () => {
     const nodes = [node('source', FlowNodeTypeEnum.toolCall), node('target'), node('other')];

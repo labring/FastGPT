@@ -1,14 +1,30 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MCPClient } from '@fastgpt/service/core/app/mcp';
+import * as secretUtils from '@fastgpt/service/common/secret/utils';
+import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
+import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
+import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
+import { ChatSourceTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import * as WorkflowNodeResponse from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
+import * as Tracing from '@fastgpt/service/common/tracing';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
-  runWorkflow,
-  WorkflowQueue
+  runWorkflow as runWorkflowWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/index';
-import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
+import {
+  createRuntimeReferenceGraph,
+  getWorkflowNodeRunParams
+} from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { createNode, createEdge } from '../utils';
@@ -22,12 +38,23 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
+import { getUser } from '@test/datas/users';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { initWorkflowSseResponse } from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
+import {
+  getWorkflowContext,
+  getWorkflowFileContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
+
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -48,21 +75,84 @@ const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label:
   }
 };
 
-const createWorkflowVariableState = (
-  variables: Record<string, unknown> = {}
-): WorkflowVariableStateLike => ({
-  get: (key) => variables[key],
-  set: async (key, value) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables }),
-  clone: () => createWorkflowVariableState({ ...variables })
-});
+describe('runWorkflow instance execution budget', () => {
+  it.each([0, 1, 3])(
+    'executes only %i sequential text nodes for that instance budget',
+    async (budget) => {
+      const previousConfig = global.systemInstanceConfig;
+      const balanceCheck = vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+      const nodes = ['first', 'second', 'third'].map((id, index) => ({
+        ...createNode(id, FlowNodeTypeEnum.textEditor),
+        isEntry: index === 0,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.textareaInput,
+            renderTypeList: [FlowNodeInputTypeEnum.textarea],
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: id
+          }
+        ],
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.text,
+            key: NodeOutputKeyEnum.text,
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: undefined
+          }
+        ]
+      }));
 
+      try {
+        global.systemInstanceConfig = resolveSystemInstanceConfig({
+          performance: { workflow: { maxRunTimes: budget } }
+        });
+
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: '507f1f77bcf86cd799439012',
+            name: 'Execution budget test',
+            teamId: '507f1f77bcf86cd799439013'
+          },
+          runningUserInfo: {
+            teamId: '507f1f77bcf86cd799439013',
+            tmbId: '507f1f77bcf86cd799439014'
+          },
+          uid: 'execution-budget-test',
+          lang: 'zh-CN',
+          histories: [],
+          query: [],
+          variables: {},
+          chatConfig: {},
+          runtimeNodes: nodes,
+          runtimeEdges: [createEdge('first', 'second'), createEdge('second', 'third')],
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: getWorkflowMaxRunTimes(),
+          stream: false,
+          responseDetail: true,
+          responseAllData: true,
+          checkIsStopping: () => false
+        } as any);
+
+        expect(result.runTimes).toBe(budget);
+        expect(result.workflowRuntimeSummary.finishedNodeIds).toEqual(
+          nodes.slice(0, budget).map((node) => node.nodeId)
+        );
+        expect(nodes.map((node) => node.outputs[0].value)).toEqual(
+          nodes.map((node, index) => (index < budget ? node.nodeId : undefined))
+        );
+        expect(balanceCheck).toHaveBeenCalledTimes(budget);
+      } finally {
+        global.systemInstanceConfig = previousConfig;
+        balanceCheck.mockRestore();
+      }
+    }
+  );
+});
 describe('dispatchWorkFlow SSE initialization guard', () => {
   it('rejects stream responses when SSE was not initialized before dispatch', async () => {
     const res = new EventEmitter() as any;
@@ -90,6 +180,661 @@ describe('dispatchWorkFlow SSE initialization guard', () => {
         responseChatItemId: 'response-id'
       } as any)
     ).rejects.toThrow('Workflow SSE response must be initialized before dispatchWorkFlow');
+  });
+});
+
+describe('runWorkflow single-step debug', () => {
+  type StepProps = Parameters<typeof runWorkflow>[0];
+  type DebugResponse = Awaited<ReturnType<typeof runWorkflow>>['debugResponse'];
+  type InteractiveInput = Pick<StepProps, 'lastInteractive' | 'query'>;
+  const actor = { teamId: '507f1f77bcf86cd799439013', tmbId: '507f1f77bcf86cd799439014' };
+  const runStep = ({
+    runtimeNodes,
+    runtimeEdges = [],
+    defaultSkipNodeQueue,
+    lastInteractive,
+    query = [],
+    mode = 'debug',
+    apiVersion
+  }: Pick<StepProps, 'runtimeNodes'> &
+    Partial<Pick<StepProps, 'runtimeEdges' | 'defaultSkipNodeQueue' | 'mode' | 'apiVersion'>> &
+    Partial<InteractiveInput>) =>
+    runWorkflow({
+      apiVersion,
+      mode,
+      timezone: 'UTC',
+      runningAppInfo: {
+        ...actor,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '507f1f77bcf86cd799439012',
+        name: 'Single-step debug'
+      },
+      runningUserInfo: actor,
+      uid: actor.tmbId,
+      chatId: 'single-step-debug',
+      responseChatItemId: 'single-step-debug-response',
+      histories: [],
+      query,
+      externalProvider: {},
+      workflowDispatchDeep: 0,
+      maxRunTimes: 10,
+      stream: false,
+      runtimeNodes,
+      runtimeEdges,
+      defaultSkipNodeQueue,
+      lastInteractive
+    });
+  const nextStep = (response: DebugResponse, input?: InteractiveInput) =>
+    runStep({
+      ...input,
+      runtimeNodes: response.memoryNodes.map((node) => ({
+        ...node,
+        isEntry: response.entryNodeIds.includes(node.nodeId)
+      })),
+      runtimeEdges: response.memoryEdges.map((edge) => ({ ...edge })),
+      defaultSkipNodeQueue: response.skipNodeQueue
+    });
+  const branch = (nodeId: string): ReturnType<typeof createNode> => ({
+    ...createNode(nodeId, FlowNodeTypeEnum.ifElseNode),
+    inputs: [
+      {
+        key: NodeInputKeyEnum.ifElseList,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: []
+      }
+    ]
+  });
+  const select = (nodeId: string) => ({
+    ...createNode(nodeId, FlowNodeTypeEnum.userSelect),
+    inputs: [
+      {
+        key: NodeInputKeyEnum.userSelectOptions,
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        value: [{ key: 'choice', value: 'Choice' }]
+      }
+    ]
+  });
+
+  beforeEach(() => vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined));
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ['removed', undefined],
+    ['kept', 'previous result']
+  ])(
+    'resolves ordinary inputs through the %s branch in a restored graph',
+    async (branch, value) => {
+      const classifier = createNode('classify', FlowNodeTypeEnum.classifyQuestion);
+      classifier.inputs = [
+        {
+          key: NodeInputKeyEnum.agents,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ key: 'kept', value: 'Kept' }]
+        }
+      ];
+      classifier.outputs = [
+        {
+          id: 'result',
+          key: 'result',
+          type: FlowNodeOutputTypeEnum.static,
+          value: 'previous result'
+        }
+      ];
+      const target = createNode('target', FlowNodeTypeEnum.textEditor);
+      target.isEntry = true;
+      target.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['classify', 'result']
+        }
+      ];
+      const dispatchTextEditor = vi.spyOn(callbackMap, FlowNodeTypeEnum.textEditor);
+      await runStep({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runtimeNodes: [classifier, target],
+        runtimeEdges: [createEdge('classify', 'target', 'active', `classify-source-${branch}`)]
+      });
+
+      expect(dispatchTextEditor).toHaveBeenCalledOnce();
+      expect(dispatchTextEditor.mock.calls[0][0].params[NodeInputKeyEnum.textareaInput]).toBe(
+        value
+      );
+    }
+  );
+
+  it.each(['debug', 'test'] as const)('respects the queue run mode %s', async (mode) => {
+    const input = {
+      key: NodeInputKeyEnum.userSelectOptions,
+      label: 'Options',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.any,
+      value: ['red', 'blue'],
+      debugValueOverride: true
+    };
+    const result = await runStep({
+      apiVersion: 'v2',
+      mode,
+      runtimeNodes: [
+        { ...createNode('select', FlowNodeTypeEnum.userSelect), isEntry: true, inputs: [input] }
+      ]
+    });
+
+    if (mode === 'debug') {
+      expect(result.workflowInteractiveResponse).toMatchObject({
+        type: 'userSelect',
+        params: { userSelectOptions: [{ value: 'red' }, { value: 'blue' }] }
+      });
+    } else {
+      expect(result.workflowInteractiveResponse).toBeUndefined();
+    }
+  });
+
+  it('preserves the branch status on every edge into the next node and resumes an interactive step', async () => {
+    const result = await runStep({
+      runtimeNodes: [{ ...branch('branch'), isEntry: true }, select('select')],
+      runtimeEdges: [
+        createEdge('branch', 'select', 'waiting', 'branch-source-IF', 'select-target-right'),
+        createEdge('branch', 'select', 'waiting', 'branch-source-ELSE')
+      ]
+    });
+
+    expect(result.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(result.debugResponse.memoryEdges).toMatchObject([
+      { sourceHandle: 'branch-source-IF', targetHandle: 'select-target-right', status: 'skipped' },
+      { sourceHandle: 'branch-source-ELSE', targetHandle: 'select-target-left', status: 'active' }
+    ]);
+
+    const paused = await nextStep(result.debugResponse);
+    expect(paused.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(paused.workflowInteractiveResponse).toMatchObject({ type: 'userSelect' });
+    expect(paused.debugResponse.memoryEdges).toEqual(result.debugResponse.memoryEdges);
+    expect(paused.workflowInteractiveResponse?.memoryEdges).toEqual(
+      result.debugResponse.memoryEdges
+    );
+    const resumed = await nextStep(paused.debugResponse, {
+      lastInteractive: paused.workflowInteractiveResponse,
+      query: [{ text: { content: 'Choice' } }]
+    });
+    expect(resumed.debugResponse.nodeResponses.select.response).toMatchObject({
+      userSelectResult: 'Choice'
+    });
+    expect(resumed.debugResponse.entryNodeIds).toEqual([]);
+  });
+
+  it('keeps both paused cards addressable and applies an answer only to its card', async () => {
+    const form = {
+      ...createNode('form', FlowNodeTypeEnum.formInput),
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              key: 'answer',
+              label: 'Answer',
+              type: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: true,
+              value: ''
+            }
+          ]
+        }
+      ]
+    };
+    const start = await runStep({
+      runtimeNodes: [
+        { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true },
+        select('choice'),
+        form
+      ],
+      runtimeEdges: [createEdge('start', 'choice'), createEdge('start', 'form')]
+    });
+    const paused = (await nextStep(start.debugResponse)).debugResponse;
+    expect(paused.entryNodeIds.toSorted()).toEqual(['choice', 'form']);
+    expect(paused.memoryEdges.map(({ status }) => status)).toEqual(['active', 'active']);
+    expect(paused.nodeResponses.form.interactiveResponse?.type).toBe('userInput');
+    const answer = paused.nodeResponses.choice.interactiveResponse;
+    expect(answer?.type).toBe('userSelect');
+    const afterChoice = (
+      await nextStep(paused, {
+        lastInteractive: { ...answer!, entryNodeIds: ['choice'], memoryEdges: [], nodeOutputs: [] },
+        query: [{ text: { content: 'Choice' } }]
+      })
+    ).debugResponse;
+    expect(afterChoice.nodeResponses.choice.response).toMatchObject({ userSelectResult: 'Choice' });
+    expect(afterChoice.nodeResponses.form.interactiveResponse?.type).toBe('userInput');
+    expect(afterChoice.entryNodeIds).toEqual(['form']);
+  });
+
+  it.each([
+    ['ELSE', 'skipped', 'active'],
+    ['IF', 'active', 'skipped']
+  ] as const)(
+    'keeps the new state of %s when another node runs in the same step as an interactive pause',
+    async (branchKey, originalStatus, finalStatus) => {
+      const result = await runStep({
+        runtimeNodes: [
+          { ...select('select'), isEntry: true },
+          { ...branch('next'), isEntry: true },
+          createNode('earlier', FlowNodeTypeEnum.textEditor)
+        ],
+        runtimeEdges: [
+          createEdge('earlier', 'select', 'active'),
+          createEdge('next', 'select', originalStatus, `next-source-${branchKey}`)
+        ]
+      });
+
+      expect(result.debugResponse.entryNodeIds).toEqual(['select']);
+      expect(result.debugResponse.memoryEdges.map(({ status }) => status)).toEqual([
+        'active',
+        finalStatus
+      ]);
+    }
+  );
+
+  it('resumes a choice even when a concurrent loop skips its only incoming edge', async () => {
+    const firstBranch = Promise.withResolvers<void>();
+    const dispatchBranch = callbackMap[FlowNodeTypeEnum.ifElseNode];
+    const dispatchTextEditor = callbackMap[FlowNodeTypeEnum.textEditor];
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.ifElseNode).mockImplementation(async (props) => {
+      const result = await dispatchBranch(props);
+      firstBranch.resolve();
+      return result;
+    });
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.textEditor).mockImplementation(async (props) => {
+      await firstBranch.promise;
+      return dispatchTextEditor(props);
+    });
+    const loop = branch('loop');
+    loop.inputs[0].value = [
+      {
+        branchId: 'IF',
+        condition: 'AND',
+        list: [{ variable: ['marker', NodeOutputKeyEnum.text], condition: 'isEmpty' }]
+      }
+    ];
+    const marker = createNode('marker', FlowNodeTypeEnum.textEditor);
+    marker.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'visited'
+      }
+    ];
+    marker.outputs = [
+      {
+        id: NodeOutputKeyEnum.text,
+        key: NodeOutputKeyEnum.text,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ];
+    const start = await runStep({
+      runtimeNodes: [
+        select('select'),
+        loop,
+        marker,
+        { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true }
+      ],
+      runtimeEdges: [
+        createEdge('start', 'loop'),
+        createEdge('start', 'marker'),
+        createEdge('loop', 'select', 'waiting', 'loop-source-IF'),
+        createEdge('loop', 'marker', 'waiting', 'loop-source-IF'),
+        createEdge('marker', 'loop')
+      ]
+    });
+
+    const initialBranch = await nextStep(start.debugResponse);
+    expect(initialBranch.debugResponse.entryNodeIds.toSorted()).toEqual(['loop', 'select']);
+    const paused = await nextStep(initialBranch.debugResponse);
+    expect(paused.workflowInteractiveResponse?.entryNodeIds).toEqual(['select']);
+    expect(paused.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(paused.debugResponse.memoryEdges.find(({ target }) => target === 'select')?.status).toBe(
+      'skipped'
+    );
+
+    const resumed = await nextStep(paused.debugResponse, {
+      // 兼容旧请求携带额外历史 ID，只有实际排入本步的节点可以续跑。
+      lastInteractive: {
+        ...paused.workflowInteractiveResponse!,
+        entryNodeIds: ['select', 'marker']
+      },
+      query: [{ text: { content: 'Choice' } }]
+    });
+    expect(resumed.debugResponse.nodeResponses.select).toMatchObject({
+      type: 'run',
+      response: { userSelectResult: 'Choice' }
+    });
+    expect(resumed.debugResponse.nodeResponses.marker?.type).not.toBe('run');
+  });
+
+  it.each(['skip', 'run'] as const)(
+    'leaves a merge waiting until the longer branch resolves to %s',
+    async (longPath) => {
+      const end =
+        longPath === 'skip' ? branch('end') : createNode('end', FlowNodeTypeEnum.textEditor);
+      const lastUpstreamId = longPath === 'skip' ? 'ignored' : 'end';
+      const start = await runStep({
+        runtimeNodes: [
+          { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true },
+          ...['short', 'long', 'merge'].map((id) => createNode(id, FlowNodeTypeEnum.textEditor)),
+          end,
+          ...(longPath === 'skip' ? [createNode('ignored', FlowNodeTypeEnum.textEditor)] : [])
+        ],
+        runtimeEdges: [
+          createEdge('start', 'short'),
+          createEdge('start', 'long'),
+          createEdge('short', 'merge'),
+          createEdge('long', 'end'),
+          ...(longPath === 'skip'
+            ? [createEdge('end', 'ignored', 'waiting', 'end-source-IF')]
+            : []),
+          createEdge(lastUpstreamId, 'merge')
+        ]
+      });
+
+      const forked = await nextStep(start.debugResponse);
+      expect(forked.debugResponse.entryNodeIds).toEqual(['end']);
+      expect(
+        forked.debugResponse.memoryEdges.filter(({ target }) => target === 'merge')
+      ).toMatchObject([
+        { source: 'short', status: 'active' },
+        { source: lastUpstreamId, status: 'waiting' }
+      ]);
+
+      const ready = await nextStep(forked.debugResponse);
+      expect(ready.debugResponse.entryNodeIds).toEqual(['merge']);
+      expect(ready.debugResponse.nodeResponses.merge).toBeUndefined();
+      if (longPath === 'skip') expect(ready.debugResponse.nodeResponses.ignored.type).toBe('skip');
+      expect(
+        ready.debugResponse.memoryEdges.find(({ source }) => source === lastUpstreamId)?.status
+      ).toBe(longPath === 'skip' ? 'skipped' : 'active');
+
+      const done = await nextStep(ready.debugResponse);
+      expect(done.debugResponse.nodeResponses.merge.type).toBe('run');
+      expect(done.debugResponse.entryNodeIds).toEqual([]);
+    }
+  );
+});
+
+describe('dispatchWorkFlow explicit stop lifecycle', () => {
+  const chatSource = { sourceType: ChatSourceTypeEnum.app, sourceId: '507f1f77bcf86cd799439012' };
+  const params = { ...chatSource, chatId: 'stop-lifecycle-chat' };
+  const createParams = (apiVersion?: 'v1' | 'v2'): Parameters<typeof dispatchWorkFlow>[0] => ({
+    apiVersion,
+    chatId: params.chatId,
+    responseChatItemId: 'stop-lifecycle-round',
+    mode: 'chat',
+    runningAppInfo: {
+      ...chatSource,
+      name: 'Test',
+      teamId: chatSource.sourceId,
+      tmbId: chatSource.sourceId
+    },
+    runningUserInfo: {
+      username: 'test-user',
+      teamName: 'Test team',
+      memberName: 'Test member',
+      contact: '',
+      teamId: chatSource.sourceId,
+      tmbId: chatSource.sourceId,
+      externalProvider: {}
+    },
+    uid: chatSource.sourceId,
+    runtimeNodes: [{ ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true }],
+    runtimeEdges: [],
+    variables: {},
+    query: [],
+    histories: [],
+    stream: false,
+    maxFileAmount: 20,
+    maxBytesPerFile: 1024,
+    concatUsage: vi.fn(),
+    resourceContext: { isRoot: false, resourceMap: new Map() },
+    nodeResponseWriteConfig: { persistToDb: false, retainInMemory: true }
+  });
+
+  beforeEach(() => {
+    vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([undefined, 'v2'] as const)(
+    'honors an early stop for API version %s and cleans up before returning',
+    async (version) => {
+      await setAgentRuntimeStop(params);
+      const start = vi.spyOn(callbackMap, FlowNodeTypeEnum.workflowStart);
+
+      await dispatchWorkFlow(createParams(version));
+
+      expect(start).not.toHaveBeenCalled();
+      expect(await shouldWorkflowStop(params)).toBe(false);
+    }
+  );
+
+  it('initializes root memory from histories before running nodes and preserves untouched memories', async () => {
+    const baseline = { untouched: { value: 'history' } };
+    let observed = false;
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.workflowStart).mockImplementationOnce(async (props) => {
+      expect(props).not.toHaveProperty('memoryContext');
+      expect(getWorkflowContext().memoryContext.toRecord()).toEqual(baseline);
+      observed = true;
+      return { system_memories: { updated: { value: 42 } } };
+    });
+    const result = await dispatchWorkFlow({
+      ...createParams(),
+      histories: [
+        { obj: ChatRoleEnum.AI, value: [{ text: { content: 'previous' } }], memories: baseline }
+      ]
+    });
+    expect(observed).toBe(true);
+    expect(result.system_memories).toEqual({ ...baseline, updated: { value: 42 } });
+  });
+
+  it('keeps a headless run alive after response close and stops on the shared Redis signal', async () => {
+    const res = new EventEmitter();
+    let callbackCompleted = false;
+    const start = vi
+      .spyOn(callbackMap, FlowNodeTypeEnum.workflowStart)
+      .mockImplementationOnce(async () => {
+        const { checkIsStopping } = getWorkflowContext();
+        res.emit('close');
+        expect(checkIsStopping()).toBe(false);
+        await setAgentRuntimeStop(params);
+        await vi.waitFor(() => expect(checkIsStopping()).toBe(true));
+        callbackCompleted = true;
+        return {};
+      });
+
+    await dispatchWorkFlow({ ...createParams(), res: res as any });
+
+    expect(start).toHaveBeenCalledOnce();
+    expect(callbackCompleted).toBe(true);
+    expect(await shouldWorkflowStop(params)).toBe(false);
+  });
+
+  it('cleans up the stop monitor if initialization fails', async () => {
+    const error = new Error('points unavailable');
+    vi.mocked(teamLimit.checkTeamAIPoints).mockRejectedValueOnce(error);
+    const read = vi.spyOn(WorkflowStopSignalCache.prototype, 'isStopping');
+    const clear = vi.spyOn(WorkflowStopSignalCache.prototype, 'clear');
+
+    await expect(dispatchWorkFlow(createParams())).rejects.toBe(error);
+    expect(clear).toHaveBeenCalledOnce();
+    const count = read.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(read).toHaveBeenCalledTimes(count);
+  });
+});
+
+describe('dispatchWorkFlow entry context isolation', () => {
+  it.each([true, false])('stream=%s 时隔离入口参数，并保留断连检测和文件限额', async (stream) => {
+    const { teamId, tmbId } = await getUser('workflow-http-context');
+    const req = Object.assign(new EventEmitter(), {
+      aborted: false,
+      socket: new EventEmitter()
+    });
+    const res = Object.assign(new EventEmitter(), {
+      closed: false,
+      destroyed: false,
+      writableEnded: false,
+      writableFinished: false,
+      headersSent: false,
+      setHeader: vi.fn(),
+      end: vi.fn()
+    });
+    const workflowStreamResponse = getWorkflowResponseWrite({
+      res: res as any,
+      detail: true,
+      streamResponse: stream
+    });
+    initWorkflowSseResponse({ res: res as any, stream, responseWrite: workflowStreamResponse });
+
+    const nodeType = stream ? FlowNodeTypeEnum.agent : FlowNodeTypeEnum.textEditor;
+    const node = createNode('http-context-node', nodeType);
+    node.isEntry = true;
+    const agentSandboxPrepareActions: Parameters<
+      typeof dispatchWorkFlow
+    >[0]['agentSandboxPrepareActions'] = stream ? [async (context) => context] : undefined;
+    const concatUsage = vi.fn();
+    const executionContexts: Record<string, unknown>[] = [];
+    const fileContexts: ReturnType<typeof getWorkflowFileContext>[] = [];
+    const stoppingStates: boolean[] = [];
+    const variableValues: unknown[] = [];
+    const responseScopes: ReturnType<typeof getWorkflowContext>['nodeResponseSink'][] = [];
+    const runtimeControls: ReturnType<typeof getWorkflowContext>['runtimeControl'][] = [];
+    const previousConfig = global.systemInstanceConfig;
+    const entryBudget = stream ? 2 : 3;
+    const contextRun = vi.spyOn(WorkflowContext, 'run');
+    const responseSinkFactory = vi.spyOn(
+      WorkflowNodeResponse,
+      'createWorkflowEntryNodeResponseSink'
+    );
+    const activeSpan = vi.spyOn(Tracing, 'withActiveSpan');
+    const callback = vi.spyOn(callbackMap, nodeType).mockImplementation(async (props) => {
+      executionContexts.push(props);
+      props.usagePush([{ moduleName: 'context test', totalPoints: 2 }]);
+      fileContexts.push(getWorkflowFileContext());
+      stoppingStates.push(getWorkflowContext().checkIsStopping());
+      variableValues.push(getWorkflowContext().variableContext.get('chatId'));
+      responseScopes.push(getWorkflowContext().nodeResponseSink);
+      runtimeControls.push(getWorkflowContext().runtimeControl);
+      res.emit('close');
+      stoppingStates.push(getWorkflowContext().checkIsStopping());
+      return {};
+    });
+
+    try {
+      global.systemInstanceConfig = resolveSystemInstanceConfig({
+        performance: { workflow: { maxRunTimes: entryBudget } }
+      });
+      const result = await dispatchWorkFlow({
+        req: req as any,
+        res: res as any,
+        apiVersion: 'v1',
+        responseAllData: stream,
+        responseDetail: !stream,
+        mode: 'test',
+        uid: tmbId,
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: '507f1f77bcf86cd799439120',
+          teamId,
+          tmbId,
+          name: 'HTTP context isolation'
+        },
+        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+        chatId: 'http-context-chat',
+        responseChatItemId: 'http-context-response',
+        histories: [],
+        query: [],
+        variables: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        maxFileAmount: 5,
+        maxBytesPerFile: 1024,
+        stream,
+        workflowStreamResponse,
+        concatUsage,
+        defaultSkipNodeQueue: [],
+        agentSandboxPrepareActions,
+        // 模拟入口扩展或旧调用方夹带的字段；类型收敛不能代替运行时正向选择。
+        ...{ unexpectedEntryField: 'must not reach callback' },
+        nodeResponseWriteConfig: { persistToDb: false, retainInMemory: false },
+        resourceContext: { teamId, isRoot: false, resourceMap: new Map() }
+      });
+
+      expect(executionContexts).toHaveLength(1);
+      expect(Object.keys(executionContexts[0]).sort()).toEqual(
+        [
+          'lang',
+          'requestOrigin',
+          'timezone',
+          'externalProvider',
+          'runningAppInfo',
+          'runningUserInfo',
+          'uid',
+          'chatId',
+          'responseChatItemId',
+          'histories',
+          'query',
+          'chatConfig',
+          'lastInteractive',
+          'stream',
+          'retainDatasetCite',
+          'nodeResponseParentId',
+          'usageId',
+          'agentSandboxPrepareActions',
+          'node',
+          'runtimeNodes',
+          'runtimeNodesMap',
+          'runtimeEdges',
+          'params',
+          'usagePush',
+          'nodeSummary'
+        ].sort()
+      );
+      expect(executionContexts[0].agentSandboxPrepareActions).toBe(agentSandboxPrepareActions);
+      expect(executionContexts[0].node).toBe(node);
+      expect(concatUsage).toHaveBeenCalledExactlyOnceWith(2);
+      expect(variableValues).toEqual(['http-context-chat']);
+      // 入口激活流程 Context；节点 callback 激活预算快照，runWorkflow 自身不再创建 Context。
+      expect(contextRun).toHaveBeenCalledTimes(2);
+      expect(runtimeControls[0]).toMatchObject({
+        mode: 'test',
+        maxRunTimes: entryBudget,
+        workflowDispatchDeep: 1,
+        isToolCall: false
+      });
+      expect(responseScopes[0].workflowRuntimeSummary).toBe(result.workflowRuntimeSummary);
+      expect(fileContexts[0]?.limits).toEqual({ maxFileAmount: 5, maxBytesPerFile: 1024 });
+      expect(stoppingStates).toEqual([false, true]);
+      expect(responseSinkFactory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiVersion: 'v1',
+          responseAllData: stream,
+          responseDetail: !stream
+        })
+      );
+      expect(activeSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'workflow.run',
+          attributes: expect.objectContaining({ 'fastgpt.workflow.app_version': 'v1' })
+        }),
+        expect.any(Function)
+      );
+      expect(res.setHeader).toHaveBeenCalledTimes(stream ? 5 : 0);
+    } finally {
+      global.systemInstanceConfig = previousConfig;
+      activeSpan.mockRestore();
+      responseSinkFactory.mockRestore();
+      contextRun.mockRestore();
+      callback.mockRestore();
+      res.emit('close');
+    }
   });
 });
 
@@ -466,6 +1211,80 @@ describe('getWorkflowNodeRunParams', () => {
     };
   };
 
+  it.each([FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput])(
+    'uses the default configuration when %s has a null option value',
+    (flowNodeType) => {
+      const node = createNode('choices', flowNodeType);
+      const isUserSelect = flowNodeType === FlowNodeTypeEnum.userSelect;
+      const key = isUserSelect
+        ? NodeInputKeyEnum.userSelectOptions
+        : NodeInputKeyEnum.userInputForms;
+      const listReference = [[VARIABLE_NODE_ID, 'options']];
+      const defaultValue = isUserSelect
+        ? listReference
+        : [
+            {
+              type: FlowNodeInputTypeEnum.select,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference
+            }
+          ];
+      const input = {
+        key,
+        label: 'Options',
+        renderTypeList: [
+          isUserSelect ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.custom
+        ],
+        valueType: WorkflowIOValueTypeEnum.any,
+        value: null,
+        defaultValue,
+        debugValueOverride: true
+      };
+      node.inputs = [input];
+      const runtimeArgs = {
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createVariableState().state
+      };
+
+      expect(getWorkflowNodeRunParams(runtimeArgs)[key]).toEqual(defaultValue);
+      expect(getWorkflowNodeRunParams({ ...runtimeArgs, isDebugMode: true })[key]).toBeNull();
+    }
+  );
+
+  it('resolves the same whole-filter reference in Agent inputs and legacy nested settings', () => {
+    const filterJson = '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}';
+    const node = createNode('agent', FlowNodeTypeEnum.agent);
+    const reference = [VARIABLE_NODE_ID, 'filterJson'];
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: reference
+      },
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: { datasets: [{ datasetId: 'dataset-1' }], collectionFilterMatch: reference }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState({ filterJson }).state
+    });
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(filterJson);
+    expect(params[NodeInputKeyEnum.datasetParams]).toEqual({
+      datasets: [{ datasetId: 'dataset-1' }],
+      collectionFilterMatch: filterJson
+    });
+  });
+
   it('静态 input 不应构造 runtimeVariables', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);
@@ -674,6 +1493,112 @@ describe('getWorkflowNodeRunParams', () => {
 
     expect(params.payload).toBe(refValue);
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it.each(['previous', 'first'])(
+    'visits one incoming bucket per node when a chain refers to the %s node',
+    (source) => {
+      const nodes = Array.from({ length: 240 }, (_, index) => {
+        const node = createNode(String(index), FlowNodeTypeEnum.textEditor);
+        node.inputs = [
+          {
+            key: 'payload',
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            value: [String(source === 'first' ? 0 : index - 1), 'payload'],
+            valueType: WorkflowIOValueTypeEnum.number
+          }
+        ];
+        node.outputs = [
+          {
+            id: 'payload',
+            key: 'payload',
+            type: FlowNodeOutputTypeEnum.static,
+            value: index,
+            valueType: WorkflowIOValueTypeEnum.number
+          }
+        ];
+        return node;
+      });
+      const runtimeNodesMap = new Map(nodes.map((node) => [node.nodeId, node]));
+      const graph = createRuntimeReferenceGraph({
+        runtimeNodesMap,
+        runtimeEdges: nodes.slice(1).map((node, index) => createEdge(String(index), node.nodeId))
+      });
+      const getIncomingEdges = vi.spyOn(graph, 'getIncomingEdges');
+      const variableState = createTestVariableContext();
+      for (const [index, node] of nodes.slice(1).entries()) {
+        expect(
+          getWorkflowNodeRunParams({
+            node,
+            runtimeNodesMap,
+            variableState,
+            getReferenceGraph: () => graph
+          }).payload
+        ).toBe(source === 'first' ? 0 : index);
+      }
+      expect(getIncomingEdges).toHaveBeenCalledTimes(nodes.length - 1);
+    }
+  );
+
+  it.each([
+    { label: 'string', value: 'debug value', valueType: WorkflowIOValueTypeEnum.string },
+    { label: 'number', value: 42, valueType: WorkflowIOValueTypeEnum.number },
+    { label: 'boolean', value: false, valueType: WorkflowIOValueTypeEnum.boolean },
+    { label: 'object', value: { nested: true }, valueType: WorkflowIOValueTypeEnum.object },
+    {
+      label: 'array',
+      value: ['first', 'second'],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ])('preserves $label debug overrides on reference inputs', ({ value, valueType }) => {
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      Object.assign(
+        {
+          key: 'payload',
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value,
+          valueType
+        },
+        { debugValueOverride: true }
+      )
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createTestVariableContext(),
+        isDebugMode: true
+      }).payload
+    ).toEqual(value);
+  });
+
+  it('keeps legacy unmarked debug literals while clearing a saved reference', () => {
+    const value = ['first', 'second'];
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const args = {
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createTestVariableContext(),
+      isDebugMode: true,
+      getReferenceGraph: () => ({ getIncomingEdges: () => [] })
+    };
+    const input = {
+      key: 'payload',
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      value,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    };
+    node.inputs = [input];
+    expect(getWorkflowNodeRunParams(args).payload).toEqual(value);
+
+    node.inputs = [Object.assign({}, input, { debugValueOverride: false })];
+    expect(getWorkflowNodeRunParams(args).payload).toBeUndefined();
   });
 
   it('同节点引用工具参数时不读取 input value', () => {
@@ -937,14 +1862,13 @@ describe('runWorkflow catchError', () => {
           createEdge('source', 'success', 'waiting', 'source-source-right'),
           createEdge('source', 'error', 'waiting', 'source-source_catch-right')
         ],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
         stream: false,
         responseDetail: true,
-        responseAllData: true,
-        checkIsStopping: () => false
+        responseAllData: true
       } as any);
       expect(called).toEqual(['source', outcome === 'success' ? 'success' : 'error']);
       expect(source.outputs[0].value).toBe(
@@ -1056,7 +1980,7 @@ describe('runWorkflow catchError', () => {
               status: 'waiting'
             }
           ],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1132,14 +2056,13 @@ describe('runWorkflow assistant response aggregation', () => {
         chatConfig: {},
         runtimeNodes: [chatNode],
         runtimeEdges: [],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
         stream: false,
         responseDetail: true,
-        responseAllData: true,
-        checkIsStopping: () => false
+        responseAllData: true
       } as any);
 
       expect(callbackMap[FlowNodeTypeEnum.chatNode]).toHaveBeenCalledTimes(1);
@@ -1433,7 +2356,15 @@ describe('Workflow runtime LLM token summary', () => {
       const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
       const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
       node.isEntry = true;
-      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
+      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary, ...nodeProps }) => {
+        for (const key of [
+          'apiVersion',
+          'responseAllData',
+          'responseDetail',
+          'showSkillReferences'
+        ]) {
+          expect(nodeProps).not.toHaveProperty(key);
+        }
         nodeSummary.mergeNodeSummary({
           llmInputTokens: mode === 'throw' ? 10 : 30,
           llmOutputTokens: mode === 'throw' ? 3 : 7
@@ -1462,12 +2393,16 @@ describe('Workflow runtime LLM token summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
-          checkIsStopping: () => false,
+
           isToolCall: mode === 'throw',
+          // 模拟旧调用方通过展开对象继续夹带入口字段，最终节点边界仍必须过滤。
+          responseAllData: true,
+          responseDetail: false,
+          showSkillReferences: true,
           nodeResponseSink: {
             publish
           }
@@ -1483,7 +2418,8 @@ describe('Workflow runtime LLM token summary', () => {
             expect.objectContaining({
               response: expect.objectContaining({
                 nodeId: 'summary-node',
-                error: 'after LLM'
+                error: 'after LLM',
+                errorText: 'after LLM'
               }),
               emit: true
             })
@@ -1548,7 +2484,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: nodes,
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1570,6 +2506,7 @@ describe('Workflow runtime error summary', () => {
         for (const call of publish.mock.calls) {
           for (const { response } of call[0]) {
             expect(typeof (response.error ?? response.errorText)).toBe('string');
+            expect(typeof response.errorText).toBe('string');
             expect(JSON.stringify(response)).not.toContain('private-cause');
           }
         }
@@ -1580,6 +2517,61 @@ describe('Workflow runtime error summary', () => {
       }
     }
   );
+
+  it('populates errorText when a node returns rawError without responseData', async () => {
+    const original = callbackMap[FlowNodeTypeEnum.textEditor];
+    const node = createNode('raw-only-node', FlowNodeTypeEnum.textEditor);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
+      rawError: new Error('Agent runtime crashed'),
+      error: { system_error_text: 'Agent runtime crashed' }
+    }));
+    const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'raw error only fallback',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableContext: createTestVariableContext(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => false,
+        nodeResponseSink: { publish }
+      } as any);
+
+      expect(result.workflowRuntimeSummary).toMatchObject({
+        errorCount: 1,
+        errorText: 'Agent runtime crashed'
+      });
+      expect(publish).toHaveBeenCalledWith([
+        expect.objectContaining({
+          response: expect.objectContaining({
+            nodeId: 'raw-only-node',
+            error: 'Agent runtime crashed',
+            errorText: 'Agent runtime crashed'
+          })
+        })
+      ]);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.textEditor] = original;
+    }
+  });
 
   it.each(['error', 'errorText'] as const)(
     'does not log display-only responseData.%s',
@@ -1616,7 +2608,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1677,7 +2669,7 @@ describe('Workflow runtime error summary', () => {
         runtimeNodes: [node],
         isToolCall,
         runtimeEdges: [],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1753,7 +2745,7 @@ describe('Workflow raw error logging', () => {
             chatConfig: {},
             runtimeNodes: [parent],
             runtimeEdges: [],
-            variableState: createWorkflowVariableState(),
+            variableContext: createTestVariableContext(),
             externalProvider: {},
             workflowDispatchDeep: 0,
             maxRunTimes: 10,
@@ -1775,6 +2767,124 @@ describe('Workflow raw error logging', () => {
         warn.mockRestore();
         diagnosticLog.mockRestore();
       }
+    }
+  );
+});
+
+describe('runWorkflow inline MCP discovery timing', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(['output', 'variable', 'resume', 'shared'] as const)(
+    'discovers tools with current credentials at ToolCall execution (%s)',
+    async (scenario) => {
+      vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+      const discovery = vi
+        .spyOn(MCPClient.prototype, 'getTools')
+        .mockResolvedValue([
+          { name: 'search', description: 'Search', inputSchema: { type: 'object', properties: {} } }
+        ]);
+      const secrets = vi.spyOn(secretUtils, 'getSecretValue');
+      const variableContext = createTestVariableContext({ token: 'stale-token' });
+      const login = createNode('login', FlowNodeTypeEnum.textEditor);
+      login.isEntry = scenario !== 'resume';
+      login.outputs = [
+        {
+          id: 'token',
+          key: 'token',
+          label: '',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string,
+          ...(scenario === 'resume' ? { value: 'current-token' } : {})
+        }
+      ];
+      const toolCall = createNode('tool-call', FlowNodeTypeEnum.toolCall);
+      toolCall.isEntry = scenario === 'resume';
+      const toolSet = createNode('mcp-set', FlowNodeTypeEnum.toolSet);
+      toolSet.toolConfig = {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {
+            Authorization: { ref: [scenario === 'variable' ? VARIABLE_NODE_ID : 'login', 'token'] }
+          },
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      };
+      const runtimeNodes = [login, toolCall, toolSet];
+      const runtimeEdges = [
+        createEdge('login', 'tool-call', scenario === 'resume' ? 'active' : 'waiting'),
+        createEdge(
+          'tool-call',
+          scenario === 'resume' ? 'mcp-set0' : 'mcp-set',
+          'waiting',
+          'selectedTools',
+          'selectedTools'
+        )
+      ];
+      if (scenario === 'shared') {
+        runtimeNodes.push(createNode('second-call', FlowNodeTypeEnum.toolCall));
+        runtimeEdges.push(
+          createEdge('login', 'second-call'),
+          createEdge('second-call', 'mcp-set', 'waiting', 'selectedTools', 'selectedTools')
+        );
+      }
+      const executeLogin = vi
+        .spyOn(callbackMap, FlowNodeTypeEnum.textEditor)
+        .mockImplementation(async () => {
+          expect(discovery).not.toHaveBeenCalled();
+          await variableContext.set('token', 'current-token');
+          return { data: { token: 'current-token' } };
+        });
+      const executeToolCall = vi
+        .spyOn(callbackMap, FlowNodeTypeEnum.toolCall)
+        .mockImplementation(async (props) => {
+          expect(discovery).toHaveBeenCalledOnce();
+          const searchTool = Array.from(props.runtimeNodesMap.values()).find((node) =>
+            node.toolConfig?.mcpTool && 'name' in node.toolConfig.mcpTool
+              ? node.toolConfig.mcpTool.name === 'search'
+              : false
+          );
+          expect(searchTool?.toolConfig?.mcpTool).toMatchObject({
+            name: 'search',
+            url: 'https://mcp.example.com'
+          });
+          expect(props.runtimeEdges).toContainEqual(
+            expect.objectContaining({
+              source: props.node.nodeId,
+              target: searchTool?.nodeId,
+              targetHandle: 'selectedTools'
+            })
+          );
+          return { data: {} };
+        });
+
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'MCP timing',
+          teamId: '654a4107c32f3bf5f998452f'
+        },
+        runningUserInfo: { teamId: '654a4107c32f3bf5f998452f', tmbId: '65ab7007462ada7dbb899948' },
+        uid: 'mcp-timing-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges,
+        variableContext,
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false
+      } as any);
+
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+      expect(executeLogin).toHaveBeenCalledTimes(scenario === 'resume' ? 0 : 1);
+      expect(executeToolCall).toHaveBeenCalledTimes(scenario === 'shared' ? 2 : 1);
+      expect(discovery).toHaveBeenCalledOnce();
+      expect(secrets.mock.results[0]?.value).toEqual({ Authorization: 'current-token' });
     }
   );
 });

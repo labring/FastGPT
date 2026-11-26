@@ -71,66 +71,64 @@ export const getAgentLoopCorePersistedTextOutput = (
     .join('');
 
 /**
- * 将最终文本追加到 assistantResponses。
- * 若事件流已经持久化相同文本，只追加缺失部分，避免刷新后重复显示。
- */
-export const appendAgentLoopCoreFinalAssistantResponse = ({
-  assistantResponses,
-  finalText,
-  reasoningText,
-  hideReason
-}: {
-  assistantResponses: AIChatItemValueItemType[];
-  finalText?: string;
-  reasoningText?: string;
-  hideReason?: boolean;
-}) => {
-  if (!finalText) return;
-
-  const persistedText = getAgentLoopCorePersistedTextOutput(assistantResponses);
-  if (finalText === persistedText || persistedText.endsWith(finalText)) return;
-
-  assistantResponses.push({
-    ...(reasoningText
-      ? {
-          reasoning: {
-            content: reasoningText
-          },
-          ...(hideReason ? { hideReason: true } : {})
-        }
-      : {}),
-    text: {
-      content: finalText.startsWith(persistedText)
-        ? finalText.slice(persistedText.length)
-        : finalText
-    }
-  });
-};
-
-/**
  * 生成节点结束态需要的 assistantResponses 和纯文本输出。
- * 调用方传入本轮已收集的 assistantResponses，core 负责补齐最终回答缺失片段并返回节点 output 文本。
+ * 调用方传入本轮已收集的 assistantResponses，core 负责补齐缺失片段并返回节点 output 文本。
+ * 交互恢复轮支持传入暂停前已累积的 previousAssistantResponses，使节点最终 answerText 覆盖完整循环输出，
+ * 同时保持本轮落库的 assistantResponses 仅包含当前恢复轮增量。
  */
 export const buildAgentLoopCoreFinalAssistantOutput = ({
   assistantResponses,
+  previousAssistantResponses = [],
   finalText,
   reasoningText,
   hideReason
 }: {
   assistantResponses: AIChatItemValueItemType[];
+  previousAssistantResponses?: AIChatItemValueItemType[];
   finalText?: string;
   reasoningText?: string;
   hideReason?: boolean;
 }) => {
-  appendAgentLoopCoreFinalAssistantResponse({
-    assistantResponses,
-    finalText,
-    reasoningText,
-    hideReason
-  });
+  if (finalText) {
+    const persistedText = getAgentLoopCorePersistedTextOutput(assistantResponses);
+    if (finalText !== persistedText && !persistedText.endsWith(finalText)) {
+      const persistedReasoning = assistantResponses
+        .filter((item) => item.reasoning?.content)
+        .map((item) => item.reasoning!.content)
+        .join('');
+      const missingReasoning =
+        reasoningText &&
+        reasoningText !== persistedReasoning &&
+        !persistedReasoning.endsWith(reasoningText)
+          ? persistedReasoning && reasoningText.startsWith(persistedReasoning)
+            ? reasoningText.slice(persistedReasoning.length)
+            : reasoningText
+          : '';
+      const missingText =
+        persistedText && finalText.startsWith(persistedText)
+          ? finalText.slice(persistedText.length)
+          : finalText;
+      assistantResponses.push({
+        ...(missingReasoning
+          ? {
+              reasoning: {
+                content: missingReasoning
+              },
+              ...(hideReason ? { hideReason: true } : {})
+            }
+          : {}),
+        text: {
+          content: missingText
+        }
+      });
+    }
+  }
 
   return {
     assistantResponses,
-    answerText: getAgentLoopCorePersistedTextOutput(assistantResponses)
+    answerText: getAgentLoopCorePersistedTextOutput([
+      ...previousAssistantResponses,
+      ...assistantResponses
+    ])
   };
 };

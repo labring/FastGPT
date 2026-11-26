@@ -2,6 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   chatItemResponsePreviewProjection,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -11,7 +12,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -27,6 +28,8 @@ import { getChatItemValueType } from '@/service/core/chat/utils';
 
 export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -45,6 +48,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -89,19 +94,14 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   });
 
   // Presign file urls
-  const histories = await addPreviewUrlToChatItems(
-    sourceHistories,
-    isPlugin ? 'workflowTool' : 'chatFlow'
-  );
-
-  histories.forEach((item) => {
+  const histories = (
+    await addPreviewUrlToChatItems(sourceHistories, isPlugin ? 'workflowTool' : 'chatFlow')
+  ).map((rawItem) => {
+    let item = rawItem;
     // Remove important information
     if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
       if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({
-          nodeRespones: item.responseData,
-          responseDetail: authRes.showCite
-        });
+        item = sanitizeOutLinkChatHistoryItem(item, authRes.showCite);
 
         if (authRes.showRunningStatus === false) {
           item.value = item.value.filter((v) => !('tool' in v) && !v.tools && !v.skills);
@@ -109,6 +109,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
           item.value = item.value.filter((v) => !v.skills);
         }
       }
+    } else if (authRes.canWrite === false && item.obj === ChatRoleEnum.AI && item.responseData) {
+      item.responseData = stripModerationRecordsFromNodeResponses(item.responseData);
     }
 
     if (!authRes.showCite) {
@@ -122,6 +124,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
       ...value,
       type: getChatItemValueType(value)
     }));
+    return item;
   });
 
   return GetPaginationRecordsResponseSchema.parse({

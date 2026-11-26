@@ -174,7 +174,8 @@ function RoleSelect({
   });
 
   return selectedSingleValue !== undefined ? (
-    <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
+    // 与通用选择器保持一致，使用 fixed 避免弹窗正文裁切菜单或撑大滚动范围。
+    <Menu strategy={'fixed'} offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
       <Box
         ref={ref}
         w={width}
@@ -214,6 +215,7 @@ function RoleSelect({
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
           zIndex={99}
+          maxH={'45vh'}
           overflowY={'auto'}
           whiteSpace={'pre-wrap'}
           userSelect={'none'}

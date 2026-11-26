@@ -1,3 +1,4 @@
+import { chatPublishSourceMongoSchema } from '../../chat/publishSource/schema';
 import type { AppChatLogSchema } from '@fastgpt/global/core/app/logs/type';
 import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
@@ -22,6 +23,7 @@ const ChatLogSchema = new Schema({
     type: String,
     required: true
   },
+  publishSource: { type: chatPublishSourceMongoSchema },
   source: {
     type: String,
     required: true
@@ -90,21 +92,6 @@ defineIndex(ChatLogSchema, {
 });
 // Update record
 defineIndex(ChatLogSchema, { key: { teamId: 1, appId: 1, chatId: 1 } });
-
-// Deprecated indexes
-// Get chart data with a source filter.
-defineIndex(ChatLogSchema, {
-  key: { teamId: 1, appId: 1, source: 1, updateTime: -1 },
-  deprecated: true
-});
-defineIndex(ChatLogSchema, {
-  key: { teamId: 1, appId: 1, userId: 1 },
-  deprecated: true
-});
-defineIndex(ChatLogSchema, {
-  key: { createTime: -1, appId: 1, chatId: 1 },
-  deprecated: true
-});
 
 export const MongoAppChatLog = getMongoLogModel<AppChatLogSchema>(
   ChatLogCollectionName,

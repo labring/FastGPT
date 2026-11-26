@@ -1,11 +1,35 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { dispatchCodeSandbox } from '@fastgpt/service/core/workflow/dispatch/tools/codeSandbox';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-afterEach(() => vi.restoreAllMocks());
+let previousConfig: ReturnType<typeof getTestInstanceConfig>['subservice']['codeSandbox'];
+beforeEach(() => {
+  previousConfig = getTestInstanceConfig().subservice.codeSandbox;
+  getTestInstanceConfig().subservice.codeSandbox = {
+    enabled: true,
+    url: 'http://sandbox.test',
+    token: 'test-token'
+  };
+});
+afterEach(() => {
+  getTestInstanceConfig().subservice.codeSandbox = previousConfig;
+  vi.restoreAllMocks();
+});
 
 describe('dispatchCodeSandbox', () => {
+  it('rejects a disabled configuration before invoking the sandbox', async () => {
+    getTestInstanceConfig().subservice.codeSandbox.enabled = false;
+    const run = vi.spyOn(codeSandbox, 'runCode');
+    const result = await dispatchCodeSandbox({
+      params: { codeType: 'javascript', code: 'return {}', [NodeInputKeyEnum.addInputParam]: {} }
+    } as Parameters<typeof dispatchCodeSandbox>[0]);
+    expect(result.error).toMatchObject({
+      error: 'Code sandbox service is not configured or disabled'
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
   it('returns custom outputs and rawResponse without losing falsy values', async () => {
     const codeReturn = { zero: 0, flag: false, empty: '', nested: { items: [1, 2] } };
     vi.spyOn(codeSandbox, 'runCode').mockResolvedValueOnce({ codeReturn, log: '' });

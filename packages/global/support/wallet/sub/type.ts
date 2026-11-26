@@ -1,17 +1,20 @@
 import z from 'zod';
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { IntSchema, NumSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
+
+/** 发放额度使用非负安全整数，计费扣减和剩余余额可以保留小数。 */
+export const SubscriptionGrantPointsSchema = z.int().nonnegative();
 
 /**
- * Static plan config, stored in global.subPlans
+ * Static plan config, stored in global.systemInstanceConfig.commercial.subPlans
  */
 export const TeamStandardSubPlanItemSchema = z.object({
   name: z.string().optional(),
   desc: z.string().optional(),
   price: z.number(),
 
-  totalPoints: z.int(), // 总积分
+  totalPoints: SubscriptionGrantPointsSchema,
   maxTeamMember: z.int(),
   maxAppAmount: z.int(),
   maxDatasetAmount: z.int(),
@@ -28,6 +31,10 @@ export const TeamStandardSubPlanItemSchema = z.object({
   maxUploadFileSize: z.int().optional(), // 最大上传文件大小（MB）
   maxUploadFileCount: z.int().optional(), // 最大上传文件数量
 
+  canHideShareBrand: BoolSchema.optional().meta({
+    description: '是否允许持久关闭免登录链接 FastGPT 水印',
+    example: false
+  }),
   enableSandbox: z.boolean().optional(), // 虚拟机
 
   // 定制套餐
@@ -36,13 +43,13 @@ export const TeamStandardSubPlanItemSchema = z.object({
   customDescriptions: z.array(z.string()).optional(), // 自定义描述
 
   // Active
-  annualBonusPoints: z.int().optional(), // 年度赠送积分
+  annualBonusPoints: SubscriptionGrantPointsSchema.optional(), // 年度赠送积分
 
   /** 企微设置 */
   wecom: z
     .object({
       price: z.number().describe('企微价格'),
-      points: z.number().describe('企微积分')
+      points: SubscriptionGrantPointsSchema.describe('企微积分')
     })
     .nullish(),
 
@@ -69,10 +76,10 @@ export const StandSubPlanLevelMapSchema = z.object({
 }) as unknown as z.ZodType<StandSubPlanLevelMapType>;
 
 export const PointsPackageItemSchema = z.object({
-  points: z.int(),
+  points: SubscriptionGrantPointsSchema,
   month: z.int(),
   price: z.number(),
-  activityBonusPoints: z.int().optional() // 活动赠送积分
+  activityBonusPoints: SubscriptionGrantPointsSchema.optional() // 活动赠送积分
 });
 export type PointsPackageItem = z.infer<typeof PointsPackageItemSchema>;
 
@@ -107,7 +114,7 @@ const TeamStandardSubPlanItemInputSchema = TeamStandardSubPlanItemSchema.extend(
   wecom: z
     .object({
       price: NumSchema.nonnegative(),
-      points: NumSchema.nonnegative()
+      points: IntSchema
     })
     .nullish()
 });
@@ -186,8 +193,9 @@ export const TeamSubSchema = z.object({
   maxTeamMember: z.int().nullish(),
   maxApp: z.int().nullish(),
   maxDataset: z.int().nullish(),
-  totalPoints: z.int(),
-  annualBonusPoints: z.int().optional(),
+  // 订阅读取兼容其他环境尚未清洗的旧值，新发放统一使用 SubscriptionGrantPointsSchema。
+  totalPoints: z.number(),
+  annualBonusPoints: SubscriptionGrantPointsSchema.optional(),
   surplusPoints: z.number(),
   currentExtraDatasetSize: z.int().optional(),
 
@@ -202,6 +210,7 @@ export const TeamSubSchema = z.object({
   customDomain: z.int().nullish(),
   maxUploadFileSize: z.int().nullish(),
   maxUploadFileCount: z.int().nullish(),
+  canHideShareBrandOverride: z.boolean().optional(),
   enableSandbox: z.boolean().optional() // 虚拟机
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;

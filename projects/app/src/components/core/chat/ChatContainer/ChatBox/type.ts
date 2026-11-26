@@ -62,6 +62,8 @@ export type ChatGenerateStatusChangePayload = {
 export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePayload) => void;
 
 export type ChatGeneratingConflictRecovery = {
+  /** 服务端明确返回的当前 AI 消息 ID，可能已在客户端记录中。 */
+  responseChatItemId?: string;
   previousAiDataId?: string;
   canReusePreviousAi: boolean;
 };
@@ -75,7 +77,8 @@ export type ComponentRef = {
 // Frontend type
 export type ChatSiteItemType = ChatItemObjItemType & {
   _id?: string;
-  id: string;
+  /** @deprecated 聊天业务统一使用 dataId，仅兼容旧消息对象。 */
+  id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;

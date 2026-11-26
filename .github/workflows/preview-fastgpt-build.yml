@@ -21,6 +21,7 @@ jobs:
       pull-requests: read
     outputs:
       should_build: ${{ steps.preview_matrix.outputs.should_build }}
+      should_typecheck_app: ${{ steps.preview_matrix.outputs.should_typecheck_app }}
       matrix: ${{ steps.preview_matrix.outputs.matrix }}
 
     steps:
@@ -42,7 +43,7 @@ jobs:
             );
 
             const images = [];
-            const addImage = (image) => images.push(image);
+            const addImage = (image) => images.push({ context: '.', target: '', ...image });
 
             if (hasPath([
               'projects/app',
@@ -81,13 +82,100 @@ jobs:
               });
             }
 
+            if (hasPath(['projects/agent-sandbox', 'projects/fastgpt-ide-agent'])) {
+              addImage({
+                image: 'agent-sandbox',
+                image_name: 'fastgpt-agent-sandbox',
+                dockerfile: 'projects/agent-sandbox/Dockerfile',
+                target: 'nonroot',
+                description: 'fastgpt-agent-sandbox-pr image'
+              });
+              addImage({
+                image: 'agent-sandbox-root',
+                image_name: 'fastgpt-agent-sandbox-root',
+                dockerfile: 'projects/agent-sandbox/Dockerfile',
+                target: 'root',
+                description: 'fastgpt-agent-sandbox-root-pr image'
+              });
+            }
+
+            if (hasPath(['projects/volume-manager', 'packages/global/core/ai/sandbox/volume.ts'])) {
+              addImage({
+                image: 'volume-manager',
+                image_name: 'fastgpt-agent-volume-manager',
+                dockerfile: 'projects/volume-manager/Dockerfile',
+                target: 'runner',
+                description: 'fastgpt-agent-volume-manager-pr image'
+              });
+            }
+
+            if (hasPath(['projects/agent-sandbox-proxy'])) {
+              addImage({
+                image: 'agent-sandbox-proxy',
+                image_name: 'fastgpt-agent-sandbox-proxy',
+                dockerfile: 'projects/agent-sandbox-proxy/Dockerfile',
+                context: 'projects/agent-sandbox-proxy',
+                description: 'fastgpt-agent-sandbox-proxy-pr image'
+              });
+            }
+
             const matrix = images.length > 0
               ? { include: images }
-              : { include: [{ image: 'noop', image_name: 'noop', dockerfile: 'noop', description: 'noop' }] };
+              : { include: [{ image: 'noop', image_name: 'noop', dockerfile: 'noop', context: '.', target: '', description: 'noop' }] };
 
             core.info(`Preview images selected: ${images.map((image) => image.image).join(', ') || 'none'}`);
             core.setOutput('should_build', images.length > 0 ? 'true' : 'false');
+            core.setOutput(
+              'should_typecheck_app',
+              images.some((image) => image.image === 'fastgpt') ? 'true' : 'false'
+            );
             core.setOutput('matrix', JSON.stringify(matrix));
+
+  typecheck-app:
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.should_typecheck_app == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache TypeScript build info
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/global/.tsc-out
+            packages/dal/.tsc-out
+            packages/web/.tsc-out
+            packages/service/.tsc-out
+            projects/app/.tsc-out
+          key: tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'packages/*/tsconfig*.json', 'projects/app/tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'packages/*/tsconfig*.json', 'projects/app/tsconfig*.json') }}-
+            tsc-app-${{ runner.os }}-
+
+      - name: Typecheck workspace SDKs
+        run: |
+          pnpm --filter @fastgpt-sdk/storage typecheck
+          pnpm --filter @fastgpt-sdk/otel typecheck
+
+      - name: Typecheck app
+        env:
+          NODE_OPTIONS: '--max-old-space-size=5120'
+        run: pnpm --filter @fastgpt/app typecheck
 
   build:
     needs: detect_changes
@@ -96,7 +184,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.detect_changes.outputs.matrix) }}
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
 
     steps:
       - name: Checkout PR code
@@ -112,10 +200,13 @@ jobs:
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           platforms: linux/amd64
           push: false
+          build-args: |
+            ${{ matrix.image == 'fastgpt' && 'SKIP_TYPE_CHECK=true' || '' }}
           tags: ${{ matrix.image_name }}-pr:${{ github.event.pull_request.head.sha }}
           provenance: false
           sbom: false

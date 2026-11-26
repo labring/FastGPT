@@ -9,6 +9,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import {
   isDebugToolSource,
   isTeamPluginSource,
+  parseUntypedV2ChildToolLookupId,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -31,7 +32,8 @@ async function handler(
     querySchema: GetPreviewNodeQuerySchema
   });
 
-  const { authAppId } = splitCombineToolId(appId);
+  const authAppId =
+    parseUntypedV2ChildToolLookupId(appId)?.parentId ?? splitCombineToolId(appId).authAppId;
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }

@@ -1,8 +1,8 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetToolFilePrefix = vi.hoisted(() => vi.fn());
 const mockUploadChatFile = vi.hoisted(() => vi.fn());
@@ -70,7 +70,10 @@ describe('InvokeProcessor.handleFileUpload', () => {
       filename: 'image.png',
       body,
       contentType: 'image/png',
-      expiredTime: addDays(new Date('2026-01-01T00:00:00.000Z'), serviceEnv.FILE_URL_EXPIRED_DAYS)
+      expiredTime: addDays(
+        new Date('2026-01-01T00:00:00.000Z'),
+        getTestInstanceConfig().storage.fileUrlExpiredDays
+      )
     });
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
     expect(mockRemoveS3TTL).toHaveBeenCalledWith({

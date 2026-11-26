@@ -1,0 +1,105 @@
+---
+title: Content moderation upgrade and migration guide
+description: Migrate from legacy Baidu text moderation or a custom censor URL to the new moderation Plugin system
+---
+
+This guide covers the differences between the legacy content moderation mechanism and the new moderation Plugin system, and shows how to migrate from legacy Baidu text moderation or a custom moderation URL (`customCensorURL`). For full details on architecture, admin policy configuration, runtime checkpoints, and custom Plugin extension, see the [Content moderation guide](/en/plugin/moderation).
+
+## 1. Key differences between legacy and new moderation
+
+The new release moves text moderation out of `fastgpt-pro` into a dedicated `moderation` Plugin architecture managed by `fastgpt-plugin` (see the [Content moderation guide](/en/plugin/moderation) for full feature documentation). Key behavioral changes during migration:
+
+| Dimension                     | Legacy (`fastgpt-pro` built-in censor)                                                     | New (`moderation` Plugin system)                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Runtime and extensibility** | Built into `fastgpt-pro`; supported only Baidu or one custom URL (which overrode Baidu)    | Runs in `fastgpt-plugin` worker pools with official `baidu`, `aliyun`, `tencent`, `keyword`, and `legacy-custom-censor` Plugins, plus custom SDK extensions        |
+| **Configuration entry**       | Required `censor` settings in commercial config plus `censor: true` on **every LLM model** | Per-model `censor` is deprecated; managed centrally under **Admin Console > Content Moderation > Moderation Policy** (`/admin/moderation/policy`)                  |
+| **Moderation checkpoints**    | Single pre-LLM check only; no output or streaming moderation                               | Expanded to three independent stages: **User input** (`userInput`), **Model input** (`modelInput`), and **Final output** (`finalOutput`)                           |
+| **Verdicts and Baidu logic**  | Binary pass/block; legacy Baidu missed violations without `hits[0].words`                  | Standardized four-tier `pass` / `block` / `suspected` / `error` verdicts; the new Baidu Plugin parses `conclusionType` for both non-compliant and suspected states |
+| **Exceptions and audit**      | Silent fail-open on errors; no built-in test runner or moderation records                  | Explicit **Suspected risk** and **Service exception** policies, plus online **Moderation test**, `/admin/moderation/records`, and `/admin/moderation/logs`         |
+
+---
+
+## 2. Migrate from legacy Baidu content moderation
+
+### 2.1 Configuration mapping
+
+Map the two fields under `censor` in your legacy commercial configuration to the **Baidu Content Security (`baidu`)** Plugin parameters:
+
+| Legacy commercial config field          | New `baidu` Plugin field       | Required | Encrypted | Description                                                                                         |
+| --------------------------------------- | ------------------------------ | -------- | --------- | --------------------------------------------------------------------------------------------------- |
+| `censor.BAIDU_TEXT_CENSOR_CLIENTID`     | **API Key (`apiKey`)**         | Yes      | Yes       | API Key of your Baidu AI Cloud content moderation app                                               |
+| `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET` | **Secret Key (`secretKey`)**   | Yes      | Yes       | Secret Key of your Baidu AI Cloud content moderation app                                            |
+| (Not supported in legacy)               | **Strategy ID (`strategyId`)** | No       | No        | Custom moderation strategy ID configured in Baidu AI Cloud; leave blank to use the default strategy |
+
+### 2.2 Migration steps
+
+1. **Install and configure the `baidu` Plugin**: In **Admin Console > Content Moderation > Moderation Policy** (`/admin/moderation/policy`), install **Baidu Content Security**, click **Configure**, enter `BAIDU_TEXT_CENSOR_CLIENTID` in **API Key**, `BAIDU_TEXT_CENSOR_CLIENTSECRET` in **Secret Key** (plus an optional **Strategy ID**), and save to run the connectivity check and activate it. See the [Content moderation guide](/en/plugin/moderation) for UI steps.
+2. **Match legacy policy behavior (optional)**:
+   - **Checkpoints**: All three checkpoints are enabled by default. Turn off **Final output** to match legacy input-only moderation, or keep it enabled and tune **Streaming check interval** (default `100` chars/check).
+   - **Suspected risk and service exceptions**: Baidu `conclusionType = 3` maps to `suspected` (defaults to **Block and log**; switch to **Pass and log** if needed). **Service exception** defaults to **Allow unmoderated content**, matching legacy fail-open behavior.
+3. **Test and clean up legacy settings**: Verify with **Moderation test**, save the policy, and remove `censor.BAIDU_TEXT_CENSOR_CLIENTID` and `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET` from your commercial config. Legacy `censor` flags on individual models are ignored automatically at runtime.
+
+---
+
+## 3. Migrate from a legacy custom censor URL (`customCensorURL`)
+
+If you previously configured `censor.customCensorURL` to connect an internal or third-party HTTP moderation service, you have two migration options:
+
+- **Option A: Use the official Legacy Custom Moderation (`legacy-custom-censor`) Plugin** (zero code changes, recommended for quick migration)
+- **Option B: Build a native `moderation` Plugin** (supports risk labels, matched keywords, and suspected verdicts, recommended for deep integration)
+
+### 3.1 Option A: Use the Legacy Custom Moderation Plugin
+
+The official `legacy-custom-censor` Plugin adapts the legacy `customCensorURL` HTTP contract directly so you can connect your existing service without modifying its code.
+
+#### HTTP contract and verdict mapping
+
+The Plugin sends the following HTTP request to your configured `endpoint`:
+
+```http
+POST <endpoint>
+Content-Type: application/json
+
+{"text": "Text to moderate"}
+```
+
+Your service must return a JSON object with a top-level boolean `success` field:
+
+```json
+{
+  "success": true,
+  "message": "Optional message"
+}
+```
+
+| Upstream response                                                                                  | New verdict (`verdict`) | Notes                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP 2xx with `{"success": true}`                                                                  | `pass`                  | Requires `success` to be the boolean `true`.                                                                                                |
+| HTTP 2xx with `{"success": false}`                                                                 | `block`                 | Requires `success` to be the boolean `false`; `message` is ignored.                                                                         |
+| Timeout, network error, non-2xx status, invalid JSON, or non-boolean `success` (such as `"false"`) | `error`                 | Non-boolean values are no longer coerced to pass; the global **Service exception** policy determines whether to allow or block the request. |
+
+> **Note**: Set `endpoint` to your actual custom moderation service URL, not the internal `fastgpt-pro` route `/api/common/censor/check` (the Plugin does not accept `{ "code": 200 }` or `{ "data": ... }` wrappers).
+
+#### Network and runtime checklist
+
+In the legacy architecture, requests originated from the `fastgpt-pro` process. In the new architecture, requests originate from **`fastgpt-plugin` (Plugin Server) worker processes**. Before migrating, verify that:
+
+1. **Endpoint reachability**: If your legacy `customCensorURL` used `localhost`, `127.0.0.1`, or an internal container hostname, update it to an address reachable from the **`fastgpt-plugin` container or node**.
+2. **Network allowlist**: Confirm that the `fastgpt-plugin` runtime allows outbound connections to the target network (for example, via `POOL_SERVICE_POD_ALLOW_NET`) and that your moderation service's firewall or IP allowlist permits traffic from `fastgpt-plugin`.
+
+#### Configuration and activation
+
+Install and enable **Legacy Custom Moderation** (`legacy-custom-censor`) under **Admin Console > Content Moderation > Moderation Policy** (`/admin/moderation/policy`; see the [Content moderation guide](/en/plugin/moderation) for general setup steps), and configure:
+
+- **Legacy censor URL (`endpoint`)**: Required. Enter your original `customCensorURL` (`http://` or `https://`, without embedded username/password credentials).
+- **Request timeout (`timeoutMs`)**: Optional. Integer from `100` to `60000` ms, defaulting to `10000` ms (responses are capped at 64 KiB, with no automatic retries or HTTP redirects).
+
+Keep **Service exception** set to **Allow unmoderated content** to preserve legacy fail-open behavior on upstream errors. After verifying with **Moderation test** and saving, remove `censor.customCensorURL` from your legacy commercial configuration.
+
+---
+
+### 3.2 Option B: Build a native `moderation` Plugin
+
+If your moderation service returns risk categories (such as politics, pornography, contraband, or advertising), matched keywords, confidence scores (`0–100`), or suspected verdicts, build a native `moderation` Plugin so FastGPT can highlight matched keywords and risk labels directly in **Moderation records** and Chat logs.
+
+For the `npx @fastgpt-plugin/cli create my-moderation --type moderation` scaffolding command, `defineModeration()` contract notes, and a ready-to-copy coding agent prompt, see the [Content moderation guide](/en/plugin/moderation#2-custom-moderation-plugin-development). For local debugging, `.pkg` packaging, and publishing workflows, see [Debugging, packing, and publishing](/en/plugin/debugging-and-publishing).

@@ -1,5 +1,6 @@
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -9,16 +10,24 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { link, ...body } = parseApiInput({ req, bodySchema: CreateLinkCollectionBodySchema }).body;
 
-  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+  const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
     parentId: body.parentId
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
 
   // Check dataset limit
@@ -27,14 +36,16 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     insertLen: 1
   });
 
-  return createCollectionAndInsertData({
+  const collectionType = DatasetCollectionTypeEnum.link;
+  const result = await createCollectionAndInsertData({
     dataset,
+    modelAuthContext,
     createCollectionParams: {
       ...body,
       name: link,
       teamId,
       tmbId,
-      type: DatasetCollectionTypeEnum.link,
+      type: collectionType,
       metadata: {
         relatedImgId: link,
         webPageSelector: body?.metadata?.webPageSelector
@@ -42,6 +53,22 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       rawLink: link
     }
   });
+
+  void addAuditLog(
+    await buildCollectionCreateAuditLog({
+      teamId,
+      tmbId,
+      dataset,
+      collection: {
+        _id: result.collectionId,
+        name: link,
+        type: collectionType,
+        parentId: body.parentId
+      }
+    })
+  );
+
+  return result;
 }
 
 export default NextAPI(handler);

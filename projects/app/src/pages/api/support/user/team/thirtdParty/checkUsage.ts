@@ -1,9 +1,11 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import {
   CheckThirdPartyUsageQuerySchema,
   CheckThirdPartyUsageResponseSchema,
@@ -28,9 +30,19 @@ async function handler(
     try {
       const { tmb } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
 
-      const url = global.feConfigs.externalProviderWorkflowVariables?.find(
-        (item) => item.key === key
-      )?.url;
+      const externalProviderWorkflowVariables =
+        getSystemInstanceConfig().providers.externalProviderWorkflowVariables;
+      logInstanceConfigRead({
+        callsite: 'runtime.app.team.checkThirdPartyUsage',
+        source: 'bridged-fe',
+        fields: [
+          {
+            path: 'providers.externalProviderWorkflowVariables',
+            value: externalProviderWorkflowVariables
+          }
+        ]
+      });
+      const url = externalProviderWorkflowVariables?.find((item) => item.key === key)?.url;
       if (!url || !tmb.externalWorkflowVariables?.[key]) return undefined;
 
       const { data } = await axios.get<checkUsageResponse>(url, {

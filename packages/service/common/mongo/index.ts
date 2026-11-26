@@ -1,4 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  getSharedMongoConnection,
+  getSharedMongoLogConnection
+} from '@fastgpt/dal/db/mongo/runtime';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { getLogger, LogCategories } from '../logger';
 import { isProfiling, recordMongoOperation } from '../profiling';
@@ -6,10 +10,11 @@ import type {
   AnyBulkWriteOperation,
   ClientSession,
   Model,
+  mongo,
   Mongoose as MongooseType,
   PipelineStage
 } from 'mongoose';
-import mongoose, { Mongoose } from 'mongoose';
+import mongoose from 'mongoose';
 import { serviceEnv } from '../../env';
 import { MongoIndexManager } from './indexManager';
 
@@ -25,22 +30,27 @@ export type {
   PipelineStage
 };
 
+const normalizeMongoUri = (uri?: string): string => uri?.trim() ?? '';
+
 export const MONGO_URL = serviceEnv.MONGODB_URI;
-export const MONGO_LOG_URL = serviceEnv.MONGODB_LOG_URI ?? serviceEnv.MONGODB_URI;
-
-export const connectionMongo = (() => {
-  if (!global.mongodb) {
-    global.mongodb = new Mongoose();
-  }
-  return global.mongodb;
+/** 仅当配置了非空且与主库不同的 `MONGODB_LOG_URI` 时，才启用独立日志库连接池。 */
+export const hasSeparateMongoLogUri = (() => {
+  const mainUri = normalizeMongoUri(serviceEnv.MONGODB_URI);
+  const logUri = normalizeMongoUri(serviceEnv.MONGODB_LOG_URI);
+  return logUri.length > 0 && logUri !== mainUri;
 })();
+export const MONGO_LOG_URL = hasSeparateMongoLogUri
+  ? serviceEnv.MONGODB_LOG_URI!.trim()
+  : serviceEnv.MONGODB_URI;
 
-export const connectionLogMongo = (() => {
-  if (!global.mongodbLog) {
-    global.mongodbLog = new Mongoose();
-  }
-  return global.mongodbLog;
-})();
+// 过渡期与 @fastgpt/dal/db/mongo/runtime 共享同一 Mongoose 物理实例，确保新旧模型事务共用 ClientSession。
+export const connectionMongo = getSharedMongoConnection();
+
+// 默认 shared 模式直接复用主库物理连接池（避免无独立 MONGODB_LOG_URI 时重复建双池）；
+// 仅当显式配置了与主库不同的 MONGODB_LOG_URI 时，才持有独立日志库连接实例。
+export const connectionLogMongo = hasSeparateMongoLogUri
+  ? getSharedMongoLogConnection()
+  : connectionMongo;
 
 const installedSchemas = new WeakSet<mongoose.Schema>();
 
@@ -218,7 +228,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema): Model<T
 
   const model = connectionMongo.model(name, schema) as Model<T>;
 
-  syncMongoIndex(model);
+  ensureMongoIndexes(model);
 
   return model;
 };
@@ -229,16 +239,16 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema): Mode
 
   const model = connectionLogMongo.model(name, schema) as Model<T>;
 
-  syncMongoIndex(model);
+  ensureMongoIndexes(model);
 
   return model;
 };
 
-const syncMongoIndex = (model: Model<any>) => {
+/** 启动时固定维护 Schema 索引；测试、构建阶段及未配置数据库时跳过。 */
+const ensureMongoIndexes = (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||
-    !serviceEnv.SYNC_INDEX ||
     !MONGO_URL
   ) {
     return;
@@ -275,3 +285,8 @@ export type {
   DeprecatedMongoIndexDefinition,
   DeprecatedMongoIndexOptions
 } from './schemaIndexes';
+
+export type MongoDeleteResult = mongo.DeleteResult;
+export type MongoBulkWriteResult = mongo.BulkWriteResult;
+export type MongoFindCursor<T = Record<string, unknown>> = mongo.FindCursor<T>;
+export type MongoGridFSBucketReadStream = mongo.GridFSBucketReadStream;

@@ -7,6 +7,7 @@ import {
   parseSynonymFile,
   parseSynonymFileRows,
   serializeSynonymMappingsToCsv,
+  serializeSynonymMappingsToFile,
   type DatasetSynonymMatcherMapping
 } from '@fastgpt/service/core/dataset/synonym/utils';
 import { describe, expect, it } from 'vitest';
@@ -263,6 +264,50 @@ describe('serializeSynonymMappingsToCsv', () => {
   });
 });
 
+describe('serializeSynonymMappingsToFile', () => {
+  const mappings = [
+    { standardizedTerm: '退款', synonymTerms: ['退钱', '退货款'] },
+    { standardizedTerm: '发票', synonymTerms: ['票据'] }
+  ];
+
+  it('keeps csv uploads as BOM CSV text', () => {
+    const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, 'csv');
+    expect(contentType).toBe('text/csv; charset=utf-8');
+    expect(buffer.toString('utf-8')).toContain('标准术语,同义词,同义词');
+  });
+
+  it('generates a re-uploadable xlsx workbook for xlsx uploads', () => {
+    const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, 'xlsx');
+    expect(contentType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    // PK 魔数（与 parseExcelRows 的签名校验一致）
+    expect(buffer.subarray(0, 2).equals(Buffer.from('PK'))).toBe(true);
+    // 产物必须能被上传解析端原样读回（normalize 输出按字典序排列同义词）
+    expect(parseSynonymFile({ buffer, extension: 'xlsx' })).toMatchObject([
+      { standardizedTerm: '退款', synonymTerms: ['退货款', '退钱'] },
+      { standardizedTerm: '发票', synonymTerms: ['票据'] }
+    ]);
+  });
+
+  it('generates a biff8 workbook for xls uploads', () => {
+    const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, 'xls');
+    expect(contentType).toBe('application/vnd.ms-excel');
+    // OLE 魔数（与 parseExcelRows 的签名校验一致）
+    expect(
+      buffer.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))
+    ).toBe(true);
+    expect(parseSynonymFile({ buffer, extension: 'xls' })).toMatchObject([
+      { standardizedTerm: '退款', synonymTerms: ['退货款', '退钱'] },
+      { standardizedTerm: '发票', synonymTerms: ['票据'] }
+    ]);
+  });
+
+  it('falls back to csv for unknown extensions', () => {
+    const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, 'txt');
+    expect(contentType).toBe('text/csv; charset=utf-8');
+    expect(buffer.toString('utf-8')).toContain('退款');
+  });
+});
+
 describe('parseSynonymFile', () => {
   it('parses and normalizes a valid CSV file', () => {
     expect(
@@ -393,7 +438,12 @@ describe('buildSynonymMatcher', () => {
       })
     ]);
 
-    expect(matcher.transform('')).toEqual({ transformedText: '', usedMappings: [] });
+    // transform 空输入：matchedStandardTerms 为新字段（标准词命中集合），空输入时为空数组
+    expect(matcher.transform('')).toEqual({
+      transformedText: '',
+      usedMappings: [],
+      matchedStandardTerms: []
+    });
     expect(matcher.transform('苹果手机').transformedText).toBe('苹果手机');
   });
 });

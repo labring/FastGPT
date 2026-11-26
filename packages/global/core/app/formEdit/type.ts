@@ -3,13 +3,15 @@ import z from 'zod';
 import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../type';
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
+import { AiChatQuoteRoleSchema } from '../../workflow/template/system/aiChat/type';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
-
-export type AgentSubAppItemType = object;
+import { AgentToolSchema } from '../tool/type';
+import { AgentSkillSourceSchema } from '../../ai/skill/type';
 
 /* ===== Agent Skill ===== */
 export const SelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
+  source: AgentSkillSourceSchema.optional(),
   name: z.string(),
   description: z.string().default(''),
   avatar: z.string().optional(),
@@ -19,6 +21,7 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
 export const StoredSelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
+  source: AgentSkillSourceSchema.optional(),
   name: z.string().optional(),
   avatar: z.string().optional(),
   description: z.string().optional()
@@ -28,14 +31,12 @@ export type StoredSelectedAgentSkillItemType = z.infer<
 >;
 
 /* ===== Tool ===== */
-const SelectedToolItemBaseSchema = FlowNodeTemplateTypeSchema.extend({
-  configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional(),
+export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
+  /** 工具加载失败时保留持久化输入来源；不冒充可编辑的完整 NodeIO。 */
+  rawInputs: AgentToolSchema.shape.inputs,
   config: z.record(z.string(), z.unknown()).optional()
 });
-
-export const SelectedToolItemTypeSchema = SelectedToolItemBaseSchema;
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
-export type AvailableSelectedToolItemType = SelectedToolItemType;
 
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({
@@ -47,6 +48,7 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),
     [NodeInputKeyEnum.aiChatMaxToken]: z.number().optional(),
     [NodeInputKeyEnum.aiChatIsResponseText]: z.boolean(),
+    [NodeInputKeyEnum.aiChatQuoteRole]: AiChatQuoteRoleSchema.optional(),
     maxHistories: z.int().min(0).max(100),
     [NodeInputKeyEnum.aiChatVision]: z.boolean().optional(),
     [NodeInputKeyEnum.aiChatAudio]: z.boolean().optional(),

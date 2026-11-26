@@ -1,9 +1,12 @@
+import { serviceEnv } from '@fastgpt/service/env';
+import { getNewOutLinkBrandConfig } from '@fastgpt/service/support/outLink/branding/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -15,7 +18,7 @@ import {
   type OutLinkCreateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<OutLinkCreateBodyType>
 ): Promise<OutLinkCreateResponseType> {
   const { appId, ...props } = parseApiInput({
@@ -36,7 +39,8 @@ async function handler(
     teamId,
     tmbId,
     appId,
-    ...props
+    ...props,
+    ...getNewOutLinkBrandConfig({ enabled: serviceEnv.SHOW_OUTLINK_BRAND, type: props.type })
   });
 
   (async () => {
@@ -44,6 +48,7 @@ async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_PUBLISH_CHANNEL,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
         channelName: props.name,

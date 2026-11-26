@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
+import {
+  datasetSearchResultConcat,
+  normalizeRerankCandidateNum,
+  rerankCandidateNumRange
+} from '@fastgpt/global/core/dataset/search/utils';
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
@@ -772,5 +776,18 @@ describe('datasetSearchResultConcat', () => {
       expect(rrfScore).toBeDefined();
       expect(rrfScore!.value).toBeCloseTo(0.001 / 61 + 1.0 / 61, 6);
     });
+  });
+});
+
+describe('normalizeRerankCandidateNum', () => {
+  it.each([undefined, null, Number.NaN, Infinity, -Infinity, -1, 0, 9, 101, 55.7])(
+    'falls back to the default for invalid value %s',
+    (value) => {
+      expect(normalizeRerankCandidateNum(value)).toBe(rerankCandidateNumRange.default);
+    }
+  );
+
+  it.each([10, 11, 55, 100])('preserves a valid integer %s', (value) => {
+    expect(normalizeRerankCandidateNum(value)).toBe(value);
   });
 });

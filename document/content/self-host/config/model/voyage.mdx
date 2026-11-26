@@ -1,0 +1,70 @@
+---
+title: Voyage AI 接入示例
+description: '在 FastGPT 自部署环境中通过 AI Proxy 接入 Voyage AI 的向量、多模态向量和重排模型。'
+---
+
+[Voyage AI](https://www.voyageai.com/) 提供文本向量、多模态向量和重排模型。FastGPT 通过 AI Proxy 的 `voyage` 渠道类型调用：AI Proxy 会把 FastGPT 发出的 OpenAI 格式向量请求和 `/rerank` 请求转换为 Voyage API 格式，无需额外部署服务。
+
+在阅读该章之前，请先确保你阅读了[模型配置说明](/zh-CN/self-host/config/model/intro)。
+
+> `voyage` 渠道类型和内置的 Voyage 模型预设，需要使用包含它们的 AI Proxy 与 FastGPT Plugin 版本。上下文向量模型（`voyage-context-*`）按普通向量模型接入，每条输入作为一个文档（见下方说明）。
+
+## 1. 获取 API Key
+
+1. 访问 [Voyage AI 控制台](https://dash.voyageai.com/) 并登录。
+2. 在 [API Keys 页面](https://dash.voyageai.com/api-keys) 创建密钥，并妥善保存。
+
+## 2. 添加渠道
+
+在模型提供商页面点击“新增渠道”，配置 Voyage 渠道：
+
+- **名称**：自定义渠道名称，例如 `Voyage AI`
+- **协议类型**：选择 **voyage**
+- **代理地址**：留空即使用默认地址 `https://api.voyageai.com/v1`
+- **API Key**：填入上一步获取的 Voyage API Key
+- **模型**：选择需要使用的 Voyage 模型
+
+## 3. 模型
+
+| 模型 ID                                        | 类型               | 上下文 | 价格（美元 / 1M tokens）         |
+| ---------------------------------------------- | ------------------ | ------ | -------------------------------- |
+| `voyage-4-large`、`voyage-code-4`              | 向量               | 32K    | 0.12                             |
+| `voyage-4`、`voyage-3.5`                       | 向量               | 32K    | 0.06                             |
+| `voyage-4-lite`、`voyage-3.5-lite`             | 向量               | 32K    | 0.02                             |
+| `voyage-context-4`                             | 向量（上下文）     | 32K    | 0.12                             |
+| `voyage-context-3`                             | 向量（上下文）     | 32K    | 0.18                             |
+| `voyage-3-large`、`voyage-code-3`              | 向量               | 32K    | 0.18                             |
+| `voyage-finance-2`                             | 向量               | 32K    | 0.12                             |
+| `voyage-law-2`                                 | 向量               | 16K    | 0.12                             |
+| `voyage-multimodal-3.5`、`voyage-multimodal-3` | 向量（文本和图片） | 32K    | 文本 0.12，图片每 10 亿像素 0.60 |
+| `rerank-3`、`rerank-2.5`                       | 重排               | 32K    | 0.05                             |
+| `rerank-3-lite`、`rerank-2.5-lite`             | 重排               | 32K    | 0.02                             |
+
+向量模型注意事项：
+
+- FastGPT 以固定 1536 维存储向量。Voyage 默认返回 1024 维，FastGPT 会补零，不影响余弦相似度。请保持默认维度；无需设置其他 `output_dimension`（256、512、2048），其中 2048 会被截断为 1536。
+- 内置预设在索引文本时发送 `input_type: document`，检索时发送 `input_type: query`。[手动添加自定义模型](/zh-CN/self-host/config/model/intro#新增自定义模型)时，请在模型配置中做同样设置：
+
+```json
+{
+  "type": "embedding",
+  "provider": "Voyage",
+  "model": "voyage-4",
+  "name": "voyage-4",
+  "isActive": true,
+  "pricing": { "unitPrice": 0 },
+  "config": {
+    "defaultToken": 512,
+    "maxToken": 32000,
+    "dbConfig": { "input_type": "document" },
+    "queryConfig": { "input_type": "query" }
+  }
+}
+```
+
+- `voyage-context-4` 和 `voyage-context-3` 使用上下文向量接口。AI Proxy 把每条输入作为独立文档发送，并固定传 `enable_auto_chunking: true` 与 `chunk_size: 32000`，检索查询不做自动分块。FastGPT 每次只发送单个分块，因此分块向量不会结合同一文件的其他分块。如果 Voyage 把某条输入拆成多个分块，请求会失败；预设的 30000 token 上限用于降低这种风险。这两个模型缺少 `input_type` 会被 Voyage 拒绝，因此预设同时把 `input_type: document` 设为默认值。
+- 如需用 `voyage-multimodal-3.5`、`voyage-multimodal-3` 索引图片，请将其标记为支持图片（`vision`）。
+
+## 4. 测试模型
+
+配置完成后，点击渠道列表中的测试按钮，验证渠道连通性和模型可用性。

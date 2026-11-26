@@ -1,6 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
-import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
+import { getAppTemplateData } from '@fastgpt/service/core/app/templates/service';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
@@ -43,7 +43,7 @@ async function handler(
       return [];
     }
   })();
-  const templateMarketItems = await getAppTemplatesAndLoadThem();
+  const templateMarketItems = await getAppTemplateData().get();
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
@@ -115,6 +115,7 @@ async function handler(
       tags: finalTags, // Use modified tags
       type: item.type,
       author: item.author,
+      experienceUrl: item.experienceUrl,
       userGuide: item.userGuide,
       workflow: {}
     };

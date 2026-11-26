@@ -29,9 +29,6 @@ export type { TeamQpmCacheOptions } from './teamQpm';
 export { TeamPointCache, teamPointCache } from './teamPoint';
 export type { TeamPointCacheOptions, TeamPointSnapshot } from './teamPoint';
 
-export { TeamVectorCountCache } from './teamVectorCount';
-export type { TeamVectorCountCacheOptions } from './teamVectorCount';
-
 export {
   WECHAT_QR_LOGIN_TTL_SECONDS,
   WechatQrLoginCache,
@@ -61,20 +58,6 @@ export type {
   WorkflowStopSignalCacheOptions,
   WorkflowStopSignalParams
 } from './workflowStopSignal';
-
-export {
-  StreamResumeActiveStateSchema,
-  StreamResumeCache,
-  StreamResumeParamsSchema,
-  StreamResumeUnavailableStateSchema
-} from './streamResume';
-export type {
-  StreamResumeActiveState,
-  StreamResumeCacheOptions,
-  StreamResumeKeys,
-  StreamResumeParams,
-  StreamResumeUnavailableState
-} from './streamResume';
 
 export {
   OUTLINK_STREAM_CONTENT_TTL_SECONDS,

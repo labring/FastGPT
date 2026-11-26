@@ -1,3 +1,4 @@
+import { setTestLicenseActive, getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -172,7 +173,8 @@ describe('team model management integration: permission, member isolation and AI
 
   beforeEach(async () => {
     // 团队模型/渠道仅商业版可用
-    global.feConfigs = { isPlus: true } as typeof global.feConfigs;
+    setTestLicenseActive(true);
+    getTestInstanceConfig().feature.enableTeamModel = true;
     buckets = new Map();
     requests = [];
     external.listModels.mockReset().mockResolvedValue([]);
@@ -207,7 +209,11 @@ describe('team model management integration: permission, member isolation and AI
     const groupId = `fastgpt:tmb:${installer.tmbId}`;
     expect(bucketOf(groupId)[0]).toMatchObject({
       name: 'created-channel',
-      configs: { map_reasoning_to_reasoning_content: true, custom: 'kept' }
+      configs: {
+        map_reasoning_to_reasoning_content: true,
+        chat_upstream_protocol: 'auto',
+        custom: 'kept'
+      }
     });
     const second = await Call(channelCreateHandler, { auth: otherInstaller, body });
     expect(second.code).toBe(200);
@@ -221,7 +227,14 @@ describe('team model management integration: permission, member isolation and AI
 
       const created = await Call(createHandler, {
         auth: installer,
-        body: { modelData: modelDraft('team-model-a'), channelType: 'team' }
+        body: {
+          modelData: {
+            ...modelDraft('team-model-a'),
+            requestUrl: 'https://93.184.216.34/v1',
+            requestAuth: 'sk-team-secret'
+          },
+          channelType: 'team'
+        }
       });
       expect(created.code).toBe(200);
 
@@ -233,6 +246,9 @@ describe('team model management integration: permission, member isolation and AI
       expect(config.data.models.map((item: { model: string }) => item.model)).toEqual([
         'team-model-a'
       ]);
+      expect(config.data.models[0].requestUrl).toBeUndefined();
+      expect(config.data.models[0].requestAuth).toBeUndefined();
+      expect(JSON.stringify(config.data)).not.toContain('sk-team-secret');
 
       const removed = await Call(deleteHandler, {
         auth: installer,
@@ -307,7 +323,7 @@ describe('team model management integration: permission, member isolation and AI
 
     it('rejects team scope entirely on the open-source edition', async () => {
       const { installer } = await createMembers();
-      global.feConfigs = { isPlus: false } as typeof global.feConfigs;
+      setTestLicenseActive(false);
 
       const responses = await Promise.all([
         Call(createHandler, {

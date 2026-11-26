@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { AiChatQuoteRole } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { getDatasetCiteData } from '@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite';
 import { serviceEnv } from '@fastgpt/service/env';
 
@@ -99,5 +100,63 @@ describe('dataset citation synonym compatibility', () => {
       (await run({ quoteQA, quoteTemplate: xmlTemplate, datasetQuotePrompt: '{{quote}}' }))
         .userInput
     ).toBe('<Question>\nalias\n</Question>');
+  });
+
+  it('defaults quote role to user in template and runtime fallback so system prompt stays cacheable', async () => {
+    expect(AiChatQuoteRole.value).toBe('user');
+
+    const result = await getDatasetCiteData({
+      quoteQA: [item],
+      model: { config: { quoteMaxToken: 1000 } } as LLMModelDataType,
+      quoteTemplate: '{{q}}',
+      userChatInput: 'question',
+      useDatasetQuote: true
+    });
+    expect(result.systemPrompt).toBe('');
+    expect(result.userInput).toContain('alias');
+    expect(result.userInput).toContain('question');
+
+    // 非法或空字符串角色同样按统一契约回退默认 user，避免运行时与编辑器行为分叉。
+    const emptyRoleResult = await getDatasetCiteData({
+      quoteQA: [item],
+      model: { config: { quoteMaxToken: 1000 } } as LLMModelDataType,
+      quoteTemplate: '{{q}}',
+      aiChatQuoteRole: '' as any,
+      userChatInput: 'question',
+      useDatasetQuote: true
+    });
+    expect(emptyRoleResult.systemPrompt).toBe('');
+    expect(emptyRoleResult.userInput).toContain('alias');
+  });
+
+  it('omits built-in default user template when both question and quote are empty, while preserving custom prompts', async () => {
+    const emptyDefault = await run({
+      quoteQA: [],
+      datasetQuotePrompt: '',
+      userChatInput: ''
+    });
+    expect(emptyDefault.userInput).toBe('');
+
+    const quoteOnly = await run({
+      quoteQA: [item],
+      datasetQuotePrompt: '{{quote}}',
+      userChatInput: ''
+    });
+    expect(quoteOnly.userInput).toContain('alias');
+
+    const systemEmptyQuestion = await run({
+      quoteQA: [item],
+      aiChatQuoteRole: 'system',
+      datasetQuotePrompt: '{{quote}}',
+      userChatInput: ''
+    });
+    expect(systemEmptyQuestion.userInput).toBe('');
+
+    const customExpandedVar = await run({
+      quoteQA: [],
+      datasetQuotePrompt: '请总结：来自工作流变量的正文\n{{quote}}',
+      userChatInput: ''
+    });
+    expect(customExpandedVar.userInput).toBe('请总结：来自工作流变量的正文\n');
   });
 });

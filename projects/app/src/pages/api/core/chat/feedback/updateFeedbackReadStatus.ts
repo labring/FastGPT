@@ -14,12 +14,15 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusResponseType> {
-  const { sourceType, sourceId, chatId, dataId, isRead, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: UpdateFeedbackReadStatusBodySchema
-  }).body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, dataId, isRead, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: UpdateFeedbackReadStatusBodySchema
+    }).body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     sourceType,

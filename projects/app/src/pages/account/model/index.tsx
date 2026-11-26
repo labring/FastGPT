@@ -23,7 +23,11 @@ const ModelProvider = () => {
 
   const isRoot = userInfo?.username === 'root';
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
-  const isTeamOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const isTeamOwner = Boolean(
+    isRoot ||
+    userInfo?.team?.permission?.isOwner ||
+    userInfo?.team?.role === TeamMemberRoleEnum.owner
+  );
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
 
   const modelTabList = useMemo<{ label: string; value: ModelTabType }[]>(

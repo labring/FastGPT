@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 /**
  * 沙盒业务层：创建并解析 workspace 只读预览 session。
  *
@@ -14,10 +15,10 @@ import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { serviceEnv } from '../../../../env';
-import { resolveSandboxWorkspacePath } from './file';
-import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
-import { trimSandboxPathRight } from '../utils';
+import { getAgentSandboxProxyConfig } from '../config';
+import { getSandboxStaticRuntimePaths } from '../infrastructure/opensandbox/runtimeProfile';
+import { resolveSandboxRuntimePath, trimSandboxPathRight } from '../utils';
+import { parseLegacySandboxPreviewCredential } from '../legacy';
 const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
 const CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT = `
 redis.call("zremrangebyscore", KEYS[1], "-inf", ARGV[1])
@@ -34,14 +35,13 @@ const SandboxPreviewSessionIdSchema = z
   .string()
   .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)
   .regex(new RegExp(`^[a-z][a-zA-Z0-9]{${SANDBOX_PREVIEW_SESSION_ID_LENGTH - 1}}$`));
-const LegacySandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
 
 const SandboxPreviewSessionSchema = z.object({
   sandboxId: z.string().min(1),
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string().min(1),
   userId: z.string(),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 
@@ -112,25 +112,16 @@ export async function createSandboxPreviewSession(context: SandboxPreviewSession
 export async function resolveSandboxPreviewSession(
   credential: string
 ): Promise<SandboxPreviewSession> {
-  const { sessionKey, legacySandboxId } = (() => {
-    if (!credential.includes(':')) {
-      const sessionId = SandboxPreviewSessionIdSchema.parse(credential);
-      return { sessionKey: getPreviewSessionKey(sessionId), legacySandboxId: undefined };
-    }
-
-    const [rawSandboxId, rawSessionId, ...extraSegments] = credential.split(':');
-    if (extraSegments.length > 0) {
-      throw new Error('Invalid sandbox preview session');
-    }
-    const legacySandboxId = LegacySandboxPreviewSandboxIdSchema.parse(rawSandboxId);
-    const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
-    return {
-      sessionKey: asRedisLogicalKey(
-        `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${legacySandboxId}:${sessionId}`
-      ),
-      legacySandboxId
-    };
-  })();
+  const { sessionKey, legacySandboxId } = credential.includes(':')
+    ? parseLegacySandboxPreviewCredential({
+        credential,
+        keyPrefix: SANDBOX_PREVIEW_SESSION_KEY_PREFIX,
+        sessionIdSchema: SandboxPreviewSessionIdSchema
+      })
+    : {
+        sessionKey: getPreviewSessionKey(SandboxPreviewSessionIdSchema.parse(credential)),
+        legacySandboxId: undefined
+      };
   const serializedContext = await redisCacheAdapter.get(sessionKey);
 
   if (!serializedContext) {
@@ -146,7 +137,7 @@ export async function resolveSandboxPreviewSession(
 /**
  * 将工具/API 输入路径规整为 provider 绝对路径和 workspace 相对路径。
  *
- * 内部工具历史上允许传入 `/workspace/file` 绝对路径，因此这里兼容 workspace 内绝对路径；
+ * 调用方已通过 `resolveRuntimePath` 验证过 workspace 边界；这里统一提取相对路径，
  * workspace 外路径、空路径、反斜杠、控制字符和非规范 segment 一律拒绝。
  */
 export function resolveSandboxPreviewPath(filePath: string): {
@@ -157,11 +148,18 @@ export function resolveSandboxPreviewPath(filePath: string): {
     throw new Error('Invalid sandbox preview path');
   }
 
-  const workDirectory = trimSandboxPathRight(getSandboxRuntimeProfile().workDirectory);
-  const providerPath = resolveSandboxWorkspacePath(filePath, workDirectory || '/', {
-    allowAbsolutePath: true,
-    allowOutsideWorkspace: false
-  });
+  const workDirectory = trimSandboxPathRight(getSandboxStaticRuntimePaths().workDirectory);
+  const providerPath = resolveSandboxRuntimePath(
+    filePath,
+    {
+      workspaceRoot: workDirectory,
+      sessionWorkDirectory: workDirectory
+    },
+    {
+      allowAbsolutePath: true,
+      allowOutsideWorkspace: false
+    }
+  );
   const relativePath = providerPath.slice(workDirectory.length).replace(/^\/+/, '');
   const segments = relativePath.split('/');
   if (
@@ -175,9 +173,9 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  const rawUrl = getAgentSandboxProxyConfig().previewUrl;
   if (!rawUrl) {
-    throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
+    throw new Error('Agent Sandbox preview proxy URL is not configured');
   }
 
   const url = new URL(rawUrl);
@@ -186,29 +184,29 @@ const getSandboxPreviewProxyBaseUrl = () => {
   return url.toString().replace(/\/+$/, '');
 };
 
+type SandboxPreviewTarget =
+  | { relativePath: string; filePath?: never }
+  | { filePath: string; relativePath?: never };
+
 /** 使用已创建的 Preview session 构建一个 workspace 文件 URL。 */
-export function buildSandboxPreviewFileUrl({
-  sessionId,
-  filePath
-}: {
-  sessionId: string;
-  filePath: string;
-}): string {
-  const { relativePath } = resolveSandboxPreviewPath(filePath);
+export function buildSandboxPreviewFileUrl(
+  params: { sessionId: string } & SandboxPreviewTarget
+): string {
+  const relativePath =
+    params.relativePath !== undefined
+      ? params.relativePath
+      : resolveSandboxPreviewPath(params.filePath).relativePath;
   const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(sessionId)}/${encodedPath}`;
+  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(params.sessionId)}/${encodedPath}`;
 }
 
 /** 为一个 workspace 文件创建 session 并返回完整 direct preview URL。 */
 export async function createSandboxPreviewFileUrl({
   context,
-  filePath
-}: {
-  context: SandboxPreviewSession;
-  filePath: string;
-}): Promise<string> {
+  ...target
+}: { context: SandboxPreviewSession } & SandboxPreviewTarget): Promise<string> {
   return buildSandboxPreviewFileUrl({
     sessionId: await createSandboxPreviewSession(context),
-    filePath
+    ...target
   });
 }

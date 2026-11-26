@@ -27,6 +27,8 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<CreateQuestionGuideResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -45,6 +47,8 @@ async function handler(
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -108,17 +112,20 @@ async function handler(
       })
     });
 
-  const { result, inputTokens, outputTokens } = await createQuestionGuide({
-    messages,
-    model: qgModelData,
-    customPrompt: questionGuide?.customPrompt,
-    teamId
-  });
+  const { result, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens } =
+    await createQuestionGuide({
+      messages,
+      model: qgModelData,
+      customPrompt: questionGuide?.customPrompt,
+      teamId
+    });
 
   pushQuestionGuideUsage({
     model: qgModelData,
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     teamId,
     tmbId
   });

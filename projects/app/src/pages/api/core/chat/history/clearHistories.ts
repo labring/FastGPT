@@ -10,9 +10,11 @@ import { buildClearChatHistoriesMatch } from '@/service/core/chat/history';
 /* clear all chat histories of an app */
 export async function handler(req: ApiRequestProps, _res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: ClearChatHistoriesSchema });
-  const { sourceType, sourceId, outLinkAuthData } = query;
+  const { customUid, authProxy, sourceType, sourceId, outLinkAuthData } = query;
 
   const match = await buildClearChatHistoriesMatch({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

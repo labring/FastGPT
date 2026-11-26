@@ -1,5 +1,7 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import MySlider from '@/components/Slider';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
@@ -12,6 +14,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -65,17 +68,22 @@ const TTSSelect = ({
         value: TTSTypeEnum.web,
         children: []
       },
-      ...ttsModels.map((model) => {
+      ...sortModelSelectorModels(ttsModels).map((model) => {
         const providerData = getModelProvider(model.provider, i18n.language);
         const modelName = t(model.name as any);
         return {
           avatar: providerData.avatar,
           label: (
-            <HStack minW={0} maxW={'100%'}>
-              <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
-              <Box minW={0} className={'textEllipsis'}>
-                {modelName}
-              </Box>
+            <HStack minW={0} maxW={'100%'} justifyContent={'space-between'}>
+              <HStack minW={0} flex={'1 1 0'}>
+                <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
+                <MyTooltip label={modelName} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box minW={0} className={'textEllipsis'}>
+                    {modelName}
+                  </Box>
+                </MyTooltip>
+              </HStack>
+              {model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
             </HStack>
           ),
           value: model.modelId,
@@ -101,12 +109,13 @@ const TTSSelect = ({
     const voice = selectedTtsModel?.config.voices.find((item) => item.value === formatValue[1]);
     if (isBuiltin) return provider?.label;
     return (
-      <Flex maxW={['180px', '250px']} minW={0} overflow="hidden" alignItems="center" gap={1}>
-        <ModelStatusLabel modelId={modelId} {...detailState} />
-        {detailState.detail?.status === 'active' && voice && (
-          <Box className="textEllipsis">/ {voice.label}</Box>
-        )}
-      </Flex>
+      <ModelStatusLabel
+        modelId={modelId}
+        {...detailState}
+        nameSuffix={voice ? ` / ${voice.label}` : undefined}
+        showUpcomingDeprecationTag
+        hideUpcomingDeprecationTagWhenDisabled
+      />
     );
   }, [detailState, formatValue, isBuiltin, modelId, selectorList, selectedTtsModel]);
 
@@ -199,11 +208,12 @@ const TTSSelect = ({
           </>
         }
       >
-        <Flex justifyContent={'space-between'} alignItems={'center'}>
-          <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
+        <Flex justifyContent={'space-between'} alignItems={'center'} gap={3} minW={0}>
+          <FormLabel flexShrink={0}>{t('common:core.app.tts.Speech model')}</FormLabel>
           <MultipleRowSelect
             rowMinWidth="160px"
-            label={<Box minW={'150px'}>{formLabel}</Box>}
+            ButtonProps={{ w: '220px', maxW: '100%', minW: 0 }}
+            label={formLabel}
             value={formatValue}
             list={selectorList}
             onSelect={onclickChange}

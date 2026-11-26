@@ -1,5 +1,8 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { applyWorkflowCommand } from '../../src/command/apply';
@@ -11,6 +14,24 @@ import fixture from '../fixtures/basic-static/workflow.json';
 import { describe, expect, it } from 'vitest';
 
 describe('planNodeRemoval', () => {
+  it('preserves a literal array shaped like a reference when deleting its named node', async () => {
+    const document = WorkflowDocumentSchema.parse(fixture);
+    const answer = document.nodes.find((node) => node.nodeId === 'answer')!;
+    const input = answer.inputs[0];
+    input.selectedType = FlowNodeInputTypeEnum.textarea;
+    const literal = input.value;
+
+    const result = await applyWorkflowCommand({
+      document,
+      command: { type: 'node.remove', nodeId: 'text' },
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+
+    expect(result.document.nodes.find((node) => node.nodeId === 'answer')?.inputs[0].value).toEqual(
+      literal
+    );
+  });
+
   it('protects every system node that the Web template forbids deleting', () => {
     for (const template of moduleTemplatesFlat.filter((template) => template.forbidDelete)) {
       const document = WorkflowDocumentSchema.parse({

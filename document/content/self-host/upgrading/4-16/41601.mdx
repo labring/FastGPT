@@ -20,7 +20,7 @@ PORT=1006
 PREVIEW_PORT=1007
 ```
 
-访问地址以 `http://` 或 `https://` 开头。单端口部署时，它可以与 `AGENT_SANDBOX_PROXY_URL` 指向同一域名和端口，但协议分别使用 HTTP(S) 和 WebSocket(S)。强烈建议配置的域名与 FastGPT 主站使用不同的 origin。同源部署会让这些脚本进入主站的同源安全边界，可能访问主站凭证或接口。系统当前不会强制检查 origin 是否隔离。
+完成端口配置后，为 HTTP 预览端口（未设置 `PREVIEW_PORT` 时为 `PORT`）准备一个浏览器可访问的预览地址，第 2 步会将它填入 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。预览地址以 `http://` 或 `https://` 开头。单端口部署时，它可以与 `AGENT_SANDBOX_PROXY_URL` 指向同一域名和端口，但协议分别使用 HTTP(S) 和 WebSocket(S)。强烈建议配置的域名与 FastGPT 主站使用不同的 origin。同源部署会让这些脚本进入主站的同源安全边界，可能访问主站凭证或接口。系统当前不会强制检查 origin 是否隔离。
 
 可以通过访问: `https://{{host}}/health` 来确认是否可访问。
 
@@ -31,10 +31,10 @@ PREVIEW_PORT=1007
 1. 增加环境变量
 
 ```dotenv
-# 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址，这个地址从第一步取。
+# 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址，填写第 1 步准备的预览地址。
 AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
-# opensandbox 需配置，存储全前缀名（之前是配置在 volumn 镜像环境变量里）
-VM_VOLUME_NAME_PREFIX=fastgpt-session
+# opensandbox 需配置，存储卷名前缀（之前通过 fastgpt-volume-manager 服务的 VM_VOLUME_NAME_PREFIX 配置）
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 ```
 
 2. 弃用的沙盒环境变量
@@ -60,7 +60,7 @@ E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `o
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.16.0-beta1
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.16.0-beta1
 - 更新 fastgpt-plugin 镜像 tag: v1.1.0-beta1
-- 更新 agent-sandbox-volumn 镜像 tag: v0.3.0-beta4 (Opensandbox 专属)
+- 更新 fastgpt-agent-volume-manager 镜像（compose 服务名 `fastgpt-volume-manager`）tag: v0.3.0-beta4 (Opensandbox 专属)
 - 更新 agent-sandbox-proxy 镜像 tag: v0.3.0-beta4 (沙盒专属)
 
 ### 4. 迁移 Agent Sandbox 数据

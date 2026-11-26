@@ -14,6 +14,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getMultipleDataToBase64 } from '@fastgpt/service/common/system/constants';
 import {
   isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
@@ -518,6 +519,8 @@ export class DatasetDataIndexOperation {
     transformText?: (text: string) => string;
   }) {
     const embModel = this.getEmbeddingModel();
+    // 批量入口一次求值下传：管理员中途保存配置不会让同批索引出现混合形态
+    const toBase64 = getMultipleDataToBase64();
     const vectorInputItems = (
       await Promise.all(
         indexes.map(async (index) => {
@@ -537,7 +540,11 @@ export class DatasetDataIndexOperation {
               item: index,
               input: {
                 type: 'image' as const,
-                input: await normalizeDatasetIndexImageToModelInput(index.text, datasetId)
+                input: await normalizeDatasetIndexImageToModelInput({
+                  imageUrl: index.text,
+                  datasetId,
+                  toBase64
+                })
               }
             };
           } catch {
@@ -664,10 +671,19 @@ export class DatasetDataIndexOperation {
    * 按 id 删除向量。
    * 调用方需要负责同步删除或替换 Mongo 中的索引项。
    */
-  async deleteVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
+  async deleteVectors({
+    teamId,
+    datasetId,
+    idList
+  }: {
+    teamId: string;
+    datasetId: string;
+    idList: string[];
+  }) {
     if (idList.length === 0) return;
     await deleteDatasetDataVector({
       teamId,
+      datasetId,
       idList
     });
   }
@@ -813,6 +829,7 @@ export class DatasetDataIndexOperation {
           // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
           await this.deleteVectors({
             teamId: sourceData.teamId,
+            datasetId: sourceData.datasetId,
             idList: [targetIndex.dataId]
           });
         }
@@ -821,6 +838,7 @@ export class DatasetDataIndexOperation {
       if (synonymContext && newIndex) {
         await this.deleteVectors({
           teamId: sourceData.teamId,
+          datasetId: sourceData.datasetId,
           idList: [newIndex.dataId]
         }).catch(() => {});
       }
@@ -873,6 +891,7 @@ export class DatasetDataIndexOperation {
 
       await this.deleteVectors({
         teamId: data.teamId,
+        datasetId: data.datasetId,
         idList: [indexDataId]
       });
     });

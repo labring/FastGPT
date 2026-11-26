@@ -38,7 +38,13 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import {
+  addAuditLog,
+  addAuditLogs,
+  getI18nDatasetType
+} from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
+import { formatCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
   const { datasetParams, files } = parseApiInput({
@@ -112,7 +118,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   }
 
   try {
-    const result = await mongoSessionRun(async (session) => {
+    const { response: result, createdCollections } = await mongoSessionRun(async (session) => {
       // 1. Create dataset
       const [dataset] = await MongoDataset.create(
         [
@@ -146,6 +152,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
 
       // 4. Move temp files to dataset directory and create collections
       const bucket = new S3PrivateBucket();
+      const createdCollections: Array<{ _id: string; name: string }> = [];
 
       for (const file of files) {
         const { fileKey: newKey } = getFileS3Key.dataset({
@@ -158,8 +165,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
           to: newKey
         });
 
-        await createCollectionAndInsertData({
+        const { collectionId } = await createCollectionAndInsertData({
           dataset,
+          modelAuthContext: { modelHandle, authorizedIds },
           createCollectionParams: {
             datasetId: dataset._id,
             teamId,
@@ -181,15 +189,19 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
           },
           session
         });
+        createdCollections.push({ _id: collectionId, name: file.name });
       }
 
       return {
-        datasetId: dataset._id,
-        name: dataset.name,
-        avatar: dataset.avatar,
-        vectorModel: {
-          model: vectorModelData.model
-        }
+        response: {
+          datasetId: dataset._id,
+          name: dataset.name,
+          avatar: dataset.avatar,
+          vectorModel: {
+            model: vectorModelData.model
+          }
+        },
+        createdCollections
       };
     });
 
@@ -205,12 +217,40 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_DATASET,
+        resources: [
+          buildDatasetAuditResource({
+            _id: result.datasetId,
+            name,
+            avatar,
+            type: DatasetTypeEnum.dataset
+          })
+        ],
         params: {
           datasetName: name,
           datasetType: getI18nDatasetType(DatasetTypeEnum.dataset)
         }
       });
     })();
+
+    // 新知识库下每个文件都是一条集合，按「一个文件一条日志」逐条记录
+    if (createdCollections.length > 0) {
+      void addAuditLogs(
+        createdCollections.map((file) =>
+          formatCollectionCreateAuditLog({
+            teamId,
+            tmbId,
+            datasetId: result.datasetId,
+            collection: {
+              _id: file._id,
+              name: file.name,
+              type: DatasetCollectionTypeEnum.file
+            },
+            // 新建知识库的集合都落在根目录，没有父级路径需要展开
+            location: name
+          })
+        )
+      );
+    }
 
     return CreateDatasetWithFilesResponseSchema.parse(result);
   } catch (error) {

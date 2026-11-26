@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { z } from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { AppQuestionGuideInputSchema } from '../../app/common/api';
@@ -39,7 +40,7 @@ export type CreateQuestionGuideResponseType = z.infer<typeof CreateQuestionGuide
  * ============================================================================ */
 
 export const CreateQuestionGuideV2BodyRawSchema = createOutLinkChatTargetInputSchema({
-  chatId: z.string().min(1).meta({
+  chatId: ChatIdSchema.min(1).meta({
     example: 'chat-1',
     description: '会话 ID'
   }),

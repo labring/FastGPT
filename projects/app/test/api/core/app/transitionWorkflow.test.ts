@@ -3,6 +3,7 @@ import * as transitionapi from '@/pages/api/core/app/transitionWorkflow';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { configureAgentQuota } from './quotaTestUtils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   CreateAppBodyType,
@@ -13,12 +14,14 @@ import type {
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
-const historicalModules = [
+const createHistoricalModules = (skillId: string) => [
   {
     nodeId: 'start-1',
     flowNodeType: 'workflowStart',
@@ -28,16 +31,74 @@ const historicalModules = [
         key: 'query',
         label: 'Query',
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        selectedTypeIndex: 1
+        selectedTypeIndex: 1,
+        value: ['deleted-node', 'output']
+      },
+      {
+        key: NodeInputKeyEnum.skills,
+        renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
+        value: [{ skillId }]
       }
     ],
     outputs: []
   }
 ];
 
+const referenceSnapshots = [
+  {
+    reference: ['deleted-node', 'output'] as [string, string],
+    sourceLabel: 'Deleted node'
+  }
+];
+
 describe('Transition workflow', () => {
+  it.each([false, true])('drops dangling edges when createNew is %s', async (createNew) => {
+    const { owner } = await getFakeUsers(0);
+    const sourceAppId = await createapi.onCreateApp({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'Simple app',
+      type: AppTypeEnum.simple,
+      nodes: []
+    });
+    const liveEdge = {
+      source: 'start-1',
+      target: 'answer-1',
+      sourceHandle: 'start-1-source-right',
+      targetHandle: 'answer-1-target-left'
+    };
+    await MongoAppVersion.updateOne(
+      { appId: sourceAppId, isPublish: true },
+      {
+        nodes: [
+          { nodeId: 'start-1', flowNodeType: 'workflowStart', inputs: [], outputs: [] },
+          { nodeId: 'answer-1', flowNodeType: 'answerNode', inputs: [], outputs: [] }
+        ],
+        edges: [liveEdge, { ...liveEdge, source: 'deleted-node' }]
+      }
+    );
+
+    const result = await Call<TransitionWorkflowBodyType, never, TransitionWorkflowResponseType>(
+      transitionapi.default,
+      { auth: owner, body: { appId: sourceAppId, createNew } }
+    );
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne(
+      createNew ? { appId: result.data?.id } : { appId: sourceAppId, isAutoSave: true }
+    ).lean();
+    expect(version?.edges).toMatchObject([liveEdge]);
+  });
+
   it.each([false, true])('writes canonical workflow when createNew is %s', async (createNew) => {
     const [user] = (await getFakeUsers(1)).members;
+    const skill = await MongoAgentSkills.create({
+      name: 'Transition skill',
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal,
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    const skillId = String(skill._id);
     await MongoResourcePermission.create({
       resourceType: 'team',
       teamId: user.teamId,
@@ -56,8 +117,15 @@ describe('Transition workflow', () => {
     const sourceAppId = createResult.data!;
     const copiedResources = [{ type: 'skill' as const, id: 'copied-skill' }];
     await MongoAppVersion.updateOne(
-      { appId: sourceAppId },
-      { nodes: historicalModules, resources: copiedResources }
+      { appId: sourceAppId, isPublish: true },
+      {
+        nodes: createHistoricalModules(skillId),
+        referenceSnapshots: [
+          ...referenceSnapshots,
+          { reference: ['orphan', 'output'], sourceLabel: 'Orphaned snapshot' }
+        ],
+        resources: copiedResources
+      }
     );
 
     const result = await Call<
@@ -81,9 +149,10 @@ describe('Transition workflow', () => {
     expect(app?.type).toBe(AppTypeEnum.workflow);
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
-    if (!createNew) {
-      expect(version?.resources).toEqual(copiedResources);
-    }
+    expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(version?.resources).toEqual(
+      createNew ? [{ type: 'skill', id: skillId }] : copiedResources
+    );
   });
 
   it('rejects a new workflow at the Agent limit but allows conversion in place', async () => {

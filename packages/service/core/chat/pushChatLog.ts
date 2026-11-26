@@ -1,3 +1,4 @@
+import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { axiosWithoutSSRF } from '../../common/api/axios';
@@ -189,7 +190,7 @@ ${JSON.stringify(item.interactive, null, 2)}
       chatId,
       responseTime: responseTime * 1000,
       metadata: metadataString,
-      sourceName: chat.source ?? '-',
+      sourceName: getChatPublishSourceType(chat) ?? '-',
       // @ts-ignore
       createdAt: new Date(chatItemAi.time).getTime(),
       sourceId: `${sourceIdPrefix}${appId}`

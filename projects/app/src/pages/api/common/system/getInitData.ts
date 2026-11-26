@@ -1,3 +1,4 @@
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -6,10 +7,18 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetSystemInitDataQuerySchema,
   GetSystemInitDataResponseSchema,
+  ProHealthResponseSchema,
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import { serviceEnv } from '@fastgpt/service/env';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getSsoConfig } from '@fastgpt/service/common/system/sso';
+import { resolveEffectiveTeamMode } from '@fastgpt/global/common/system/config/teamMode';
+import { applyEnvAuthoritativeFeConfigs } from '@/service/common/system/envAuthoritativeFeConfigs';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
@@ -20,27 +29,91 @@ async function handler(
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
-  const subPlans = getRuntimeSubPlansConfig(global.subPlans);
+  // 展示可在 Pro 不可用时暂时隐藏入口；密码安全校验独立读取并拒绝未知状态。
+  const ssoConfig = await getSsoConfig().catch(() => undefined);
+  const ssoConfigured = ssoConfig?.enabled;
+  const ssoIsWecom = ssoConfig?.enabled === true ? ssoConfig.isWecom : undefined;
+
+  // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
+  const isAuthenticated = await authCert({ req, authToken: true })
+    .then(() => true)
+    .catch(() => false);
+  // Pro 环境能力不写入 Mongo；只在登录态按需读取，避免启动迁移与 Pro 互相等待。
+  const proFrontendCapabilities = await (async () => {
+    if (!isAuthenticated || !serviceEnv.PRO_URL) return undefined;
+
+    const disabled = {
+      show_workorder: false,
+      show_enterprise_auth: false,
+      showWecomConfig: false
+    };
+    try {
+      const health = ProHealthResponseSchema.safeParse(await postHealth({ timeout: 1500 }));
+      if (health.success && health.data.auth === true && health.data.frontendCapabilities) {
+        return health.data.frontendCapabilities;
+      }
+    } catch {
+      // 连接失败和超时都只关闭展示入口；不记录可能携带凭据的请求错误。
+    }
+    logger.debug('Pro frontend capabilities unavailable');
+    return disabled;
+  })();
+
+  // 所有异步探测完成后在同一同步帧快照全局状态，确保 feConfigs、subPlans 与 bufferId 来自同一次发布。
+  const clientConfig = systemInstanceConfig.getClientConfig();
+  const runtimeSnapshot = {
+    feConfigs: clientConfig.feConfigs,
+    subPlans: serviceEnv.PRO_URL ? systemInstanceConfig.get().commercial.subPlans : undefined,
+    systemVersion: global.systemVersion,
+    systemInitBufferId: clientConfig.version
+  };
+  const subPlans = getRuntimeSubPlansConfig(runtimeSnapshot.subPlans);
 
   /**
    * 登录后返回 Schema 声明的公开配置；匿名统一投影公共页面实际使用的字段。
    * 响应 Schema 同时过滤顶层及嵌套对象的未知字段，避免扩展配置泄漏。
    */
-  const filterFeConfigs = (isAuthenticated: boolean): GetSystemInitDataResponse['feConfigs'] => {
+  const filterFeConfigs = (): GetSystemInitDataResponse['feConfigs'] => {
+    // Pro 重启时将 ENV 派生模式刷新到旧配置快照；缺少外部用户系统时统一降级。
+    const configuredTeamMode = runtimeSnapshot.feConfigs?.teamMode ?? 'single';
+    const effectiveTeamMode = resolveEffectiveTeamMode({
+      teamMode: configuredTeamMode,
+      // 探测结果未知时不擅自降级；Pro 不可用时业务请求本身会失败。
+      externalUserSystemConfigured: ssoConfigured !== false
+    });
+    const shouldDowngradeSyncTeamMode = effectiveTeamMode !== configuredTeamMode;
+    const effectiveRegisterMethod = shouldDowngradeSyncTeamMode
+      ? runtimeSnapshot.feConfigs?.register_method?.filter((method) => method !== 'sync')
+      : runtimeSnapshot.feConfigs?.register_method;
+
     const config = {
-      ...global.feConfigs,
+      ...runtimeSnapshot.feConfigs,
+      ...(effectiveTeamMode !== undefined ? { teamMode: effectiveTeamMode } : {}),
+      ...(effectiveRegisterMethod !== undefined
+        ? { register_method: effectiveRegisterMethod }
+        : {}),
       // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
-        if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
-        // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。
-        return { ...global.feConfigs.sso, enabled: Boolean(global.systemEnv?.sso?.url) };
+        if (!runtimeSnapshot.feConfigs?.sso && ssoConfigured !== true) return undefined;
+        // 只信任 Pro 的部署能力与 provider 探测结果，旧库地址和存储的前端能力标志都不是权威来源。
+        const baseSso = runtimeSnapshot.feConfigs?.sso
+          ? Object.fromEntries(
+              Object.entries(runtimeSnapshot.feConfigs.sso).filter(([key]) => key !== 'isWecom')
+            )
+          : undefined;
+        return {
+          ...baseSso,
+          enabled: ssoConfigured === true,
+          ...(ssoIsWecom !== undefined ? { isWecom: ssoIsWecom } : {})
+        };
       })()
     };
     if (isAuthenticated) return config;
 
     const commonConfig = {
       systemTitle: config.systemTitle,
+      systemDescription: config.systemDescription,
       favicon: config.favicon,
       scripts: config.scripts,
       isPlus: config.isPlus,
@@ -72,35 +145,47 @@ async function handler(
     // 所有匿名入口共用同一白名单，页面切换无需补取配置。
     return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
   };
+  const projectedFeConfigs = { ...filterFeConfigs(), ...proFrontendCapabilities };
+  const feConfigs = isAuthenticated
+    ? applyEnvAuthoritativeFeConfigs(projectedFeConfigs)
+    : projectedFeConfigs;
 
-  // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
-  const isAuthenticated = await authCert({ req, authToken: true })
-    .then(() => true)
-    .catch(() => false);
-  const feConfigs = filterFeConfigs(isAuthenticated);
-
-  const response = (() => {
+  const response: GetSystemInitDataResponse = (() => {
     if (isAuthenticated) {
-      if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
+      if (
+        bufferId &&
+        runtimeSnapshot.systemInitBufferId &&
+        runtimeSnapshot.systemInitBufferId === bufferId
+      ) {
         return {
-          bufferId: global.systemInitBufferId,
+          bufferId: runtimeSnapshot.systemInitBufferId,
           feConfigs,
-          systemVersion: global.systemVersion,
+          systemVersion: runtimeSnapshot.systemVersion,
           ...(includeSubPlans && { subPlans })
         };
       }
 
       return {
-        bufferId: global.systemInitBufferId,
+        bufferId: runtimeSnapshot.systemInitBufferId,
         feConfigs,
         subPlans,
-        systemVersion: global.systemVersion
+        systemVersion: runtimeSnapshot.systemVersion
       };
     }
 
-    // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
-    const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v9_${global.systemInitBufferId}`
+    // Pro 环境或 SSO provider 变化不改变 Mongo revision，必须把能力、类型及未知/不可用状态加入匿名缓存标识。
+    const ssoVersion =
+      ssoConfigured === undefined
+        ? 'unavailable'
+        : !ssoConfigured
+          ? '0'
+          : ssoIsWecom === true
+            ? '1_wecom'
+            : ssoIsWecom === false
+              ? '1_non_wecom'
+              : '1_unknown';
+    const unAuthBufferId = runtimeSnapshot.systemInitBufferId
+      ? `unAuth_v12_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
@@ -116,7 +201,27 @@ async function handler(
     };
   })();
 
-  return GetSystemInitDataResponseSchema.parse(response);
+  const parsed = GetSystemInitDataResponseSchema.safeParse(response);
+  if (parsed.success) return parsed.data;
+
+  // 旧配置不能阻断前台和管理员修复入口。仅省略非法公开展示字段，
+  // 管理配置读取仍保留原值；最后继续按白名单解析，避免异常分支泄漏扩展字段。
+  const projected = { ...response, feConfigs: response.feConfigs && { ...response.feConfigs } };
+  for (const issue of parsed.error.issues) {
+    const [scope, field] = issue.path;
+    if (scope === 'feConfigs' && typeof field === 'string' && projected.feConfigs) {
+      delete projected.feConfigs[field as keyof typeof projected.feConfigs];
+    } else if (scope === 'subPlans') {
+      delete projected.subPlans;
+    } else {
+      // 非配置数据的接口不变量仍按内部错误报告。
+      throw parsed.error;
+    }
+  }
+  logger.warn('Invalid public configuration omitted from frontend projection', {
+    issues: parsed.error.issues.map(({ path, code }) => ({ path: path.join('.'), code }))
+  });
+  return GetSystemInitDataResponseSchema.parse(projected);
 }
 
 export default NextAPI(handler);

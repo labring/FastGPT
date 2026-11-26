@@ -1,14 +1,9 @@
 import fs from 'fs';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
-import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
-import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import {
-  postCheckCensor,
   postConcatUsage,
   postCreateUsage,
   postPushUsageItems
@@ -20,26 +15,20 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
-import { serviceEnv } from '@fastgpt/service/env';
+import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
+import { configureLLMRequestRecordTTLIndex } from '@fastgpt/service/core/ai/record/schema';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/constants';
+import { initS3Buckets } from '@fastgpt/service/common/s3';
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
-const defaultOpenSourceLoginGuideDocUrl =
-  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
-
 /* Init global variables */
 export function initGlobalVariables() {
   function initPlusRequest() {
-    global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
-      if (!isProVersion()) return Promise.resolve({ code: 200 });
-      return postCheckCensor({ text });
-    };
-
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
       return postCreateUsage(data);
@@ -63,7 +52,11 @@ export function initGlobalVariables() {
 }
 
 /* Init system data(Need to connected db). It only needs to run once */
-export async function getInitConfig() {
+export async function getInitConfig({
+  refreshLLMRequestRecordTTL = true
+}: {
+  refreshLLMRequestRecordTTL?: boolean;
+} = {}) {
   const getSystemVersion = async () => {
     if (global.systemVersion) return;
     try {
@@ -82,33 +75,8 @@ export async function getInitConfig() {
     }
   };
 
-  await Promise.all([initSystemConfig(), getSystemVersion()]);
+  await Promise.all([initSystemConfig({ refreshLLMRequestRecordTTL }), getSystemVersion()]);
 }
-
-const defaultFeConfigs: FastGPTFeConfigsType = {
-  show_git: true,
-  docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
-  enable_team_plugin_upload: false,
-  enable_team_model: false,
-  appTemplateCourse:
-    'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
-  systemTitle: 'FastGPT',
-  concatMd:
-    '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)',
-  limit: {
-    exportDatasetLimitMinutes: 0,
-    websiteSyncLimitMinuted: 0,
-    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
-    skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
-    maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
-  },
-  scripts: [],
-  favicon: '/favicon.ico',
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
-};
 
 async function getPluginRemoteDebugEnabled() {
   try {
@@ -122,86 +90,59 @@ async function getPluginRemoteDebugEnabled() {
   }
 }
 
-export async function initSystemConfig() {
-  const [{ fastgptConfig, licenseData }, pluginRemoteDebug] = await Promise.all([
-    getFastGPTConfigFromDB(),
-    getPluginRemoteDebugEnabled()
-  ]);
-  // global 保留快照（含已到期），功能开关按授权是否有效计算，
-  // 避免过期的商业版授权继续开启商业能力；前端据此可区分「未激活」与「已到期」。
-  global.licenseData = licenseData;
-  const isPlus = isLicenseActive(licenseData);
+let initConfigQueue: Promise<void> = Promise.resolve();
+let storageRefreshPending = false;
 
-  const config: FastGPTConfigFileType = {
-    feConfigs: {
-      ...defaultFeConfigs,
-      ...(fastgptConfig.feConfigs || {}),
-      mcpServerProxyEndpoint: appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT,
-      limit: {
-        ...defaultFeConfigs.limit,
-        ...(fastgptConfig.feConfigs?.limit || {})
-      },
-      isPlus,
-      // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
-      isProService: !!serviceEnv.PRO_URL,
-      datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
-      hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
-      wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
-      show_coupon: appEnv.SHOW_COUPON,
-      show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
-      show_dataset_enhance: licenseData?.functions?.datasetEnhance,
-      show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      show_batch_eval: licenseData?.functions?.eval,
-      pluginRemoteDebug,
-      payFormUrl: appEnv.PAY_FORM_URL || '',
-      marketplaceUrl: appEnv.MARKETPLACE_URL,
-      disableMarketplace: appEnv.DISABLE_MARKETPLACE,
+/**
+ * 重新加载并应用全站系统配置。
+ * 使用串行队列排队执行，确保并发重载按序完成，避免较早的重载在外部 I/O 慢时逆序覆写较新的运行时状态。
+ */
+export function initSystemConfig({
+  refreshLLMRequestRecordTTL = true
+}: {
+  refreshLLMRequestRecordTTL?: boolean;
+} = {}): Promise<void> {
+  const current = initConfigQueue.then(() => doInitSystemConfig({ refreshLLMRequestRecordTTL }));
+  initConfigQueue = current.catch(() => {});
+  return current;
+}
 
-      agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
-      show_agent_sandbox_free_tip:
-        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP
-    },
-    systemEnv: Object.assign(
-      {
-        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
-        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
-        datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
-        vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
-        qaMaxProcess: serviceEnv.QA_MAX_PROCESS,
-        vlmMaxProcess: serviceEnv.VLM_MAX_PROCESS,
-        hnswEfSearch: serviceEnv.HNSW_EF_SEARCH,
-        hnswMaxScanTuples: serviceEnv.HNSW_MAX_SCAN_TUPLES,
-        customPdfParse: {
-          url: serviceEnv.CUSTOM_PDF_PARSE_URL,
-          key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
-          somarkApiKey: serviceEnv.SOMARK_API_KEY,
-          doc2xKey: serviceEnv.DOC2X_KEY,
-          textinAppId: serviceEnv.TEXTIN_APP_ID,
-          textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE
-        }
-      },
-      fastgptConfig.systemEnv || {} // 商业版数据存在数据库里
-    ),
-    subPlans: fastgptConfig.subPlans
-  };
-
-  if (!isPlus) {
-    config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
-  }
-
-  // set config
-  initFastGPTConfig(config);
-  const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
-  await refreshLangfuseTracing();
-
-  logger.info('System config loaded', {
-    fastgpt: {
-      feConfigs: global.feConfigs,
-      systemEnv: global.systemEnv,
-      subPlans: global.subPlans,
-      licenseData: global.licenseData
-    }
+async function doInitSystemConfig({
+  refreshLLMRequestRecordTTL: shouldRefreshLLMRequestRecordTTL
+}: {
+  refreshLLMRequestRecordTTL: boolean;
+}) {
+  const pluginRemoteDebug = await getPluginRemoteDebugEnabled();
+  systemInstanceConfig.setFrontendContext({
+    pluginRemoteDebug,
+    disableMarketplace: appEnv.DISABLE_MARKETPLACE,
+    showGit: appEnv.SHOW_GIT,
+    wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
+    chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
   });
+  const instanceConfig = await systemInstanceConfig.initialize();
+
+  // 快照已经完整发布；资源应用失败保留待重试状态，不能撤销已保存的配置。
+  // 日志 TTL 仅在启动期（shouldRefreshLLMRequestRecordTTL=true）及配置保存事务内操作日志库，
+  // 普通重载仅同步内存 Schema 声明，避免轮询与无关保存查询独立日志库。
+  if (shouldRefreshLLMRequestRecordTTL) {
+    await refreshLLMRequestRecordTTL();
+  } else {
+    const expireAfterSeconds = instanceConfig.performance.tracking.retentionHours * 60 * 60;
+    if (
+      Number.isSafeInteger(expireAfterSeconds) &&
+      expireAfterSeconds > 0 &&
+      expireAfterSeconds <= 2_147_483_647
+    ) {
+      configureLLMRequestRecordTTLIndex(expireAfterSeconds);
+    }
+  }
+  storageRefreshPending ||= applyRuntimeStorageConfig(instanceConfig.storage);
+  if (storageRefreshPending) {
+    initS3Buckets();
+    storageRefreshPending = false;
+  }
+  logger.info('System config loaded', { scopes: Object.keys(instanceConfig) });
 }
 
 export async function initSystemPluginTags() {

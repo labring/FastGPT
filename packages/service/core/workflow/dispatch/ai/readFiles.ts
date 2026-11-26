@@ -4,7 +4,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getFileContentByUrl } from '../../../chat/fileContext';
-import { getWorkflowFileContext } from '../../utils/context';
+import { getWorkflowFileContext } from '../context';
 import { AgentNodeResponseDisplay } from './agentLoopCore/domain/constants';
 
 export type WorkflowReadFileItem = {
@@ -58,9 +58,11 @@ export const dispatchWorkflowReadFiles = async ({
           onPdfParseUsage: (usage) => usages.push(usage)
         });
 
+        const resolvedName = inputName ?? name;
+
         return {
           url,
-          name: inputName ?? name,
+          name: resolvedName,
           content
         };
       } catch (error) {

@@ -7,7 +7,10 @@ import {
   PerResourceTypeEnum,
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   createResourceDefaultCollaborators,
@@ -351,6 +354,54 @@ describe('move skill', () => {
         { tmbId: String(member.tmbId), permission: ReadRoleVal }
       ])
     );
+  });
+
+  it('rejects moving a root skill when the member only has read permission on it', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const teamId = String(owner.teamId);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.team,
+      teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamSkillCreatePermissionVal
+    });
+
+    const skill = await createSkillWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'root-skill',
+      type: AgentSkillTypeEnum.skill
+    });
+    await setSkillCollaborators({
+      skillId: String(skill._id),
+      teamId,
+      type: skill.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(member.tmbId), permission: ReadRoleVal }
+      ]
+    });
+
+    const memberFolder = await createSkillWithOwnerSnapshot({
+      teamId,
+      tmbId: String(member.tmbId),
+      name: 'member-folder',
+      type: AgentSkillTypeEnum.folder
+    });
+
+    const res = await Call(updateHandler, {
+      auth: member,
+      body: { skillId: String(skill._id), parentId: String(memberFolder._id) }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe(SkillErrEnum.unAuthSkill);
+
+    const unchanged = await MongoAgentSkills.findById(skill._id).lean();
+    expect(unchanged?.parentId ?? null).toBeNull();
   });
 });
 

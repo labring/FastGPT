@@ -22,10 +22,11 @@ import {
   getFolderAncestorIdsFromParentId,
   rewriteFolderSubtreeAncestorIds
 } from '@fastgpt/service/common/parentFolder/ancestorIds';
-import { serviceEnv } from '@fastgpt/service/env';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
@@ -44,6 +45,7 @@ const logAppMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_APP,
+    resources: [buildAppAuditResource(app)],
     params: {
       appName: app.name,
       targetFolderName: targetName,
@@ -83,6 +85,8 @@ export const moveApp = async ({
 
   if (app.parentId) {
     await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
+  } else if (!app.permission.hasManagePer) {
+    return Promise.reject(AppErrEnum.unAuthApp);
   }
   if (parentId === null || !app.parentId) {
     await authUserPer({
@@ -114,7 +118,6 @@ export const moveApp = async ({
     const ancestorIds = isPathFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
-          maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
           findFolder: (id) =>
             MongoApp.findOne({ _id: id, teamId: app.teamId, type: app.type })
               .select('_id parentId')
@@ -127,8 +130,8 @@ export const moveApp = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: appId,
         rootAncestorIds: ancestorIds,
-        // 路径重写也按目标祖先加子树的绝对层级校验，不能沿用只读遍历上限。
-        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+        // 不显式传 maxDepth：路径重写要用实例配置的绝对层级上限，
+        // 不能沿用只读遍历的 defaultSubtreeMaxDepth。
         findChildFolders: (parentIds) =>
           MongoApp.find({ teamId: app.teamId, parentId: { $in: parentIds }, type: app.type })
             .select('_id parentId')

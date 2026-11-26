@@ -1,0 +1,133 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import type { ApiKeyAuditParams } from '@fastgpt/global/support/openapi/schema';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import type { ClientSession } from '../../common/mongo';
+import { MongoApp } from '../../core/app/schema';
+import { MongoTeamMember } from '../user/team/teamMemberSchema';
+import { MongoOpenApi } from './schema';
+import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from './utils';
+import { addAuditLog } from '../user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
+/**
+ * 将指定成员的应用 Key 交给绑定应用的当前 owner，必须在应用交接之后、同一事务中调用。
+ * 只更新 tmbId；条件写入防止覆盖其他交接。返回脱敏审计数据，由事务拥有者提交后记录。
+ */
+export const transferAppApiKeys = async ({
+  teamId,
+  fromTmbIds,
+  appIds,
+  session
+}: {
+  teamId: string;
+  fromTmbIds: string[];
+  appIds?: string[];
+  session: ClientSession;
+}): Promise<ApiKeyAuditParams[]> => {
+  if (!fromTmbIds.length || appIds?.length === 0) return [];
+  const keys = await MongoOpenApi.find(
+    {
+      teamId,
+      ...getOpenApiTypeFilter(ApiKeyTypeEnum.app),
+      tmbId: { $in: fromTmbIds },
+      ...(appIds ? getOpenApiAppIdFilter(appIds) : {})
+    },
+    '_id name appId tmbId',
+    { session }
+  ).lean();
+  const apps = await MongoApp.find(
+    { teamId, _id: { $in: keys.map((key) => key.appId) }, deleteTime: null },
+    '_id tmbId',
+    { session }
+  ).lean();
+  const appMap = new Map(apps.map((app) => [String(app._id), String(app.tmbId)]));
+  const owners = await MongoTeamMember.find(
+    { teamId, _id: { $in: [...appMap.values()] }, status: TeamMemberStatusEnum.active },
+    '_id',
+    { session }
+  ).lean();
+  const ownerIds = new Set(owners.map((owner) => String(owner._id)));
+  const changes: ApiKeyAuditParams[] = [];
+  for (const key of keys) {
+    const appId = String(key.appId).toLowerCase();
+    const nextOwner = appMap.get(appId);
+    if (!nextOwner || !ownerIds.has(nextOwner)) throw new Error('Application Key owner is invalid');
+    if (nextOwner === String(key.tmbId)) continue;
+    const result = await MongoOpenApi.updateOne(
+      { _id: key._id, teamId, tmbId: key.tmbId, ...getOpenApiAppIdFilter([appId]) },
+      { $set: { tmbId: nextOwner } },
+      { session }
+    );
+    if (result.matchedCount !== 1) throw new Error('Application Key ownership changed');
+    changes.push({
+      keyId: String(key._id),
+      keyName: key.name,
+      keyType: ApiKeyTypeEnum.app,
+      appId,
+      fromTmbId: String(key.tmbId),
+      toTmbId: nextOwner
+    });
+  }
+  return changes;
+};
+
+/** 事务成功后记录归属变化；自动离职流程使用 system 作用域，不伪造离职者操作。 */
+export const auditAppApiKeyTransfers = async ({
+  teamId,
+  changes,
+  actorTmbId
+}: {
+  teamId: string;
+  changes: ApiKeyAuditParams[];
+  actorTmbId?: string;
+}) => {
+  const appIds = [...new Set(changes.map((item) => item.appId).filter(Boolean))];
+  const apps = await (async () => {
+    if (appIds.length === 0) return [];
+    try {
+      return await MongoApp.find({ teamId, _id: { $in: appIds } }, '_id name avatar type').lean();
+    } catch (error) {
+      logger.warn('Failed to enrich app metadata for API key transfer audit', {
+        error,
+        teamId,
+        appCount: appIds.length
+      });
+      return [];
+    }
+  })();
+  const appMap = new Map(apps.map((app) => [String(app._id).toLowerCase(), app]));
+
+  for (const params of changes) {
+    const boundApp = params.appId ? appMap.get(String(params.appId).toLowerCase()) : undefined;
+    const resources = [
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.apiKey,
+        id: params.keyId,
+        name: params.keyName
+      }),
+      ...(params.appId
+        ? [
+            boundApp
+              ? buildAppAuditResource(boundApp)
+              : buildEntityAuditResource({ type: AuditResourceTypeEnum.app, id: params.appId })
+          ]
+        : [])
+    ].filter((item): item is AuditResourceType => Boolean(item));
+    await addAuditLog({
+      teamId,
+      ...(actorTmbId ? { tmbId: actorTmbId } : { scope: 'system' as const }),
+      event: AuditEventEnum.UPDATE_API_KEY,
+      resources,
+      params
+    });
+  }
+};

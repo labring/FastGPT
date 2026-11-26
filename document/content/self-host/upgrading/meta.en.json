@@ -1,9 +1,12 @@
 {
-  "title": "Version History",
-  "description": "FastGPT version history",
+  "title": "Versions & Upgrades",
+  "description": "FastGPT release timeline, upgrade guide, and version history",
+  "root": true,
   "pages": [
     "version-timeline",
     "upgrade-instruction",
+    "!mongodb-8",
+    "4-18",
     "4-17",
     "4-16",
     "4-15",

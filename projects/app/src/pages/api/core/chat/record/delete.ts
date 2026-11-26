@@ -2,24 +2,29 @@ import { softDeleteChatItems } from '@fastgpt/service/core/chat/delete';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import {
-  DeleteChatRecordBodySchema,
-  DeleteChatRecordResponseSchema,
-  type DeleteChatRecordResponseType
-} from '@fastgpt/global/openapi/core/chat/record/api';
+import { DeleteChatRecordBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-const hasRequestBodyPayload = (body: unknown) =>
-  !!body && typeof body === 'object' && Object.keys(body).length > 0;
-
-async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseType> {
-  const params = hasRequestBodyPayload(req.body)
-    ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
-    : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
-  const { sourceType, sourceId, chatId, contentId, contentIds, outLinkAuthData } = params;
+/** 按 JSON Body 中的会话身份鉴权并软删除消息，外链凭证保持对象形态。 */
+async function handler(req: ApiRequestProps): Promise<void> {
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    contentId,
+    contentIds,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: DeleteChatRecordBodySchema
+  }).body;
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -36,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
   );
 
   if (targetContentIds.length === 0) {
-    return DeleteChatRecordResponseSchema.parse(undefined);
+    return;
   }
 
   await softDeleteChatItems({
@@ -45,8 +50,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     chatId,
     contentIds: targetContentIds
   });
-
-  return DeleteChatRecordResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

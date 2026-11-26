@@ -1,3 +1,4 @@
+import { tryStartChatGenerationLease } from '@fastgpt/service/core/chat/generationLease';
 import handler from '@/pages/api/v2/chat/stop';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
@@ -12,12 +13,12 @@ import type {
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import { setAgentRuntimeStop } from '@fastgpt/service/core/chat/stop';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/workflowStatus', () => ({
+vi.mock('@fastgpt/service/core/chat/stop', () => ({
   setAgentRuntimeStop: vi.fn()
 }));
 
@@ -62,7 +63,7 @@ describe('v2 chat stop skill edit target', () => {
     expect(res.data).toEqual({
       success: true,
       completed: false,
-      chatGenerateStatus: ChatGenerateStatusEnum.generating
+      chatGenerateStatus: ChatGenerateStatusEnum.done
     });
     expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
       sourceType: ChatSourceTypeEnum.skillEdit,
@@ -82,20 +83,29 @@ describe('v2 chat stop skill edit target', () => {
       chatGenerateStatus: ChatGenerateStatusEnum.generating
     });
 
-    const res = await Call<StopV2ChatParams, any, StopV2ChatResponse>(handler, {
-      auth: testUser,
-      body: {
-        skillId,
-        chatId
-      }
+    const release = await tryStartChatGenerationLease({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId
     });
+    try {
+      const res = await Call<StopV2ChatParams, any, StopV2ChatResponse>(handler, {
+        auth: testUser,
+        body: {
+          skillId,
+          chatId
+        }
+      });
 
-    expect(res.code).toBe(200);
-    expect(res.data).toEqual({
-      success: true,
-      completed: false,
-      chatGenerateStatus: ChatGenerateStatusEnum.generating
-    });
+      expect(res.code).toBe(200);
+      expect(res.data).toEqual({
+        success: true,
+        completed: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      });
+    } finally {
+      await release?.();
+    }
   });
 
   it('should reject missing target and avoid setting stop key', async () => {

@@ -1,3 +1,4 @@
+import type { StoreApi, UseBoundStore } from 'zustand';
 import { create, devtools, persist, immer } from '../common/zustand';
 
 type State = {
@@ -5,7 +6,7 @@ type State = {
   setCopyContent: (val?: string) => void;
 };
 
-export const useCommonStore = create<State>()(
+export const useCommonStore: UseBoundStore<StoreApi<State>> = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({

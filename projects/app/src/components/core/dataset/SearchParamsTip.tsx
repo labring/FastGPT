@@ -3,7 +3,7 @@ import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
 import { Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { hasEffectiveDatasetTagFilter } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
+import { isDatasetTagFilterOpen } from '@fastgpt/global/core/dataset/search/tagFilter';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
@@ -41,7 +41,7 @@ const SearchParamsTip = ({
   const hasReRankModel = true;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
-  const isTagFilterEnabled = hasEffectiveDatasetTagFilter(collectionFilterMatch);
+  const isTagFilterEnabled = isDatasetTagFilterOpen(collectionFilterMatch);
   const searchModeLabel = {
     [DatasetSearchModeEnum.embedding]: t('common:core.dataset.search.mode.embedding'),
     [DatasetSearchModeEnum.fullTextRecall]: t('common:core.dataset.search.mode.fullTextRecall'),

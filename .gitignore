@@ -16,13 +16,18 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
+.env
 .env*.local
+.env.*
+!.env.example
+!.env.template
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
+**/.tsc-out
 next-env.d.ts
 platform.json
 testApi/
@@ -44,13 +49,12 @@ pro/admin/worker/
 .antigravitycli
 .chrome-user-data
 
-# content_benchmark local secrets and generated artifacts
-/pro/llm_benchmark/content_benchmark/.env.local
-/pro/llm_benchmark/content_benchmark/.env.*.local
-/pro/llm_benchmark/content_benchmark/eval-runs/
-/pro/llm_benchmark/content_benchmark/.cache/
 .gstack/
 .worktrees/
 
 .pi
 .claude/
+.zcodeignore
+projects/code-sandbox/src/isolated/fastgpt_js_launcher
+/tasks/
+AGENTS.override.md

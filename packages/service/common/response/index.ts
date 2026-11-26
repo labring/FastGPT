@@ -1,14 +1,28 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { isAxiosError } from 'axios';
+import { getSafeHttpErrorLog } from '../api/httpError';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  getErrorMessage,
+  isServerConfigError,
+  isUserConfigError,
+  UserError
+} from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
-import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import {
+  type ApiRequestInputParseError,
+  getZodError,
+  getZodParseErrorInputSource
+} from '../zod/requestParseError';
 import { markProfileError } from '../profiling';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import { translateApiMessage } from '../i18n/request';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -40,6 +54,10 @@ function resolveHttpStatusForApiError(
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
 
+  if (isServerConfigError(error)) {
+    return 500;
+  }
+
   if (isUserConfigError(error)) {
     return 400;
   }
@@ -54,11 +72,6 @@ function resolveHttpStatusForApiError(
     processedError.httpStatus <= 599
   ) {
     return processedError.httpStatus;
-  }
-
-  // packages/global/common/error/code/s3.ts：510000 段为上传校验类客户端错误
-  if (typeof bc === 'number' && bc >= 510000 && bc < 511000) {
-    return 400;
   }
 
   const raw = typeof error === 'string' ? error : error?.message;
@@ -96,7 +109,16 @@ export function processError(params: {
   const { error, url, defaultCode = 500 } = params;
   let zodError;
 
-  const errResponseKey = typeof error === 'string' ? error : error?.message;
+  // 服务间响应的 message 可能已经翻译；只有业务码与登记项同时匹配才按 statusText 识别。
+  const errResponseKey =
+    typeof error?.statusText === 'string' &&
+    typeof error.code === 'number' &&
+    Object.hasOwn(ERROR_RESPONSE, error.statusText) &&
+    ERROR_RESPONSE[error.statusText]?.code === error.code
+      ? error.statusText
+      : typeof error === 'string'
+        ? error
+        : error?.message;
 
   // 1. 处理特定的业务错误（ERROR_RESPONSE）
   if (ERROR_RESPONSE[errResponseKey]) {
@@ -105,6 +127,11 @@ export function processError(params: {
       error instanceof UserError && error.displayMessage
         ? replaceSensitiveText(error.displayMessage)
         : ERROR_RESPONSE[errResponseKey].message;
+    // 只允许已知的生成冲突错误携带恢复信息，其他业务错误继续使用固定映射，避免透传任意数据。
+    const data =
+      error instanceof ChatGeneratingConflictError
+        ? error.data
+        : ERROR_RESPONSE[errResponseKey].data;
 
     // 记录业务侧错误日志
     logger.info('API response error', {
@@ -115,37 +142,70 @@ export function processError(params: {
       data: ERROR_RESPONSE[errResponseKey].data
     });
 
+    // 优先尊重 ServerConfigError(500)、UserConfigError(400) 与 ChatGeneratingConflictError(409)，
+    // 其次使用登记的 HTTP 状态码；若扩展条目缺失有效值，则保留调用方显式传入的 4xx defaultCode，避免被误覆盖为 500。
+    const configuredHttpStatus = ERROR_RESPONSE[errResponseKey].httpStatus;
+    const resolvedHttpStatus = (() => {
+      if (isServerConfigError(error)) {
+        return 500;
+      }
+      if (isUserConfigError(error)) {
+        return 400;
+      }
+      if (error instanceof ChatGeneratingConflictError) {
+        return 409;
+      }
+      if (
+        typeof configuredHttpStatus === 'number' &&
+        configuredHttpStatus >= 400 &&
+        configuredHttpStatus <= 599
+      ) {
+        return configuredHttpStatus;
+      }
+      if (typeof defaultCode === 'number' && defaultCode >= 400 && defaultCode <= 499) {
+        return defaultCode;
+      }
+      return 500;
+    })();
+
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message,
-      data: ERROR_RESPONSE[errResponseKey].data,
-      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
+      data,
+      httpStatus: resolvedHttpStatus,
       shouldClearCookie
     };
   }
 
   // 2. 提取通用错误消息
   // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
-  let msg = getErrorMessage(error, '请求错误');
+  let msg = getErrorMessage(error, i18nT('common:api_error.request_failed'));
   if (typeof error !== 'string' && proxyError[error?.code]) {
-    msg = '网络连接异常';
+    msg = i18nT('common:api_error.network_error');
   }
 
   // 3. 根据错误类型记录不同级别的日志
-  if (isUserConfigError(error)) {
+  // ServerConfigError 继承自 UserError，必须先于 UserError 匹配，保留 5xx 告警日志。
+  if (isServerConfigError(error)) {
+    msg = error.displayMessage || msg;
+    logger.error('System unexpected error', { url, message: msg, error });
+  } else if (isUserConfigError(error)) {
     msg = typeof error.displayMessage === 'string' ? error.displayMessage || msg : msg;
   } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
-  } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+  } else if (getZodError(error)) {
     zodError = parseZodErrorMessage(error);
 
-    if (!(error instanceof ApiRequestInputParseError)) {
+    // Next/Turbopack 的多个 bundle 可能持有不同类实例，沿用请求错误的稳定标识。
+    if (!getZodParseErrorInputSource(error)) {
       logger.error('Zod validation error', { url, data: zodError, error });
     }
 
     msg = error.message;
+  } else if (isAxiosError(error)) {
+    logger.error('System unexpected error', getSafeHttpErrorLog(error));
   } else {
     logger.error('System unexpected error', { url, message: msg, error });
   }
@@ -189,7 +249,7 @@ export const jsonRes = <T = any>(
     res.status(httpStatus).json({
       code: processedError.code,
       statusText: processedError.statusText,
-      message: message || processedError.message,
+      message: translateApiMessage(message || processedError.message, res),
       data: processedError.data !== undefined ? processedError.data : null,
       zodError: processedError.zodError,
       errorType: error instanceof UserError ? 'UserError' : undefined
@@ -202,13 +262,13 @@ export const jsonRes = <T = any>(
   res.status(code).json({
     code,
     statusText: '',
-    message: replaceSensitiveText(message),
+    message: translateApiMessage(replaceSensitiveText(message), res),
     data: data !== undefined ? data : null
   });
 };
 
 export const sseErrRes = (res: NodeHttpResponse, error: any) => {
-  const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+  const { event, data, shouldClearCookie } = getSseErrorResponse(error, res);
   if (shouldClearCookie) {
     clearCookie(res);
   }
@@ -220,7 +280,8 @@ export const sseErrRes = (res: NodeHttpResponse, error: any) => {
 };
 
 export const getSseErrorResponse = (
-  error: any
+  error: any,
+  res?: NodeHttpResponse
 ): {
   event: SseResponseEventEnum.error;
   data: string;
@@ -231,20 +292,28 @@ export const getSseErrorResponse = (
   // 只影响观测口径，不改变响应内容。
   markProfileError(error);
 
-  const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
+  const errorResponse = ERROR_RESPONSE[processedError.statusText];
 
-  if (ERROR_RESPONSE[errResponseKey]) {
+  if (errorResponse) {
+    // SSE 建连后 HTTP 响应头固定为 200，在 error 帧中显式携带等价 httpStatus，
+    // 保持与 v1/v2 Chat OpenAPI 示例兼容并方便客户端区分流内 4xx/5xx 语义。
     return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify({ ...ERROR_RESPONSE[errResponseKey], message: processedError.message }),
+      data: JSON.stringify({
+        code: errorResponse.code,
+        statusText: errorResponse.statusText,
+        message: translateApiMessage(processedError.message, res),
+        data: processedError.data,
+        httpStatus: processedError.httpStatus
+      }),
       shouldClearCookie: processedError.shouldClearCookie
     };
   }
 
   return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: processedError.message }),
+    data: JSON.stringify({ message: translateApiMessage(processedError.message, res) }),
     shouldClearCookie: processedError.shouldClearCookie
   };
 };

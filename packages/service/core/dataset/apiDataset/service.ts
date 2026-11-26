@@ -8,7 +8,8 @@ import {
   createApiFileCollectionsBatch,
   bulkInsertFolderCollections,
   bulkMoveCollectionsParent,
-  type BulkMoveCollectionParentItem
+  type BulkMoveCollectionParentItem,
+  type DatasetModelAuthContext
 } from '../collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '../collection/schema';
@@ -16,6 +17,7 @@ import { getApiDatasetRequest } from './index';
 import { buildApiFileRecords, buildApiFileTree, toApiFileDirId, type ApiFileRecord } from './tree';
 import {
   buildApiFileParentUpdates,
+  resolveApiDatasetProvider,
   resolveApiFileRecordParent,
   planLegacyApiFileFolders,
   usesDingtalkDataset,
@@ -111,6 +113,7 @@ export const createApiDatasetCollection = async ({
   apiFiles,
   authorizeChanges,
   customPdfParse,
+  modelAuthContext,
   teamId,
   tmbId,
   dataset,
@@ -124,6 +127,7 @@ export const createApiDatasetCollection = async ({
   Pick<ApiCreateDatasetCollectionParams, 'inheritPermission'> & {
     /** HTTP 调用方必须传入实际变更计划鉴权；worker 等可信内部调用不经过用户鉴权。 */
     authorizeChanges?: (changes: ApiFileImportChanges) => Promise<void>;
+    modelAuthContext?: DatasetModelAuthContext;
     teamId: string;
     tmbId: string;
     /** 仅供 V1 内部调用指定落位，V2 HTTP 入参不开放此字段。 */
@@ -132,11 +136,7 @@ export const createApiDatasetCollection = async ({
       permission: DatasetPermission;
     };
   }): Promise<CreateApiCollectionV2ResponseType> => {
-  const startId =
-    dataset.apiDatasetServer?.apiServer?.basePath ||
-    dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken ||
-    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
+  const startId = resolveApiDatasetProvider(dataset.apiDatasetServer)?.basePath;
 
   const request = await getApiDatasetRequest(dataset.apiDatasetServer);
 
@@ -433,6 +433,7 @@ export const createApiDatasetCollection = async ({
               type: DatasetCollectionTypeEnum.apiFile,
               customPdfParse
             },
+            modelAuthContext,
             session
           });
         },

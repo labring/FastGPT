@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { z } from 'zod';
 import { LOGO_ICON } from '../../../../common/system/constants';
 import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
@@ -8,12 +9,10 @@ import {
   AgentSkillListItemSchema,
   AgentSkillSourceSchema,
   AgentSkillTypeSchema,
-  ExtractedSkillPackageSchema,
-  SandboxProviderStatusSchema,
-  SkillPackageSchema,
-  ZipEntryInfoSchema
+  SkillPackageSchema
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
+import { InheritPermissionSchema } from '../../../../support/permission/inheritPermission';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
@@ -32,7 +31,6 @@ import {
 } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
-const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
 const NullableParentIdSchema = ParentIdSchema.meta({
   description: '父级目录 ID'
 });
@@ -123,7 +121,8 @@ export const CreateSkillBodySchema = z.object({
   name: z.string().trim().min(1).describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
-  avatar: z.string().optional().describe('技能头像')
+  avatar: z.string().optional().describe('技能头像'),
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillBody = z.infer<typeof CreateSkillBodySchema>;
 
@@ -346,31 +345,6 @@ export const SkillRuntimeInitEventSchema = z
   .describe('Skill Edit runtime init SSE sandboxStatus event');
 export type SkillRuntimeInitEvent = z.infer<typeof SkillRuntimeInitEventSchema>;
 
-export const GetSandboxInfoQuerySchema = z.object({
-  sandboxId: SandboxInstanceKeySchema
-});
-export type GetSandboxInfoQuery = z.infer<typeof GetSandboxInfoQuerySchema>;
-
-export const GetSandboxInfoResponseSchema = z.object({
-  sandboxId: SandboxInstanceKeySchema,
-  skillId: z.string(),
-  type: z.string(),
-  status: SandboxProviderStatusSchema.pick({
-    state: true,
-    message: true
-  }),
-  createTime: z.string()
-});
-export type GetSandboxInfoResponse = z.infer<typeof GetSandboxInfoResponseSchema>;
-
-export const DeleteSandboxBodySchema = z.object({
-  sandboxId: SandboxInstanceKeySchema
-});
-export type DeleteSandboxBody = z.infer<typeof DeleteSandboxBodySchema>;
-
-export const DeleteSandboxResponseSchema = z.void();
-export type DeleteSandboxResponse = z.infer<typeof DeleteSandboxResponseSchema>;
-
 export const SaveDeploySkillBodySchema = z.object({
   skillId: IdSchema,
   versionName: z.string().optional(),
@@ -387,16 +361,12 @@ export const SaveDeploySkillResponseSchema = z.object({
 });
 export type SaveDeploySkillResponse = z.infer<typeof SaveDeploySkillResponseSchema>;
 
-export { ExtractedSkillPackageSchema, SkillPackageSchema, ZipEntryInfoSchema };
-export type {
-  ExtractedSkillPackage,
-  SkillPackageType,
-  ZipEntryInfo
-} from '../../../../core/ai/skill/type';
+export { SkillPackageSchema };
+export type { SkillPackageType } from '../../../../core/ai/skill/type';
 
 export const SkillDebugChatBodySchema = z.object({
   skillId: IdSchema,
-  chatId: z.string().min(1),
+  chatId: ChatIdSchema.min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
   modelId: z.string().meta({ description: '调试使用的模型 ID' }),
@@ -407,7 +377,8 @@ export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
 export const CreateSkillFolderBodySchema = z.object({
   parentId: NullableParentIdSchema,
   name: z.string(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillFolderBody = z.infer<typeof CreateSkillFolderBodySchema>;
 

@@ -1,59 +1,80 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { buildSandboxClientQueryFromChatSource } from '../../../ai/sandbox/interface/runtime';
-import { ensureAppSandboxRuntimeReady } from '../../../ai/sandbox/application/runtime/upgrade';
+import {
+  workflowSseEvent,
+  type WorkflowResponseType
+} from '@fastgpt/global/core/workflow/runtime/sse';
 import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getWorkflowContext } from '../context';
+import { markChatSandboxEnabled } from '../../../chat/sandbox/service';
 
-/**
- * 编排 Workflow AI 节点的虚拟机准备流程，并推送准备、升级和就绪状态。
- *
- * 进入即报告准备状态，App source 先收敛 provider/image 配置，再由节点准备运行环境。
- * prepareRuntime 必须覆盖节点需要的文件、Skill 和 entrypoint 初始化；成功后才报告就绪，
- * 任何阶段失败都向上传递错误，不误报就绪。其他 source 的生命周期仍由节点负责。
- */
-export async function ensureWorkflowSandboxReadyForUse<T>({
-  workflowStreamResponse,
-  sourceType,
-  sourceId,
-  userId,
-  chatId,
-  prepareRuntime
+export type WorkflowSandboxPhase = 'lazyInit' | 'upgrading' | 'ready';
+
+/** 构造带连续重复状态合并与升级恢复语义的 Workflow Sandbox 状态推送器，供主链与 Pro Builder 共用。 */
+export function createWorkflowSandboxPhaseReporter({
+  sandboxId,
+  workflowStreamResponse
 }: {
+  sandboxId: string;
   workflowStreamResponse?: WorkflowResponseType;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  chatId: string;
-  prepareRuntime: () => Promise<T>;
-}): Promise<T> {
-  const sandboxId = getRunningSandboxId({ sourceType, sourceId, userId });
-  let reportedPhase: 'lazyInit' | 'upgrading' | 'ready' | undefined;
+}) {
+  let reportedPhase: WorkflowSandboxPhase | undefined;
 
-  /** 合并连续重复状态，升级完成后允许恢复准备状态。 */
-  const reportSandboxPhase = (phase: 'lazyInit' | 'upgrading' | 'ready') => {
+  const report = (phase: WorkflowSandboxPhase) => {
     if (reportedPhase === phase) return;
     reportedPhase = phase;
     workflowStreamResponse?.(workflowSseEvent.sandboxStatus({ sandboxId, phase }));
   };
 
-  // 配置收敛可能等待激活或升级，不能等它完成后才展示准备状态。
-  reportSandboxPhase('lazyInit');
-  if (sourceType === ChatSourceTypeEnum.app) {
-    const query = buildSandboxClientQueryFromChatSource({
-      sourceType,
-      sourceId,
-      userId,
-      chatId
-    });
-    await ensureAppSandboxRuntimeReady({
-      query,
-      onUpgrade: () => reportSandboxPhase('upgrading')
-    });
-    reportSandboxPhase('lazyInit');
-  }
+  return {
+    report,
+    onUpgrade: () => report('upgrading'),
+    onUpgradeComplete: () => {
+      if (reportedPhase === 'upgrading') {
+        report('lazyInit');
+      }
+    }
+  };
+}
 
-  const runtime = await prepareRuntime();
-  reportSandboxPhase('ready');
+/**
+ * 编排 Workflow AI 节点的虚拟机准备流程，并推送准备、升级和就绪状态。
+ *
+ * 进入即报告 `lazyInit`，并向 `prepareRuntime` 注入 `onUpgrade` 回调在单次 `getSandboxClient`
+ * 调用内推送镜像升级状态（升级结束后切回 `lazyInit` 继续准备文件、Skill 与 entrypoint）；
+ * 成功后先持久化根会话标记再报告 `ready`，任何阶段失败都向上传递错误，不误报就绪。
+ */
+export async function ensureWorkflowSandboxReadyForUse<T>({
+  sourceType,
+  sourceId,
+  userId,
+  chatId,
+  teamId,
+  prepareRuntime
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId: string;
+  chatId: string;
+  teamId: string;
+  prepareRuntime: (options: { onUpgrade: () => void; onUpgradeComplete: () => void }) => Promise<T>;
+}): Promise<T> {
+  const { workflowStreamResponse } = getWorkflowContext();
+  const sandboxId = getRunningSandboxId({ sourceType, sourceId, userId });
+  const reporter = createWorkflowSandboxPhaseReporter({
+    sandboxId,
+    workflowStreamResponse
+  });
+
+  reporter.report('lazyInit');
+  const runtime = await prepareRuntime({
+    onUpgrade: reporter.onUpgrade,
+    onUpgradeComplete: reporter.onUpgradeComplete
+  });
+
+  // ready 事件会触发独立的文件/ticket 请求，必须先让鉴权读取到根会话的成功标记。
+  if (sourceType === ChatSourceTypeEnum.app) {
+    await markChatSandboxEnabled({ sourceType, sourceId, chatId, teamId });
+  }
+  reporter.report('ready');
   return runtime;
 }

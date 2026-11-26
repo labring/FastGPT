@@ -1,26 +1,36 @@
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
+import { createTarZstStream, type TarEntry } from '@fastgpt/service/common/file/tarZst';
+
+const encodeTarZst = (entries: TarEntry[]) => buffer(createTarZstStream(entries));
 
 const mocks = vi.hoisted(() => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   mongoSkillFindOne: vi.fn(),
   mongoVersionFindOne: vi.fn(),
-  validateDeployableSkillWorkspacePackage: vi.fn(),
-  validateZipStructure: vi.fn(),
-  connectToSandbox: vi.fn(),
+  packSandboxDirectory: vi.fn(),
+  uploadSkillPackageStream: vi.fn(),
+  deleteSkillPackage: vi.fn(),
+  connectToOpenSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
-  getReadySandboxInfo: vi.fn(),
   getSandboxClient: vi.fn(),
-  startSandboxRuntimeUpgradeArchive: vi.fn(),
   findSandboxInstanceBySandboxIdAndSource: vi.fn(),
-  findSandboxResourcesBySource: vi.fn(),
+  findSandboxInstanceBySource: vi.fn(),
+  hasPendingLegacySandboxInstance: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
-  checkTeamSandboxPermission: vi.fn(),
+  assertSandboxAvailable: vi.fn(),
   prepareSandbox: vi.fn(),
   preparePackageMirrors: vi.fn(),
   prepareWorkDirectory: vi.fn(),
   emptyWorkDirectory: vi.fn(),
-  deploySkillPackage: vi.fn()
+  deploySkillPackage: vi.fn(),
+  withSandboxLease: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
@@ -31,10 +41,22 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
   MongoAgentSkillsVersion: { findOne: mocks.mongoVersionFindOne }
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
-  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
-  validateDeployableSkillWorkspacePackage: mocks.validateDeployableSkillWorkspacePackage,
-  validateZipStructure: mocks.validateZipStructure
+vi.mock('@fastgpt/service/core/ai/skill/package/constants', () => ({
+  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n'
+}));
+
+vi.mock('@fastgpt/service/core/ai/skill/package/storage', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/skill/package/storage')>();
+  return {
+    ...actual,
+    uploadSkillPackageStream: mocks.uploadSkillPackageStream,
+    deleteSkillPackage: mocks.deleteSkillPackage
+  };
+});
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/ideAgent', () => ({
+  packSandboxDirectory: mocks.packSandboxDirectory
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
@@ -42,11 +64,15 @@ vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
   getEditDebugSandboxId: (skillId: string) => `edit-debug-${skillId}`
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () => ({
-  getSandboxProviderConfig: () => ({ provider: 'opensandbox' }),
-  validateSandboxConfig: vi.fn(),
-  getSandboxAdapterConfig: vi.fn(({ createConfig }) => ({
-    providerConfig: { provider: 'opensandbox' },
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/config', () => ({
+  getOpenSandboxRuntimeConfig: vi.fn(({ createConfig }) => ({
+    clientConfig: {
+      baseUrl: 'http://opensandbox.local',
+      apiKey: 'key',
+      runtime: 'kubernetes',
+      useServerProxy: true
+    },
+    image: { repository: 'runtime-image', tag: 'v2' },
     createConfig: {
       image: { repository: 'runtime-image', tag: 'v2' },
       ...createConfig
@@ -54,33 +80,28 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () =>
   }))
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
-  getSandboxRuntimeProfile: () => ({
-    provider: 'opensandbox',
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
+  getSandboxStaticRuntimePaths: () => ({
     workDirectory: '/workspace',
-    skillsRootPath: '/workspace/skills'
+    homeDirectory: '/home/sandbox',
+    skillsRootPath: '/workspace/skills',
+    builtinSkillsRootPath: '/var/lib/fastgpt-runtime/skills'
   })
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/lifecycle', () => ({
-  connectToSandbox: mocks.connectToSandbox,
-  disconnectSandbox: mocks.disconnectSandbox,
-  getReadySandboxInfo: mocks.getReadySandboxInfo
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/opensandbox', () => ({
+  connectToOpenSandbox: mocks.connectToOpenSandbox,
+  disconnectSandbox: mocks.disconnectSandbox
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
-  return {
-    startSandboxRuntimeUpgradeArchive: mocks.startSandboxRuntimeUpgradeArchive
-  };
-});
-
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
   findSandboxInstanceBySandboxIdAndSource: mocks.findSandboxInstanceBySandboxIdAndSource,
-  findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
+  findSandboxInstanceBySource: mocks.findSandboxInstanceBySource,
+  hasPendingLegacySandboxInstance: mocks.hasPendingLegacySandboxInstance,
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
@@ -89,8 +110,8 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
   getLogger: () => mocks.logger
 }));
 
-vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamSandboxPermission: mocks.checkTeamSandboxPermission
+vi.mock('@fastgpt/service/core/ai/sandbox/application/availability', () => ({
+  assertSandboxAvailable: mocks.assertSandboxAvailable
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/prepare', () => ({
@@ -104,19 +125,16 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/skill/prepare', ()
   deploySkillPackage: mocks.deploySkillPackage
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    AGENT_SANDBOX_STORAGE_SIZE_GI: 1
-  }
+vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
+  withSandboxLease: mocks.withSandboxLease
 }));
 
 import {
   getRunningSkillEditSandbox,
   getSkillEditRuntimeContext,
-  getSkillEditRuntimeStatus,
   initSkillEditRuntimeSandbox,
-  packageSkillInSandbox,
-  triggerSkillEditRuntimeUpgrade,
+  packageAndUploadSkillTarZstInSandbox,
+  streamSkillEditWorkspaceZip,
   type SkillEditRuntimeContext
 } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
 
@@ -136,165 +154,276 @@ const createResource = (status = 'running', overrides: Record<string, unknown> =
 
 const createContext = (
   params: {
-    runtimeInstance?: any;
+    existingInstance?: any;
   } = {}
-): SkillEditRuntimeContext => {
-  const { runtimeInstance } = params;
-  return {
-    skillId: 'skill-1',
-    teamId: 'team-1',
-    providerConfig: { provider: 'opensandbox' },
-    runtimeProfile: {
-      provider: 'opensandbox',
-      workDirectory: '/workspace',
-      skillsRootPath: '/workspace/skills'
-    },
-    createConfig: { image: { repository: 'runtime-image', tag: 'v2' } },
-    runtimeImage: { repository: 'runtime-image', tag: 'v2' },
-    currentVersion: { _id: 'version-1', skillId: 'skill-1', storageKey: 'storage-key' },
-    sessionId: 'edit-debug-skill-1',
-    targetVersionId: 'version-1',
-    runtimeUpgradeTarget: {
-      sandboxId: 'edit-debug-skill-1',
-      targetProvider: 'opensandbox',
-      targetImage: { repository: 'runtime-image', tag: 'v2' },
-      statusInstance: runtimeInstance,
-      upgradeInstance: runtimeInstance
-    }
-  } as any;
-};
-
-const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
-  execute: vi.fn(async (command: string) => {
-    if (command === 'printf "%s" "$HOME"') {
-      return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
-    }
-    if (command.includes("awk '{s+=$7}")) {
-      return { stdout: '12', stderr: '', exitCode: 0 };
-    }
-    return { stdout: '', stderr: '', exitCode: 0 };
-  }),
-  getFileInfo: vi.fn(
-    async (paths: string[]) =>
-      new Map(paths.map((path) => [path, { path, isDirectory: true, isFile: false }]))
-  ),
-  createDirectories: vi.fn(async () => undefined),
-  deleteFiles: vi.fn(async (paths: string[]) =>
-    paths.map((path) => ({ path, success: true, error: null }))
-  ),
-  readFiles: vi.fn(async (paths: string[]) => {
-    if (paths[0]?.endsWith('.gitignore')) return [];
-    return [
-      {
-        path: paths[0],
-        content: readResult?.content ?? new Uint8Array([1, 2, 3]),
-        error: readResult?.error ?? null
-      }
-    ];
-  })
+): SkillEditRuntimeContext => ({
+  skillId: 'skill-1',
+  teamId: 'team-1',
+  createConfig: { image: { repository: 'runtime-image', tag: 'v2' } },
+  runtimeImage: { repository: 'runtime-image', tag: 'v2' },
+  currentVersion: { _id: 'version-1', skillId: 'skill-1', storageKey: 'storage-key' } as any,
+  sessionId: 'edit-debug-skill-1',
+  targetVersionId: 'version-1',
+  existingInstance: params.existingInstance ?? null
 });
 
-describe('packageSkillInSandbox', () => {
+const createPackageSandbox = () => ({
+  readFiles: vi.fn(async () => [{ path: '/workspace/.gitignore', content: '*.tmp\n', error: null }])
+});
+
+describe('skillEdit streaming packaging', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.validateDeployableSkillWorkspacePackage.mockResolvedValue({ valid: true, files: [] });
-    mocks.validateZipStructure.mockResolvedValue({ valid: true, hasSkillMd: true, files: [] });
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
     mocks.disconnectSandbox.mockResolvedValue(undefined);
+    mocks.deleteSkillPackage.mockResolvedValue(undefined);
+    mocks.withSandboxLease.mockImplementation(async ({ fn }) =>
+      fn({ signal: new AbortController().signal, assertValid: vi.fn() })
+    );
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('packages, validates and removes the temporary zip', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-17T00:00:00.000Z'));
+  it('streams POST /archive/pack directly to S3, validates workspace, and extracts runtimeSkills', async () => {
     const sandbox = createPackageSandbox();
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+    mocks.connectToOpenSandbox.mockResolvedValueOnce(sandbox);
 
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
-      Buffer.from([1, 2, 3])
-    );
-
-    expect(mocks.validateDeployableSkillWorkspacePackage).toHaveBeenCalledWith(
-      Buffer.from([1, 2, 3]),
-      expect.any(Object)
-    );
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
+    const tarZstBuffer = await encodeTarZst([
+      { path: 'skills/', type: 'directory', mode: 0o755 },
+      { path: 'skills/demo/', type: 'directory', mode: 0o755 },
+      {
+        path: 'skills/demo/SKILL.md',
+        type: 'file',
+        mode: 0o644,
+        content: Buffer.from('---\nname: demo\ndescription: Demo skill\n---\n')
+      },
+      {
+        path: 'skills/demo/data.bin',
+        type: 'file',
+        mode: 0o644,
+        content: Buffer.alloc(64 * 1024, 9)
+      }
     ]);
-    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("awk '{s+=$7}"), {
-      workingDirectory: '/workspace'
+
+    mocks.packSandboxDirectory.mockResolvedValueOnce(Readable.from([tarZstBuffer]));
+    let uploadedKeyStreamBuffer: Buffer | undefined;
+    mocks.uploadSkillPackageStream.mockImplementationOnce(async ({ packageStream }) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of packageStream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      uploadedKeyStreamBuffer = Buffer.concat(chunks);
+      return { key: 'agent-skills/team-1/skill-1/version-1.tar.zst' };
     });
-    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringMatching(/^zip -r -y /), {
-      workingDirectory: '/workspace'
+
+    const result = await packageAndUploadSkillTarZstInSandbox({
+      teamId: 'team-1',
+      skillId: 'skill-1',
+      packageObjectId: 'version-1',
+      sandboxId: 'sandbox-1',
+      instanceId: 'remote-osb-1'
     });
+
+    expect(mocks.connectToOpenSandbox).toHaveBeenCalledWith({
+      sandboxId: 'sandbox-1',
+      remoteSandboxId: 'remote-osb-1'
+    });
+    expect(mocks.packSandboxDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandbox,
+        targetDirectory: '/workspace',
+        skipSymlinks: true,
+        excludePatterns: expect.arrayContaining(['.fastgpt/', '*.tmp', 'node_modules/'])
+      })
+    );
+    expect(uploadedKeyStreamBuffer).toEqual(tarZstBuffer);
+    expect(result).toEqual({
+      storageInfo: { key: 'agent-skills/team-1/skill-1/version-1.tar.zst' },
+      runtimeSkills: [
+        {
+          name: 'demo',
+          description: 'Demo skill',
+          path: 'skills/demo/SKILL.md'
+        }
+      ]
+    });
+    expect(mocks.deleteSkillPackage).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('uses basic zip validation for export', async () => {
+  it('cleans up uploaded uncommitted S3 object when no SKILL.md exists at any depth', async () => {
     const sandbox = createPackageSandbox();
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+    mocks.connectToOpenSandbox.mockResolvedValueOnce(sandbox);
 
-    await packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' });
+    const invalidTarZst = await encodeTarZst([
+      { path: 'skills/', type: 'directory', mode: 0o755 },
+      { path: 'skills/no-skill-md/', type: 'directory', mode: 0o755 },
+      {
+        path: 'skills/no-skill-md/README.md',
+        type: 'file',
+        mode: 0o644,
+        content: Buffer.from('x')
+      }
+    ]);
 
-    expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-  });
-
-  it('propagates read failures and still disconnects', async () => {
-    const sandbox = createPackageSandbox({
-      content: new Uint8Array(),
-      error: new Error('read failed')
+    mocks.packSandboxDirectory.mockResolvedValueOnce(Readable.from([invalidTarZst]));
+    mocks.uploadSkillPackageStream.mockImplementationOnce(async ({ packageStream }) => {
+      for await (const _chunk of packageStream) {
+        // consume stream
+      }
+      return { key: 'agent-skills/team-1/skill-1/orphan-v.tar.zst' };
     });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow('read failed');
+    const err = await packageAndUploadSkillTarZstInSandbox({
+      teamId: 'team-1',
+      skillId: 'skill-1',
+      packageObjectId: 'orphan-v',
+      sandboxId: 'sandbox-1'
+    }).catch((error) => error);
+    expect(err).toBeInstanceOf(UserError);
+    expect(err.message).toBe(SkillErrEnum.missingSkillMd);
+    expect(mocks.logger.error).not.toHaveBeenCalled();
+    expect(mocks.deleteSkillPackage).toHaveBeenCalledWith(
+      'agent-skills/team-1/skill-1/orphan-v.tar.zst'
+    );
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
-});
 
-describe('skill edit runtime status', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('throws archiveEmpty as UserError when container pack returns 204', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToOpenSandbox.mockResolvedValueOnce(sandbox);
+    mocks.packSandboxDirectory.mockResolvedValueOnce(null);
+
+    const err = await packageAndUploadSkillTarZstInSandbox({
+      teamId: 'team-1',
+      skillId: 'skill-1',
+      packageObjectId: 'empty-v',
+      sandboxId: 'sandbox-1'
+    }).catch((error) => error);
+
+    expect(err).toBeInstanceOf(UserError);
+    expect(err.message).toBe(SkillErrEnum.archiveEmpty);
+    expect(mocks.logger.error).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('uses the shared runtime target for status checks and upgrades', async () => {
-    await expect(
-      getSkillEditRuntimeStatus({ context: createContext({ runtimeInstance: createResource() }) })
-    ).resolves.toEqual({ status: 'readyToInit' });
+  it('rejects unexpected symlink entries during publish as defense-in-depth', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToOpenSandbox.mockResolvedValueOnce(sandbox);
 
-    const outdated = createResource('running', {
-      image: { repository: 'old-image', tag: 'v1' },
-      versionId: 'version-1'
-    });
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ runtimeInstance: outdated })
-      })
-    ).resolves.toEqual({ status: 'upgradeRequired' });
-    mocks.startSandboxRuntimeUpgradeArchive.mockResolvedValueOnce({
-      success: true,
-      archivingDoc: createResource('archiving')
+    const maliciousTarZst = await encodeTarZst([
+      { path: 'skills/', type: 'directory', mode: 0o755 },
+      { path: 'skills/demo/', type: 'directory', mode: 0o755 },
+      {
+        path: 'skills/demo/SKILL.md',
+        type: 'symlink',
+        linkname: '../../../etc/passwd',
+        mode: 0o777
+      }
+    ]);
+    mocks.packSandboxDirectory.mockResolvedValueOnce(Readable.from([maliciousTarZst]));
+    mocks.uploadSkillPackageStream.mockImplementationOnce(async ({ packageStream }) => {
+      for await (const _chunk of packageStream) {
+        // consume stream
+      }
+      return { key: 'agent-skills/team-1/skill-1/orphan-symlink.tar.zst' };
     });
 
-    await expect(
-      triggerSkillEditRuntimeUpgrade({
-        context: createContext({ runtimeInstance: outdated })
+    const err = await packageAndUploadSkillTarZstInSandbox({
+      teamId: 'team-1',
+      skillId: 'skill-1',
+      packageObjectId: 'orphan-symlink',
+      sandboxId: 'sandbox-1'
+    }).catch((error) => error);
+    expect(err).toBeInstanceOf(UserError);
+    expect(err.message).toBe(SkillErrEnum.archiveSymlinkNotAllowed);
+    expect(mocks.deleteSkillPackage).toHaveBeenCalledWith(
+      'agent-skills/team-1/skill-1/orphan-symlink.tar.zst'
+    );
+  });
+
+  it('exports full workspace without gitignore rules, without requiring SKILL.md, and skips symlinks', async () => {
+    const opensandbox = { readFiles: vi.fn() };
+    const runWithRecovery = vi.fn(async (fn: () => Promise<unknown>) => fn());
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
+      createResource('running', { teamId: 'team-1' })
+    );
+    mocks.getSandboxClient.mockResolvedValueOnce({
+      opensandbox,
+      runWithRecovery
+    });
+
+    const tarZstBuffer = await encodeTarZst([
+      { path: '.venv/', type: 'directory', mode: 0o755 },
+      { path: '.venv/bin/python', type: 'symlink', linkname: '/usr/bin/python3', mode: 0o777 },
+      { path: 'notes.txt', type: 'file', mode: 0o644, content: Buffer.from('hello') }
+    ]);
+    mocks.packSandboxDirectory.mockResolvedValueOnce(Readable.from([tarZstBuffer]));
+
+    const appended: string[] = [];
+    const { PassThrough } = await import('node:stream');
+    const outputStream = new PassThrough();
+    outputStream.resume();
+    let headersReady = false;
+    await streamSkillEditWorkspaceZip({
+      skillId: 'skill-1',
+      teamId: 'team-1',
+      outputStream,
+      createArchive: () => {
+        const archiveStream = new PassThrough();
+        return Object.assign(archiveStream, {
+          append: (src: Buffer | Readable, data: { name: string }) => {
+            appended.push(data.name);
+            if (!Buffer.isBuffer(src)) {
+              src.resume();
+            }
+          },
+          finalize: () => {
+            archiveStream.end();
+          }
+        });
+      },
+      onHeadersReady: () => {
+        headersReady = true;
+      }
+    });
+
+    expect(headersReady).toBe(true);
+    expect(opensandbox.readFiles).not.toHaveBeenCalled();
+    expect(mocks.packSandboxDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandbox: opensandbox,
+        targetDirectory: '/workspace',
+        excludePatterns: ['package.zip', '.fastgpt/'],
+        skipSymlinks: true
       })
-    ).resolves.toEqual({ status: 'upgrading' });
-    expect(mocks.startSandboxRuntimeUpgradeArchive).toHaveBeenCalledWith(outdated);
+    );
+    expect(appended).toEqual(['.venv/', 'notes.txt']);
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(opensandbox);
+  });
+
+  it('propagates pack HTTP errors and disconnects', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToOpenSandbox.mockResolvedValueOnce(sandbox);
+    mocks.packSandboxDirectory.mockRejectedValueOnce(new Error('read failed'));
+
+    await expect(
+      packageAndUploadSkillTarZstInSandbox({
+        teamId: 'team-1',
+        skillId: 'skill-1',
+        packageObjectId: 'v1',
+        sandboxId: 'sandbox-1'
+      })
+    ).rejects.toThrow('read failed');
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 });
 
 describe('skill edit runtime initialization', () => {
-  const provider = { status: { state: 'Running' } };
-  const client = { provider, delete: vi.fn(async () => undefined) };
+  const opensandbox = { status: { state: 'Running' } };
+  const client = { opensandbox, delete: vi.fn(async () => undefined) };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSandboxClient.mockResolvedValue(client);
-    mocks.getReadySandboxInfo.mockResolvedValue(undefined);
     mocks.prepareSandbox.mockResolvedValue(undefined);
     mocks.preparePackageMirrors.mockReturnValue({ step: 'mirrors' });
     mocks.prepareWorkDirectory.mockReturnValue({ step: 'workdir' });
@@ -302,13 +431,21 @@ describe('skill edit runtime initialization', () => {
     mocks.deploySkillPackage.mockReturnValue({ step: 'deploy' });
     mocks.updateSandboxInstanceRecordBySandboxId.mockResolvedValue(createResource());
     mocks.disconnectSandbox.mockResolvedValue(undefined);
+    const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
+    mocks.withSandboxLease.mockImplementation(async ({ fn }) => fn(lease));
   });
 
-  it('routes stopped runtime activation through the shared runtime client', async () => {
+  it('routes stopped runtime activation through shared client and reports upgrading progress on onUpgrade', async () => {
     const stopped = createResource('stopped');
+    const progressEvents: Array<{ sandboxId: string; phase: string }> = [];
+    mocks.getSandboxClient.mockImplementationOnce(async (_query, options) => {
+      options?.onUpgrade?.();
+      return client;
+    });
 
     await initSkillEditRuntimeSandbox({
-      context: createContext({ runtimeInstance: stopped })
+      context: createContext({ existingInstance: stopped }),
+      onProgress: (item) => progressEvents.push(item)
     });
 
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
@@ -319,10 +456,13 @@ describe('skill edit runtime initialization', () => {
         userId: ChatSourceTypeEnum.skillEdit,
         chatId: 'edit-debug'
       },
-      expect.objectContaining({ createConfig: expect.any(Object) })
+      expect.objectContaining({
+        createConfig: expect.any(Object),
+        onUpgrade: expect.any(Function)
+      })
     );
     expect(mocks.prepareSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ sandbox: provider, workDirectory: '/workspace' }),
+      expect.objectContaining({ sandbox: opensandbox, workDirectory: '/workspace' }),
       { step: 'mirrors' },
       { step: 'workdir' }
     );
@@ -332,16 +472,29 @@ describe('skill edit runtime initialization', () => {
         touchActive: true
       })
     );
+    expect(progressEvents).toEqual([
+      { sandboxId: 'edit-debug-skill-1', phase: 'creatingContainer' },
+      { sandboxId: 'edit-debug-skill-1', phase: 'ready' }
+    ]);
   });
 
   it('deploys the target package after runtime client restores an outdated record', async () => {
     const archived = createResource('archived', {
       image: { repository: 'old-image', tag: 'v1' },
-      versionId: 'old-version'
+      versionId: 'old-version',
+      storage: {
+        archive: {
+          objectKey: 'k',
+          generation: 'g',
+          format: 'tar.zst',
+          sizeBytes: 12,
+          archivedAt: new Date()
+        }
+      }
     });
 
     await initSkillEditRuntimeSandbox({
-      context: createContext({ runtimeInstance: archived })
+      context: createContext({ existingInstance: archived })
     });
 
     expect(mocks.updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
@@ -352,15 +505,31 @@ describe('skill edit runtime initialization', () => {
     );
   });
 
-  it('maps lifecycle transition contention to the runtime-upgrade user error', async () => {
-    const { SandboxLifecycleStateError } =
-      await import('@fastgpt/service/core/ai/sandbox/application/lifecycle/error');
-    mocks.getSandboxClient.mockRejectedValueOnce(new SandboxLifecycleStateError('archiving'));
+  it('skips redundant redeploy under withSandboxLease when concurrent init already deployed versionId', async () => {
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
+      createResource('running', { versionId: 'version-1' })
+    );
 
-    await expect(initSkillEditRuntimeSandbox({ context: createContext() })).rejects.toMatchObject({
-      message: 'runtimeUpgradeInProgress'
+    await initSkillEditRuntimeSandbox({
+      context: createContext()
     });
-    expect(mocks.updateSandboxInstanceRecordBySandboxId).not.toHaveBeenCalled();
+
+    expect(mocks.withSandboxLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: 'edit-debug-skill-1',
+        label: 'skill-edit:init:edit-debug-skill-1'
+      })
+    );
+    expect(mocks.emptyWorkDirectory).not.toHaveBeenCalled();
+    expect(mocks.deploySkillPackage).not.toHaveBeenCalled();
+    expect(mocks.prepareSandbox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandbox: opensandbox,
+        lease: expect.objectContaining({ assertValid: expect.any(Function) })
+      }),
+      { step: 'mirrors' },
+      { step: 'workdir' }
+    );
   });
 
   it('deletes only a newly created runtime when package preparation fails', async () => {
@@ -375,7 +544,7 @@ describe('skill edit runtime initialization', () => {
     mocks.prepareSandbox.mockRejectedValueOnce(new Error('deploy failed'));
     await expect(
       initSkillEditRuntimeSandbox({
-        context: createContext({ runtimeInstance: createResource('running') })
+        context: createContext({ existingInstance: createResource('running') })
       })
     ).rejects.toThrow('deploy failed');
     expect(client.delete).not.toHaveBeenCalled();
@@ -385,7 +554,7 @@ describe('skill edit runtime initialization', () => {
 describe('skill edit runtime context and read-only query', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
+    mocks.assertSandboxAvailable.mockResolvedValue(undefined);
     mocks.mongoSkillFindOne.mockResolvedValue({
       _id: 'skill-1',
       name: 'Test skill',
@@ -396,19 +565,42 @@ describe('skill edit runtime context and read-only query', () => {
       skillId: 'skill-1',
       storageKey: 'storage-key'
     });
-    mocks.findSandboxResourcesBySource.mockResolvedValue([]);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
+    mocks.hasPendingLegacySandboxInstance.mockResolvedValue(false);
   });
 
   it('checks permission before reading skill runtime context', async () => {
-    mocks.checkTeamSandboxPermission.mockRejectedValueOnce(new Error('denied'));
+    mocks.assertSandboxAvailable.mockRejectedValueOnce(new Error('denied'));
 
     await expect(
       getSkillEditRuntimeContext({ skillId: 'skill-1', teamId: 'team-1' })
-    ).rejects.toThrow();
+    ).rejects.toThrow('denied');
     expect(mocks.mongoSkillFindOne).not.toHaveBeenCalled();
   });
 
-  it('returns only a running sandbox owned by the requested team', async () => {
+  it('throws 409 migration in progress error when v3 is empty and v2 has a pending legacy edit instance', async () => {
+    mocks.findSandboxInstanceBySource.mockResolvedValueOnce(null);
+    mocks.hasPendingLegacySandboxInstance.mockResolvedValueOnce(true);
+
+    await expect(
+      getSkillEditRuntimeContext({ skillId: 'skill-1', teamId: 'team-1' })
+    ).rejects.toThrow(SandboxErrEnum.agentSandboxMigrationInProgress);
+    expect(mocks.hasPendingLegacySandboxInstance).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'skill-1'
+    });
+
+    mocks.findSandboxInstanceBySource.mockResolvedValueOnce(null);
+    mocks.hasPendingLegacySandboxInstance.mockResolvedValueOnce(false);
+    await expect(
+      getSkillEditRuntimeContext({ skillId: 'skill-1', teamId: 'team-1' })
+    ).resolves.toMatchObject({
+      skillId: 'skill-1',
+      existingInstance: null
+    });
+  });
+
+  it('returns only a running v3 instance owned by the requested team and checks v2 gate when missing', async () => {
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
       createResource('running', { teamId: 'team-1' })
     );
@@ -416,10 +608,31 @@ describe('skill edit runtime context and read-only query', () => {
     await expect(
       getRunningSkillEditSandbox({ skillId: 'skill-1', teamId: 'team-1' })
     ).resolves.toMatchObject({ sandboxId: 'edit-debug-skill-1' });
+    expect(mocks.hasPendingLegacySandboxInstance).not.toHaveBeenCalled();
+
+    const queryArg = mocks.findSandboxInstanceBySandboxIdAndSource.mock.calls[0][0];
+    expect(queryArg).not.toHaveProperty('provider');
 
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
       createResource('running', { teamId: 'other-team' })
     );
+    await expect(
+      getRunningSkillEditSandbox({ skillId: 'skill-1', teamId: 'team-1' })
+    ).resolves.toBeUndefined();
+    expect(mocks.hasPendingLegacySandboxInstance).not.toHaveBeenCalled();
+
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(null);
+    mocks.hasPendingLegacySandboxInstance.mockResolvedValueOnce(true);
+    await expect(
+      getRunningSkillEditSandbox({ skillId: 'skill-1', teamId: 'team-1' })
+    ).rejects.toThrow(SandboxErrEnum.agentSandboxMigrationInProgress);
+    expect(mocks.hasPendingLegacySandboxInstance).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'skill-1'
+    });
+
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(null);
+    mocks.hasPendingLegacySandboxInstance.mockResolvedValueOnce(false);
     await expect(
       getRunningSkillEditSandbox({ skillId: 'skill-1', teamId: 'team-1' })
     ).resolves.toBeUndefined();

@@ -1,15 +1,14 @@
-import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import { getAuthorizedSandboxClient } from '@/service/core/sandbox/runtime';
 import {
   SandboxGetHtmlPreviewLinkBodySchema,
-  SandboxGetHtmlPreviewLinkResponseSchema
+  SandboxGetHtmlPreviewLinkResponseSchema,
+  type SandboxGetHtmlPreviewLinkBody,
+  type SandboxGetHtmlPreviewLinkResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import {
   createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath,
@@ -18,18 +17,19 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mime from 'mime';
 
-async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { sourceType, sourceId, chatId, filePath, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: SandboxGetHtmlPreviewLinkBodySchema
-  }).body;
+async function handler(
+  req: ApiRequestProps<SandboxGetHtmlPreviewLinkBody>
+): Promise<SandboxGetHtmlPreviewLinkResponse> {
+  const { customUid, authProxy, sourceType, sourceId, chatId, filePath, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: SandboxGetHtmlPreviewLinkBodySchema
+    }).body;
 
-  // 1. 鉴权
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
+  // 1. 鉴权并获取沙盒客户端，不把 sandbox 内容复制到主站或对象存储。
+  const { sandboxQuery, sandbox } = await getAuthorizedSandboxClient({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,
@@ -37,45 +37,31 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     outLinkAuthData,
     per: ReadPermissionVal
   });
-
-  // 2. 只检查目标文件，不把 sandbox 内容复制到主站或对象存储。
-  const sandboxQuery = buildSandboxClientQueryFromChatSource({
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId,
-    userId: uid,
-    chatId
-  });
-  const sandbox = await getSandboxClient(sandboxQuery);
-  const providerPath = sandbox.resolveRuntimePath(filePath, { allowAbsolutePath: true });
-  resolveSandboxPreviewPath(providerPath);
-  const fileInfo = (await sandbox.provider.getFileInfo([providerPath])).get(providerPath);
+  const runtimePath = sandbox.resolveRuntimePath(filePath, { allowAbsolutePath: true });
+  const { providerPath, relativePath } = resolveSandboxPreviewPath(runtimePath);
+  const fileInfo = (
+    await sandbox.runWithRecovery(() => sandbox.opensandbox.getFileInfo([providerPath]))
+  ).get(providerPath);
 
   if (!fileInfo || fileInfo.isDirectory) {
-    return jsonRes(res, { code: 400, message: 'HTML file does not exist' });
+    throw new ApiHttpError(400, 'HTML file does not exist');
   }
   if (mime.getType(providerPath) !== 'text/html') {
-    return jsonRes(res, { code: 400, message: 'File is not an HTML file' });
+    throw new ApiHttpError(400, 'File is not an HTML file');
   }
 
   // 3. session 仅保存 sandbox 查询参数，provider endpoint 和内部口令由 proxy 按请求解析。
   const url = await createSandboxPreviewFileUrl({
     context: sandboxQuery,
-    filePath: providerPath
+    relativePath
   }).catch((error) => {
-    if (error instanceof SandboxPreviewSessionLimitError) return null;
+    if (error instanceof SandboxPreviewSessionLimitError) {
+      throw new ApiHttpError(429, 'Too many active preview links for this sandbox');
+    }
     throw error;
   });
 
-  if (url === null) {
-    return jsonRes(res, {
-      code: 429,
-      message: 'Too many active preview links for this sandbox'
-    });
-  }
-
-  return jsonRes(res, {
-    data: SandboxGetHtmlPreviewLinkResponseSchema.parse(url)
-  });
+  return SandboxGetHtmlPreviewLinkResponseSchema.parse(url);
 }
 
 export default NextAPI(handler);

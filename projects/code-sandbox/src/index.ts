@@ -1,6 +1,6 @@
+import { timingSafeEqual } from 'node:crypto';
 import { env } from './env';
 import { Hono, type Context } from 'hono';
-import { bearerAuth } from 'hono/bearer-auth';
 import { serve } from '@hono/node-server';
 import { z } from 'zod';
 import { ProcessPool } from './pool/process-pool';
@@ -179,9 +179,27 @@ app.use('/sandbox/*', async (c, next) => {
     apiLogger.error(logMessage);
   }
 });
-/** 认证中间件：仅当配置了 token 时启用 */
+/**
+ * 认证中间件：仅当配置了 token 时启用。
+ * Hono 内置 bearerAuth 强制校验 RFC 6750 token68 字符集，遇到常见密码特殊字符（如 *、!、@、:）
+ * 会直接返回 400 Bad Request；这里对 Bearer 令牌按常量时间比对，缺失或不匹配统一返回 401。
+ */
 if (env.SANDBOX_TOKEN) {
-  app.use('/sandbox/*', bearerAuth({ token: env.SANDBOX_TOKEN }));
+  const expectedTokenBuffer = Buffer.from(env.SANDBOX_TOKEN, 'utf8');
+  app.use('/sandbox/*', async (c, next) => {
+    const authHeader = c.req.header('Authorization') ?? '';
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    const provided = match?.[1]?.trim() ?? '';
+    const providedBuffer = Buffer.from(provided, 'utf8');
+    const isMatched =
+      providedBuffer.length === expectedTokenBuffer.length &&
+      timingSafeEqual(providedBuffer, expectedTokenBuffer);
+    if (!isMatched) {
+      c.header('WWW-Authenticate', 'Bearer error="invalid_token"');
+      return c.text('Unauthorized', 401);
+    }
+    return next();
+  });
 } else {
   apiLogger.warn(
     '⚠️  WARNING: SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set SANDBOX_TOKEN in production!'

@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { jsonRes } from '@fastgpt/service/common/response';
@@ -19,10 +20,11 @@ describe('upload team plugin package handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     mocks.getLocale.mockReturnValue('zh');
     global.feConfigs = {
       ...global.feConfigs,
-      enable_team_plugin_upload: false
+      enable_team_plugin_upload: true
     } as any;
     mockJsonRes.mockImplementation(() => undefined);
   });
@@ -32,7 +34,7 @@ describe('upload team plugin package handler', () => {
   });
 
   it('returns forbidden before reading an uploaded package when installation is disabled', async () => {
-    const req = { method: 'POST' } as any;
+    const req = { method: 'POST', headers: {} } as any;
     const res = {} as any;
 
     await handler(req, res);

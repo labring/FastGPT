@@ -3,114 +3,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm,
-  loadGeneratedTools
+  removeSelectedTool,
+  upsertSelectedTool
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
-import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
-
-vi.mock('@/web/core/app/api/tool', () => ({ getNewToolPreviewNode: vi.fn() }));
-
-describe('loadGeneratedTools', () => {
-  const toolId = 'systemTool-shared';
-  const createTool = (source?: string): SelectedToolItemType => ({
-    id: toolId,
-    pluginId: toolId,
-    source,
-    name: 'Shared tool',
-    flowNodeType: FlowNodeTypeEnum.tool,
-    inputs: [],
-    outputs: []
-  });
-
-  beforeEach(() => {
-    vi.mocked(getNewToolPreviewNode).mockReset();
-    vi.mocked(getNewToolPreviewNode).mockImplementation(async ({ source }) => createTool(source));
-  });
-
-  it('loads team tools from their own source without reusing a same-ID system tool', async () => {
-    const systemTool = createTool('system');
-    const teamSource = 'teamId:team-1';
-    const result = await loadGeneratedTools({
-      newToolIds: [
-        { id: toolId, source: 'system' },
-        { id: toolId, source: teamSource }
-      ],
-      existsTools: [systemTool]
-    });
-
-    expect(result[0]).toBe(systemTool);
-    expect(result[1]).toMatchObject({ id: toolId, source: teamSource });
-    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
-      appId: toolId,
-      source: teamSource
-    });
-    const form = getDefaultAppForm();
-    form.selectedTools = result;
-    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
-    const savedTools = workflow.nodes
-      .find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
-      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
-    expect(savedTools).toEqual([
-      expect.objectContaining({ id: toolId, source: 'system' }),
-      expect.objectContaining({ id: toolId, source: teamSource })
-    ]);
-  });
-
-  it('continues loading legacy string tool references', async () => {
-    const result = await loadGeneratedTools({ newToolIds: [toolId] });
-
-    expect(result).toEqual([expect.objectContaining({ id: toolId })]);
-    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
-      appId: toolId,
-      source: undefined
-    });
-  });
-
-  it.each([undefined, 'system'])(
-    'preserves existing system configuration when the saved source is %s',
-    async (source) => {
-      const tool = {
-        ...createTool(source),
-        version: 'saved-version',
-        inputs: [
-          {
-            key: 'apiKey',
-            label: '',
-            renderTypeList: [],
-            value: 'saved-api-key'
-          }
-        ]
-      };
-      const result = await loadGeneratedTools({
-        newToolIds: [{ id: toolId, source: 'system' }],
-        existsTools: [tool]
-      });
-
-      expect(result).toEqual([{ ...tool, source: 'system' }]);
-      expect(result[0].inputs).toBe(tool.inputs);
-      expect(tool.source).toBe(source);
-      expect(getNewToolPreviewNode).not.toHaveBeenCalled();
-
-      const form = getDefaultAppForm();
-      form.selectedTools = result;
-      const savedTools = agentForm2AppWorkflow(form, (key: string) => key)
-        .nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
-        ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
-      expect(savedTools).toEqual([
-        expect.objectContaining({
-          id: toolId,
-          source: 'system',
-          version: 'saved-version',
-          config: { apiKey: 'saved-api-key' }
-        })
-      ]);
-    }
-  );
-});
 
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
   const form = getDefaultAppForm();
@@ -336,5 +235,85 @@ describe('agentForm2AppWorkflow model reference', () => {
       chatConfig: workflow.chatConfig
     });
     expect(restored.selectedTools[0].metadataLocale).toBe('en');
+    expect(
+      agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.history)
+    ).toBeUndefined();
+  });
+
+  it('upserts and removes selectedTools by canonical identity across implicit sources and legacy 3-segment child IDs', () => {
+    const appId = '66f100000000000000000022';
+    const teamTool = {
+      id: 'systemTool-metaso',
+      pluginId: 'systemTool-metaso',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '团队秘塔',
+      toolConfig: {
+        systemTool: {
+          toolId: 'systemTool-metaso',
+          source: 'teamId:team-1'
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+    const systemTool = {
+      id: 'systemTool-metaso',
+      pluginId: 'systemTool-metaso',
+      source: 'system',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '官方秘塔',
+      inputs: [],
+      outputs: []
+    };
+    const legacyMcpChild = {
+      id: `mcp-${appId}/OldSet/search`,
+      pluginId: `mcp-${appId}/OldSet/search`,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '旧三段式搜索',
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+    const updatedMcpChild = {
+      id: `mcp-${appId}/search`,
+      pluginId: `mcp-${appId}/search`,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '规范两段式搜索',
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+
+    // 系统同名工具不能误覆盖仅在 toolConfig 保存来源的团队插件
+    const afterAddSystem = upsertSelectedTool([teamTool, legacyMcpChild], systemTool);
+    expect(afterAddSystem).toHaveLength(3);
+    expect(afterAddSystem.map((item) => item.name)).toEqual([
+      '官方秘塔',
+      '团队秘塔',
+      '旧三段式搜索'
+    ]);
+
+    // 规范两段式子工具应精准更新历史三段式子工具，而不是重复追加
+    const afterUpdateChild = upsertSelectedTool(afterAddSystem, updatedMcpChild);
+    expect(afterUpdateChild).toHaveLength(3);
+    expect(afterUpdateChild[2].name).toBe('规范两段式搜索');
+
+    // 按规范两段式 ID 或 team source 移除时精准命中对应条目
+    const afterRemoveChild = removeSelectedTool(afterUpdateChild, { id: `mcp-${appId}/search` });
+    expect(afterRemoveChild.map((item) => item.name)).toEqual(['官方秘塔', '团队秘塔']);
+
+    const afterRemoveTeam = removeSelectedTool(afterRemoveChild, {
+      id: 'systemTool-metaso',
+      source: 'teamId:team-1'
+    });
+    expect(afterRemoveTeam.map((item) => item.name)).toEqual(['官方秘塔']);
   });
 });

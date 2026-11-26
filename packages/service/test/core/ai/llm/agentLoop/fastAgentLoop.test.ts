@@ -3,7 +3,10 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -61,6 +64,7 @@ import {
   runFastAgentMainLoop,
   type AgentLoopRuntime
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop';
+import { buildToolMessageContent } from '@fastgpt/service/core/ai/llm/agentLoop/domain/tool';
 
 const getFinalAssistantText = (result: { assistantMessages: any[] }) =>
   result.assistantMessages
@@ -185,8 +189,14 @@ describe('runFastAgentMainLoop', () => {
 
     expect(result.status).toBe('done');
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
-    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, {
+      requestIndex: 1,
+      answerText: 'phase summary'
+    });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, {
+      requestIndex: 2,
+      answerText: 'terminal answer'
+    });
     expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
       role: ChatCompletionRequestMessageRoleEnum.User,
       hideInUI: true,
@@ -496,6 +506,62 @@ describe('runFastAgentMainLoop', () => {
     );
   });
 
+  it('aborts sandbox tool AbortSignal when checkIsStopping flips true during execution', async () => {
+    let stopping = false;
+    let capturedSignal: AbortSignal | undefined;
+    runSandboxToolsMock.mockImplementationOnce(async (params: { signal?: AbortSignal }) => {
+      capturedSignal = params.signal;
+      await new Promise<void>((resolve) => {
+        if (params.signal?.aborted) {
+          resolve();
+          return;
+        }
+        params.signal?.addEventListener('abort', () => resolve(), { once: true });
+        setTimeout(() => {
+          stopping = true;
+        }, 25);
+      });
+      return {
+        success: true,
+        input: { command: 'sleep 10' },
+        response: 'Command execution aborted',
+        durationSeconds: 0.1
+      };
+    });
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_sandbox_stop',
+        name: 'sandbox_shell',
+        args: { command: 'sleep 10' }
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        checkIsStopping: () => stopping,
+        toolCatalog: {
+          runtimeTools: [],
+          sandboxTools: createAgentLoopSandboxTools()
+        },
+        sandboxToolContext: {
+          client: {} as any
+        }
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'run long shell command'
+          }
+        ]
+      }
+    });
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(result.status).toBe('aborted');
+  });
+
   it.each([
     {
       name: 'set_plan',
@@ -753,6 +819,129 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
   });
 
+  it('writes the tool response parts into the next round tool message', async () => {
+    const imagePart = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,AAAA' }
+    };
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'call_image', name: 'search', args: { query: 'chart' } }),
+      text({ requestId: 'req_after_image', content: 'done' })
+    ]);
+
+    const executeTool = vi.fn(async () => ({
+      response: '{"jobId":"task-123"}',
+      content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
+      assistantMessages: [],
+      usages: [],
+      stop: false
+    }));
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool }),
+      input: { messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'draw it' }] }
+    });
+
+    expect(result.status).toBe('done');
+    // 关键接缝：结构化的 content 必须真的写进下一轮请求的 tool 消息，否则等于没实现。
+    const secondRequest = createLLMResponseMock.mock.calls[1][0];
+    const toolMessage = (secondRequest.body.messages as ChatCompletionMessageParam[]).find(
+      (message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool
+    );
+    expect(toolMessage?.content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      imagePart
+    ]);
+  });
+
+  it('uses only compressed text in the next round when tool compression runs', async () => {
+    const events: any[] = [];
+    const imagePart = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,AAAA' }
+    };
+    compressToolResponseMock.mockResolvedValue({
+      compressed: 'compressed tool result',
+      usage: { totalPoints: 1, inputTokens: 10, outputTokens: 2, moduleName: 'compress' },
+      requestIds: ['compress_req']
+    });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'call_compressed_image', name: 'search', args: { query: 'chart' } }),
+      text({ requestId: 'req_after_compressed_image', content: 'done' })
+    ]);
+    const executeTool = vi.fn(async () => ({
+      response: JSON.stringify({ image: imagePart.image_url.url }),
+      content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
+      assistantMessages: [],
+      usages: [],
+      stop: false
+    }));
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool, emitEvent: (event) => events.push(event) }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'inspect chart' }]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(compressToolResponseMock).toHaveBeenCalledTimes(1);
+    const secondRequest = createLLMResponseMock.mock.calls[1][0];
+    const toolMessage = (secondRequest.body.messages as ChatCompletionMessageParam[]).find(
+      (message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool
+    );
+    expect(toolMessage?.content).toBe('compressed tool result');
+    expect(
+      events.find(
+        (event) => event.type === 'tool_run_end' && event.call.id === 'call_compressed_image'
+      )
+    ).toMatchObject({
+      response: 'compressed tool result',
+      content: 'compressed tool result'
+    });
+  });
+
+  it.each([
+    { label: 'unchanged', compressed: '{"jobId":"task-123"}' },
+    { label: 'rewritten without usage', compressed: 'locally shortened' }
+  ])(
+    'preserves image parts only when compression leaves text unchanged: $label',
+    async ({ compressed }) => {
+      const imagePart = {
+        type: 'image_url' as const,
+        image_url: { url: 'data:image/png;base64,AAAA' }
+      };
+      compressToolResponseMock.mockResolvedValue({ compressed });
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        toolCall({ id: 'call_conditional_image', name: 'search', args: { query: 'chart' } }),
+        text({ requestId: 'req_after_conditional_image', content: 'done' })
+      ]);
+      const executeTool = vi.fn(async () => ({
+        response: '{"jobId":"task-123"}',
+        content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
+        assistantMessages: [],
+        usages: [],
+        stop: false
+      }));
+
+      await runFastAgentMainLoop({
+        runtime: createRuntime({ executeTool }),
+        input: {
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'inspect chart' }]
+        }
+      });
+
+      const toolMessage = (
+        createLLMResponseMock.mock.calls[1][0].body.messages as ChatCompletionMessageParam[]
+      ).find((message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(toolMessage?.content).toEqual(
+        compressed === '{"jobId":"task-123"}'
+          ? [{ type: 'text', text: compressed }, imagePart]
+          : compressed
+      );
+    }
+  );
+
   it('uses reconstructed messages without an Ask-specific snapshot', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [text({ content: 'continued' })]);
     const messages = [{ role: 'user' as const, content: 'Continue normally' }];
@@ -863,5 +1052,34 @@ describe('runFastAgentMainLoop', () => {
         })
       })
     );
+  });
+});
+
+describe('buildToolMessageContent', () => {
+  it('rejects invalid image parts while retaining complete text', () => {
+    const content = [
+      { type: 'text' as const, text: 'result' },
+      { type: 'image_url' as const, image_url: { url: 'not-a-url' } },
+      { type: 'image_url' as const, image_url: { url: 'https://example.com/image.png' } }
+    ];
+    expect(buildToolMessageContent({ content, text: 'fallback' })).toEqual([
+      content[0],
+      content[2]
+    ]);
+    expect(buildToolMessageContent({ content: [], text: 'fallback' })).toBe('fallback');
+  });
+
+  it('keeps complete content in order and limits valid images', () => {
+    const image = { type: 'image_url' as const, image_url: { url: 'https://example.com/a.png' } };
+    const content = [
+      { type: 'text' as const, text: '{}' },
+      { type: 'text' as const, text: 'one' },
+      image,
+      { type: 'text' as const, text: 'two' },
+      ...Array(5).fill(image)
+    ];
+    const result = buildToolMessageContent({ content, text: 'fallback' });
+    expect(result).toEqual(content.slice(0, 7));
+    expect(buildToolMessageContent({ text: 'fallback' })).toBe('fallback');
   });
 });

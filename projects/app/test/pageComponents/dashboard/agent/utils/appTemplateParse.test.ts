@@ -104,6 +104,35 @@ describe('normalizeSimpleImportForm', () => {
       isToolParam: true
     });
   });
+
+  it('preserves valid aiChatQuoteRole and strips invalid or missing values during normalization', () => {
+    const validSystem = normalizeSimpleImportForm(
+      createSimpleConfig({
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: 'system'
+        }
+      })
+    );
+    expect(validSystem.aiSettings.aiChatQuoteRole).toBe('system');
+
+    const omitted = normalizeSimpleImportForm(createSimpleConfig());
+    expect(omitted.aiSettings.aiChatQuoteRole).toBeUndefined();
+
+    const invalidEmpty = normalizeSimpleImportForm(
+      createSimpleConfig({
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: ''
+        }
+      })
+    );
+    expect(invalidEmpty.aiSettings.aiChatQuoteRole).toBeUndefined();
+  });
 });
 
 describe('resolveImportAppType', () => {
@@ -196,15 +225,73 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
-  it('should parse workflow JSON in agent dashboard', async () => {
+  it.each(['', 'invalid', null])(
+    'rejects simple JSON import with invalid aiChatQuoteRole (%s)',
+    async (invalidRole) => {
+      await expect(
+        parseDashboardImportConfig({
+          config: createSimpleConfig({
+            type: AppTypeEnum.simple,
+            aiSettings: {
+              model: 'gpt-4o',
+              isResponseAnswerText: true,
+              maxHistories: 6,
+              aiChatQuoteRole: invalidRole
+            }
+          }),
+          scene: 'agent',
+          t
+        })
+      ).rejects.toThrow('app:type_not_recognized');
+    }
+  );
+
+  it('preserves valid aiChatQuoteRole and accepts missing role in simple JSON import', async () => {
+    const withSystem = await parseDashboardImportConfig({
+      config: createSimpleConfig({
+        type: AppTypeEnum.simple,
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: 'system'
+        }
+      }),
+      scene: 'agent',
+      t
+    });
+    expect((withSystem.workflow.nodes[0] as any).formData.aiSettings.aiChatQuoteRole).toBe(
+      'system'
+    );
+
+    const withoutRole = await parseDashboardImportConfig({
+      config: createSimpleConfig({ type: AppTypeEnum.simple }),
+      scene: 'agent',
+      t
+    });
+    expect(
+      (withoutRole.workflow.nodes[0] as any).formData.aiSettings.aiChatQuoteRole
+    ).toBeUndefined();
+  });
+
+  it('drops dangling edges while retaining valid edges and reference snapshots', async () => {
+    const nodes = [createWorkflowNode('workflowStart', 'a'), createWorkflowNode('answerNode', 'b')];
+    const edge = { source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' };
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
     const result = await parseDashboardImportConfig({
       config: {
         type: AppTypeEnum.workflow,
         name: 'Workflow',
         intro: 'Workflow intro',
-        nodes: [createWorkflowNode('workflowStart')],
-        edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-        chatConfig: { welcomeText: 'hello' }
+        nodes,
+        edges: [edge, { ...edge, target: 'removed-target' }, { ...edge, source: 'removed-source' }],
+        chatConfig: { welcomeText: 'hello' },
+        referenceSnapshots
       },
       scene: 'agent',
       t
@@ -213,9 +300,10 @@ describe('parseDashboardImportConfig', () => {
     expect(result).toEqual({
       appType: AppTypeEnum.workflow,
       workflow: {
-        nodes: [createWorkflowNode('workflowStart')],
-        edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-        chatConfig: { welcomeText: 'hello' }
+        nodes,
+        edges: [edge],
+        chatConfig: { welcomeText: 'hello' },
+        referenceSnapshots
       }
     });
   });
@@ -621,7 +709,12 @@ describe('parseWorkflowImportConfig', () => {
     expect(result).toEqual({
       nodes: [createWorkflowNode('workflowStart')],
       edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-      chatConfig: { welcomeText: 'hello', welcomeConfig: { welcomeText: 'hello' } }
+      chatConfig: {
+        welcomeText: 'hello',
+        welcomeConfig: { welcomeText: 'hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 
@@ -644,8 +737,10 @@ describe('parseWorkflowImportConfig', () => {
       edges: [],
       chatConfig: {
         welcomeText: 'plugin hello',
-        welcomeConfig: { welcomeText: 'plugin hello' }
-      }
+        welcomeConfig: { welcomeText: 'plugin hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 

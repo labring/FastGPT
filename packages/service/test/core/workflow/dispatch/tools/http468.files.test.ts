@@ -10,8 +10,11 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import {
+  runWithTestWorkflowContext as runWithContext,
+  createTestWorkflowDispatch
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
@@ -27,7 +30,9 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => ({
   isInternalAddress: preflightMock
 }));
 
-import { dispatchHttp468Request } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import { dispatchHttp468Request as dispatchHttp468RequestWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+
+const dispatchHttp468Request = createTestWorkflowDispatch(dispatchHttp468RequestWithoutContext);
 
 const privateKey = 'chat/app/app-1/user-1/chat-1/report.pdf';
 const fileUrl = 'https://files.example.com/signed-report.pdf';
@@ -109,7 +114,7 @@ describe('HTTP node uploaded file forwarding', () => {
     runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
     chatId: 'chat-1',
     responseChatItemId: 'response-1',
-    variableState: { toRuntimeRecord: () => ({ uploadedFile: fileUrl }) },
+    variableContext: { toRuntimeRecord: () => ({ uploadedFile: fileUrl }) },
     checkIsStopping: () => false,
     node: { outputs: [] },
     runtimeNodesMap: new Map(),
@@ -147,8 +152,9 @@ describe('HTTP node uploaded file forwarding', () => {
     const props = buildProps();
     props.params = JSON.parse(JSON.stringify(props.params));
     const snapshot = structuredClone(props.params);
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.error).toBeUndefined();
     expect(result.data?.[NodeOutputKeyEnum.httpRawResponse]).toEqual({
@@ -177,8 +183,9 @@ describe('HTTP node uploaded file forwarding', () => {
         { key: 'content-type', value: 'application/json' },
         { key: 'CONTENT-LENGTH', value: '1' }
       ];
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchHttp468Request(props)
+      const result = await runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+        () => dispatchHttp468Request(props)
       );
       expect(result.error).toBeUndefined();
       expect(received).toHaveLength(1);
@@ -200,8 +207,29 @@ describe('HTTP node uploaded file forwarding', () => {
           : kind === 'no-context'
             ? undefined
             : fileContext;
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext: context }, () =>
-        dispatchHttp468Request(props as any)
+      // 新运行入口在进入节点前拒绝缺失的文件 Context。
+      if (kind === 'no-context') {
+        await expect(async () =>
+          runWithContext(
+            {
+              mcpClientMemory: {},
+              checkIsStopping: () => props.checkIsStopping(),
+              fileContext: context
+            },
+            () => dispatchHttp468Request(props as any)
+          )
+        ).rejects.toThrow('Workflow file context is unavailable');
+        expect(downloadObject).not.toHaveBeenCalled();
+        expect(requestMock).not.toHaveBeenCalled();
+        return;
+      }
+      const result = await runWithContext(
+        {
+          mcpClientMemory: {},
+          checkIsStopping: () => props.checkIsStopping(),
+          fileContext: context
+        },
+        () => dispatchHttp468Request(props as any)
       );
       expect(result.rawError).toBeInstanceOf(UserConfigError);
       expect(downloadObject).not.toHaveBeenCalled();
@@ -211,8 +239,9 @@ describe('HTTP node uploaded file forwarding', () => {
 
   it('rejects a declared oversized object before opening its stream', async () => {
     const { fileContext } = await createContext(4);
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(buildProps() as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
     );
     expect(result.rawError).toBeInstanceOf(UserConfigError);
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('maximum allowed size');
@@ -225,8 +254,9 @@ describe('HTTP node uploaded file forwarding', () => {
     getObjectMetadata.mockResolvedValue({ contentLength: 1, contentType: 'application/pdf' });
     const stream = Readable.from([bytes]);
     downloadObject.mockResolvedValue({ body: stream });
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(buildProps() as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('maximum allowed size');
     expect(stream.destroyed).toBe(true);
@@ -236,8 +266,9 @@ describe('HTTP node uploaded file forwarding', () => {
   it('propagates source read failures through the HTTP error output without sending an incomplete body', async () => {
     const { fileContext } = await createContext();
     downloadObject.mockRejectedValue(new Error('object unavailable'));
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(buildProps() as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
     );
     expect(result.rawError).toBeInstanceOf(UserConfigError);
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('object unavailable');
@@ -257,8 +288,9 @@ describe('HTTP node uploaded file forwarding', () => {
       const props: any = buildProps();
       props.checkIsStopping = () => stopped;
       props.params[NodeInputKeyEnum.httpTimeout] = mode === 'stop' ? 5 : 0.05;
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchHttp468Request(props)
+      const result = await runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+        () => dispatchHttp468Request(props)
       );
       expect(result.rawError).toBeInstanceOf(UserConfigError);
       expect(result.error?.[NodeOutputKeyEnum.error]).toContain(
@@ -280,8 +312,9 @@ describe('HTTP node uploaded file forwarding', () => {
       });
     });
     const props = { ...buildProps(), checkIsStopping: () => stopped };
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('stopped');
     complete({ contentLength: bytes.length, contentType: 'application/pdf' });
@@ -319,8 +352,9 @@ describe('HTTP node uploaded file forwarding', () => {
       ];
       const baseline = new FormData();
       baseline.append('literal', value as any);
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchHttp468Request(props)
+      const result = await runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+        () => dispatchHttp468Request(props)
       );
       expect(result.error).toBeUndefined();
       expect(result.data?.[NodeOutputKeyEnum.httpRawResponse].fields.at(-1)).toEqual({
@@ -352,8 +386,9 @@ describe('HTTP node uploaded file forwarding', () => {
       const props: any = buildProps();
       props.checkIsStopping = () => stopped;
       props.params[NodeInputKeyEnum.httpTimeout] = mode === 'timeout' ? 0.05 : 5;
-      const pending = runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchHttp468Request(props)
+      const pending = runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+        () => dispatchHttp468Request(props)
       );
       await entered;
       if (mode === 'stop') stopped = true;
@@ -381,8 +416,9 @@ describe('HTTP node uploaded file forwarding', () => {
   it('keeps outbound SSRF rejection for file requests', async () => {
     const { fileContext } = await createContext();
     preflightMock.mockResolvedValue(true);
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(buildProps() as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
     );
     expect(result.error).toBeDefined();
     expect(preflightMock).toHaveBeenCalledWith(receiverUrl);
@@ -393,8 +429,9 @@ describe('HTTP node uploaded file forwarding', () => {
     const { fileContext } = await createContext();
     const props = buildProps();
     props.params[NodeInputKeyEnum.httpMethod] = 'GET';
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('POST, PUT or PATCH');
     expect(downloadObject).not.toHaveBeenCalled();
@@ -421,8 +458,9 @@ describe('HTTP node uploaded file forwarding', () => {
         }
       ]
     ]);
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props)
     );
     expect(result.error).toBeUndefined();
     const fields = result.data?.[NodeOutputKeyEnum.httpRawResponse].fields;
@@ -433,9 +471,10 @@ describe('HTTP node uploaded file forwarding', () => {
   it('applies the workflow file count limit to expanded arrays before any download', async () => {
     const { fileContext } = await createContext();
     const props: any = buildProps();
-    props.variableState.toRuntimeRecord = () => ({ uploadedFile: Array(6).fill(fileUrl) });
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props)
+    props.variableContext.toRuntimeRecord = () => ({ uploadedFile: Array(6).fill(fileUrl) });
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('file count');
     expect(downloadObject).not.toHaveBeenCalled();
@@ -446,8 +485,9 @@ describe('HTTP node uploaded file forwarding', () => {
     const { fileContext } = await createContext();
     const props = buildProps();
     props.params[NodeInputKeyEnum.httpFormBody][0].key = '__proto__';
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.data?.[NodeOutputKeyEnum.httpRawResponse].fields[0]).toMatchObject({
       key: '__proto__',
@@ -470,8 +510,9 @@ describe('HTTP node uploaded file forwarding', () => {
         contentType,
         metadata: { originFilename: encodeURIComponent(filename) }
       });
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchHttp468Request(buildProps() as any)
+      const result = await runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+        () => dispatchHttp468Request(buildProps() as any)
       );
       expect(result.error).toBeUndefined();
       expect(result.data?.[NodeOutputKeyEnum.httpRawResponse].fields[0]).toMatchObject({
@@ -486,8 +527,9 @@ describe('HTTP node uploaded file forwarding', () => {
     const { fileContext } = await createContext();
     const props = { ...buildProps(), checkIsStopping: () => received.length > 0 };
     props.params[NodeInputKeyEnum.httpReqUrl] = receiverUrl.replace('/upload', '/hold');
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.rawError).toBeInstanceOf(UserConfigError);
     expect(requestMock.mock.calls[0][0].signal.aborted).toBe(true);
@@ -500,9 +542,10 @@ describe('HTTP node uploaded file forwarding', () => {
     getObjectMetadata.mockResolvedValue({ contentLength: first.length });
     downloadObject.mockImplementation(async () => ({ body: Readable.from([first]) }));
     const props: any = buildProps();
-    props.variableState.toRuntimeRecord = () => ({ uploadedFile: [fileUrl, fileUrl] });
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props)
+    props.variableContext.toRuntimeRecord = () => ({ uploadedFile: [fileUrl, fileUrl] });
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('maximum allowed size');
     expect(downloadObject).toHaveBeenCalledTimes(1);
@@ -513,8 +556,9 @@ describe('HTTP node uploaded file forwarding', () => {
     const { fileContext } = await createContext();
     const props = buildProps();
     props.params[NodeInputKeyEnum.httpFormBody][0].value = value;
-    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      dispatchHttp468Request(props as any)
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => props.checkIsStopping(), fileContext },
+      () => dispatchHttp468Request(props as any)
     );
     expect(result.rawError).toBeInstanceOf(UserConfigError);
     expect(downloadObject).not.toHaveBeenCalled();

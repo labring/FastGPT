@@ -15,15 +15,16 @@ const getHeaderValue = (value: string | string[] | undefined) =>
  * 客户端封装会发送对应页面的语言请求头，以便服务端使用 localStorage、memory 或
  * navigator.language 推导出的语言；分享页请求头独立于主站语言链路。
  */
-export const getLocale = (req: NodeHttpRequest): localeType => {
-  const cookies = Cookie.parse(req.headers.cookie ?? '');
+export const getLocale = (req: Pick<NodeHttpRequest, 'headers'>): localeType => {
+  const headers = req.headers ?? {};
+  const cookies = Cookie.parse(headers.cookie ?? '');
   const locale = parseLocale(cookies.NEXT_LOCALE);
-  const shareHeaderValue = getHeaderValue(req.headers[FASTGPT_SHARE_LANGUAGE_HEADER]);
+  const shareHeaderValue = getHeaderValue(headers[FASTGPT_SHARE_LANGUAGE_HEADER]);
   const shareHeaderLocale = parseLocale(shareHeaderValue);
   // 分享 Cookie 的 Path 是 `/`，普通页面也可能携带它；只有带分享请求头时才启用该 Cookie。
   const shareCookieLocale =
     shareHeaderValue !== undefined ? parseLocale(cookies.FASTGPT_SHARE_LOCALE) : undefined;
-  const customLocale = parseLocale(getHeaderValue(req.headers[FASTGPT_LANGUAGE_HEADER]));
+  const customLocale = parseLocale(getHeaderValue(headers[FASTGPT_LANGUAGE_HEADER]));
 
   return shareHeaderLocale ?? shareCookieLocale ?? locale ?? customLocale ?? LangEnum.en;
 };

@@ -14,16 +14,16 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   function: {
     name: SANDBOX_SHELL_TOOL_NAME,
     description:
-      '在当前虚拟机工作目录执行 shell 命令。返回合并的标准输出和错误输出，最多保留末尾 2000 行或 50KB；长输出会保存到临时文件',
+      '在当前虚拟机工作目录执行 shell 命令。返回合并的标准输出和错误输出，最多保留末尾 2000 行或 50KB；如需完整长输出请自行重定向到文件',
     parameters: {
       type: 'object',
       properties: {
         command: { type: 'string', description: '要执行的 shell 命令' },
         timeout: {
-          type: 'number',
+          type: 'integer',
           description: '超时秒数',
-          max: 600,
-          min: 1
+          maximum: 600,
+          minimum: 1
         }
       },
       required: ['command']

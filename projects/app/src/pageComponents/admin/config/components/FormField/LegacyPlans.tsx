@@ -7,13 +7,14 @@ import type {
   StandSubPlanLevelMapType,
   TeamStandardSubPlanItemType
 } from '@fastgpt/global/support/wallet/sub/type';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import {
   FeatureRow,
   getColumnFeatures,
   EditPlanModal
 } from '@/components/admin/Settings/PlanComponents';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const LegacyPlans = ({
   value,
@@ -22,7 +23,8 @@ const LegacyPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum>();
 
   // 解析并检查是否有旧版套餐数据
@@ -51,7 +53,13 @@ const LegacyPlans = ({
   );
 
   const planData = useMemo(() => {
-    const columnsFeatures = levels.map((level) => getColumnFeatures(planMap[level], t));
+    const columnsFeatures = levels.map((level) =>
+      getColumnFeatures({
+        plan: planMap[level],
+        t,
+        showShareBrand: feConfigs.show_outlink_brand
+      })
+    );
     const maxRows = Math.max(...columnsFeatures.map((col) => col.length));
     const featureRows: string[][] = [];
     for (let rowIndex = 0; rowIndex < maxRows; rowIndex++) {
@@ -67,7 +75,7 @@ const LegacyPlans = ({
       prices: levels.map((level) => `￥${planMap[level]?.price ?? 0}`),
       features: featureRows
     };
-  }, [planMap, t, levels]);
+  }, [planMap, t, levels, feConfigs.show_outlink_brand]);
 
   return (
     <>
@@ -112,7 +120,7 @@ const LegacyPlans = ({
           {levels.map((level, index) => (
             <Flex key={index} alignItems={'center'} px={4} h={12}>
               <Button variant={'primaryOutline'} size={'xs'} onClick={() => setEditedLevel(level)}>
-                点击配置套餐
+                {t('admin:plan_config_button')}
               </Button>
             </Flex>
           ))}

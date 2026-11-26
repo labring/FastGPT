@@ -1,7 +1,10 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetTagFilterLogicEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const mocks = vi.hoisted(() => ({
@@ -60,12 +63,17 @@ vi.mock('@/components/Select/AIModelSelector', () => ({
   }
 }));
 vi.mock('@/components/common/Textarea/MyTextarea', () => ({ default: () => null }));
-vi.mock('@/components/core/dataset/DatasetTagFilterRows', () => ({
-  default: (props: Record<string, unknown>) => {
-    mocks.tagFilterRowsProps = props;
-    return null;
-  }
-}));
+vi.mock('@/components/core/dataset/DatasetTagFilterRows', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/components/core/dataset/DatasetTagFilterRows')>();
+  return {
+    ...actual,
+    default: (props: Record<string, unknown>) => {
+      mocks.tagFilterRowsProps = props;
+      return null;
+    }
+  };
+});
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({
     children,
@@ -108,7 +116,10 @@ vi.mock('@chakra-ui/react', async (importOriginal) => {
   };
 });
 
-import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
+import DatasetParamsModal, {
+  formatDatasetParamsForSubmit,
+  type DatasetParamsModalFormType
+} from '@/components/core/app/DatasetParamsModal';
 
 describe('DatasetParamsModal', () => {
   beforeEach(() => {
@@ -410,13 +421,18 @@ describe('DatasetParamsModal', () => {
     );
   });
 
-  it('delegates scrolling to the tab content container and enables portal popovers in tag filter tab', () => {
-    mocks.tab = 'tagFilter';
+  it('delegates scrolling to the tab content container and enables portal popovers in limit tab tag filter', () => {
+    mocks.tab = 'limit';
     renderToStaticMarkup(
       React.createElement(DatasetParamsModal, {
         searchMode: DatasetSearchModeEnum.embedding,
         showTagFilter: true,
         datasetIds: ['ds-1'],
+        collectionFilterMatch: {
+          logic: DatasetTagFilterLogicEnum.AND,
+          conditions: [],
+          open: true
+        },
         onClose: vi.fn(),
         onSuccess: vi.fn()
       })
@@ -436,5 +452,21 @@ describe('DatasetParamsModal', () => {
         datasetIds: ['ds-1']
       })
     );
+  });
+
+  it('normalizes a cleared rerank candidate num on submit', () => {
+    expect(
+      formatDatasetParamsForSubmit({
+        searchMode: DatasetSearchModeEnum.embedding,
+        rerankCandidateNum: '' as unknown as number
+      } as DatasetParamsModalFormType)
+    ).toMatchObject({ rerankCandidateNum: 100 });
+
+    expect(
+      formatDatasetParamsForSubmit({
+        searchMode: DatasetSearchModeEnum.embedding,
+        rerankCandidateNum: 20
+      } as DatasetParamsModalFormType)
+    ).toMatchObject({ rerankCandidateNum: 20 });
   });
 });

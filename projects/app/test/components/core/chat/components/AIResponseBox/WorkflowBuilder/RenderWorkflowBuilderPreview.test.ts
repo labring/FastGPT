@@ -5,10 +5,21 @@ import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/wor
 import RenderWorkflowBuilderPreview from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderPreview';
 
 vi.mock('@chakra-ui/react', () => {
-  const Container = ({ children }: { children?: React.ReactNode }) =>
-    React.createElement('div', null, children);
-  return { Box: Container, Flex: Container };
+  const Container = ({
+    children,
+    'data-chat-scroll-anchor': anchor
+  }: {
+    children?: React.ReactNode;
+    'data-chat-scroll-anchor'?: string;
+  }) => React.createElement('div', { 'data-chat-scroll-anchor': anchor }, children);
+  return {
+    Box: Container,
+    Flex: Container,
+    Text: Container,
+    Badge: Container
+  };
 });
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@/components/Markdown', () => ({
   default: ({ source, forbidZhFormat }: { source: string; forbidZhFormat?: boolean }) =>
     React.createElement('pre', { 'data-forbid-zh-format': String(forbidZhFormat ?? false) }, source)
@@ -41,6 +52,7 @@ describe('RenderWorkflowBuilderPreview', () => {
       );
 
       expect(html).toContain('```mermaid');
+      expect(html).toContain('Workflow plan');
       expect(html).toContain('Start --&gt; Answer');
       expect(html).toContain('Plan details');
       expect(html).toContain('Return a Chinese summary.');
@@ -99,5 +111,34 @@ describe('RenderWorkflowBuilderPreview', () => {
     expect(html).toContain('data-forbid-zh-format="true"');
     expect(html).toContain('岗位要求（必填）');
     expect(html).toContain('简历文本（未上传文件时）');
+  });
+
+  it('renders the summary before the diagram without hiding configuration requirements', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(RenderWorkflowBuilderPreview, {
+        interactive: {
+          ...preview,
+          params: {
+            ...preview.params,
+            arguments: JSON.stringify({
+              ...JSON.parse(preview.params.arguments),
+              summary: 'Read a document and return its summary.',
+              sections: [{ title: 'Required configuration', content: 'Select a knowledge base.' }]
+            })
+          }
+        }
+      })
+    );
+    expect(html.indexOf('Workflow plan')).toBeLessThan(html.indexOf('Read a document'));
+    expect(html.indexOf('Read a document')).toBeLessThan(html.indexOf('```mermaid'));
+    expect(html).toContain('Select a knowledge base.');
+  });
+
+  it.each([true, false])('only labels the active preview as pending: %s', (isPending) => {
+    const html = renderToStaticMarkup(
+      React.createElement(RenderWorkflowBuilderPreview, { interactive: preview, isPending })
+    );
+    expect(html.includes('workflow_builder_preview_pending')).toBe(isPending);
+    expect(html.includes('data-chat-scroll-anchor="preview-1"')).toBe(isPending);
   });
 });

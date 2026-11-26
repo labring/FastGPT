@@ -78,7 +78,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
   });
 
-  it('stores only display text for failed LLM responses', () => {
+  it('stores only display text for failed LLM responses and marks errorCaptured when node.catchError is enabled', () => {
     const { collector, nodeResponses } = createCollector();
 
     collector.emitEvent({
@@ -99,6 +99,38 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
 
     expect(nodeResponses[0]).not.toHaveProperty('error');
+    expect(nodeResponses[0]).not.toHaveProperty('errorCaptured');
+
+    const capturedNodeResponses: any[] = [];
+    const capturedCollector = createAgentLoopCoreNodeResponseEventCollector({
+      node: {
+        nodeId: 'agent_node',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        catchError: true
+      },
+      nodeResponses: capturedNodeResponses,
+      getToolInfo: (name) => ({
+        name,
+        avatar: 'tool-avatar'
+      })
+    });
+    capturedCollector.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_captured_error',
+      finishReason: 'error',
+      error: new UserConfigError('Invalid API key'),
+      usages: [],
+      seconds: 0.2
+    } as any);
+
+    expect(capturedNodeResponses).toEqual([
+      expect.objectContaining({
+        errorText: 'Invalid API key',
+        errorCaptured: true
+      })
+    ]);
   });
 
   it('records tool responses and compression as separate flat rows', () => {

@@ -1,8 +1,8 @@
 import { AppToolSourceEnum } from '../tool/constants';
-import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
-import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
+import type { NodeToolConfigType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
+import { hashStr } from '../../../common/string/tools';
 
 /**
   Tool id rule:
@@ -84,6 +84,17 @@ export function splitCombineToolId(id: string): {
 }
 
 /**
+ * 预览接口边界专用的无类型 V2 子工具反查解析器（如 `<parentId>/<toolName>` 或 `<parentId>//api/v1/users`）。
+ * 独立于 splitCombineToolId，避免资源快照和运行时把子工具误归为父级 personal 应用。
+ */
+export const parseUntypedV2ChildToolLookupId = (
+  appId: string
+): { parentId: string; toolName: string } | null => {
+  const { parentId, toolName } = splitToolsetToolPluginId(appId);
+  return parentId && toolName && !parentId.includes('-') ? { parentId, toolName } : null;
+};
+
+/**
  * 判断工具是否允许使用旧版 toolDescription 推断 AI 参数。
  * 该兼容仅覆盖工作流工具和旧系统/商业工具，其他工具继续使用自身 schema annotation。
  */
@@ -123,6 +134,21 @@ const TeamPluginSourcePrefix = 'teamId:';
 export const getToolIdentityKey = (id?: string, source?: string) =>
   `${source || 'system'}:${id || ''}`;
 
+/** 读取 Agent 工具来源，兼容仅在工具配置中保存来源的历史数据。 */
+export const getAgentToolSource = ({
+  source,
+  toolConfig
+}: {
+  source?: string;
+  toolConfig?: NodeToolConfigType;
+}) => source ?? toolConfig?.systemTool?.source ?? toolConfig?.systemToolSet?.source;
+
+/** 归一化系统工具集的子工具 ID，保留子工具名内部的斜线。 */
+export const getSystemToolSetChildId = (toolSetId: string, childId: string) => {
+  const prefix = `${toolSetId}/`;
+  return childId.startsWith(prefix) ? childId : `${prefix}${childId}`;
+};
+
 /** 构造 plugin service 使用的团队隔离 source。 */
 export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
 
@@ -155,32 +181,7 @@ export function parseDebugToolSource(source?: string): { tmbId: string } | undef
 }
 
 export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
-  return selectedTools?.some((tool) => isDebugToolSource(tool.source)) ?? false;
-}
-
-/**
- * 检查发布数据中是否包含本地调试工具。
- * 需要同时覆盖普通工具节点、工具集配置和 Agent 节点 selectedTools 输入，避免调试 source 被发布到线上版本。
- */
-export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
-  return (
-    nodes?.some((node) => {
-      if (isDebugToolSource(node.source)) return true;
-
-      const toolConfig = node.toolConfig;
-      if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
-      if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
-
-      const selectedToolsInput = node.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.selectedTools
-      );
-      const selectedTools = Array.isArray(selectedToolsInput?.value)
-        ? (selectedToolsInput.value as SelectedToolItemType[])
-        : [];
-
-      return hasDebugToolInSelectedTools(selectedTools);
-    }) ?? false
-  );
+  return selectedTools?.some((tool) => isDebugToolSource(getAgentToolSource(tool))) ?? false;
 }
 
 export const getToolRawId = (id: string) => {
@@ -191,8 +192,7 @@ export const getToolRawId = (id: string) => {
 };
 
 /**
- * 拆分 MCP/HTTP 子工具 pluginId，保留 toolName 内部的 `/`。
- * pluginId 格式为 appId/toolName；toolName 可能本身以 `/` 开头，例如 appId//test。
+ * 只用第一个 `/` 分隔工具集与子工具，保留完整的子工具名（含前导斜线）。
  */
 export const splitToolsetToolPluginId = (pluginId: string) => {
   const [parentId, ...toolNameParts] = pluginId.split('/');
@@ -203,7 +203,7 @@ export const splitToolsetToolPluginId = (pluginId: string) => {
 };
 
 /**
- * 从完整组合工具 ID 中解析 MCP/HTTP 子工具信息。
+ * 从组合工具 ID 中解析工具集和完整子工具名。
  */
 export const parseToolsetToolId = (id: string) => {
   const { pluginId } = splitCombineToolId(id);
@@ -224,6 +224,20 @@ export const getToolNameCandidates = (toolName?: string) => {
   }
 
   return candidates;
+};
+
+/** 按候选工具名顺序匹配子工具；exactOnly=true 时仅精确匹配完整工具名。 */
+export const findToolByNameCandidates = <T extends { name: string }>({
+  tools,
+  toolName,
+  exactOnly = false
+}: {
+  tools: T[];
+  toolName: string;
+  exactOnly?: boolean;
+}): T | undefined => {
+  const candidates = exactOnly ? [toolName] : getToolNameCandidates(toolName);
+  return candidates.map((name) => tools.find((entry) => entry.name === name)).find(Boolean);
 };
 
 /** 返回工具集子工具的有效描述；主动保存空字符串时保留空字符串。 */
@@ -306,4 +320,19 @@ export const mergeToolSetChildDescriptions = ({
         }
       : {})
   } as NodeToolConfigType;
+};
+
+/** 内联 MCP/HTTP 子工具使用远端稳定标识生成模型 function name。 */
+const getInlineToolSetChildIdentity = (
+  tool: { name: string } | { method: string; path: string }
+) => ('method' in tool ? `${tool.method.toUpperCase()}:${tool.path}` : `mcp:${tool.name}`);
+
+export const getInlineToolSetChildNodeId = ({
+  toolSetNodeId,
+  tool
+}: {
+  toolSetNodeId: string;
+  tool: { name: string } | { method: string; path: string };
+}) => {
+  return `t${hashStr(`${toolSetNodeId}:${getInlineToolSetChildIdentity(tool)}`).slice(0, 32)}`;
 };

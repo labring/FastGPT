@@ -1,11 +1,12 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
-import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
+import { getWorkflowMaxLoopTimes, getWorkflowParallelMaxConcurrency } from '../../constants';
 import { getNodeResponseChildResponseCount } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
@@ -18,9 +19,9 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
-import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
-import { WorkflowMemoryState } from '../../memory/state';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -36,7 +37,13 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchParallelRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node, checkIsStopping } = props;
+  const {
+    checkIsStopping,
+    variableContext: parentVariableContext,
+    workflowStreamResponse,
+    nodeResponseSink
+  } = getWorkflowContext();
+  const { params, runtimeNodes, runtimeEdges, node } = props;
   const { name } = node;
   const {
     loopInputArray = [],
@@ -50,19 +57,18 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  // 循环上限与并发上限由统一 getter 从实例配置读取，ENV 只在迁移时 seed
+  const maxLength = getWorkflowMaxLoopTimes();
+  const maxConcurrency = getWorkflowParallelMaxConcurrency();
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const concurrency = clampParallelConcurrency(
-    userConcurrency,
-    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
-  );
+  const concurrency = clampParallelConcurrency(userConcurrency, maxConcurrency);
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
-  const parentMemoryState = WorkflowMemoryState.fromWorkflow(props);
+  const parentMemoryContext = getWorkflowContext().memoryContext;
   const successfulTaskMemories: Array<Record<string, any> | undefined> = [];
   // 仅保留并行节点自身未恢复的异常；子流程失败只参与任务结果汇总。
   let parallelFailure: { rawError: unknown } | undefined;
@@ -94,21 +100,33 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         const getRunningTime = () => +((Date.now() - startTime) / 1000).toFixed(2);
 
         try {
-          const taskVariableState = props.variableState.clone();
-          const taskMemoryState = parentMemoryState.fork();
-          const taskStateSnapshot = createContainerRunStateSnapshot({
-            nodes: taskRuntimeNodes,
-            childrenNodeIdList,
-            variableState: taskVariableState
+          const taskMemoryContext = parentMemoryContext.fork();
+          const taskStateSnapshot = new WorkflowRunStateSnapshot({
+            variableContext: parentVariableContext,
+            workflowStreamResponse,
+            nodeOutputs: {
+              sourceNodes: taskRuntimeNodes,
+              targetNodes: runtimeNodes,
+              childrenNodeIdList
+            }
           });
-          const response = await runWorkflow({
-            ...props,
-            variableState: taskVariableState,
-            memoryState: taskMemoryState,
-            nodeResponseParentId: taskResponseId,
-            runtimeNodes: taskRuntimeNodes,
-            runtimeEdges: taskRuntimeEdges
+          const taskContext = getWorkflowContext().getChildContext({
+            workflowStreamResponse: taskStateSnapshot.workflowStreamResponse,
+            memoryContext: taskMemoryContext,
+            variableContext: taskStateSnapshot.variableContext,
+            nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+              workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+              defaultParentId: taskResponseId
+            })
           });
+          const response = await runWithContext(taskContext, () =>
+            runWorkflow({
+              ...props,
+              nodeResponseParentId: taskResponseId,
+              runtimeNodes: taskRuntimeNodes,
+              runtimeEdges: taskRuntimeEdges
+            })
+          );
           const runningTime = getRunningTime();
 
           // Push usage per attempt (resources were consumed regardless of success)
@@ -123,20 +141,16 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             llmInputTokens: response.workflowRuntimeSummary.llmInputTokens,
             llmOutputTokens: response.workflowRuntimeSummary.llmOutputTokens,
             totalPoints: attemptPoints,
-            citeCollectionIds: response.workflowRuntimeSummary.citeCollectionIds
+            citeCollectionIds: response.workflowRuntimeSummary.citeCollectionIds,
+            hasAgentSandbox: response.workflowRuntimeSummary.hasAgentSandbox
           });
 
           const result = parseTaskResponse({ index, response });
           if (result.success) {
             successfulTaskMemories[index] = response[DispatchNodeResponseKeyEnum.memories];
-            await syncContainerRunState({
-              sourceNodes: taskRuntimeNodes,
-              targetNodes: runtimeNodes,
-              childrenNodeIdList,
-              stateSnapshot: taskStateSnapshot,
-              childVariableState: taskVariableState,
-              parentVariableState: props.variableState
-            });
+            await taskStateSnapshot.commit();
+          } else {
+            taskStateSnapshot.discard();
           }
           const attemptResult = {
             ...result,
@@ -202,18 +216,16 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   );
   // 任务包装节点只通过 sink 输出；父 parallelRun 只保留轻量统计和业务摘要。
   const rootChildResponseCount = getNodeResponseChildResponseCount(attemptResponseDetails);
-  if (props.nodeResponseSink) {
-    for (const detail of attemptResponseDetails) {
-      await props.nodeResponseSink.publish([
-        {
-          response: {
-            ...detail,
-            childrenResponses: undefined
-          },
-          parentId: props.nodeResponseParentId
-        }
-      ]);
-    }
+  for (const detail of attemptResponseDetails) {
+    await nodeResponseSink.publish([
+      {
+        response: {
+          ...detail,
+          childrenResponses: undefined
+        },
+        parentId: props.nodeResponseParentId
+      }
+    ]);
   }
 
   const parallelMemories: Record<string, any> = {};

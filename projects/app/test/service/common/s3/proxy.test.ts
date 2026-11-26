@@ -1,8 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
   handleS3ProxyDownload,
+  handleS3RedirectDownload,
   handleS3ProxyUpload,
   handleS3ProxyUploadPart,
   handleS3ProxyRouteError,
@@ -55,11 +57,70 @@ const payload = {
   filename: 'image.png'
 };
 
+describe('handleS3RedirectDownload', () => {
+  it.each(['GET', 'HEAD'])(
+    'proxies active documents for %s instead of losing the sandbox headers at S3',
+    async (method) => {
+      const req = createRequest(method);
+      const res = createResponse();
+      const generatePresignedGetUrl = vi.fn();
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          getFileMetadata: vi.fn().mockResolvedValue({
+            filename: 'misleading.png',
+            contentType: 'text/html'
+          }),
+          getFileStream: vi.fn().mockResolvedValue(Readable.from(['<script>test()</script>'])),
+          externalClient: { generatePresignedGetUrl }
+        }
+      } as any;
+
+      await handleS3RedirectDownload({
+        req,
+        res: res as any,
+        payload,
+        expiresAt: new Date(Date.now() + 60_000)
+      });
+
+      expect(generatePresignedGetUrl).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['Content-Disposition']).toMatch(/^inline;/);
+      expect(res.headers['Content-Security-Policy']).toContain('sandbox allow-scripts');
+    }
+  );
+});
+
 describe('handleS3ProxyDownload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.s3BucketMap = {} as any;
   });
+
+  it.each(['GET', 'HEAD'])(
+    'keeps HTML inline with browser isolation for %s, including misleading filenames',
+    async (method) => {
+      const req = createRequest(method);
+      const res = createResponse();
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          getFileStream: vi.fn().mockResolvedValue(Readable.from(['<script>test()</script>'])),
+          getFileMetadata: vi.fn().mockResolvedValue({
+            filename: 'preview.png',
+            contentType: 'text/html'
+          })
+        }
+      } as any;
+
+      await handleS3ProxyDownload({ req, res: res as any, payload });
+
+      expect(res.headers['Content-Disposition']).toMatch(/^inline;/);
+      expect(res.headers['Content-Security-Policy']).toContain('sandbox allow-scripts');
+      expect(res.headers['Content-Security-Policy']).not.toContain('allow-same-origin');
+      expect(res.headers['Cross-Origin-Opener-Policy']).toBe('same-origin');
+      expect(res.headers['Cache-Control']).toBe('private, no-store');
+      expect(res.headers['Referrer-Policy']).toBe('no-referrer');
+    }
+  );
 
   it('streams the complete object and removes request lifecycle listeners', async () => {
     const req = createRequest();
@@ -324,26 +385,32 @@ describe('handleS3ProxyUploadPart', () => {
     });
   });
 
-  it('does not write a response when the client aborts the upload', () => {
-    const res = {
-      destroyed: false,
-      closed: false,
-      headersSent: false,
-      status: vi.fn(),
-      json: vi.fn(),
-      end: vi.fn()
-    };
+  it.each(['Multipart upload request aborted', 'Upload request aborted'])(
+    'does not write a response for an aborted upload (%s)',
+    (message) => {
+      const res = {
+        destroyed: false,
+        closed: false,
+        writableEnded: false,
+        headersSent: false,
+        status: vi.fn(),
+        json: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn()
+      };
 
-    expect(
-      handleS3ProxyRouteError({
-        res: res as any,
-        error: new Error('Multipart upload request aborted')
-      })
-    ).toBeUndefined();
-    expect(res.status).not.toHaveBeenCalled();
-    expect(res.json).not.toHaveBeenCalled();
-    expect(res.end).not.toHaveBeenCalled();
-  });
+      expect(
+        handleS3ProxyRouteError({
+          res: res as any,
+          error: new Error(message)
+        })
+      ).toBeUndefined();
+      expect(res.destroy).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+      expect(res.end).not.toHaveBeenCalled();
+    }
+  );
 
   it('does not write errors after the response has closed', () => {
     const res = {
@@ -374,6 +441,7 @@ describe('handleS3ProxyUpload', () => {
       headers: { 'content-length': '5' },
       aborted: false
     });
+    const res = createResponse() as any;
     const uploadObject = vi.fn().mockResolvedValue({});
     global.s3BucketMap = {
       'fastgpt-private': {
@@ -383,6 +451,7 @@ describe('handleS3ProxyUpload', () => {
 
     const uploadPromise = handleS3ProxyUpload({
       req,
+      res,
       payload: {
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/%E6%96%87%E6%A1%A3.txt',
@@ -415,4 +484,229 @@ describe('handleS3ProxyUpload', () => {
       })
     );
   });
+
+  it('settles the upload and destroys the guard stream when the client disconnects', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '100' },
+      aborted: false
+    });
+    const res = createResponse() as any;
+    const uploadObject = vi.fn();
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      res,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.txt',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'file.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.write(Buffer.from('partial'));
+    await vi.waitFor(() => expect(req.listenerCount('close')).toBeGreaterThan(0));
+    req.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadObject).not.toHaveBeenCalled();
+    expect(req.listenerCount('aborted')).toBe(0);
+    expect(req.listenerCount('close')).toBe(0);
+  });
+
+  it('aborts an in-flight storage upload when the client disconnects after validation', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': String(8192) },
+      aborted: false
+    });
+    const res = createResponse() as any;
+    let uploadSignal: AbortSignal | undefined;
+    let markUploadStarted!: () => void;
+    const uploadStarted = new Promise<void>((resolve) => {
+      markUploadStarted = resolve;
+    });
+    const uploadObject = vi.fn(
+      ({ abortSignal }: { abortSignal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          uploadSignal = abortSignal;
+          markUploadStarted();
+          abortSignal.addEventListener('abort', () => reject(abortSignal.reason), { once: true });
+        })
+    );
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      res,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.txt',
+        maxSize: 1024 * 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'file.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.write(Buffer.alloc(8192, 'a'));
+    await uploadStarted;
+    req.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadSignal?.aborted).toBe(true);
+  });
+
+  it('aborts an in-flight storage upload when the client disconnects after request body ends', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '5' },
+      aborted: false
+    });
+    const res = createResponse() as any;
+    let uploadSignal: AbortSignal | undefined;
+    let markUploadStarted!: () => void;
+    const uploadStarted = new Promise<void>((resolve) => {
+      markUploadStarted = resolve;
+    });
+    const uploadObject = vi.fn(
+      ({ abortSignal }: { abortSignal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          uploadSignal = abortSignal;
+          markUploadStarted();
+          abortSignal.addEventListener('abort', () => reject(abortSignal.reason), { once: true });
+        })
+    );
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      res,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/small.txt',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'small.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.end(Buffer.from('hello'));
+    await uploadStarted;
+    expect(req.readableEnded).toBe(true);
+    res.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadSignal?.aborted).toBe(true);
+    expect(res.listenerCount('close')).toBe(0);
+  });
+});
+
+describe('handleS3ProxyDownload missing object vs bucket errors', () => {
+  it.each(['GET', 'HEAD'] as const)(
+    'maps NoSuchKey to CommonErrEnum.fileNotFound (HTTP 404) through real S3BaseBucket for %s',
+    async (method) => {
+      const { S3BaseBucket } = await vi.importActual<
+        typeof import('@fastgpt/service/common/s3/buckets/base')
+      >('@fastgpt/service/common/s3/buckets/base');
+      const req = createRequest(method);
+      const res = createResponse();
+      const noSuchKeyError = Object.assign(new Error('The specified key does not exist.'), {
+        name: 'NoSuchKey',
+        $metadata: { httpStatusCode: 404 }
+      });
+      const bucket = new S3BaseBucket(
+        {
+          bucketName: 'fastgpt-private',
+          downloadObject: vi.fn().mockRejectedValue(noSuchKeyError),
+          getObjectMetadata: vi.fn().mockRejectedValue(noSuchKeyError)
+        } as any,
+        undefined
+      );
+
+      global.s3BucketMap = { 'fastgpt-private': bucket as any };
+
+      await expect(
+        handleS3ProxyDownload({
+          req,
+          res: res as any,
+          payload
+        })
+      ).rejects.toBe(CommonErrEnum.fileNotFound);
+      expect(resolveS3ProxyErrorResponse(CommonErrEnum.fileNotFound)).toEqual({
+        httpStatus: 404,
+        publicError: CommonErrEnum.fileNotFound
+      });
+    }
+  );
+
+  it.each(['GET', 'HEAD'] as const)(
+    'keeps NoSuchBucket as an HTTP 500 server error through real S3BaseBucket for %s',
+    async (method) => {
+      const { S3BaseBucket } = await vi.importActual<
+        typeof import('@fastgpt/service/common/s3/buckets/base')
+      >('@fastgpt/service/common/s3/buckets/base');
+      const req = createRequest(method);
+      const res = createResponse();
+      const noSuchBucketError = Object.assign(new Error('The specified bucket does not exist.'), {
+        name: 'NoSuchBucket',
+        code: 'NoSuchBucket',
+        $metadata: { httpStatusCode: 404 }
+      });
+      const bucket = new S3BaseBucket(
+        {
+          bucketName: 'fastgpt-private',
+          downloadObject: vi.fn().mockRejectedValue(noSuchBucketError),
+          getObjectMetadata: vi.fn().mockRejectedValue(noSuchBucketError)
+        } as any,
+        undefined
+      );
+
+      global.s3BucketMap = { 'fastgpt-private': bucket as any };
+
+      await expect(
+        handleS3ProxyDownload({
+          req,
+          res: res as any,
+          payload
+        })
+      ).rejects.toBe(noSuchBucketError);
+      expect(resolveS3ProxyErrorResponse(noSuchBucketError)).toEqual({
+        httpStatus: 500,
+        publicError: noSuchBucketError
+      });
+    }
+  );
 });

@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
 import type { AppDeleteJobData } from '@fastgpt/service/core/app/delete';
 import { addAppDeleteJob } from '@fastgpt/service/core/app/delete';
@@ -614,6 +615,7 @@ describe('App Delete Data Cleanup Verification', () => {
 
     // 5. 创建 OpenAPI 配置
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       appId: appId,
       teamId: teamId,
       tmbId: rootUser.tmbId,

@@ -1,0 +1,46 @@
+---
+title: '删除数据'
+seoTitle: '删除数据 - DELETE /api/core/dataset/data/delete | FastGPT OpenAPI'
+description: '删除知识库集合中指定 ID 的单条数据块及其在向量数据库和全文检索中的全部关联索引（需要写权限）。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`DELETE`
+- **请求路径**：`/api/core/dataset/data/delete`
+- **所属模块**：知识库 / 数据管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/DELETE/core/dataset/data/delete)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/DELETE/core/dataset/data/delete`）
+
+## 接口说明与注意事项
+
+删除指定数据集数据，需要写权限
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段 | 类型     | 必填 | 默认值 | 约束与说明                         |
+| ---- | -------- | ---- | ------ | ---------------------------------- |
+| `id` | `string` | 是   | -      | 数据 ID。正则：`^[0-9a-fA-F]{24}$` |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X DELETE "https://cloud.fastgpt.cn/api/core/dataset/data/delete?id=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+删除成功
+
+**Content-Type** : `application/json`

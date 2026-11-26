@@ -1,6 +1,6 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDingtalkAppAccessToken } from '@fastgpt/service/common/dingtalk/accessToken';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({ axiosWithoutSSRF: { post } }));

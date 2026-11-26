@@ -3,7 +3,7 @@ import {
   getWorkflowBuilderPreviewDecision
 } from '@fastgpt/global/core/workflow/builder/utils';
 import { useEffect, useState } from 'react';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 import {
   extractDeepestInteractive,
@@ -34,30 +34,28 @@ export const getWorkflowBuilderWatchChatId = (value?: string | string[]) => {
 
 /**
  * 决定 Builder 入口展示方式。
- * 社区版保留升级入口；无编辑权限或商业版管理员关闭依赖能力时直接隐藏。
+ * 社区版保留商业功能提示入口；商业版未配置 Sandbox 或无编辑权限时隐藏。
  */
 export const getWorkflowBuilderEntryAccess = ({
   systemInitialized,
   isPlus,
   showAgentSandbox,
-  showWorkflowBuilder,
   canEdit
 }: {
   systemInitialized: boolean;
   isPlus: boolean;
   showAgentSandbox: boolean;
-  showWorkflowBuilder: boolean;
   canEdit: boolean;
 }): WorkflowBuilderEntryAccess => {
   if (!systemInitialized || !canEdit) return 'hidden';
   if (!isPlus) return 'upgrade';
-  if (!showAgentSandbox || !showWorkflowBuilder) return 'hidden';
+  if (!showAgentSandbox) return 'hidden';
   return 'enabled';
 };
 
 /**
  * 根据编辑权限、入口可见性和 Builder 可用性决定首次进入时的面板状态。
- * 入口可见时统一执行两步引导；仅入口被管理员关闭时回退旧版系统配置行为。
+ * 入口可见时统一执行两步引导；入口隐藏时回退旧版系统配置行为。
  */
 export const getWorkflowBuilderInitialState = ({
   canEdit,
@@ -212,39 +210,17 @@ export const getWorkflowBuilderPendingInteractiveKey = (
   ].join(':');
 };
 
-/**
- * 生成失败时使用本次运行的末条聊天记录标识错误提醒。
- * 即使恢复流错误没有保留空 AI 消息，末条用户消息仍能稳定区分不同运行。
- */
-export const getWorkflowBuilderErrorAttentionKey = ({
-  chatRecords,
-  chatGenerateStatus
-}: {
-  chatRecords: readonly (ChatItemObjItemType & { dataId: string })[];
-  chatGenerateStatus?: ChatGenerateStatusEnum;
-}) => {
-  if (chatGenerateStatus !== ChatGenerateStatusEnum.error) return;
-
-  const failedRunRecord = chatRecords.at(-1);
-  if (!failedRunRecord) return;
-
-  return `error:${failedRunRecord.dataId}`;
-};
-
-/** 将当前待交互、待应用版本和运行错误整理成可独立确认已查看的提醒 key。 */
+/** 将当前待交互和待应用版本整理成可独立确认已查看的提醒 key。 */
 export const getWorkflowBuilderAttentionKeys = ({
   pendingInteractiveKey,
-  pendingVersionChecksum,
-  errorAttentionKey
+  pendingVersionChecksum
 }: {
   pendingInteractiveKey?: string;
   pendingVersionChecksum?: string;
-  errorAttentionKey?: string;
 }) =>
   [
     pendingInteractiveKey,
-    pendingVersionChecksum ? `version:${pendingVersionChecksum}` : undefined,
-    errorAttentionKey
+    pendingVersionChecksum ? `version:${pendingVersionChecksum}` : undefined
   ].filter((key): key is string => Boolean(key));
 
 /** 当前任一待处理事项尚未被本页面查看时展示红点。 */

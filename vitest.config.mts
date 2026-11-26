@@ -1,8 +1,10 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
+import { blockPrivateDalRepoImports } from './packages/dal/vitestBoundary';
 import { getTestMaxWorkers } from './test/vitestWorkers';
 
 export default defineConfig({
+  plugins: [blockPrivateDalRepoImports()],
   resolve: {
     alias: {
       '@': resolve('projects/app/src'),

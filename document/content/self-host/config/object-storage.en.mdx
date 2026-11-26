@@ -8,14 +8,12 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## Object Storage Configuration
 
-This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS.
-
-FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudflare R2. Except for local MinIO development, create `STORAGE_PUBLIC_BUCKET` and `STORAGE_PRIVATE_BUCKET` ahead of time and grant the FastGPT access key read/write permission on both buckets.
+FastGPT supports self-hosted MinIO / RustFS as well as AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudflare R2. When using any vendor other than `minio`, you must create both `STORAGE_PUBLIC_BUCKET` and `STORAGE_PRIVATE_BUCKET` in advance (non-MinIO adapters only check that the buckets exist at startup and fail if either bucket is missing) and grant the access key read/write permissions on both buckets.
 
 ## Access Modes
 
 - Uploads always go through the FastGPT backend proxy.
-- FastGPT provides short links for file downloads instead of returning object storage presigned URLs directly.
+- FastGPT provides authenticated short links for file downloads to manage file access and protect object storage credentials.
 - `STORAGE_DOWNLOAD_URL_MODE` supports two modes and defaults to `short-proxy`:
   - `short-proxy`: FastGPT validates the short link and proxies the file stream. Downloads through short links do not require a public object storage endpoint.
   - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
@@ -28,17 +26,17 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 
 > MinIO has strong AWS S3 protocol support and is suitable for local development and self-hosted deployments. In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS or RustFS.
 
-- `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
+- `STORAGE_S3_ENDPOINT` Internal connection address. Use the Compose service name or container name, e.g., `http://fastgpt-rustfs:9000` for the RustFS service bundled with the official template
 - `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This variable does not change the download mode automatically.
 - `STORAGE_S3_CDN_ENDPOINT` [Optional] CDN endpoint used for temporary `short-redirect` download URLs. This variable does not change the default download mode and requires `STORAGE_EXTERNAL_ENDPOINT`. Uploads still go through the FastGPT backend proxy and do not use the CDN.
-- `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
+- `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. Default: `false` (virtual-hosted style). Self-hosted MinIO / RustFS usually requires setting it to `true` explicitly; the official template already does.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
 
-If you expose MinIO through NodePort on Kubernetes, also expose its S3 API (port 9000) and set `STORAGE_EXTERNAL_ENDPOINT` to an address reachable by both browsers and FastGPT. A cluster-internal address or the server's `localhost:9000` cannot serve public bucket assets such as plugin logos to browsers. The same browser accessibility requirement applies to Docker deployments.
+When exposing MinIO in Kubernetes or Docker, configure `STORAGE_EXTERNAL_ENDPOINT` to a static host IP or domain reachable by both browsers and FastGPT to ensure public bucket assets such as plugin logos load correctly.
 
 **Complete Example**
 
-> If using Sealos object storage, set `STORAGE_VENDOR` to `minio`
+> When using Sealos Object Storage: set `STORAGE_VENDOR` to `aws-s3` if the two buckets are already created in the console, or set it to `minio` if you need FastGPT to create the buckets automatically.
 
 ```dotenv
 STORAGE_VENDOR=minio
@@ -47,14 +45,14 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_ENDPOINT=http://fastgpt-rustfs:9000
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_S3_MAX_RETRIES=3
 ```
 
 ### AWS S3
 
-AWS S3 uses the same S3-compatible variables as MinIO. For production, create separate public and private buckets in advance and configure public-read or CloudFront/custom-domain access only for the public bucket.
+AWS S3 uses the same S3-compatible variables as MinIO. When `STORAGE_VENDOR=aws-s3`, you must create separate public and private buckets in advance and configure public-read or CloudFront/custom-domain access for the public bucket.
 
 ```dotenv
 STORAGE_VENDOR=aws-s3
@@ -124,9 +122,9 @@ STORAGE_COS_PROXY=
 
 R2 uses the S3-compatible API. Set `STORAGE_REGION` to `auto` and use the account-level S3 endpoint from Cloudflare as `STORAGE_S3_ENDPOINT`. FastGPT does not rewrite R2 presigned URLs through `STORAGE_S3_CDN_ENDPOINT`; private objects should normally use the default `short-proxy` download mode.
 
-`STORAGE_R2_PUBLIC_ENDPOINT` is required for public objects. Set it to the HTTPS custom domain (or another public HTTPS domain bound to the bucket). This is separate from the R2 S3 API endpoint and must not contain query parameters.
+`STORAGE_R2_PUBLIC_ENDPOINT` is required for public objects. Set it to the custom domain bound to the bucket for public HTTPS access without query parameters.
 
-For production, use a custom domain instead of the rate-limited `r2.dev` development URL. Create both R2 buckets in advance; FastGPT checks that production buckets exist at startup and does not create them automatically.
+For production, configure a custom domain bound to the R2 bucket for reliable access. Create both R2 buckets in advance; FastGPT verifies production buckets at startup.
 
 ```dotenv
 STORAGE_VENDOR=r2

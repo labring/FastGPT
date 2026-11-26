@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   buildPiModel,
+  getModelApiKey,
   getPiThinkingLevel
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/modelBridge';
 
@@ -99,6 +100,20 @@ describe('PiAgent provider model bridge', () => {
 
     expect(model.reasoning).toBe(true);
     expect(model.compat?.supportsReasoningEffort).toBe(false);
+  });
+
+  it('does not fall back to the AI Proxy token when a model endpoint has no auth', () => {
+    const model = buildPiModel(
+      createLlmModel({ model: 'no-auth-model', requestAuth: undefined }) as any
+    );
+
+    expect(model.baseUrl).toBe('https://api.example.com/v1');
+    // null 会被 OpenAI SDK 解释为删除默认 Authorization。
+    expect(model.headers?.Authorization).toBeNull();
+    const apiKey = getModelApiKey(createLlmModel({ requestAuth: undefined }) as any);
+    // 必须返回非空哨兵，阻止 pi-ai 回退宿主 OPENAI_API_KEY，且不能是代理令牌。
+    expect(apiKey).toBeTruthy();
+    expect(apiKey).not.toBe('test-aiproxy-token');
   });
 
   it('uses runtime maxTokens with model maxResponse cap', () => {

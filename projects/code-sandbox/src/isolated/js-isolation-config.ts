@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { platform } from 'os';
 import { join } from 'path';
+import { getSeccompConfig } from './seccomp-config';
 
 export const JS_SANDBOX_ROOT = '/tmp/fastgpt-js-sandbox';
 export const JS_SANDBOX_UID = 65538;
@@ -22,6 +23,14 @@ export function assertJsNativeIsolationReady(addonPath: string): void {
 
   if (!existsSync(addonPath)) {
     throw new Error(`JS native sandbox addon does not exist: ${addonPath}`);
+  }
+  if (
+    getSeccompConfig().enableSeccomp &&
+    !existsSync(join(addonPath, '..', 'fastgpt_js_launcher'))
+  ) {
+    throw new Error(
+      `JS sandbox launcher does not exist: ${join(addonPath, '..', 'fastgpt_js_launcher')}`
+    );
   }
   if (!existsSync(JS_SANDBOX_ROOT)) {
     throw new Error(`JS sandbox root does not exist: ${JS_SANDBOX_ROOT}`);

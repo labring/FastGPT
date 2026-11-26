@@ -1,0 +1,110 @@
+{
+  "type": "architecture",
+  "title": "Integrate through a trusted backend",
+  "nodes": [
+    {
+      "id": "client",
+      "label": "User client",
+      "row": 0,
+      "col": 0,
+      "kind": "external",
+      "sub": "Web / mobile",
+      "illustration": "browser"
+    },
+    {
+      "id": "backend",
+      "label": "Your backend",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Keep API keys here",
+      "illustration": "runtime"
+    },
+    {
+      "id": "sdk",
+      "label": "Server client",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "OpenAI SDK / HTTP",
+      "illustration": "code"
+    },
+    {
+      "id": "api",
+      "label": "FastGPT API",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "chat",
+      "label": "Apps and chats",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "chat"
+    },
+    {
+      "id": "dataset",
+      "label": "Dataset APIs",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "files"
+    }
+  ],
+  "edges": [
+    [
+      "client",
+      "backend",
+      "",
+      "primary"
+    ],
+    [
+      "backend",
+      "api",
+      "",
+      "primary"
+    ],
+    [
+      "sdk",
+      "api",
+      "Calls",
+      "link"
+    ],
+    [
+      "api",
+      "chat",
+      "",
+      "default"
+    ],
+    [
+      "api",
+      "dataset",
+      "",
+      "default"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "api",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 174
+    },
+    {
+      "id": "chat",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 377
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

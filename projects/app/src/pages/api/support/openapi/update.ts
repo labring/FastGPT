@@ -4,6 +4,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -14,6 +15,8 @@ import {
   type UpdateApiKeyBodyType,
   type UpdateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 async function handler(
   req: ApiRequestProps<UpdateApiKeyBodyType>
@@ -23,18 +26,21 @@ async function handler(
     bodySchema: UpdateApiKeyBodySchema
   }).body;
 
-  const { tmbId, teamId, openapi, permission } = await authOpenApiKeyCrud({
+  const { tmbId, teamId, openapi, permission, app } = await authOpenApiKeyCrud({
     req,
     authToken: true,
     id: _id
   });
 
+  const scope = resolveApiKeyScope(openapi);
+  if (scope.type === ApiKeyTypeEnum.app && (authProxy !== undefined || tags !== undefined)) {
+    throw OpenApiErrEnum.unAuth;
+  }
   if (authProxy !== undefined) {
-    // 旧应用 key 仅作为 completions appId 兼容来源，不能开启 authProxy。
-    if (openapi.appId && authProxy) {
-      return Promise.reject(OpenApiErrEnum.unAuth);
+    // 历史默认应用不是强绑定，但仍保留旧协议禁止成员代理的限制。
+    if (authProxy && scope.type === ApiKeyTypeEnum.personal && scope.defaultAppId) {
+      throw OpenApiErrEnum.unAuth;
     }
-
     if (authProxy && !permission.isOwner) {
       return Promise.reject(TeamErrEnum.unPermission);
     }
@@ -50,12 +56,30 @@ async function handler(
       : undefined;
 
   (async () => {
+    const resources = [
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.apiKey,
+        id: openapi._id,
+        name: name || openapi.name
+      }),
+      ...(scope.type === ApiKeyTypeEnum.app
+        ? [
+            app
+              ? buildAppAuditResource(app)
+              : buildEntityAuditResource({ type: AuditResourceTypeEnum.app, id: scope.appId })
+          ]
+        : [])
+    ].filter((item): item is AuditResourceType => Boolean(item));
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_API_KEY,
+      resources,
       params: {
-        keyName: name || openapi.name
+        keyName: name || openapi.name,
+        keyId: String(openapi._id),
+        keyType: scope.type,
+        ...(scope.type === ApiKeyTypeEnum.app ? { appId: scope.appId } : {})
       }
     });
   })();

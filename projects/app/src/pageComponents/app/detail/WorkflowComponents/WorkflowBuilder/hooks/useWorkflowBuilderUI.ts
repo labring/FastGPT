@@ -47,10 +47,9 @@ export const useWorkflowBuilderUI = () => {
     () =>
       getWorkflowBuilderAttentionKeys({
         pendingInteractiveKey: activity.pendingInteractiveKey,
-        pendingVersionChecksum,
-        errorAttentionKey: activity.errorAttentionKey
+        pendingVersionChecksum
       }),
-    [activity.pendingInteractiveKey, pendingVersionChecksum, activity.errorAttentionKey]
+    [activity.pendingInteractiveKey, pendingVersionChecksum]
   );
   const { showGeneratingHalo, showAttentionDot } = getWorkflowBuilderEntryVisualState({
     isChatGenerating: activity.isChatGenerating,

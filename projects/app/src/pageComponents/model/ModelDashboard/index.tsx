@@ -1,10 +1,12 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
@@ -33,6 +35,8 @@ type ModelDashboardData = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   totalCost: number;
   avgResponseTime: number;
   avgTtfb: number;
@@ -50,16 +54,9 @@ const ChartsBoxStyles: BoxProps = {
   overflow: 'hidden'
 };
 
-// Default date range: Past 7 days
-const getDefaultDateRange = (): DateRangeType => {
-  const from = addHours(new Date(), -24);
-  from.setMinutes(0, 0, 0); // Set minutes to 0
-
-  const to = addHours(new Date(), 1);
-  to.setMinutes(0, 0, 0); // Set minutes to 0
-
-  return { from, to };
-};
+/** 默认展示昨天和今天，与日期选择器的自然日边界保持一致。 */
+const getDefaultDateRange = (): DateRangeType =>
+  getLocalDateRange(addDays(new Date(), -1), new Date());
 
 const ModelDashboard = ({
   Tab,
@@ -130,17 +127,14 @@ const ModelDashboard = ({
   );
 
   const modelList = useMemo(() => {
-    const res = availableModels
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          avatar: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    const res = sortModelSelectorModels(availableModels).map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
+      return {
+        avatar: provider.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
     return [{ label: t('common:All'), value: '' }, ...res];
   }, [availableModels, getModelProvider, i18n.language, t]);
   // Model price map
@@ -315,6 +309,11 @@ const ModelDashboard = ({
       const inputTokens = summary.reduce((acc, model) => acc + (model.input_tokens || 0), 0);
       const outputTokens = summary.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
       const totalTokens = summary.reduce((acc, model) => acc + (model.total_tokens || 0), 0);
+      const cacheReadTokens = summary.reduce((acc, model) => acc + (model.cached_tokens ?? 0), 0);
+      const cacheCreationTokens = summary.reduce(
+        (acc, model) => acc + (model.cache_creation_tokens ?? 0),
+        0
+      );
 
       const successCalls = totalCalls - errorCalls;
       const avgResponseTime = successCalls
@@ -344,7 +343,9 @@ const ModelDashboard = ({
           const { totalPoints } = calculateModelPrice({
             config: modelPricing,
             inputTokens,
-            outputTokens
+            outputTokens,
+            cacheReadTokens: model.cached_tokens,
+            cacheCreationTokens: model.cache_creation_tokens
           });
 
           return acc + totalPoints;
@@ -373,6 +374,8 @@ const ModelDashboard = ({
         inputTokens,
         outputTokens,
         totalTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         // 保留费用精度供累计图使用，只在显示时舍入。
         totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
@@ -548,6 +551,18 @@ const ModelDashboard = ({
                       label: t('config_model:dashboard_token_usage'),
                       dataKey: tokensUsageType,
                       color: theme.colors.primary['600']
+                    },
+                    {
+                      label: t('account_usage:cache_read_token_length'),
+                      dataKey: 'cacheReadTokens',
+                      color: theme.colors.myGray['500'],
+                      accumulate: true
+                    },
+                    {
+                      label: t('account_usage:cache_creation_token_length'),
+                      dataKey: 'cacheCreationTokens',
+                      color: theme.colors.myGray['500'],
+                      accumulate: true
                     }
                   ]}
                   HeaderLeftChildren={

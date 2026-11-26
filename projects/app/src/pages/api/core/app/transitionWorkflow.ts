@@ -15,6 +15,7 @@ import {
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -24,13 +25,18 @@ async function handler(
     bodySchema: TransitionWorkflowBodySchema
   }).body;
 
-  const { app, teamId, tmbId } = await authApp({
+  const { app, tmbId, isRoot } = await authApp({
     req,
     appId,
     authToken: true,
     per: OwnerPermissionVal
   });
-  const draftWorkflow = await getAppDraftWorkflow(app._id);
+  const teamId = String(app.teamId);
+
+  // 当前前端只从 Simple App 表单调用；不在 API 层限制应用类型转换。
+
+  const draftWorkflow = await getAppDraftWorkflow(app._id, app);
+  assertWorkflowDocumentStructure(draftWorkflow);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar
@@ -49,8 +55,10 @@ async function handler(
         nodes: draftWorkflow.nodes,
         edges: draftWorkflow.edges,
         chatConfig: draftWorkflow.chatConfig,
-        teamId: app.teamId,
+        referenceSnapshots: draftWorkflow.referenceSnapshots,
+        teamId,
         tmbId,
+        isRoot,
         session
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
@@ -69,9 +77,11 @@ async function handler(
       nodes: draftWorkflow.nodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      referenceSnapshots: draftWorkflow.referenceSnapshots,
       resources: draftWorkflow.resources,
       teamId,
       tmbId,
+      isRoot,
       session
     });
   });

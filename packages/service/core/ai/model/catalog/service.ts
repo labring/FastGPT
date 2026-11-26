@@ -36,7 +36,10 @@ const publishInstalledModels = async ({ language = 'en' }: { language?: string }
       JSON.stringify({
         schemaVersion: 1,
         // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
-        models: _systemActiveModelList.map(desensitizeModel),
+        // 管理列表 rank 不参与运行目录版本，避免纯展示排序触发客户端目录缓存失效。
+        models: _systemActiveModelList.map(({ sortOrder: _sortOrder, ...model }) =>
+          desensitizeModel(model)
+        ),
         providers: getModelProviderMetadata().providers,
         defaultModelIds: configuredDefaultModelIds
       })
@@ -116,7 +119,13 @@ export const refreshModelHandle = async () => {
  * 历史模型迁移由启动阻塞任务负责，各节点在业务启动前重载；运行期仍由读取入口按修订号刷新。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
-  if (!refresh && getCachedSystemModelHandle()) return;
+  // 冷启动前的请求可能已加载安装目录；目录存在不代表 Provider 元数据也已初始化。
+  if (
+    !refresh &&
+    getCachedSystemModelHandle() &&
+    getModelProviderMetadata().providers !== undefined
+  )
+    return;
 
   try {
     await preloadModelProviders();

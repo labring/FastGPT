@@ -1,8 +1,10 @@
 {
-  "title": "工作区",
+  "title": "团队与账号",
   "root": false,
   "pages": [
     "team",
-    "customDomain"
+    "usage-and-billing",
+    "customDomain",
+    "models"
   ]
 }

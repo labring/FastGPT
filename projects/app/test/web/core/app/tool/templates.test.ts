@@ -84,6 +84,13 @@ describe('getTeamAppTemplates', () => {
         intro: 'Agent folder'
       },
       {
+        _id: 'chat-agent',
+        type: AppTypeEnum.chatAgent,
+        avatar: 'chat-agent-avatar',
+        name: 'My chat agent',
+        intro: 'Chat agent app'
+      },
+      {
         _id: 'workflow-agent',
         type: AppTypeEnum.workflow,
         avatar: 'agent-avatar',
@@ -94,12 +101,12 @@ describe('getTeamAppTemplates', () => {
 
     const agentTemplates = await getTeamAppTemplates({
       parentId: null,
-      type: [AppTypeEnum.folder, AppTypeEnum.workflow]
+      type: [AppTypeEnum.folder, AppTypeEnum.chatAgent, AppTypeEnum.workflow]
     });
 
     expect(mocks.getAllApps).toHaveBeenNthCalledWith(2, {
       parentId: null,
-      type: [AppTypeEnum.folder, AppTypeEnum.workflow]
+      type: [AppTypeEnum.folder, AppTypeEnum.chatAgent, AppTypeEnum.workflow]
     });
     expect(agentTemplates).toMatchObject([
       {
@@ -109,9 +116,17 @@ describe('getTeamAppTemplates', () => {
         appType: AppTypeEnum.folder
       },
       {
+        id: 'chat-agent',
+        pluginId: 'chat-agent',
+        isFolder: false,
+        flowNodeType: FlowNodeTypeEnum.appModule,
+        appType: AppTypeEnum.chatAgent
+      },
+      {
         id: 'workflow-agent',
         pluginId: 'workflow-agent',
         isFolder: false,
+        flowNodeType: FlowNodeTypeEnum.appModule,
         appType: AppTypeEnum.workflow
       }
     ]);
@@ -388,6 +403,23 @@ describe('getNewToolPreviewNode', () => {
       getLatestVersion
     };
     expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', expectedQuery);
+  });
+
+  it('uses the returned tool type for a V2 child lookup containing hyphens', async () => {
+    const appId = '507f1f77bcf86cd799439011/get-weather';
+    const preview = {
+      pluginId: `mcp-${appId}`,
+      version: 'child-version',
+      inputs: [],
+      outputs: []
+    };
+    mocks.GET.mockResolvedValueOnce(preview);
+
+    await expect(getNewToolPreviewNode({ appId })).resolves.toBe(preview);
+    expect(mocks.GET).toHaveBeenCalledExactlyOnceWith('/core/app/tool/getPreviewNode', {
+      appId,
+      getLatestVersion: true
+    });
   });
 });
 

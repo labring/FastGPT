@@ -69,6 +69,9 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: true
   },
+  isShowBrand: {
+    type: Boolean
+  },
   allowAnonymous: {
     type: Boolean
   },

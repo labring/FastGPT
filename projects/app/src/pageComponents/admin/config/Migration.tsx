@@ -111,12 +111,14 @@ const MigrationProgressStage = ({
           {t(progress.labelKey as any, progress.params as any)}
         </Box>
         <Flex flexShrink={0} alignItems={'center'} gap={2}>
-          {progress.current !== undefined && progress.total !== undefined && (
+          {progress.current !== undefined && (
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('system_migration:progress_count', {
-                current: progress.current,
-                total: progress.total
-              })}
+              {progress.total === undefined
+                ? t('system_migration:progress_processed', { current: progress.current })
+                : t('system_migration:progress_count', {
+                    current: progress.current,
+                    total: progress.total
+                  })}
             </Box>
           )}
           <Badge
@@ -192,8 +194,19 @@ const MigrationCard = ({
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
   const visual = statusVisual[displayStatus];
   const resultText = migration.result
-    ? t(migration.result.key as any, migration.result.params as any)
+    ? t(migration.result.key as any, {
+        // 旧版本已成功的迁移结果没有该参数，避免页面直接显示未替换的占位符
+        skippedConfigCount: 0,
+        ...(migration.result.params as any)
+      })
     : undefined;
+  const skippedConfigCount = migration.result?.params?.skippedConfigCount;
+  const skippedPaths = migration.result?.params?.skippedPaths;
+  const showSkippedConfigs =
+    typeof skippedConfigCount === 'number' &&
+    skippedConfigCount > 0 &&
+    typeof skippedPaths === 'string' &&
+    skippedPaths.length > 0;
   const unscopedError = migration.lastError?.stageKey ? undefined : migration.lastError;
   const errorText = unscopedError?.message;
 
@@ -226,7 +239,18 @@ const MigrationCard = ({
               {t(visual.labelKey as any)}
             </Badge>
             {migration.independent && (
-              <Badge colorScheme={'purple'}>{t('system_migration:mode_independent')}</Badge>
+              <Badge
+                px={2}
+                py={0.5}
+                borderRadius={'md'}
+                color={'purple.700'}
+                bg={'purple.50'}
+                border={'1px solid'}
+                borderColor={'purple.200'}
+                textTransform={'none'}
+              >
+                {t('system_migration:mode_independent')}
+              </Badge>
             )}
             {migration.blockStartup && (
               <Badge colorScheme={'orange'}>{t('system_migration:mode_startup')}</Badge>
@@ -289,6 +313,22 @@ const MigrationCard = ({
           {resultText}
         </Box>
       )}
+
+      {migration.result &&
+        migration.status === SystemMigrationStatusEnum.succeeded &&
+        showSkippedConfigs && (
+          <Box
+            mx={[4, 5]}
+            mb={4}
+            p={3}
+            bg={'yellow.50'}
+            borderRadius={'sm'}
+            fontSize={'sm'}
+            color={'yellow.700'}
+          >
+            {t('system_migration:skipped_configs', { paths: skippedPaths })}
+          </Box>
+        )}
 
       <Box mx={[4, 5]} mb={4}>
         <Box mb={2} fontSize={'xs'} fontWeight={'medium'} color={'myGray.500'}>
@@ -487,11 +527,8 @@ const SystemMigrationsPage = () => {
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
   }, [data?.migrations]);
-  // 仅倒序展示副本；普通队列按注册表顺序执行，独立任务不受展示顺序影响。
-  const displayMigrations = useMemo(
-    () => [...(data?.migrations ?? [])].reverse(),
-    [data?.migrations]
-  );
+  // 直接按注册表顺序展示，保证首位启动迁移与后续后台迁移的阅读顺序一致。
+  const displayMigrations = data?.migrations ?? [];
 
   return (
     <>

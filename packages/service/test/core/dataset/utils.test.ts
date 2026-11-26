@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../utils/instanceConfig';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getDatasetImageIndexCapability,
@@ -182,10 +183,7 @@ describe('getDatasetImageTrainingMode', () => {
 
 describe('getTrainingModeByCollection', () => {
   beforeEach(() => {
-    global.feConfigs = {
-      ...global.feConfigs,
-      isPlus: true
-    };
+    setTestProLicense(true);
   });
 
   it('图片自动索引有 VLM 或原生 embedding 图片索引能力时进入 image 队列', async () => {
@@ -202,6 +200,22 @@ describe('getTrainingModeByCollection', () => {
         trainingType: DatasetCollectionDataProcessModeEnum.chunk,
         imageIndex: true,
         supportImageIndex: false
+      })
+    ).toBe(TrainingModeEnum.index);
+  });
+
+  it('模板 FAQ 在开启 autoIndexes 时进入 auto 队列', () => {
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        autoIndexes: true
+      })
+    ).toBe(TrainingModeEnum.auto);
+
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        autoIndexes: false
       })
     ).toBe(TrainingModeEnum.index);
   });

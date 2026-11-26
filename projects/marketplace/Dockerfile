@@ -9,6 +9,7 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches ./patches
 COPY ./packages ./packages
 COPY ./sdk ./sdk
 COPY ./projects/marketplace/package.json ./projects/marketplace/package.json
@@ -43,7 +44,8 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
-RUN pnpm --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/sandbox-adapter build
+RUN pnpm build:sdks
+RUN pnpm run build:workflow-packages
 RUN pnpm --filter=marketplace build
 
 # --------- runner -----------

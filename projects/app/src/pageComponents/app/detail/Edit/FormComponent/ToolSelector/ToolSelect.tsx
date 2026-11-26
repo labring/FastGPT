@@ -1,30 +1,15 @@
-import { Box, Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import { Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
+import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import type {
-  AppFormEditFormType,
-  SelectedToolItemType
-} from '@fastgpt/global/core/app/formEdit/type';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import ToolSelectModal from './ToolSelectModal';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import ConfigToolModal from '../../component/ConfigToolModal';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import {
-  PluginStatusEnum,
-  PluginStatusMap,
-  type PluginStatusType
-} from '@fastgpt/global/core/plugin/type';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { getToolErrorMessage } from '@/web/core/workflow/check/message';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import SelectedToolCardList from '@/components/core/app/SelectedToolCardList';
+import ToolSelectModal from './ToolSelectModal';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -32,7 +17,7 @@ const ToolSelect = ({
   selectedTools = [],
   fileSelectConfig = {},
   onAddTool,
-  onUpdateTool,
+  onConfigTool,
   onRemoveTool
 }: {
   generatedSelectedTools?: SelectedToolItemType[];
@@ -40,23 +25,10 @@ const ToolSelect = ({
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;
-  onUpdateTool: (tool: SelectedToolItemType) => void;
+  onConfigTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (id: string, source?: string) => void;
 }) => {
   const { t } = useTranslation();
-
-  const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
-    [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
-    [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
-  };
-  const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
-    [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
-    [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
-  };
-
-  const [configTool, setConfigTool] = useState<AppFormEditFormType['selectedTools'][number] | null>(
-    null
-  );
 
   const {
     isOpen: isOpenToolsSelect,
@@ -90,113 +62,11 @@ const ToolSelect = ({
         gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
         gridGap={[2, 4]}
       >
-        {selectedTools.map((item) => {
-          const toolError = getToolErrorMessage({
-            status: item.pluginData?.status || item.status,
-            error: item.pluginData?.error,
-            t
-          });
-          const hasToolError = !!toolError;
-
-          const isUnconfigured = item.configStatus === 'waitingForConfig';
-          const isDebugTool = isDebugToolSource(item.source);
-
-          return (
-            <MyTooltip
-              key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-              label={toolError || item.intro}
-            >
-              <Grid
-                overflow={'hidden'}
-                alignItems={'center'}
-                gridTemplateColumns={'auto minmax(0, 1fr) auto'}
-                columnGap={2}
-                minW={0}
-                h={'46px'}
-                px={3}
-                py={0}
-                bg={'white'}
-                borderRadius={'6px'}
-                border={'base'}
-                borderColor={hasToolError ? 'red.600' : 'myGray.200'}
-                userSelect={'none'}
-                _hover={{
-                  borderColor: hasToolError ? 'red.600' : 'primary.300',
-                  '.delete': {
-                    display: 'flex'
-                  },
-                  '.hoverStyle': {
-                    display: 'flex'
-                  },
-                  '.unHoverStyle': {
-                    display: 'none'
-                  }
-                }}
-              >
-                <Avatar src={item.avatar} w={'28px'} h={'28px'} borderRadius={'sm'} />
-                <MyTooltip label={item.name} showOnlyWhenOverflow shouldWrapChildren={false}>
-                  <Box
-                    minW={0}
-                    className={'textEllipsis'}
-                    fontSize={'sm'}
-                    color={hasToolError ? 'red.600' : 'myGray.900'}
-                  >
-                    {item.name}
-                  </Box>
-                </MyTooltip>
-
-                <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
-                  {status === PluginStatusEnum.SoonOffline && (
-                    <MyTooltip label={statusTooltipMap[status]}>
-                      <MyTag
-                        display={'block'}
-                        className="unHoverStyle"
-                        colorSchema={PluginStatusMap[status].tagColor}
-                        type="borderFill"
-                      >
-                        {statusLabelMap[status]}
-                      </MyTag>
-                    </MyTooltip>
-                  )}
-                  {toolError && (
-                    <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                      <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                      <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                        {toolError}
-                      </Box>
-                    </MyTag>
-                  )}
-                  {isUnconfigured && (
-                    <MyTag colorSchema="blue" type="fill" className="unHoverStyle">
-                      {t('app:wait_for_config')}
-                    </MyTag>
-                  )}
-                  {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {!hasToolError && (
-                    <MyIconButton
-                      className="hoverStyle"
-                      display={'none'}
-                      icon="common/setting"
-                      tip={t('app:tool_param_config')}
-                      onClick={() => setConfigTool(item)}
-                    />
-                  )}
-                  <Box className="delete" display={['flex', 'none']} ml={0.5}>
-                    <MyIconButton
-                      icon="delete"
-                      hoverBg="red.50"
-                      hoverColor="red.600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveTool(item.pluginId!, item.source);
-                      }}
-                    />
-                  </Box>
-                </Flex>
-              </Grid>
-            </MyTooltip>
-          );
-        })}
+        <SelectedToolCardList
+          selectedTools={selectedTools}
+          onConfigTool={onConfigTool}
+          onRemoveTool={onRemoveTool}
+        />
       </Grid>
 
       {isOpenToolsSelect && selectedModel && (
@@ -204,24 +74,11 @@ const ToolSelect = ({
           generatedSelectedTools={generatedSelectedTools}
           selectedTools={selectedTools}
           fileSelectConfig={fileSelectConfig}
-          selectedModel={selectedModel}
           onAddTool={onAddTool}
           onRemoveTool={(e) => {
             onRemoveTool(e.id, e.source);
           }}
           onClose={onCloseToolsSelect}
-        />
-      )}
-      {configTool && (
-        <ConfigToolModal
-          configTool={configTool}
-          onCloseConfigTool={() => setConfigTool(null)}
-          onAddTool={(e) => {
-            onUpdateTool({
-              ...e,
-              configStatus: 'configured'
-            });
-          }}
         />
       )}
     </>

@@ -61,6 +61,9 @@
   "wechat.scanned_tip": "已扫码，请在微信中确认",
   "wechat.status": "状态",
   "wechat.status.error": "错误",
+  "wechat.error.invalid_url": "微信服务地址不受支持，请重新扫码。",
+  "wechat.error.private_address": "微信域名解析到非公网地址，请检查 DNS 后重新登录。",
+  "wechat.error.request_failed": "微信请求连续失败，请检查容器是否可以直连微信后重新登录。",
   "wechat.status.offline": "离线",
   "wechat.status.online": "在线",
   "wechat.status_check_failed": "状态检查失败，请重试",
@@ -72,5 +75,6 @@
   "wecom.create_modal.step.2": "填写回调地址",
   "wecom.create_modal_title": "创建企微机器人",
   "wecom.edit_modal_title": "编辑企微机器人",
-  "wecom.title": "发布到企业微信机器人"
+  "wecom.title": "发布到企业微信机器人",
+  "ip_whitelist": "IP 白名单"
 }

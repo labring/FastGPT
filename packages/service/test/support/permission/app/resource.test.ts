@@ -151,7 +151,8 @@ describe('filterAuthorizedAppResources', () => {
 
     const resources = [
       { type: 'agent' as const, id: '65f000000000000000000010' },
-      { type: 'skill' as const, id: '65f000000000000000000030' }
+      { type: 'skill' as const, id: '65f000000000000000000030' },
+      { type: 'model' as const, id: 'model-1' }
     ];
 
     const result = await filterAuthorizedAppResources({

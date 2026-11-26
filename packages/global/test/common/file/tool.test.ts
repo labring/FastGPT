@@ -479,6 +479,14 @@ describe('文件工具函数测试', () => {
     ])('preserves plain filename parsing: %s', (header) => {
       expect(parseContentDispositionFilename(header)).toBe('report.txt');
     });
+
+    it.each([
+      ['attachment; filename="report \\"Q1\\".pdf"', 'report "Q1".pdf'],
+      ['attachment; filename="a\\\\b.pdf"', 'a\\b.pdf'],
+      ['attachment; filename="a \\"b\\";c.pdf"; size=10', 'a "b";c.pdf']
+    ])('unescapes quoted-string filenames: %s', (header, expected) => {
+      expect(parseContentDispositionFilename(header)).toBe(expected);
+    });
   });
 
   describe('getContentDisposition', () => {

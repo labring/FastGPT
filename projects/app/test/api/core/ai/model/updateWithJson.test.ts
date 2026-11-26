@@ -90,12 +90,23 @@ describe('admin settings model updateWithJson api', () => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
   });
 
-  it('keeps million-unit prices across an export/import round trip', async () => {
+  it('keeps K-tier limits and million-unit rates across an export/import round trip', async () => {
     const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       ...buildStoredLlm('legacy-priced'),
       inputPrice: 0.001,
       outputPrice: 0.003,
-      pricing: { tiers: [{ inputPrice: 1, outputPrice: 3 }] }
+      pricing: {
+        tiers: [
+          {
+            maxInputTokensK: 128,
+            inputPrice: 1,
+            outputPrice: 3,
+            cacheReadPrice: 0,
+            cacheCreationPrice: 0.125
+          },
+          { inputPrice: 2, outputPrice: 4 }
+        ]
+      }
     });
     const root = await getRootUser();
     const exported = await Call<string>(getConfigJsonApi, { auth: root });
@@ -103,7 +114,14 @@ describe('admin settings model updateWithJson api', () => {
     expect(result.code).toBe(200);
     const saved = await MongoAIModel.findById(modelId).lean();
     expect(ModelPricingSchema.parse(saved?.pricing).tiers).toMatchObject([
-      { inputPrice: 1, outputPrice: 3 }
+      {
+        maxInputTokensK: 128,
+        inputPrice: 1,
+        outputPrice: 3,
+        cacheReadPrice: 0,
+        cacheCreationPrice: 0.13
+      },
+      { inputPrice: 2, outputPrice: 4 }
     ]);
     expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });
@@ -127,6 +145,23 @@ describe('admin settings model updateWithJson api', () => {
     expect(ModelPricingSchema.parse(saved?.pricing).tiers).toEqual([]);
     expect(saved).not.toHaveProperty('inputPrice');
     expect(saved).not.toHaveProperty('outputPrice');
+  });
+
+  it.each([
+    { pricingField: 'pricing.unknownField', pricing: { unknownField: 'K', tiers: [] } },
+    {
+      pricingField: 'pricing.tiers[0].unknownField',
+      pricing: { tiers: [{ unknownField: 0.128, inputPrice: 10, outputPrice: 20 }] }
+    }
+  ])('rejects $pricingField before replacing any models', async ({ pricing }) => {
+    const existingModel = await MongoAIModel.create(buildStoredLlm('keep-on-error'));
+    const result = await callUpdateWithJson(
+      JSON.stringify([{ ...buildLlmConfig({ modelId: 'external-id' }), pricing }])
+    );
+
+    expect(result.error?.name).toBe('ApiRequestInputParseError');
+    await expect(MongoAIModel.countDocuments({ _id: existingModel._id })).resolves.toBe(1);
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
   it('canonicalizes newly imported LLM prices and keeps embedding prices in M tokens', async () => {
@@ -174,7 +209,10 @@ describe('admin settings model updateWithJson api', () => {
     const first = await MongoAIModel.find({}).lean();
     for (const entry of entries) {
       expect(first.find(({ model }) => model === entry.model)).toMatchObject({
-        pricing: { unitPrice: 0.13 }
+        pricing: {
+          ...(entry.type === ModelTypeEnum.stt ? { type: 'duration' } : {}),
+          unitPrice: 0.13
+        }
       });
     }
     const root = await getRootUser();
@@ -184,6 +222,27 @@ describe('admin settings model updateWithJson api', () => {
     expect(second.map(({ model, pricing }) => ({ model, pricing }))).toEqual(
       first.map(({ model, pricing }) => ({ model, pricing }))
     );
+  });
+
+  it('rejects missing STT token price type before replacing a stored token price', async () => {
+    const pricing = { type: 'tokens' as const, inputPrice: 2, outputPrice: 4 };
+    const model = await MongoAIModel.create({
+      ...buildStoredLlm('stt-token-pricing'),
+      type: ModelTypeEnum.stt,
+      config: {},
+      pricing
+    });
+    const invalid = {
+      ...buildLlmConfig({ modelId: String(model._id), model: model.model }),
+      type: ModelTypeEnum.stt,
+      config: {},
+      pricing: { inputPrice: 2, outputPrice: 4 }
+    };
+    const result = await callUpdateWithJson(JSON.stringify([invalid]));
+
+    expect(result.error?.name).toBe('ApiRequestInputParseError');
+    expect((await MongoAIModel.collection.findOne({ _id: model._id }))?.pricing).toEqual(pricing);
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
   it('updates matching IDs, creates external models by model and deletes omitted records', async () => {

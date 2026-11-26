@@ -1,0 +1,163 @@
+{
+  "type": "flowchart",
+  "title": "ToolCall execution loop",
+  "nodes": [
+    {
+      "id": "start",
+      "label": "Start with context",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "document"
+    },
+    {
+      "id": "model",
+      "label": "Request model",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "model"
+    },
+    {
+      "id": "calls",
+      "label": "Tool calls present?",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "workflow"
+    },
+    {
+      "id": "tools",
+      "label": "Run tools in order",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Tool errors become results",
+      "illustration": "plugin"
+    },
+    {
+      "id": "result",
+      "label": "Check outcome",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "check"
+    },
+    {
+      "id": "append",
+      "label": "Append tool results",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "files"
+    },
+    {
+      "id": "pause",
+      "label": "Pause for input",
+      "row": 5,
+      "col": 1,
+      "kind": "optional",
+      "shape": "terminal",
+      "illustration": "pause"
+    },
+    {
+      "id": "end",
+      "label": "Finish",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "shape": "terminal",
+      "illustration": "ready"
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "model",
+      "",
+      "primary"
+    ],
+    [
+      "model",
+      "calls",
+      "",
+      "primary"
+    ],
+    [
+      "calls",
+      "tools",
+      "Yes",
+      "primary"
+    ],
+    [
+      "calls",
+      "end",
+      "No",
+      "default"
+    ],
+    [
+      "tools",
+      "result",
+      "",
+      "primary"
+    ],
+    [
+      "result",
+      "append",
+      "Continue",
+      "default"
+    ],
+    [
+      "append",
+      "model",
+      "Next turn",
+      "async"
+    ],
+    [
+      "result",
+      "pause",
+      "Interaction",
+      "default"
+    ],
+    [
+      "result",
+      "end",
+      "Stop",
+      "default"
+    ],
+    [
+      "model",
+      "end",
+      "Request error",
+      "async"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "tools",
+      "file": "packages/service/core/workflow/dispatch/ai/toolcall/toolCall.ts",
+      "line": 174
+    },
+    {
+      "id": "model",
+      "file": "packages/service/core/workflow/dispatch/ai/toolcall/toolCall.ts",
+      "line": 166
+    },
+    {
+      "id": "result",
+      "file": "packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts",
+      "line": 640
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

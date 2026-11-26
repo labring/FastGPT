@@ -1,3 +1,8 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -7,6 +12,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { addDays } from 'date-fns';
 
@@ -36,13 +42,13 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { collectionId } = InsertImagesBodySchema.parse(result.data);
 
-    const { collection, teamId, tmbId } = await authDatasetCollection({
+    const { collection, teamId, tmbId, isRoot } = await authDatasetCollection({
       collectionId,
       per: WritePermissionVal,
       req,
@@ -51,10 +57,17 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     });
     const dataset = collection.dataset;
     const modelHandle = await getTeamModelHandle({ teamId });
-    const vectorModelData = modelHandle.getModelData(
-      getDatasetModelReference(dataset, 'embedding'),
-      { type: 'embedding' }
-    );
+    const authorizedIds = await getAuthorizedModelIds({
+      actor: { teamId, tmbId, isRoot },
+      handle: modelHandle
+    });
+    const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+      resources: [{ type: 'dataset', id: String(dataset._id) }],
+      teamId,
+      modelHandle,
+      authorizedIds
+    });
+    const vectorModelData = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
     const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
       type: 'llm'
     });
@@ -77,7 +90,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     const planStatus = await getTeamPlanStatus({ teamId });
     const uploadLimits = getFileUploadLimits({
       teamPlan: planStatus.standard,
-      systemLimit: global.feConfigs.limit
+      systemLimit: getSystemInstanceConfig().resource
     });
     await assertUploadRateLimit({
       identity: String(tmbId),

@@ -1,3 +1,10 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import {
+  getChatPublishSourceName,
+  getChatPublishSourceType
+} from '@fastgpt/global/common/chat/publishSource';
+import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
@@ -12,8 +19,7 @@ import {
   Tr,
   Checkbox
 } from '@chakra-ui/react';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
@@ -22,9 +28,10 @@ import {
   toMultiSelectFilterQuery,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useLocalStorageState } from 'ahooks';
+import { useDebounce, useEventListener, useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -38,10 +45,15 @@ import SyncLogKeysPopover from './SyncLogKeysPopover';
 import LogKeysConfigPopover from './LogKeysConfigPopover';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { downloadFetch } from '@/web/common/system/utils';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { getAppChatLogs } from '@/web/core/app/api/log';
+import { searchAppChatLogs } from '@/web/core/app/api/log';
+import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
+import type {
+  AppChatLogsSearchCursor,
+  AppLogsListItemType,
+  SearchAppChatLogsBody,
+  AppChatLogSearchType
+} from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -53,7 +65,6 @@ import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
 import ErrorCountFilter from './ErrorCountFilter';
 import UserFilter, { parseUserKey } from './UserFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -61,12 +72,73 @@ import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import MyLoading from '@fastgpt/web/components/common/MyLoading';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
+const logRowHeight = 57;
 
-type LogTableProps = HeaderControlProps & {
-  pageSizeCacheKey: string;
-};
+/** 隔离输入态，避免每次键入都重渲染日志表格。 */
+const LogSearchInput = React.memo(
+  ({
+    onSearch,
+    searchType,
+    setSearchType
+  }: {
+    onSearch: (value: string) => void;
+    searchType: AppChatLogSearchType;
+    setSearchType: (value: AppChatLogSearchType) => void;
+  }) => {
+    const { t } = useTranslation();
+    const [value, setValue] = useState('');
+    const debouncedValue = useDebounce(value, { wait: 400 });
+
+    React.useEffect(() => {
+      onSearch(searchType === 'chatId' ? debouncedValue : debouncedValue.trim());
+    }, [debouncedValue, onSearch, searchType]);
+
+    return (
+      <Flex
+        flex={'0 1 340px'}
+        minW={0}
+        sx={{
+          '&:hover:not(:focus-within) > div > button:not([aria-expanded="true"]), &:hover:not(:focus-within) > div + div':
+            {
+              borderColor: 'primary.300'
+            },
+          '& > div > button:hover:not([aria-expanded="true"])': { boxShadow: 'none' }
+        }}
+      >
+        <Box flexShrink={0} sx={{ '& > button': { borderRightRadius: 0 } }}>
+          <SingleSelectFilter
+            title={null}
+            value={searchType}
+            onChange={setSearchType}
+            options={[
+              { value: 'title', label: t('app:logs_title') },
+              { value: 'chatId', label: t('app:logs_keys_sessionId') }
+            ]}
+          />
+        </Box>
+        <FilterInput
+          flex={1}
+          minW={0}
+          ml={'-1px'}
+          borderLeftRadius={0}
+          placeholder={
+            searchType === 'chatId'
+              ? t('app:logs_search_chat_id_placeholder')
+              : t('app:logs_search_title_placeholder')
+          }
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Flex>
+    );
+  }
+);
+LogSearchInput.displayName = 'LogSearchInput';
+
+type LogTableProps = HeaderControlProps;
 
 const LogTable = ({
   appId,
@@ -74,7 +146,6 @@ const LogTable = ({
   setSourceFilter,
   dateRange,
   setDateRange,
-  pageSizeCacheKey,
   showSourceSelector = true,
   px = [4, 8]
 }: LogTableProps) => {
@@ -91,7 +162,6 @@ const LogTable = ({
   const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
   const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const sourceOptions = useMemo(
     () =>
@@ -106,12 +176,28 @@ const LogTable = ({
   const [userFilter, setUserFilter] = useState(createMultiSelectFilter());
 
   // chat
-  const [chatSearch, setChatSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [storedSearchType, setSearchType] = useLocalStorageState<AppChatLogSearchType>(
+    `app_log_search_type_${appId}`,
+    { defaultValue: 'title' }
+  );
+  const searchType: AppChatLogSearchType = storedSearchType === 'chatId' ? 'chatId' : 'title';
+  const [searchResult, setSearchResult] = useState<{
+    list: AppLogsListItemType[];
+    nextCursor?: AppChatLogsSearchCursor;
+    loading: boolean;
+    error: boolean;
+  }>({ list: [], loading: false, error: false });
+  const searchNextCursorRef = useRef<AppChatLogsSearchCursor>();
+  const searchLoadingRef = useRef(false);
+  const searchRequestIdRef = useRef(0);
+  const searchControllerRef = useRef<AbortController>();
 
   // log keys
-  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+  const [storedLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
     `app_log_keys_${appId}`
   );
+  const logKeys = useMemo(() => normalizeAppLogKeys(storedLogKeys), [storedLogKeys]);
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
     async () => {
       return getLogKeys({ appId });
@@ -120,9 +206,9 @@ const LogTable = ({
       manual: false,
       refreshDeps: [appId],
       onSuccess: (res) => {
-        if (logKeys.length > 0) return;
+        if (storedLogKeys?.length) return;
         if (res.logKeys.length > 0) {
-          setLogKeys(res.logKeys);
+          setLogKeys(normalizeAppLogKeys(res.logKeys));
         } else if (res.logKeys.length === 0) {
           setLogKeys(DefaultAppLogKeys);
         }
@@ -130,9 +216,7 @@ const LogTable = ({
     }
   );
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (
-      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
-    ).filter((item) => item.enable);
+    const teamLogKeysList = normalizeAppLogKeys(teamLogKeys?.logKeys).filter((item) => item.enable);
     const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
@@ -157,12 +241,13 @@ const LogTable = ({
       filename: t('app:export_log_filename', { name: appName }),
       body: {
         appId,
-        dateStart: dayjs(dateRange.from || new Date()).format(),
-        dateEnd: dayjs(dateRange.to || new Date()).format(),
+        dateStart: formatToISOWithTimezone(dateRange.from),
+        dateEnd: formatToISOWithTimezone(dateRange.to),
         sources: toMultiSelectFilterQuery(sourceFilter),
         tmbIds,
         outLinkUids,
-        chatSearch,
+        chatSearch: searchQuery,
+        searchType,
         title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
         logKeys: enabledKeys,
         sourcesMap: Object.fromEntries(
@@ -179,7 +264,7 @@ const LogTable = ({
       }
     });
   };
-  const params = useMemoEnhance(
+  const params = useMemoEnhance<SearchAppChatLogsBody>(
     () => ({
       appId,
       dateStart: dateRange.from!,
@@ -187,7 +272,8 @@ const LogTable = ({
       sources: toMultiSelectFilterQuery(sourceFilter),
       tmbIds,
       outLinkUids,
-      chatSearch,
+      chatSearch: searchQuery || undefined,
+      searchType,
       feedbackType,
       unreadOnly: feedbackType === 'all' ? undefined : unreadOnly,
       errorFilter: errorFilter === 'all' ? undefined : errorFilter
@@ -199,28 +285,106 @@ const LogTable = ({
       dateRange.to,
       tmbIds,
       outLinkUids,
-      chatSearch,
+      searchQuery,
+      searchType,
       feedbackType,
       unreadOnly,
       errorFilter
     ]
   );
 
-  const {
+  // @types/react 18 的 DOM ref 与 FixedTable 的 RefObject<HTMLDivElement> 签名兼容。
+  const virtualContainerRef = useRef<HTMLDivElement>(null!);
+  const logs = searchResult.list;
+  const { virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } = useStaticVirtualList({
     data: logs,
-    isLoading,
-    Pagination,
-    getData,
-    pageNum,
-    total,
-    pageSize
-  } = usePagination(getAppChatLogs, {
-    defaultPageSize: 20,
-    pageSizeCacheKey,
-    params,
-    refreshDeps: [params],
-    scrollContainerRef
+    itemHeight: logRowHeight,
+    overscan: 8,
+    containerRef: virtualContainerRef
   });
+
+  /**
+   * 加载一页搜索结果。重置请求会取消旧搜索；追加请求保留已有列表。
+   * 使用请求序号拦截取消后迟到的响应，避免覆盖新关键词结果。
+   */
+  const loadSearchPage = useCallback(
+    async ({ reset = false }: { reset?: boolean } = {}) => {
+      if (!reset && (searchLoadingRef.current || !searchNextCursorRef.current)) return;
+
+      if (reset) {
+        searchControllerRef.current?.abort();
+        searchNextCursorRef.current = undefined;
+        if (virtualContainerRef.current) virtualContainerRef.current.scrollTop = 0;
+      }
+
+      const controller = new AbortController();
+      const requestId = ++searchRequestIdRef.current;
+      searchControllerRef.current = controller;
+      searchLoadingRef.current = true;
+      setSearchResult((prev) => ({
+        list: reset ? [] : prev.list,
+        nextCursor: reset ? undefined : prev.nextCursor,
+        loading: true,
+        error: false
+      }));
+
+      try {
+        const res = await searchAppChatLogs(
+          {
+            ...params,
+            chatSearch: searchQuery,
+            cursor: reset ? undefined : searchNextCursorRef.current
+          },
+          controller
+        );
+        if (controller.signal.aborted || requestId !== searchRequestIdRef.current) return;
+
+        searchNextCursorRef.current = res.nextCursor;
+        setSearchResult((prev) => ({
+          list: reset ? res.list : [...prev.list, ...res.list],
+          nextCursor: res.nextCursor,
+          loading: false,
+          error: false
+        }));
+      } catch {
+        if (controller.signal.aborted || requestId !== searchRequestIdRef.current) return;
+        setSearchResult((prev) => ({ ...prev, loading: false, error: true }));
+      } finally {
+        if (requestId === searchRequestIdRef.current && searchControllerRef.current === controller)
+          searchLoadingRef.current = false;
+      }
+    },
+    [params, searchQuery]
+  );
+
+  React.useEffect(() => {
+    searchNextCursorRef.current = undefined;
+    loadSearchPage({ reset: true });
+    return () => {
+      searchRequestIdRef.current += 1;
+      searchControllerRef.current?.abort();
+      searchLoadingRef.current = false;
+    };
+  }, [loadSearchPage]);
+
+  useEventListener(
+    'scroll',
+    () => {
+      const container = virtualContainerRef.current;
+      if (
+        !container ||
+        searchLoadingRef.current ||
+        searchResult.error ||
+        !searchNextCursorRef.current
+      ) {
+        return;
+      }
+      if (container.scrollTop + container.clientHeight >= container.scrollHeight - 100) {
+        loadSearchPage();
+      }
+    },
+    { target: virtualContainerRef, passive: true }
+  );
 
   const {
     selectedItems,
@@ -229,12 +393,17 @@ const LogTable = ({
     getRowSelectionProps,
     FloatingActionBar,
     isSelecteAll,
-    selectAllTrigger
+    selectAllTrigger,
+    setSelectedItems
   } = useTableMultipleSelect({
     list: logs,
     getItemId: (item) => item._id
   });
+  React.useEffect(() => {
+    setSelectedItems([]);
+  }, [params, setSelectedItems]);
   const chatIds = useMemoEnhance(() => selectedItems.map((item) => item.chatId), [selectedItems]);
+  const refreshCurrentList = useCallback(() => loadSearchPage({ reset: true }), [loadSearchPage]);
 
   const { openConfirm: openConfirmDelete, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     type: 'delete'
@@ -243,7 +412,7 @@ const LogTable = ({
   const { runAsync: handleDelete } = useRequest(
     async (chatIds: string[]) => {
       await batchDeleteChatHistories({ appId, chatIds });
-      await getData(pageNum);
+      await refreshCurrentList();
     },
     {
       successToast: t('common:delete_success')
@@ -252,6 +421,9 @@ const LogTable = ({
 
   const HeaderRenderMap = useMemoEnhance(
     () => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Th key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>{t('app:logs_keys_publish_source_type')}</Th>
+      ),
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
         <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
@@ -261,7 +433,10 @@ const LogTable = ({
           {t('app:logs_keys_lastConversationTime')}
         </Th>
       ),
-      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_keys_user')}</Th>,
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Th key={AppLogKeysEnum.AUTH_USER}>{t('app:logs_keys_auth_user')}</Th>
+      ),
       [AppLogKeysEnum.REGION]: (
         <Th key={AppLogKeysEnum.REGION}>
           <UserIpTypeFilter
@@ -347,10 +522,30 @@ const LogTable = ({
 
   const getCellRenderMap = useCallback(
     (item: AppLogsListItemType) => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Td key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>
+          {item.publishSource?.type && ChatSourceMap[item.publishSource.type]
+            ? t(ChatSourceMap[item.publishSource.type].name)
+            : '-'}
+        </Td>
+      ),
       [AppLogKeysEnum.SOURCE]: (
         <Td key={AppLogKeysEnum.SOURCE}>
-          {/* @ts-ignore */}
-          {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+          <MyTooltip
+            label={
+              item.publishSource?.id
+                ? t('app:logs_publish_source_id', { id: item.publishSource.id })
+                : undefined
+            }
+          >
+            <Box as="span">
+              {getChatPublishSourceName({
+                type: getChatPublishSourceType(item),
+                name: item.publishSource?.name,
+                sourceName: item.sourceName
+              }) ?? '-'}
+            </Box>
+          </MyTooltip>
         </Td>
       ),
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -365,15 +560,20 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.USER]: (
         <Td key={AppLogKeysEnum.USER}>
-          <Box>
-            {item.sourceMember ? (
-              <UserBox sourceMember={item.sourceMember} />
-            ) : !!item.outLinkUid ? (
-              item.outLinkUid
-            ) : (
-              '-'
-            )}
-          </Box>
+          {getLogIdentity(item).member ? (
+            <UserBox sourceMember={getLogIdentity(item).member!} />
+          ) : (
+            getLogIdentity(item).name
+          )}
+        </Td>
+      ),
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Td key={AppLogKeysEnum.AUTH_USER}>
+          {item.authMember ? (
+            <UserBox sourceMember={item.authMember} />
+          ) : (
+            getLogIdentity({ ...item, isAuthorizer: true }).name
+          )}
         </Td>
       ),
       [AppLogKeysEnum.REGION]: (
@@ -448,7 +648,7 @@ const LogTable = ({
   );
 
   return (
-    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
+    <Flex flexDirection={'column'} h={'full'} px={px}>
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         <DateRangePicker
           defaultDate={dateRange}
@@ -473,12 +673,10 @@ const LogTable = ({
             onChange={setUserFilter}
           />
         )}
-        <FilterInput
-          flex={'0 1 230px'}
-          label={t('common:Search')}
-          placeholder={t('app:logs_search_placeholder')}
-          value={chatSearch}
-          onChange={(e) => setChatSearch(e.target.value)}
+        <LogSearchInput
+          onSearch={setSearchQuery}
+          searchType={searchType}
+          setSearchType={setSearchType}
         />
 
         <Box flex={'1'} />
@@ -502,14 +700,14 @@ const LogTable = ({
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
-          content={t('app:logs_export_confirm_tip', { total })}
+          content={t('app:logs_export_confirm_tip_without_total')}
           onConfirm={exportLogs}
         />
       </Flex>
 
       <FixedTableContainer
         maxH="none"
-        ref={scrollContainerRef}
+        ref={virtualContainerRef}
         mt={[2, 4]}
         flex={'1 0 0'}
         footer={
@@ -533,17 +731,12 @@ const LogTable = ({
                   </Button>
                 </HStack>
               }
-            >
-              {total > pageSize && (
-                <Flex justifyContent={'center'}>
-                  <Pagination />
-                </Flex>
-              )}
-            </FloatingActionBar>
+            />
           </>
         }
       >
-        <Table variant={'simple'} fontSize={'sm'}>
+        {/* 按内容分配列宽，避免长 UID 将成员姓名压缩；不足一屏时仍铺满容器。 */}
+        <Table variant={'simple'} fontSize={'sm'} w={'max-content'} minW={'100%'}>
           <Thead>
             <Tr>
               <Th>
@@ -556,18 +749,28 @@ const LogTable = ({
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
-            {logs.map((item) => {
+            {topPlaceholderHeight > 0 && (
+              <Tr aria-hidden>
+                <Td
+                  colSpan={logKeys.filter((logKey) => logKey.enable).length + 2}
+                  h={`${topPlaceholderHeight}px`}
+                  p={0}
+                  border={0}
+                />
+              </Tr>
+            )}
+            {virtualDataList.map(({ data: item }) => {
               const cellRenderMap = getCellRenderMap(item);
               return (
                 <Tr
                   key={item._id}
+                  h={`${logRowHeight}px`}
                   _hover={{ bg: 'myWhite.600' }}
                   {...getRowSelectionProps(item, {
                     onClick: () =>
                       setDetailLogData({
                         chatId: item.chatId,
-                        feedbackUserName:
-                          item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                        feedbackUserName: getLogIdentity(item).name
                       })
                   })}
                 >
@@ -594,9 +797,41 @@ const LogTable = ({
                 </Tr>
               );
             })}
+            {bottomPlaceholderHeight > 0 && (
+              <Tr aria-hidden>
+                <Td
+                  colSpan={logKeys.filter((logKey) => logKey.enable).length + 2}
+                  h={`${bottomPlaceholderHeight}px`}
+                  p={0}
+                  border={0}
+                />
+              </Tr>
+            )}
           </Tbody>
         </Table>
-        {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
+        <Box mt={2} h={8} position={'relative'} fontSize={'xs'} color={'blackAlpha.500'}>
+          {searchResult.loading ? (
+            <MyLoading fixed={false} bg={'transparent'} size={'md'} />
+          ) : searchResult.error ? (
+            <Flex alignItems={'center'} justifyContent={'center'} gap={1}>
+              <Box>{t('common:load_failed')}</Box>
+              <Box
+                as={'button'}
+                type={'button'}
+                color={'primary.600'}
+                cursor={'pointer'}
+                onClick={() => loadSearchPage({ reset: searchResult.list.length === 0 })}
+              >
+                {t('common:refresh')}
+              </Box>
+            </Flex>
+          ) : (
+            !searchResult.nextCursor && <Box textAlign={'center'}>{t('common:request_end')}</Box>
+          )}
+        </Box>
+        {logs.length === 0 && !searchResult.loading && !searchResult.error && (
+          <EmptyTip text={t('app:logs_empty')}></EmptyTip>
+        )}
       </FixedTableContainer>
 
       {!!detailLogData && (
@@ -606,13 +841,13 @@ const LogTable = ({
           feedbackUserName={detailLogData.feedbackUserName}
           onClose={() => {
             setDetailLogData(undefined);
-            getData(pageNum);
+            refreshCurrentList();
           }}
         />
       )}
 
       <ConfirmDeleteModal />
-    </MyBox>
+    </Flex>
   );
 };
 

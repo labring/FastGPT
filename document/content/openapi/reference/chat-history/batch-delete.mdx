@@ -1,0 +1,90 @@
+---
+title: '批量删除会话'
+seoTitle: '批量删除会话 - POST /api/core/chat/history/batchDelete | FastGPT OpenAPI'
+description: '按 chatIds 列表批量物理删除选中会话及其关联的消息、响应详情与会话文件，调用方需具备对应资源的日志管理权限。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/chat/history/batchDelete`
+- **所属模块**：对话 / 会话管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/batchDelete)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/batchDelete`）
+
+## 接口说明与注意事项
+
+物理删除选中的会话及其消息、响应和会话文件，需对应资源的日志管理权限。
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段      | 类型       | 必填 | 默认值 | 约束与说明                |
+| --------- | ---------- | ---- | ------ | ------------------------- |
+| `chatIds` | `string[]` | 是   | -      | 会话 ID 列表。最少项数：1 |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **应用会话**
+
+通过 appId 定位会话。接口同时支持 API Key 和登录态时，Authorization 优先于 token/Cookie。
+
+| 字段         | 类型            | 必填 | 默认值 | 约束与说明                                                                                                                      |
+| ------------ | --------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `appId`      | `string`        | 是   | -      | 应用 ID，使用接口允许的请求头凭证鉴权。正则：`^[0-9a-fA-F]{24}$`                                                                |
+| `sourceType` | `string` (enum) | 否   | -      | appId 对应的会话资源类型。缺省为 App 会话；辅助生成会话传对应 sourceType。可选值：`app` , `chatAgentHelper` , `workflowBuilder` |
+
+- **Skill 调试会话**
+
+通过 skillId 定位调试会话，优先于 appId 并忽略其 sourceType，使用接口允许的请求头凭证鉴权。
+
+| 字段      | 类型     | 必填 | 默认值 | 约束与说明                                                                  |
+| --------- | -------- | ---- | ------ | --------------------------------------------------------------------------- |
+| `skillId` | `string` | 是   | -      | Skill Edit 调试 ID，使用接口允许的请求头凭证鉴权。正则：`^[0-9a-fA-F]{24}$` |
+
+- **应用 API Key（无需 appId）**
+
+Authorization 使用绑定应用的 APP API Key 时无需传 appId 或 sourceType，服务端从 Key 绑定取得应用，sourceType 固定为 app。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。
+
+该分支无需额外字段。
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/chat/history/batchDelete" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "chatIds": [
+    "chat_123456",
+    "chat_789012"
+  ]
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "chatIds": ["chat_123456", "chat_789012"]
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功删除会话
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

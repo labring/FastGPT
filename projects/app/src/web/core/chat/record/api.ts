@@ -21,9 +21,9 @@ export const getChatResData = (data: GetResDataQueryType) =>
 export const getChatRecords = (data: GetRecordsV2BodyType) =>
   POST<GetRecordsV2ResponseType>('/core/chat/record/getRecords_v2', data);
 
-// delete one chat record
+/** 删除消息使用 JSON Body，外链鉴权数据保持对象形态。 */
 export const delChatRecordById = (data: DeleteChatRecordBodyType) =>
-  DELETE(`/core/chat/record/delete`, toChatAuthQueryInput(data), { dataAsBody: true });
+  DELETE(`/core/chat/record/delete`, data, { dataAsBody: true });
 
 export const getQuoteDataList = (data: GetQuoteBodyType) =>
   POST<GetQuoteResponseType>(`/core/chat/record/getQuote`, data);

@@ -3,7 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelDefault } from '@/web/core/ai/model/modelData';
 import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import {
   Accordion,
   AccordionButton,
@@ -21,21 +21,22 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import {
-  buildNodeTemplateContext,
-  getNodeContainerCheckError,
-  translateNodeContainerCheckError
-} from '@fastgpt/global/core/workflow/template/context';
+import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
+import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -53,11 +54,16 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { type Node, useReactFlow } from 'reactflow';
-
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { WorkflowModalContext } from '../../../context/workflowModalContext';
+import type { Node } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
+import type { WorkflowDispatchResult } from '@fastgpt/global/core/workflow/editor/types';
+import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
+import { useWorkflowModalValue } from '../../panels/workflowPanelState';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../../canvas/workflowCanvasContext';
+import { areNodeRectsIntersecting, getNodeRect } from '../../canvas/nodeDimensions';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { TemplateTypeEnum } from './header';
@@ -65,13 +71,37 @@ import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/ut
 import type { ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 
 export type TemplateListProps = {
-  onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
+  /** 返回本次添加的 dispatch 结果；被拒时由列表统一按 error.reason 出提示。 */
+  onAddNode: ({
+    newNodes
+  }: {
+    newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
+  }) => Promise<WorkflowDispatchResult | undefined>;
   isPopover?: boolean;
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
   onUpdateParentId: (parentId: string, source?: string) => void;
   ScrollData?: ScrollListType;
 };
+
+type ToolSetTemplate = Pick<NodeTemplateListItemType, 'id' | 'flowNodeType' | 'templateType'>;
+
+const isLocalToolSetTemplate = (template: ToolSetTemplate) =>
+  template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
+  (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
+
+/** 本地 MCP/HTTP 工具集可直接添加；其他工具集需先选择。 */
+export const canDirectAddToolSet = ({
+  template,
+  isPopover,
+  isToolSelector
+}: {
+  template: ToolSetTemplate;
+  isPopover?: boolean;
+  isToolSelector: boolean;
+}) =>
+  template.flowNodeType === FlowNodeTypeEnum.toolSet &&
+  (isToolSelector || (!isPopover && isLocalToolSetTemplate(template)));
 
 const NodeTemplateListItem = ({
   template,
@@ -93,16 +123,15 @@ const NodeTemplateListItem = ({
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
-  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const handleParams = useWorkflowModalValue((v) => v.handleParams);
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  // 工具集（系统工具、团队 HTTP/MCP 工具）只有在工具调用的工具选择器里才允许直接创建节点；
-  // 侧边栏等其他场景点击卡片一律进入工具集内部，选择单个工具。
-  const allowDirectAddToolSet = isToolSet && isToolSelector;
+  const isLocalToolSet = isLocalToolSetTemplate(template);
+  const allowDirectAddToolSet = canDirectAddToolSet({ template, isPopover, isToolSelector });
   const canDragCreateNode =
     !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
-  const showExpandArrow = template.isFolder || isToolSet;
+  const showExpandArrow = (template.isFolder || isToolSet) && !isLocalToolSet;
   const isDebugTool = isDebugToolSource(template.source);
   const isSystemSource = template.source === 'system';
 
@@ -252,10 +281,12 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { edges, getNodeById, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const handleParams = useWorkflowModalValue((v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const { getIntersectingNodes } = useReactFlow();
+  const getCanvasNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
+  // 落点归属读文档：只用来解析来源节点的父容器，容器合法性由 runtime 判定。
+  const getNodeById = useDocumentGetNodeById();
   const [lastSelectedModelId] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
   });
@@ -271,6 +302,11 @@ const NodeTemplateList = ({
       try {
         const templateNode = await (async () => {
           try {
+            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+            const isLocalToolSet =
+              template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id;
+            if (isLocalToolSet && baseTemplate) return { ...baseTemplate };
+
             const shouldLoadPreviewNode = [
               FlowNodeTypeEnum.tool,
               FlowNodeTypeEnum.toolSet,
@@ -294,11 +330,9 @@ const NodeTemplateList = ({
               };
             }
 
-            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
-            if (!baseTemplate) {
-              throw new Error('baseTemplate not found');
-            }
-            return { ...baseTemplate };
+            if (baseTemplate) return { ...baseTemplate };
+
+            throw new Error('baseTemplate not found');
           } catch (e) {
             toast({
               status: 'error',
@@ -312,52 +346,18 @@ const NodeTemplateList = ({
         // 工具选择器保留历史可选项；未声明 isTool 的节点按普通节点初始化输入类型。
         const isToolMode = isToolSelector && templateNode.isTool === true;
 
-        // 快捷添加继承源节点所在容器；侧边栏添加（点击/拖拽）没有源节点，按落点命中容器，
-        // 保证拖入容器内部与快捷添加走同一套嵌套限制校验，无法通过拖拽绕过。
+        // 快捷添加继承源节点所在容器；侧边栏添加（点击/拖拽）没有源节点，按落点命中容器。
+        // 这里只决定落点，不做容器校验：拖入容器与快捷添加走同一套 runtime 规则，无法通过拖拽绕过。
         let effectiveParentNodeId: string | undefined = currentNode?.parentNodeId;
         if (!effectiveParentNodeId && !handleParams) {
-          const dropContainer = getIntersectingNodes({
-            x: position.x,
-            y: position.y,
-            width: 1,
-            height: 1
-          }).find((n) => isNestedParentNodeType(n.type ?? '') && !n.data?.isFolded);
+          const dropRect = getNodeRect({ id: 'template-drop', position }, { width: 1, height: 1 })!;
+          const dropContainer = getCanvasNodes().find((n) => {
+            if (n.data?.isFolded || !isNestedParentNodeType(n.type ?? '')) return false;
+            const containerRect = getNodeRect(n, getNodeDimension(n.id));
+            return !!containerRect && areNodeRectsIntersecting(dropRect, containerRect);
+          });
           if (dropContainer) {
             effectiveParentNodeId = dropContainer.id;
-          }
-        }
-        const effectiveParentNode = effectiveParentNodeId
-          ? getNodeById(effectiveParentNodeId)
-          : undefined;
-
-        const containerChildNodes = effectiveParentNode
-          ? getNodes().filter((item) => item.data.parentNodeId === effectiveParentNode.nodeId)
-          : [];
-        const containerContext = buildNodeTemplateContext({
-          sourceNode: handleParams ? currentNode : undefined,
-          edges,
-          getNodeById,
-          handleId: handleParams?.handleId,
-          isSidebar: !handleParams,
-          targetParentType: effectiveParentNode?.flowNodeType,
-          hasToolNode: containerChildNodes.some(
-            (item) => item.data.flowNodeType === FlowNodeTypeEnum.toolCall
-          ),
-          hasLoopRunNode: containerChildNodes.some(
-            (item) => item.data.flowNodeType === FlowNodeTypeEnum.loopRun
-          )
-        });
-        if (containerContext) {
-          const checkError = getNodeContainerCheckError({
-            node: templateNode,
-            context: containerContext
-          });
-          if (checkError) {
-            toast({
-              status: 'warning',
-              title: translateNodeContainerCheckError(checkError, t)
-            });
-            return;
           }
         }
 
@@ -472,9 +472,14 @@ const NodeTemplateList = ({
         }
 
         if (newNodes && newNodes.length > 0) {
-          onAddNode({
-            newNodes
-          });
+          // 拒绝原因由 dispatch 结果携带，app 只负责翻译。
+          const reason = (await onAddNode({ newNodes }))?.error?.reason;
+          if (reason) {
+            toast({
+              status: 'warning',
+              title: translateNodeContainerCheckError(reason, t)
+            });
+          }
         }
       } catch (error) {
         console.error('Failed to create node template:', error);
@@ -482,12 +487,12 @@ const NodeTemplateList = ({
     },
     [
       computedNewNodeName,
+      i18n.language,
       getNodeById,
-      getNodes,
-      edges,
       handleParams,
       isToolSelector,
-      getIntersectingNodes,
+      getCanvasNodes,
+      getNodeDimension,
       onAddNode,
       lastSelectedModelId,
       t,
@@ -515,9 +520,6 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (item.flowNodeType === FlowNodeTypeEnum.agent) {
-            return;
-          }
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,

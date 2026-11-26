@@ -12,6 +12,15 @@ import {
   type GetApiKeyListResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import {
+  getOpenApiTypeFilter,
+  getOpenApiAppIdFilter,
+  resolveApiKeyScope
+} from '@fastgpt/service/support/openapi/utils';
+import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 
 type OpenApiListItem = OpenApiSchema & {
   canCopy: boolean;
@@ -59,21 +68,12 @@ const compareSortValue = (a: OpenApiSchema, b: OpenApiSchema, sortBy: ApiKeyList
 
 const sortOpenApiList = ({
   list,
-  appId,
   sortBy
 }: {
   list: OpenApiListItem[];
-  appId?: string;
   sortBy: ApiKeyListSortByType;
 }) =>
   list.sort((a, b) => {
-    const aAppMatched = appId && String(a.appId || '') === appId ? 1 : 0;
-    const bAppMatched = appId && String(b.appId || '') === appId ? 1 : 0;
-
-    if (aAppMatched !== bAppMatched) {
-      return bAppMatched - aAppMatched;
-    }
-
     const sortValueDiff = compareSortValue(a, b, sortBy);
     if (sortValueDiff !== 0) {
       return sortValueDiff;
@@ -102,7 +102,13 @@ const filterOpenApiListByKeyword = (list: OpenApiSchema[], keyword?: string) => 
 async function handler(
   req: ApiRequestProps<any, GetApiKeyListQueryType>
 ): Promise<GetApiKeyListResponseType> {
-  const { keyword, tags, appId, sortBy } = parseApiInput({
+  const {
+    keyword,
+    tags,
+    appId,
+    sortBy,
+    type = ApiKeyTypeEnum.personal
+  } = parseApiInput({
     req,
     querySchema: GetApiKeyListQuerySchema
   }).query;
@@ -111,9 +117,13 @@ async function handler(
     authToken: true
   });
 
+  if (type === ApiKeyTypeEnum.app) {
+    await authAppByTmbId({ tmbId, appId: appId!, per: ManagePermissionVal });
+  }
   const findResponse = await MongoOpenApi.find({
     teamId,
-    tmbId,
+    ...getOpenApiTypeFilter(type),
+    ...(type === ApiKeyTypeEnum.app ? getOpenApiAppIdFilter([appId!]) : { tmbId }),
     ...(tags && tags.length > 0
       ? {
           tagIds: {
@@ -126,23 +136,37 @@ async function handler(
     .lean();
 
   const openApis = filterOpenApiListByKeyword(findResponse as OpenApiSchema[], keyword);
-  const tagMap = await getOpenApiTagMap({
-    teamId,
-    tmbId,
-    tagIds: openApis.flatMap((item) => item.tagIds || [])
-  });
+  const [tagMap, members] = await Promise.all([
+    getOpenApiTagMap({
+      teamId,
+      tmbId,
+      tagIds: type === ApiKeyTypeEnum.personal ? openApis.flatMap((item) => item.tagIds ?? []) : []
+    }),
+    getTeamMemberMap({
+      teamId,
+      memberIds: openApis.map((item) => String(item.tmbId)),
+      fields: '_id name avatar status'
+    })
+  ]);
   const responseList = sortOpenApiList({
-    list: openApis.map((item) => ({
-      ...item,
-      apiKey: maskApiKey(item.apiKey),
-      tagIds: item.tagIds || [],
-      tags: (item.tagIds || []).flatMap((tagId) => {
-        const tag = tagMap.get(String(tagId));
-        return tag ? [tag] : [];
-      }),
-      canCopy: true
-    })),
-    appId,
+    list: openApis.map((item) => {
+      const scope = resolveApiKeyScope(item);
+      return {
+        ...item,
+        appId: scope.type === ApiKeyTypeEnum.app ? scope.appId : undefined,
+        ...scope,
+        sourceMember: members.get(String(item.tmbId)),
+        apiKey: maskApiKey(item.apiKey),
+        authProxy:
+          scope.type === ApiKeyTypeEnum.personal && !scope.defaultAppId && !!item.authProxy,
+        tagIds: type === ApiKeyTypeEnum.personal ? (item.tagIds ?? []) : [],
+        tags: (type === ApiKeyTypeEnum.personal ? (item.tagIds ?? []) : []).flatMap((tagId) => {
+          const tag = tagMap.get(String(tagId));
+          return tag ? [tag] : [];
+        }),
+        canCopy: true
+      };
+    }),
     sortBy
   });
 

@@ -7,13 +7,13 @@
 ```typescript
 pricing: {
   // 仅 LLM 使用；每档下限由上一档上限推导，省略上限表示无限。
-  tiers?: { maxInputTokens?: number; inputPrice: number; outputPrice: number }[];
+  tiers?: { maxInputTokensK?: number; inputPrice: number; outputPrice: number }[];
   // Embedding、Rerank、TTS、STT 使用，值为积分金额。
   unitPrice?: number;
 }
 ```
 
-类型决定固定分母：LLM、Embedding、Rerank 为百万 Tokens，TTS 为百万字符，STT 为 60 秒；不存单位字段或切换标记。单价保存及显示最多两位小数，不补零；单次费用与监控累计保留精度。STT 迁移复制历史单价，不因单位迁移改变其金额。
+LLM、Embedding、Rerank 固定为百万 Tokens，TTS 固定为百万字符；这些类型不存单位切换标记。STT 的旧单价表示每 60 秒，新计价类型及固定单位见本文末尾的 STT 扩展设计。单价保存及显示最多两位小数，不补零；单次费用与监控累计保留精度。STT 迁移复制历史单价，不因单位迁移改变其金额。
 
 计价 Schema 使用普通 `z.object`，按默认行为剥离未知字段，不使用 `.strict()`；已声明字段仍校验数值、范围和必填约束。旧价格声明只保留在迁移专用 Schema，并通过 `.meta({ deprecated: true })` 标记弃用。
 
@@ -45,3 +45,27 @@ pricing: {
 只运行受影响局部测试：一次读取/批量写入、五类系统模型、根值保留、团队免费、未迁移免费、合法新价跳过、并发编辑保护、重放、事务回滚和后台启动；复用真实 HTTP/SSE、MongoDB、API/配置往返、表单及价格 UI 回归。不运行全量测试。
 
 后续版本单独清理废弃根字段；缓存 PR 在本独立单位 PR 完成后另行处理。
+
+## STT 后续扩展
+
+STT 新增按每百万 Tokens 或每 60 秒计价，通过后续启动迁移为本设计形成的旧 `pricing.unitPrice` 补齐 duration 类型。具体规则见 [STT 用量与计费](./stt-usage-billing.md)。其他模型的百万单位及历史迁移规则不变。
+
+## LLM 阶梯输入上限回退为 K Tokens
+
+LLM 使用 `pricing.tiers[].maxInputTokensK` 配置阶梯上限，值为正整数 K Tokens。新版按 `inputTokens / 1000 <= maxInputTokensK` 选档。省略上限表示无限档，尚未回填的旧阶梯因此直接使用首档。单价按每百万 Tokens 结算。
+
+4.18.0 的独立后台任务 `20261120_migrate_model_pricing` 先分批回填 STT 计价类型，再用单事务回填系统 LLM 的 `maxInputTokensK`，最后联合校验。模型任一旧上限小于 1 时，按 M Tokens 将有限旧上限乘以 1000、四舍五入并最小取 1。其余旧上限按 K Tokens 复制。已有新上限及开放档跳过，原 `maxInputTokens` 保留供回退读取。新版保存只写 `maxInputTokensK`，经新版编辑的配置按新版格式使用。
+
+公开 API、SDK 和模型配置 JSON 的 LLM 阶梯上限统一使用 `maxInputTokensK`。配置编辑和 JSON 往返的兼容范围以价格回填完成的模型为准。JSON 导入会校验阶梯字段，只接受新版上限字段。
+
+## 缓存计费扩展
+
+百万单位及 `pricing` 结构已合入；缓存计费在 `pricing.tiers` 中增加可选的 `cacheReadPrice`、`cacheCreationPrice`，均为每百万 Tokens 的单价。未配置沿用该档输入价，显式 0 免费。只影响 LLM，不新增单位标记，不读取旧根字段，也不修改既有价格迁移或新增迁移任务。
+
+总输入包含两类缓存。按总输入量与 maxInputTokensK 选档，旧模型首档尚未回填上限时使用首档。费用为 `(普通输入 × 输入价 + 缓存读取 × 读取价 + 缓存创建 × 创建价 + 输出 × 输出价) / 1000000`。负数或非有限用量按 0 处理，缓存读取最多为总输入，缓存创建最多为剩余输入；团队模型仍免费。单次费用不舍入。
+
+OpenAI 兼容响应在请求聚合入口归一化供应商缓存字段并累计连续输出；Pi 的普通输入不含缓存，适配时补回缓存以形成总输入。锁定 SDK 的 pnpm 补丁补齐其 OpenAI 缓存解析，输出与普通请求统一采用 `completion_tokens` 总量，不再次累加其中的 `reasoning_tokens` 分项，避免推理模型重复计费。镜像安装上下文同步包含补丁。普通请求、两种 Agent、压缩、知识库检索、训练、辅助生成与评估逐层转发两类缓存数量。Pro 创建/追加/合并用量后按已有积分总额扣费，不再重新计价。
+
+新账单仅写入实际发生的 `cacheReadTokens`、`cacheCreationTokens`。使用详情中历史零值按空值展示，每列仅在至少一个模块存在该项用量时显示。监控使用当前单价和渠道聚合用量估算积分，钱包以实际扣费为准。模型列表保留输入、输出两行，模型选择弹窗直接展示四类单价。悬停或聚焦价格摘要可查看同一张阶梯明细表，表头标明输入区间使用 K Tokens，单价使用积分 / M Tokens。缺省或舍入为 0 的价格显示 `-`，只有一个档位且两类缓存都无有效价格时隐藏提示。
+
+验证复用局部纯计价、真实表单、API→MongoDB→运行时、HTTP/SSE/Pi SDK、Pro 钱包生命周期及三条训练路径测试，不增加重复的百万单位迁移测试。

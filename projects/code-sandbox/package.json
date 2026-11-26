@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build:native:js": "gcc -shared -fPIC -O2 -Wall -Wextra -I/usr/local/include/node -o src/isolated/fastgpt_js_sandbox.node native/js-sandbox/fastgpt_js_sandbox.c -lseccomp",
+    "build:native:js": "gcc -shared -fPIC -O2 -Wall -Wextra -I/usr/local/include/node -o src/isolated/fastgpt_js_sandbox.node native/js-sandbox/fastgpt_js_sandbox.c -lseccomp && gcc -O2 -Wall -Wextra -o src/isolated/fastgpt_js_launcher native/js-sandbox/launcher.c -lseccomp",
     "build:native:python": "cd native/python-sandbox && go build -buildmode=c-shared -o ../../src/isolated/fastgpt_python_sandbox.so ./cmd/lib",
     "build": "sh build.sh",
     "test": "vitest run",
@@ -31,14 +31,14 @@
     "dayjs": "catalog:",
     "dotenv": "^17.3.1",
     "hono": "catalog:",
-    "moment": "^2.30.1",
+    "moment": "^2.31.0",
     "qs": "catalog:",
     "uuid": "^9.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "lodash": "4.17.23",
+    "lodash": "4.18.1",
     "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

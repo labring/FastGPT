@@ -94,4 +94,14 @@ describe('getFoldedSourceHandleIds', () => {
       })
     ).toEqual([...ids('right', 'branch'), getHandleId('node', 'source_catch', 'right')]);
   });
+
+  it('keeps the default source handle when the template flag is present', () => {
+    expect(
+      getFoldedSourceHandleIds({
+        ...node,
+        flowNodeType: FlowNodeTypeEnum.textEditor,
+        showSourceHandle: true
+      } as FlowNodeItemType)
+    ).toEqual([getHandleId(node.nodeId, 'source', 'right')]);
+  });
 });

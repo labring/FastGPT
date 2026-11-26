@@ -1,5 +1,5 @@
 import { InvalidStorageObjectKeyError, type InvalidStorageObjectKeyReason } from './errors';
-import type { MultipartUploadPart } from './types';
+import type { MultipartUploadPart, StorageByteRange } from './types';
 
 /** 四个 adapter 都可移植的对象 key 最大 UTF-8 字节数。 */
 export const MAX_STORAGE_OBJECT_KEY_UTF8_BYTES = 800;
@@ -161,6 +161,23 @@ export function assertMultipartUploadParts(value: unknown): asserts value is Mul
       throw new Error('Multipart parts must be sorted by partNumber without duplicates');
     }
     previousPartNumber = partNumber;
+  }
+}
+
+/** 校验对象存储下载字节范围（闭区间 `[start, end]`，从 0 开始且 `end >= start`）。 */
+export function assertStorageDownloadRange(
+  value: unknown
+): asserts value is StorageByteRange | undefined {
+  if (value === undefined) return;
+  if (!value || typeof value !== 'object') {
+    throw new Error('Download range must be an object with start and end');
+  }
+  const { start, end } = value as Partial<StorageByteRange>;
+  if (typeof start !== 'number' || !Number.isSafeInteger(start) || start < 0) {
+    throw new Error('Download range start must be a non-negative safe integer');
+  }
+  if (typeof end !== 'number' || !Number.isSafeInteger(end) || end < start) {
+    throw new Error('Download range end must be a safe integer >= start');
   }
 }
 

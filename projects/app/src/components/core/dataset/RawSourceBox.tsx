@@ -10,7 +10,7 @@ import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Props = BoxProps &
-  ReadCollectionSourceBodyType & {
+  Omit<ReadCollectionSourceBodyType, 'customUid' | 'authProxy'> & {
     collectionType?: DatasetCollectionTypeEnum;
     rawSourceName?: string;
     rawSourceId?: string;

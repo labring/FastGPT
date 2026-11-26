@@ -24,22 +24,28 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getDefaultAppForm, hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
-  canInputBeAgentGenerated,
-  filterToolConfiguredParams,
-  getAgentToolInputMode,
-  getToolConfigStatus,
+  serializeAgentTool,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getAgentToolSource,
+  isSystemOrCommercialToolId
+} from '@fastgpt/global/core/app/tool/utils';
+import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
+import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
+import {
+  getAgentToolIdentityKey,
+  getPromptRefToolId
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -68,7 +74,8 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
-      defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
+      defaultAppForm.aiSettings.maxHistories =
+        inputMap.get(NodeInputKeyEnum.history) ?? defaultAppForm.aiSettings.maxHistories;
       defaultAppForm.aiSettings.aiChatReasoning =
         inputMap.get(NodeInputKeyEnum.aiChatReasoning) ?? true;
       defaultAppForm.aiSettings.aiChatReasoningEffort = inputMap.get(
@@ -81,12 +88,11 @@ export const appWorkflow2AgentForm = ({
         NodeInputKeyEnum.sandboxEntrypoint
       );
 
-      const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
+      const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as SelectedToolItemType[];
       if (tools) {
         defaultAppForm.selectedTools = tools.map((tool) => ({
           ...tool,
-          id: tool.pluginId!,
-          configStatus: getToolConfigStatus({ tool }).status
+          id: tool.pluginId ?? tool.id
         }));
       }
 
@@ -118,28 +124,6 @@ export const appWorkflow2AgentForm = ({
 export type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
-};
-
-/**
- * 判断 ChatAgent 是否处于历史遗留的 Skill + 虚拟机不可用状态。
- * 该状态允许普通保存草稿，但不能继续发布或运行，因为 Skill 运行依赖虚拟机环境。
- */
-export const checkAgentSkillSandboxUnavailable = ({
-  appForm,
-  showSandbox,
-  enableSandbox
-}: {
-  appForm: Pick<AppFormEditFormType, 'aiSettings' | 'selectedAgentSkills'>;
-  showSandbox?: boolean;
-  enableSandbox?: boolean;
-}) => {
-  const hasSelectedAgentSkills = (appForm.selectedAgentSkills?.length || 0) > 0;
-
-  return (
-    hasSelectedAgentSkills &&
-    !appForm.aiSettings.useAgentSandbox &&
-    (!showSandbox || !enableSandbox)
-  );
 };
 
 /** 将 Agent 表单转换为工作流，并通过共用 Schema 校验和归一化知识库参数。 */
@@ -270,16 +254,6 @@ export function agentForm2AppWorkflow(
               value: data.aiSettings.aiChatReasoningEffort
             },
             {
-              key: NodeInputKeyEnum.history,
-              renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              label: 'core.module.input.label.chat history',
-              required: true,
-              min: 0,
-              max: 30,
-              value: data.aiSettings.maxHistories
-            },
-            {
               key: NodeInputKeyEnum.userChatInput,
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
@@ -293,41 +267,7 @@ export function agentForm2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.selectedTools.map((tool) => {
-                const config = tool.inputs.reduce(
-                  (acc, input) => {
-                    if (input.key === NodeInputKeyEnum.forbidStream) {
-                      return acc;
-                    }
-                    // Special tool
-                    if (
-                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                      input.key === NodeInputKeyEnum.history
-                    ) {
-                      acc[input.key] = data.aiSettings.maxHistories;
-                    }
-                    acc[input.key] = input.value;
-                    return acc;
-                  },
-                  {} as Record<string, any>
-                );
-
-                return {
-                  id: tool.pluginId,
-                  name: tool.name,
-                  avatar: tool.avatar,
-                  version: tool.version,
-                  source: tool.source,
-                  metadataLocale: tool.metadataLocale,
-                  toolConfig: tool.toolConfig,
-                  inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
-                    key: input.key,
-                    mode: getAgentToolInputMode(input)
-                  })),
-
-                  config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
-                };
-              })
+              value: data.selectedTools.map((tool) => serializeAgentTool({ tool }))
             },
             // Dataset configuration
             {
@@ -345,6 +285,7 @@ export function agentForm2AppWorkflow(
                 rerankModelId: data.dataset.rerankModelId,
                 rerankModel: data.dataset.rerankModel,
                 rerankWeight: data.dataset.rerankWeight,
+                rerankCandidateNum: data.dataset.rerankCandidateNum,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
@@ -377,8 +318,9 @@ export function agentForm2AppWorkflow(
                     label: '',
                     valueType: WorkflowIOValueTypeEnum.arrayObject,
                     value: data.selectedAgentSkills.map(
-                      ({ skillId, name, description, avatar }) => ({
+                      ({ skillId, source, name, description, avatar }) => ({
                         skillId,
+                        ...(source ? { source } : {}),
                         name,
                         description,
                         ...(avatar === undefined ? {} : { avatar })
@@ -434,67 +376,142 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
-/** 加载辅助生成的工具，按来源复用已有配置；旧引用未记录来源时按 system 匹配。 */
+/** 按规范工具身份键更新或头插已选工具，避免隐式 source 或旧三段式子工具 ID 导致重复或误覆盖。 */
+export const upsertSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  tool: SelectedToolItemType
+): SelectedToolItemType[] => {
+  const toolKey = getAgentToolIdentityKey(tool);
+  const exists = selectedTools.some((item) => getAgentToolIdentityKey(item) === toolKey);
+  return exists
+    ? selectedTools.map((item) => (getAgentToolIdentityKey(item) === toolKey ? tool : item))
+    : [tool, ...selectedTools];
+};
+
+/** 按规范工具身份键从已选工具列表中移除目标工具。 */
+export const removeSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  target: { id?: string; pluginId?: string; source?: string }
+): SelectedToolItemType[] => {
+  const targetKey = getAgentToolIdentityKey(target);
+  return selectedTools.filter((item) => getAgentToolIdentityKey(item) !== targetKey);
+};
+
+export type VerifiedToolPreviewResult =
+  | { status: 'missing' }
+  | { status: 'existing'; tool: SelectedToolItemType }
+  | { status: 'preview'; tool: FlowNodeTemplateType };
+
+/**
+ * 统一解析并校验工具预览（@ 菜单与辅助生成共用）：
+ * - 非 MCP/HTTP 子工具命中已有配置时直接复用，避免重复请求；
+ * - MCP/HTTP 子工具先经实时预览校验规范身份，防止已删子工具借历史回退误复用或误插入。
+ */
+export const resolveVerifiedToolPreview = async ({
+  toolId,
+  source,
+  existsTools = []
+}: {
+  toolId: string;
+  source?: string;
+  existsTools?: SelectedToolItemType[];
+}): Promise<VerifiedToolPreviewResult> => {
+  const identityKey = getAgentToolIdentityKey({ id: toolId, source });
+  const isSameTool = (tool: FlowNodeTemplateType) => getAgentToolIdentityKey(tool) === identityKey;
+
+  const isMcpOrHttpChild =
+    toolId.startsWith('mcp-') ||
+    toolId.startsWith('http-') ||
+    (toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source);
+
+  const existTool = existsTools.find(isSameTool);
+  if (existTool && !isMcpOrHttpChild) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  const preview = await getNewToolPreviewNode({
+    appId: toolId,
+    source
+  });
+  if (
+    isMcpOrHttpChild &&
+    !isSameTool({ ...preview, source: getAgentToolSource(preview) ?? source })
+  ) {
+    return { status: 'missing' };
+  }
+
+  if (existTool) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  return { status: 'preview', tool: preview };
+};
+
+/** 加载辅助生成的工具，同时兼容 V2 canonicalKey 与旧格式 { id, source } / string 引用。 */
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
-  generatedSelectedTools = [],
   fileSelectConfig
 }: {
   newToolIds: Array<string | { id: string; source?: string }>; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
-  generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
     await Promise.all(
       newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
-        const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
-        const source = typeof toolRef === 'string' ? undefined : toolRef.source;
-        const identityKey = getToolIdentityKey(toolId, source);
-        // 已经存在的工具，直接返回
-        const existTool = existsTools.find(
-          (tool) => getToolIdentityKey(tool.pluginId, tool.source) === identityKey
-        );
-        if (existTool) {
-          // 新提示词使用带来源的引用；复用旧配置时也要补齐来源，才能与运行时引用一致。
-          if (source === 'system' && !existTool.source) {
-            return { ...existTool, source };
+        const { toolId, source } = (() => {
+          if (typeof toolRef === 'string') {
+            const v2Ref = parseV2RefKey(toolRef);
+            if (v2Ref) {
+              const legacyLookup = toLegacyToolLookup(v2Ref);
+              return legacyLookup
+                ? { toolId: legacyLookup.appId, source: legacyLookup.source }
+                : { toolId: '', source: undefined };
+            }
+            return { toolId: toolRef, source: undefined };
           }
-          return existTool;
+          return { toolId: toolRef.id, source: toolRef.source };
+        })();
+        if (!toolId) return;
+
+        const verified = await resolveVerifiedToolPreview({
+          toolId,
+          source,
+          existsTools
+        });
+        if (verified.status === 'missing') return;
+        if (verified.status === 'existing') {
+          // 复用旧配置时补齐显式来源，保持与运行时引用一致。
+          if (source === 'system' && !verified.tool.source) {
+            return { ...verified.tool, source };
+          }
+          return verified.tool;
         }
 
-        // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getNewToolPreviewNode({
-          appId: toolId,
-          source
-        });
+        const tool = verified.tool;
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
           isAppTool: true,
-          canUploadFile: !!(
-            fileSelectConfig?.canSelectFile ||
-            fileSelectConfig?.canSelectImg ||
-            fileSelectConfig?.canSelectVideo ||
-            fileSelectConfig?.canSelectAudio ||
-            fileSelectConfig?.canSelectCustomFileExtension
-          )
+          canUploadFile: hasEnabledFileSelect(fileSelectConfig)
         });
         if (!toolValid) {
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find(
-          (item) => getToolIdentityKey(item.pluginId, item.source) === identityKey
-        );
-        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
+        const inheritedTool = inheritToolInputConfig({ tool });
+        const previewToolId = getPromptRefToolId(tool);
+        const resolvedToolId =
+          toolId.includes('/') &&
+          (previewToolId.startsWith('mcp-') || previewToolId.startsWith('http-'))
+            ? previewToolId
+            : toolId;
 
         return {
           ...inheritedTool,
-          id: toolId,
-          source,
-          configStatus: getToolConfigStatus({ tool: inheritedTool }).status
+          id: resolvedToolId,
+          source
         };
       })
     )

@@ -29,6 +29,7 @@ const getBatchDeletePermission = (sourceType: ChatSourceTypeEnum) => {
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };
 
+/** 按当前凭证的资源日志管理权限物理删除选中的会话。 */
 async function handler(req: ApiRequestProps) {
   const { sourceType, sourceId, chatIds } = parseApiInput({
     req,
@@ -45,8 +46,8 @@ async function handler(req: ApiRequestProps) {
   });
 
   await deleteChatResourcesBySource({
-    sourceType,
-    sourceId,
+    sourceType: authResult.sourceType,
+    sourceId: authResult.sourceId,
     chatIds,
     scope: authResult.scope
   });

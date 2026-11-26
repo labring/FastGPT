@@ -1,6 +1,8 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { dispatchClassifyQuestion } from '@fastgpt/service/core/workflow/dispatch/ai/classifyQuestion';
+import { dispatchClassifyQuestion as dispatchClassifyQuestionWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/classifyQuestion';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+const dispatchClassifyQuestion = createTestWorkflowDispatch(dispatchClassifyQuestionWithoutContext);
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { describe, expect, it, vi } from 'vitest';
 

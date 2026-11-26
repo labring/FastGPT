@@ -152,8 +152,7 @@ export const getUnauthorizedAppResources = async ({
   tmbId,
   teamId: targetTeamId,
   isRoot = false,
-  modelHandle,
-  tmbInfo: passedTmbInfo
+  modelHandle
 }: {
   resources: AppResource[];
   tmbId: string;
@@ -162,43 +161,59 @@ export const getUnauthorizedAppResources = async ({
   isRoot?: boolean;
   /** 调用方已读取的同团队模型目录；不传时按成员所属团队读取。 */
   modelHandle?: ModelHandle;
-  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }) => {
+  const normalizedTargetTeamId =
+    targetTeamId !== null && targetTeamId !== undefined ? String(targetTeamId) : undefined;
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
   let tmbInfoPromise:
     | Promise<Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined>
-    | undefined = passedTmbInfo ? Promise.resolve(passedTmbInfo) : undefined;
+    | undefined;
   const getTmbInfo = () => {
     if (!tmbInfoPromise) {
       tmbInfoPromise = getTmbInfoByTmbId({ tmbId });
     }
     return tmbInfoPromise;
   };
+  const getExpectedTeamId = (tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>) =>
+    normalizedTargetTeamId ?? (tmbInfo?.teamId ? String(tmbInfo.teamId) : undefined);
 
-  const modelCatalog = await (async () => {
-    if (modelResources.length === 0) return;
-    const tmbInfo = await getTmbInfo();
-    if (!tmbInfo) return;
-    const { permission } = tmbInfo;
-    const teamId = targetTeamId ?? tmbInfo.teamId;
-    const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
-    const denied = await authModels({
-      actor: { teamId, tmbId, isRoot, teamPermission: permission },
-      modelIds: modelResources.map(({ id }) => id),
-      action: 'use',
-      handle
-    });
-    return {
-      activeModelIds: new Set(
-        handle
-          .getActiveModels()
-          .filter((model) => !isTeamModel(model) || String(model.teamId) === teamId)
-          .map((model) => model.modelId)
-      ),
-      deniedModelIds: new Set(denied)
-    };
-  })();
+  let modelCatalogPromise:
+    | Promise<
+        | {
+            activeModelIds: Set<string>;
+            deniedModelIds: Set<string>;
+          }
+        | undefined
+      >
+    | undefined;
+  const getModelCatalog = () => {
+    if (!modelCatalogPromise) {
+      modelCatalogPromise = (async () => {
+        if (modelResources.length === 0) return;
+        const tmbInfo = await getTmbInfo();
+        if (!tmbInfo) return;
+        const teamId = getExpectedTeamId(tmbInfo)!;
+        const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
+        const denied = await authModels({
+          actor: { teamId, tmbId, isRoot, teamPermission: tmbInfo.permission },
+          modelIds: modelResources.map(({ id }) => id),
+          action: 'use',
+          handle
+        });
+        return {
+          activeModelIds: new Set(
+            handle
+              .getActiveModels()
+              .filter((model) => !isTeamModel(model) || String(model.teamId) === teamId)
+              .map((model) => model.modelId)
+          ),
+          deniedModelIds: new Set(denied)
+        };
+      })();
+    }
+    return modelCatalogPromise;
+  };
 
   const results = await Promise.all(
     normalizedResources.map(async (resource): Promise<UnauthorizedAppResource | undefined> => {
@@ -215,7 +230,7 @@ export const getUnauthorizedAppResources = async ({
             isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
-          if (String(authorized.app.teamId) !== (targetTeamId ?? tmbInfo?.teamId)) {
+          if (String(authorized.app.teamId) !== getExpectedTeamId(tmbInfo)) {
             throw AppErrEnum.unAuthApp;
           }
           return;
@@ -232,7 +247,7 @@ export const getUnauthorizedAppResources = async ({
             isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
-          if (String(authorized.dataset.teamId) !== (targetTeamId ?? tmbInfo?.teamId)) {
+          if (String(authorized.dataset.teamId) !== getExpectedTeamId(tmbInfo)) {
             throw DatasetErrEnum.unAuthDataset;
           }
           return;
@@ -251,13 +266,14 @@ export const getUnauthorizedAppResources = async ({
           });
           if (
             authorized.skill.source !== AgentSkillSourceEnum.system &&
-            String(authorized.skill.teamId) !== (targetTeamId ?? tmbInfo?.teamId)
+            String(authorized.skill.teamId) !== getExpectedTeamId(tmbInfo)
           ) {
             throw SkillErrEnum.unAuthSkill;
           }
           return;
         }
 
+        const modelCatalog = await getModelCatalog();
         if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
@@ -310,27 +326,12 @@ export const filterAuthorizedAppResources = async ({
     return [];
   }
 
-  let tmbInfo: Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined;
-  try {
-    tmbInfo = await getTmbInfoByTmbId({ tmbId: validTmbId });
-  } catch (error) {
-    if (
-      ['member not exist', 'tmbId or userId is required', 'Member not found'].includes(
-        getErrorKey(error)
-      )
-    ) {
-      return [];
-    }
-    throw error;
-  }
-
   const unauthorized = await getUnauthorizedAppResources({
     resources,
     tmbId: validTmbId,
     teamId,
     isRoot,
-    modelHandle,
-    tmbInfo
+    modelHandle
   });
   if (unauthorized.length === 0) return resources;
 

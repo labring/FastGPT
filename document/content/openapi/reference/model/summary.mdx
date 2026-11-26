@@ -1,0 +1,73 @@
+---
+title: '批量获取模型展示详情'
+seoTitle: '批量获取模型展示详情 - POST /api/core/ai/model/summary | FastGPT OpenAPI'
+description: '通过 API Key 批量查询指定模型的名称、图标、类型与当前身份或应用基线内的可用状态，不返回模型执行密钥与渠道配置。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/ai/model/summary`
+- **所属模块**：基础功能 / 模型管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/POST/core/ai/model/summary)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/POST/core/ai/model/summary`）
+
+## 接口说明与注意事项
+
+返回模型名称、图标、类型及当前身份或应用基线内的可用状态，不返回执行配置
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段                         | 类型       | 必填 | 默认值 | 约束与说明                                                                   |
+| ---------------------------- | ---------- | ---- | ------ | ---------------------------------------------------------------------------- |
+| `modelIds`                   | `string[]` | 是   | -      | 待查询的稳定模型 ID，最多 100 个。最少项数：1；最多项数：100                 |
+| `appId`                      | `string`   | 否   | -      | 应用 ID；存在时会将应用基线资源中的模型视作有权限。正则：`^[0-9a-fA-F]{24}$` |
+| `outLinkAuthData`            | `object`   | 否   | -      | 外链鉴权数据，使用发布者身份计算权限                                         |
+| `outLinkAuthData.shareId`    | `string`   | 是   | -      | 分享链接 ID。最小长度：1                                                     |
+| `outLinkAuthData.outLinkUid` | `string`   | 是   | -      | 外链用户 ID。最小长度：1                                                     |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/ai/model/summary" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "modelIds": [
+    "68ad85a7463006c963799a01"
+  ]
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "modelIds": ["68ad85a7463006c963799a01"]
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+正常、停用、已下架或无权限的展示详情
+
+**Content-Type** : `application/json`
+
+| 字段     | 类型       | 必填 | 默认值 | 约束与说明                   |
+| -------- | ---------- | ---- | ------ | ---------------------------- |
+| `models` | `object[]` | 是   | -      | 按请求顺序返回的模型展示详情 |
+
+#### 多态字段明细：`models`
+
+- **变体 1** ( `status="deleted"` ): `status` , `modelId` , `isUpcomingDeprecation`
+- **变体 2** : `type` , `name` , `avatar` , `status` , `modelId` , `isUpcomingDeprecation`

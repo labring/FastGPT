@@ -1,13 +1,21 @@
 ---
 title: Sealos Devbox Sandbox Configuration
-description: Use Sealos Devbox as the FastGPT sandbox
+description: Configure Sealos Devbox as the remote code execution sandbox provider for FastGPT workflows and agents.
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  This feature is available only to commercial edition users. Contact support to request a key.
-  Billing is usage-based and deducted from your Sealos balance.
+  Starting in FastGPT v4.18, the `sealosdevbox` runtime provider has been retired in favor of
+  OpenSandbox. Existing deployments should run `20261117_migrate_sandbox_to_opensandbox` (to migrate
+  active workspaces when needed) and `20261117_cleanup_legacy_sandbox_resources` (to clean up legacy
+  Devbox instances) in System Migration before switching to OpenSandbox.
+</Alert>
+
+<Alert icon="⚠️" context="warning">
+  This feature is available only to commercial edition users. Contact [Commercial
+  Support](/en/guide/version/commercial) to request a key. Billing is usage-based and deducted from
+  your Sealos balance.
 </Alert>
 
 ## Prerequisites
@@ -51,20 +59,24 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 For root Agent sandboxes, FastGPT generates and overwrites the standard Ubuntu or Debian `.sources` file for the detected distribution, creating a `.copy` backup before overwriting an existing file. When the variable is removed, files with a `.copy` backup are restored and files without a backup are skipped. Initialization does not run `apt-get update`.
 For arm64 runtime images, configure a mirror URL that provides the corresponding architecture packages.
 
-## FAQ
+## Configuration and Connection Troubleshooting
 
-### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+<span id="agent_sandbox_proxy_url-or-agent_sandbox_preview_proxy_url-is-required" />
 
-After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. The proxy secret must match the value configured for `fastgpt-agent-sandbox-proxy` and contain at least 32 characters.
+### Agent Sandbox proxy configuration is missing
 
-### AGENT_SANDBOX_SEALOS_IMAGE is required
+Configure the WebSocket URL (`ws://` or `wss://`), HTTP preview URL (`http://` or `https://`), and shared secret in **Admin → Subservices → Agent Sandbox**. App and Pro read the same saved configuration. The secret must contain at least 32 characters and match the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET`.
+
+<span id="agent_sandbox_sealos_image-is-required" />
+
+### Invalid Agent Sandbox environment variables: AGENT_SANDBOX_SEALOS_IMAGE are required when AGENT_SANDBOX_PROVIDER is sealosdevbox
 
 The `sealosdevbox` provider requires `AGENT_SANDBOX_SEALOS_IMAGE`. Use the Agent Sandbox runtime image provided by support or the image that matches your current FastGPT version.
 
 ### Browser WebSocket connection fails
 
-Check that the proxy service is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT is accessed over HTTPS, `AGENT_SANDBOX_PROXY_URL` should use `wss://` to avoid mixed-content blocking.
+Check that the proxy service is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT is accessed over HTTPS, the WebSocket URL on the Agent Sandbox admin page should use `wss://` to avoid mixed-content blocking.
 
 ### proxy validation fails or returns 401
 
-Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy`, and that it is at least 32 characters long.
+Make sure the shared secret saved on the Agent Sandbox admin page matches the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET` and contains at least 32 characters.

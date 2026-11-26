@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/core/ai/prompt/agent';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
+import { checkOutputTextModeration } from '../../plugin/moderation/output';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -24,6 +25,8 @@ export async function createQuestionGuide({
   result: string[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
 }> {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
@@ -35,7 +38,7 @@ export async function createQuestionGuide({
 
   const {
     answerText: answer,
-    usage: { inputTokens, outputTokens }
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens }
   } = await createLLMResponse({
     teamId,
     saveLLMResponseRecord: false,
@@ -55,7 +58,9 @@ export async function createQuestionGuide({
     return {
       result: [],
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   }
 
@@ -65,10 +70,29 @@ export async function createQuestionGuide({
     .replace(/  /g, '');
 
   try {
+    const parsed = json5.parse(jsonStr);
+    const rawList = Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+
+    const moderatedList: string[] = [];
+    for (const item of rawList) {
+      const checkRes = await checkOutputTextModeration({
+        text: item,
+        targetField: 'questionGuide',
+        context: { teamId }
+      });
+      if (checkRes.isPass) {
+        moderatedList.push(item);
+      }
+    }
+
     return {
-      result: json5.parse(jsonStr),
+      result: moderatedList,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   } catch (error) {
     logger.warn('Failed to parse question guide JSON', { error, raw: jsonStr });
@@ -76,7 +100,9 @@ export async function createQuestionGuide({
     return {
       result: [],
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   }
 }

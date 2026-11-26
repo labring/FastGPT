@@ -1,6 +1,27 @@
 import { SearchScoreTypeEnum } from '../constants';
 import { type SearchDataResponseItemType } from '../type';
 
+/** 重排候选数的边界、步长与默认值；UI 与服务端共用，避免两处漂移。 */
+export const rerankCandidateNumRange = {
+  min: 10,
+  max: 100,
+  step: 10,
+  default: 100
+} as const;
+
+/** 仅接受范围内的整数；缺失、非有限数、小数和越界值统一回退默认值，避免中断检索。 */
+export const normalizeRerankCandidateNum = (value?: number | null) => {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < rerankCandidateNumRange.min ||
+    value > rerankCandidateNumRange.max
+  ) {
+    return rerankCandidateNumRange.default;
+  }
+  return value;
+};
+
 /* dataset search result concat */
 export const datasetSearchResultConcat = (
   arr: { weight: number; list: SearchDataResponseItemType[] }[]

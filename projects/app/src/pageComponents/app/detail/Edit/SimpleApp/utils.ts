@@ -1,9 +1,6 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import type {
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -25,6 +22,10 @@ import {
   AiChatQuoteRole,
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
+import {
+  parseAiChatQuoteRole,
+  resolveAiChatQuoteRole
+} from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -40,10 +41,7 @@ import {
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import {
-  getToolConfigStatus,
-  stripToolInputDefaultMode
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { stripToolInputDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 
 /** 将简易应用的已存工作流还原为表单；标签过滤版本沿用默认的 structured。 */
 export const appWorkflow2Form = ({
@@ -120,6 +118,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.sandboxEntrypoint
       );
+      defaultAppForm.aiSettings.aiChatQuoteRole = parseAiChatQuoteRole(
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.aiChatQuoteRole)
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -156,6 +157,10 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.rerankWeight = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankWeight
+      );
+      defaultAppForm.dataset.rerankCandidateNum = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankCandidateNum
       );
       // Query extension
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
@@ -211,8 +216,7 @@ export const appWorkflow2Form = ({
         userGuide: node.pluginData?.userGuide,
         toolConfig: node.toolConfig,
         hasSystemSecret: node.hasSystemSecret,
-        systemKeyCost: node.systemKeyCost,
-        configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
+        systemKeyCost: node.systemKeyCost
       });
     }
   });
@@ -332,7 +336,11 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        AiChatQuoteRole,
+        // 存量简易应用可能显式保存了 system 角色；编辑保存往返经统一契约归一化，非法或缺失值回退默认 user。
+        {
+          ...AiChatQuoteRole,
+          value: resolveAiChatQuoteRole(formData.aiSettings.aiChatQuoteRole)
+        },
         AiChatQuoteTemplate,
         AiChatQuotePrompt,
         {
@@ -541,6 +549,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.number,
           value: formData.dataset.rerankWeight
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number,
+          value: formData.dataset.rerankCandidateNum
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,

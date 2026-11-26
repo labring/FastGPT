@@ -1,20 +1,16 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { logoutWechatChannel } from '@fastgpt/service/support/outLink/wechat/service';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   WechatLogoutBodySchema,
-  WechatLogoutResponseSchema,
-  type WechatLogoutBodyType,
-  type WechatLogoutResponseType
+  type WechatLogoutBodyType
 } from '@fastgpt/global/openapi/support/outLink/provider/wechat';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { assertWechatOutLink } from '@fastgpt/service/support/outLink/wechat/utils';
 
-async function handler(
-  req: ApiRequestProps<WechatLogoutBodyType>
-): Promise<WechatLogoutResponseType> {
+async function handler(req: ApiRequestProps<WechatLogoutBodyType>): Promise<void> {
   const { outLinkId } = parseApiInput({
     req,
     bodySchema: WechatLogoutBodySchema
@@ -28,18 +24,7 @@ async function handler(
   });
   await assertWechatOutLink(outLink);
 
-  await MongoOutLink.updateOne(
-    { _id: outLink._id },
-    {
-      $set: {
-        'app.status': 'offline',
-        'app.token': '',
-        'app.lastError': ''
-      }
-    }
-  );
-
-  return WechatLogoutResponseSchema.parse(undefined);
+  await logoutWechatChannel(outLinkId);
 }
 
 export default NextAPI(handler);

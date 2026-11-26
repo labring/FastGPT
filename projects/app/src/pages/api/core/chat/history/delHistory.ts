@@ -12,10 +12,12 @@ import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/p
 /* delete single chat history (soft delete) */
 export async function handler(req: ApiRequestProps, _res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: DelChatHistorySchema });
-  const { sourceType, sourceId, chatId, outLinkAuthData } = query;
+  const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData } = query;
 
   const per = sourceType === ChatSourceTypeEnum.skillEdit ? WritePermissionVal : ReadPermissionVal;
   const match = await buildChatHistoryMatch({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

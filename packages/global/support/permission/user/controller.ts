@@ -1,3 +1,4 @@
+import z from 'zod';
 import { type PerConstructPros, Permission } from '../controller';
 import {
   TeamApikeyCreateRoleVal,
@@ -55,3 +56,18 @@ export class TeamPermission extends Permission {
     });
   }
 }
+
+export const TeamPermissionSummarySchema = z.object({
+  isOwner: z.boolean().meta({ example: false, description: '是否为团队所有者' }),
+  hasManagePer: z.boolean().meta({ example: false, description: '是否拥有团队管理权限' }),
+  hasWritePer: z.boolean().meta({ example: true, description: '是否拥有团队写权限' }),
+  hasReadPer: z.boolean().meta({ example: true, description: '是否拥有团队读权限' }),
+  hasAppCreatePer: z.boolean().meta({ example: true, description: '是否拥有应用创建权限' }),
+  hasDatasetCreatePer: z.boolean().meta({ example: true, description: '是否拥有知识库创建权限' }),
+  hasApikeyCreatePer: z
+    .boolean()
+    .meta({ example: false, description: '是否拥有 API Key 创建权限' }),
+  hasSkillCreatePer: z.boolean().meta({ example: false, description: '是否拥有技能创建权限' }),
+  hasModelCreatePer: z.boolean().meta({ example: false, description: '是否拥有模型配置权限' })
+});
+export type TeamPermissionSummaryType = z.infer<typeof TeamPermissionSummarySchema>;

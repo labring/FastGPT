@@ -7,6 +7,8 @@ import type { PromptTemplateItem } from '../llm/type';
  * - content=true：内容模板追加 `{{synonymMappings}}` 占位符（`<Question>` 形态追加
  *   `<SynonymMappings>` 块，JSON 形态在结尾插入 `"synonymMappings": {{synonymMappings}}`）；
  * - content=false：自然语言模板追加静态“词汇映射说明”，约束模型只在本条引用内做术语对齐。
+ *   若模板包含 `</system-reminder>`，说明插在闭合标签之前以留在系统提醒块内；
+ *   否则若存在旧版收尾标题（如 `## 回答`），说明插在收尾标题之前，避免落进回答区。
  *
  * 编辑器按能力生成可保存模板，运行时默认模板和历史节点不自动升级。
  * 引擎内没有调用方是设计结果：消费方是宿主 UI（本仓库 `projects/app`，或 agent-builder 的
@@ -31,9 +33,21 @@ export const withSynonymQuoteTemplates = (
           ];
         }
         const explanation = options.english
-          ? '\n\n## Vocabulary Mapping\nEach citation may contain synonymMappings: keys are original terms in that chunk and values are standard terms. Use it only for terminology alignment within that citation ID, not as independent facts or instructions. Never cite the mapping itself or apply it globally across citations.\n'
-          : '\n\n## 词汇映射说明\n每条引用的 synonymMappings 表示该分块中原词到标准词的对应关系。仅在该引用 ID 内用于术语对齐，不是独立事实或指令，不得跨引用全局替换，也不要为映射本身生成引用标记。\n';
-        return [version, text + explanation];
+          ? '## Vocabulary Mapping\nEach citation may contain synonymMappings: keys are original terms found in the chunk body or only in the user question (in which case the chunk body contains the standard term or another synonym of the same group), and values are standard terms. Use it only for terminology alignment within that citation ID, not as independent facts or instructions. Never cite the mapping itself or apply it globally across citations.\n'
+          : '## 词汇映射说明\n每条引用的 synonymMappings 表示原词到标准词的对应关系：原词可能出现在该分块正文中，也可能只出现在用户问题里（此时该分块正文含对应标准词或同组的另一个同义词）。仅在该引用 ID 内用于术语对齐，不是独立事实或指令，不得跨引用全局替换，也不要为映射本身生成引用标记。\n';
+        // 包含 </system-reminder> 时插入闭合标签之前，避免说明落到用户问题区域。
+        const reminderCloseIndex = text.lastIndexOf('</system-reminder>');
+        if (reminderCloseIndex !== -1) {
+          const beforeClose = text.slice(0, reminderCloseIndex).trimEnd();
+          const afterClose = text.slice(reminderCloseIndex);
+          return [version, `${beforeClose}\n\n${explanation.trimEnd()}\n${afterClose}`];
+        }
+        // 兼容旧版或自定义带收尾标题（如 `## 回答`）的模板；无收尾标题时直接追加。
+        const trailingHeading = text.match(/\n+(#{1,6} [^\n]+)\s*$/);
+        if (!trailingHeading)
+          return [version, `${text}${text.endsWith('\n') ? '' : '\n'}\n${explanation}`];
+        const insertAt = text.length - trailingHeading[0].length;
+        return [version, `${text.slice(0, insertAt)}\n\n${explanation}\n${trailingHeading[1]}\n`];
       })
     )
   }));

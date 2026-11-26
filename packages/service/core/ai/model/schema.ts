@@ -28,6 +28,7 @@ const AIModelSchema = new Schema(
       required: true,
       default: ModelScopeEnum.system
     },
+    sortOrder: Number,
     tmbId: {
       type: Schema.Types.ObjectId,
       ref: 'team_members'
@@ -37,6 +38,7 @@ const AIModelSchema = new Schema(
       ref: 'teams'
     },
     isActive: Boolean,
+    isUpcomingDeprecation: Boolean,
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,
@@ -44,10 +46,24 @@ const AIModelSchema = new Schema(
       type: new Schema(
         {
           tiers: {
-            type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
+            type: [
+              {
+                _id: false,
+                /** @deprecated 保留历史阶梯上限，供 4.17.5 回退读取。新版计费用 maxInputTokensK。 */
+                maxInputTokens: Number,
+                maxInputTokensK: Number,
+                inputPrice: Number,
+                outputPrice: Number,
+                cacheReadPrice: Number,
+                cacheCreationPrice: Number
+              }
+            ],
             default: undefined
           },
-          unitPrice: Number
+          unitPrice: Number,
+          inputPrice: Number,
+          outputPrice: Number,
+          type: { type: String, enum: ['duration', 'tokens'] }
         },
         { _id: false, minimize: false }
       ),

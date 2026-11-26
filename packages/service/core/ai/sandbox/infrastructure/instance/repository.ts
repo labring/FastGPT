@@ -1,8 +1,9 @@
 /**
  * Sandbox 实例原子层。
  *
- * Repository 只负责 v2 记录查询和 `status + operation.id` CAS，不执行任何远端副作用。
+ * Repository 只负责 v3 记录查询和 `status + operation.id` CAS，以及只读查询 v2/迁移状态用于门禁与对账保护，不执行任何远端副作用。
  */
+import type { MongoDeleteResult } from '../../../../../common/mongo';
 import {
   SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE,
   sandboxActiveStatusList,
@@ -14,9 +15,15 @@ import {
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isSandboxSourceType } from '@fastgpt/global/common/chat/source';
-import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
-import { MongoSandboxInstance } from './schema';
 import {
+  sandboxMigrationId,
+  systemMigrationStateCollectionName,
+  SystemMigrationStatusEnum
+} from '@fastgpt/global/migration/constants';
+import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
+import { getLegacySandboxInstanceCollection, MongoSandboxInstance } from './schema';
+import {
+  SANDBOX_PROVIDER,
   type SandboxInstanceSchemaType,
   type SandboxInstanceStatusType,
   type SandboxOperationType,
@@ -29,6 +36,7 @@ const stableStatuses = new Set<SandboxInstanceStatusType>(sandboxStableStatusLis
 export type SandboxResourceDoc = Pick<
   SandboxInstanceSchemaType,
   | 'provider'
+  | 'instanceId'
   | 'sandboxId'
   | 'sourceType'
   | 'sourceId'
@@ -48,19 +56,20 @@ export type SandboxResourceDoc = Pick<
 export type SandboxResourceRef = Partial<
   Pick<
     SandboxResourceDoc,
+    | 'provider'
     | 'status'
     | 'lastActiveAt'
     | 'sourceType'
     | 'sourceId'
     | 'userId'
     | 'teamId'
+    | 'instanceId'
     | 'image'
     | 'versionId'
     | 'storage'
     | 'operation'
   >
 > & {
-  provider: SandboxProviderType;
   sandboxId: string;
   _id?: unknown;
 };
@@ -71,6 +80,8 @@ export type SandboxSourceParams = {
   userId?: string;
 };
 
+export type SandboxUnsetField = 'instanceId' | 'storage.volumes' | 'storage.mountPath';
+
 export type ClaimSandboxOperationParams = {
   resource: SandboxResourceRef;
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
@@ -79,7 +90,30 @@ export type ClaimSandboxOperationParams = {
   set?: Record<string, unknown>;
   previousStatus?: SandboxStableStatusType;
   matchLastActiveAt?: boolean;
+  matchInstanceIdentity?: boolean;
 };
+
+const getWorkspaceClaimName = (storage?: SandboxResourceRef['storage']) =>
+  storage?.volumes?.find((volume) => volume.name === SANDBOX_WORKSPACE_VOLUME_NAME)?.claimName;
+
+const buildWorkspaceClaimFilter = (claimName?: string) =>
+  claimName
+    ? {
+        'storage.volumes': {
+          $elemMatch: {
+            name: SANDBOX_WORKSPACE_VOLUME_NAME,
+            claimName
+          }
+        }
+      }
+    : {};
+
+const buildRunningInstanceIdentityFilter = (resource: SandboxResourceRef) => ({
+  ...(resource.instanceId
+    ? { instanceId: resource.instanceId }
+    : { instanceId: { $in: [null, ''] } }),
+  ...buildWorkspaceClaimFilter(getWorkspaceClaimName(resource.storage))
+});
 
 const isMongoDuplicateKeyError = (error: unknown) =>
   typeof error === 'object' &&
@@ -90,7 +124,7 @@ const isMongoDuplicateKeyError = (error: unknown) =>
 const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) =>
   resource._id !== undefined
     ? { _id: resource._id }
-    : { provider: resource.provider, sandboxId: resource.sandboxId };
+    : { provider: resource.provider ?? SANDBOX_PROVIDER, sandboxId: resource.sandboxId };
 
 const buildCurrentOperationFilter = (resource: SandboxResourceRef) => {
   const operationId = resource.operation?.id;
@@ -109,13 +143,41 @@ const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: Sandb
   throw new Error(`Unsupported sandbox source type: ${exhaustiveCheck}`);
 };
 
-type SandboxStableFields = Pick<SandboxInstanceSchemaType, 'teamId' | 'image' | 'versionId'>;
+type SandboxStableFields = Pick<
+  SandboxInstanceSchemaType,
+  'teamId' | 'instanceId' | 'image' | 'versionId'
+>;
 
 const buildSandboxStableFieldsSet = (fields: SandboxStableFields) => ({
   ...(fields.teamId !== undefined ? { teamId: fields.teamId } : {}),
+  ...(fields.instanceId !== undefined ? { instanceId: fields.instanceId } : {}),
   ...(fields.image !== undefined ? { image: fields.image } : {}),
   ...(fields.versionId !== undefined ? { versionId: fields.versionId } : {})
 });
+
+const hasMongoPathConflict = (a: string, b: string): boolean =>
+  a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
+
+/**
+ * 规整 `$set` / `$unset`，避免祖先或子孙路径同时出现在两处触发 Mongo 路径冲突。
+ */
+const buildSandboxUnsetFields = ({
+  set,
+  unset
+}: {
+  set?: Record<string, unknown>;
+  unset?: readonly string[];
+}): Record<string, ''> => {
+  if (!unset?.length) return {};
+  const setKeys = set ? Object.keys(set) : [];
+
+  const unsetDoc: Record<string, ''> = {};
+  for (const field of unset) {
+    if (setKeys.some((setKey) => hasMongoPathConflict(field, setKey))) continue;
+    unsetDoc[field] = '';
+  }
+  return unsetDoc;
+};
 
 const assertOperationMatchesStatus = (
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>,
@@ -128,7 +190,16 @@ const assertOperationMatchesStatus = (
 
 /** 原子抢占一条记录进入过渡态，并为本轮操作生成唯一 fencing token。 */
 export async function claimSandboxOperation(params: ClaimSandboxOperationParams) {
-  const { resource, status, type, phase, set, previousStatus, matchLastActiveAt = false } = params;
+  const {
+    resource,
+    status,
+    type,
+    phase,
+    set,
+    previousStatus,
+    matchLastActiveAt = false,
+    matchInstanceIdentity = false
+  } = params;
   assertOperationMatchesStatus(status, type);
   const now = new Date();
   const operationId = randomUUID();
@@ -148,7 +219,12 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
       ...buildSandboxResourceRecordFilter(resource),
       ...(resource.status ? { status: resource.status } : {}),
       ...buildCurrentOperationFilter(resource),
-      ...(matchLastActiveAt && resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {})
+      ...(matchLastActiveAt && resource.lastActiveAt
+        ? { lastActiveAt: resource.lastActiveAt }
+        : {}),
+      ...(matchInstanceIdentity && resource.status === SandboxInstanceStatusEnum.running
+        ? buildRunningInstanceIdentityFilter(resource)
+        : {})
     },
     {
       $set: {
@@ -198,6 +274,26 @@ export async function advanceSandboxOperation(params: {
   ).lean<SandboxResourceDoc | null>();
 }
 
+/** 在持有有效租约执行长耗时步骤期间刷新 operation 心跳，防止正常长任务超过孤儿接管阈值。 */
+export async function touchSandboxOperationHeartbeat(params: {
+  resource: SandboxResourceRef;
+  operationId: string;
+  status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
+}) {
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(params.resource),
+      status: params.status,
+      'operation.id': params.operationId
+    },
+    {
+      $set: {
+        'operation.heartbeatAt': new Date()
+      }
+    }
+  );
+}
+
 /** 保留过渡态并记录错误，供同一操作重试或 stale recovery 接管。 */
 export async function markSandboxOperationFailed(params: {
   resource: SandboxResourceRef;
@@ -230,8 +326,11 @@ export async function completeSandboxOperation(params: {
   fromStatus: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
   status: SandboxStableStatusType;
   set?: Record<string, unknown>;
+  unset?: readonly SandboxUnsetField[];
   touchActive?: boolean;
 }) {
+  const extraUnset = buildSandboxUnsetFields({ set: params.set, unset: params.unset });
+
   return MongoSandboxInstance.findOneAndUpdate(
     {
       ...buildSandboxResourceRecordFilter(params.resource),
@@ -244,20 +343,24 @@ export async function completeSandboxOperation(params: {
         ...(params.touchActive ? { lastActiveAt: new Date() } : {}),
         ...(params.set ?? {})
       },
-      $unset: { operation: '' }
+      $unset: {
+        ...extraUnset,
+        operation: ''
+      }
     },
     { new: true }
   ).lean<SandboxResourceDoc | null>();
 }
 
-/** 仅在当前 deleting operation 仍持有 token 时删除记录。 */
+/** 仅在当前 operation 仍持有 token 时删除记录（默认 deleting，也支持撤回尚未产生副作用的 provisioning 占位）。 */
 export async function deleteClaimedSandboxRecord(params: {
   resource: SandboxResourceRef;
   operationId: string;
-}) {
+  status?: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
+}): Promise<MongoDeleteResult> {
   return MongoSandboxInstance.deleteOne({
     ...buildSandboxResourceRecordFilter(params.resource),
-    status: SandboxInstanceStatusEnum.deleting,
+    status: params.status ?? SandboxInstanceStatusEnum.deleting,
     'operation.id': params.operationId
   });
 }
@@ -265,7 +368,6 @@ export async function deleteClaimedSandboxRecord(params: {
 /** 创建带团队归属的首次 provisioning 占位；唯一键冲突时返回已经存在的逻辑记录。 */
 export async function createSandboxProvisioningInstance(
   params: {
-    provider: SandboxProviderType;
     sandboxId: string;
     sourceType: ChatSourceTypeEnum;
     sourceId: string;
@@ -280,7 +382,7 @@ export async function createSandboxProvisioningInstance(
 
   try {
     const created = await MongoSandboxInstance.create({
-      provider: params.provider,
+      provider: SANDBOX_PROVIDER,
       sandboxId: params.sandboxId,
       sourceType: params.sourceType,
       sourceId: params.sourceId,
@@ -318,38 +420,26 @@ export async function createSandboxProvisioningInstance(
  * 提交新 generation 后继续命中快路径。storage 只能由 lifecycle checkpoint 写入，touch 不回写。
  */
 export async function touchRunningSandboxInstance(params: {
-  provider: SandboxProviderType;
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   expectedWorkspaceClaimName?: string;
-  limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
 }) {
   return MongoSandboxInstance.findOneAndUpdate(
     {
-      provider: params.provider,
+      provider: SANDBOX_PROVIDER,
       sandboxId: params.sandboxId,
       sourceType: params.sourceType,
       sourceId: params.sourceId,
       userId: params.userId,
       status: SandboxInstanceStatusEnum.running,
       operation: { $exists: false },
-      ...(params.expectedWorkspaceClaimName
-        ? {
-            'storage.volumes': {
-              $elemMatch: {
-                name: SANDBOX_WORKSPACE_VOLUME_NAME,
-                claimName: params.expectedWorkspaceClaimName
-              }
-            }
-          }
-        : {})
+      ...buildWorkspaceClaimFilter(params.expectedWorkspaceClaimName)
     },
     {
       $set: {
-        lastActiveAt: new Date(),
-        ...(params.limit ? { limit: params.limit } : {})
+        lastActiveAt: new Date()
       }
     },
     { new: true }
@@ -365,10 +455,9 @@ export async function findInactiveRunningSandboxResources(inactiveBefore: Date) 
   }).lean<SandboxResourceDoc[]>();
 }
 
-/** 流式读取 stopped 归档候选。 */
+/** 流式读取 stopped 归档候选（v3 集合仅包含 `/home/sandbox` 布局的 opensandbox 实例）。 */
 export function createSandboxResourcesToArchiveCursor(inactiveBefore: Date) {
   return MongoSandboxInstance.find({
-    provider: { $in: ['opensandbox', 'sealosdevbox'] },
     status: SandboxInstanceStatusEnum.stopped,
     lastActiveAt: { $lt: inactiveBefore },
     operation: { $exists: false }
@@ -390,9 +479,16 @@ export async function findStaleSandboxOperations(params: {
   return MongoSandboxInstance.find({
     status: { $in: params.statuses },
     $or: [
-      heartbeatFilter,
+      { ...heartbeatFilter, 'operation.retryAfter': { $exists: false } },
       { 'operation.retryAfter': { $lte: params.now ?? new Date() } },
-      ...(params.retryPhases?.length ? [{ 'operation.phase': { $in: params.retryPhases } }] : [])
+      ...(params.retryPhases?.length
+        ? [
+            {
+              'operation.phase': { $in: params.retryPhases },
+              'operation.retryAfter': { $exists: false }
+            }
+          ]
+        : [])
     ]
   }).lean<SandboxResourceDoc[]>();
 }
@@ -404,26 +500,24 @@ export async function findSandboxResourcesBySource(params: SandboxSourceParams) 
 }
 
 export async function findSandboxInstanceBySandboxId(params: {
-  provider?: SandboxProviderType;
   sandboxId: string;
   status?: SandboxInstanceStatusType;
 }) {
   return MongoSandboxInstance.findOne({
-    ...(params.provider ? { provider: params.provider } : {}),
+    provider: SANDBOX_PROVIDER,
     sandboxId: params.sandboxId,
     ...(params.status ? { status: params.status } : {})
   }).lean<SandboxResourceDoc | null>();
 }
 
 export async function findSandboxInstanceBySandboxIdAndSource(params: {
-  provider?: SandboxProviderType;
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   status?: SandboxInstanceStatusType;
 }) {
   return MongoSandboxInstance.findOne({
-    ...(params.provider ? { provider: params.provider } : {}),
+    provider: SANDBOX_PROVIDER,
     sandboxId: params.sandboxId,
     sourceType: params.sourceType,
     sourceId: params.sourceId,
@@ -431,22 +525,22 @@ export async function findSandboxInstanceBySandboxIdAndSource(params: {
   }).lean<SandboxResourceDoc | null>();
 }
 
-export async function existsSandboxInstanceBySandboxId(params: {
-  provider: SandboxProviderType;
-  sandboxId: string;
-}) {
-  return Boolean(await MongoSandboxInstance.exists(params));
+export async function existsSandboxInstanceBySandboxId(params: { sandboxId: string }) {
+  return Boolean(
+    await MongoSandboxInstance.exists({
+      provider: SANDBOX_PROVIDER,
+      sandboxId: params.sandboxId
+    })
+  );
 }
 
 export async function findSandboxInstanceBySource(params: {
-  provider?: SandboxProviderType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   status?: SandboxInstanceStatusType;
 }) {
   return MongoSandboxInstance.findOne({
-    ...(params.provider ? { provider: params.provider } : {}),
     sourceType: params.sourceType,
     sourceId: params.sourceId,
     userId: params.userId,
@@ -457,8 +551,8 @@ export async function findSandboxInstanceBySource(params: {
 /**
  * 统计计入 Quota 的活跃实例；不传 teamId 时统计系统总量。
  *
- * 系统总上限与团队配额共用同一个池子（忽略 provider 与 sourceType），计数包含
- * provisioning/restoring 等过渡态，因此不能按 operation 是否存在过滤。
+ * `v3` 集合仅包含 opensandbox 实例（忽略 sourceType；未迁移的 4.17.x `v2` 记录不占新池配额），
+ * 计数包含 provisioning/restoring 等过渡态，因此不能按 operation 是否存在过滤。
  * 缺失 teamId 的历史记录不计入任何团队，但仍计入系统总量。
  */
 export async function countActiveSandboxInstances(params: { teamId?: string } = {}) {
@@ -469,14 +563,10 @@ export async function countActiveSandboxInstances(params: { teamId?: string } = 
 }
 
 /** 只为历史缺失 teamId 的记录补齐归属；已有 teamId 的记录绝不覆写。 */
-export async function backfillSandboxInstanceTeamId(params: {
-  provider: SandboxProviderType;
-  sandboxId: string;
-  teamId: string;
-}) {
+export async function backfillSandboxInstanceTeamId(params: { sandboxId: string; teamId: string }) {
   return MongoSandboxInstance.updateOne(
     {
-      provider: params.provider,
+      provider: SANDBOX_PROVIDER,
       sandboxId: params.sandboxId,
       $or: [{ teamId: { $exists: false } }, { teamId: null }]
     },
@@ -484,52 +574,117 @@ export async function backfillSandboxInstanceTeamId(params: {
   );
 }
 
-/** 在 archived 稳定态内原子切换 provider，不引入无远端副作用的过渡 operation。 */
-export async function switchArchivedSandboxProvider(params: {
-  resource: SandboxResourceRef;
-  provider: SandboxProviderType;
-  image?: SandboxInstanceSchemaType['image'];
-}) {
-  return MongoSandboxInstance.findOneAndUpdate(
-    {
-      ...buildSandboxResourceRecordFilter(params.resource),
-      provider: params.resource.provider,
-      sandboxId: params.resource.sandboxId,
-      status: SandboxInstanceStatusEnum.archived,
-      operation: { $exists: false }
-    },
-    {
-      $set: {
-        provider: params.provider,
-        lastActiveAt: new Date(),
-        ...(params.image ? { image: params.image } : {})
-      }
-    },
-    { new: true }
-  ).lean<SandboxResourceDoc | null>();
+/** 批量按逻辑 `sandboxId` 查询 v3 记录，供孤儿容器反向对账 GC 使用。 */
+export async function findSandboxInstancesBySandboxIds(sandboxIds: string[]) {
+  if (sandboxIds.length === 0) return [];
+  return MongoSandboxInstance.find({
+    provider: SANDBOX_PROVIDER,
+    sandboxId: { $in: sandboxIds }
+  }).lean<SandboxResourceDoc[]>();
 }
 
-/** 在 running 稳定态更新业务归属或稳定字段，不允许唤醒过渡态。 */
+/** 批量按逻辑 `sandboxId` 只读查询 v2 遗留记录，仅用于孤儿容器反向对账保护未迁移实例。 */
+export async function findLegacySandboxInstancesBySandboxIds(
+  sandboxIds: string[]
+): Promise<SandboxResourceDoc[]> {
+  if (sandboxIds.length === 0) return [];
+  const rows = await getLegacySandboxInstanceCollection()
+    .find({ sandboxId: { $in: sandboxIds } })
+    .toArray();
+  return rows as unknown as SandboxResourceDoc[];
+}
+
+/** 按逻辑 `sandboxId` 只读查询单条 v2 遗留记录，仅用于孤儿容器反向对账锁内复核。 */
+export async function findLegacySandboxInstanceBySandboxId(params: {
+  sandboxId: string;
+}): Promise<SandboxResourceDoc | null> {
+  const row = await getLegacySandboxInstanceCollection().findOne({
+    sandboxId: params.sandboxId
+  });
+  return (row as unknown as SandboxResourceDoc | null) ?? null;
+}
+
+/**
+ * 判断 source 是否仍在 v2 中持有尚未迁移完成的遗留实例。
+ *
+ * - 若 v2 无匹配且非 `deleting` 的记录，直接放行；
+ * - 若 v2 存在非 `deleting` 记录且 `20261117_migrate_sandbox_to_opensandbox` 尚未成功完成，
+ *   返回 `true` 以触发 409 门禁阻断，避免在 v3 误建空白同名沙盒导致数据割裂；
+ * - 一旦迁移任务已 `succeeded`（即便尚未执行 Step 8 清理 v2），若用户随后主动删除了 v3 记录，再次创建应放行。
+ */
+export async function hasPendingLegacySandboxInstance(params: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId?: string;
+}): Promise<boolean> {
+  const legacyDoc = await getLegacySandboxInstanceCollection().findOne(
+    {
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      ...(params.userId !== undefined ? { userId: params.userId } : {}),
+      status: { $ne: SandboxInstanceStatusEnum.deleting }
+    },
+    { projection: { _id: 1 } }
+  );
+  if (!legacyDoc) return false;
+
+  const migrationSucceeded = await MongoSandboxInstance.db
+    .collection(systemMigrationStateCollectionName)
+    .findOne(
+      {
+        _id: sandboxMigrationId as never,
+        status: SystemMigrationStatusEnum.succeeded
+      },
+      { projection: { _id: 1 } }
+    );
+  return !migrationSucceeded;
+}
+
+type VolumeClaimRow = { storage?: { volumes?: Array<{ claimName?: string }> } | null };
+
+/** 查询给定持久卷名中仍被 v3 或只读 v2 实例记录引用的集合，供孤儿持久卷反向对账 GC 保护未迁移 PVC。 */
+export async function findExistingSandboxVolumeClaimNames(
+  claimNames: string[]
+): Promise<Set<string>> {
+  if (claimNames.length === 0) return new Set();
+  const targetSet = new Set(claimNames);
+  const filter = { 'storage.volumes.claimName': { $in: claimNames } };
+  const projection = { 'storage.volumes.claimName': 1 };
+
+  const [v3Rows, v2Rows] = await Promise.all([
+    MongoSandboxInstance.find(filter, projection).lean<VolumeClaimRow[]>(),
+    getLegacySandboxInstanceCollection().find(filter, { projection }).toArray() as Promise<
+      VolumeClaimRow[]
+    >
+  ]);
+
+  const matched = new Set<string>();
+  for (const row of [...v3Rows, ...v2Rows]) {
+    for (const volume of row.storage?.volumes ?? []) {
+      if (volume.claimName && targetSet.has(volume.claimName)) {
+        matched.add(volume.claimName);
+      }
+    }
+  }
+  return matched;
+}
+
+/** 在 running 稳定态更新业务归属或稳定字段，不允许唤醒或污染过渡态。 */
 export async function updateSandboxInstanceRecordBySandboxId(
   params: {
-    provider?: SandboxProviderType;
     sandboxId: string;
     sourceType: ChatSourceTypeEnum;
     sourceId: string;
     userId: string;
     touchActive?: boolean;
   } & SandboxStableFields
-): Promise<SandboxInstanceSchemaType | null> {
+): Promise<SandboxResourceDoc | null> {
   return MongoSandboxInstance.findOneAndUpdate(
     {
+      provider: SANDBOX_PROVIDER,
       sandboxId: params.sandboxId,
-      ...(params.provider ? { provider: params.provider } : {}),
-      ...(params.touchActive
-        ? {
-            status: SandboxInstanceStatusEnum.running,
-            operation: { $exists: false }
-          }
-        : {})
+      status: SandboxInstanceStatusEnum.running,
+      operation: { $exists: false }
     },
     {
       $set: {
@@ -541,31 +696,7 @@ export async function updateSandboxInstanceRecordBySandboxId(
       }
     },
     { new: true }
-  );
-}
-
-export async function findSandboxInstanceBySandboxIdAndTeam(params: {
-  provider?: SandboxProviderType;
-  sandboxId: string;
-  teamId: string;
-}) {
-  return MongoSandboxInstance.findOne({
-    sandboxId: params.sandboxId,
-    ...(params.provider ? { provider: params.provider } : {}),
-    teamId: params.teamId
-  });
-}
-
-export async function findSandboxResourceBySandboxIdAndTeam(params: {
-  provider?: SandboxProviderType;
-  sandboxId: string;
-  teamId: string;
-}) {
-  return MongoSandboxInstance.findOne({
-    sandboxId: params.sandboxId,
-    ...(params.provider ? { provider: params.provider } : {}),
-    teamId: params.teamId
-  }).lean<SandboxResourceDoc | null>();
+  ).lean<SandboxResourceDoc | null>();
 }
 
 export async function findSkillRelatedSandboxResources(skillIds: string[]) {

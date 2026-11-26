@@ -15,20 +15,24 @@ import {
   createAgentLoopCoreRuntimeEnvironment,
   createAgentLoopCoreRuntimeWithEnvironment,
   buildAgentLoopCoreInput,
-  runAgentLoopCoreWithSummary,
-  type AgentLoopCoreToolRunFlowResponse
+  runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import { filterAgentLoopCoreHistoryTools } from '../agentLoopCore/application/context/messages';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
-import { getWorkflowFileContext } from '../../../utils/context';
+import { getDispatchModerationContext } from '../../utils/runtime';
+import { getWorkflowContext, getWorkflowFileContext } from '../../context';
 
 type ResponseType = {
   requestIds: string[];
   firstTokenTime?: number;
   error?: unknown;
-  toolDispatchFlowResponses: AgentLoopCoreToolRunFlowResponse[];
+  /** 工具子流程实际运行次数，用于父队列扣减预算。 */
+  toolRunTimes: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   toolCallTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   completeMessages: ChatCompletionMessageParam[];
   assistantResponses: AIChatItemValueItemType[];
@@ -37,15 +41,14 @@ type ResponseType = {
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
+  const { checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
-    checkIsStopping,
     runtimeNodes,
     runtimeEdges,
     stream,
     retainDatasetCite = true,
     externalProvider,
-    workflowStreamResponse,
     usagePush,
     params: {
       temperature,
@@ -84,8 +87,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowStreamResponse,
     streamAnswer: isResponseAnswerText,
     streamReasoning: aiChatReasoning,
-    getToolInfo,
-    collectToolRunResponses: true
+    getToolInfo
   });
   const toolProvider = await createToolCallToolProvider({
     messages,
@@ -95,7 +97,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
     onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
@@ -111,72 +112,75 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
 
+  const runtime = createAgentLoopCoreRuntimeWithEnvironment<WorkflowInteractiveResponseType>({
+    teamId: workflowProps.runningUserInfo.teamId,
+    fileContext: getWorkflowFileContext(),
+    environment: runtimeEnvironment,
+    llmParams: {
+      model: toolModel,
+      maxTokens: maxToken,
+      stream,
+      temperature,
+      topP: aiChatTopP,
+      stop: aiChatStopSign,
+      reasoningEffort: aiChatReasoningEffort,
+      responseFormat: {
+        type: aiChatResponseFormat,
+        json_schema: aiChatJsonSchema
+      },
+      useVision: aiChatVision,
+      useAudio: aiChatAudio,
+      useVideo: aiChatVideo,
+      extractFiles: aiChatExtractFiles,
+      userKey: externalProvider.openaiAccount
+    },
+    responseParams: {
+      retainDatasetCite
+    },
+    lang: workflowProps.lang,
+    systemTools: {
+      planEnabled: false,
+      askEnabled: false,
+      sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
+      readFile: toolProvider.readFileExecutor
+        ? {
+            enabled: true,
+            maxFileAmount: toolProvider.readFileMaxFileAmount,
+            execute: toolProvider.readFileExecutor
+          }
+        : undefined,
+      datasetSearch: toolProvider.datasetSearchExecutor
+        ? {
+            enabled: true,
+            currentInputFiles: fileUrlList,
+            execute: toolProvider.datasetSearchExecutor
+          }
+        : undefined
+    },
+    maxRunAgentTimes: 50,
+    checkIsStopping,
+    toolRuntime: {
+      toolProvider,
+      context: getDispatchModerationContext(workflowProps),
+      /**
+       * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
+       * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
+       */
+      batchToolSize: 1,
+      normalizeInteractiveUsages: normalizeAgentLoopUsages
+    },
+    usagePush
+  });
+
   const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
       provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
-        messages: loopMessages,
+        messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt,
         childrenInteractiveParams
       }),
-      runtime: createAgentLoopCoreRuntimeWithEnvironment({
-        teamId: workflowProps.runningUserInfo.teamId,
-        fileContext: getWorkflowFileContext(),
-        environment: runtimeEnvironment,
-        llmParams: {
-          model: toolModel,
-          maxTokens: maxToken,
-          stream,
-          temperature,
-          topP: aiChatTopP,
-          stop: aiChatStopSign,
-          reasoningEffort: aiChatReasoningEffort,
-          responseFormat: {
-            type: aiChatResponseFormat,
-            json_schema: aiChatJsonSchema
-          },
-          useVision: aiChatVision,
-          useAudio: aiChatAudio,
-          useVideo: aiChatVideo,
-          extractFiles: aiChatExtractFiles,
-          userKey: externalProvider.openaiAccount
-        },
-        responseParams: {
-          retainDatasetCite
-        },
-        lang: workflowProps.lang,
-        systemTools: {
-          planEnabled: false,
-          askEnabled: false,
-          sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
-          readFile: toolProvider.readFileExecutor
-            ? {
-                enabled: true,
-                maxFileAmount: toolProvider.readFileMaxFileAmount,
-                execute: toolProvider.readFileExecutor
-              }
-            : undefined,
-          datasetSearch: toolProvider.datasetSearchExecutor
-            ? {
-                enabled: true,
-                currentInputFiles: fileUrlList,
-                execute: toolProvider.datasetSearchExecutor
-              }
-            : undefined
-        },
-        maxRunAgentTimes: 50,
-        checkIsStopping,
-        toolRuntime: {
-          toolProvider,
-          /**
-           * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
-           * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
-           */
-          batchToolSize: 1,
-          normalizeInteractiveUsages: normalizeAgentLoopUsages
-        },
-        usagePush
-      }),
+      runtime,
       assistantResponses: {
         persistInputContext: !childrenInteractiveParams,
         showReasoning: aiChatReasoning,
@@ -188,9 +192,11 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     requestIds: outputSummary.requestIds,
     firstTokenTime: outputSummary.firstTokenTime,
     error: coreResult.status === 'error' ? coreResult.error : undefined,
-    toolDispatchFlowResponses: runtimeEnvironment.toolRunResponses,
+    toolRunTimes: toolProvider.getToolRunTimes(),
     toolCallInputTokens: outputSummary.inputTokens,
     toolCallOutputTokens: outputSummary.outputTokens,
+    cacheReadTokens: outputSummary.cacheReadTokens,
+    cacheCreationTokens: outputSummary.cacheCreationTokens,
     toolCallTotalPoints: outputSummary.llmTotalPoints,
     completeMessages: outputSummary.completeMessages,
     assistantResponses: outputSummary.assistantResponses,

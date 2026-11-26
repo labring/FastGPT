@@ -10,8 +10,8 @@ const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
  *
  * 这里只负责前端实时事件，不维护 assistantResponses 或 nodeResponses。
  * 工具响应透传模型实际消费的完整结果，与聊天记录一致，不再按展示长度裁剪。
- * ToolCall 通过 streamAnswer 开关控制是否把模型内容作为聊天回答输出；
- * Workflow Agent 通常始终开启 answer，只用 streamReasoning 控制思考过程展示。
+ * ToolCall 与 Workflow Agent 都通过 streamAnswer 控制正文、工具和计划的可见流；
+ * streamReasoning 独立控制思考过程，交互与节点运行状态仍由上层驱动。
  */
 export const createAgentLoopCoreEventStream = ({
   workflowStreamResponse,
@@ -125,6 +125,8 @@ export const createAgentLoopCoreEventStream = ({
   };
 
   const streamPlanStatus: AgentLoopCoreEventStream['streamPlanStatus'] = (status) => {
+    if (!streamAnswer) return;
+
     workflowStreamResponse?.({
       id: AGENT_PLAN_STREAM_RESPONSE_ID,
       event: SseResponseEventEnum.planStatus,
@@ -137,6 +139,8 @@ export const createAgentLoopCoreEventStream = ({
   };
 
   const streamPlan: AgentLoopCoreEventStream['streamPlan'] = (plan) => {
+    if (!streamAnswer) return;
+
     workflowStreamResponse?.({
       id: AGENT_PLAN_STREAM_RESPONSE_ID,
       event: SseResponseEventEnum.plan,

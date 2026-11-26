@@ -6,6 +6,10 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 const WechatOutLinkIdSchema = ObjectIdSchema.meta({
   description: '微信发布渠道 ID'
 });
+const WechatQrAttemptIdSchema = z.uuid().meta({
+  description: '本次扫码会话标识',
+  example: 'eab36734-81b6-4346-a623-fd3821712cd6'
+});
 
 /* ============================================================================
  * API: 生成微信发布渠道登录二维码
@@ -21,6 +25,7 @@ export const WechatQrcodeGenerateBodySchema = z.object({
 export type WechatQrcodeGenerateBodyType = z.infer<typeof WechatQrcodeGenerateBodySchema>;
 
 export const WechatQrcodeGenerateResponseSchema = z.object({
+  attemptId: WechatQrAttemptIdSchema,
   qrcode: z.string().meta({ description: 'iLink 二维码标识' }),
   qrcode_img_content: z.string().meta({ description: '二维码内容' }),
   expireTime: z.number().meta({ example: 480, description: '二维码有效期，单位秒' })
@@ -36,7 +41,8 @@ export type WechatQrcodeGenerateResponseType = z.infer<typeof WechatQrcodeGenera
  * ============================================================================ */
 
 export const WechatQrcodeStatusQuerySchema = z.object({
-  outLinkId: WechatOutLinkIdSchema
+  outLinkId: WechatOutLinkIdSchema,
+  attemptId: WechatQrAttemptIdSchema.optional()
 });
 export type WechatQrcodeStatusQueryType = z.infer<typeof WechatQrcodeStatusQuerySchema>;
 
@@ -71,11 +77,6 @@ export const WechatLogoutBodySchema = z.object({
   outLinkId: WechatOutLinkIdSchema
 });
 export type WechatLogoutBodyType = z.infer<typeof WechatLogoutBodySchema>;
-
-export const WechatLogoutResponseSchema = z.undefined().meta({
-  description: '登出成功'
-});
-export type WechatLogoutResponseType = z.infer<typeof WechatLogoutResponseSchema>;
 
 export const WechatOutLinkPath: OpenAPIPath = {
   '/support/outLink/wechat/qrcode/generate': {
@@ -136,12 +137,7 @@ export const WechatOutLinkPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功登出微信发布渠道',
-          content: {
-            'application/json': {
-              schema: WechatLogoutResponseSchema
-            }
-          }
+          description: '成功登出微信发布渠道'
         }
       }
     }

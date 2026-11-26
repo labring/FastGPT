@@ -19,6 +19,8 @@ import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollect
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { getChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
+import type { GetCollectionQuoteBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const CollectionReader = ({
   rawSearch,
@@ -110,11 +112,14 @@ const CollectionReader = ({
     ScrollData,
     itemRefs,
     loadInitData
-  } = useLinkedScroll(getCollectionQuote, {
-    params,
-    currentData: currentQuoteItem,
-    enablePagination: !singleQuote
-  });
+  } = useLinkedScroll(
+    (data: LinkedPaginationProps<GetCollectionQuoteBodyType, number>) => getCollectionQuote(data),
+    {
+      params,
+      currentData: currentQuoteItem,
+      enablePagination: !singleQuote
+    }
+  );
 
   const isDeleted = useMemo(
     () => !isLoading && !datasetDataList.find((item) => item._id === currentQuoteItem?.id),

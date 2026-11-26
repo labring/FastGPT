@@ -1,0 +1,84 @@
+{
+  "app": {
+    "name": "应用",
+    "children": {
+      "workflow": {
+        "name": "工作流",
+        "children": {
+          "management": "管理与发布",
+          "editor": "编排与校验",
+          "execution": "运行与调试"
+        }
+      },
+      "agentv2": {
+        "name": "AgentV2",
+        "children": {
+          "management": "管理与发布",
+          "configuration": "配置",
+          "execution": "运行与调试"
+        }
+      },
+      "agent": {
+        "name": "Agent",
+        "children": {
+          "management": "管理与发布",
+          "configuration": "配置",
+          "execution": "运行与调试"
+        }
+      }
+    }
+  },
+  "chat": {
+    "name": "对话",
+    "children": {
+      "conversation": "会话与消息",
+      "multimodal": "多模态与文件",
+      "history-feedback": "历史与反馈"
+    }
+  },
+  "dataset": {
+    "name": "知识库",
+    "children": {
+      "management": "知识库与集合",
+      "ingestion": "导入与训练",
+      "retrieval": "数据与检索"
+    }
+  },
+  "model": { "name": "模型", "children": { "management": "模型管理", "usage": "模型使用" } },
+  "tool": {
+    "name": "工具",
+    "children": { "system-plugin": "系统插件", "system-tool": "系统工具" }
+  },
+  "skill": {
+    "name": "AgentSkill",
+    "children": { "management": "创建与编辑", "debugging": "调试与运行", "version": "版本管理" }
+  },
+  "permission": {
+    "name": "权限系统",
+    "children": { "account": "账号认证", "team": "团队与组织", "resource": "角色与资源权限" }
+  },
+  "wallet": {
+    "name": "套餐与计费",
+    "children": { "subscription": "套餐与余额", "usage": "用量与积分", "billing": "充值与账单优惠" }
+  },
+  "integration": {
+    "name": "对外集成",
+    "children": {
+      "openapi": "开放接口与 API Key",
+      "sharing": "分享与嵌入",
+      "provider": "第三方渠道"
+    }
+  },
+  "admin": {
+    "name": "平台管理",
+    "children": { "configuration": "系统配置", "audit": "审计与统计", "maintenance": "升级与维护" }
+  },
+  "infra": {
+    "name": "基础设施",
+    "children": {
+      "database": "MongoDB 与向量库",
+      "storage": "文件与对象存储",
+      "runtime": "缓存、队列与沙箱"
+    }
+  }
+}

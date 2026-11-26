@@ -1,5 +1,6 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import updateHandler from '@/pages/api/core/app/update';
 import moveHandler from '@/pages/api/core/app/batch/move';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -9,7 +10,10 @@ import {
   PerResourceTypeEnum,
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   createResourceDefaultCollaborators,
@@ -468,6 +472,55 @@ describe('move app', () => {
       ])
     );
   });
+
+  it('rejects moving a root app when the member only has read permission on it', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const teamId = String(owner.teamId);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.team,
+      teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamAppCreatePermissionVal
+    });
+
+    const app = await createAppWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'root-app',
+      type: AppTypeEnum.simple
+    });
+    await setAppCollaborators({
+      appId: String(app._id),
+      teamId,
+      type: app.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(member.tmbId), permission: ReadRoleVal }
+      ]
+    });
+
+    const memberFolder = await createAppWithOwnerSnapshot({
+      teamId,
+      tmbId: String(member.tmbId),
+      name: 'member-folder',
+      type: AppTypeEnum.folder
+    });
+
+    const res = await Call(updateHandler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: { parentId: String(memberFolder._id) }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe(AppErrEnum.unAuthApp);
+
+    const unchanged = await MongoApp.findById(app._id).lean();
+    expect(unchanged?.parentId ?? null).toBeNull();
+  });
 });
 
 describe('configured move depth', () => {
@@ -477,7 +530,7 @@ describe('configured move depth', () => {
       const { owner } = await getFakeUsers(1);
       const scope = { teamId: owner.teamId, tmbId: owner.tmbId };
       const targets: string[] = [];
-      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH; i++) {
+      for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth; i++) {
         const folder = await MongoApp.create({
           ...scope,
           name: `target-${i}`,

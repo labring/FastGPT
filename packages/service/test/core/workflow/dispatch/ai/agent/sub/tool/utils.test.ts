@@ -1,3 +1,4 @@
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -12,7 +13,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
 const {
@@ -571,6 +572,31 @@ describe('getAgentRuntimeTools schema loading', () => {
     }
   };
 
+  appMap.plugin_with_reference_only_input = {
+    ...createPersonalApp({ id: 'plugin_with_reference_only_input', type: AppTypeEnum.workflow }),
+    type: AppTypeEnum.workflowTool,
+    modules: [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        name: 'Input',
+        inputs: [
+          {
+            key: 'ref_param',
+            label: 'Reference Param',
+            description: 'Ref param description',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference
+          }
+        ],
+        outputs: []
+      }
+    ]
+  };
+
   it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
     'loads %s as a callable tool with agent-generated user input',
     async (appId) => {
@@ -597,6 +623,24 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
 
     expect(tools).toEqual([]);
+  });
+
+  it('keeps plugin tools whose start node has reference-only inputs without toolDescription', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'plugin_with_reference_only_input', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].agentGeneratedInputKeys).toContain('ref_param');
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        ref_param: expect.objectContaining({
+          description: 'Ref param description'
+        })
+      }
+    });
   });
 
   it('keeps external variables that project to supported manual inputs', async () => {
@@ -678,12 +722,24 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
-      id: 'mcp_app',
-      name: 'mcp_app name'
+      name: 'mcp_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'mcp_app name/search',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search'
+      }
     });
   });
 
@@ -699,7 +755,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
   });
 
   it('does not persist runtime MCP connection data in expanded Agent tools', async () => {
@@ -718,7 +774,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ]
     });
 
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -731,7 +787,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tools[0].version).toBe('');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -774,7 +830,27 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('mcp_slash_apptest');
     expect(tools[0].name).toBe('/test');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_slash_app//test');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
+  });
+
+  it('keeps legacy 3-segment MCP tool id compatibility when loading a persisted single child tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/catalog/search', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
+    expect(tools[0].promptReference).toEqual({
+      name: 'search',
+      legacyExactKeys: ['mcp-mcp_app/catalog/search'],
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search'
+      }
+    });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -860,7 +936,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads a selected legacy MCP tool with its input schema', async () => {
@@ -882,7 +958,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads an MCP tool without isToolParam as an agent tool', async () => {
@@ -916,8 +992,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
-      id: 'http_app',
-      name: 'http_app name'
+      name: 'http_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'http_app name/create',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app/create'
+      }
     });
   });
 
@@ -936,6 +1024,9 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
       const tools = await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,
@@ -978,6 +1069,9 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+
         mcpClientMemory: {},
         resourceContext: {
           isRoot: false,
@@ -990,9 +1084,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
 
     expect(tools).toHaveLength(1);
-    expect(tools[0].toolConfig?.mcpTool?.toolId ?? tools[0].toolConfig?.httpTool?.toolId).toContain(
-      `/${tool.name}`
-    );
+    const mcpTool = tools[0].toolConfig?.mcpTool;
+    const toolId =
+      mcpTool && 'toolId' in mcpTool ? mcpTool.toolId : tools[0].toolConfig?.httpTool?.toolId;
+    expect(toolId).toContain(`/${tool.name}`);
     expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 
@@ -1066,6 +1161,8 @@ describe('getAgentRuntimeTools schema loading', () => {
   it('falls back to member permissions when an MCP tool is not in the resource snapshot', async () => {
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
@@ -1091,6 +1188,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     const resource = { type: 'tool' as const, id: 'workflow_app' };
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
@@ -1174,8 +1273,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
-      id: 'systemTool-metaso',
-      name: '秘塔搜索'
+      name: '秘塔搜索',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: '搜索网页',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso/search'
+      }
     });
   });
 

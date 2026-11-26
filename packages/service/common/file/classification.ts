@@ -10,7 +10,11 @@ import {
 import { inferFileTypeFromUrl } from './infer/service';
 import { validateFileUrlDomain } from '../security/fileUrlValidator';
 import { verifyS3DownloadAccess } from '../s3/accessLink/downloadAlias/service';
-import { S3SignedDownloadAliasValueSchema } from '../s3/accessLink/type';
+import {
+  isLegacyV1SignedDownloadAlias,
+  isSignedDownloadAliasFilename,
+  resolveS3DownloadAliasFromUrl
+} from '../s3/accessLink/url';
 import { normalizeMimeType, resolveMimeExtension } from '../s3/utils/mime';
 
 export type FileClassificationMediaType = `${ChatFileTypeEnum}`;
@@ -34,10 +38,6 @@ export type FileClassificationContext = {
   resolveChatFile?: (url: string) => { type: string; filename?: string; name?: string } | undefined;
   getIdentity?: (url: string) => string | undefined;
 };
-
-/** 区分下载短链凭证与真实文件名；只检查格式，不验证签名或授予访问权限。 */
-const isSignedDownloadAlias = (value: string) =>
-  S3SignedDownloadAliasValueSchema.safeParse(value).success;
 
 /**
  * 从 URL 路径解码并提取文件名，不读取 filename 查询参数或探测远端元数据。
@@ -135,12 +135,13 @@ export const classifyUrlMediaType = async ({
     const hasSuppliedFilename =
       suppliedName && !isHttpUrl(suppliedName) && path.extname(suppliedName);
     const filename = file.filename || getFileNameFromUrl(url);
+    const isShortAliasFilename = !file.filename && isSignedDownloadAliasFilename({ url, filename });
     return {
       type: normalizeChatFileType({
         type: file.type,
         filename: hasSuppliedFilename
           ? suppliedName
-          : filename && !isSignedDownloadAlias(filename) && path.extname(filename)
+          : filename && !isShortAliasFilename && path.extname(filename)
             ? filename
             : undefined,
         url
@@ -186,7 +187,9 @@ export const classifyUrlMediaType = async ({
             if (aliasType || aliasFilename) {
               return {
                 type: aliasType ?? ChatFileTypeEnum.unknown,
-                ...(aliasFilename && !isSignedDownloadAlias(aliasFilename)
+                ...(aliasFilename &&
+                aliasFilename !== signedAlias &&
+                !isLegacyV1SignedDownloadAlias(aliasFilename)
                   ? { filename: aliasFilename }
                   : {})
               };
@@ -208,8 +211,14 @@ export const classifyUrlMediaType = async ({
               fileTypeFromMime(contentType) ??
               matchFileExtension(filename) ??
               ChatFileTypeEnum.unknown,
-            // 探测端未返回文件名或格式证据时，不能继续把 URL 中的签名当作解析文件名。
-            filename: isSignedDownloadAlias(filename) ? undefined : filename
+            // 探测端未返回文件名或格式证据时，不能继续把短链 URL 中的签名当作解析文件名。
+            filename: isSignedDownloadAliasFilename({
+              url,
+              filename,
+              localSignedAlias: signedAlias ?? ''
+            })
+              ? undefined
+              : filename
           };
         } catch {
           // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
@@ -237,8 +246,9 @@ export const classifyUrlMediaType = async ({
       const basename = url.startsWith('chat/')
         ? path.basename(url)
         : (getFileNameFromUrl(url) ?? path.basename(parsedUrl.pathname));
-      const isShortAlias = isSignedDownloadAlias(basename);
-      // 短链中的点号分隔 alias、过期时间与签名；交给响应元数据推测，不能作为已知后缀跳过探测。
+      const localSignedAlias = url.startsWith('chat/') ? '' : resolveS3DownloadAliasFromUrl(url);
+      const isShortAlias = Boolean(localSignedAlias) || isLegacyV1SignedDownloadAlias(basename);
+      // 仅对本实例短链或跨实例旧 v1 点分短链跳过路径文件名，避免把外部 CDN 上形如 v2-...pdf 的普通文件误判为短链。
       const filename = isShortAlias
         ? ''
         : (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
@@ -262,7 +272,7 @@ export const classifyUrlMediaType = async ({
           (!isShortAlias && (!isAbsoluteHttpUrl(url) || !validateFileUrlDomain(url)))
         )
           return { type: ChatFileTypeEnum.unknown };
-        return probeFile(isShortAlias ? basename : undefined);
+        return probeFile(localSignedAlias || undefined);
       })();
 
       return {

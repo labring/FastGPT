@@ -69,7 +69,9 @@ const slimQuoteItem = (quote: SearchDataResponseQuoteListItemType) => ({
   collectionId: quote.collectionId,
   sourceId: quote.sourceId,
   sourceName: quote.sourceName,
-  score: quote.score
+  score: quote.score,
+  // 召回排名是调用方对比召回/重排的必备字段，必须随快照一起落库。
+  ...(quote.retrievalRank !== undefined ? { retrievalRank: quote.retrievalRank } : {})
 });
 
 /**
@@ -139,6 +141,8 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     'tokens',
     'inputTokens',
     'outputTokens',
+    'cacheReadTokens',
+    'cacheCreationTokens',
     'contextTotalLen',
     'totalPoints',
     'childResponseCount',
@@ -667,7 +671,7 @@ export class WorkflowNodeResponseWriter {
 /**
  * 创建 workflow nodeResponse writer。
  */
-export const createWorkflowNodeResponseWriter = async ({
+export const createWorkflowNodeResponseWriter = ({
   session,
   model = MongoChatItemResponse,
   persistToDb = true,

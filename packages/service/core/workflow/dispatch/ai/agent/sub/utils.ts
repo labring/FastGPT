@@ -2,20 +2,29 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getAgentRuntimeTools } from './tool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchAgentModuleProps } from '..';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './tool';
-import type { WorkflowResponseItemType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getWorkflowContext, runWithContext } from '../../../context';
 import { dispatchApp, dispatchPlugin } from './app';
 import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.repo';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
+
+export type RuntimePromptRefMeta = {
+  modelToolNames?: string[];
+};
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -32,27 +41,49 @@ export const getSubapps = async ({
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
-  promptToolReferenceInfoMap: Map<string, string>;
+  promptToolRefEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[];
 }> => {
   const completionTools: ChatCompletionTool[] = [];
 
   /* User tools */
   const subAppsMap = new Map<string, SubAppRuntimeType>();
-  const promptToolReferenceInfoMap = new Map<string, string>();
+  const promptToolRefEntryMap = new Map<string, AgentPromptRefEntry<RuntimePromptRefMeta>>();
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang
   });
-  formatTools.forEach((tool) => {
-    if (tool.promptReference) {
-      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
-      // 兼容旧版 PromptEditor 持久化的原始工具 ID。
-      promptToolReferenceInfoMap.set(
-        tool.promptReference.legacyId || tool.promptReference.id,
-        tool.promptReference.name
-      );
+  const registerPromptReference = (
+    promptReference: (typeof formatTools)[number]['promptReference'],
+    modelToolName?: string
+  ) => {
+    if (!promptReference) return;
+
+    const { ref, name, legacyExactKeys } = promptReference;
+    const canonicalKey = formatRefKey(ref);
+    const existing = promptToolRefEntryMap.get(canonicalKey);
+    if (existing) {
+      if (modelToolName && !existing.meta.modelToolNames?.includes(modelToolName)) {
+        existing.meta.modelToolNames = [...(existing.meta.modelToolNames ?? []), modelToolName];
+      }
+      if (legacyExactKeys?.length) {
+        const mergedLegacyKeys = new Set([...(existing.legacyExactKeys ?? []), ...legacyExactKeys]);
+        existing.legacyExactKeys = Array.from(mergedLegacyKeys);
+      }
+      return;
     }
+    promptToolRefEntryMap.set(canonicalKey, {
+      ref,
+      canonicalKey,
+      displayName: name,
+      ...(legacyExactKeys?.length ? { legacyExactKeys: [...legacyExactKeys] } : {}),
+      meta: modelToolName ? { modelToolNames: [modelToolName] } : {}
+    });
+  };
+  formatTools.forEach((tool) => {
+    const modelToolName = tool.requestSchema?.function?.name;
+    registerPromptReference(tool.promptReference, modelToolName);
+    registerPromptReference(tool.childPromptReference, modelToolName);
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -70,13 +101,12 @@ export const getSubapps = async ({
   return {
     completionTools,
     subAppsMap,
-    promptToolReferenceInfoMap
+    promptToolRefEntries: Array.from(promptToolRefEntryMap.values())
   };
 };
 
 export type ToolDispatchContext = Pick<
   DispatchAgentModuleProps,
-  | 'checkIsStopping'
   | 'chatConfig'
   | 'runningUserInfo'
   | 'runningAppInfo'
@@ -84,34 +114,32 @@ export type ToolDispatchContext = Pick<
   | 'responseChatItemId'
   | 'usageId'
   | 'uid'
-  | 'variableState'
-  | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
-  | 'mode'
   | 'timezone'
   | 'retainDatasetCite'
-  | 'maxRunTimes'
-  | 'workflowDispatchDeep'
   | 'params'
   | 'query'
   | 'stream'
-  | 'nodeResponseSink'
 > & {
   runtimeNodesMap?: DispatchAgentModuleProps['runtimeNodesMap'];
   modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
   nodeResponseParentId?: string;
-  systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
-  streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
-const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
+const filterAgentWorkflowRuntimeParams = (
+  params: Record<string, any>,
+  options: { omitHistory?: boolean } = {}
+) => {
   const runtimeParams = { ...params };
   delete runtimeParams[NodeInputKeyEnum.forbidStream];
+  if (options.omitHistory) {
+    delete runtimeParams[NodeInputKeyEnum.history];
+  }
   return runtimeParams;
 };
 
@@ -135,6 +163,7 @@ export const getAgentDatasetParams = (
     rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
+    rerankCandidateNum: params[NodeInputKeyEnum.datasetSearchRerankCandidateNum],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
     datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
@@ -152,25 +181,19 @@ export const getAgentDatasetParams = (
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
-  checkIsStopping,
   runningUserInfo,
   runningAppInfo,
   chatId,
   responseChatItemId,
+  usageId,
   uid,
-  variableState,
-  memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
   requestOrigin,
-  mode,
   timezone,
   retainDatasetCite,
-  maxRunTimes,
-  workflowDispatchDeep,
-  query,
-  nodeResponseSink
+  query
 }: ToolDispatchContext) => {
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
@@ -196,7 +219,8 @@ export const getExecuteTool = ({
       stop = false,
       nodeResponse,
       nodeSummary,
-      errorMessage
+      errorMessage,
+      content
     } = await (async (): Promise<{
       response: string;
       assistantMessages?: DispatchSubAppResponse['assistantMessages'];
@@ -206,6 +230,7 @@ export const getExecuteTool = ({
       errorMessage?: string;
       nodeResponse?: DispatchSubAppResponse['nodeResponse'];
       nodeSummary?: DispatchSubAppResponse['nodeSummary'];
+      content?: ChatCompletionToolMessageContentPart[];
     }> => {
       try {
         // User Sub App
@@ -235,33 +260,41 @@ export const getExecuteTool = ({
         });
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse, nodeSummary, errorMessage } = await dispatchTool({
-            tool: {
-              name: tool.name,
-              avatar: tool.avatar,
-              version: tool.version,
-              toolConfig: tool.toolConfig
-            },
-            params: requestParams,
-            runningUserInfo,
-            runningAppInfo,
-            chatId,
-            uid,
-            variableState,
-            runtimeNodesMap,
-            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+          // Agent 统一输出，工具在禁流的派生作用域内运行，不能绕过外层发送事件。
+          const toolContext = getWorkflowContext().getChildContext({
             workflowStreamResponse: undefined
           });
+          const { response, usages, nodeResponse, nodeSummary, errorMessage, content } =
+            await runWithContext(toolContext, () =>
+              dispatchTool({
+                tool: {
+                  name: tool.name,
+                  avatar: tool.avatar,
+                  version: tool.version,
+                  toolConfig: tool.toolConfig
+                },
+                params: requestParams,
+                runningUserInfo,
+                runningAppInfo,
+                chatId,
+                usageId,
+                uid,
+                runtimeNodesMap
+              })
+            );
 
           return {
             response,
             usages,
             nodeResponse,
             nodeSummary,
-            errorMessage
+            errorMessage,
+            content
           };
         } else if (tool.type === 'workflow') {
-          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
+          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams, {
+            omitHistory: true
+          });
 
           const {
             response,
@@ -280,10 +313,8 @@ export const getExecuteTool = ({
             },
             userChatInput: userChatInput,
             customAppVariables: params,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -292,12 +323,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
-            memoryState,
             lastInteractive,
             query
           });
@@ -356,10 +382,8 @@ export const getExecuteTool = ({
             },
             userChatInput: '',
             customAppVariables,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -368,12 +392,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
-            memoryState,
             lastInteractive,
             query
           });
@@ -434,6 +453,7 @@ export const getExecuteTool = ({
       stop,
       nodeSummary,
       ...(errorMessage ? { errorMessage } : {}),
+      ...(content?.length ? { content } : {}),
       nodeResponse: formatNodeResponse
     };
   };

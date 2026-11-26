@@ -18,6 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import {
+  getAgentToolSource,
   isSystemOrCommercialToolId,
   mergeToolSetChildDescriptions,
   splitCombineToolId
@@ -43,13 +44,15 @@ import type {
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
-import { formatToolInputSecrets } from './tool/secretConfig';
+import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
 
 /**
- * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
+ * 重写应用工作流节点并填充资源详情；工作流外部引用只返回摘要，ToolSet source app 保留自有鉴权配置。
  */
 export async function rewriteAppWorkflowToDetail({
   nodes,
@@ -253,14 +256,16 @@ export async function rewriteAppWorkflowToDetail({
           ...(isRoot ? {} : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
         }).lean(),
       unAuthError: SkillErrEnum.unAuthSkill,
-      formatLive: (skill) => ({
+      formatLive: (skill): SelectedAgentSkillItemType => ({
         skillId: String(skill._id),
+        source: skill.source,
         name: skill.name,
         description: skill.description,
         avatar: skill.avatar
       }),
-      formatFallback: (snapshot, error) => ({
+      formatFallback: (snapshot, error): SelectedAgentSkillItemType => ({
         skillId: snapshot.skillId,
+        ...(snapshot.source ? { source: snapshot.source } : {}),
         name: snapshot.name ?? 'Invalid',
         description: snapshot.description ?? '',
         avatar: snapshot.avatar,
@@ -302,14 +307,9 @@ export async function rewriteAppWorkflowToDetail({
       value: hasSavedValue ? savedInput.value : normalizedInput.value
     });
   };
-  type DatasetLoadResult = {
-    datasets: SelectedDatasetType[];
-    errors: string[];
-  };
-
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
-  ): Promise<DatasetLoadResult | undefined> => {
+  ): Promise<SelectedDatasetType[] | undefined> => {
     const loadDatasetInfo = async (
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
@@ -339,7 +339,7 @@ export async function rewriteAppWorkflowToDetail({
 
           return {
             datasetId: String(dataset._id),
-            avatar: dataset.avatar,
+            avatar: dataset.avatar ?? undefined,
             name: dataset.name,
             // 详情接口只返回知识库绑定的模型引用，不因模型停用或下架阻断应用详情。
             vectorModel: {
@@ -363,15 +363,15 @@ export async function rewriteAppWorkflowToDetail({
 
     if (!value) return;
     const datasets = Array.isArray(value) ? value : [value];
-    const results = await Promise.allSettled(datasets.map(loadDatasetInfo));
-    return {
-      datasets: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
-      errors: results.flatMap((result) =>
-        result.status === 'rejected' ? [getErrText(result.reason, '', lang)] : []
-      )
-    };
+    return Promise.all(datasets.map(loadDatasetInfo));
   };
 
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const getToolSetReferenceId = (value: unknown) =>
+    isRecord(value) && typeof value.toolId === 'string' && value.toolId ? value.toolId : undefined;
+  type ExternalToolSetReferenceIds = Record<'mcpToolSet' | 'httpToolSet', string | undefined>;
+  const externalToolSetReferenceIds = new Map<DetailWorkflowNode, ExternalToolSetReferenceIds>();
   await Promise.all(
     nodes.map(async (node) => {
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
@@ -381,26 +381,36 @@ export async function rewriteAppWorkflowToDetail({
       }
 
       // Tool node
-      const toolId =
-        node.pluginId ??
-        node.toolConfig?.mcpTool?.toolId ??
-        node.toolConfig?.httpTool?.toolId ??
-        (node.toolConfig?.mcpToolSet && 'toolId' in node.toolConfig.mcpToolSet
-          ? node.toolConfig.mcpToolSet.toolId
-          : undefined) ??
-        (node.toolConfig?.httpToolSet && 'toolId' in node.toolConfig.httpToolSet
-          ? node.toolConfig.httpToolSet.toolId
-          : undefined);
+      const mcpTool = node.toolConfig?.mcpTool;
+      const httpTool = node.toolConfig?.httpTool;
+      const mcpToolSet = node.toolConfig?.mcpToolSet;
+      const httpToolSet = node.toolConfig?.httpToolSet;
+      const mcpToolSetId = getToolSetReferenceId(mcpToolSet) ?? node.pluginId;
+      const httpToolSetId = getToolSetReferenceId(httpToolSet) ?? node.pluginId;
+      if (node.pluginId) {
+        externalToolSetReferenceIds.set(node, {
+          mcpToolSet: mcpToolSetId,
+          httpToolSet: httpToolSetId
+        });
+      }
+      const toolId = (() => {
+        if (node.pluginId) {
+          if (mcpToolSet) return mcpToolSetId;
+          if (httpToolSet) return httpToolSetId;
+          return node.pluginId;
+        }
+        return (
+          (mcpTool && 'toolId' in mcpTool ? mcpTool.toolId : undefined) ??
+          (httpTool && 'toolId' in httpTool ? httpTool.toolId : undefined)
+        );
+      })();
       if (toolId) {
         const result = await loadToolNode({
           id: toolId,
           versionId: node.version ?? '',
           resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
           metadataLocale: node.metadataLocale,
-          source:
-            node.source ??
-            node.toolConfig?.systemTool?.source ??
-            node.toolConfig?.systemToolSet?.source
+          source: getAgentToolSource(node)
         });
         if (result.success) {
           const preview = result.data!;
@@ -487,10 +497,12 @@ export async function rewriteAppWorkflowToDetail({
             : [];
           const toolNodes = await Promise.all(
             tools.map(async (tool) => {
+              // 历史工具可能只保存配置内的来源，用它预览以避免加载同名系统工具。
+              const source = getAgentToolSource(tool);
               const result = await loadToolNode({
                 id: tool.id,
                 versionId: tool.version,
-                source: tool.source,
+                source,
                 resourceType: 'tool',
                 metadataLocale: tool.metadataLocale
               });
@@ -537,14 +549,18 @@ export async function rewriteAppWorkflowToDetail({
 
                 return {
                   ...toolData,
+                  id: toolData.pluginId ?? toolData.id,
                   ...(tool.metadataLocale !== undefined
                     ? { metadataLocale: tool.metadataLocale }
                     : {}),
                   name: tool.name ?? data.name,
-                  source: tool.source ?? data.source,
+                  avatar: tool.avatar ?? data.avatar,
+                  source: source ?? getAgentToolSource(data),
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
-                    (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet)
+                    (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet) ||
+                    (tool.toolConfig?.mcpTool && 'toolId' in tool.toolConfig.mcpTool) ||
+                    (tool.toolConfig?.httpTool && 'toolId' in tool.toolConfig.httpTool)
                       ? data.toolConfig
                       : (tool.toolConfig ?? data.toolConfig),
                   inputs: mergedInputs
@@ -553,11 +569,13 @@ export async function rewriteAppWorkflowToDetail({
                 return {
                   id: tool.id,
                   pluginId: tool.id,
-                  source: tool.source,
+                  source,
                   version: tool.version ?? '',
+                  metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,
                   config: tool.config ?? {},
-                  inputs: tool.inputs ?? [],
+                  inputs: [],
+                  rawInputs: tool.inputs,
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
                   name: tool.name ?? 'Invalid',
@@ -567,7 +585,6 @@ export async function rewriteAppWorkflowToDetail({
                   weight: 0,
                   isTool: true,
                   outputs: [],
-                  configStatus: 'invalid' as const,
                   pluginData: {
                     error: result.error
                   }
@@ -593,47 +610,145 @@ export async function rewriteAppWorkflowToDetail({
         node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
         node.flowNodeType === FlowNodeTypeEnum.agent
       ) {
-        const datasetErrors: string[] = [];
         await Promise.all(
           node.inputs.map(async (input) => {
             if (nodeInputIsReference(input)) return;
-            try {
-              // Agent
-              if (input.key === NodeInputKeyEnum.datasetSelectList) {
-                const result = await formatSelectedDatasetValue(input.value);
-                if (result) {
-                  input.value = result.datasets;
-                  datasetErrors.push(...result.errors);
-                }
+            // Agent / DatasetSearch
+            if (input.key === NodeInputKeyEnum.datasetSelectList) {
+              const datasets = await formatSelectedDatasetValue(input.value);
+              if (datasets) {
+                input.value = datasets;
               }
-              // workflow
-              if (input.key === NodeInputKeyEnum.datasetParams) {
-                const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
-                if (datasetParams?.datasets) {
-                  const result = await formatSelectedDatasetValue(datasetParams.datasets);
-                  if (!result) return;
+            }
+            // Legacy Agent datasetParams
+            if (input.key === NodeInputKeyEnum.datasetParams) {
+              const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+              if (datasetParams?.datasets) {
+                const datasets = await formatSelectedDatasetValue(datasetParams.datasets);
+                if (!datasets) return;
 
-                  input.value = {
-                    ...datasetParams,
-                    datasets: result.datasets
-                  };
-                  datasetErrors.push(...result.errors);
-                }
+                input.value = {
+                  ...datasetParams,
+                  datasets
+                };
               }
-            } catch (error) {
-              datasetErrors.push(getErrText(error, '', lang));
             }
           })
         );
-        if (datasetErrors.length > 0) {
-          node.pluginData = {
-            ...node.pluginData,
-            error: [node.pluginData?.error, ...datasetErrors].filter(Boolean).join('\n')
-          };
-        }
       }
     })
   );
+
+  // 外部引用只保留资源 ID 与展示摘要；inline ToolSet parent auth 则由本节点持有。
+  const stripHeaderSecret = (value: unknown) => {
+    if (!isRecord(value) || !('headerSecret' in value)) return value;
+    const sanitized = { ...value };
+    delete sanitized.headerSecret;
+    return sanitized;
+  };
+  const encryptToolHeaderSecret = (tool: unknown) => {
+    if (
+      !isRecord(tool) ||
+      !('headerSecret' in tool) ||
+      tool.headerSecret === null ||
+      tool.headerSecret === undefined
+    ) {
+      return tool;
+    }
+    const headerSecret = StoreSecretValueTypeSchema.safeParse(tool.headerSecret);
+    if (!headerSecret.success) return stripHeaderSecret(tool);
+    return { ...tool, headerSecret: storeSecretValue(headerSecret.data) };
+  };
+  const projectToolSetSummary = (toolSet: Record<string, unknown>, toolId?: string) => ({
+    ...(toolId ? { toolId } : {}),
+    ...(Array.isArray(toolSet.toolList)
+      ? {
+          toolList: toolSet.toolList.flatMap((tool) =>
+            isRecord(tool) && typeof tool.name === 'string' && typeof tool.description === 'string'
+              ? [{ name: tool.name, description: tool.description }]
+              : []
+          )
+        }
+      : {})
+  });
+  const clearToolCredentials = ({
+    toolConfig,
+    externalNodeReference = false,
+    referenceIds
+  }: {
+    toolConfig: unknown;
+    externalNodeReference?: boolean;
+    referenceIds?: ExternalToolSetReferenceIds;
+  }) => {
+    if (!isRecord(toolConfig)) return;
+
+    (['mcpTool', 'httpTool'] as const).forEach((key) => {
+      const tool = toolConfig[key];
+      if (isRecord(tool)) toolConfig[key] = stripHeaderSecret(tool);
+    });
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+      if (externalNodeReference) {
+        const toolId =
+          referenceIds && Object.prototype.hasOwnProperty.call(referenceIds, key)
+            ? referenceIds[key]
+            : getToolSetReferenceId(toolSet);
+        toolConfig[key] = projectToolSetSummary(toolSet, toolId);
+        return;
+      }
+      const sanitizedToolSet = { ...toolSet };
+      if (Array.isArray(toolSet.toolList)) {
+        sanitizedToolSet.toolList = toolSet.toolList.map(encryptToolHeaderSecret);
+      }
+      toolConfig[key] = sanitizedToolSet;
+    });
+  };
+
+  nodes.forEach((node) => {
+    if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      const selectedTools = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      if (
+        selectedTools &&
+        !nodeInputIsReference(selectedTools) &&
+        Array.isArray(selectedTools.value)
+      ) {
+        // 历史版本可能含明文；详情只输出安全包装，等待用户保存时再写回。
+        selectedTools.value.forEach((tool) => {
+          if (isRecord(tool)) formatToolConfigHeaderSecrets(tool.toolConfig);
+        });
+      }
+    }
+
+    clearToolCredentials({
+      toolConfig: node.toolConfig,
+      externalNodeReference: Boolean(node.pluginId),
+      referenceIds: externalToolSetReferenceIds.get(node)
+    });
+
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (
+      mcpToolSet &&
+      'headerSecret' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (
+      httpToolSet &&
+      'headerSecret' in httpToolSet &&
+      httpToolSet.headerSecret !== null &&
+      httpToolSet.headerSecret !== undefined
+    ) {
+      httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
+    }
+  });
 
   return nodes;
 }

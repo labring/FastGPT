@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import React, { type CSSProperties } from 'react';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -8,6 +8,15 @@ import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import {
+  formatModerationLabel,
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
+import {
+  extractContentSnippet,
+  renderHighlightedModerationContent
+} from '@/web/core/plugin/admin/moderation/highlight';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -17,6 +26,147 @@ import { agentPlanStatusMap } from './constants';
 import { responseRowValueBoxStyles, Row } from './Row';
 
 const ImageQuery = dynamic(() => import('./ImageQuery'));
+
+const ModerationRecordsRow = ({
+  moderationRecords
+}: {
+  moderationRecords?: NodeModerationRecordType[];
+}) => {
+  const { t } = useSafeTranslation();
+
+  if (!moderationRecords || moderationRecords.length === 0) return null;
+
+  const renderModerationStageText = (stage: NodeModerationRecordType['stage']) => {
+    switch (stage) {
+      case ModerationStageEnum.entry:
+        return t('chat:response.moderation_stage_entry');
+      case ModerationStageEnum.modelInput:
+        return t('chat:response.moderation_stage_model_input');
+      case ModerationStageEnum.output:
+      default:
+        return t('chat:response.moderation_stage_output');
+    }
+  };
+
+  const renderModerationVerdictText = (verdict: NodeModerationRecordType['verdict']) => {
+    switch (verdict) {
+      case 'error':
+        return t('chat:response.moderation_result_error');
+      case 'suspected':
+        return t('chat:response.moderation_result_suspected');
+      case 'block':
+      default:
+        return t('chat:response.moderation_result_block');
+    }
+  };
+
+  return (
+    <Row
+      label={t('chat:response.moderation_records')}
+      rawDom={
+        <Flex direction={'column'} gap={2}>
+          {moderationRecords.map((record, index) => {
+            const isError = record.verdict === 'error';
+            const hitLabels = Array.from(
+              new Set(
+                (record.hits ?? [])
+                  .map((hit) => {
+                    const labelName = formatModerationLabel(
+                      hit.label,
+                      t as (key: string) => string
+                    );
+                    if (hit.score !== undefined && !Number.isNaN(hit.score)) {
+                      return `${labelName}（${Number(hit.score.toFixed(2))}）`;
+                    }
+                    return labelName;
+                  })
+                  .filter(Boolean)
+              )
+            );
+            const allKeywords = Array.from(
+              new Set([
+                ...(record.keywords ?? []),
+                ...(record.hits ?? []).flatMap((h) => h.keywords ?? [])
+              ])
+            ).filter(Boolean);
+
+            return (
+              <Box
+                key={index}
+                {...responseRowValueBoxStyles}
+                borderRadius={'6px'}
+                fontSize={'12px'}
+                lineHeight={'16px'}
+              >
+                <Flex direction={'column'} gap={2}>
+                  <Flex alignItems={'flex-start'} gap={2}>
+                    <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                      {t('chat:response.moderation_stage')}
+                    </Box>
+                    <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                      {renderModerationStageText(record.stage)}
+                    </Box>
+                  </Flex>
+
+                  <Flex alignItems={'flex-start'} gap={2}>
+                    <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                      {t('chat:response.moderation_result')}
+                    </Box>
+                    <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                      {renderModerationVerdictText(record.verdict)}
+                    </Box>
+                  </Flex>
+
+                  {!isError && hitLabels.length > 0 && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_hit_labels')}
+                      </Box>
+                      <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                        {hitLabels.join('、')}
+                      </Box>
+                    </Flex>
+                  )}
+
+                  {!isError && allKeywords.length > 0 && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_keywords')}
+                      </Box>
+                      <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                        {allKeywords.join('、')}
+                      </Box>
+                    </Flex>
+                  )}
+
+                  {!isError && record.content && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_content_detail')}
+                      </Box>
+                      <Box
+                        flex={'1 0 0'}
+                        minW={0}
+                        color={'myGray.900'}
+                        whiteSpace={'pre-wrap'}
+                        wordBreak={'break-word'}
+                      >
+                        {renderHighlightedModerationContent(
+                          extractContentSnippet(record.content, allKeywords),
+                          allKeywords
+                        )}
+                      </Box>
+                    </Flex>
+                  )}
+                </Flex>
+              </Box>
+            );
+          })}
+        </Flex>
+      }
+    />
+  );
+};
 
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
@@ -47,6 +197,7 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
         <Row label={t('chat:response.child_total_points')} value={formatNumber(childTotalPoints)} />
       )}
       <Row label={t('chat:response.error')} value={activeModule.errorText ?? activeModule.error} />
+      <ModerationRecordsRow moderationRecords={activeModule.moderationRecords} />
       <Row label={t('chat:response.node_inputs')} value={activeModule.nodeInputs} />
     </>
   );
@@ -111,6 +262,75 @@ const LlmRequestIdsRow = ({
   );
 };
 
+type TokenUsageCounts = {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+};
+
+const hasPositiveTokenCount = (value?: number): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+const formatTokenNumber = (value: number) => value.toLocaleString('en-US');
+
+/**
+ * 统一展示 LLM Token 消耗明细（输入 / 输出 / 缓存读取 / 缓存创建），缺省或零值项自动省略。
+ */
+const TokenUsageRow = ({ label, usage }: { label: string; usage: TokenUsageCounts }) => {
+  const { t } = useSafeTranslation();
+  const candidates: { key: string; label: string; value?: number }[] = [
+    { key: 'input', label: t('chat:response.token_input'), value: usage.inputTokens },
+    { key: 'output', label: t('chat:response.token_output'), value: usage.outputTokens },
+    {
+      key: 'cacheRead',
+      label: t('chat:response.token_cache_read'),
+      value: usage.cacheReadTokens
+    },
+    {
+      key: 'cacheCreation',
+      label: t('chat:response.token_cache_creation'),
+      value: usage.cacheCreationTokens
+    }
+  ];
+  const items = candidates.filter((item): item is { key: string; label: string; value: number } =>
+    hasPositiveTokenCount(item.value)
+  );
+
+  if (items.length === 0) return null;
+
+  return (
+    <Row
+      label={label}
+      rawDomBoxProps={responseRowValueBoxStyles}
+      rawDom={
+        <Box lineHeight={'18px'} wordBreak={'break-word'}>
+          {items.map((item, index) => (
+            <React.Fragment key={item.key}>
+              {index > 0 && (
+                <Box as={'span'} color={'myGray.400'}>
+                  {' · '}
+                </Box>
+              )}
+              <Box as={'span'} color={'myGray.600'}>
+                {item.label}
+              </Box>{' '}
+              <Box
+                as={'span'}
+                color={'myGray.900'}
+                fontWeight={500}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {formatTokenNumber(item.value)}
+              </Box>
+            </React.Fragment>
+          ))}
+        </Box>
+      }
+    />
+  );
+};
+
 export const AiChatRows = ({
   activeModule,
   onOpenRequestIdDetail
@@ -119,29 +339,55 @@ export const AiChatRows = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
+  const hasError = Boolean(activeModule.error || activeModule.errorText);
+  const hasLlmTokens =
+    hasPositiveTokenCount(activeModule.inputTokens) ||
+    hasPositiveTokenCount(activeModule.outputTokens);
+  const hasToolCallTokens =
+    hasPositiveTokenCount(activeModule.toolCallInputTokens) ||
+    hasPositiveTokenCount(activeModule.toolCallOutputTokens);
 
   return (
     <>
-      {activeModule.finishReason && (
+      {!hasError && activeModule.finishReason && (
         <Row
           label={t('chat:response.completion_finish_reason')}
           value={t(completionFinishReasonMap[activeModule.finishReason])}
         />
       )}
       <Row label={t('chat:response.model')} value={activeModule.model} />
-      {activeModule.tokens && (
-        <Row label={t('chat:response.llm_tokens')} value={`${activeModule.tokens}`} />
-      )}
-      {(!!activeModule.inputTokens || !!activeModule.outputTokens) && (
+      {hasPositiveTokenCount(activeModule.tokens) && (
         <Row
           label={t('chat:response.llm_tokens')}
-          value={`Input/Output = ${activeModule.inputTokens || 0}/${activeModule.outputTokens || 0}`}
+          value={formatTokenNumber(activeModule.tokens)}
+          renderStringAsMarkdown={false}
         />
       )}
-      {(!!activeModule.toolCallInputTokens || !!activeModule.toolCallOutputTokens) && (
-        <Row
+      <TokenUsageRow
+        label={t('chat:response.llm_tokens')}
+        usage={
+          !hasLlmTokens && hasToolCallTokens
+            ? {
+                inputTokens: activeModule.toolCallInputTokens,
+                outputTokens: activeModule.toolCallOutputTokens,
+                cacheReadTokens: activeModule.cacheReadTokens,
+                cacheCreationTokens: activeModule.cacheCreationTokens
+              }
+            : {
+                inputTokens: activeModule.inputTokens,
+                outputTokens: activeModule.outputTokens,
+                cacheReadTokens: activeModule.cacheReadTokens,
+                cacheCreationTokens: activeModule.cacheCreationTokens
+              }
+        }
+      />
+      {hasLlmTokens && hasToolCallTokens && (
+        <TokenUsageRow
           label={t('chat:response.tool_call_tokens')}
-          value={`Input/Output = ${activeModule.toolCallInputTokens || 0}/${activeModule.toolCallOutputTokens || 0}`}
+          usage={{
+            inputTokens: activeModule.toolCallInputTokens,
+            outputTokens: activeModule.toolCallOutputTokens
+          }}
         />
       )}
       {activeModule.compressTextAgent && (
@@ -150,9 +396,9 @@ export const AiChatRows = ({
             label={t('chat:response.compress_llm_usage_point')}
             value={`${activeModule.compressTextAgent.totalPoints}`}
           />
-          <Row
+          <TokenUsageRow
             label={t('chat:response.compress_llm_usage')}
-            value={`${activeModule.compressTextAgent.inputTokens}/${activeModule.compressTextAgent.outputTokens}`}
+            usage={activeModule.compressTextAgent}
           />
         </>
       )}

@@ -172,7 +172,9 @@ Provider 通过 `AgentLoopEvent` 报告模型请求、流式文本、工具运�
 - 本轮模型使用的改写 Human 输入以 `inputContext` 随首条 value 保存，保留当时的技能、文件、节点输入和时间；恢复时还原紧邻 Human 的模型输入，不重新生成动态 reminder。这里只保存本轮输入事实，不保存历史 messages；Ask/Preview 回答不写副本。对外读取不返回此字段。
 - 每次模型响应保存到一个 value，包含正文、reasoning 和按调用顺序排列的 `tools`；`modelResponseId` 明确标识响应边界，`toolCallIds` 包含被 interactive 替代的 Ask，保证原始顺序可恢复。
 - 校验失败的 Ask 保留原始调用与错误结果，标记工具 `hideInUI`；仅含隐藏内容的 value 同时标记 `hideInUI`。它们不生成 interactive、不暂停，模型继续修正。隐藏不影响上下文恢复，不使用 `hideDetails`。
-- 服务端完成检查需要续跑时，将指令保存为 `userMessage: { content, source: 'server' }`，value 标记 `hideInUI`；运行和恢复均按隐藏 User 消息追加，不使用 System 或伪造的工具调用。完成或检查异常不追加指令。此记录保留完整历史，不具有 checkpoint 的压缩语义。
+- 服务端续跑指令可以来自自然结束时的 `completionPolicy`，也可以来自工具执行结果的 `continuationMessage`。业务调用方定义触发条件；通用 Agent Loop 不强制另起完成判断模型，也不为普通聊天默认增加自检。
+- 续跑指令保存为 `userMessage: { content, source: 'server' }`，value 标记 `hideInUI`；运行和恢复均按隐藏 User 消息追加，不使用 System 或伪造的工具调用。工具触发的指令必须等同批工具结果全部回填后再追加，保持工具调用配对；暂停、显式停止和中止优先，不因此开启新模型请求。此记录没有 checkpoint 压缩语义，不对自检另设历史条数限制。
+- Builder 在首次非终态自然结束或首次有效提交时，共用一次固定自检提醒，并保留条件性续跑及无进展停止；具体触发、交付与交互边界见 [Workflow Builder 设计](../workflow-builder-continuous-delivery.md)。这是业务调用方策略，不是所有 Agent 的统一流程。
 - 子工具展示 value 标记 `displayOnly`，不进入父模型历史，也不影响父模型的计划或压缩点。父模型只恢复其实际消费的 tool response。子工具续跑的结果保存为 `toolResponses`，按调用 ID 补到原工具结果，不创建第二次调用。
 - 内部目录读取的完整结果通过可信 `recordEvent` 保存，工具标记 `internalOnly`；对外 `emitEvent` 仍只提供活动状态。普通聊天记录读取裁剪内部参数和响应，只在服务端恢复模式读取完整内容。
 - 同一次响应的工具按原调用顺序恢复；暂停之后尚未执行的调用保存显式跳过结果，不执行副作用，也不留下不完整的工具配对。
@@ -198,15 +200,15 @@ FastAgent 的 Workflow Agent、Workflow Builder 和辅助生成入口均停止�
 
 ## 主要代码入口
 
-| 能力 | 路径 |
-| --- | --- |
-| 公共入口 | `packages/service/core/ai/llm/agentLoop/interface/run.ts` |
-| 领域协议 | `packages/service/core/ai/llm/agentLoop/domain` |
-| Provider 注册 | `packages/service/core/ai/llm/agentLoop/provider/registry.ts` |
-| Workflow Core | `packages/service/core/workflow/dispatch/ai/agentLoopCore` |
-| Workflow Agent | `packages/service/core/workflow/dispatch/ai/agent` |
-| ToolCall | `packages/service/core/workflow/dispatch/ai/toolcall` |
-| 历史压缩 | `packages/service/core/ai/llm/compress` |
+| 能力           | 路径                                                          |
+| -------------- | ------------------------------------------------------------- |
+| 公共入口       | `packages/service/core/ai/llm/agentLoop/interface/run.ts`     |
+| 领域协议       | `packages/service/core/ai/llm/agentLoop/domain`               |
+| Provider 注册  | `packages/service/core/ai/llm/agentLoop/provider/registry.ts` |
+| Workflow Core  | `packages/service/core/workflow/dispatch/ai/agentLoopCore`    |
+| Workflow Agent | `packages/service/core/workflow/dispatch/ai/agent`            |
+| ToolCall       | `packages/service/core/workflow/dispatch/ai/toolcall`         |
+| 历史压缩       | `packages/service/core/ai/llm/compress`                       |
 
 ## 验证范围
 

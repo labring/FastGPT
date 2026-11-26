@@ -245,13 +245,14 @@ describe('RedisBullMQRuntime', () => {
       await Promise.resolve();
       expect(bullMQMocks.workers).toHaveLength(1);
       expect(worker.listenerCount('closed')).toBe(0);
-      expect(() => runtime.getWorker('restart', vi.fn())).toThrow(
+      expect(() => runtime.getWorker('restart', vi.fn(), { concurrency: 18 })).toThrow(
         'BullMQ worker restart is restarting'
       );
 
       await vi.advanceTimersByTimeAsync(1_000);
 
       expect(bullMQMocks.workers).toHaveLength(2);
+      expect(bullMQMocks.workers[1].options.concurrency).toBe(18);
       expect(redisRuntime.releaseConnection).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();

@@ -1,17 +1,37 @@
-import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
+import { getWorkflowInputNameParams } from '@fastgpt/global/common/workflow/editor/utils';
 import type { WorkflowCheckIssue, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TFunction } from 'next-i18next';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type PluginStatusType, PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import appErrList from '@fastgpt/global/common/error/code/app';
 import pluginErrList from '@fastgpt/global/common/error/code/plugin';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { resolvePluginDataErrorIssueCode } from './error';
 import type { WorkflowRuleIssue } from '@/web/core/workflow/type';
 
 type WorkflowCheckMessageParams = { inputName?: string; model?: string; nodeName?: string };
+
+export const translateDynamicKey = (
+  t: TFunction,
+  { key, options }: { key: string; options?: Record<string, unknown> }
+): string => (t as (key: string, options?: Record<string, unknown>) => string)(key, options);
+
+/** 字段名只翻译显式提供的模板键。 */
+export const getWorkflowInputName = (
+  params: { inputName?: string; inputNameKey?: string } | undefined,
+  t?: TFunction
+) => {
+  const key = params?.inputNameKey;
+  return (
+    params?.inputName ??
+    (key && (t ? translateDynamicKey(t, { key, options: { defaultValue: key } }) : key))
+  );
+};
 
 const fieldLabelKeys = {
   variable: i18nT('common:core.workflow.variable'),
@@ -23,6 +43,13 @@ const fieldLabelKeys = {
 
 /** 每个翻译 key 保留静态字面量，避免清理脚本漏识别。 */
 const workflowCheckMessageKeys = {
+  [WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable]: i18nT(
+    'skill:sandbox_skill_unavailable_toast'
+  ),
+  [WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable]: i18nT(
+    'skill:sandbox_system_not_configured_toast'
+  ),
+  [WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable]: i18nT('app:sandbox_free_not_support'),
   [WorkflowCheckIssueCodeEnum.requiredInputEmpty]: i18nT(
     'common:core.workflow.check.required_input_empty'
   ),
@@ -54,6 +81,9 @@ const workflowCheckMessageKeys = {
     'common:core.workflow.check.context_extract_empty'
   ),
   [WorkflowCheckIssueCodeEnum.toolCallEmpty]: i18nT('common:core.workflow.check.tool_call_empty'),
+  [WorkflowCheckIssueCodeEnum.toolSetNotConfigured]: i18nT(
+    'common:core.workflow.check.tool_set_not_configured'
+  ),
   [WorkflowCheckIssueCodeEnum.toolInactive]: i18nT('common:core.workflow.check.tool_inactive'),
   [WorkflowCheckIssueCodeEnum.toolMissing]: i18nT('common:core.workflow.check.tool_missing'),
   [WorkflowCheckIssueCodeEnum.toolLoadFailed]: i18nT('common:core.workflow.check.tool_load_failed'),
@@ -69,6 +99,15 @@ const workflowCheckMessageKeys = {
   [WorkflowCheckIssueCodeEnum.modelRequired]: i18nT(
     'common:core.workflow.check.model_required_short'
   ),
+  [WorkflowCheckIssueCodeEnum.agentDatasetAbnormal]: i18nT(
+    'common:core.workflow.check.agent_dataset_abnormal'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentSkillAbnormal]: i18nT(
+    'common:core.workflow.check.agent_skill_abnormal'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolAbnormal]: i18nT(
+    'common:core.workflow.check.agent_tool_abnormal'
+  ),
   [WorkflowCheckIssueCodeEnum.resourceMissing]: i18nT(
     'common:core.workflow.check.resource_missing'
   ),
@@ -80,20 +119,27 @@ const workflowCheckMessageKeys = {
 type WorkflowCheckMessageCode = keyof typeof workflowCheckMessageKeys;
 
 /** 只声明问题代码与展示文案不一致的别名，其他代码直接使用对应文案。 */
-const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
-  Record<WorkflowCheckIssue['code'], WorkflowCheckMessageCode>
-> = {
+const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<Record<string, WorkflowCheckMessageCode>> = {
   [WorkflowCheckIssueCodeEnum.isolatedNode]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.unreachableFromStart]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowDiagnosticCodeEnum.nodeNotReachable]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.toolWaitingConfig]: WorkflowCheckIssueCodeEnum.toolInactive,
   [WorkflowCheckIssueCodeEnum.toolOffline]: WorkflowCheckIssueCodeEnum.toolMissing,
   [WorkflowCheckIssueCodeEnum.loopRunMissingBreak]: WorkflowCheckIssueCodeEnum.ifElseIncomplete,
+  [WorkflowIssueCode.sandboxNotConfigured]: WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable,
+  [WorkflowIssueCode.sandboxPlanNotSupported]: WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable,
   [WorkflowCheckIssueCodeEnum.variableUpdateIncomplete]:
     WorkflowCheckIssueCodeEnum.codeInputIncomplete
 };
 
 /** 待处理：引用无效、工具不可访问或加载失败。其余均为待完善。 */
 const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<WorkflowCheckIssue['code']>([
+  WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable,
+  WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable,
+  WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable,
+  WorkflowCheckIssueCodeEnum.agentDatasetAbnormal,
+  WorkflowCheckIssueCodeEnum.agentSkillAbnormal,
+  WorkflowCheckIssueCodeEnum.agentToolAbnormal,
   WorkflowCheckIssueCodeEnum.invalidReference,
   WorkflowCheckIssueCodeEnum.toolMissing,
   WorkflowCheckIssueCodeEnum.toolLoadFailed,
@@ -135,6 +181,12 @@ export const getWorkflowCheckIssueMessage = ({
 
   // 有限文案逐项使用字面量翻译，确保清理脚本能直接识别实际调用的 key。
   switch (messageCode) {
+    case WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable:
+      return t('skill:sandbox_skill_unavailable_toast');
+    case WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable:
+      return t('skill:sandbox_system_not_configured_toast');
+    case WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable:
+      return t('app:sandbox_free_not_support');
     case WorkflowCheckIssueCodeEnum.requiredInputEmpty:
       return t('common:core.workflow.check.required_input_empty', params);
     case WorkflowCheckIssueCodeEnum.noUpstream:
@@ -161,6 +213,8 @@ export const getWorkflowCheckIssueMessage = ({
       return t('common:core.workflow.check.context_extract_empty', params);
     case WorkflowCheckIssueCodeEnum.toolCallEmpty:
       return t('common:core.workflow.check.tool_call_empty', params);
+    case WorkflowCheckIssueCodeEnum.toolSetNotConfigured:
+      return t('common:core.workflow.check.tool_set_not_configured', params);
     case WorkflowCheckIssueCodeEnum.toolInactive:
       return t('common:core.workflow.check.tool_inactive', params);
     case WorkflowCheckIssueCodeEnum.toolMissing:
@@ -175,6 +229,12 @@ export const getWorkflowCheckIssueMessage = ({
       return t('common:core.workflow.check.model_unavailable_short', params);
     case WorkflowCheckIssueCodeEnum.modelRequired:
       return t('common:core.workflow.check.model_required_short', params);
+    case WorkflowCheckIssueCodeEnum.agentDatasetAbnormal:
+      return t('common:core.workflow.check.agent_dataset_abnormal', params);
+    case WorkflowCheckIssueCodeEnum.agentSkillAbnormal:
+      return t('common:core.workflow.check.agent_skill_abnormal', params);
+    case WorkflowCheckIssueCodeEnum.agentToolAbnormal:
+      return t('common:core.workflow.check.agent_tool_abnormal', params);
     case WorkflowCheckIssueCodeEnum.resourceMissing:
       return t('common:core.workflow.check.resource_missing', params);
     case WorkflowCheckIssueCodeEnum.resourceNoPermission:
@@ -210,7 +270,7 @@ export const getToolErrorMessage = ({
 
   const errorKey = appErrList[error]?.message ?? pluginErrList[error]?.message;
   if (errorKey) {
-    return t(errorKey as ParseKeys);
+    return translateDynamicKey(t, { key: errorKey });
   }
 
   return (
@@ -229,29 +289,17 @@ export const formatWorkflowRuleIssue = ({
   node?: FlowNodeItemType;
   t?: TFunction;
 }): WorkflowCheckIssue => {
-  const translateLabel = (label: string) => (t ? t(label as ParseKeys) : label);
-
-  /** 优先取 label，空则取 debugLabel 或槽位默认标签，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
-  const getInputLabel = (input: FlowNodeInputItemType, fallbackLabel?: string) => {
-    const nonEmptyLabel = typeof input.label === 'string' && input.label ? input.label : undefined;
-    const nonEmptyDebugLabel =
-      typeof input.debugLabel === 'string' && input.debugLabel ? input.debugLabel : undefined;
-    const rawLabel = nonEmptyLabel ?? nonEmptyDebugLabel ?? fallbackLabel ?? input.key;
-
-    return rawLabel ? translateLabel(rawLabel) : rawLabel;
-  };
+  const translateLabel = (label: string) => (t ? translateDynamicKey(t, { key: label }) : label);
 
   const inputName = (() => {
     if (issue.fieldLabel) {
       return translateLabel(fieldLabelKeys[issue.fieldLabel]);
     }
-    if (issue.input) {
-      return getInputLabel(issue.input, issue.fallbackLabel);
-    }
-    if (issue.fallbackLabel) {
-      return translateLabel(issue.fallbackLabel);
-    }
-    return undefined;
+    return (
+      getWorkflowInputName(issue.params, t) ??
+      getWorkflowInputName(getWorkflowInputNameParams({ node, input: issue.input }), t) ??
+      (issue.fallbackLabel ? translateLabel(issue.fallbackLabel) : issue.input?.key)
+    );
   })();
 
   return {
@@ -261,6 +309,7 @@ export const formatWorkflowRuleIssue = ({
     level: issue.level ?? 'error',
     code: issue.code,
     inputKey: node ? issue.inputKey : inputName,
+    params: issue.params,
     message:
       issue.message ??
       getWorkflowCheckIssueMessage({

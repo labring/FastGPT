@@ -536,6 +536,7 @@ const getToolResponseCompressionLimits = ({ maxContext }: { maxContext: number }
  */
 export const compressRequestMessages = async ({
   activePlan,
+  getCheckpointContext,
   checkIsStopping,
   messageTokens: cachedMessageTokens,
   messages,
@@ -546,6 +547,7 @@ export const compressRequestMessages = async ({
   teamId
 }: {
   activePlan?: AgentPlanType;
+  getCheckpointContext?: () => Promise<string>;
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
@@ -623,6 +625,8 @@ export const compressRequestMessages = async ({
   logger.info('Message compression started');
 
   try {
+    // 业务恢复快照只在真正压缩时生成；读取失败保留原上下文，不能发布缺少入口的 checkpoint。
+    const checkpointContext = await getCheckpointContext?.();
     // 触发压缩后，全部非 system/developer 历史都写进 checkpoint，避免继续保留大量原始 history。
     const compressPrompt = await getCompressRequestMessagesPrompt();
     const userPrompt = await getCompressRequestMessagesUserPrompt({
@@ -657,14 +661,18 @@ export const compressRequestMessages = async ({
       : formatModelChars2Points({
           model,
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }).totalPoints;
     const compressedUsage = {
       moduleName: i18nT('account_usage:compress_llm_messages'),
       modelId: model.modelId,
       totalPoints,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens
     };
 
     if (!answerText) {
@@ -701,10 +709,12 @@ export const compressRequestMessages = async ({
       return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    const compressedContextContent = createCompressedContextContent({
-      activePlan,
-      checkpointContent
-    });
+    const compressedContextContent = [
+      createCompressedContextContent({ activePlan, checkpointContent }),
+      checkpointContext
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     const checkpointMessage = createContextCheckpointMessage(compressedContextContent);
     const finalMessages = [...systemMessages, checkpointMessage];
     const compressedTokens = await countRequestMessagesTokens({
@@ -715,6 +725,8 @@ export const compressRequestMessages = async ({
     if (usage.outputTokens >= checkpointCompletionTokenLimit) {
       logger.warn('Message compression completion exceeds soft limit, keeping LLM checkpoint', {
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         completionTokenLimit: checkpointCompletionTokenLimit,
         originalTokens: messageTokens,
         compressedTokens
@@ -729,7 +741,9 @@ export const compressRequestMessages = async ({
         compressedTokenLimit: checkpointWarnTokenLimit,
         maxContext: model.config.maxContext,
         requestId,
-        outputTokens: usage.outputTokens
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens
       });
     }
 
@@ -803,6 +817,8 @@ export const compressLargeContent = async ({
   type CompressUsageType = {
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalPoints: number;
     requestIds: string[];
   };
@@ -868,10 +884,14 @@ export const compressLargeContent = async ({
         : formatModelChars2Points({
             model,
             inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
+            outputTokens: usage.outputTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheCreationTokens: usage.cacheCreationTokens
           }).totalPoints;
       const chunkUsage = {
         ...usage,
+        cacheReadTokens: usage.cacheReadTokens ?? 0,
+        cacheCreationTokens: usage.cacheCreationTokens ?? 0,
         totalPoints,
         requestIds: [requestId]
       };
@@ -921,6 +941,8 @@ export const compressLargeContent = async ({
     const usage: CompressUsageType = {
       inputTokens: 0,
       outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
       totalPoints: 0,
       requestIds: []
     };
@@ -934,6 +956,8 @@ export const compressLargeContent = async ({
       });
       usage.inputTokens += result.usage.inputTokens;
       usage.outputTokens += result.usage.outputTokens;
+      usage.cacheReadTokens += result.usage.cacheReadTokens;
+      usage.cacheCreationTokens += result.usage.cacheCreationTokens;
       usage.totalPoints += result.usage.totalPoints;
       usage.requestIds.push(...result.usage.requestIds);
 
@@ -974,6 +998,8 @@ export const compressLargeContent = async ({
         });
         usage.inputTokens += result.usage.inputTokens;
         usage.outputTokens += result.usage.outputTokens;
+        usage.cacheReadTokens += result.usage.cacheReadTokens;
+        usage.cacheCreationTokens += result.usage.cacheCreationTokens;
         usage.totalPoints += result.usage.totalPoints;
         usage.requestIds.push(...result.usage.requestIds);
 
@@ -1102,7 +1128,9 @@ export const compressLargeContent = async ({
         modelId: model.modelId,
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens
+        outputTokens: result.usage.outputTokens,
+        cacheReadTokens: result.usage.cacheReadTokens,
+        cacheCreationTokens: result.usage.cacheCreationTokens
       },
       requestIds: result.usage.requestIds
     };

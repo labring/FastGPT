@@ -1,3 +1,4 @@
+import { isProVersion } from '../../../common/system/constants';
 import { MongoDatasetCollection } from './schema';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
@@ -434,10 +435,7 @@ export const getTrainingModeByCollection = ({
   imageIndex?: boolean;
   supportImageIndex?: boolean;
 }) => {
-  if (
-    trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
-    global.feConfigs?.isPlus
-  ) {
+  if (trainingType === DatasetCollectionDataProcessModeEnum.imageParse && isProVersion()) {
     return TrainingModeEnum.imageParse;
   }
 
@@ -448,14 +446,16 @@ export const getTrainingModeByCollection = ({
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
     imageIndex &&
     supportImageIndex &&
-    global.feConfigs?.isPlus
+    isProVersion()
   ) {
     return TrainingModeEnum.image;
   }
+  // chunk（文件）与 template（FAQ q/a）共用 auto 准入；图片模式优先级在上方。
   if (
-    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    (trainingType === DatasetCollectionDataProcessModeEnum.chunk ||
+      trainingType === DatasetCollectionDataProcessModeEnum.template) &&
     autoIndexes &&
-    global.feConfigs?.isPlus
+    isProVersion()
   ) {
     return TrainingModeEnum.auto;
   }

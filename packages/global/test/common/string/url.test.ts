@@ -3,6 +3,7 @@ import {
   ensureHttpProtocol,
   isHttpUrl,
   isValidHttpUrl,
+  isValidServiceBaseUrl,
   isSafeHref,
   isSafeImgSrc,
   stripUrlTrailingSlash
@@ -66,6 +67,31 @@ describe('url utils', () => {
       expect(isValidHttpUrl('not a url at all')).toBe(false);
       expect(isValidHttpUrl('')).toBe(false);
       expect(isValidHttpUrl(undefined)).toBe(false);
+    });
+  });
+
+  describe('isValidServiceBaseUrl', () => {
+    it.each(['http://localhost:3000', 'HTTPS://example.com/base/', '  https://example.com  '])(
+      'accepts a service base address %s',
+      (url) => expect(isValidServiceBaseUrl(url)).toBe(true)
+    );
+
+    it.each([
+      undefined,
+      '',
+      'https://',
+      'ftp://example.com',
+      'http://user@example.com',
+      'http://user:password@example.com',
+      'http://example.com?key=value',
+      'http://example.com?',
+      'http://example.com#fragment',
+      'http://example.com#',
+      'http://example.com\\proxy',
+      'http://example.com/"quoted',
+      'http://example.com\n/path'
+    ])('rejects an unusable or sensitive base address %s', (url) => {
+      expect(isValidServiceBaseUrl(url)).toBe(false);
     });
   });
 

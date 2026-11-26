@@ -3,8 +3,10 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   extractDeepestInteractive,
+  getLastInteractiveValue,
   isValidInteractive
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import React from 'react';
@@ -30,6 +32,7 @@ import RenderWorkflowBuilderPreview from './WorkflowBuilder/RenderWorkflowBuilde
 import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
 import { useMemoizedFn } from 'ahooks';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
 /** 在聊天边界绑定所属实例的操作，再以文本回调传入通用 Markdown 渲染器。 */
 const AIResponseBox = ({
@@ -71,6 +74,15 @@ const AIResponseBox = ({
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
+  // 展示专用内容可能跟在交互后面，待确认状态应与底部确认区使用同一份会话记录。
+  const pendingPreviewKey = useContextSelector(ChatRecordContext, (v) => {
+    const current = getLastInteractiveValue(v.chatRecords);
+    const interactive = current ? extractDeepestInteractive(current) : undefined;
+    const chatItemId = v.chatRecords.findLast((item) => item.obj === ChatRoleEnum.AI)?.dataId;
+    return interactive?.type === 'workflowBuilderPreview'
+      ? `${chatItemId}:${interactive.params.toolCallId}`
+      : undefined;
+  });
   const { sendMessage, fillInput } = useChatInstanceActions();
   const onSendQuestion = useMemoizedFn((text: string) => sendMessage({ text }));
   const onEditQuestion = useMemoizedFn((text: string) => fillInput({ text }));
@@ -89,14 +101,15 @@ const AIResponseBox = ({
   const reasoningContent = value.reasoning?.content || '';
   const textContent = value.text?.content || '';
 
-  if (value.hideInUI) return null;
+  if (value.hideInUI && !value.interactive) return null;
 
   const responseBlocks: React.ReactNode[] = [];
   const foldableProcessingBlocks: React.ReactNode[] = [];
   const standaloneProcessingBlocks: React.ReactNode[] = [];
 
-  const showFoldableProcessing = showProcessing && showFoldableProcessingProp;
-  const showStandaloneProcessing = showProcessing && showStandaloneProcessingProp;
+  const showFoldableProcessing = !value.hideInUI && showProcessing && showFoldableProcessingProp;
+  const showStandaloneProcessing =
+    !value.hideInUI && showProcessing && showStandaloneProcessingProp;
 
   if (showFoldableProcessing && reasoningContent && !value.hideReason) {
     foldableProcessingBlocks.push(
@@ -177,7 +190,7 @@ const AIResponseBox = ({
 
   responseBlocks.push(...standaloneProcessingBlocks);
 
-  if (showAnswer && value.text && textContent) {
+  if (!value.hideInUI && showAnswer && value.text && textContent) {
     responseBlocks.push(
       <RenderText
         {...markdownActions}
@@ -217,12 +230,19 @@ const AIResponseBox = ({
     }
     if (interactive?.type === 'workflowBuilderPreview') {
       responseBlocks.push(
-        <RenderWorkflowBuilderPreview key="interactive" interactive={interactive} />
+        <RenderWorkflowBuilderPreview
+          key="interactive"
+          interactive={interactive}
+          isPending={
+            !isChatting &&
+            `${chatItemDataId}:${interactive.params.toolCallId}` === pendingPreviewKey
+          }
+        />
       );
     }
   }
 
-  if (value.chatAgentBuilderVersion) {
+  if (!value.hideInUI && value.chatAgentBuilderVersion) {
     responseBlocks.push(
       <RenderChatAgentBuilderVersion
         key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
@@ -233,7 +253,7 @@ const AIResponseBox = ({
     );
   }
 
-  if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
+  if (!value.hideInUI && showWorkflowBuilderVersion && value.workflowBuilderVersion) {
     responseBlocks.push(
       <RenderWorkflowBuilderVersion
         key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}

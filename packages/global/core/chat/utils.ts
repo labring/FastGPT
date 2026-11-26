@@ -267,6 +267,29 @@ export const filterNodeResponseTreeData = ({
     keepTreeFields: true
   });
 
+/**
+ * 递归剔除节点响应中的内容审核详情记录（moderationRecords）。
+ *
+ * 用于无应用写权限（仅读权限或公开分享）的场景，避免向非写权限成员暴露审核命中标签、分数、敏感词及被审原文。
+ */
+export const stripModerationRecordsFromNodeResponses = (
+  nodeResponses: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] => {
+  return nodeResponses.map((item) => {
+    const { moderationRecords: _removed, ...rest } = item;
+    const nextItem: ChatHistoryItemResType = { ...rest };
+
+    for (const childField of childrenResponseFields) {
+      const childList = nextItem[childField] as ChatHistoryItemResType[] | undefined;
+      if (Array.isArray(childList)) {
+        nextItem[childField] = stripModerationRecordsFromNodeResponses(childList);
+      }
+    }
+
+    return nextItem;
+  });
+};
+
 // Remove dataset cite in ai response
 export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(
   value: T,
@@ -333,6 +356,8 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
       return ChatSourceEnum.share;
     case PublishChannelEnum.apikey:
       return ChatSourceEnum.api;
+    case PublishChannelEnum.dingtalk:
+      return ChatSourceEnum.dingtalk;
     case PublishChannelEnum.feishu:
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:
@@ -374,4 +399,19 @@ export const checkInteractiveResponseStatus = ({
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
   return isAskInteractive(finalInteractive) ? 'query' : 'submit';
+};
+
+/**
+ * 提取一组用户消息值里的纯文本（file/select 等非文本项忽略），多段以换行拼接。
+ *
+ * 场景：同义词映射装饰需要「用户原始问题」——Agent 生成的检索词往往已被 LLM
+ * 改写成标准词（例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），别名只
+ * 存在于用户原始输入里；工作流 dispatch、agent 工具 provider、agentic 路由
+ * 三处共用本函数，避免各写一份提取逻辑在结构变化时互相漂移。
+ */
+export const getChatItemTextContent = (values?: UserChatItemValueItemType[]): string => {
+  return (values ?? [])
+    .map((item) => ('text' in item && item.text?.content ? item.text.content : ''))
+    .filter(Boolean)
+    .join('\n');
 };

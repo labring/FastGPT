@@ -1,20 +1,37 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
+import exportLogs from '@/pages/api/core/app/logs/exportLogs';
+import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
+import getLogKeys from '@/pages/api/core/app/logs/getLogKeys';
+import updateLogKeys from '@/pages/api/core/app/logs/updateLogKeys';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { Call } from '@test/utils/request';
+import { Call, StreamCall } from '@test/utils/request';
 import type {
   getAppChatLogsBody,
   getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { Types } from '@fastgpt/service/common/mongo';
+
+vi.unmock('@fastgpt/service/common/response');
+vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/rateLimit/interface/member')>()),
+  // 连续导出验证查询一致性；成员导出的频控由 rateLimit 自身的用例覆盖。
+  assertMemberRateLimit: vi.fn(async () => {})
+}));
 
 type EmptyQuery = Record<string, never>;
 
@@ -72,6 +89,196 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       isRoot: false
     };
+  });
+
+  it('历史及未知来源在未筛选列表、未知筛选和 CSV 中一致归类，且不改原记录', async () => {
+    const now = new Date();
+    const records = [
+      { chatId: 'legacy-source' },
+      { chatId: 'migrated-source', publishSource: { type: 'unknown' } },
+      { chatId: 'future-source', publishSource: { type: 'future' } },
+      { chatId: 'known-source', publishSource: { type: 'api' } }
+    ].map((row) => ({
+      ...row,
+      _id: new Types.ObjectId(),
+      appId: new Types.ObjectId(testAppId),
+      teamId: new Types.ObjectId(testTeamId),
+      tmbId: new Types.ObjectId(testTmbId),
+      sourceType: ChatSourceTypeEnum.app,
+      source: '历史渠道名',
+      sourceName: '历史入口',
+      title: '历史对话',
+      createTime: now,
+      updateTime: now
+    }));
+    await MongoChat.collection.insertMany(records as any);
+
+    const body = { appId: testAppId, dateStart: '2020-01-01', dateEnd: '2099-01-01' };
+    const result = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body
+    });
+    expect(result.code, String(result.error)).toBe(200);
+    expect(result.data.list).toHaveLength(4);
+    expect(result.data.list.every((row: any) => row.source === 'unknown')).toBe(true);
+    const unknownIds = ['future-source', 'legacy-source', 'migrated-source'];
+    for (const chatId of unknownIds) {
+      expect(result.data.list.find((row: any) => row.chatId === chatId)?.publishSource).toEqual({
+        type: 'unknown',
+        name: '历史入口'
+      });
+    }
+    const filtered = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { ...body, sources: ['unknown'] }
+    });
+    expect(filtered.code, String(filtered.error)).toBe(200);
+    expect(filtered.data.total).toBe(unknownIds.length);
+    expect(filtered.data.list.map((row: any) => row.chatId).sort()).toEqual(unknownIds);
+
+    for (const sources of [undefined, ['unknown']]) {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          ...body,
+          ...(sources ? { sources } : {}),
+          title: '会话,来源',
+          sourcesMap: { unknown: { label: '未知' }, api: { label: 'API调用' } },
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.PUBLISH_SOURCE_TYPE]
+        }
+      });
+      expect(exported.code).toBe(200);
+      for (const chatId of unknownIds) expect(exported.raw).toContain(`\n${chatId},未知,`);
+      if (sources) {
+        expect(exported.raw).not.toContain('known-source');
+      } else {
+        expect(exported.raw).toContain('\nknown-source,API调用,');
+      }
+    }
+    for (const record of records) {
+      expect(await MongoChat.collection.findOne({ _id: record._id })).toEqual(record);
+    }
+  });
+
+  it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
+    const key = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      apiKey: 'logs-source-key',
+      name: '当前名称'
+    });
+    const now = new Date();
+    await MongoChat.create(
+      [
+        {
+          chatId: 'channel-api',
+          publishSource: { type: 'api', id: key._id },
+          source: 'share',
+          sourceName: '旧名称'
+        },
+        { chatId: 'channel-old', source: 'api', sourceName: '历史入口' },
+        {
+          chatId: 'channel-deleted',
+          publishSource: { type: 'api', id: new Types.ObjectId() },
+          source: 'api',
+          sourceName: ' '
+        },
+        { chatId: 'channel-online', publishSource: { type: 'online' }, source: 'online' },
+        {
+          chatId: 'channel-online-legacy',
+          publishSource: { type: 'online' },
+          source: 'api',
+          sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-test',
+          publishSource: { type: 'test' },
+          source: 'test',
+          sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-cron',
+          publishSource: { type: 'cronJob' },
+          source: 'cronJob',
+          sourceName: '不应作为渠道名的旧应用名'
+        }
+      ].map((row) => ({
+        ...row,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        createTime: now,
+        updateTime: now
+      }))
+    );
+    const body = {
+      appId: testAppId,
+      dateStart: new Date(now.getTime() - 1000).toISOString(),
+      dateEnd: new Date(now.getTime() + 1000).toISOString(),
+      sources: ['api'],
+      pageNum: 1,
+      pageSize: 20
+    };
+    const result = await Call(listApi.default, { auth: authUser, headers: {}, body });
+    expect(result.data.total).toBe(3);
+    const rows = result.data.list;
+    expect(rows.find((r: any) => r.chatId === 'channel-api')?.publishSource).toEqual({
+      type: 'api',
+      id: String(key._id),
+      name: '当前名称'
+    });
+    expect(rows.find((r: any) => r.chatId === 'channel-old')?.publishSource).toEqual({
+      name: '历史入口'
+    });
+    expect(
+      rows.find((r: any) => r.chatId === 'channel-deleted')?.publishSource?.name
+    ).toBeUndefined();
+    const internalRows = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { ...body, sources: ['online', 'test', 'cronJob'] }
+    });
+    expect(internalRows.data.total).toBe(4);
+    expect(
+      internalRows.data.list.every((row: any) => !row.publishSource?.name && !row.sourceName)
+    ).toBe(true);
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: {},
+      body: {
+        ...body,
+        title: 'source-test',
+        sources: ['api', 'online', 'test', 'cronJob'],
+        sourcesMap: {
+          api: { label: 'API调用' },
+          online: { label: '在线使用' },
+          test: { label: '在线调试' },
+          cronJob: { label: '定时任务' }
+        },
+        logKeys: [
+          AppLogKeysEnum.SESSION_ID,
+          AppLogKeysEnum.PUBLISH_SOURCE_TYPE,
+          AppLogKeysEnum.SOURCE
+        ]
+      }
+    });
+    expect(exported.raw).toContain('channel-api,API调用,当前名称');
+    expect(exported.raw).toContain("channel-old,'-,历史入口");
+    expect(exported.raw).toContain("channel-deleted,API调用,'-");
+    expect(exported.raw).toContain("channel-online,在线使用,'-");
+    expect(exported.raw).toContain("channel-online-legacy,在线使用,'-");
+    expect(exported.raw).toContain("channel-test,在线调试,'-");
+    expect(exported.raw).toContain("channel-cron,定时任务,'-");
+    expect(exported.raw).not.toContain('不应作为渠道名的旧应用名');
+    expect(
+      (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
+        .data.total
+    ).toBe(0);
   });
 
   it('should return all chats when errorFilter is not set', async () => {
@@ -152,7 +359,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(2);
     expect(res.data.list).toHaveLength(2);
   });
@@ -258,7 +465,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(1);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].chatId).toBe('chat-error-filter-2');
@@ -356,7 +563,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(5); // Total chats with errors
     expect(res.data.list).toHaveLength(3); // First page
     res.data.list.forEach((item) => {
@@ -493,7 +700,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(1);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].chatId).toBe('chat-user-error-1');
@@ -529,7 +736,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data).toEqual({ list: [], total: 0 });
   });
 
@@ -607,13 +814,16 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.list.find((item) => item.chatId === 'share-foreign-member')?.sourceMember).toBe(
       undefined
     );
     expect(
       res.data.list.find((item) => item.chatId === 'share-inactive-member')?.sourceMember
     ).toEqual(expect.objectContaining({ name: 'Inactive Member', status: 'leave' }));
+    expect(
+      res.data.list.find((item) => item.chatId === 'share-inactive-member')?.authMember
+    ).toEqual(expect.objectContaining({ name: 'Test Member Logs List', status: 'active' }));
   });
 
   it('uses the source-member fallback for a share visitor with a missing name', async () => {
@@ -657,9 +867,545 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(
       res.data.list.find((item) => item.chatId === 'share-nameless-member')?.sourceMember
     ).toEqual(expect.objectContaining({ name: 'unknown', status: 'active' }));
+  });
+  it('keeps API authorizer independent of customUid and excludes foreign authorizers', async () => {
+    const foreignUser = await MongoUser.create({
+      username: 'foreign-authorizer',
+      password: 'password'
+    });
+    const foreignTeam = await MongoTeam.create({ name: 'Foreign', ownerId: foreignUser._id });
+    const foreign = await MongoTeamMember.create({
+      teamId: foreignTeam._id,
+      userId: foreignUser._id,
+      name: 'Foreign secret',
+      role: 'owner',
+      status: 'active'
+    });
+    await MongoChat.create([
+      {
+        chatId: 'api-custom',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: 'app',
+        source: 'api',
+        outLinkUid: 'customer-42'
+      },
+      {
+        chatId: 'foreign-authorizer',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: foreign._id,
+        sourceType: 'app',
+        source: 'api'
+      }
+    ]);
+    const res = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { appId: testAppId, dateStart: '2020-01-01', dateEnd: '2099-01-01' }
+    });
+    expect(res.code, String(res.error)).toBe(200);
+    expect(res.data.list.find((item: any) => item.chatId === 'api-custom')).toMatchObject({
+      tmbId: testTmbId,
+      outLinkUid: 'customer-42',
+      authMember: { name: 'Test Member Logs List' }
+    });
+    expect(
+      res.data.list.find((item: any) => item.chatId === 'foreign-authorizer').authMember
+    ).toBeUndefined();
+  });
+
+  it('lists and exports the same users with feedback, search and source filters combined', async () => {
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: 'app',
+      source: 'api',
+      title: 'needle',
+      outLinkUid: 'customer,"42"',
+      hasGoodFeedback: true,
+      errorCount: 1
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'match' },
+      { ...base, chatId: 'wrong-user', outLinkUid: 'another' },
+      { ...base, chatId: 'no-feedback', hasGoodFeedback: false },
+      { ...base, chatId: 'wrong-title', title: 'unrelated' },
+      { ...base, chatId: 'wrong-source', source: 'share' },
+      { ...base, chatId: 'wrong-resource', sourceType: ChatSourceTypeEnum.skillEdit }
+    ]);
+    const body = {
+      appId: testAppId,
+      dateStart: '2020-01-01',
+      dateEnd: '2099-01-01',
+      tmbIds: [],
+      outLinkUids: ['customer,"42"'],
+      chatSearch: 'needle',
+      feedbackType: 'has_feedback',
+      sources: ['api'],
+      errorFilter: 'has_error'
+    };
+    const listed = await Call(listApi.default, { auth: authUser, headers: {}, body });
+    expect(listed.code, String(listed.error)).toBe(200);
+    expect(listed.data.list.map((item: any) => item.chatId)).toEqual(['match']);
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: {},
+      body: {
+        ...body,
+        title: 'User,Authorizer,Session,Details',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.USER, AppLogKeysEnum.AUTH_USER, AppLogKeysEnum.SESSION_ID]
+      }
+    });
+    expect(exported.code).toBe(200);
+    expect(exported.raw).toContain(`"customer,""42""",${testTmbId}:Test Member Logs List,match,`);
+    expect(exported.raw).not.toMatch(/wrong-|no-feedback/);
+    expect(exported.raw.split('\n')).toHaveLength(2);
+  });
+
+  it('exports identities as id:name and keeps only the ID when no member name is available', async () => {
+    const missingId = String(new Types.ObjectId());
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api'
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'member-identity' },
+      { ...base, chatId: 'external-identity', outLinkUid: 'customer-42' },
+      { ...base, chatId: 'missing-identity', tmbId: missingId }
+    ]);
+
+    const exportIdentities = () =>
+      StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'User,Authorizer,Session,Details',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.USER, AppLogKeysEnum.AUTH_USER, AppLogKeysEnum.SESSION_ID]
+        }
+      });
+    const named = await exportIdentities();
+    expect(named.code).toBe(200);
+    const memberIdentity = `${testTmbId}:Test Member Logs List`;
+    expect(named.raw).toContain(`\n${memberIdentity},${memberIdentity},member-identity,`);
+    expect(named.raw).toContain(`\ncustomer-42,${memberIdentity},external-identity,`);
+    expect(named.raw).toContain(`\n${missingId},${missingId},missing-identity,`);
+
+    for (const name of ['   ', undefined]) {
+      await MongoTeamMember.updateOne(
+        { _id: testTmbId },
+        name === undefined ? { $unset: { name: 1 } } : { $set: { name } }
+      );
+      const nameless = await exportIdentities();
+      expect(nameless.code).toBe(200);
+      expect(nameless.raw).toContain(`\n${testTmbId},${testTmbId},member-identity,`);
+      expect(nameless.raw).toContain(`\ncustomer-42,${testTmbId},external-identity,`);
+    }
+  });
+
+  it('normalizes old team columns on read and write while retaining explicit choices', async () => {
+    await MongoAppLogKeys.create({
+      teamId: testTeamId,
+      appId: testAppId,
+      logKeys: [
+        { key: 'user', enable: false },
+        { key: 'title', enable: true }
+      ]
+    });
+    const res = await Call(getLogKeys, { auth: authUser, query: { appId: testAppId } });
+    expect(res.code, String(res.error)).toBe(200);
+    expect(res.data.logKeys.slice(0, 3)).toEqual([
+      { key: 'user', enable: false },
+      { key: 'authUser', enable: false },
+      { key: 'title', enable: true }
+    ]);
+    expect((await MongoAppLogKeys.findOne({ appId: testAppId }))?.logKeys).toHaveLength(2);
+    const saved = await Call(updateLogKeys, {
+      auth: authUser,
+      headers: {},
+      body: {
+        appId: testAppId,
+        logKeys: [
+          { key: 'authUser', enable: true },
+          { key: 'user', enable: false }
+        ]
+      }
+    });
+    expect(saved.code).toBe(200);
+    const refreshed = await Call(getLogKeys, { auth: authUser, query: { appId: testAppId } });
+    expect(refreshed.data.logKeys.slice(0, 2)).toEqual([
+      { key: 'authUser', enable: true },
+      { key: 'user', enable: false }
+    ]);
+  });
+
+  it('keeps feedback and unread filters consistent in the list and CSV', async () => {
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api',
+      title: 'feedback needle',
+      outLinkUid: 'customer-42'
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'read-good', hasGoodFeedback: true },
+      { ...base, chatId: 'read-bad', hasBadFeedback: true },
+      { ...base, chatId: 'unread-good', hasGoodFeedback: true, hasUnreadGoodFeedback: true },
+      { ...base, chatId: 'unread-bad', hasBadFeedback: true, hasUnreadBadFeedback: true },
+      { ...base, chatId: 'another-user', outLinkUid: 'another', hasUnreadBadFeedback: true }
+    ]);
+    // 旧数据没有 sourceType，也必须参与相同的筛选和导出。
+    await MongoChat.updateOne(
+      { appId: testAppId, chatId: 'read-good' },
+      { $unset: { sourceType: 1 } }
+    );
+    for (const { feedbackType, unreadOnly, expected } of [
+      { feedbackType: 'has_feedback', unreadOnly: true, expected: ['unread-bad', 'unread-good'] },
+      { feedbackType: 'good', unreadOnly: false, expected: ['read-good', 'unread-good'] },
+      { feedbackType: 'bad', unreadOnly: true, expected: ['unread-bad'] }
+    ]) {
+      const body = {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        outLinkUids: ['customer-42'],
+        chatSearch: 'needle',
+        feedbackType,
+        unreadOnly
+      };
+      const listed = await Call(listApi.default, { auth: authUser, headers: {}, body });
+      expect(listed.code, String(listed.error)).toBe(200);
+      expect(listed.data.list.map((item: any) => item.chatId).sort()).toEqual(expected);
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          ...body,
+          title: 'Session,Details',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID]
+        }
+      });
+      expect(exported.code).toBe(200);
+      expect(
+        exported.raw
+          .split('\n')
+          .slice(1)
+          .map((line) => line.split(',')[0])
+          .sort()
+      ).toEqual(expected);
+    }
+  });
+
+  it('导出版本名按需批量查缓存，缺失 appVersionId 的历史会话正常留空且不走 $lookup', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'version-with-id',
+      nodes: [],
+      edges: []
+    });
+    const now = new Date();
+    const base = {
+      appId: new Types.ObjectId(testAppId),
+      teamId: new Types.ObjectId(testTeamId),
+      tmbId: new Types.ObjectId(testTmbId),
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api',
+      createTime: now,
+      updateTime: now
+    };
+    // 用 collection 写入，确保历史会话真的不带 appVersionId 字段。
+    await MongoChat.collection.insertMany([
+      { ...base, chatId: 'chat-with-version-1', appVersionId: version._id },
+      { ...base, chatId: 'chat-with-version-2', appVersionId: version._id },
+      { ...base, chatId: 'chat-without-version' },
+      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() }
+    ] as any);
+
+    const chatAggregateSpy = vi.spyOn(MongoChat, 'aggregate');
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+    const responseAggregateSpy = vi.spyOn(MongoChatItemResponse, 'aggregate');
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      expect(exported.raw).toContain('\nchat-with-version-1,version-with-id,');
+      expect(exported.raw).toContain('\nchat-with-version-2,version-with-id,');
+      expect(exported.raw).toContain('\nchat-without-version,,');
+      expect(exported.raw).toContain('\nchat-deleted-version,,');
+
+      expect(chatAggregateSpy).not.toHaveBeenCalled();
+      expect(versionFindSpy).toHaveBeenCalledTimes(1);
+      expect(responseAggregateSpy).not.toHaveBeenCalled();
+
+      versionFindSpy.mockClear();
+      const exportedWithoutVersion = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID]
+        }
+      });
+      expect(exportedWithoutVersion.code).toBe(200);
+      expect(versionFindSpy).not.toHaveBeenCalled();
+      expect(responseAggregateSpy).not.toHaveBeenCalled();
+    } finally {
+      chatAggregateSpy.mockRestore();
+      versionFindSpy.mockRestore();
+      responseAggregateSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名跨 200+ 批次复用内存缓存，整个导出只查 1 次版本集合', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-replica-sync',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 203 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-batch-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(203);
+      expect(dataRows.every((line) => line.includes(',v-replica-sync,'))).toBe(true);
+      expect(versionFindSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名在首批从库短暂查空时不永久负缓存，副本追平后次批自动恢复并复用缓存', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-recovered',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 403 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-recover-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
+    let findCalls = 0;
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
+      filter: any,
+      projection: any,
+      options: any
+    ) => {
+      findCalls++;
+      // 模拟第 1 批选中滞后从库查空，第 2 批副本追平后命中并缓存，第 3 批直接复用缓存
+      if (findCalls === 1) {
+        return { lean: async () => [] } as any;
+      }
+      return originalFind(filter, projection, options);
+    }) as any);
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(403);
+      // 第 1 批 200 行查空留空，第 2/3 批共 203 行自动恢复为 v-recovered
+      expect(dataRows.slice(0, 200).every((line) => line.split(',')[1] === '')).toBe(true);
+      expect(dataRows.slice(200).every((line) => line.split(',')[1] === 'v-recovered')).toBe(true);
+      // 仅查 2 次：第 1 批查空 + 第 2 批命中并缓存；第 3 批 0 次查库
+      expect(findCalls).toBe(2);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名在连续两批从库查空后不永久负缓存，后续退避探测追平并复用缓存', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-recovered-2x',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 803 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-recover2x-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
+    let findCalls = 0;
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
+      filter: any,
+      projection: any,
+      options: any
+    ) => {
+      findCalls++;
+      // 模拟第 1、2 批连续选中滞后从库查空；第 3 批退避跳过；第 4 批探测时从库已追平并写入命中缓存
+      if (findCalls <= 2) {
+        return { lean: async () => [] } as any;
+      }
+      return originalFind(filter, projection, options);
+    }) as any);
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(803);
+      // 前 3 批（600 行）查空或退避留空；第 4/5 批（203 行）在追平后恢复为 v-recovered-2x
+      expect(dataRows.slice(0, 600).every((line) => line.split(',')[1] === '')).toBe(true);
+      expect(dataRows.slice(600).every((line) => line.split(',')[1] === 'v-recovered-2x')).toBe(
+        true
+      );
+      // 共查 3 次：第 1、2 批查空 + 第 4 批命中并缓存；第 3 批退避跳过，第 5 批直接命中缓存
+      expect(findCalls).toBe(3);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名对已删除历史版本按批次指数退避降频查询，避免数百批次线性空查', async () => {
+    const deletedVersionId = new Types.ObjectId();
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 1003 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-deleted-ver-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: deletedVersionId,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(1003);
+      expect(dataRows.every((line) => line.split(',')[1] === '')).toBe(true);
+      // 1003 行共 6 批：按 1 -> 2 -> 4 批次指数退避，仅在第 1/2/4 批查库（3 次而非 6 次）
+      expect(versionFindSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
   });
 });

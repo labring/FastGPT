@@ -758,6 +758,7 @@ describe('WorkflowNodeResponseWriter', () => {
             sourceId: 'source-1',
             sourceName: 'source',
             chunkIndex: 1,
+            retrievalRank: 3,
             score: []
           } as any
         ]
@@ -780,8 +781,11 @@ describe('WorkflowNodeResponseWriter', () => {
       collectionId: 'collection-1',
       sourceId: 'source-1',
       sourceName: 'source',
-      score: []
+      score: [],
+      retrievalRank: 3
     });
+    // 召回排名是详情页对比召回/重排的必备字段，瘦身后必须保留
+    expect(persisted).toHaveProperty('retrievalRank', 3);
     expect(persisted).not.toHaveProperty('q');
     expect(persisted).not.toHaveProperty('a');
     expect(persisted).not.toHaveProperty('indexes');
@@ -949,6 +953,8 @@ describe('WorkflowNodeResponseWriter', () => {
         totalPoints: 6,
         inputTokens: 10,
         outputTokens: 20,
+        cacheReadTokens: 30,
+        cacheCreationTokens: 40,
         customOutputs: { huge: 'payload' },
         quoteList: [
           {
@@ -989,6 +995,8 @@ describe('WorkflowNodeResponseWriter', () => {
       runningTime: 1.2,
       inputTokens: 10,
       outputTokens: 20,
+      cacheReadTokens: 30,
+      cacheCreationTokens: 40,
       totalPoints: 6,
       childResponseCount: 1
     });

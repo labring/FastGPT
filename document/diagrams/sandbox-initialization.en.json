@@ -1,0 +1,151 @@
+{
+  "type": "flowchart",
+  "title": "Agent sandbox initialization",
+  "nodes": [
+    {
+      "id": "need",
+      "label": "Sandbox needed",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "workflow"
+    },
+    {
+      "id": "runtime",
+      "label": "Acquire runtime",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Connect / create / restore",
+      "illustration": "runtime"
+    },
+    {
+      "id": "lock",
+      "label": "Acquire init lock",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "lock"
+    },
+    {
+      "id": "files",
+      "label": "Prepare config/files",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Mirror / Skills / input",
+      "illustration": "files"
+    },
+    {
+      "id": "check",
+      "label": "Run startup script?",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "check"
+    },
+    {
+      "id": "script",
+      "label": "Run startup script",
+      "row": 4,
+      "col": 1,
+      "kind": "backend",
+      "sub": "Save hash on success",
+      "illustration": "code"
+    },
+    {
+      "id": "skills",
+      "label": "Initialize Skills",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Run entries and scan",
+      "illustration": "skills"
+    },
+    {
+      "id": "ready",
+      "label": "Ready for this turn",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "ready"
+    }
+  ],
+  "edges": [
+    [
+      "need",
+      "runtime",
+      "",
+      "primary"
+    ],
+    [
+      "runtime",
+      "lock",
+      "",
+      "primary"
+    ],
+    [
+      "lock",
+      "files",
+      "",
+      "primary"
+    ],
+    [
+      "files",
+      "check",
+      "",
+      "primary"
+    ],
+    [
+      "check",
+      "script",
+      "Changed hash",
+      "default"
+    ],
+    [
+      "check",
+      "skills",
+      "Empty / same",
+      "primary"
+    ],
+    [
+      "script",
+      "skills",
+      "Done or warning",
+      "default"
+    ],
+    [
+      "skills",
+      "ready",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "runtime",
+      "file": "packages/service/core/ai/sandbox/application/runtime/service.ts",
+      "line": 127
+    },
+    {
+      "id": "files",
+      "file": "packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare.ts",
+      "line": 118
+    },
+    {
+      "id": "script",
+      "file": "packages/service/core/ai/sandbox/application/runtime/entrypoint.ts",
+      "line": 76
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

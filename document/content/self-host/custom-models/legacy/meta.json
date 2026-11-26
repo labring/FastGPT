@@ -1,0 +1,4 @@
+{
+  "title": "历史接入",
+  "pages": ["index", "bge-rerank", "marker", "chatglm2", "m3e", "chatglm2-m3e"]
+}

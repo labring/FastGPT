@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const originalDiagrams = require('../diagrams/originals.json');
 
 const DOCUMENT_ROOT = path.resolve(__dirname, '..');
 const IMGS_DIR = path.join(DOCUMENT_ROOT, 'public', 'imgs');
@@ -93,6 +94,22 @@ function extractReferencedImages(docContents) {
         referencedImages.add(match[1]);
       }
     }
+  }
+
+  // Optimized assets retain their original extension before .webp for source preservation.
+  for (const image of [...referencedImages]) {
+    if (image.startsWith('optimized/') && image.endsWith('.webp')) {
+      referencedImages.add(image.slice('optimized/'.length, -'.webp'.length));
+    }
+    if (image.startsWith('diagrams/') && image.endsWith('.light.svg')) {
+      referencedImages.add(image.replace(/\.light\.svg$/, '.dark.svg'));
+    }
+  }
+
+  // Retain historical source illustrations after their SeeCode replacements are published.
+  for (const image of originalDiagrams) {
+    referencedImages.add(image);
+    referencedImages.add(`optimized/${image}.webp`);
   }
 
   return referencedImages;
@@ -206,4 +223,6 @@ function cleanEmptyDirs(dirPath) {
   }
 }
 
-main();
+module.exports = { extractReferencedImages };
+
+if (require.main === module) main();

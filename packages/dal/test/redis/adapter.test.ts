@@ -11,6 +11,7 @@ const createClient = () => ({
   del: vi.fn(),
   eval: vi.fn(),
   get: vi.fn(),
+  mget: vi.fn(),
   hgetall: vi.fn(),
   info: vi.fn(),
   multi: vi.fn(),
@@ -86,6 +87,35 @@ describe('RedisCacheAdapter', () => {
     expect(getCommandClient).not.toHaveBeenCalled();
     await expect(adapter.get(key)).resolves.toBe('value');
     expect(getCommandClient).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads multiple string keys in one request and preserves misses and ordering', async () => {
+    client.mget.mockResolvedValue(['token', null]);
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
+    await expect(adapter.getMany([key, asRedisLogicalKey('cache:missing')])).resolves.toEqual([
+      'token',
+      null
+    ]);
+    expect(client.mget).toHaveBeenCalledExactlyOnceWith(
+      'fastgpt:cache:string',
+      'fastgpt:cache:missing'
+    );
+  });
+
+  it('does not resolve a Redis connection for an empty batch', async () => {
+    const getCommandClient = vi.fn(() => client as any);
+    const adapter = new RedisCacheAdapter({ getCommandClient });
+    await expect(adapter.getMany([])).resolves.toEqual([]);
+    expect(getCommandClient).not.toHaveBeenCalled();
+  });
+
+  it.each([null, [], [42]])('rejects malformed MGET replies: %j', async (reply) => {
+    client.mget.mockResolvedValue(reply);
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
+    await expect(adapter.getMany([key])).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'string.getMany'
+    });
   });
 
   it('atomically reads and deletes a value with GETDEL', async () => {

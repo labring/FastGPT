@@ -2,11 +2,22 @@ import z from 'zod';
 import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { createPaginationSchema } from '../../../api';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import {
+  OpenAPIStoreNodeItemTypeSchema,
+  PersistedOpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotsSchema } from '../../../../core/workflow/type/io';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema,
+  type StoreNodeItemType
+} from '../../../../core/workflow/type/node';
+import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
+import { AppTypeEnum } from '../../../../core/app/constants';
 
 export const PublishAppQuerySchema = z.object({
   appId: ObjectIdSchema.meta({
@@ -20,10 +31,6 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
-  description: '本次保存的应用节点配置'
-});
-
 const AppVersionEdgesSchema = z.array(StoreEdgeItemTypeSchema).default([]).meta({
   description: '版本内保存的应用连线配置'
 });
@@ -34,9 +41,100 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
 const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
   description: '本次写入的应用对话配置'
 });
+const PublishAppBodyCommonShape = {
+  edges: AppVersionEdgesSchema.optional().meta({
+    description: '本次保存的应用连线配置；未传时按空连线保存'
+  }),
+  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
+    description: '本次保存的应用对话配置'
+  }),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    example: [],
+    description:
+      '本次保存的已删除引用来源历史展示元数据，只保留仍被引用且来源不可解析的快照。未传时从当前草稿继承，传入空数组时清空'
+  }),
+  isPublish: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
+  }),
+  versionName: z.string().optional().meta({
+    example: '正式发布版',
+    description: '版本名称；自动保存时服务端会使用自动保存文案'
+  }),
+  autoSave: BoolSchema.optional().meta({
+    example: false,
+    description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
+  }),
+  returnWorkflow: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回本次保存后的工作流快照，用于建立同步基线；默认不返回'
+  })
+};
+
+const PublishAppNodesDescription = '本次保存的应用节点配置；未传时按空节点保存';
+
+// Workflow App 发布时以摘要保存 ToolSet 引用；完整配置校验只用于独立 ToolSet App 根节点。
+const PublishAppNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
+  description: '本次保存的应用节点配置'
+});
+
+const createPublishToolSetAppBodySchema = (type: AppTypeEnum) => {
+  const PublishedToolSetRootNodeSchema = OpenAPIStoreNodeItemTypeSchema.superRefine((node, ctx) => {
+    const runtimeConfig =
+      type === AppTypeEnum.mcpToolSet
+        ? McpToolSetRuntimeConfigSchema
+        : HttpToolSetRuntimeConfigSchema;
+    const configKey = type === AppTypeEnum.mcpToolSet ? 'mcpToolSet' : 'httpToolSet';
+    const otherConfigKey = type === AppTypeEnum.mcpToolSet ? 'httpToolSet' : 'mcpToolSet';
+    const isValidRoot =
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      runtimeConfig.safeParse(node.toolConfig?.[configKey]).success &&
+      node.toolConfig?.[otherConfigKey] === undefined;
+    if (isValidRoot) return;
+
+    ctx.addIssue({
+      code: 'custom',
+      path: ['toolConfig'],
+      message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
+    });
+  });
+  const nodesSchema = z
+    .array(z.union([PersistedOpenAPIStoreNodeItemTypeSchema, PublishedToolSetRootNodeSchema]))
+    .superRefine((nodes, ctx) => {
+      nodes.forEach((node, index) => {
+        if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
+        if (
+          index === 0 &&
+          nodes.length === 1 &&
+          PublishedToolSetRootNodeSchema.safeParse(node).success
+        ) {
+          return;
+        }
+
+        ctx.addIssue({
+          code: 'custom',
+          path: [index],
+          message: '完整工具集配置只允许匹配类型的工具集 App 唯一根节点'
+        });
+      });
+    });
+
+  return z.object({
+    ...PublishAppBodyCommonShape,
+    nodes: nodesSchema.optional().meta({
+      description: PublishAppNodesDescription
+    })
+  });
+};
 
 const AppVersionResourcesSchema = AppResourcesSchema.meta({
   description: '该版本引用的资源集合'
+});
+
+const AppVersionReferenceSnapshotsSchema = WorkflowReferenceSnapshotsSchema.default([]).meta({
+  description: '该版本内已删除引用来源的历史展示元数据'
 });
 
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
@@ -67,30 +165,30 @@ const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
 });
 
 export const PublishAppBodySchema = z.object({
+  ...PublishAppBodyCommonShape,
   nodes: PublishAppNodesSchema.optional().meta({
-    description: '本次保存的应用节点配置；未传时按空节点保存'
-  }),
-  edges: AppVersionEdgesSchema.optional().meta({
-    description: '本次保存的应用连线配置；未传时按空连线保存'
-  }),
-  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
-    description: '本次保存的应用对话配置'
-  }),
-  isPublish: BoolSchema.optional().meta({
-    example: true,
-    description:
-      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
-  }),
-  versionName: z.string().optional().meta({
-    example: '正式发布版',
-    description: '版本名称；自动保存时服务端会使用自动保存文案'
-  }),
-  autoSave: BoolSchema.optional().meta({
-    example: false,
-    description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
+    description: PublishAppNodesDescription
   })
 });
-export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;
+
+/** 工具集 App 保存完整根配置；鉴权后按实际 App 类型选择此 schema。 */
+export const PublishMcpToolSetAppBodySchema = createPublishToolSetAppBodySchema(
+  AppTypeEnum.mcpToolSet
+);
+export const PublishHttpToolSetAppBodySchema = createPublishToolSetAppBodySchema(
+  AppTypeEnum.httpToolSet
+);
+
+/** OpenAPI 入口无法读取 App 类型，同时声明普通工作流摘要和两类工具集 App 完整根配置。 */
+export const PublishAppRequestBodySchema = z.union([
+  PublishAppBodySchema,
+  PublishMcpToolSetAppBodySchema,
+  PublishHttpToolSetAppBodySchema
+]);
+
+export type PublishAppBodyType = Omit<z.input<typeof PublishAppBodySchema>, 'nodes'> & {
+  nodes?: StoreNodeItemType[];
+};
 
 /* ============================================================================
  * API: 发布或保存应用版本
@@ -100,9 +198,25 @@ export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;
  * Tags: ['版本管理']
  * ============================================================================ */
 
-export const PublishAppResponseSchema = z.undefined().meta({
-  description: '保存成功'
-});
+export const PublishAppResponseSchema = z
+  .object({
+    workflow: z
+      .object({
+        nodes: AppVersionNodesSchema,
+        edges: AppVersionEdgesSchema,
+        chatConfig: AppVersionChatConfigSchema,
+        referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+          description: '该版本内已删除引用来源的历史展示元数据'
+        })
+      })
+      .meta({
+        description: '本次实际保存的工作流，已完成迁移、模型归一化和详情补全'
+      })
+  })
+  .optional()
+  .meta({
+    description: 'returnWorkflow 为 true 时返回本次保存的工作流快照，否则不返回业务数据'
+  });
 export type PublishAppResponseType = z.infer<typeof PublishAppResponseSchema>;
 
 /* ============================================================================
@@ -184,8 +298,10 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
+
 export type GetAppVersionDetailResponseType = z.infer<typeof GetAppVersionDetailResponseSchema>;
 
 /* ============================================================================
@@ -221,8 +337,10 @@ export const GetLatestAppVersionResponseSchema = z.object({
   }),
   edges: AppVersionEdgesSchema,
   chatConfig: AppVersionChatConfigSchema,
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
+
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;
 
 /* ============================================================================

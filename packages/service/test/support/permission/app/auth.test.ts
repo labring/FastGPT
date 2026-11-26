@@ -5,6 +5,7 @@ import {
   AppReadChatLogRoleVal
 } from '@fastgpt/global/support/permission/app/constant';
 import {
+  AuthUserTypeEnum,
   ManagePermissionVal,
   OwnerPermissionVal,
   OwnerRoleVal,
@@ -12,6 +13,8 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { describe, expect, it, vi } from 'vitest';
+import { Types } from '@fastgpt/service/common/mongo';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 const { mockFindOne, mockGetTmbInfoByTmbId, mockGetTmbPermission, mockCheckIsAgentUser } =
   vi.hoisted(() => ({
@@ -37,7 +40,7 @@ vi.mock('@fastgpt/service/support/user/systemUser', () => ({
   checkIsAgentUser: mockCheckIsAgentUser
 }));
 
-import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 
 const appId = '507f1f77bcf86cd799439011';
 
@@ -54,7 +57,7 @@ const setup = () => {
   mockCheckIsAgentUser.mockReturnValue(false);
   mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
   mockAppQuery({
-    _id: appId,
+    _id: new Types.ObjectId(appId),
     teamId: 'team-a',
     tmbId: 'owner-tmb',
     type: AppTypeEnum.simple,
@@ -62,6 +65,37 @@ const setup = () => {
     quick: false
   });
 };
+
+describe('authApp', () => {
+  it.each([
+    { authType: AuthUserTypeEnum.token, apiKeyType: undefined },
+    { authType: AuthUserTypeEnum.apikey, apiKeyType: ApiKeyTypeEnum.personal }
+  ])('returns the actual string appId for $authType/$apiKeyType', async (certificate) => {
+    setup();
+    const otherAppId = '507f1f77bcf86cd799439012';
+    const requestedAppId = appId.toUpperCase();
+    const result = await authApp({
+      req: {
+        headers: {},
+        auth: {
+          ...certificate,
+          teamId: 'team-a',
+          tmbId: 'member-tmb',
+          appId: otherAppId
+        }
+      } as any,
+      appId: requestedAppId,
+      authToken: true,
+      authApiKey: true,
+      authAppApiKey: true,
+      per: ReadPermissionVal
+    });
+
+    expect(result.appId).toBe(appId);
+    expect(String(result.app._id)).toBe(result.appId);
+    expect(mockFindOne).toHaveBeenCalledWith({ _id: requestedAppId, deleteTime: null });
+  });
+});
 
 describe('authAppByTmbId', () => {
   it('uses resource ACL roles for ordinary apps', async () => {

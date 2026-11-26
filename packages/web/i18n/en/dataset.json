@@ -45,6 +45,12 @@
   "collection.permission.des.write": "Can modify collection content (sync / adjust training params)",
   "collection.permission.des.manage": "Can manage the collection's info and permissions",
   "collection_data_count": "Data amount",
+  "collection_list.create_time_asc": "Created time (oldest first)",
+  "collection_list.create_time_desc": "Created time (newest first)",
+  "collection_list.name_asc": "Name (A–Z)",
+  "collection_list.name_desc": "Name (Z–A)",
+  "collection_list.update_time_asc": "Updated time (oldest first)",
+  "collection_list.update_time_desc": "Updated time (newest first)",
   "collection_metadata_custom_pdf_parse": "PDF enhancement analysis",
   "collection_name": "Collection name",
   "collection_sync": "Sync data",
@@ -298,5 +304,10 @@
   "process.Synonym_Rebuild": "Synonym rebuild",
   "data_index_status_synonym_pending": "Pending synonym rebuild",
   "data_index_status_synonym_running": "Rebuilding synonyms",
-  "data_index_status_synonym_failed": "Synonym rebuild failed"
+  "data_index_status_synonym_failed": "Synonym rebuild failed",
+  "search_targets_required": "At least one dataset is required",
+  "search_targets_must_be_datasets": "Search targets must be datasets, not folders",
+  "search_query_images_must_belong_to_team": "Query images must be temporary files uploaded by the current team",
+  "search_filters_unsupported": "Dataset search filters are not supported in this edition",
+  "search_embedding_models_must_match": "Multi-dataset vector search requires all datasets to use the same embedding model"
 }

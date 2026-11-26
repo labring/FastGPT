@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -5,6 +6,9 @@ import { configureAgentQuota } from './quotaTestUtils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -18,13 +22,16 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import {
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppDraftVersion } from '@fastgpt/service/core/app/version/controller';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
@@ -75,6 +82,42 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const referenceSnapshots: NonNullable<AppVersionSchemaType['referenceSnapshots']> = [
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const validEdge = {
+      source: 'autosave-chat-node',
+      target: 'consumer',
+      sourceHandle: 'source',
+      targetHandle: 'target'
+    };
+    await MongoApp.updateOne({ _id: appId }, { type: AppTypeEnum.workflow });
+    const [readableDataset, privateDataset] = await MongoDataset.create([
+      {
+        name: 'readable-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      },
+      {
+        name: 'private-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      }
+    ]);
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: users.members[0].teamId,
+      resourceId: String(readableDataset._id),
+      tmbId: users.members[1].tmbId,
+      permission: ReadPermissionVal
+    });
     await MongoAppVersion.updateOne(
       { appId, isPublish: true },
       {
@@ -93,11 +136,70 @@ describe('Copy', () => {
                 }
               ],
               outputs: []
+            },
+            {
+              nodeId: 'dataset-node',
+              flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+              name: 'Dataset Search',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.datasetSelectList,
+                  renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+                  value: [
+                    { datasetId: String(readableDataset._id) },
+                    { datasetId: String(privateDataset._id) }
+                  ]
+                }
+              ],
+              outputs: []
             }
-          ]
+          ],
+          referenceSnapshots
         }
       }
     );
+    await MongoAppVersion.create({
+      appId,
+      tmbId: users.members[0].tmbId,
+      nodes: [
+        {
+          nodeId: 'autosave-chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'AutoSave Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'autosave-copy-model',
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'consumer',
+          name: 'Consumer',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.answerText,
+              label: 'Answer',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: ['deleted-node', 'output']
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [validEdge, { ...validEdge, source: 'deleted-node' }],
+      chatConfig: {},
+      referenceSnapshots: [
+        ...referenceSnapshots,
+        { reference: ['unused-node', 'output'], sourceLabel: 'Unused node' }
+      ],
+      isAutoSave: true
+    });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -146,21 +248,56 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    const copiedVersion = await MongoAppVersion.findOne({
-      appId: res4.data?.appId,
-      isPublish: true
-    }).lean();
+    const copiedVersion = await getAppDraftVersion(res4.data?.appId);
+    expect(copiedVersion?.edges).toEqual([validEdge]);
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
       getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
+    expect(copiedVersion?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(copiedVersion?.nodes[0].nodeId).toBe('autosave-chat-node');
     expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
         value: expectedFallbackModelId
       })
     ]);
+    expect(copiedVersion?.resources).toEqual([{ type: 'model', id: expectedFallbackModelId }]);
+  });
+
+  it('preserves a historical invalid version and prevents copying its parent cycle', async () => {
+    const { owner } = await getFakeUsers(0);
+    const app = await MongoApp.create({
+      name: 'Historical Loop',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const origin = await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'loop',
+          parentNodeId: 'loop',
+          flowNodeType: FlowNodeTypeEnum.loopRun,
+          name: 'Loop',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+    const result = await Call<CopyAppBodyType>(copyapi.default, {
+      auth: owner,
+      body: { appId: String(app._id) }
+    });
+    expect(result.error).toMatchObject({
+      name: 'UserConfigError',
+      message: 'Circular workflow parent: loop'
+    });
+    expect(await MongoApp.countDocuments({ teamId: owner.teamId })).toBe(1);
+    expect((await MongoAppVersion.findById(origin._id).lean())?.nodes[0].parentNodeId).toBe('loop');
   });
 
   it.each([AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow])(
@@ -229,19 +366,67 @@ describe('Copy', () => {
           type: AppTypeEnum.chatAgent
         }))
       );
+      const inputSchema = {
+        type: 'object',
+        properties: { query: { type: 'string' } }
+      };
+      const nodes = (() => {
+        if (type === AppTypeEnum.mcpToolSet) {
+          return [
+            getMCPToolSetRuntimeNode({
+              url: 'https://mcp.example.com',
+              toolList: [{ name: 'search', description: 'Search', inputSchema }]
+            })
+          ];
+        }
+        if (type === AppTypeEnum.httpToolSet) {
+          return [
+            getHTTPToolSetRuntimeNode({
+              baseUrl: 'https://api.example.com',
+              apiSchemaStr: '{"openapi":"3.0.0"}',
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search',
+                  path: '/search',
+                  method: 'GET',
+                  inputSchema
+                }
+              ]
+            })
+          ];
+        }
+        return [];
+      })();
       const sourceId = await createapi.onCreateApp({
         teamId: owner.teamId,
         tmbId: owner.tmbId,
         name: 'tool',
         type,
-        nodes: []
+        nodes
       });
       const copy = () =>
         Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(copyapi.default, {
           auth: owner,
           body: { appId: sourceId }
         });
-      expect((await copy()).code).toBe(200);
+      const copied = await copy();
+      expect(copied.code).toBe(200);
+      if (type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet) {
+        const copiedVersion = await MongoAppVersion.findOne({
+          appId: copied.data?.appId,
+          isPublish: true
+        }).lean();
+        const toolSet =
+          type === AppTypeEnum.mcpToolSet
+            ? copiedVersion?.nodes[0].toolConfig?.mcpToolSet
+            : copiedVersion?.nodes[0].toolConfig?.httpToolSet;
+        expect(toolSet?.toolList[0]).toMatchObject({
+          name: 'search',
+          description: 'Search',
+          inputSchema: JSON.stringify(inputSchema)
+        });
+      }
       await MongoApp.insertMany(
         Array.from({ length: 998 }, () => ({
           teamId: owner.teamId,
@@ -281,7 +466,7 @@ describe('Copy', () => {
         });
       expect((await copy()).code).toBe(200);
       await MongoApp.insertMany(
-        Array.from({ length: serviceEnv.APP_FOLDER_MAX_AMOUNT - 2 }, () => ({
+        Array.from({ length: getTestInstanceConfig().resource.appFolderMaxAmount - 2 }, () => ({
           teamId: owner.teamId,
           tmbId: owner.tmbId,
           name: 'existing folder',
@@ -290,7 +475,7 @@ describe('Copy', () => {
       );
       expect((await copy()).error).toBe(TeamErrEnum.appFolderAmountNotEnough);
       expect(await MongoApp.countDocuments({ teamId: owner.teamId, type })).toBe(
-        serviceEnv.APP_FOLDER_MAX_AMOUNT
+        getTestInstanceConfig().resource.appFolderMaxAmount
       );
     }
   );

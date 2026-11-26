@@ -1,18 +1,21 @@
 ---
 title: Add Model Presets
-description: Model preset notes for the FastGPT plugin system
+description: Configure and maintain built-in provider and model presets inside the FastGPT plugin repository.
 ---
 
 Model presets are maintained in the `fastgpt-plugin` repository. They provide FastGPT with built-in model providers, model lists, model capabilities, and default request parameters. After FastGPT loads these static presets, users can select the corresponding models in model configuration, AIProxy channels, and plugin-related features.
 
 This page follows the plugin system code structure for version 1.0 and later. The old `modules/model/*` paths are no longer the primary maintenance entry point.
 
+Contribute this extension by updating static configuration and submitting repository changes. Follow the [validation](#validation) steps on this page.
+
 ## Related Directories
 
 ```text
 packages/infrastructure/src/static-data/models/
 ├── index.ts
-├── model.ts
+├── model-static.ts
+├── providers.ts
 ├── type.ts
 ├── channel-avatar/
 └── provider/
@@ -22,8 +25,9 @@ packages/infrastructure/src/static-data/models/
 ```
 
 - `provider/{Provider}/index.ts`: model presets for one provider.
-- `index.ts`: registers all providers and generates `staticModelList` and provider lists.
-- `model.ts`: maintains provider display names in `ModelProviderMap` and AIProxy channels in `aiproxyChannels`.
+- `index.ts`: exports static model presets, provider lists, and channel declarations.
+- `model-static.ts`: registers all providers and builds `staticModelList`.
+- `providers.ts`: maintains provider display names in `ModelProviderMap` and AIProxy channels in `aiproxyChannels`.
 - `type.ts`: defines schemas for provider configs and model presets.
 - `provider/{Provider}/logo.svg`: provider logo.
 - `channel-avatar/`: AIProxy channel avatars.
@@ -202,7 +206,7 @@ export const staticModelProviderConfigs: ProviderConfigType[] = [newProvider];
 
 ### 3. Add provider display names
 
-Add multilingual display names to `ModelProviderMap` in `packages/infrastructure/src/static-data/models/model.ts`:
+Add multilingual display names to `ModelProviderMap` in `packages/infrastructure/src/static-data/models/providers.ts`:
 
 ```ts
 NewProvider: {
@@ -250,7 +254,7 @@ Use the current `core/model/chtype.go` file on the AIProxy main branch as the so
 
 ### 2. Add the protocol declaration in fastgpt-plugin
 
-After confirming AIProxy supports the protocol, add an entry to `aiproxyChannels` in `packages/infrastructure/src/static-data/models/model.ts`:
+After confirming AIProxy supports the protocol, add an entry to `aiproxyChannels` in `packages/infrastructure/src/static-data/models/providers.ts`:
 
 ```ts
 export const aiproxyChannels: AIProxyChannelsType = [
@@ -261,7 +265,8 @@ export const aiproxyChannels: AIProxyChannelsType = [
       'zh-CN': '蚂蚁百灵',
       'zh-Hant': '螞蟻百靈'
     },
-    avatar: 'antling'
+    avatar: 'antling',
+    website: 'https://ant-ling.com'
   }
 ];
 ```
@@ -273,6 +278,7 @@ Field reference:
 | `channelId` | Numeric AIProxy `ChannelType` ID. It must match `core/model/chtype.go` |
 | `name`      | Multilingual display name in the FastGPT channel list                  |
 | `avatar`    | Channel avatar filename without the extension                          |
+| `website`   | Official website URL of the channel provider                           |
 
 Also add the avatar file under `channel-avatar/`:
 
@@ -299,3 +305,14 @@ pnpm test
 ```
 
 Before submitting, review the diff under `packages/infrastructure/src/static-data/models/` and make sure no unrelated provider models were removed, model types are correct, and the new provider logo or `channel-avatar` file is included.
+
+
+## Loading And End-to-End Verification In FastGPT
+
+After source validation, load and verify the model preset in FastGPT:
+
+1. **Restart plugin service**: Update and restart the `fastgpt-plugin` deployment to load the new static presets. In self-hosted environments, restart the `fastgpt-plugin` container.
+2. **Create model from template**: Sign in to FastGPT with the `root` system administrator account, go to **Admin → (Commercial Edition: System Resources →) System Models**, and click **New Model → Create from Template** on the **Model Config** tab.
+3. **Select new preset**: Search and check the newly added model preset in the **Select Model Template** modal table and confirm to import its default context window and max token limits.
+4. **Configure model channel**: Switch to the **Model provider** tab (or click **Configure Model Channel** when prompted) to add or edit an AIProxy channel with the API Key, Base URL, and model mapping.
+5. **Verify request execution**: Open any Chat Agent or debugging window, select the configured model, and send a test prompt to verify streaming responses.

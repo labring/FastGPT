@@ -11,6 +11,29 @@ export const formatStorePrice2Read = (val = 0, multiple = 1) => {
   return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
 };
 
+/** 账单只记录实际发生的缓存用量，历史零值也按无用量显示。 */
+export const getUsedCacheTokens = (tokens = 0) =>
+  tokens > 0 && Number.isFinite(tokens) ? tokens : undefined;
+
+/** 提取正值缓存 Token 字段，省略零值与未定义项，供节点响应构造统一复用。 */
+export const pickUsedCacheTokens = ({
+  cacheReadTokens,
+  cacheCreationTokens
+}: {
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+}) => {
+  const usedCacheReadTokens = getUsedCacheTokens(cacheReadTokens);
+  const usedCacheCreationTokens = getUsedCacheTokens(cacheCreationTokens);
+
+  return {
+    ...(usedCacheReadTokens !== undefined ? { cacheReadTokens: usedCacheReadTokens } : {}),
+    ...(usedCacheCreationTokens !== undefined
+      ? { cacheCreationTokens: usedCacheCreationTokens }
+      : {})
+  };
+};
+
 export const getUsageSourceByAuthType = ({
   shareId,
   authType

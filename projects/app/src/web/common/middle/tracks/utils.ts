@@ -1,12 +1,12 @@
 import { POST } from '@/web/common/api/request';
 import { ClientTrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import type {
-  PushTrackBodyType,
+  PushClientTrackBodyType,
   PushTrackDataType
 } from '@fastgpt/global/openapi/common/other/api';
 import { useSystemStore } from '../../system/useSystemStore';
 
-const createTrack = ({ event, data }: PushTrackBodyType) => {
+const createTrack = ({ event, data }: PushClientTrackBodyType) => {
   if (!useSystemStore.getState()?.feConfigs?.isPlus) return;
 
   return POST('/common/tracks/push', {

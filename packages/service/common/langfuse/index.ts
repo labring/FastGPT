@@ -1,22 +1,25 @@
+import { serviceEnv } from '../../env';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { trace, type AttributeValue } from '@opentelemetry/api';
 import { addSpanProcessor, type SpanProcessor } from '@fastgpt-sdk/otel/tracing';
-import type { LangfuseConfigType } from '@fastgpt/global/common/system/types';
-import { serviceEnv } from '../../env';
 
 type RuntimeConfig = { secretKey: string; publicKey: string; baseUrl?: string };
+/** trace：根 workflow span，承载 trace 级属性；observation：节点 span，承载 observation 级属性。 */
+type LangfuseSpanKind = 'trace' | 'observation';
 type PendingLangfuseSpan = {
   attributes: Record<string, AttributeValue>;
   consumed: boolean;
+  kind: LangfuseSpanKind;
 };
 type LangfuseTracingState = {
   current: SpanProcessor | null;
   hash: string;
   pending: Promise<void> | null;
-  // refreshLangfuseTracing 也会由系统配置加载触发，避免 OTel 未启用时创建后台客户端。
+  // 仅在 OTel 已启用后创建 processor，未配置完整 ENV 时不创建客户端。
   initialized: boolean;
   initialAttributesStorage: AsyncLocalStorage<PendingLangfuseSpan>;
   spanAttributes: Map<string, Record<string, AttributeValue>>;
+  spanKinds: Map<string, LangfuseSpanKind>;
 };
 
 // instrumentation 与 API 路由会编出两份模块实例，模块级变量互不可见。
@@ -29,7 +32,8 @@ const langfuseTracingState: LangfuseTracingState = (langfuseTracingGlobal.langfu
   pending: null,
   initialized: false,
   initialAttributesStorage: new AsyncLocalStorage(),
-  spanAttributes: new Map()
+  spanAttributes: new Map(),
+  spanKinds: new Map()
 });
 
 type ProcessorSpan = Parameters<SpanProcessor['onStart']>[0];
@@ -72,17 +76,21 @@ const facade: SpanProcessor = {
 
     pendingSpan.consumed = true;
     const privateAttributes = { ...pendingSpan.attributes };
-    langfuseTracingState.spanAttributes.set(span.spanContext().spanId, privateAttributes);
+    const spanId = span.spanContext().spanId;
+    langfuseTracingState.spanAttributes.set(spanId, privateAttributes);
+    langfuseTracingState.spanKinds.set(spanId, pendingSpan.kind);
     langfuseTracingState.current.onStart(
       createLangfuseSpanView(span, privateAttributes),
       parentContext
     );
   },
   onEnd(span) {
-    const privateAttributes = langfuseTracingState.spanAttributes.get(span.spanContext().spanId);
+    const spanId = span.spanContext().spanId;
+    const privateAttributes = langfuseTracingState.spanAttributes.get(spanId);
     if (!langfuseTracingState.current || !privateAttributes) return;
 
-    langfuseTracingState.spanAttributes.delete(span.spanContext().spanId);
+    langfuseTracingState.spanAttributes.delete(spanId);
+    langfuseTracingState.spanKinds.delete(spanId);
     langfuseTracingState.current.onEnd(createLangfuseSpanView(span, privateAttributes));
   },
   forceFlush() {
@@ -94,21 +102,46 @@ const facade: SpanProcessor = {
     langfuseTracingState.hash = '';
     langfuseTracingState.initialized = false;
     langfuseTracingState.spanAttributes.clear();
+    langfuseTracingState.spanKinds.clear();
     await processor?.shutdown();
   }
 };
 
-/** 标记当前同步调用链中紧接着创建的 span，仅向 Langfuse processor 暴露这些属性。 */
-export const prepareLangfuseSpan = (attributes?: Record<string, AttributeValue>) => {
+/**
+ * 标记当前同步调用链中紧接着创建的 span，仅向 Langfuse processor 暴露这些属性。
+ * kind 决定该 span 接受 trace 级还是 observation 级属性：未建 span 的节点不应把
+ * observation 属性写到当前 active 的父 span 上。
+ */
+export const prepareLangfuseSpan = (
+  attributes?: Record<string, AttributeValue>,
+  kind: LangfuseSpanKind = 'observation'
+) => {
   langfuseTracingState.initialAttributesStorage.enterWith({
     attributes: attributes ?? {},
-    consumed: !attributes
+    consumed: !attributes,
+    kind
   });
 };
 
-/** 更新当前 active span 的 Langfuse 私有属性，不写入通用 OTEL span。 */
-export const setActiveLangfuseAttributes = (attributes: Record<string, AttributeValue>) => {
+const getActiveLangfuseSpanId = (kind: LangfuseSpanKind) => {
   const spanId = trace.getActiveSpan()?.spanContext().spanId;
+  if (!spanId) return;
+  // 只允许写入由对应 prepareLangfuseSpan 标记的 span，避免污染父 span 或未托管的 span。
+  if (langfuseTracingState.spanKinds.get(spanId) !== kind) return;
+  return spanId;
+};
+
+/** 更新当前 active 节点 span 的 Langfuse 私有属性，不写入通用 OTEL span。 */
+export const setActiveLangfuseAttributes = (attributes: Record<string, AttributeValue>) => {
+  const spanId = getActiveLangfuseSpanId('observation');
+  if (!spanId) return;
+
+  Object.assign(langfuseTracingState.spanAttributes.get(spanId) ?? {}, attributes);
+};
+
+/** 更新当前 active 根 trace span 的 Langfuse 私有属性（如最终输出）。 */
+export const setActiveLangfuseTraceAttributes = (attributes: Record<string, AttributeValue>) => {
+  const spanId = getActiveLangfuseSpanId('trace');
   if (!spanId) return;
 
   Object.assign(langfuseTracingState.spanAttributes.get(spanId) ?? {}, attributes);
@@ -117,15 +150,9 @@ export const setActiveLangfuseAttributes = (attributes: Record<string, Attribute
 const value = (v?: string) => v?.trim() || undefined;
 
 function resolve(): RuntimeConfig | undefined {
-  const runtime = global.systemEnv?.langfuse as LangfuseConfigType | undefined;
-  const hasRuntime = !!(
-    value(runtime?.secretKey) ||
-    value(runtime?.publicKey) ||
-    value(runtime?.baseUrl)
-  );
-  const secretKey = hasRuntime ? value(runtime?.secretKey) : value(serviceEnv.LANGFUSE_SECRET_KEY);
-  const publicKey = hasRuntime ? value(runtime?.publicKey) : value(serviceEnv.LANGFUSE_PUBLIC_KEY);
-  const baseUrl = hasRuntime ? value(runtime?.baseUrl) : value(serviceEnv.LANGFUSE_BASE_URL);
+  const secretKey = value(serviceEnv.LANGFUSE_SECRET_KEY);
+  const publicKey = value(serviceEnv.LANGFUSE_PUBLIC_KEY);
+  const baseUrl = value(serviceEnv.LANGFUSE_BASE_URL);
   if (!secretKey || !publicKey) return;
   return { secretKey, publicKey, ...(baseUrl ? { baseUrl } : {}) };
 }
@@ -142,7 +169,7 @@ export async function initLangfuseTracing() {
   await refreshLangfuseTracing();
 }
 
-/** 根据最新系统配置替换 Langfuse processor，并在切换前刷新旧实例。 */
+/** 根据当前进程 ENV 创建 Langfuse processor，并在重新初始化时释放旧实例。 */
 export async function refreshLangfuseTracing() {
   if (!langfuseTracingState.initialized) return;
   if (langfuseTracingState.pending) return langfuseTracingState.pending;

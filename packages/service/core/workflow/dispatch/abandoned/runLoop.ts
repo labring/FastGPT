@@ -8,10 +8,11 @@ import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash-es';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
-import { serviceEnv } from '../../../../env';
 import { getNestedEndOutputValue } from '../loop/service';
+import { getWorkflowMaxLoopTimes } from '../../constants';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
-import { getWorkflowRuntimeSummary } from '../utils/summary';
+import { createWorkflowRuntimeSummary, getWorkflowRuntimeSummary } from '../utils/summary';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -22,12 +23,12 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchLoop = async (props: Props): Promise<Response> => {
+  const { checkIsStopping } = getWorkflowContext();
   const {
     params,
     runtimeEdges,
     lastInteractive,
     runtimeNodes,
-    checkIsStopping,
     node: { name }
   } = props;
   const { loopInputArray = [], childrenNodeIdList = [] } = params;
@@ -36,8 +37,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  // Max loop times
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  // Max loop times：与 loopRun/parallelRun 共用实例配置 getter
+  const maxLength = getWorkflowMaxLoopTimes();
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
@@ -80,14 +81,26 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     index++;
 
-    const response = await runWorkflow({
-      ...props,
-      lastInteractive: interactiveData?.childrenResponse,
-      runtimeNodes,
-      runtimeEdges: cloneDeep(
-        storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
-      )
+    // 旧 Loop 保留共享变量兼容行为，仅为每轮执行派生独立的响应统计。
+    const parentContext = getWorkflowContext();
+    const iterationContext = parentContext.getChildContext({
+      nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+        workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+        ...(props.nodeResponseParentId !== undefined
+          ? { defaultParentId: props.nodeResponseParentId }
+          : {})
+      })
     });
+    const response = await runWithContext(iterationContext, () =>
+      runWorkflow({
+        ...props,
+        lastInteractive: interactiveData?.childrenResponse,
+        runtimeNodes,
+        runtimeEdges: cloneDeep(
+          storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
+        )
+      })
+    );
     const childSummary = getWorkflowRuntimeSummary(response);
 
     // Concat runtime response
@@ -105,7 +118,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       llmInputTokens: childSummary.llmInputTokens,
       llmOutputTokens: childSummary.llmOutputTokens,
       totalPoints: iterationPoints,
-      citeCollectionIds: childSummary.citeCollectionIds
+      citeCollectionIds: childSummary.citeCollectionIds,
+      hasAgentSandbox: childSummary.hasAgentSandbox
     });
 
     collectResponseFeedbacks(response, customFeedbacks);

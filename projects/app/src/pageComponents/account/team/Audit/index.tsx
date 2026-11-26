@@ -1,5 +1,6 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -19,13 +20,36 @@ import {
   type MultiSelectFilterValue,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
-import { processAuditMetadata } from './processors';
+import {
+  formatAuditSummary,
+  resolveAuditResources
+} from '@fastgpt/web/support/user/audit/presenter';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import { downloadFetch } from '@/web/common/system/utils';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
+import dayjs from 'dayjs';
+import AuditResourceLink from './AuditResourceLink';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useSafeTranslation();
+  /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
+  const getDefaultAuditDateRange = (now = new Date()): DateRangeType => {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    return getLocalDateRange(from, now);
+  };
+
+  const { t, i18n } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [dateRange, setDateRange] = useState(getDefaultAuditDateRange);
+  const exportInProgress = useRef(false);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
     useState<MultiSelectFilterValue<TeamAuditEvent>>(createMultiSelectFilter());
@@ -42,10 +66,12 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
   const searchParams = useMemo(
     () => ({
+      dateStart: formatToISOWithTimezone(dateRange.from),
+      dateEnd: formatToISOWithTimezone(dateRange.to),
       tmbIds: toMultiSelectFilterQuery(memberFilter),
       events: toMultiSelectFilterQuery(eventFilter)
     }),
-    [eventFilter, memberFilter]
+    [dateRange, eventFilter, memberFilter]
   );
 
   const {
@@ -63,6 +89,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     scrollContainerRef
   });
 
+  const { run: exportLogs, loading: exporting } = useRequest(async () => {
+    if (exportInProgress.current) return;
+    exportInProgress.current = true;
+    try {
+      await downloadFetch({
+        url: '/api/proApi/support/user/team/audit/export',
+        filename: `${t('account_team:audit_export_filename')}_${dayjs(dateRange.from).format('YYYY-MM-DD')}_${dayjs(dateRange.to).format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`,
+        body: { ...searchParams, locale: parseLocale(i18n.language) ?? 'en' }
+      });
+    } finally {
+      exportInProgress.current = false;
+    }
+  });
   const isLoading = loadingLogs;
 
   return (
@@ -85,7 +124,15 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           gap={2}
           wrap={'wrap'}
         >
+          <DateRangePicker
+            formLabel={t('account_team:log_time')}
+            dateRange={dateRange}
+            defaultDate={dateRange}
+            historyLimitDays={null}
+            onSuccess={setDateRange}
+          />
           <TeamMemberFilter
+            activeOnly={false}
             title={t('account_team:log_user')}
             value={memberFilter}
             onChange={setMemberFilter}
@@ -98,6 +145,18 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             labels={labels}
             showSearch
           />
+          <MyTooltip label={total === 0 ? t('account_team:audit_empty') : ''}>
+            <Box>
+              <Button
+                variant={'whitePrimary'}
+                isLoading={exporting}
+                isDisabled={isLoading || total === 0}
+                onClick={exportLogs}
+              >
+                {t('common:Export')}
+              </Button>
+            </Box>
+          </MyTooltip>
         </Flex>
       </Flex>
 
@@ -130,31 +189,65 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr bgColor={'white !important'}>
-                <Th w={'18%'} borderLeftRadius="6px" bgColor="myGray.100">
-                  {t('account_team:log_user')}
-                </Th>
-                <Th w={'20%'} bgColor="myGray.100">
+                <Th w={'16%'} borderLeftRadius="6px" bgColor="myGray.100">
                   {t('account_team:log_time')}
                 </Th>
-                <Th w={'18%'} bgColor="myGray.100">
+                <Th w={'14%'} bgColor="myGray.100">
+                  {t('account_team:log_user')}
+                </Th>
+                <Th w={'15%'} bgColor="myGray.100">
                   {t('account_team:log_type')}
                 </Th>
-                <Th w={'44%'} bgColor="myGray.100">
+                <Th w={'25%'} bgColor="myGray.100">
+                  {t('account_team:log_resource')}
+                </Th>
+                <Th w={'30%'} bgColor="myGray.100">
                   {t('account_team:log_details')}
                 </Th>
               </Tr>
             </Thead>
             <Tbody>
+              {auditLog.length === 0 && !isLoading && (
+                <Tr>
+                  <Td colSpan={5}>
+                    <EmptyTip
+                      text={
+                        <Flex direction="column" alignItems="center">
+                          <Box>{t('account_team:audit_empty')}</Box>
+                          <Button
+                            variant={'whiteBase'}
+                            mt={3}
+                            onClick={() => {
+                              setDateRange(getDefaultAuditDateRange());
+                              setMemberFilter(createMultiSelectFilter());
+                              setEventFilter(createMultiSelectFilter());
+                            }}
+                          >
+                            {t('account_team:audit_reset_filters')}
+                          </Button>
+                        </Flex>
+                      }
+                    />
+                  </Td>
+                </Tr>
+              )}
               {auditLog.map((log) => {
-                const i18nData = auditLogMap[log.event];
-                const metadata = processAuditMetadata({
+                const i18nData = log.event === 'unknown' ? undefined : auditLogMap[log.event];
+                const resources = resolveAuditResources({
                   event: log.event,
+                  resources: log.resources,
+                  metadata: log.metadata
+                });
+                const summary = formatAuditSummary({
+                  event: log.event,
+                  resources: log.resources,
                   metadata: log.metadata,
                   t
                 });
 
-                return i18nData ? (
+                return (
                   <Tr key={log._id} overflow={'unset'}>
+                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>
                       <UserBox
                         sourceMember={log.sourceMember}
@@ -163,17 +256,27 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
-                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
-                    <Td>{t(i18nData.typeLabel)}</Td>
+                    <Td>{i18nData ? t(i18nData.typeLabel) : log.event}</Td>
+                    <Td whiteSpace="normal" overflowWrap="anywhere">
+                      {resources.length > 0 ? (
+                        <Flex direction="column" align="flex-start" gap={1}>
+                          {resources.map((resource) => (
+                            <AuditResourceLink key={resource.key} resource={resource} />
+                          ))}
+                        </Flex>
+                      ) : (
+                        '-'
+                      )}
+                    </Td>
                     <Td
-                      whiteSpace={['nowrap', 'normal']}
+                      whiteSpace={['pre', 'pre-line']}
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content as any, metadata)}
+                      {summary}
                     </Td>
                   </Tr>
-                ) : null;
+                );
               })}
             </Tbody>
           </Table>

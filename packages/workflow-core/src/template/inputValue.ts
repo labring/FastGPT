@@ -1,10 +1,32 @@
-import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import {
+  getSelectedInputRenderType,
+  getWorkflowDatasetFilterInputKind,
+  isLegacyWorkflowDatasetFilterReference,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
 import { isDatasetTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  type FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+/** 校验识别引用控件和旧版整项标签筛选引用，其他控件的字面量数组保留原义。 */
+export const isWorkflowInputReferenceForValidation = ({
+  input,
+  flowNodeType,
+  value
+}: {
+  input: FlowNodeInputItemType;
+  flowNodeType: FlowNodeTypeEnum;
+  value: unknown;
+}) =>
+  nodeInputIsReference(input) ||
+  (getWorkflowDatasetFilterInputKind(input, flowNodeType) === 'direct' &&
+    isLegacyWorkflowDatasetFilterReference(value));
 
 /**
  * 将编辑态输入投影为校验使用的运行时值，不修改原对象。
@@ -31,7 +53,8 @@ export const getWorkflowInputValueForValidation = ({
     return config;
   }
   if (
-    getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.datasetTagFilter &&
+    (input.key === NodeInputKeyEnum.collectionFilterMatch ||
+      getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.datasetTagFilter) &&
     isDatasetTagFilterValue(value)
   ) {
     return formatCollectionFilterMatchParam({ value }) ?? '';

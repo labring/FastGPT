@@ -21,13 +21,15 @@ import {
 } from '../../input';
 import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
+import { isEmptyModelValue } from '../../../../ai/model/reference';
+import { DEFAULT_AI_CHAT_QUOTE_ROLE } from './type';
 
 export const AiChatQuoteRole = {
   key: NodeInputKeyEnum.aiChatQuoteRole,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  value: 'system' // user or system
+  value: DEFAULT_AI_CHAT_QUOTE_ROLE // user or system
 };
 export const AiChatQuoteTemplate = {
   key: NodeInputKeyEnum.aiChatQuoteTemplate,
@@ -190,11 +192,14 @@ export const AiChatModule: FlowNodeTemplateType = {
         )?.value;
         if (reasoningEffort === 'none') return true;
 
-        const model =
-          inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
-          inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
-        const modelItem = llmModelMap[model];
-        return modelItem?.config.reasoning !== true;
+        const modelId = inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value;
+        if (!isEmptyModelValue(modelId)) {
+          return typeof modelId !== 'string' || llmModelMap.byId[modelId]?.reasoning !== true;
+        }
+        const legacyName = inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
+        return (
+          typeof legacyName !== 'string' || llmModelMap.byLegacyName[legacyName]?.reasoning !== true
+        );
       }
     },
     Output_Template_Error_Message

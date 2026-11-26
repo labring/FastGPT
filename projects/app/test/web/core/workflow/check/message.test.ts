@@ -31,7 +31,10 @@ describe('workflow check message compatibility', () => {
     [WorkflowCheckIssueCodeEnum.toolCallEmpty, '需配置工具或开启虚拟机'],
     [WorkflowCheckIssueCodeEnum.toolWaitingConfig, '该工具尚未激活，请激活使用'],
     [WorkflowCheckIssueCodeEnum.toolNoPermission, '当前账号无权限访问该资源'],
-    [WorkflowCheckIssueCodeEnum.resourceMissing, '引用的知识库或技能已删除或不可用，请删除']
+    [WorkflowCheckIssueCodeEnum.resourceMissing, '引用的知识库或技能已删除或不可用，请删除'],
+    [WorkflowCheckIssueCodeEnum.agentDatasetAbnormal, '引用的知识库存在异常，请处理'],
+    [WorkflowCheckIssueCodeEnum.agentSkillAbnormal, '引用的技能存在异常，请处理'],
+    [WorkflowCheckIssueCodeEnum.agentToolAbnormal, '引用的工具存在异常，请处理']
   ] as const)('preserves existing copy for %s', (issueCode, expected) => {
     expect(getWorkflowCheckIssueMessage({ issueCode, t, params: { inputName: '参数' } })).toBe(
       expected
@@ -39,9 +42,14 @@ describe('workflow check message compatibility', () => {
   });
 
   it('keeps pending statuses independent of translated text and handles blank or unknown errors', () => {
-    expect(getWorkflowCheckIssueUIStatus(WorkflowCheckIssueCodeEnum.resourceMissing)).toBe(
-      'pending_handle'
-    );
+    for (const code of [
+      WorkflowCheckIssueCodeEnum.resourceMissing,
+      WorkflowCheckIssueCodeEnum.agentDatasetAbnormal,
+      WorkflowCheckIssueCodeEnum.agentSkillAbnormal,
+      WorkflowCheckIssueCodeEnum.agentToolAbnormal
+    ]) {
+      expect(getWorkflowCheckIssueUIStatus(code)).toBe('pending_handle');
+    }
     expect(getWorkflowCheckIssueUIStatus(WorkflowCheckIssueCodeEnum.requiredInputEmpty)).toBe(
       'pending_improve'
     );

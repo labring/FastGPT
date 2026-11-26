@@ -26,10 +26,12 @@ export const getLastAiDataId = (records: ChatSiteItemType[]) =>
  * 等待服务端预创建的当前轮记录可见。
  *
  * 生成槽会先于 Human/AI placeholder 被占用，冲突请求可能在预创建事务提交前到达。
- * 普通新一轮必须观察到不同于旧 AI 的 dataId；交互续跑复用上一条 AI，可直接接受旧 id。
+ * 服务端给出当前消息 ID 时只等待该 ID，已加载过的同一轮也能直接恢复。
+ * 旧版本响应没有目标 ID 时，沿用新轮次等待不同 ID、交互续跑允许复用的兼容逻辑。
  */
 export const waitForConflictRecoveryRecords = async ({
   loadRecords,
+  responseChatItemId,
   previousAiDataId,
   canReusePreviousAi,
   signal,
@@ -37,6 +39,7 @@ export const waitForConflictRecoveryRecords = async ({
   retryIntervalMs = 100
 }: {
   loadRecords: () => Promise<ChatSiteItemType[]>;
+  responseChatItemId?: string;
   previousAiDataId?: string;
   canReusePreviousAi: boolean;
   signal?: AbortSignal;
@@ -51,7 +54,10 @@ export const waitForConflictRecoveryRecords = async ({
       if (signal?.aborted) return;
 
       const latestAiDataId = getLastAiDataId(records);
-      if (latestAiDataId && (canReusePreviousAi || latestAiDataId !== previousAiDataId)) {
+      const matchesTarget = responseChatItemId
+        ? latestAiDataId === responseChatItemId
+        : canReusePreviousAi || latestAiDataId !== previousAiDataId;
+      if (latestAiDataId && matchesTarget) {
         return records;
       }
     } catch (error) {

@@ -19,6 +19,16 @@ import type {
   FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -144,9 +154,41 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
   );
   const isSandboxSystemTool = (name: string) => sandboxToolNames.has(name);
 
+  // 统一普通工具与交互工具的结果审核及敏感字段脱敏，避免两处入口规则分叉
+  const moderateFastAgentToolResult = async <TResult>(
+    toolResult: AgentLoopToolExecutionResult<TResult> | undefined
+  ) => {
+    if (!toolResult || isToolResultModerated(toolResult)) {
+      return;
+    }
+
+    const originalResponse = toolResult.response;
+    const moderatedResponse = originalResponse
+      ? await checkToolResultModeration({
+          response: originalResponse,
+          context: { teamId: runtime.teamId }
+        })
+      : originalResponse;
+    const hitModeration =
+      moderatedResponse !== originalResponse ||
+      isModerationBlockErrorMessage(toolResult.errorMessage);
+    if (hitModeration) {
+      toolResult.response = MODERATION_BLOCKED_REPLACE_TEXT;
+      toolResult.content = undefined;
+      toolResult.errorMessage = undefined;
+      toolResult.assistantMessages = [];
+      toolResult.assistantResponses = undefined;
+      toolResult.skipResponseCompress = true;
+      toolResult.metadata = sanitizeModeratedToolNodeResponse(toolResult.metadata);
+    }
+    markToolResultModerated(toolResult);
+  };
+
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    lang: runtime.lang,
     completionPolicy: runtime.completionPolicy,
+    getCheckpointContext: runtime.getCheckpointContext,
     batchToolSize: runtime.batchToolSize ?? 5,
     fileContext: runtime.fileContext,
     childrenInteractiveParams: input.childrenInteractiveParams,
@@ -217,7 +259,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             modelId: runtime.model.modelId,
             totalPoints: usage.totalPoints,
             inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
+            outputTokens: usage.outputTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheCreationTokens: usage.cacheCreationTokens
           }
         : undefined;
       pushAgentLoopUsages(runtime, [agentCallUsage]);
@@ -270,6 +314,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     onToolRunEnd: ({
       call,
       response,
+      content,
       assistantMessages,
       assistantResponses,
       seconds,
@@ -289,6 +334,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         hideInUI: hideInUI || controlToolNames.has(call.function.name),
         call,
         response,
+        content,
         assistantMessages,
         assistantResponses,
         seconds,
@@ -299,148 +345,181 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       });
     },
     onRunTool: async ({ call, messages }) => {
-      // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
-      if (call.function.name === askToolName) {
-        const parsed = parseAgentAskToolCall(call);
-        if (!parsed.success) {
-          return createToolResponse(parsed.error, { skipResponseCompress: true });
-        }
+      const toolResult = await (async (): Promise<
+        AgentLoopToolExecutionResult<TChildrenResponse | AgentAskInteractive>
+      > => {
+        // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
+        if (call.function.name === askToolName) {
+          const parsed = parseAgentAskToolCall(call);
+          if (!parsed.success) {
+            return createToolResponse(parsed.error, { skipResponseCompress: true });
+          }
 
-        const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
-        if (validationError) {
-          return createToolResponse(validationError, { skipResponseCompress: true });
-        }
+          const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
+          if (validationError) {
+            return createToolResponse(validationError, { skipResponseCompress: true });
+          }
 
-        return createToolResponse<AgentAskInteractive>('Waiting for user answer.', {
-          interactive: {
-            type: 'agentAsk',
-            params: { toolCallId: call.id, arguments: call.function.arguments }
-          },
-          skipResponseCompress: true
-        });
-      }
-
-      if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
-        const args = parseJsonArgs(call.function.arguments);
-        const updateResult =
-          call.function.name === setPlanToolName
-            ? applySetPlan({ input: args })
-            : applyPlanUpdate({
-                plan: activePlan,
-                update: args
-              });
-        const operation =
-          call.function.name === setPlanToolName ? 'set_plan' : getPlanOperationFromArgs(args);
-
-        if (updateResult.success) {
-          activePlan = updateResult.plan;
-          emitAgentLoopEvent(runtime, {
-            type: 'plan_operation',
-            operation,
-            success: true,
-            message: updateResult.message,
-            id: call.id,
-            params: call.function.arguments,
-            seconds: 0,
-            plan: updateResult.plan
-          });
-        } else {
-          emitAgentLoopEvent(runtime, {
-            type: 'plan_operation',
-            operation,
-            success: false,
-            message: updateResult.message,
-            id: call.id,
-            params: call.function.arguments,
-            seconds: 0
+          return createToolResponse<AgentAskInteractive>('Waiting for user answer.', {
+            interactive: {
+              type: 'agentAsk',
+              params: { toolCallId: call.id, arguments: call.function.arguments }
+            },
+            skipResponseCompress: true
           });
         }
 
-        return createToolResponse(updateResult.message, { skipResponseCompress: true });
-      }
+        if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
+          const args = parseJsonArgs(call.function.arguments);
+          const updateResult =
+            call.function.name === setPlanToolName
+              ? applySetPlan({ input: args })
+              : applyPlanUpdate({
+                  plan: activePlan,
+                  update: args
+                });
+          const operation =
+            call.function.name === setPlanToolName ? 'set_plan' : getPlanOperationFromArgs(args);
 
-      if (isSandboxSystemTool(call.function.name)) {
-        const sandboxToolName = toSandboxToolName(call.function.name);
+          if (updateResult.success) {
+            activePlan = updateResult.plan;
+            emitAgentLoopEvent(runtime, {
+              type: 'plan_operation',
+              operation,
+              success: true,
+              message: updateResult.message,
+              id: call.id,
+              params: call.function.arguments,
+              seconds: 0,
+              plan: updateResult.plan
+            });
+          } else {
+            emitAgentLoopEvent(runtime, {
+              type: 'plan_operation',
+              operation,
+              success: false,
+              message: updateResult.message,
+              id: call.id,
+              params: call.function.arguments,
+              seconds: 0
+            });
+          }
 
-        if (!runtime.sandboxToolContext) {
-          const response = 'Sandbox client is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
+          return createToolResponse(updateResult.message, { skipResponseCompress: true });
         }
 
-        const sandboxResult = await runSandboxTools({
-          toolName: sandboxToolName,
-          args: call.function.arguments ?? '',
-          sandboxClient: runtime.sandboxToolContext.client,
-          validate: runtime.sandboxToolContext.validate
-        });
-        return createToolResponse(sandboxResult.response, {
-          skipResponseCompress: true,
-          errorMessage: sandboxResult.success ? undefined : sandboxResult.response
-        });
-      }
+        if (isSandboxSystemTool(call.function.name)) {
+          const sandboxToolName = toSandboxToolName(call.function.name);
 
-      if (call.function.name === readFileToolName) {
-        if (!runtime.executeReadFileTool) {
-          const response = 'Read file executor is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
+          if (!runtime.sandboxToolContext) {
+            const response = 'Sandbox client is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const { checkIsStopping, sandboxToolContext } = runtime;
+          const stopController = checkIsStopping ? new AbortController() : undefined;
+          let stopTimer: ReturnType<typeof setInterval> | undefined;
+          if (stopController && checkIsStopping) {
+            if (checkIsStopping()) {
+              stopController.abort();
+            } else {
+              stopTimer = setInterval(() => {
+                if (checkIsStopping()) {
+                  clearInterval(stopTimer);
+                  stopController.abort();
+                }
+              }, 100);
+              stopTimer.unref?.();
+            }
+          }
+
+          const sandboxResult = await runSandboxTools({
+            toolName: sandboxToolName,
+            args: call.function.arguments ?? '',
+            sandboxClient: sandboxToolContext.client,
+            validate: sandboxToolContext.validate,
+            signal: stopController?.signal
+          }).finally(() => {
+            if (stopTimer !== undefined) clearInterval(stopTimer);
+          });
+          return createToolResponse(sandboxResult.response, {
+            skipResponseCompress: true,
+            errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+            content: sandboxResult.content
+          });
         }
 
-        const fileResult = await runtime.executeReadFileTool({
+        if (call.function.name === readFileToolName) {
+          if (!runtime.executeReadFileTool) {
+            const response = 'Read file executor is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const fileResult = await runtime.executeReadFileTool({
+            call,
+            messages
+          });
+
+          return createToolResponse(fileResult.response, {
+            usages: fileResult.usages,
+            skipResponseCompress: true,
+            errorMessage: fileResult.error ? getErrText(fileResult.error) : undefined,
+            metadata: fileResult.metadata
+          });
+        }
+
+        if (call.function.name === datasetSearchToolName) {
+          if (!runtime.executeDatasetSearchTool) {
+            const response = 'Dataset search executor is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const patchedArgs = patchDatasetSearchParams({
+            args: call.function.arguments ?? '',
+            currentInputFiles: runtime.datasetSearchCurrentInputFiles
+          });
+          const patchedCall = {
+            ...call,
+            function: {
+              ...call.function,
+              arguments: JSON.stringify(patchedArgs)
+            }
+          };
+          const datasetResult = await runtime.executeDatasetSearchTool({
+            call: patchedCall,
+            messages
+          });
+
+          return createToolResponse(datasetResult.response, {
+            usages: datasetResult.usages,
+            skipResponseCompress: true,
+            errorMessage: datasetResult.error ? getErrText(datasetResult.error) : undefined,
+            metadata: datasetResult.metadata
+          });
+        }
+
+        const toolResult = await runtime.executeTool({
           call,
           messages
         });
 
-        return createToolResponse(fileResult.response, {
-          usages: fileResult.usages,
-          skipResponseCompress: true,
-          errorMessage: fileResult.error ? getErrText(fileResult.error) : undefined,
-          metadata: fileResult.metadata
-        });
-      }
+        return toolResult;
+      })();
 
-      if (call.function.name === datasetSearchToolName) {
-        if (!runtime.executeDatasetSearchTool) {
-          const response = 'Dataset search executor is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
-        }
-
-        const patchedArgs = patchDatasetSearchParams({
-          args: call.function.arguments ?? '',
-          currentInputFiles: runtime.datasetSearchCurrentInputFiles
-        });
-        const patchedCall = {
-          ...call,
-          function: {
-            ...call.function,
-            arguments: JSON.stringify(patchedArgs)
-          }
-        };
-        const datasetResult = await runtime.executeDatasetSearchTool({
-          call: patchedCall,
-          messages
-        });
-
-        return createToolResponse(datasetResult.response, {
-          usages: datasetResult.usages,
-          skipResponseCompress: true,
-          errorMessage: datasetResult.error ? getErrText(datasetResult.error) : undefined,
-          metadata: datasetResult.metadata
-        });
-      }
-
-      const toolResult = await runtime.executeTool({
-        call,
-        messages
-      });
+      await moderateFastAgentToolResult(toolResult);
 
       return toolResult;
     },
     onRunInteractiveTool: async (params) => {
-      return runtime.executeInteractiveTool
+      const result = runtime.executeInteractiveTool
         ? await runtime.executeInteractiveTool(params)
         : createToolResponse<TChildrenResponse>(
             'Interactive tool is not supported in fastAgent loop yet.'
           );
+
+      await moderateFastAgentToolResult(result);
+
+      return result;
     }
   });
 
@@ -453,6 +532,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -469,6 +550,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -485,6 +568,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -499,6 +584,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     assistantMessages: result.assistantMessages,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
+    cacheReadTokens: result.cacheReadTokens,
+    cacheCreationTokens: result.cacheCreationTokens,
     llmTotalPoints: result.llmTotalPoints,
     finishReason: result.finish_reason,
     requestIds: result.requestIds,
