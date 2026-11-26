@@ -1,5 +1,6 @@
 import { vi, describe, expect, it } from 'vitest';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   getSomarkRegionPreset,
   resolveSomarkBaseUrl,
@@ -977,6 +978,11 @@ describe('unvalidated instance config reads and strict saves', () => {
         })
       ).toThrow();
     }
+
+    expect(clampLlmTraceRetentionHours(0)).toBe(1);
+    expect(clampLlmTraceRetentionHours(-5)).toBe(1);
+    expect(clampLlmTraceRetentionHours(1440)).toBe(1000);
+    expect(clampLlmTraceRetentionHours(24.8)).toBe(24);
   });
 
   it('distinguishes unset domain overrides from corrupted non-object root values', () => {

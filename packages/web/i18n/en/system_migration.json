@@ -111,9 +111,9 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "Validate backfill results",
   "migrations.20261125_backfill_model_reasoning_effort_list.result": "Loaded {{presetCount}} plugin presets and verified {{verifiedCount}} matched LLM models.",
   "migrations.20261126_backfill_llm_request_record_expired_time.name": "Backfill LLM trace record expiredTime",
-  "migrations.20261126_backfill_llm_request_record_expired_time.description": "Independently backfills expiredTime and removes legacy createdAt on existing LLM request trace records in batches, then ensures the fixed expiredTime TTL index is ready before dropping the legacy createdAt_1 TTL index (preserving non-standard custom indexes).",
+  "migrations.20261126_backfill_llm_request_record_expired_time.description": "Run manually after confirming all older App instances have stopped (no mixed-version writes): backfills expiredTime on existing LLM request trace records in batches while preserving createdAt for rollback safety, validates full-collection coverage and the new fixed TTL index, and then drops the legacy createdAt_1 TTL index when MONGO_DEPRECATE_INDEX is enabled (preserving non-standard custom indexes).",
   "migrations.20261126_backfill_llm_request_record_expired_time.backfill": "Backfill expiredTime on existing trace records",
-  "migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex": "Ensure new TTL index & drop legacy index",
-  "migrations.20261126_backfill_llm_request_record_expired_time.validation": "Validate backfill and TTL indexes",
+  "migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex": "Drop legacy createdAt_1 TTL index",
+  "migrations.20261126_backfill_llm_request_record_expired_time.validation": "Validate full backfill & new TTL index",
   "migrations.20261126_backfill_llm_request_record_expired_time.result": "Scanned {{scannedCount}} records, backfilled {{backfilledCount}}, dropped {{legacyIndexDropped}} legacy index."
 }

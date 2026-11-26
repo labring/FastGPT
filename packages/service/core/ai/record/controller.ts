@@ -3,7 +3,10 @@ import { MongoLLMRequestRecord } from './schema';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { LLM_TRACE_RETENTION_DEFAULT_HOURS } from '@fastgpt/global/common/system/config/schemas/performance';
+import {
+  clampLlmTraceRetentionHours,
+  LLM_TRACE_RETENTION_DEFAULT_HOURS
+} from '@fastgpt/global/common/system/config/schemas/performance';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
 export const createLLMRequestId = () => {
@@ -12,15 +15,15 @@ export const createLLMRequestId = () => {
 
 /**
  * 按当前实例配置的保留时长计算 LLM 追踪记录过期时间。
- * 修改保留时长后仅影响后续落库记录，不影响已入库文档。
+ * 修改保留时长后仅影响后续落库记录，不影响已入库文档；历史越界值就近收口到 [1, 1000]。
  */
 export const getLLMRequestRecordExpiredTime = (
   baseTime: Date | number = new Date(),
   retentionHours = getSystemInstanceConfig().performance.tracking.retentionHours
 ): Date => {
   const safeHours =
-    typeof retentionHours === 'number' && Number.isFinite(retentionHours) && retentionHours > 0
-      ? retentionHours
+    typeof retentionHours === 'number' && Number.isFinite(retentionHours)
+      ? clampLlmTraceRetentionHours(retentionHours)
       : LLM_TRACE_RETENTION_DEFAULT_HOURS;
   return addHours(baseTime, safeHours);
 };
@@ -119,6 +122,7 @@ export const saveLLMRequestRecord = async (params: {
   response: any;
 }) => {
   try {
+    const now = new Date();
     await MongoLLMRequestRecord.create({
       teamId: params.teamId,
       requestId: params.requestId,
@@ -126,7 +130,9 @@ export const saveLLMRequestRecord = async (params: {
       response: sanitizeLLMRequestRecordPayload(params.response, {
         omitErrorStack: true
       }),
-      expiredTime: getLLMRequestRecordExpiredTime()
+      // 过渡期继续写入 createdAt，保证 v4.17.x 混跑与回滚时 getRecord 校验不中断。
+      createdAt: now,
+      expiredTime: getLLMRequestRecordExpiredTime(now)
     });
   } catch (error) {
     // 记录错误但不影响主流程

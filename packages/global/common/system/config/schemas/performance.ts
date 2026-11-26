@@ -35,6 +35,13 @@ export const LLM_TRACE_RETENTION_MIN_HOURS = 1;
 export const LLM_TRACE_RETENTION_MAX_HOURS = 1000;
 export const LLM_TRACE_RETENTION_DEFAULT_HOURS = 6;
 
+/** 将历史越界保留时长（如旧版 0 或 >1000）就近收口到合法区间 [1, 1000]。 */
+export const clampLlmTraceRetentionHours = (hours: number): number =>
+  Math.min(
+    LLM_TRACE_RETENTION_MAX_HOURS,
+    Math.max(LLM_TRACE_RETENTION_MIN_HOURS, Math.trunc(hours))
+  );
+
 const TrackingPerformanceConfigSchema = z.strictObject({
   retentionHours: z
     .number()

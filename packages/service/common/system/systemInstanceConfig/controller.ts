@@ -1,5 +1,6 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   normalizeDocumentParseUrl,
   resolveSomarkBaseUrl
@@ -625,6 +626,25 @@ export const batchUpdateDomainConfigs = async (
       existingOverrides: existingDecryptedOverrides,
       submittedOverrides
     });
+    // 兼容历史库中可能残留的越界 tracking.retentionHours（如旧版 0 或 1440）：
+    // 仅在本次未显式提交 retentionHours 时就近收口，避免保存同域其他字段（如 chat.maxQpm）返回 400；
+    // 显式提交非法值仍由下方严格 Schema 校验拒绝。
+    if (domain === 'performance') {
+      const submittedTracking = (submittedOverrides as { tracking?: { retentionHours?: unknown } })
+        .tracking;
+      const mergedTracking = (mergedOverrides as { tracking?: { retentionHours?: unknown } })
+        .tracking;
+      const hasSubmittedRetention =
+        submittedTracking !== undefined &&
+        Object.prototype.hasOwnProperty.call(submittedTracking, 'retentionHours');
+      if (
+        !hasSubmittedRetention &&
+        typeof mergedTracking?.retentionHours === 'number' &&
+        Number.isFinite(mergedTracking.retentionHours)
+      ) {
+        mergedTracking.retentionHours = clampLlmTraceRetentionHours(mergedTracking.retentionHours);
+      }
+    }
     if (domain === 'commercial' && normalizedSubPlans !== undefined) {
       (mergedOverrides as DeepPartial<SystemInstanceConfigDomainMap['commercial']>).subPlans =
         normalizedSubPlans;

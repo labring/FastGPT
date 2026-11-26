@@ -308,7 +308,7 @@ describe('LLM request record team isolation', () => {
     expect(String(teamBRecord?.teamId)).toBe('507f1f77bcf86cd799439012');
   });
 
-  it('computes expiredTime from retentionHours on write, omits createdAt, and declares a fixed TTL index', async () => {
+  it('dual-writes createdAt and expiredTime from retentionHours, clamps legacy out-of-range values, and declares a fixed TTL index', async () => {
     const ttlIndex = MongoLLMRequestRecord.schema
       .indexes()
       .find(([key]) => Object.keys(key).length === 1 && key.expiredTime === 1);
@@ -338,16 +338,48 @@ describe('LLM request record team isolation', () => {
     });
     const t2After = Date.now();
 
+    // 历史越界保留时长（如旧版 0 或 1440）就近收口到 [1, 1000]。
+    setRetentionHours(0);
+    const tZeroBefore = Date.now();
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_legacy_zero',
+      body: { prompt: '0h' },
+      response: { ok: true }
+    });
+    const tZeroAfter = Date.now();
+
+    setRetentionHours(1440);
+    const tOverBefore = Date.now();
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_legacy_over',
+      body: { prompt: '1440h' },
+      response: { ok: true }
+    });
+    const tOverAfter = Date.now();
+
     const first = await MongoLLMRequestRecord.collection.findOne({ requestId: 'req_12h' });
     const second = await MongoLLMRequestRecord.collection.findOne({ requestId: 'req_48h' });
+    const legacyZero = await MongoLLMRequestRecord.collection.findOne({
+      requestId: 'req_legacy_zero'
+    });
+    const legacyOver = await MongoLLMRequestRecord.collection.findOne({
+      requestId: 'req_legacy_over'
+    });
 
-    expect(first?.createdAt).toBeUndefined();
-    expect(second?.createdAt).toBeUndefined();
+    // 过渡期双写 createdAt 以兼容 v4.17.x 混跑与回滚读接口校验。
+    expect(first?.createdAt).toBeInstanceOf(Date);
+    expect(second?.createdAt).toBeInstanceOf(Date);
     expect(first?.expiredTime).toBeInstanceOf(Date);
     expect(second?.expiredTime).toBeInstanceOf(Date);
     expect(first!.expiredTime.getTime()).toBeGreaterThanOrEqual(t1Before + 12 * 3600_000);
     expect(first!.expiredTime.getTime()).toBeLessThanOrEqual(t1After + 12 * 3600_000);
     expect(second!.expiredTime.getTime()).toBeGreaterThanOrEqual(t2Before + 48 * 3600_000);
     expect(second!.expiredTime.getTime()).toBeLessThanOrEqual(t2After + 48 * 3600_000);
+    expect(legacyZero!.expiredTime.getTime()).toBeGreaterThanOrEqual(tZeroBefore + 1 * 3600_000);
+    expect(legacyZero!.expiredTime.getTime()).toBeLessThanOrEqual(tZeroAfter + 1 * 3600_000);
+    expect(legacyOver!.expiredTime.getTime()).toBeGreaterThanOrEqual(tOverBefore + 1000 * 3600_000);
+    expect(legacyOver!.expiredTime.getTime()).toBeLessThanOrEqual(tOverAfter + 1000 * 3600_000);
   });
 });

@@ -8,6 +8,7 @@ import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { PDF_PARSE_TIMEOUT_DEFAULT_SECONDS } from '@fastgpt/global/common/system/config/schemas/providers';
 import { NumSchema } from '@fastgpt/global/common/zod';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -329,7 +330,10 @@ export const buildLegacyDomainOverrides = ({
       maxQpm: optionalNumber(legacyEnv.CHAT_MAX_QPM)
     }),
     tracking: compact({
-      retentionHours: optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
+      retentionHours: (() => {
+        const raw = optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS);
+        return raw !== undefined ? clampLlmTraceRetentionHours(raw) : undefined;
+      })()
     })
   }) as DomainOverrides['performance'];
 

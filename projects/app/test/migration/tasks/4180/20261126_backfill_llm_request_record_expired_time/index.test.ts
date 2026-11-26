@@ -11,7 +11,10 @@ import {
   MongoLLMRequestRecord
 } from '@fastgpt/service/core/ai/record/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { backfillLLMRequestRecordExpiredTime } from '@/migration/tasks/4180/20261126_backfill_llm_request_record_expired_time';
+import {
+  backfillLLMRequestRecordExpiredTime,
+  createBackfillLLMRequestRecordExpiredTimeMigration
+} from '@/migration/tasks/4180/20261126_backfill_llm_request_record_expired_time';
 import { LEGACY_LLM_RECORD_TTL_INDEX_NAME } from '@/migration/tasks/4180/20261126_backfill_llm_request_record_expired_time/service';
 
 const originalSnapshot = global.systemInstanceConfig;
@@ -78,7 +81,7 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
     global.systemInstanceConfig = originalSnapshot;
   });
 
-  it('backfills expiredTime from createdAt or ObjectId, removes createdAt, switches TTL indexes, and is idempotent', async () => {
+  it('backfills expiredTime while preserving createdAt for rollback, validates before dropping legacy index, and is idempotent', async () => {
     const teamId = new Types.ObjectId();
     const legacyCreatedAt = new Date('2026-11-26T00:00:00.000Z');
     const existingExpiredTime = new Date('2026-11-28T12:00:00.000Z');
@@ -122,7 +125,7 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
 
     expect(firstResult).toEqual({
       scannedCount: 3,
-      backfilledCount: 3,
+      backfilledCount: 2,
       legacyIndexDropped: 1
     });
 
@@ -136,7 +139,8 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
       _id: alreadyMigratedId
     });
 
-    expect(docWithCreated?.createdAt).toBeUndefined();
+    // 保留 createdAt 供 v4.17.x 回滚安全读取。
+    expect(docWithCreated?.createdAt).toEqual(legacyCreatedAt);
     expect(docWithCreated?.expiredTime).toEqual(
       new Date(legacyCreatedAt.getTime() + 12 * 3600_000)
     );
@@ -146,7 +150,7 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
       new Date(legacyWithoutCreatedAtId.getTimestamp().getTime() + 12 * 3600_000)
     );
 
-    expect(docAlreadyMigrated?.createdAt).toBeUndefined();
+    expect(docAlreadyMigrated?.createdAt).toEqual(legacyCreatedAt);
     expect(docAlreadyMigrated?.expiredTime).toEqual(existingExpiredTime);
 
     const indexes = await MongoLLMRequestRecord.collection.indexes();
@@ -162,8 +166,8 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
       firstRun.progress.filter((step) => step.status === SystemMigrationStatusEnum.succeeded)
     ).toMatchObject([
       { key: 'backfill', current: 3 },
-      { key: 'cleanupLegacyIndex' },
-      { key: 'validation' }
+      { key: 'validation' },
+      { key: 'cleanupLegacyIndex' }
     ]);
 
     // 重复执行保持幂等：不覆写已有 expiredTime，也不报错。
@@ -179,86 +183,123 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
     ).toEqual(new Date(legacyCreatedAt.getTime() + 12 * 3600_000));
   });
 
-  it('preserves non-standard custom createdAt_1 index and handles empty collection', async () => {
+  it('defers dropping legacy createdAt_1 index when MONGO_DEPRECATE_INDEX is disabled', async () => {
     await MongoLLMRequestRecord.collection.createIndex(
       { createdAt: 1 },
-      { name: LEGACY_LLM_RECORD_TTL_INDEX_NAME }
+      { name: LEGACY_LLM_RECORD_TTL_INDEX_NAME, expireAfterSeconds: 6 * 3600 }
     );
 
-    const run = createContext();
-    const result = await backfillLLMRequestRecordExpiredTime(run.context);
-
-    expect(result).toEqual({
-      scannedCount: 0,
-      backfilledCount: 0,
-      legacyIndexDropped: 0
+    const migration = createBackfillLLMRequestRecordExpiredTimeMigration({
+      isCleanupEnabled: () => false
     });
-    expect(run.context.logger.warn).toHaveBeenCalled();
+    const run = createContext();
+
+    await expect(migration(run.context)).rejects.toThrow('MONGO_DEPRECATE_INDEX is disabled');
+    expect(run.getFailures()).toMatchObject([
+      {
+        stageKey: 'cleanupLegacyIndex',
+        data: { indexName: LEGACY_LLM_RECORD_TTL_INDEX_NAME }
+      }
+    ]);
 
     const indexes = await MongoLLMRequestRecord.collection.indexes();
     expect(indexes.some((index) => index.name === LEGACY_LLM_RECORD_TTL_INDEX_NAME)).toBe(true);
     expect(indexes.some((index) => index.name === LLMRequestRecordExpiredTimeIndexName)).toBe(true);
   });
 
-  it('resumes from saved checkpoint without rescanning completed docs and stops on lease loss', async () => {
-    const teamId = new Types.ObjectId();
-    const id1 = new Types.ObjectId();
-    const id2 = new Types.ObjectId();
-    const migratedExpiredTime = new Date('2026-11-29T00:00:00.000Z');
+  it.each([
+    { label: 'non-TTL index', options: {} },
+    { label: 'non-hourly custom TTL', options: { expireAfterSeconds: 90 } },
+    { label: 'hidden TTL index', options: { expireAfterSeconds: 6 * 3600, hidden: true } }
+  ])(
+    'preserves non-standard custom createdAt_1 ($label) and handles empty collection',
+    async ({ options }) => {
+      await MongoLLMRequestRecord.collection.createIndex(
+        { createdAt: 1 },
+        { name: LEGACY_LLM_RECORD_TTL_INDEX_NAME, ...options }
+      );
 
+      const run = createContext();
+      const result = await backfillLLMRequestRecordExpiredTime(run.context);
+
+      expect(result).toEqual({
+        scannedCount: 0,
+        backfilledCount: 0,
+        legacyIndexDropped: 0
+      });
+      expect(run.context.logger.warn).toHaveBeenCalled();
+
+      const indexes = await MongoLLMRequestRecord.collection.indexes();
+      expect(indexes.some((index) => index.name === LEGACY_LLM_RECORD_TTL_INDEX_NAME)).toBe(true);
+      expect(indexes.some((index) => index.name === LLMRequestRecordExpiredTimeIndexName)).toBe(
+        true
+      );
+    }
+  );
+
+  it('blocks legacy index drop if a late unmigrated doc arrives after endId and succeeds cleanly on retry', async () => {
+    const teamId = new Types.ObjectId();
+    const initialId = new Types.ObjectId();
+    const lateOldPodId = new Types.ObjectId();
+
+    await MongoLLMRequestRecord.collection.createIndex(
+      { createdAt: 1 },
+      { name: LEGACY_LLM_RECORD_TTL_INDEX_NAME, expireAfterSeconds: 6 * 3600 }
+    );
     await MongoLLMRequestRecord.collection.insertMany([
       {
-        _id: id1,
+        _id: initialId,
         teamId,
-        requestId: 'already_done_before_checkpoint',
+        requestId: 'before_end_id',
         body: {},
         response: {},
-        expiredTime: migratedExpiredTime
+        createdAt: new Date('2026-11-26T00:00:00.000Z')
       },
       {
-        _id: id2,
+        _id: lateOldPodId,
         teamId,
-        requestId: 'after_checkpoint',
+        requestId: 'late_old_pod_write',
         body: {},
         response: {},
-        createdAt: new Date('2026-11-26T02:00:00.000Z')
+        createdAt: new Date('2026-11-26T01:00:00.000Z')
       }
     ]);
 
-    // 模拟租约在批次前丢失：不得执行后续扫描或修改数据。
-    const lostLeaseRun = createContext();
-    lostLeaseRun.context.assertActive.mockRejectedValueOnce(new Error('lease lost'));
-    await expect(backfillLLMRequestRecordExpiredTime(lostLeaseRun.context)).rejects.toThrow(
-      'lease lost'
-    );
-    expect(
-      (await MongoLLMRequestRecord.collection.findOne({ _id: id2 }))?.expiredTime
-    ).toBeUndefined();
-
-    // 从 checkpoint (lastId = id1) 续跑：只处理 id2 并通过校验。
-    const resumedRun = createContext({
-      endId: String(id2),
-      lastId: String(id1),
+    // 模拟首次执行已扫描至 initialId 后，旧节点又写入了 lateOldPodId（缺少 expiredTime）：
+    // 校验阶段必须发现全表遗漏并在删除旧索引前失败，保留 createdAt_1 兜底 TTL。
+    const blockedRun = createContext({
+      endId: String(initialId),
+      lastId: String(initialId),
       scannedCount: 1,
       backfilledCount: 1
     });
-    const resumedResult = await backfillLLMRequestRecordExpiredTime(resumedRun.context);
+    // 为 initialId 预先补好 expiredTime，仅让 lateOldPodId 处于未回填状态，
+    // 并把 findLatestLLMRequestRecordId 的场景用 checkpoint.lastId = initialId 且 endId = initialId 后的混跑失败验证：
+    await MongoLLMRequestRecord.collection.updateOne(
+      { _id: initialId },
+      { $set: { expiredTime: new Date('2026-11-26T12:00:00.000Z') } }
+    );
+
+    // 模拟重试：checkpoint 会推进 endId 至 lateOldPodId，从 initialId 之后增量回填并清理旧索引。
+    const resumedResult = await backfillLLMRequestRecordExpiredTime(blockedRun.context);
     expect(resumedResult).toEqual({
       scannedCount: 2,
       backfilledCount: 2,
-      legacyIndexDropped: 0
+      legacyIndexDropped: 1
     });
-    expect((await MongoLLMRequestRecord.collection.findOne({ _id: id2 }))?.expiredTime).toEqual(
-      new Date('2026-11-26T14:00:00.000Z')
+    expect(
+      (await MongoLLMRequestRecord.collection.findOne({ _id: lateOldPodId }))?.expiredTime
+    ).toEqual(new Date('2026-11-26T13:00:00.000Z'));
+
+    // 单独验证校验阶段在存在未回填文档时不会删掉旧索引（通过模拟 backfill 跳过某条记录）：
+    await resetCollection();
+    const skippedId = new Types.ObjectId();
+    await MongoLLMRequestRecord.collection.createIndex(
+      { createdAt: 1 },
+      { name: LEGACY_LLM_RECORD_TTL_INDEX_NAME, expireAfterSeconds: 6 * 3600 }
     );
-  });
-
-  it('fails validation with structured records if a doc inside endId still lacks expiredTime', async () => {
-    const teamId = new Types.ObjectId();
-    const missingId = new Types.ObjectId();
-
     await MongoLLMRequestRecord.collection.insertOne({
-      _id: missingId,
+      _id: skippedId,
       teamId,
       requestId: 'skipped_by_checkpoint',
       body: {},
@@ -266,25 +307,44 @@ describe('20261126_backfill_llm_request_record_expired_time', () => {
       createdAt: new Date('2026-11-26T00:00:00.000Z')
     });
 
-    // 模拟 checkpoint 已越过该文档但该文档仍缺少 expiredTime：校验阶段必须报错阻断伪成功。
-    const run = createContext({
-      endId: String(missingId),
-      lastId: String(missingId),
+    const failRun = createContext({
+      endId: String(skippedId),
+      lastId: String(skippedId),
       scannedCount: 1,
       backfilledCount: 0
     });
-
-    await expect(backfillLLMRequestRecordExpiredTime(run.context)).rejects.toThrow(
-      'LLM request record expiredTime migration validation failed'
+    await expect(backfillLLMRequestRecordExpiredTime(failRun.context)).rejects.toThrow(
+      'validation failed before legacy index cleanup'
     );
-    expect(run.getFailures()).toEqual([
-      {
-        stageKey: 'validation',
-        data: { id: String(missingId) },
-        reason: {
-          message: 'LLM request record is missing a valid Date expiredTime after backfill'
-        }
-      }
+    expect(failRun.getFailures()).toMatchObject([
+      { stageKey: 'validation', data: { id: String(skippedId) } }
     ]);
+    // 校验失败时绝不能删除旧 createdAt_1 索引。
+    const remainingIndexes = await MongoLLMRequestRecord.collection.indexes();
+    expect(remainingIndexes.some((index) => index.name === LEGACY_LLM_RECORD_TTL_INDEX_NAME)).toBe(
+      true
+    );
+  });
+
+  it('stops immediately on lease loss without modifying remaining documents', async () => {
+    const teamId = new Types.ObjectId();
+    const id = new Types.ObjectId();
+    await MongoLLMRequestRecord.collection.insertOne({
+      _id: id,
+      teamId,
+      requestId: 'before_lease_loss',
+      body: {},
+      response: {},
+      createdAt: new Date('2026-11-26T02:00:00.000Z')
+    });
+
+    const lostLeaseRun = createContext();
+    lostLeaseRun.context.assertActive.mockRejectedValueOnce(new Error('lease lost'));
+    await expect(backfillLLMRequestRecordExpiredTime(lostLeaseRun.context)).rejects.toThrow(
+      'lease lost'
+    );
+    expect(
+      (await MongoLLMRequestRecord.collection.findOne({ _id: id }))?.expiredTime
+    ).toBeUndefined();
   });
 });

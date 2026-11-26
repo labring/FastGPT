@@ -111,9 +111,9 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "校验回填结果",
   "migrations.20261125_backfill_model_reasoning_effort_list.result": "共加载 {{presetCount}} 条插件预设，已完成回填并校验通过 {{verifiedCount}} 个命中预设的 LLM 模型。",
   "migrations.20261126_backfill_llm_request_record_expired_time.name": "回填 LLM 追踪记录过期时间",
-  "migrations.20261126_backfill_llm_request_record_expired_time.description": "后台独立分批为历史 LLM 请求追踪记录补齐 expiredTime 并移除旧 createdAt 字段，确认新固定 TTL 索引就绪后自动清理旧 createdAt_1 TTL 索引（自动跳过非标准自建索引）。",
+  "migrations.20261126_backfill_llm_request_record_expired_time.description": "请在确认所有旧版本 App 实例已下线（无混跑）后手动执行：分批为历史 LLM 请求追踪记录补齐 expiredTime（保留 createdAt 兼容回滚），全表校验无遗漏且新固定 TTL 索引就绪后，再按 MONGO_DEPRECATE_INDEX 开关安全清理旧 createdAt_1 TTL 索引（自动跳过非标准自建索引）。",
   "migrations.20261126_backfill_llm_request_record_expired_time.backfill": "回填历史追踪记录 expiredTime",
-  "migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex": "确保新 TTL 索引并清理旧索引",
-  "migrations.20261126_backfill_llm_request_record_expired_time.validation": "校验回填与索引状态",
+  "migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex": "清理旧 createdAt_1 TTL 索引",
+  "migrations.20261126_backfill_llm_request_record_expired_time.validation": "校验全表回填与新 TTL 索引",
   "migrations.20261126_backfill_llm_request_record_expired_time.result": "已扫描 {{scannedCount}} 条记录，补齐 {{backfilledCount}} 条，清理旧索引 {{legacyIndexDropped}} 条。"
 }

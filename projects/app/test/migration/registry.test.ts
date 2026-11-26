@@ -35,7 +35,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261126_backfill_llm_request_record_expired_time'
     ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
@@ -180,17 +181,18 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
   });
 
-  it('registers LLM request record expiredTime backfill at tail as an independent background task', () => {
+  it('registers LLM request record expiredTime backfill at tail as a manual background task', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
       id: '20261126_backfill_llm_request_record_expired_time',
       version: '4.18.0',
-      independent: true,
-      progressSteps: [{ key: 'backfill' }, { key: 'cleanupLegacyIndex' }, { key: 'validation' }]
+      manual: true,
+      blockStartup: false,
+      progressSteps: [{ key: 'backfill' }, { key: 'validation' }, { key: 'cleanupLegacyIndex' }]
     });
-    expect(task).not.toHaveProperty('blockStartup', true);
-    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('independent');
     expect(task).not.toHaveProperty('delay');
+    expect(task).not.toHaveProperty('resumable');
     expect(task).not.toHaveProperty('dependsOn');
   });
 
@@ -200,8 +202,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261123_cleanup_mongo_indexes',
-      '20261126_backfill_llm_request_record_expired_time'
+      '20261123_cleanup_mongo_indexes'
     ]);
   });
 

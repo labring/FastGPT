@@ -384,8 +384,9 @@ export const systemMigrations = [
   {
     id: '20261126_backfill_llm_request_record_expired_time',
     version: '4.18.0',
-    // 独立后台回填历史 LLM 追踪记录的 expiredTime 并清理旧 createdAt_1 TTL 索引，不阻塞业务启动。
-    independent: true,
+    // 须在确认所有旧版本 App 实例已下线（无混跑）后由管理员手动触发执行，避免旧节点持续写入无 expiredTime 记录。
+    manual: true,
+    blockStartup: false,
     nameKey: i18nT(
       'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.name'
     ),
@@ -403,15 +404,15 @@ export const systemMigrations = [
         )
       },
       {
-        key: 'cleanupLegacyIndex',
-        labelKey: i18nT(
-          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex'
-        )
-      },
-      {
         key: 'validation',
         labelKey: i18nT(
           'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.validation'
+        )
+      },
+      {
+        key: 'cleanupLegacyIndex',
+        labelKey: i18nT(
+          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex'
         )
       }
     ],

@@ -715,4 +715,55 @@ describe('instance config update API', () => {
     } as any);
     expect(updated.results[0].revision).toBe(3);
   });
+
+  it.each([
+    { legacyHours: 0, clampedHours: 1 },
+    { legacyHours: 1440, clampedHours: 1000 }
+  ])(
+    'clamps untouched legacy retentionHours=$legacyHours to $clampedHours on partial performance save while rejecting explicit out-of-range submits',
+    async ({ legacyHours, clampedHours }) => {
+      // 绕过当前严格 Mongoose 校验，模拟升级前已落库的旧越界值（如 0 或 1440）。
+      await MongoSystemInstanceConfig.collection.insertOne({
+        domain: 'performance',
+        schemaVersion: 1,
+        revision: 3,
+        overrides: { tracking: { retentionHours: legacyHours } },
+        updatedAt: new Date()
+      });
+
+      // 未显式提交 retentionHours 时保存同域其他字段不被历史越界值阻断，自动就近收口。
+      const saved = await callUpdate({
+        body: {
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 3,
+              overrides: { chat: { maxQpm: 2500 } }
+            }
+          ]
+        }
+      } as any);
+
+      expect(saved.results[0].revision).toBe(4);
+      expect(saved.results[0].effectiveConfig).toMatchObject({
+        chat: { maxQpm: 2500 },
+        tracking: { retentionHours: clampedHours }
+      });
+
+      // 显式提交越界值仍由严格 Schema 拒绝。
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 4,
+                overrides: { tracking: { retentionHours: legacyHours } }
+              }
+            ]
+          }
+        } as any)
+      ).rejects.toThrow();
+    }
+  );
 });

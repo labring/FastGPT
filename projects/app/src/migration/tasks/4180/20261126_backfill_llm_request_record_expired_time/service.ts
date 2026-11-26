@@ -1,30 +1,29 @@
-import type { Types } from '@fastgpt/service/common/mongo';
+import {
+  dropManagedMongoIndexIfExists,
+  hasMatchingMongoIndex
+} from '@fastgpt/dal/db/mongo/indexSync';
+import { connectionLogMongo, Types } from '@fastgpt/service/common/mongo';
 import { getLLMRequestRecordExpiredTime } from '@fastgpt/service/core/ai/record/controller';
 import {
+  LLMRequestRecordCollectionName,
   LLMRequestRecordExpiredTimeIndexName,
-  type MongoLLMRequestRecord
+  MongoLLMRequestRecord
 } from '@fastgpt/service/core/ai/record/schema';
 
 export const LEGACY_LLM_RECORD_TTL_INDEX_NAME = 'createdAt_1';
 
-export type LLMRequestRecordCollection = typeof MongoLLMRequestRecord.collection;
-type LLMRequestRecordBulkOp = Parameters<LLMRequestRecordCollection['bulkWrite']>[0][number];
+export type LLMRequestRecordMigrationItem = {
+  id: string;
+  idTimestamp: Date;
+  createdAt?: Date;
+  hasValidExpiredTime: boolean;
+};
 
-type MongoIndexInfo = {
+type RawIndexInfo = {
   name?: string;
   key?: Record<string, unknown>;
   expireAfterSeconds?: unknown;
-  unique?: unknown;
-  sparse?: unknown;
-  partialFilterExpression?: unknown;
-  collation?: unknown;
   hidden?: unknown;
-};
-
-export type LLMRequestRecordMigrationDoc = {
-  _id: Types.ObjectId;
-  createdAt?: unknown;
-  expiredTime?: unknown;
 };
 
 const isValidDate = (value: unknown): value is Date =>
@@ -38,38 +37,19 @@ const isMongoErrorCode = (error: unknown, codes: readonly number[]) =>
   codes.includes((error as { code: number }).code);
 
 /**
- * 仅识别 FastGPT 历史托管的 `createdAt_1` 单字段 TTL 索引。
- * 忽略带额外选项或非 TTL 的同名索引，避免误删客户 DBA 自建索引。
+ * 识别 FastGPT 历史上按整小时配置的 `createdAt_1` TTL 索引（排除隐藏或非整小时客户索引）。
  */
-export const isLegacyCreatedAtTtlIndex = (index: MongoIndexInfo): boolean => {
-  if (index.name !== LEGACY_LLM_RECORD_TTL_INDEX_NAME) return false;
-  const key = index.key;
-  if (!key || Object.keys(key).length !== 1 || key.createdAt !== 1) return false;
-  if (typeof index.expireAfterSeconds !== 'number') return false;
-  if (index.unique || index.sparse || index.partialFilterExpression || index.collation) {
-    return false;
-  }
-  return true;
-};
+const isKnownLegacyCreatedAtTtlSeconds = (value: unknown): value is number =>
+  typeof value === 'number' &&
+  Number.isSafeInteger(value) &&
+  value >= 0 &&
+  value <= 2_147_483_647 &&
+  value % 3600 === 0;
 
-export const isExpiredTimeTtlIndex = (index: MongoIndexInfo): boolean => {
-  const key = index.key;
-  if (!key || Object.keys(key).length !== 1 || key.expiredTime !== 1) return false;
-  if (index.expireAfterSeconds !== 0) return false;
-  if (index.unique || index.sparse || index.partialFilterExpression || index.collation) {
-    return false;
-  }
-  if (index.hidden) return false;
-  return true;
-};
-
-export const listCollectionIndexesSafe = async (
-  collection: LLMRequestRecordCollection
-): Promise<MongoIndexInfo[]> => {
+const listLogCollectionIndexesSafe = async (): Promise<RawIndexInfo[]> => {
   try {
-    return (await collection.indexes()) as MongoIndexInfo[];
+    return (await MongoLLMRequestRecord.collection.indexes()) as RawIndexInfo[];
   } catch (error) {
-    // 首次升级或从未落库过追踪日志时集合可能尚未创建。
     if (isMongoErrorCode(error, [26])) {
       return [];
     }
@@ -77,100 +57,168 @@ export const listCollectionIndexesSafe = async (
   }
 };
 
-/**
- * 幂等确保新的 `expiredTime` 固定 TTL 索引存在，避免删除旧 `createdAt_1` 后出现无 TTL 窗口。
- */
-export const ensureExpiredTimeTtlIndex = async (
-  collection: LLMRequestRecordCollection
-): Promise<void> => {
-  const indexes = await listCollectionIndexesSafe(collection);
-  if (indexes.some(isExpiredTimeTtlIndex)) {
-    return;
-  }
-  await collection.createIndex(
-    { expiredTime: 1 },
-    { name: LLMRequestRecordExpiredTimeIndexName, expireAfterSeconds: 0 }
+/** 查询当前集合最大 `_id`，作为断点续跑扫描上界。 */
+export const findLatestLLMRequestRecordId = async (): Promise<string | null> => {
+  const last = await MongoLLMRequestRecord.collection.findOne(
+    {},
+    { projection: { _id: 1 }, sort: { _id: -1 } }
   );
+  return last ? String(last._id) : null;
+};
+
+/** 按 `_id` 游标读取一批历史追踪记录的最小投影。 */
+export const listLLMRequestRecordBatch = async ({
+  endId,
+  lastId,
+  limit
+}: {
+  endId: string;
+  lastId: string | null;
+  limit: number;
+}): Promise<LLMRequestRecordMigrationItem[]> => {
+  const docs = await MongoLLMRequestRecord.collection
+    .find(
+      {
+        _id: {
+          $lte: new Types.ObjectId(endId),
+          ...(lastId ? { $gt: new Types.ObjectId(lastId) } : {})
+        }
+      },
+      { projection: { _id: 1, createdAt: 1, expiredTime: 1 } }
+    )
+    .sort({ _id: 1 })
+    .limit(limit)
+    .toArray();
+
+  return docs.map((doc) => ({
+    id: String(doc._id),
+    idTimestamp: doc._id.getTimestamp(),
+    createdAt: isValidDate(doc.createdAt) ? doc.createdAt : undefined,
+    hasValidExpiredTime: isValidDate(doc.expiredTime)
+  }));
 };
 
 /**
- * 安全删除 FastGPT 历史 `createdAt_1` TTL 索引（兼容不同历史保留时长）。
- */
-export const dropLegacyCreatedAtTtlIndex = async (
-  collection: LLMRequestRecordCollection
-): Promise<'dropped' | 'missing' | 'skipped_mismatch'> => {
-  const indexes = await listCollectionIndexesSafe(collection);
-  const target = indexes.find((index) => index.name === LEGACY_LLM_RECORD_TTL_INDEX_NAME);
-  if (!target) {
-    return 'missing';
-  }
-  if (!isLegacyCreatedAtTtlIndex(target)) {
-    return 'skipped_mismatch';
-  }
-
-  try {
-    await collection.dropIndex(LEGACY_LLM_RECORD_TTL_INDEX_NAME);
-    return 'dropped';
-  } catch (error) {
-    if (isMongoErrorCode(error, [26, 27])) {
-      return 'missing';
-    }
-    throw error;
-  }
-};
-
-/**
- * 幂等回填一批历史 LLM 追踪记录的 `expiredTime` 并移除旧 `createdAt` 字段：
- * - 缺少合法 Date 类型 `expiredTime` 的记录：以 `createdAt`（缺失时回退 ObjectId 时间戳）+ retentionHours 计算；
- * - 已有合法 `expiredTime` 但仍残留 `createdAt` 的记录：仅移除 `createdAt`，不覆写已有 `expiredTime`。
+ * 幂等为缺失合法 `expiredTime` 的历史记录补齐 `expiredTime`。
+ * 保留 `createdAt` 字段不删除，确保 v4.17.x 混跑与回滚读取链路不中断。
  */
 export const backfillLLMRequestRecordBatch = async ({
-  collection,
-  docs,
+  items,
   retentionHours
 }: {
-  collection: LLMRequestRecordCollection;
-  docs: readonly LLMRequestRecordMigrationDoc[];
+  items: readonly LLMRequestRecordMigrationItem[];
   retentionHours: number;
 }): Promise<{ backfilledCount: number }> => {
-  const operations: LLMRequestRecordBulkOp[] = [];
-
-  for (const doc of docs) {
-    if (!isValidDate(doc.expiredTime)) {
-      const baseTime = isValidDate(doc.createdAt) ? doc.createdAt : doc._id.getTimestamp();
+  const operations = items
+    .filter((item) => !item.hasValidExpiredTime)
+    .map((item) => {
+      const baseTime = item.createdAt ?? item.idTimestamp;
       const expiredTime = getLLMRequestRecordExpiredTime(baseTime, retentionHours);
-
-      operations.push({
+      return {
         updateOne: {
           filter: {
-            _id: doc._id,
+            _id: new Types.ObjectId(item.id),
             expiredTime: { $not: { $type: 'date' } }
           },
           update: {
-            $set: { expiredTime },
-            $unset: { createdAt: '' }
+            $set: { expiredTime }
           }
         }
-      });
-    } else if (doc.createdAt !== undefined) {
-      operations.push({
-        updateOne: {
-          filter: {
-            _id: doc._id,
-            createdAt: { $exists: true }
-          },
-          update: {
-            $unset: { createdAt: '' }
-          }
-        }
-      });
-    }
-  }
+      };
+    });
 
   if (operations.length === 0) {
     return { backfilledCount: 0 };
   }
 
-  const result = await collection.bulkWrite(operations, { ordered: false });
+  const result = await MongoLLMRequestRecord.collection.bulkWrite(operations, { ordered: false });
   return { backfilledCount: result.modifiedCount };
+};
+
+/**
+ * 全表扫描仍缺少合法 `Date` 类型 `expiredTime` 的记录 ID（不限 `endId` 上界），
+ * 防止旧版本节点在混跑期间继续写入无 `expiredTime` 记录后误删旧 TTL 索引。
+ */
+export const findMissingExpiredTimeRecordIds = async (limit: number): Promise<string[]> => {
+  const missingDocs = await MongoLLMRequestRecord.collection
+    .find({ expiredTime: { $not: { $type: 'date' } } }, { projection: { _id: 1 } })
+    .sort({ _id: 1 })
+    .limit(limit)
+    .toArray();
+
+  return missingDocs.map((doc) => String(doc._id));
+};
+
+/**
+ * 幂等补建新的 `expiredTime` 固定 TTL 索引，并通过 DAL `hasMatchingMongoIndex`
+ * 校验索引已提交、非隐藏且可供查询规划器使用。
+ */
+export const ensureExpiredTimeTtlIndexReady = async (): Promise<boolean> => {
+  const ready = await hasMatchingMongoIndex({
+    client: connectionLogMongo,
+    collectionName: LLMRequestRecordCollectionName,
+    key: { expiredTime: 1 },
+    options: { expireAfterSeconds: 0 }
+  });
+  if (ready) {
+    return true;
+  }
+
+  await MongoLLMRequestRecord.collection.createIndex(
+    { expiredTime: 1 },
+    { name: LLMRequestRecordExpiredTimeIndexName, expireAfterSeconds: 0 }
+  );
+
+  return hasMatchingMongoIndex({
+    client: connectionLogMongo,
+    collectionName: LLMRequestRecordCollectionName,
+    key: { expiredTime: 1 },
+    options: { expireAfterSeconds: 0 }
+  });
+};
+
+export type LegacyIndexCleanupOutcome =
+  | 'dropped'
+  | 'missing'
+  | 'skipped_mismatch'
+  | 'deferred_disabled';
+
+/**
+ * 复用 DAL `dropManagedMongoIndexIfExists` 按精确签名清理历史 `createdAt_1` TTL 索引：
+ * - 隐藏索引或非整小时 TTL/附加选项不符时保守跳过，避免误删客户 DBA 自建索引；
+ * - `apply=false`（`MONGO_DEPRECATE_INDEX=false`）时不执行删除并返回 `deferred_disabled`。
+ */
+export const cleanupLegacyCreatedAtTtlIndex = async ({
+  apply
+}: {
+  apply: boolean;
+}): Promise<{ status: LegacyIndexCleanupOutcome; reason?: string }> => {
+  const indexes = await listLogCollectionIndexesSafe();
+  const live = indexes.find((index) => index.name === LEGACY_LLM_RECORD_TTL_INDEX_NAME);
+  if (!live) {
+    return { status: 'missing' };
+  }
+  if (live.hidden === true || !isKnownLegacyCreatedAtTtlSeconds(live.expireAfterSeconds)) {
+    return {
+      status: 'skipped_mismatch',
+      reason:
+        live.hidden === true
+          ? 'live createdAt_1 index is hidden'
+          : 'live createdAt_1 expireAfterSeconds does not match known FastGPT hourly TTL'
+    };
+  }
+
+  const outcome = await dropManagedMongoIndexIfExists({
+    client: connectionLogMongo,
+    collectionName: LLMRequestRecordCollectionName,
+    indexName: LEGACY_LLM_RECORD_TTL_INDEX_NAME,
+    expectedKey: { createdAt: 1 },
+    expectedOptions: { expireAfterSeconds: live.expireAfterSeconds },
+    apply
+  });
+
+  if (outcome.status === 'dropped' && !apply) {
+    return { status: 'deferred_disabled' };
+  }
+  return { status: outcome.status, reason: outcome.reason };
 };
