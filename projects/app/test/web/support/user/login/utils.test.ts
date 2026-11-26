@@ -61,11 +61,10 @@ describe('resolveInitialLoginPageType', () => {
 });
 
 describe('resolveAutoLoginProvider', () => {
-  it('preserves global SSO automatic login and the root login override', () => {
+  it('preserves global SSO automatic login and the root login override outside WeCom', () => {
     const input = {
       ssoAvailable: true,
       ssoAutoLogin: true,
-      isWecomSso: false,
       wecomAvailable: false,
       isWecomTerminal: false,
       wecomLoginAutoRedirect: false
@@ -75,13 +74,38 @@ describe('resolveAutoLoginProvider', () => {
     expect(resolveAutoLoginProvider({ ...input, rootLogin: true })).toBeUndefined();
   });
 
-  it('does not let wecomLoginAutoRedirect=false block global sso.autoLogin in WeCom terminal', () => {
+  it('redirects to WeCom OAuth when both switches are enabled and WeCom OAuth is configured', () => {
     expect(
       resolveAutoLoginProvider({
         rootLogin: false,
         ssoAvailable: true,
         ssoAutoLogin: true,
-        isWecomSso: false,
+        wecomAvailable: true,
+        isWecomTerminal: true,
+        wecomLoginAutoRedirect: true
+      })
+    ).toBe('wecom');
+  });
+
+  it('redirects to SSO in WeCom terminal when both switches are enabled and only SSO is configured (self-hosted WeCom SSO)', () => {
+    expect(
+      resolveAutoLoginProvider({
+        rootLogin: false,
+        ssoAvailable: true,
+        ssoAutoLogin: true,
+        wecomAvailable: false,
+        isWecomTerminal: true,
+        wecomLoginAutoRedirect: true
+      })
+    ).toBe('sso');
+  });
+
+  it('skips WeCom OAuth and redirects to third-party SSO when sso.autoLogin is on and wecomLoginAutoRedirect is off', () => {
+    expect(
+      resolveAutoLoginProvider({
+        rootLogin: false,
+        ssoAvailable: true,
+        ssoAutoLogin: true,
         wecomAvailable: true,
         isWecomTerminal: true,
         wecomLoginAutoRedirect: false
@@ -89,55 +113,12 @@ describe('resolveAutoLoginProvider', () => {
     ).toBe('sso');
   });
 
-  it('redirects to SSO in WeCom terminal when SSO uses the WeCom provider and terminal redirect is enabled', () => {
+  it('redirects to WeCom OAuth in SaaS scenario when sso.autoLogin is off and wecomLoginAutoRedirect is on', () => {
     expect(
       resolveAutoLoginProvider({
         rootLogin: false,
         ssoAvailable: true,
         ssoAutoLogin: false,
-        isWecomSso: true,
-        wecomAvailable: true,
-        isWecomTerminal: true,
-        wecomLoginAutoRedirect: true
-      })
-    ).toBe('sso');
-  });
-
-  it('preserves legacy WeCom terminal SSO redirect when isWecomSso is unknown (legacy Pro or custom SSO)', () => {
-    expect(
-      resolveAutoLoginProvider({
-        rootLogin: false,
-        ssoAvailable: true,
-        ssoAutoLogin: false,
-        isWecomSso: undefined,
-        wecomAvailable: true,
-        isWecomTerminal: true,
-        wecomLoginAutoRedirect: true
-      })
-    ).toBe('sso');
-  });
-
-  it('does not redirect to non-WeCom SSO in WeCom terminal when global sso.autoLogin is off', () => {
-    expect(
-      resolveAutoLoginProvider({
-        rootLogin: false,
-        ssoAvailable: true,
-        ssoAutoLogin: false,
-        isWecomSso: false,
-        wecomAvailable: false,
-        isWecomTerminal: true,
-        wecomLoginAutoRedirect: true
-      })
-    ).toBeUndefined();
-  });
-
-  it('falls back to WeCom OAuth in WeCom terminal when SSO is non-WeCom or unavailable', () => {
-    expect(
-      resolveAutoLoginProvider({
-        rootLogin: false,
-        ssoAvailable: true,
-        ssoAutoLogin: false,
-        isWecomSso: false,
         wecomAvailable: true,
         isWecomTerminal: true,
         wecomLoginAutoRedirect: true
@@ -149,7 +130,6 @@ describe('resolveAutoLoginProvider', () => {
         rootLogin: false,
         ssoAvailable: false,
         ssoAutoLogin: false,
-        isWecomSso: false,
         wecomAvailable: true,
         isWecomTerminal: true,
         wecomLoginAutoRedirect: true
@@ -157,13 +137,25 @@ describe('resolveAutoLoginProvider', () => {
     ).toBe('wecom');
   });
 
-  it('does not redirect a WeCom terminal when terminal redirects are disabled and global sso.autoLogin is off', () => {
+  it('does not redirect to SSO in WeCom terminal when sso.autoLogin is off even if wecomLoginAutoRedirect is on', () => {
     expect(
       resolveAutoLoginProvider({
         rootLogin: false,
         ssoAvailable: true,
         ssoAutoLogin: false,
-        isWecomSso: true,
+        wecomAvailable: false,
+        isWecomTerminal: true,
+        wecomLoginAutoRedirect: true
+      })
+    ).toBeUndefined();
+  });
+
+  it('does not redirect a WeCom terminal when both switches are off', () => {
+    expect(
+      resolveAutoLoginProvider({
+        rootLogin: false,
+        ssoAvailable: true,
+        ssoAutoLogin: false,
         wecomAvailable: true,
         isWecomTerminal: true,
         wecomLoginAutoRedirect: false

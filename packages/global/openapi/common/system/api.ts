@@ -65,11 +65,7 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
-        isWecom: BoolSchema.optional().meta({
-          description: 'SSO 是否使用企业微信；省略表示旧版或无法确认',
-          example: false
-        })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -86,8 +82,7 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description:
-      '当前系统配置缓存标识；未登录时带 unAuth_v10_sso_ 前缀，包含匿名规则和 SSO provider 状态'
+    description: '当前系统配置缓存标识；未登录时带 unAuth_v11_ 前缀，包含匿名规则版本'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:
