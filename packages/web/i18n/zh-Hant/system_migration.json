@@ -103,10 +103,10 @@
   "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "遷移舊版 OpenSandbox 卷與歷史 package.zip",
   "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "驗證遷移結果",
   "migrations.20261117_cleanup_legacy_sandbox_resources.name": "清理歷史沙盒遺留資源",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "須於沙盒遷移成功並穩定運行後手動執行。先驗證舊集合無未遷移活躍記錄，再刪除遠端歷史 Sealos Devbox、舊版持久卷、agent_sandbox_instances_v2 歷史與孤兒記錄及已驗證新歸檔的 S3 舊 package.zip。",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "已清理 {{deletedDevboxes}} 個遠端 Devbox、{{deletedVolumes}} 個舊持久卷、{{deletedZips}} 個舊 zip 歸檔、{{deletedOrphans}} 筆孤兒記錄",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "須於沙盒遷移成功並穩定運行後手動執行。先驗證舊集合無未遷移活躍記錄，再刪除遠端歷史 Sealos Devbox、舊版持久卷及已驗證新歸檔的 S3 舊 package.zip，保留舊集合 agent_sandbox_instances_v2 僅作唯讀留存。",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "已清理 {{deletedDevboxes}} 個遠端 Devbox、{{deletedVolumes}} 個舊持久卷、{{deletedZips}} 個舊 zip 歸檔",
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "遷移狀態安全門禁",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理舊 Devbox、舊持久卷與孤兒記錄",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理舊 Devbox、舊容器與舊持久卷",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核驗並刪除舊 zip 歸檔",
   "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果"
 }

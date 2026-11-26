@@ -78,10 +78,10 @@ import { Alert } from '@/components/docs/Alert';
 
    **迁移后验证**：确认任务「已完成」且无未解决失败记录后，抽检已有 Agent 会话与 Skill 编辑页的冷恢复、文件读写、终端/预览连接及 Skill 发布。
 
-9. 新增 **清理历史沙盒遗留资源**（`20261117_cleanup_legacy_sandbox_resources`，**手动执行，依赖第 8 项**）：前置校验 `v2` 无活跃未迁移记录后才放行；须在 4.18.0 验证稳定后手动触发（回收 Devbox 前保留 Sealos ENV，完成后可移除）。任务会在逐一核验活跃沙盒在 `sandbox/archive-v2/` 的目标 `.tar.zst` 真实存在后，幂等删除远端历史 Devbox、旧 `/workspace` 持久卷、旧 `sandbox/archive/*/package.zip` 及遗留 `agent_sandbox_instances_v2` 记录（含软删除源的 `v2` 孤儿与 `deleting` 残留行）。**回滚边界**：
+9. 新增 **清理历史沙盒遗留资源**（`20261117_cleanup_legacy_sandbox_resources`，**手动执行，依赖第 8 项**）：前置校验 `v2` 无活跃未迁移记录后才放行；须在 4.18.0 验证稳定后手动触发（回收 Devbox 前保留 Sealos ENV，完成后可移除）。任务会在逐一核验活跃沙盒在 `sandbox/archive-v2/` 的目标 `.tar.zst` 真实存在后，幂等删除远端历史 Devbox、旧容器与旧 `/workspace` 持久卷，以及旧 `sandbox/archive/*/package.zip`，并保持旧 MongoDB 集合 `agent_sandbox_instances_v2` 只读不删除。**回滚边界**：
    - **沙盒层回滚**：执行第 9 项前，旧 `v2` 记录、Devbox、旧 `/workspace` 卷与旧 `package.zip` 均原样保留，**无需恢复 PVC 快照或沙盒 S3 归档**。共用 OpenSandbox 控制面时，4.17.5 会按 `sessionId` 查找并直接连接或唤醒（`resume`）`Running` / `Paused` 实例，因此**停用 4.18.0 App/Pro 后、恢复 4.17.x 流量前**，必须按 `agent_sandbox_instances_v3` 中的远端实例 ID **终止/删除**对应 4.18.0 试运行沙盒（**不可仅 Pause**；新版外置 PVC 已设 `deleteOnSandboxTermination: false`，终止不会删卷与归档），并确认按该 `sessionId` 已查不到可恢复实例（或使用隔离的 OpenSandbox 控制面试运行）；随后将沙盒组件切回 `v0.4.x` 并启动 4.17.x，抽检升级前曾运行且在 4.18.0 验证过冷恢复的沙盒，确认回连原 `/workspace` 卷与 Devbox（试运行新建的带随机后缀 `v3` PVC 与旧卷隔离，放弃升级后可按需清理）。
    - **整站回滚边界**：因 4.18.0 含模型计价、API Key 规范化等非向后兼容迁移，且新发布的 `.tar.zst` Skill 无法被 4.17.x 读取，整站回滚至 4.17.x 仍需恢复升级前数据库备份（若删除过非沙盒 S3 资产或发布了 `.tar.zst` Skill，另需恢复升级前 S3 备份）。
-   - **不可逆点**：执行第 9 项后，历史 Devbox、旧 `/workspace` 卷、旧 `package.zip` 与 `v2` 记录将被永久删除，不可撤销。
+   - **不可逆点**：执行第 9 项后，历史 Devbox、旧 `/workspace` 卷与旧 `package.zip` 将被永久删除，不可撤销（MongoDB 旧集合 `agent_sandbox_instances_v2` 仅保留只读记录，不在迁移任务中删除）。
 
 10. 新增 **清理第三方知识库 SYSTEM_ROOT 哨兵**（`20261120_clean_api_dataset_system_root`，**手动执行**）：4.18.0 用顶层 `Dataset.syncAll` 与目录级 `collection.syncChildren` 替代旧版 `SYSTEM_ROOT` 哨兵目录。**消费者切换前提（不支持旧版 Pro 消费者与新版 App 范围写入并发混跑）**：旧版 Pro（≤ v4.17.5）不识别 `syncChildren=false` 与 `Dataset.syncAll`，若旧版 Pro 仍在消费同步任务，新版 App 删除或暂停目录子项后，旧版 Pro 会重新展开来源目录并重新导入已删除内容，且在新版 Pro 接管后持续保留。部署升级时须**先停止全部旧版 Pro 同步消费者接单并等待在途任务结束**，再启动 4.18.0 Pro 与 App 开放新版同步范围写入；待全部 App 与 Pro 节点均升级就绪后，再于管理后台「版本升级」页面手动触发本任务，逐库事务上提哨兵子节点、回填 `Dataset.syncAll` 并清理存量 `SYSTEM_ROOT`（未执行清理前，新版 App 与 Pro 运行时均透明兼容存量哨兵）。
 
