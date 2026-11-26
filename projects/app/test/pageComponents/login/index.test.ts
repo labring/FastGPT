@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
     feConfigs: {
       sso: { enabled: true, autoLogin: true }
     } as {
-      sso?: { enabled?: boolean; autoLogin?: boolean; isWecom?: boolean };
+      sso?: { enabled?: boolean; autoLogin?: boolean };
       oauth?: { wecom?: boolean };
       wecomLoginAutoRedirect?: boolean;
     }
@@ -143,10 +143,10 @@ describe('LoginContainer route initialization', () => {
     expect(mocks.startLogin).toHaveBeenCalledOnce();
   });
 
-  it('does not auto-redirect non-WeCom SSO in WeCom terminal, but redirects when SSO is WeCom', async () => {
+  it('does not redirect to SSO in WeCom terminal when sso.autoLogin is off, and redirects to WeCom OAuth when configured', async () => {
     vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 wxwork/4.1.0' });
     mocks.system.feConfigs = {
-      sso: { enabled: true, autoLogin: false, isWecom: false },
+      sso: { enabled: true, autoLogin: false },
       wecomLoginAutoRedirect: true
     };
     await render();
@@ -154,8 +154,22 @@ describe('LoginContainer route initialization', () => {
     expect(mocks.startLogin).not.toHaveBeenCalled();
 
     mocks.system.feConfigs = {
-      sso: { enabled: true, autoLogin: false, isWecom: true },
+      sso: { enabled: true, autoLogin: false },
+      oauth: { wecom: true },
       wecomLoginAutoRedirect: true
+    };
+    await render();
+    expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ provider: 'wecom' })
+    );
+  });
+
+  it('redirects to SSO in WeCom terminal when sso.autoLogin is on and wecomLoginAutoRedirect is off', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 wxwork/4.1.0' });
+    mocks.system.feConfigs = {
+      sso: { enabled: true, autoLogin: true },
+      oauth: { wecom: true },
+      wecomLoginAutoRedirect: false
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
@@ -163,15 +177,16 @@ describe('LoginContainer route initialization', () => {
     );
   });
 
-  it('still honors global sso.autoLogin in WeCom terminal even when wecomLoginAutoRedirect is false', async () => {
+  it('prioritizes WeCom OAuth over SSO in WeCom terminal when both switches are on', async () => {
     vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 wxwork/4.1.0' });
     mocks.system.feConfigs = {
-      sso: { enabled: true, autoLogin: true, isWecom: false },
-      wecomLoginAutoRedirect: false
+      sso: { enabled: true, autoLogin: true },
+      oauth: { wecom: true },
+      wecomLoginAutoRedirect: true
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'wecom' })
     );
   });
 });

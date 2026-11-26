@@ -1,6 +1,5 @@
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
-import type { ProSsoConfigResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { WorkerNameEnum } from './worker/utils';
 
 declare global {
@@ -12,8 +11,6 @@ declare global {
   var feConfigs: FastGPTFeConfigsType;
   /** Pro 进程读取统一快照中的 SSO 状态；App 未注入时通过服务间接口读取。 */
   var getSsoConfiguredHandler: (() => boolean | Promise<boolean>) | undefined;
-  /** 本地测试或同进程场景下读取完整 SSO 状态（含 isWecom）。 */
-  var getSsoConfigHandler: (() => ProSsoConfigResponse | Promise<ProSsoConfigResponse>) | undefined;
   var agentUserTmbIds: ReadonlySet<string> | undefined;
 
   // 不同 worker name 对应不同 Props/Response 泛型，注册表只负责保存实例，读取处再按 name 收窄。
