@@ -41,17 +41,20 @@ export const isConfigFieldAllowed = (
   return allowedSet.has(key);
 };
 
+export type ConfigFieldVisibilityOptions = {
+  edition: SystemInstanceConfigEdition;
+  enableSaasAdminConfig?: boolean;
+  enableSangforAdminConfig?: boolean;
+};
+
 /**
  * 判断指定完整配置 Key 在管理端表单和 UI 中是否可见。
- * 结合版本权限与 ENABLE_SAAS_ADMIN_CONFIG 显示控制开关。
+ * 结合版本权限与 ENABLE_SAAS_ADMIN_CONFIG / ENABLE_SANGFOR_ADMIN_CONFIG 显示控制开关。
  * 注意：该方法只控制 UI 展示，不控制 API 读写边界。
  */
 export const isConfigFieldVisible = (
   key: string,
-  options: {
-    edition: SystemInstanceConfigEdition;
-    enableSaasAdminConfig?: boolean;
-  }
+  options: ConfigFieldVisibilityOptions
 ): boolean => {
   const item = systemInstanceConfigRegistry.find((r) => r.key === key);
   if (!item) return false;
@@ -64,6 +67,10 @@ export const isConfigFieldVisible = (
     return false;
   }
 
+  if (item.isSangforOnly && !options.enableSangforAdminConfig) {
+    return false;
+  }
+
   return true;
 };
 
@@ -72,10 +79,7 @@ export const isConfigFieldVisible = (
  */
 export const getDomainVisibleKeys = (
   domain: SystemInstanceConfigDomainKey,
-  options: {
-    edition: SystemInstanceConfigEdition;
-    enableSaasAdminConfig?: boolean;
-  }
+  options: ConfigFieldVisibilityOptions
 ): Set<string> => {
   const prefix = `${domain}.`;
   const result = new Set<string>();
@@ -171,7 +175,7 @@ export const filterDomainDataByEdition = <T>({
 }): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainAllowedKeys(domain, edition));
 
 /**
- * 按部署版本与 SaaS 显示开关过滤配置数据，用于表单展示和用户可编辑值。
+ * 按部署版本与显示开关过滤配置数据，用于表单展示和用户可编辑值。
  */
 export const filterDomainDataByVisibleKeys = <T>({
   domain,
@@ -180,10 +184,7 @@ export const filterDomainDataByVisibleKeys = <T>({
 }: {
   domain: SystemInstanceConfigDomainKey;
   data: T;
-  options: {
-    edition: SystemInstanceConfigEdition;
-    enableSaasAdminConfig?: boolean;
-  };
+  options: ConfigFieldVisibilityOptions;
 }): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainVisibleKeys(domain, options));
 
 export const SECRET_MASK = '******';

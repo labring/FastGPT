@@ -1,0 +1,118 @@
+---
+title: PDF 增强解析配置
+description: 在 FastGPT v4.18.0 及以上版本中配置 PDF 增强解析服务，支持 SoMark、Doc2X、TextIn 及自建解析服务
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert context="info">
+
+本教程适用于 **FastGPT v4.18.0 及以上版本**。v4.18.0 起，PDF 增强解析已统一迁移到管理员后台可视化配置，保存后立即生效，无需再通过环境变量配置。如果你仍在使用 v4.17.x 及以下版本，请参考[环境变量说明（旧版）](/self-host/config/env#pdf-增强解析配置)。
+
+</Alert>
+
+## 1. 效果与生效范围
+
+FastGPT 内置的 PDF 解析器基于文本流提取，适合纯文字 PDF；遇到扫描件、多栏排版、复杂表格、数学公式和插图时，容易出现错行、表格丢失或公式乱码。
+
+开启 **PDF 增强解析** 后，FastGPT 会将 PDF 交给外部视觉/OCR 解析服务处理，输出结构化 Markdown，并将提取出的图片自动转存至对象存储，大幅提升检索与问答准确度。
+
+配置完成后，该能力会在以下场景中按需生效：
+
+- **知识库导入与重新处理**：在知识库上传本地 PDF 文件（或对已有集合重新处理）时，在「参数设置 → 文件解析设置」中勾选 **「PDF 增强解析」** 即可使用增强解析。
+
+![知识库导入参数设置：勾选 PDF 增强解析](/imgs/pdf-parse/dataset-import.png)
+
+- **应用 / 智能体 / 工作流对话**：在应用的「系统配置 → 文件上传」弹窗中开启文档上传并勾选 **「PDF 增强解析」** 后，用户在对话中上传的 PDF 会自动通过增强解析读取内容。
+
+![应用文件上传设置：开启文档上传并勾选 PDF 增强解析](/imgs/pdf-parse/app-file-upload.png)
+
+<Alert context="info">
+
+未勾选「PDF 增强解析」的 PDF 以及非 PDF 格式文件，仍由系统内置解析器处理。
+
+</Alert>
+
+## 2. 如何在后台配置（v4.18.0+）
+
+1. 使用 `root` 管理员账号登录 FastGPT，进入 **管理员 → 系统配置 → 核心配置**（`/admin/settings/core`）。
+2. 下滑至 **「文档增强解析」** 区块，在 **解析服务提供方** 下拉框中选择需要接入的服务商。
+3. 按下方对应厂商说明填写服务地址或密钥，点击页面右上角 **保存** 即可热重载生效（无需重启容器）。
+
+![管理员核心配置：文档增强解析设置](/imgs/pdf-parse/admin-core-config.png)
+
+其他相关配置：
+
+- **PDF 计费（商业版）**：当实例已配置标准套餐时，会在右侧展示 **PDF 计费（积分 / 页）**，所有已启用的增强解析服务统一按实际返回的页数计费。
+- **请求超时时间（秒）**：PDF 增强解析拥有独立超时配置，直接在当前「文档增强解析」区块中调整（范围 `60`～`7200` 秒，默认 `600` 秒），不与普通内置文件解析超时混用。
+
+## 3. 各解析服务商说明
+
+| 提供方                | 官网 / 密钥获取                                                                                        | 配置字段                                        | 特点与适用场景                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **SoMark**（推荐）    | 国际站：[somark.ai](https://somark.ai)<br/>国内站：[somark.cn](https://somark.cn)                      | 服务区域、Somark API Key                        | 同步接口解析，对文字、表格、公式和图片还原效果好；单文件最大支持 200 MB、300 页。        |
+| **Doc2X**             | [open.noedgeai.com/apiKeys](https://open.noedgeai.com/apiKeys)                                         | Doc2X Key                                       | 异步上传与轮询解析，擅长学术论文公式、多栏排版和复杂表格还原。                           |
+| **TextIn (合合信息)** | [www.textin.com](https://www.textin.com)                                                               | TextIn AppId、TextIn Secret Code                | 企业级高精度 OCR 与版面分析，自动去水印并将表格转为 Markdown。                           |
+| **自建服务**          | 本地镜像部署教程：<br/>[OXR](/self-host/custom-models/oxr) / [MinerU](/self-host/custom-models/mineru) | 自建 PDF 解析服务地址、自建服务认证 Key（可选） | 数据完全留在私有网络内，支持在页面直接点击 **连通性测试**，适合有 GPU 资源的私有化部署。 |
+
+### SoMark 区域说明
+
+SoMark 的国际站与国内站账号及 API Key **互不通用**，请根据申请 Key 的站点选择对应区域：
+
+- **国际站 ( `somark.ai` )**：默认兜底区域，请求地址 `https://somark.ai/api/v1`。
+- **国内站 ( `somark.cn` )**：中国大陆账号使用，请求地址 `https://somark.cn/api/v1`。
+- **自定义**：适用于私有化部署或自建反向代理，需填写包含 `/api/v1` 的完整基础地址（例如 `https://somark.example.com/api/v1`），FastGPT 会在该地址后追加 `/parse/sync` 发起请求。
+
+### 自建服务推荐方案
+
+如果你希望在自有 GPU 服务器上离线部署 PDF 增强解析服务，推荐直接使用 FastGPT 官方适配镜像：
+
+- **OXR（推荐）**：基于 SoMark OXR-1.0，镜像内置权重、免登录拉取、支持单机多卡，详见 [接入 OXR PDF 文档解析](/self-host/custom-models/oxr)。
+- **MinerU**：基于视觉和 OCR 流水线解析复杂文档，详见 [接入 MinerU PDF 文档解析](/self-host/custom-models/mineru)。
+
+## 4. 自建服务 API 接口规范
+
+如果你希望自行封装或接入其他第三方解析服务，只需实现以下 HTTP 接口协议，并将完整接口地址填入后台的 **自建 PDF 解析服务地址** 即可。
+
+### 请求约定
+
+- **请求方法**：`POST`
+- **请求地址**：原样请求后台填写的 **自建 PDF 解析服务地址**（FastGPT 不会自动拼接额外路径），例如 `https://pdf-parser.example.com/v2/parse/file`
+- **请求头**：
+  - `Content-Type: multipart/form-data`
+  - `Authorization: Bearer <自建服务认证 Key>`（仅当后台填写了认证 Key 时携带）
+- **请求体（FormData）**：
+
+| 字段名 | 类型          | 必填 | 说明                                |
+| ------ | ------------- | ---- | ----------------------------------- |
+| `file` | File (Binary) | 是   | 待解析的 PDF 文件流，包含原始文件名 |
+
+### 响应约定
+
+服务需返回 `application/json` 响应体：
+
+```json
+{
+  "pages": 10,
+  "markdown": "# 文档标题\n\n正文内容、表格、公式以及图片..."
+}
+```
+
+| 字段名     | 类型               | 必填 | 说明                                                                                                         |
+| ---------- | ------------------ | ---- | ------------------------------------------------------------------------------------------------------------ |
+| `pages`    | `number`           | 是   | PDF 总页数，用于商业版按页计费与用量统计                                                                     |
+| `markdown` | `string`           | 是   | 解析后的 Markdown 内容；内嵌的 base64 图片（`data:image/...`）或公网图片 URL 会由 FastGPT 自动转存至对象存储 |
+| `error`    | `string \| object` | 否   | 发生业务错误时返回非空值；FastGPT 检测到该字段或非 2xx HTTP 状态码时会判定解析失败                           |
+
+### 接口自测示例
+
+部署完成后，可使用 `curl` 验证接口是否符合规范：
+
+```bash
+curl --fail-with-body \
+  -X POST "https://pdf-parser.example.com/v2/parse/file" \
+  -H "Authorization: Bearer your-service-key" \
+  -F "file=@./sample.pdf"
+```
+
+返回包含 `pages` 和 `markdown` 的 JSON 即表示接入就绪；随后在后台填写该地址并点击 **连通性测试** 确认 FastGPT 容器到解析服务的网络连通性。

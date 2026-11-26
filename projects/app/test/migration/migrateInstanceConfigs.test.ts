@@ -663,6 +663,33 @@ describe('migration env wiring', () => {
     }
   });
 
+  it('backfills customPdf.timeoutSeconds only when PARSE_FILE_TIMEOUT_SECONDS > 600', () => {
+    const baseEnv = readLegacyInstanceConfigEnv();
+
+    const larger = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 1200 }
+    });
+    expect(pick(larger, 'performance.parse.fileTimeoutSeconds')).toBe(1200);
+    expect(pick(larger, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(1200);
+
+    const equal = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 600 }
+    });
+    expect(pick(equal, 'providers.documentParse.customPdf.timeoutSeconds')).toBeUndefined();
+
+    const smaller = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...baseEnv, PARSE_FILE_TIMEOUT_SECONDS: 120 }
+    });
+    expect(pick(smaller, 'performance.parse.fileTimeoutSeconds')).toBe(120);
+    expect(pick(smaller, 'providers.documentParse.customPdf.timeoutSeconds')).toBeUndefined();
+  });
+
   /**
    * 客户的环境变量只在这条迁移链路上进入实例配置：任何一条映射断掉，
    * 客户已配置的 env 值在升级后就会变成 Schema 默认值。

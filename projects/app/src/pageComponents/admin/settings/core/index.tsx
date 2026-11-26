@@ -17,6 +17,8 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getDocPath } from '@/web/common/system/doc';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
@@ -33,6 +35,16 @@ import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import {
+  getSomarkRegionPreset,
+  PDF_PARSE_TIMEOUT_DEFAULT_SECONDS,
+  PDF_PARSE_TIMEOUT_MAX_SECONDS,
+  PDF_PARSE_TIMEOUT_MIN_SECONDS,
+  resolveSomarkBaseUrl,
+  SOMARK_BASE_URL_CN,
+  SOMARK_BASE_URL_GLOBAL,
+  type SomarkRegionPreset
+} from '@fastgpt/global/common/system/config/schemas/providers';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 
@@ -52,6 +64,20 @@ type CoreConfigForm = {
 /** 数字输入统一尺寸：两列布局下不撑满单元格，避免与文本输入宽度不一致 */
 const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
 
+/** 兼容加载中空快照与历史空地址：保持被省略的密钥字段不被填成空串，仅将 SoMark 空地址兜底为国际站。 */
+const normalizeDocumentParse = (
+  documentParse?: SystemInstanceConfigDomainMap['providers']['documentParse']
+): SystemInstanceConfigDomainMap['providers']['documentParse'] | undefined => {
+  if (!documentParse) return undefined;
+  return {
+    ...documentParse,
+    customPdf: {
+      ...documentParse.customPdf,
+      somarkBaseUrl: resolveSomarkBaseUrl(documentParse.customPdf?.somarkBaseUrl)
+    }
+  };
+};
+
 /**
  * 核心配置页：影响面最大的少量运行策略集中在一处，避免分散在多个配置页。
  * 字段跨越 site / auth / feature / storage / providers 五个配置域，保存时逐域携带各自 revision 局部提交。
@@ -60,9 +86,11 @@ const CoreSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isPro, isFieldVisible, filterConfigData, filterConfigDataByEdition } =
     useAdminPermission();
-  const { subPlans } = useSystemStore();
+  const { feConfigs, subPlans } = useSystemStore();
+  const pdfParseDocUrl = feConfigs?.docUrl ? getDocPath('/self-host/pdf-parse') : '';
   const showEmail = isFieldVisible('auth.loginProviders.email.smtp');
   const showPhone = isFieldVisible('auth.loginProviders.phone.signName');
+  const showSangfor = isFieldVisible('providers.documentParse.sangfor.url');
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
@@ -89,10 +117,15 @@ const CoreSettingComponent = () => {
     storage.isLoading ||
     providers.isLoading;
 
+  const [somarkRegionOverride, setSomarkRegionOverride] = useState<{
+    config: typeof providers.effectiveConfig;
+    region: SomarkRegionPreset;
+  } | null>(null);
+
   const form = useForm<CoreConfigForm>({
     defaultValues: {
       publicUrl: '',
-      documentParse: providers.effectiveConfig.documentParse,
+      documentParse: normalizeDocumentParse(providers.effectiveConfig?.documentParse),
       agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       fileDomain: '',
@@ -121,6 +154,14 @@ const CoreSettingComponent = () => {
   const [phoneClearSeq, setPhoneClearSeq] = useState(0);
 
   const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
+  const somarkBaseUrl = useWatch({ control, name: 'documentParse.customPdf.somarkBaseUrl' });
+  // 仅在当前配置快照内保留用户手动切换的区域状态；配置重新加载后自动按新值重新推导。
+  const somarkRegion: SomarkRegionPreset =
+    somarkRegionOverride?.config === providers.effectiveConfig
+      ? somarkRegionOverride.region
+      : getSomarkRegionPreset(
+          somarkBaseUrl ?? providers.effectiveConfig.documentParse?.customPdf?.somarkBaseUrl
+        );
   const downloadMode = useWatch({ control, name: 'downloadMode' });
   const emailSmtp = useWatch({ control, name: 'email.smtp' });
   const emailUser = useWatch({ control, name: 'email.user' });
@@ -183,6 +224,10 @@ const CoreSettingComponent = () => {
   const supportsCdnEndpoint = storageCapabilities?.supportsCdnEndpoint ?? true;
   const showRedirectEndpoints =
     downloadMode === 'short-redirect' && (supportsExternalEndpoint || supportsCdnEndpoint);
+  const showCustomPdfTimeout =
+    Boolean(documentParseProvider) &&
+    documentParseProvider !== 'none' &&
+    documentParseProvider !== 'sangfor';
   // 与订阅套餐开关一致：无套餐或空套餐均不展示计费，开源版始终隐藏。
   const showPdfPrice =
     isPro &&
@@ -195,7 +240,7 @@ const CoreSettingComponent = () => {
     reset({
       // 仅为空配置提供浏览器草稿，保存前不发布到 scope，不覆盖已有公网地址。
       publicUrl: site.effectiveConfig?.publicUrl || window.location.origin,
-      documentParse: providers.effectiveConfig.documentParse,
+      documentParse: normalizeDocumentParse(providers.effectiveConfig?.documentParse),
       agentEngine: feature.effectiveConfig?.agentEngine ?? 'fastAgent',
       multipleDataToBase64: feature.effectiveConfig?.multipleDataToBase64 ?? false,
       fileDomain: storage.effectiveConfig?.fileDomain ?? '',
@@ -227,23 +272,45 @@ const CoreSettingComponent = () => {
     async (formData: CoreConfigForm) => {
       const activeProvider = formData.documentParse.provider;
       const isCustomActive = activeProvider === 'customPdf' || activeProvider === 'custom';
+      const isSomarkActive = activeProvider === 'somark';
       const isSangforActive = activeProvider === 'sangfor';
       const rawPrice = Number(formData.documentParse.customPdf.price);
+      const rawTimeoutSeconds = Math.round(Number(formData.documentParse.customPdf.timeoutSeconds));
       const isValidOptionalUrl = (url?: string) => !url || isValidHttpUrl(url);
+      const draftSomarkBaseUrl = formData.documentParse.customPdf.somarkBaseUrl?.trim() ?? '';
+      const isValidSomarkDraft =
+        Boolean(draftSomarkBaseUrl) && isValidServiceBaseUrl(draftSomarkBaseUrl);
       // 隐藏 Provider 的半成品地址回退到已存值；密钥仍按省略、替换和清空语义提交。
-      // 隐藏时省略价格补丁，由服务端保留当前值，避免提交表单中的默认值或过期草稿。
-      const { price: _price, ...customPdf } = formData.documentParse.customPdf;
+      // 隐藏时省略价格与超时补丁，由服务端保留当前值，避免提交表单中的默认值或过期草稿。
+      const {
+        price: _price,
+        timeoutSeconds: _timeoutSeconds,
+        ...customPdf
+      } = formData.documentParse.customPdf;
       const documentParse: DeepPartial<CoreConfigForm['documentParse']> = {
         ...formData.documentParse,
         customPdf: {
           ...customPdf,
+          ...(showCustomPdfTimeout
+            ? {
+                timeoutSeconds: Number.isFinite(rawTimeoutSeconds)
+                  ? rawTimeoutSeconds
+                  : PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+              }
+            : {}),
           ...(showPdfPrice
             ? { price: Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0 }
             : {}),
           url:
             isCustomActive || isValidOptionalUrl(formData.documentParse.customPdf.url)
               ? formData.documentParse.customPdf.url
-              : (providers.effectiveConfig.documentParse?.customPdf?.url ?? '')
+              : (providers.effectiveConfig.documentParse?.customPdf?.url ?? ''),
+          somarkBaseUrl:
+            isSomarkActive || isValidSomarkDraft
+              ? resolveSomarkBaseUrl(draftSomarkBaseUrl)
+              : resolveSomarkBaseUrl(
+                  providers.effectiveConfig.documentParse?.customPdf?.somarkBaseUrl
+                )
         },
         sangfor: {
           ...formData.documentParse.sangfor,
@@ -270,7 +337,13 @@ const CoreSettingComponent = () => {
           {
             domain: 'providers',
             expectedRevision: providers.revision,
-            overrides: filterConfigData('providers', { documentParse }) as Record<string, unknown>
+            overrides: deepMergeConfig(
+              filterConfigDataByEdition('providers', providers.overrides) as Record<
+                string,
+                unknown
+              >,
+              filterConfigData('providers', { documentParse }) as Record<string, unknown>
+            )
           },
           {
             domain: 'auth',
@@ -546,6 +619,26 @@ const CoreSettingComponent = () => {
       <AdminSettingSection
         id="documentParse"
         title={t('admin:provider_section_doc_parse')}
+        titleRight={
+          pdfParseDocUrl && (
+            <Box
+              as={'a'}
+              href={pdfParseDocUrl}
+              target={'_blank'}
+              rel={'noopener noreferrer'}
+              display={'inline-flex'}
+              alignItems={'center'}
+              gap={1}
+              fontSize={'sm'}
+              fontWeight={'normal'}
+              color={'primary.600'}
+              _hover={{ textDecoration: 'underline' }}
+            >
+              <MyIcon name={'book'} w={'14px'} />
+              <Text as={'span'}>{t('common:read_doc')}</Text>
+            </Box>
+          )
+        }
         showDivider
       >
         <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'} mb={6}>
@@ -568,9 +661,9 @@ const CoreSettingComponent = () => {
                     { label: t('admin:none'), value: 'none' },
                     { label: 'somark', value: 'somark' },
                     { label: 'doc2x', value: 'doc2x' },
-                    { label: 'textln', value: 'textln' },
+                    { label: t('admin:document_parse_provider_textin'), value: 'textln' },
                     { label: t('admin:custom_self_hosted'), value: 'customPdf' },
-                    { label: t('admin:sangfor_short'), value: 'sangfor' }
+                    ...(showSangfor ? [{ label: t('admin:sangfor_short'), value: 'sangfor' }] : [])
                   ]}
                   value={
                     field.value === 'textin'
@@ -584,6 +677,32 @@ const CoreSettingComponent = () => {
               )}
             />
           </AdminFormItem>
+
+          {showCustomPdfTimeout && (
+            <AdminFormItem
+              label={t('admin:request_timeout_seconds')}
+              tooltip={t('admin:pdf_parse_timeout_tip')}
+              mb={0}
+            >
+              <Controller
+                name="documentParse.customPdf.timeoutSeconds"
+                control={control}
+                render={({ field }) => (
+                  <AdminNumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                    name={field.name}
+                    maxW={'400px'}
+                    min={PDF_PARSE_TIMEOUT_MIN_SECONDS}
+                    max={PDF_PARSE_TIMEOUT_MAX_SECONDS}
+                    step={10}
+                    value={field.value}
+                    fallbackValue={PDF_PARSE_TIMEOUT_DEFAULT_SECONDS}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </AdminFormItem>
+          )}
 
           {/* 后端对全部启用的 PDF Provider 统一按 customPdf.price 计费，不能只在 customPdf 下展示 */}
           {showPdfPrice && (
@@ -624,27 +743,112 @@ const CoreSettingComponent = () => {
             borderColor={'myGray.200'}
             mb={6}
           >
-            <AdminFormItem
-              label="Somark API Key"
-              tooltip={t('admin:use_the_official_somark_intelligent_cloud_parsing_credential')}
-              isRequired
-              mb={0}
-            >
-              <Controller
-                name="documentParse.customPdf.somarkApiKey"
-                control={control}
-                render={({ field }) => (
-                  <AdminSecretInput
-                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                    name={field.name}
-                    value={field.value}
-                    onChange={field.onChange}
-                    isConfigured={isSecretConfigured('documentParse.customPdf.somarkApiKey')}
-                    isRequired
-                  />
-                )}
-              />
-            </AdminFormItem>
+            <Controller
+              name="documentParse.customPdf.somarkBaseUrl"
+              control={control}
+              rules={{
+                validate: (value) => {
+                  if (documentParseProvider !== 'somark' || somarkRegion !== 'custom') return true;
+                  if (!value?.trim()) return t('admin:required');
+                  return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
+                }
+              }}
+              render={({ field }) => {
+                const fieldError = form.getFieldState(field.name, form.formState).error;
+                return (
+                  <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'}>
+                    <AdminFormItem
+                      label={t('admin:somark_region')}
+                      tooltip={t('admin:somark_region_tip')}
+                      isRequired
+                      mb={0}
+                    >
+                      <MySelect<SomarkRegionPreset>
+                        width={'full'}
+                        maxW={'400px'}
+                        list={[
+                          { label: t('admin:somark_region_global'), value: 'global' },
+                          { label: t('admin:somark_region_cn'), value: 'cn' },
+                          { label: t('admin:somark_region_custom'), value: 'custom' }
+                        ]}
+                        value={somarkRegion}
+                        onChange={(region) => {
+                          setSomarkRegionOverride({
+                            config: providers.effectiveConfig,
+                            region
+                          });
+                          form.clearErrors('documentParse.customPdf.somarkBaseUrl');
+                          if (region === 'global') {
+                            field.onChange(SOMARK_BASE_URL_GLOBAL);
+                          } else if (region === 'cn') {
+                            field.onChange(SOMARK_BASE_URL_CN);
+                          } else if (
+                            !field.value ||
+                            getSomarkRegionPreset(field.value) !== 'custom'
+                          ) {
+                            field.onChange('');
+                          }
+                        }}
+                      />
+                    </AdminFormItem>
+
+                    {somarkRegion === 'custom' && (
+                      <AdminFormItem
+                        label={t('admin:somark_custom_base_url')}
+                        tooltip={t('admin:somark_custom_base_url_tip')}
+                        isRequired
+                        mb={0}
+                      >
+                        <Input
+                          ref={field.ref}
+                          name={field.name}
+                          value={field.value ?? ''}
+                          onBlur={field.onBlur}
+                          onChange={(event) => field.onChange(event.target.value)}
+                          isInvalid={Boolean(fieldError)}
+                          placeholder="https://somark.example.com/api/v1"
+                        />
+                        {fieldError && (
+                          <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                            {fieldError.message}
+                          </Text>
+                        )}
+                      </AdminFormItem>
+                    )}
+
+                    <Box gridColumn={somarkRegion === 'custom' ? ['span 1', 'span 2'] : undefined}>
+                      <AdminFormItem
+                        label="Somark API Key"
+                        tooltip={t(
+                          'admin:use_the_official_somark_intelligent_cloud_parsing_credential'
+                        )}
+                        isRequired
+                        mb={0}
+                      >
+                        <Controller
+                          name="documentParse.customPdf.somarkApiKey"
+                          control={control}
+                          render={({ field: apiKeyField }) => (
+                            <AdminSecretInput
+                              isInvalid={Boolean(
+                                form.getFieldState(apiKeyField.name, form.formState).error
+                              )}
+                              name={apiKeyField.name}
+                              value={apiKeyField.value}
+                              onChange={apiKeyField.onChange}
+                              isConfigured={isSecretConfigured(
+                                'documentParse.customPdf.somarkApiKey'
+                              )}
+                              isRequired
+                            />
+                          )}
+                        />
+                      </AdminFormItem>
+                    </Box>
+                  </SimpleGrid>
+                );
+              }}
+            />
           </Box>
         )}
 
@@ -803,7 +1007,7 @@ const CoreSettingComponent = () => {
           </Box>
         )}
 
-        {documentParseProvider === 'sangfor' && (
+        {showSangfor && documentParseProvider === 'sangfor' && (
           <Box
             p={5}
             bg={'white'}
@@ -894,10 +1098,10 @@ const CoreSettingComponent = () => {
                     isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     variant={'whiteOutline'}
                     maxW={'400px'}
-                    min={10}
-                    max={7200}
-                    value={field.value ?? 600}
-                    onChange={(_, val) => field.onChange(val || 600)}
+                    min={PDF_PARSE_TIMEOUT_MIN_SECONDS}
+                    max={PDF_PARSE_TIMEOUT_MAX_SECONDS}
+                    value={field.value ?? PDF_PARSE_TIMEOUT_DEFAULT_SECONDS}
+                    onChange={(_, val) => field.onChange(val || PDF_PARSE_TIMEOUT_DEFAULT_SECONDS)}
                   >
                     <NumberInputField />
                     <NumberInputStepper>

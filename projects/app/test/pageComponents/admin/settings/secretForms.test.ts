@@ -87,7 +87,12 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
   useToast: () => ({ toast: vi.fn() })
 }));
 vi.mock('@chakra-ui/react', () => {
-  const Box = ({ children }: any) => React.createElement('div', null, children);
+  const Box = ({ children, as, href, target, rel }: any) =>
+    React.createElement(
+      as === 'a' ? 'a' : 'div',
+      as === 'a' ? { href, target, rel } : null,
+      children
+    );
   const Input = React.forwardRef(function Input(
     { isInvalid: _isInvalid, ...props }: any,
     ref: any
@@ -98,6 +103,7 @@ vi.mock('@chakra-ui/react', () => {
     Box,
     Button: ({ children, type = 'button', onClick }: any) =>
       React.createElement('button', { type, onClick }, children),
+    Icon: () => null,
     HStack: Box,
     Flex: Box,
     SimpleGrid: Box,
@@ -143,7 +149,19 @@ vi.mock('@/pageComponents/admin/settings/AdminNumberInput', () => ({
     })
 }));
 vi.mock('@/pageComponents/admin/settings/ImageInput', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({ list, value, onChange }: any) =>
+    React.createElement(
+      'select',
+      {
+        value: value ?? '',
+        onChange: (event: any) => onChange?.(event.target.value)
+      },
+      ...(list ?? []).map((item: { label: string; value: string }) =>
+        React.createElement('option', { key: item.value, value: item.value }, item.label)
+      )
+    )
+}));
 vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
   default: ({ Trigger, onConfirm, content }: any) =>
     React.createElement(
@@ -577,6 +595,94 @@ describe('system configuration secret forms', () => {
       expect(mocks.configs.providers.documentParse.customPdf.price).toBe(2.5);
     }
   );
+
+  it('renders cleanly while domain configs are still loading with empty snapshots', async () => {
+    mocks.configs.providers = {};
+    mocks.configs.site = {};
+    mocks.configs.auth = {};
+    mocks.configs.feature = {};
+    mocks.configs.storage = {};
+    await act(async () => root.render(React.createElement(CoreSettings)));
+    expect(container.querySelector('#documentParse')).not.toBeNull();
+  });
+
+  it('defaults SoMark region to international on load and supports CN and custom base URLs', async () => {
+    const getSomarkSelect = () =>
+      [...container.querySelectorAll<HTMLSelectElement>('#documentParse select')].find((select) =>
+        [...select.options].some((option) => option.value === 'global')
+      )!;
+    const getCustomUrlInput = () =>
+      container.querySelector<HTMLInputElement>('[name="documentParse.customPdf.somarkBaseUrl"]');
+
+    // 历史空值加载时自动选中国际站，不展示自定义地址输入框；专用超时默认 600 秒可独立修改
+    mocks.configs.providers.documentParse.provider = 'somark';
+    mocks.configs.providers.documentParse.customPdf.somarkBaseUrl = '';
+    await act(async () => root.render(React.createElement(CoreSettings)));
+    expect(getSomarkSelect().value).toBe('global');
+    expect(getCustomUrlInput()).toBeNull();
+    const timeoutInput = container.querySelector<HTMLInputElement>(
+      '[name="documentParse.customPdf.timeoutSeconds"]'
+    );
+    expect(timeoutInput?.value).toBe('600');
+    await act(async () => Simulate.change(timeoutInput!, { target: { value: '900' } } as any));
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://somark.ai/api/v1'
+    );
+    expect(sentOverrides('providers').documentParse.customPdf.timeoutSeconds).toBe(900);
+
+    // 切换到国内站直接写入国内地址
+    await act(async () => Simulate.change(getSomarkSelect(), { target: { value: 'cn' } } as any));
+    expect(getCustomUrlInput()).toBeNull();
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://somark.cn/api/v1'
+    );
+
+    // 切换到自定义后展开输入框，空值或非法地址阻止提交，合法地址去尾斜杠后保存
+    await act(async () =>
+      Simulate.change(getSomarkSelect(), { target: { value: 'custom' } } as any)
+    );
+    expect(getCustomUrlInput()?.value).toBe('');
+    mocks.update.mockClear();
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    await act(async () =>
+      Simulate.change(getCustomUrlInput()!, {
+        target: { value: 'ftp://invalid.example/api/v1' }
+      } as any)
+    );
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    await act(async () =>
+      Simulate.change(getCustomUrlInput()!, {
+        target: { value: 'https://oxr.internal.test/api/v1/' }
+      } as any)
+    );
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://oxr.internal.test/api/v1'
+    );
+
+    // 回读已保存的自定义地址时自动选中 custom 并回显地址
+    mocks.configs.providers = {
+      ...mocks.configs.providers,
+      documentParse: {
+        ...mocks.configs.providers.documentParse,
+        customPdf: {
+          ...mocks.configs.providers.documentParse.customPdf,
+          somarkBaseUrl: 'https://oxr.internal.test/api/v1'
+        }
+      }
+    };
+    await act(async () => {
+      mocks.configListeners.forEach((notify) => notify());
+    });
+    expect(getSomarkSelect().value).toBe('custom');
+    expect(getCustomUrlInput()?.value).toBe('https://oxr.internal.test/api/v1');
+  });
 
   it('preserves visible and hidden provider credentials and submits a changed key', async () => {
     mocks.configs.providers.documentParse.customPdf.price = 2.5;

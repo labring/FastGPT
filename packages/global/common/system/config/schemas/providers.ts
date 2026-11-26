@@ -1,5 +1,38 @@
 import z from 'zod';
+import { isValidServiceBaseUrl, stripUrlTrailingSlash } from '../../../string/url';
 import { textWithDefault, urlWithDefault } from './primitives';
+
+export const SOMARK_BASE_URL_GLOBAL = 'https://somark.ai/api/v1';
+export const SOMARK_BASE_URL_CN = 'https://somark.cn/api/v1';
+
+export const PDF_PARSE_TIMEOUT_MIN_SECONDS = 60;
+export const PDF_PARSE_TIMEOUT_MAX_SECONDS = 7200;
+export const PDF_PARSE_TIMEOUT_DEFAULT_SECONDS = 600;
+
+export type SomarkRegionPreset = 'global' | 'cn' | 'custom';
+
+/** 规范化 SoMark API 基础地址：去除首尾空白和尾部斜杠，空值回退国际站。 */
+export const resolveSomarkBaseUrl = (baseUrl?: string): string => {
+  const normalized = stripUrlTrailingSlash(baseUrl?.trim());
+  return normalized || SOMARK_BASE_URL_GLOBAL;
+};
+
+/** 按存储的 SoMark Base URL 推导前端区域选项；空值或国际站地址统一归为国际站。 */
+export const getSomarkRegionPreset = (baseUrl?: string): SomarkRegionPreset => {
+  const normalized = stripUrlTrailingSlash(baseUrl?.trim());
+  if (!normalized || normalized === SOMARK_BASE_URL_GLOBAL) return 'global';
+  if (normalized === SOMARK_BASE_URL_CN) return 'cn';
+  return 'custom';
+};
+
+/** SoMark 会在基地址后追加 /parse/sync，禁止凭据、查询参数和片段；空值兼容旧配置并回退国际站。 */
+const somarkBaseUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || isValidServiceBaseUrl(value), {
+    message: 'Expected an HTTP(S) base URL without credentials, query or fragment'
+  })
+  .default(SOMARK_BASE_URL_GLOBAL);
 
 const DocumentParseProviderConfigSchema = z.strictObject({
   provider: z
@@ -9,19 +42,28 @@ const DocumentParseProviderConfigSchema = z.strictObject({
     .strictObject({
       url: urlWithDefault(),
       key: textWithDefault(),
+      somarkBaseUrl: somarkBaseUrlSchema,
       somarkApiKey: textWithDefault(),
       doc2xKey: textWithDefault(),
       textinAppId: textWithDefault(),
       textinSecretCode: textWithDefault(),
+      timeoutSeconds: z
+        .number()
+        .int()
+        .min(PDF_PARSE_TIMEOUT_MIN_SECONDS)
+        .max(PDF_PARSE_TIMEOUT_MAX_SECONDS)
+        .default(PDF_PARSE_TIMEOUT_DEFAULT_SECONDS),
       price: z.number().nonnegative().default(0)
     })
     .prefault({
       url: '',
       key: '',
+      somarkBaseUrl: SOMARK_BASE_URL_GLOBAL,
       somarkApiKey: '',
       doc2xKey: '',
       textinAppId: '',
       textinSecretCode: '',
+      timeoutSeconds: PDF_PARSE_TIMEOUT_DEFAULT_SECONDS,
       price: 0
     }),
   sangfor: z
@@ -29,9 +71,19 @@ const DocumentParseProviderConfigSchema = z.strictObject({
       url: urlWithDefault(),
       key: textWithDefault(),
       extensions: z.string().default('pdf'),
-      timeoutSeconds: z.number().int().min(1).max(7200).default(600)
+      timeoutSeconds: z
+        .number()
+        .int()
+        .min(PDF_PARSE_TIMEOUT_MIN_SECONDS)
+        .max(PDF_PARSE_TIMEOUT_MAX_SECONDS)
+        .default(PDF_PARSE_TIMEOUT_DEFAULT_SECONDS)
     })
-    .prefault({ url: '', key: '', extensions: 'pdf', timeoutSeconds: 600 })
+    .prefault({
+      url: '',
+      key: '',
+      extensions: 'pdf',
+      timeoutSeconds: PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+    })
 });
 
 /** 外部提供商注入到工作流的全局变量定义。 */

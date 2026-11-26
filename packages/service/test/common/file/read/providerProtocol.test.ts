@@ -100,11 +100,15 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const loopbackOnly: AxiosAdapter = async (config) => {
-      const source = new URL(config.url ?? '', config.baseURL);
+      const source = new URL(axiosLibrary.getUri(config));
       if (
-        ![new URL(origin).host, 'somark.ai', 'api.textin.com', 'v2.doc2x.noedgeai.com'].includes(
-          source.host
-        )
+        ![
+          new URL(origin).host,
+          'somark.ai',
+          'somark.cn',
+          'api.textin.com',
+          'v2.doc2x.noedgeai.com'
+        ].includes(source.host)
       ) {
         throw new Error('Protocol fixture rejects unowned upstream');
       }
@@ -159,6 +163,7 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
         Object.assign(config.customPdf, {
           url: origin + '/custom-' + phase,
           key: 'custom-' + phase,
+          somarkBaseUrl: phase === 'A' ? '' : origin + '/somark-endpoint-' + phase,
           somarkApiKey: 'somark-' + phase,
           doc2xKey: 'doc2x-' + phase,
           textinAppId: 'textin-app-' + phase,
@@ -190,8 +195,12 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
         const received = events.slice(start);
         expect(received.length).toBe(provider === 'doc2x' ? 3 : 1);
         const request = received[0];
-        if (provider === 'somark') expect(request.body.toString()).toContain('somark-' + phase);
-        else if (provider === 'textin')
+        if (provider === 'somark') {
+          expect(request.body.toString()).toContain('somark-' + phase);
+          expect(request.path).toBe(
+            phase === 'A' ? '/api/v1/parse/sync' : `/somark-endpoint-${phase}/parse/sync`
+          );
+        } else if (provider === 'textin')
           expect(request).toMatchObject({
             appId: 'textin-app-' + phase,
             secret: 'textin-secret-' + phase

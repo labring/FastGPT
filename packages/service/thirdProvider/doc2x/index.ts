@@ -5,7 +5,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { createProxyAxios, axios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
-import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 import { type UploadedFileResult } from '../../worker/readFile/type';
 
 const DOC2X_REQUEST_TIMEOUT_MS = 60000;
@@ -116,7 +116,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   ) => {
     logger.debug('Doc2x PDF parse started');
     const startTime = Date.now();
-    const deadline = startTime + getBackendFileOperationTimeoutMs();
+    const deadline = startTime + getPdfEnhancedParseTimeoutMs();
     const getRemainingMs = () => Math.max(0, deadline - Date.now());
     const getRequestTimeout = (maxTimeoutMs: number): number => {
       const remainingMs = getRemainingMs();

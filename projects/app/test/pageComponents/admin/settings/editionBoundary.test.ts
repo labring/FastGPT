@@ -12,15 +12,18 @@ const mocks = vi.hoisted(() => ({
   isPro: false,
   enableSaasAdminConfig: false,
   login2faEnabled: false,
+  enableSangforAdminConfig: false,
   save: undefined as undefined | ((data: any) => Promise<unknown>),
   update: vi.fn(),
   patch: vi.fn(),
   pageSave: undefined as undefined | (() => Promise<void>),
   switchRows: new Map<string, { isChecked: boolean; onChange: (checked: boolean) => void }>(),
+  selectLists: [] as Array<Array<{ label: string; value: string }>>,
   formLabels: [] as string[],
   authOverrides: {} as Record<string, unknown>,
   authSecretKeys: new Set<string>(),
-  featureOverrides: {} as Record<string, unknown>
+  featureOverrides: {} as Record<string, unknown>,
+  providersOverrides: {} as Record<string, unknown>
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -28,7 +31,8 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
     feConfigs: {
       isProService: mocks.isPro,
       enableSaasAdminConfig: mocks.enableSaasAdminConfig,
-      login2faEnabled: mocks.login2faEnabled
+      login2faEnabled: mocks.login2faEnabled,
+      enableSangforAdminConfig: mocks.enableSangforAdminConfig
     }
   })
 }));
@@ -40,12 +44,18 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
     revision: 1,
     isSecretConfigured: (path: string) => domain === 'auth' && mocks.authSecretKeys.has(path),
     isLoading: false,
-    overrides: domain === 'auth' ? mocks.authOverrides : {},
+    overrides:
+      domain === 'auth'
+        ? mocks.authOverrides
+        : domain === 'providers'
+          ? mocks.providersOverrides
+          : {},
     effectiveConfig: filterDomainDataByEdition({
       domain,
       data: resolveSystemInstanceConfig({
         auth: mocks.authOverrides as any,
-        feature: mocks.featureOverrides as any
+        feature: mocks.featureOverrides as any,
+        providers: mocks.providersOverrides as any
       })[domain],
       edition: mocks.isPro ? 'pro' : 'community'
     }),
@@ -68,6 +78,7 @@ vi.mock('@chakra-ui/react', () => {
   return {
     SimpleGrid: element,
     Box: element,
+    Icon: () => null,
     Flex: element,
     HStack: element,
     Button: element,
@@ -84,7 +95,12 @@ vi.mock('@chakra-ui/react', () => {
     useToast: () => ({ toast: vi.fn() })
   };
 });
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({ list }: { list?: Array<{ label: string; value: string }> }) => {
+    if (list) mocks.selectLists.push(list);
+    return null;
+  }
+}));
 vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
   default: ({ Trigger }: any) => Trigger
 }));
@@ -130,12 +146,15 @@ describe('configuration form edition boundary', () => {
     mocks.isPro = false;
     mocks.enableSaasAdminConfig = false;
     mocks.login2faEnabled = false;
+    mocks.enableSangforAdminConfig = false;
     mocks.authOverrides = {};
     mocks.authSecretKeys = new Set<string>();
     mocks.featureOverrides = {};
+    mocks.providersOverrides = {};
     mocks.patch.mockReset().mockResolvedValue(undefined);
     mocks.pageSave = undefined;
     mocks.switchRows.clear();
+    mocks.selectLists = [];
     mocks.formLabels = [];
     mocks.update.mockReset().mockResolvedValue({ results: [] });
   });
@@ -580,4 +599,55 @@ describe('configuration form edition boundary', () => {
     expect(submitted.overrides).not.toHaveProperty('teamMode');
     expect(submitted.overrides.loginProviders.wecom.providerSecret).toBe('keep-secret');
   });
+
+  it.each([false, true])(
+    'controls Sangfor parser visibility via ENABLE_SANGFOR_ADMIN_CONFIG=%s and translates TextIn option',
+    async (enableSangfor) => {
+      mocks.enableSangforAdminConfig = enableSangfor;
+      mocks.providersOverrides = {
+        documentParse: {
+          provider: 'sangfor',
+          sangfor: { url: 'https://sangfor.internal.test', extensions: 'pdf,docx' }
+        }
+      };
+      renderToStaticMarkup(React.createElement(CoreSettings));
+      const providerOptions = mocks.selectLists.find((list) =>
+        list.some((item) => item.value === 'somark')
+      )!;
+      expect(providerOptions).toContainEqual({
+        label: 'admin:document_parse_provider_textin',
+        value: 'textln'
+      });
+      expect(providerOptions.some((item) => item.value === 'sangfor')).toBe(enableSangfor);
+      expect(mocks.formLabels.includes('admin:sangfor_parsing_api_endpoint')).toBe(enableSangfor);
+
+      // 关闭深信服展示开关时保存核心页，数据库中已有深信服配置应原样保留，不能被清空。
+      if (!enableSangfor) {
+        const config = resolveSystemInstanceConfig({
+          providers: mocks.providersOverrides as any
+        });
+        await mocks.save!({
+          agentEngine: 'fastAgent',
+          multipleDataToBase64: false,
+          downloadMode: 'short-proxy',
+          externalEndpoint: '',
+          cdnEndpoint: '',
+          publicUrl: 'https://main.test',
+          email: config.auth.loginProviders.email,
+          documentParse: {
+            ...config.providers.documentParse,
+            provider: 'somark'
+          },
+          phone: config.auth.loginProviders.phone
+        });
+        const providersItem = mocks.update.mock.calls[0][0].items.find(
+          (item: { domain: string }) => item.domain === 'providers'
+        );
+        expect(providersItem.overrides.documentParse.sangfor).toEqual({
+          url: 'https://sangfor.internal.test',
+          extensions: 'pdf,docx'
+        });
+      }
+    }
+  );
 });

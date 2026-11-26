@@ -6,6 +6,7 @@ import {
 } from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { PDF_PARSE_TIMEOUT_DEFAULT_SECONDS } from '@fastgpt/global/common/system/config/schemas/providers';
 import { NumSchema } from '@fastgpt/global/common/zod';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
@@ -296,6 +297,7 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['resource'];
 
   // ---------- performance ----------
+  const legacyFileTimeoutSeconds = optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS);
   overrides.performance = compact({
     workflow: compact({
       maxRunTimes: optionalNumber(legacyEnv.WORKFLOW_MAX_RUN_TIMES),
@@ -305,7 +307,7 @@ export const buildLegacyDomainOverrides = ({
         optionalNumber(legacyEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
     }),
     parse: compact({
-      fileTimeoutSeconds: optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS),
+      fileTimeoutSeconds: legacyFileTimeoutSeconds,
       xlsxMaxRows: optionalNumber(legacyEnv.XLSX_PARSE_MAX_ROWS),
       xlsxMaxColumns: optionalNumber(legacyEnv.XLSX_PARSE_MAX_COLUMNS),
       xlsxMaxCells: optionalNumber(legacyEnv.XLSX_PARSE_MAX_CELLS),
@@ -373,6 +375,13 @@ export const buildLegacyDomainOverrides = ({
     textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
     textinSecretCode:
       optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE),
+    // 旧版 PDF 增强解析沿用 Math.max(600, PARSE_FILE_TIMEOUT_SECONDS)；
+    // 仅在旧值大于默认值（600 秒）时自动回填到独立超时，避免小值反向缩短 PDF 解析超时。
+    timeoutSeconds:
+      typeof legacyFileTimeoutSeconds === 'number' &&
+      legacyFileTimeoutSeconds > PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+        ? legacyFileTimeoutSeconds
+        : undefined,
     price: optionalNumber(legacyCustomPdf.price)
   };
   const sangforCredentials = isSangfor

@@ -33,6 +33,8 @@ export type SystemInstanceConfigRegistryItem = {
   edition: SystemInstanceConfigEdition;
   /** 是否属于 SaaS 运营专用字段；为 true 时在私有化部署（ENABLE_SAAS_ADMIN_CONFIG=false）下默认隐藏 */
   isSaasOnly?: boolean;
+  /** 是否属于深信服定制专用字段；为 true 时未开启 ENABLE_SANGFOR_ADMIN_CONFIG 默认隐藏 */
+  isSangforOnly?: boolean;
   secret: boolean;
   applyMode: SystemInstanceConfigApplyMode;
 };
@@ -44,14 +46,19 @@ const createEntries = ({
 }: {
   section: SystemInstanceConfigSection;
   keys: readonly string[];
-  options: Omit<SystemInstanceConfigRegistryItem, 'key' | 'section' | 'isSaasOnly'> & {
+  options: Omit<
+    SystemInstanceConfigRegistryItem,
+    'key' | 'section' | 'isSaasOnly' | 'isSangforOnly'
+  > & {
     isSaasOnly?: boolean;
+    isSangforOnly?: boolean;
   };
 }): SystemInstanceConfigRegistryItem[] =>
   keys.map((key) => ({
     key: `${section}.${key}`,
     section,
     isSaasOnly: options.isSaasOnly ?? false,
+    isSangforOnly: options.isSangforOnly ?? false,
     ...options
   }));
 
@@ -396,13 +403,22 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     keys: [
       'documentParse.provider',
       'documentParse.customPdf.url',
+      'documentParse.customPdf.somarkBaseUrl',
+      'documentParse.customPdf.timeoutSeconds',
       'documentParse.customPdf.price',
-      'documentParse.sangfor.url',
-      'documentParse.sangfor.extensions',
-      'documentParse.sangfor.timeoutSeconds',
       'externalProviderWorkflowVariables'
     ],
     options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  // 深信服定制解析项默认隐藏，需 ENABLE_SANGFOR_ADMIN_CONFIG=true 才展示
+  ...createEntries({
+    section: 'providers',
+    keys: [
+      'documentParse.sangfor.url',
+      'documentParse.sangfor.extensions',
+      'documentParse.sangfor.timeoutSeconds'
+    ],
+    options: { edition: 'all', secret: false, applyMode: 'reload', isSangforOnly: true }
   }),
   ...createEntries({
     section: 'subservice',
@@ -466,24 +482,29 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'documentParse.customPdf.somarkApiKey',
       'documentParse.customPdf.doc2xKey',
       'documentParse.customPdf.textinAppId',
-      'documentParse.customPdf.textinSecretCode',
-      'documentParse.sangfor.key'
+      'documentParse.customPdf.textinSecretCode'
     ],
     options: { edition: 'all', secret: true, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'providers',
+    keys: ['documentParse.sangfor.key'],
+    options: { edition: 'all', secret: true, applyMode: 'reload', isSangforOnly: true }
   })
 ];
 
 /**
- * 按开源版/商业版以及可选的 SaaS 开关过滤 Admin 配置字段。
- * options.enableSaasAdminConfig 仅控制表单/UI 展示过滤，不作为 API 权限边界。
+ * 按开源版/商业版以及可选的展示开关过滤 Admin 配置字段。
+ * options.enableSaasAdminConfig / enableSangforAdminConfig 仅控制表单/UI 展示过滤，不作为 API 权限边界。
  */
 export const getSystemInstanceConfigRegistry = (
   edition: SystemInstanceConfigEdition,
-  options?: { enableSaasAdminConfig?: boolean }
+  options?: { enableSaasAdminConfig?: boolean; enableSangforAdminConfig?: boolean }
 ): SystemInstanceConfigRegistryItem[] =>
   systemInstanceConfigRegistry.filter((item) => {
     const editionAllowed = edition === 'all' || item.edition === 'all' || item.edition === edition;
     if (!editionAllowed) return false;
     if (item.isSaasOnly && !options?.enableSaasAdminConfig) return false;
+    if (item.isSangforOnly && !options?.enableSangforAdminConfig) return false;
     return true;
   });

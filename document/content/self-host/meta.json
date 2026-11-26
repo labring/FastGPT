@@ -10,6 +10,7 @@
     "---系统配置---",
     "...config",
     "../plugin/runtime",
+    "pdf-parse",
     "custom-models",
     "---平台管理---",
     "../guide/admin/platform-console",

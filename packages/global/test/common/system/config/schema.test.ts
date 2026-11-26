@@ -1,6 +1,12 @@
 import { vi, describe, expect, it } from 'vitest';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
 import {
+  getSomarkRegionPreset,
+  resolveSomarkBaseUrl,
+  SOMARK_BASE_URL_CN,
+  SOMARK_BASE_URL_GLOBAL
+} from '@fastgpt/global/common/system/config/schemas/providers';
+import {
   getDomainDefaultConfig,
   parseDomainOverrides,
   resolveDomainEffectiveConfig,
@@ -400,6 +406,59 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     });
     expect(somarkConfig.documentParse.provider).toBe('somark');
     expect(somarkConfig.documentParse.customPdf.somarkApiKey).toBe('sk-somark-xxx');
+    expect(somarkConfig.documentParse.customPdf.somarkBaseUrl).toBe(SOMARK_BASE_URL_GLOBAL);
+    expect(somarkConfig.documentParse.customPdf.timeoutSeconds).toBe(600);
+
+    for (const timeoutSeconds of [60, 600, 7200]) {
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { timeoutSeconds } } }
+        }).documentParse.customPdf.timeoutSeconds
+      ).toBe(timeoutSeconds);
+    }
+    for (const invalidTimeout of [0, 59, 7201, 12.5]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { timeoutSeconds: invalidTimeout } } }
+        })
+      ).toThrow();
+    }
+
+    // somarkBaseUrl supports global, CN, custom HTTP(S) base URLs, and legacy empty string
+    for (const somarkBaseUrl of [
+      '',
+      SOMARK_BASE_URL_GLOBAL,
+      SOMARK_BASE_URL_CN,
+      'https://oxr.example.com/api/v1'
+    ]) {
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { somarkBaseUrl } } }
+        }).documentParse.customPdf.somarkBaseUrl
+      ).toBe(somarkBaseUrl);
+    }
+    for (const invalid of [
+      'ftp://somark.example.com/api/v1',
+      'https://user:pass@somark.example.com/api/v1',
+      'https://somark.example.com/api/v1?x=1',
+      'https://somark.example.com/api/v1#frag'
+    ]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { somarkBaseUrl: invalid } } }
+        })
+      ).toThrow();
+    }
+    expect(resolveSomarkBaseUrl('')).toBe(SOMARK_BASE_URL_GLOBAL);
+    expect(resolveSomarkBaseUrl('  https://somark.cn/api/v1/  ')).toBe(SOMARK_BASE_URL_CN);
+    expect(getSomarkRegionPreset('')).toBe('global');
+    expect(getSomarkRegionPreset('https://somark.ai/api/v1/')).toBe('global');
+    expect(getSomarkRegionPreset('https://somark.cn/api/v1/')).toBe('cn');
+    expect(getSomarkRegionPreset('https://oxr.example.com/api/v1')).toBe('custom');
 
     // doc2x does not require customPdf.url
     const doc2xConfig = resolveDomainEffectiveConfig({
@@ -644,6 +703,23 @@ describe('systemInstanceConfigRegistry', () => {
     for (const key of wecomKeys) {
       expect(proKeys).not.toContain(key);
       expect(communityKeys).not.toContain(key);
+    }
+
+    // 深信服专用字段默认隐藏，仅开启 ENABLE_SANGFOR_ADMIN_CONFIG 后进入展示集合
+    const sangforKeys = [
+      'providers.documentParse.sangfor.url',
+      'providers.documentParse.sangfor.extensions',
+      'providers.documentParse.sangfor.timeoutSeconds',
+      'providers.documentParse.sangfor.key'
+    ];
+    const sangforEnabledKeys = getSystemInstanceConfigRegistry('community', {
+      enableSangforAdminConfig: true
+    }).map((item) => item.key);
+    for (const key of sangforKeys) {
+      expect(communityKeys).not.toContain(key);
+      expect(proKeys).not.toContain(key);
+      expect(saasProKeys).not.toContain(key);
+      expect(sangforEnabledKeys).toContain(key);
     }
   });
   it('checks subservice resolveDomainEffectiveConfig errors and rejects retired provider field', () => {

@@ -4,7 +4,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { type UploadedFileResult } from '../../worker/readFile/type';
 import { getImageBuffer } from '../../common/file/image/utils';
-import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 
 type TextinImageUploadHandler = (
   params:
@@ -27,7 +27,7 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
   // Init request
   const instance = createProxyAxios({
     baseURL: 'https://api.textin.com/ai/service/v1',
-    timeout: getBackendFileOperationTimeoutMs(),
+    timeout: getPdfEnhancedParseTimeoutMs(),
     headers: {
       'x-ti-app-id': appId,
       'x-ti-secret-code': secretCode

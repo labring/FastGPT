@@ -1,8 +1,9 @@
 import FormData from 'form-data';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
 import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
-import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 
 type SomarkResponse = {
   code?: number;
@@ -25,11 +26,11 @@ type SomarkResponse = {
  * SoMark 的 API Key 通过 multipart body 传递，不使用 Authorization header。
  * 当前只请求 Markdown，图片保留为 URL，交由上层统一转存。
  */
-export const useSomarkServer = ({ apiKey }: { apiKey: string }) => {
+export const useSomarkServer = ({ apiKey, baseUrl }: { apiKey: string; baseUrl?: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   const instance = createProxyAxios({
-    baseURL: 'https://somark.ai/api/v1',
-    timeout: getBackendFileOperationTimeoutMs()
+    baseURL: resolveSomarkBaseUrl(baseUrl),
+    timeout: getPdfEnhancedParseTimeoutMs()
   });
 
   const parsePDF = async (fileBuffer: Buffer) => {

@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 /**
- * performance.parse.fileTimeoutSeconds 的运行时唯一来源是实例配置快照。
+ * providers.documentParse.customPdf.timeoutSeconds 的运行时唯一来源是实例配置快照。
  * 见 .agents/design/common/admin-instance-config-env-boundary.md 13.1：运行期 `?? serviceEnv` 兜底已废除，
- * PARSE_FILE_TIMEOUT_SECONDS 只在启动迁移时 seed 进库，因此本文件改写快照叶子来驱动 doc2x 的整体 deadline，
- * 而不是 mock serviceEnv。每次获取当前快照，避免测试初始化替换 global 后仍修改旧对象。
+ * 因此本文件直接改写快照叶子来驱动 doc2x 的整体 deadline，而不是 mock serviceEnv。
+ * 每次获取当前快照，避免测试初始化替换 global 后仍修改旧对象。
  */
 const setFileTimeoutSeconds = (value: number) => {
-  getTestInstanceConfig().performance.parse.fileTimeoutSeconds = value;
+  getTestInstanceConfig().providers.documentParse.customPdf.timeoutSeconds = value;
 };
 
 const { requestMock, axiosPutMock, getImageBufferMock } = vi.hoisted(() => ({

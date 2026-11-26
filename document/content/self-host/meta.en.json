@@ -10,6 +10,7 @@
     "---System Configuration---",
     "...config",
     "../plugin/runtime",
+    "pdf-parse",
     "custom-models",
     "---Platform Administration---",
     "../guide/admin/platform-console",

@@ -17,7 +17,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
-import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../parseTimeout';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -273,7 +273,7 @@ const readFileContent = async ({
       markdown: string;
       error?: object | string;
     }>(url, data, {
-      timeout: getBackendFileOperationTimeoutMs(),
+      timeout: getPdfEnhancedParseTimeoutMs(),
       headers: {
         ...data.getHeaders(),
         Authorization: token ? `Bearer ${token}` : undefined
@@ -300,11 +300,15 @@ const readFileContent = async ({
     };
   };
   const parsePdfFromSomark = async (): Promise<ReadFileResponse> => {
-    const apiKey = getSystemInstanceConfig().providers.documentParse.customPdf?.somarkApiKey;
+    const customPdf = getSystemInstanceConfig().providers.documentParse.customPdf;
+    const apiKey = customPdf?.somarkApiKey;
     if (!apiKey) return systemParse();
 
     const { buffer } = await getMaterializedFile();
-    const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
+    const { pages, text: rawText } = await useSomarkServer({
+      apiKey,
+      baseUrl: customPdf?.somarkBaseUrl
+    }).parsePDF(buffer);
     const text = await parseMarkdownImages(rawText);
 
     reportPdfParseUsage(pages);
@@ -426,6 +430,10 @@ const readFileContent = async ({
           value: documentParse.customPdf.key
         },
         {
+          path: 'providers.documentParse.customPdf.somarkBaseUrl',
+          value: documentParse.customPdf.somarkBaseUrl
+        },
+        {
           path: 'providers.documentParse.customPdf.somarkApiKey',
           value: documentParse.customPdf.somarkApiKey
         },
@@ -436,6 +444,10 @@ const readFileContent = async ({
         {
           path: 'providers.documentParse.customPdf.textinSecretCode',
           value: documentParse.customPdf.textinSecretCode
+        },
+        {
+          path: 'providers.documentParse.customPdf.timeoutSeconds',
+          value: documentParse.customPdf.timeoutSeconds
         },
         {
           path: 'providers.documentParse.customPdf.doc2xKey',
