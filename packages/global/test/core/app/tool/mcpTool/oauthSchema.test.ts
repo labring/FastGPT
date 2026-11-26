@@ -180,7 +180,7 @@ describe('McpToolSetOAuthConfigSchema', () => {
   });
 
   it('tolerates null optional oauth fields from persisted data', () => {
-    // 回归（Stage K10）：旧版 client reset 把 `clientSource` 写成 null，schema 只允许
+    // 回归：旧版 client reset 把 `clientSource` 写成 null，schema 只允许
     // cimd|dcr|manual，导致 LegacyMcpToolSetRuntimeConfigSchema 解析失败、detail 500。
     const parsed = parseOAuth({
       schemaVersion: 1,

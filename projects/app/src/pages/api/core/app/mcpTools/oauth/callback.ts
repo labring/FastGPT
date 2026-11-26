@@ -40,7 +40,7 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 
 /**
- * GET /api/core/app/mcpTools/oauth/callback（v2.4 §4.5 + 决策 D8）。
+ * GET /api/core/app/mcpTools/oauth/callback。
  *
  * `csrf:false`：AS 302 回来的请求没有 `fastgpt-web-request` 头。
  * state 解密前失败 → JSON；解密后失败 → 固定详情页 302。
@@ -103,15 +103,13 @@ async function handler(req: ApiRequestProps<any>, res: NextApiResponse) {
     feDomain: config.feDomain
   });
 
-  // 解密失败时没有可信 appId，按设计返回 JSON 400。
+  // 解密失败时没有可信 appId，直接返回 JSON 400。
   const payload = parseMcpOAuthState(callbackQuery.state);
   await assertMcpOAuthRateLimit('callback-app', { appId: payload.appId });
 
   const redirectError = (error: unknown) => {
     const code =
-      error instanceof McpOAuthApiError
-        ? error.oauthCode
-        : McpOAuthErrorCodeEnum.internalError;
+      error instanceof McpOAuthApiError ? error.oauthCode : McpOAuthErrorCodeEnum.internalError;
     return finishRedirect({ res, payload, success: false, code });
   };
 
@@ -161,10 +159,7 @@ async function handler(req: ApiRequestProps<any>, res: NextApiResponse) {
     }
 
     const oauth = toolSet.oauth;
-    if (
-      !oauth?.client?.clientId ||
-      sha256Hex(oauth.client.clientId) !== payload.clientIdHash
-    ) {
+    if (!oauth?.client?.clientId || sha256Hex(oauth.client.clientId) !== payload.clientIdHash) {
       throw new McpOAuthApiError(McpOAuthErrorCodeEnum.stateContextChanged, {
         message: 'OAuth client changed'
       });

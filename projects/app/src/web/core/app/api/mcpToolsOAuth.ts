@@ -11,14 +11,14 @@ import type {
 } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
 
 /**
- * MCP OAuth 前端 API（I5 UI 使用）。
+ * MCP OAuth 前端 API。
  *
  * 只封装 start/status/disconnect/client-reset；callback 由授权服务器直接跳转，
  * 前端不参与。
  */
 
 /**
- * OAuth 路由直接返回裸 schema 响应（设计 §8.2/§8.3），错误仍走统一 envelope；
+ * OAuth 路由直接返回裸 schema 响应，错误仍走统一 envelope；
  * 因此跳过通用 `{code,data}` 解包，避免把成功响应当成空 data。
  */
 const RAW_RESPONSE = { rawResponse: true } as const;

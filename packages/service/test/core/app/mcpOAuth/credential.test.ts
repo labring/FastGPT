@@ -379,7 +379,7 @@ describe('mcpOAuth credential', () => {
     expect(mergedSameIssuer.oauth?.client?.clientId).toBe('client-1');
     expect(mergedSameIssuer.oauth?.clientSource).toBe('cimd');
 
-    // 历史 null（Stage K10）：未变更认证模式时读入后写回必须剔除 clientSource，
+    // 历史 null：未变更认证模式时读入后写回必须剔除 clientSource，
     // 不能把 null 继续持久化（schema 只允许 cimd|dcr|manual）。
     const mergedNullSource = mergeMcpOAuthFromPublished({
       previousAuthMode: 'oauth',

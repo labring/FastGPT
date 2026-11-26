@@ -36,7 +36,7 @@ import {
 } from './apiSupport';
 
 /**
- * start 的完整服务端流程（v2.4 §4.4 + 决策 D8）。
+ * start 的完整服务端流程。
  *
  * `oauth/start` 与「callback 捕获到可降级错误后自动再 start」共用本函数：
  * 发现 → 选择 client（可选强制 DCR）→ 写回节点 → 写一次性台账 → 返回授权 URL。

@@ -245,7 +245,7 @@ describe('get app detail api', () => {
   });
 
   it('returns OAuth toolset detail when persisted server metadata contains null optionals', async () => {
-    // 回归（Stage K3）：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
+    // 回归：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
     // 曾使 LegacyStoreNodeItemSchema 拒绝节点，detail 返回 500。
     const owner = await getUser(`detail-oauth-null-owner-${getNanoid(6)}`);
     const appId = await onCreateApp({
@@ -310,7 +310,7 @@ describe('get app detail api', () => {
   });
 
   it('returns OAuth toolset detail when persisted optional oauth fields are null', async () => {
-    // 回归（Stage K10）：旧版 client reset 把 `oauth.clientSource` 写成 null，
+    // 回归：旧版 client reset 把 `oauth.clientSource` 写成 null，
     // 导致 rootToolSet 解析失败并落入 legacy 摘要校验，detail 返回 500。
     const owner = await getUser(`detail-oauth-client-source-null-${getNanoid(6)}`);
     const appId = await onCreateApp({

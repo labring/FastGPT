@@ -82,7 +82,7 @@ const MCPTools = () => {
     [appId, url, toolList, headerSecret, authMode, clientMode, scope]
   );
 
-  /** 「去授权」前先自动保存当前 URL/authMode/clientMode/scope（设计 §9.2）。 */
+  /** 「去授权」前先自动保存当前 URL/authMode/clientMode/scope。 */
   const saveBeforeStart = useCallback(async () => {
     await saveCurrent();
   }, [saveCurrent]);
@@ -96,7 +96,7 @@ const MCPTools = () => {
     if (!callback || callbackHandledRef.current) return;
     callbackHandledRef.current = true;
 
-    // 立即移除一次性 query，避免刷新页面重复执行（handoff 主流程 5/6）。
+    // 立即移除一次性 query，避免刷新页面重复执行。
     const nextQuery = stripMcpOAuthCallbackQuery(router.query);
     void router.replace({ pathname: router.pathname, query: nextQuery }, undefined, {
       shallow: true

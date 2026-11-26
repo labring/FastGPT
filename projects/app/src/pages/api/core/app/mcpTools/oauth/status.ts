@@ -23,7 +23,7 @@ import {
 import { MongoMcpOAuthState } from '@fastgpt/service/core/app/mcpOAuth/schema';
 
 /**
- * GET /api/core/app/mcpTools/oauth/status（v2.4 §8.2）。
+ * GET /api/core/app/mcpTools/oauth/status。
  *
  * 只读投影：不发起任何网络请求、不返回 token/secret。
  */

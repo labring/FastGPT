@@ -8,7 +8,7 @@ import {
 } from './oauth';
 
 /**
- * MCP 工具集 OAuth 存储字段的唯一来源（v2.4 §2.2）。
+ * MCP 工具集 OAuth 存储字段的唯一来源。
  *
  * 明确不存在：`mode`、`rollback`、`credentialVersion`、`refreshBackoff`、
  * `server.configHash`、`scopeAllowlist`。任何代码不得读取或写入这些键。
@@ -36,7 +36,7 @@ export const McpOAuthUrlSchema = z
 
 /**
  * 可选字段读侧兼容：历史/第三方数据可能把可选字段写成 `null`（典型来源是 AS metadata
- * 中的 `client_id_metadata_document_supported: null`；Stage K10 另见持久化节点里的
+ * 中的 `client_id_metadata_document_supported: null`；另见持久化节点里的
  * `oauth.clientSource: null`），而旧契约只允许 `undefined` 或值本身。
  *
  * 这里只放宽读侧（`.nullish()`），不引入 transform：该 schema 参与 OpenAPI 响应文档生成，

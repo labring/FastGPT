@@ -8,15 +8,15 @@ import { deriveMcpOAuthStatus } from '@fastgpt/service/core/app/mcpOAuth/credent
 import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
 
 /**
- * status / start 响应契约（handoff「API hand-off」）。
+ * status / start 响应契约。
  *
- * 1. status 顶层字段集与 handoff 枚举完全一致；
+ * 1. status 顶层字段集与约定枚举完全一致；
  * 2. 任何 token / refresh token / client secret / registration access token
  *    都不得出现在响应中；
  * 3. 8 个状态都可从 deriveMcpOAuthStatus 派生。
  */
 
-/** handoff 逐项枚举的 status 顶层字段（共 22 个）。 */
+/** 约定的 status 顶层字段（共 22 个）。 */
 const HANDOFF_STATUS_FIELDS = [
   'schemaVersion',
   'state',
@@ -104,7 +104,7 @@ const token = {
 };
 
 describe('MCP OAuth status 响应契约', () => {
-  it('schema 字段集与 handoff 完全一致（22 个顶层字段）', () => {
+  it('schema 字段集与约定完全一致（22 个顶层字段）', () => {
     expect(Object.keys(McpOAuthStatusResponseSchema.shape).sort()).toEqual(HANDOFF_STATUS_FIELDS);
   });
 
@@ -182,7 +182,7 @@ describe('MCP OAuth status 响应契约', () => {
 });
 
 describe('MCP OAuth start 响应契约', () => {
-  it('字段集与 handoff 一致，且不含 state/PKCE/token', () => {
+  it('字段集与约定一致，且不含 state/PKCE/token', () => {
     expect(Object.keys(McpOAuthStartResponseSchema.shape).sort()).toEqual(HANDOFF_START_FIELDS);
     const keys = new Set(Object.keys(McpOAuthStartResponseSchema.shape));
     for (const forbidden of ['state', 'codeVerifier', 'codeChallenge', 'token', 'secret']) {

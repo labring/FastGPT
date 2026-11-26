@@ -4,7 +4,7 @@ import type { McpOAuthStateRecordType } from './types';
 const { Schema } = connectionMongo;
 
 /**
- * MCP OAuth 唯一新增集合：一次性 state 台账（v2.4 §3.1、§4.2）。
+ * MCP OAuth 唯一新增集合：一次性 state 台账。
  *
  * 不新增凭据、限流、日志、审计、回滚集合；业务有效期始终用 `expiresAt`
  * 显式比较，TTL 只负责最终清理。

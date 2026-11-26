@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
 /**
- * MCP OAuth 出站请求（v2.4 §5.1、§11.1）。
+ * MCP OAuth 出站请求。
  *
  * - 生产路径统一走 `createMcpSafeFetch`：DNS pin、拒绝代理、`redirect:'manual'`。
  * - 测试可注入 fetch；注入时仍然做 URL 安全校验与响应大小限制，

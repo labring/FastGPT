@@ -380,7 +380,7 @@ export const createMcpSafeFetch = ({
 };
 
 /**
- * v2.4 §6.3：401/403 是鉴权挑战，必须原样抛出（保留 `WWW-Authenticate`），
+ * 401/403 是鉴权挑战，必须原样抛出（保留 `WWW-Authenticate`），
  * 不能像 404/405 一样当作“服务端不支持 Streamable HTTP”回退 SSE。
  */
 export const shouldFallbackToSSE = (error: unknown): boolean => {

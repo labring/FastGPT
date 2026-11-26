@@ -11,7 +11,7 @@ import {
 } from './httpRuntime';
 
 /**
- * OAuth 发现（v2.4 §5.1–§5.3）。
+ * OAuth 发现。
  *
  * 顺序：无令牌 MCP `initialize` → PRM（challenge / path-aware / root）→ AS metadata。
  * PRM 404/不可用时回退到 MCP origin 的 `oauth-authorization-server`（MCP 2025-03-26）。

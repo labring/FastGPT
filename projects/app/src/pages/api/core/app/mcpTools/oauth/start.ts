@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 
 /**
- * POST /api/core/app/mcpTools/oauth/start（v2.4 §4.4 + 决策 D8）。
+ * POST /api/core/app/mcpTools/oauth/start。
  *
  * 发现、client 选择（含 CIMD 失败后的一次性自动降级 DCR）、写回节点、
  * 写一次性台账都在 `startMcpOAuthAuthorization` 内完成；台账写失败不返回 URL。

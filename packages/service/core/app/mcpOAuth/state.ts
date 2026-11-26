@@ -14,7 +14,7 @@ import {
 } from './types';
 
 /**
- * state 加密 / 一次性台账 / Cookie 绑定（v2.4 §4）。
+ * state 加密 / 一次性台账 / Cookie 绑定。
  *
  * state 原文只返回给浏览器；任何日志、审计都不得记录 `n`、state 原文或 Cookie。
  */
@@ -202,7 +202,7 @@ export const writeMcpOAuthState = async ({
   return { stateHash };
 };
 
-/** 同一 app/node/user 的新 start 先作废旧 state（v2.4 §4.2）。 */
+/** 同一 app/node/user 的新 start 先作废旧 state。 */
 export const expirePendingMcpOAuthStates = async ({
   appId,
   nodeId,

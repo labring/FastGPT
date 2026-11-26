@@ -27,7 +27,7 @@ import { MCP_OAUTH_HTTP_TIMEOUT_MS } from './httpRuntime';
 import { getMcpOAuthChallenge, getMcpTransportHttpStatus } from '../mcpAuthError';
 
 /**
- * 运行期令牌解析（v2.4 §6.2–§6.4）。
+ * 运行期令牌解析。
  *
  * - 进程内 single-flight（Map）避免同实例重复刷新。
  * - Mongo 短租约串行化跨实例刷新；写回同时匹配 seq 与 lease owner。

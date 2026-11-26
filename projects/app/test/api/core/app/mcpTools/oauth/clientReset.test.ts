@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import {
-  resetMcpOAuthFetchImpl,
-  setMcpOAuthFetchImpl
-} from '@fastgpt/service/core/app/mcpOAuth';
+import { resetMcpOAuthFetchImpl, setMcpOAuthFetchImpl } from '@fastgpt/service/core/app/mcpOAuth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { buildOAuthConfig, callRoute, createToolsetFixture, readToolsetOAuth } from './helpers';
@@ -13,8 +10,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/mcpOAuth', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@fastgpt/service/core/app/mcpOAuth')>();
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/mcpOAuth')>();
   return { ...actual, assertMcpOAuthEnabled: () => {} };
 });
 
@@ -103,7 +99,7 @@ describe('POST /api/core/app/mcpTools/oauth/client/reset', () => {
     expect(oauth?.token).toBeUndefined();
     expect(oauth?.server).toBeUndefined();
     expect(oauth?.lastError).toBeUndefined();
-    // Stage K10：clientSource 随 client 一起 $unset，绝不写 null（schema 只允许 cimd|dcr|manual）。
+    // clientSource 随 client 一起 $unset，绝不写 null（schema 只允许 cimd|dcr|manual）。
     expect(oauth?.clientSource).toBeUndefined();
     expect(oauth?.credentialSeq).toBe(6);
   });

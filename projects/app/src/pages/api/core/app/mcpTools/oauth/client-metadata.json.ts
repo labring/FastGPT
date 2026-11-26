@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 
 /**
- * GET/HEAD /api/core/app/mcpTools/oauth/client-metadata.json（v2.4 §5.4）。
+ * GET/HEAD /api/core/app/mcpTools/oauth/client-metadata.json。
  *
  * 公开 CIMD 文档：Host 必须等于 FE_DOMAIN；支持 ETag/304；无 Cookie 副作用。
  */

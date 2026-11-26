@@ -3,7 +3,7 @@ import type { McpOAuthClientSource } from '@fastgpt/global/core/app/tool/mcpTool
 import type { McpOAuthServerMetadataType } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
 
 /**
- * MCP OAuth 服务内部类型（v2.4 §4.1、§5）。
+ * MCP OAuth 服务内部类型。
  *
  * 这里只放跨模块复用的结构；业务逻辑在 discovery/registration/state/token 等模块。
  */

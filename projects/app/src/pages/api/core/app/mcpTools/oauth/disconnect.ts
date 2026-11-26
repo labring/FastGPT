@@ -27,7 +27,7 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 
 /**
- * POST /api/core/app/mcpTools/oauth/disconnect（v2.4 §8.4）。
+ * POST /api/core/app/mcpTools/oauth/disconnect。
  *
  * 幂等：无 token 直接成功且不递增 seq；有 token 先清本地（seq+1），
  * 再尽力远程撤销。
@@ -117,9 +117,7 @@ async function handler(req: ApiRequestProps<McpOAuthDisconnectBodyType>, res: Ne
   let revokeError: string | null = null;
 
   if (revocationEndpoint && client) {
-    const clientSecret = client.clientSecret
-      ? decryptSecretValue(client.clientSecret)
-      : undefined;
+    const clientSecret = client.clientSecret ? decryptSecretValue(client.clientSecret) : undefined;
     if (accessToken) {
       revoked =
         (await revokeMcpOAuthToken({

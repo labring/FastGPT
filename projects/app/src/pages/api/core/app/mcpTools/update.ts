@@ -96,7 +96,7 @@ async function handler(
       resources: [],
       session,
       // 只有节点原本已是 oauth 时才需要 seq 围栏：首次启用 oauth 时存库节点
-      // 尚无 `authMode:'oauth'`，围栏过滤条件必然不命中（设计 §7.3 首次启用行）。
+      // 尚无 `authMode:'oauth'`，围栏过滤条件必然不命中。
       ...(previousAuthMode === 'oauth'
         ? {
             nodeFence: {

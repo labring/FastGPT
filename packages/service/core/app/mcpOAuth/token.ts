@@ -10,7 +10,7 @@ import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oau
 import { requestMcpOAuthHttp } from './httpRuntime';
 
 /**
- * 令牌交换 / 刷新 / 撤销（v2.4 §6）。
+ * 令牌交换 / 刷新 / 撤销。
  *
  * 不记录令牌旋转日志：刷新失败按 `invalid_grant` → 重新授权处理。
  * 所有 token 只以密文进入 `oauth.token.secret`。

@@ -10,7 +10,7 @@ import {
 } from '../../../../core/app/tool/mcpTool/oauth';
 
 /**
- * MCP 工具集 OAuth 路由的请求/响应契约（v2.4 §8）。
+ * MCP 工具集 OAuth 路由的请求/响应契约。
  *
  * 该文件只声明契约，不包含任何路由实现；所有路由统一使用
  * `createMcpOAuthApiHandler` 输出 `McpOAuthErrorResponseSchema`。
@@ -149,7 +149,7 @@ export const McpOAuthErrorDataSchema = z.object({
 });
 export type McpOAuthErrorDataType = z.infer<typeof McpOAuthErrorDataSchema>;
 
-/** OAuth 路由统一错误 envelope（v2.4 §8.3）；不改全局 response 处理。 */
+/** OAuth 路由统一错误 envelope；不改全局 response 处理。 */
 export const McpOAuthErrorResponseSchema = z.object({
   code: z.number(),
   statusText: z.literal('error'),
@@ -158,7 +158,7 @@ export const McpOAuthErrorResponseSchema = z.object({
 });
 export type McpOAuthErrorResponseType = z.infer<typeof McpOAuthErrorResponseSchema>;
 
-/** 公开 CIMD 文档（v2.4 §5.4）；由服务端常量构造，`client_id` 即文档自身 URL。 */
+/** 公开 CIMD 文档；由服务端常量构造，`client_id` 即文档自身 URL。 */
 export const McpOAuthCimdDocumentSchema = z.object({
   client_id: z.string(),
   client_name: z.string(),

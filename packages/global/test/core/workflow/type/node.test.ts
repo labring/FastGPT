@@ -5,7 +5,10 @@ import {
   McpToolSetNodeConfigSchema,
   McpToolSetRuntimeConfigSchema
 } from '@fastgpt/global/core/workflow/type/node';
-import { LegacyStoreNodeItemSchema, LegacyMcpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
+import {
+  LegacyStoreNodeItemSchema,
+  LegacyMcpToolSetRuntimeConfigSchema
+} from '@fastgpt/global/core/workflow/migration/legacy/schema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const toolList = [{ name: 'search', description: 'Search' }];
@@ -66,7 +69,7 @@ describe('node-local toolset config', () => {
   });
 
   it('accepts and preserves authMode/oauth on runtime config only', () => {
-    // 设计 §2.1 护栏：RuntimeConfig.strict() 必须接受 OAuth 根配置。
+    // 护栏：RuntimeConfig.strict() 必须接受 OAuth 根配置。
     expect(
       McpToolSetRuntimeConfigSchema.strict().safeParse({
         url: 'https://mcp.example.com/mcp',
@@ -96,8 +99,9 @@ describe('node-local toolset config', () => {
       scope: 'mcp.read',
       credentialSeq: 0
     });
-    expect(McpToolSetRuntimeConfigSchema.parse({ url: 'https://mcp.example.com', toolList: [] }))
-      .toMatchObject({ authMode: 'headers' });
+    expect(
+      McpToolSetRuntimeConfigSchema.parse({ url: 'https://mcp.example.com', toolList: [] })
+    ).toMatchObject({ authMode: 'headers' });
   });
 
   it('rejects undeclared OAuth aliases on runtime config', () => {
@@ -111,7 +115,7 @@ describe('node-local toolset config', () => {
   });
 
   it('parses a persisted OAuth toolset node whose server metadata contains null optionals', () => {
-    // 回归（Stage K3）：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
+    // 回归：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
     // 曾使 LegacyStoreNodeItemSchema 拒绝整节点，detail 返回 500。
     const parsed = LegacyStoreNodeItemSchema.parse({
       nodeId: 'oauth-toolset-node',
@@ -160,7 +164,7 @@ describe('node-local toolset config', () => {
   });
 
   it('parses a persisted OAuth toolset node whose optional oauth fields are null', () => {
-    // 回归（Stage K10）：Mongo 中 `oauth.clientSource = null`（旧版 client reset 写入 null）
+    // 回归：Mongo 中 `oauth.clientSource = null`（旧版 client reset 写入 null）
     // 曾使 LegacyMcpToolSetRuntimeConfigSchema 解析失败，节点落入 legacy 摘要校验并报
     // 「节点内工具集必须使用名称和描述摘要」，detail 返回 500。
     const toolSet = {

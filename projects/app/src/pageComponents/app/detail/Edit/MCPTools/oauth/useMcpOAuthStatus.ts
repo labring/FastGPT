@@ -11,7 +11,7 @@ import {
 } from './utils';
 
 /**
- * MCP OAuth 状态查询与有限轮询（handoff「状态机」/设计 §9.3）。
+ * MCP OAuth 状态查询与有限轮询。
  *
  * - 进入页面 / 回调后立即查一次；
  * - 仅 `pending_authorization` / `refreshing` 每 2s 轮询；

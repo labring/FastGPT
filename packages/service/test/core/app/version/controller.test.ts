@@ -184,7 +184,7 @@ describe('normalizeAppWorkflow', () => {
 
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
       url: 'https://example.com/mcp',
-      // v2.4 RuntimeConfig 默认补全 authMode；headers 行为不变。
+      // RuntimeConfig 默认补全 authMode；headers 行为不变。
       authMode: 'headers',
       headerSecret: { Authorization: { secret: 'encrypted' } },
       toolList: [tool]
@@ -440,7 +440,7 @@ describe('getAppLatestVersion', () => {
 
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
       url: toolSetConfig.url,
-      // v2.4 RuntimeConfig 默认补全 authMode；headers 行为不变。
+      // RuntimeConfig 默认补全 authMode；headers 行为不变。
       authMode: 'headers',
       toolList: toolSetConfig.toolList
     });

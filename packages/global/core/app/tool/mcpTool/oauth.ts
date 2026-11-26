@@ -45,7 +45,7 @@ export type McpOAuthClientSource = z.infer<typeof McpOAuthClientSourceSchema>;
  */
 export const MCP_OAUTH_STATE_MAX_LENGTH = 8 * 1024;
 
-/** status 投影的 8 种状态（v2.4 §8.2），命中优先级由服务层派生。 */
+/** status 投影的 8 种状态，命中优先级由服务层派生。 */
 export const McpOAuthStatusEnum = {
   headers: 'headers',
   configError: 'config_error',
@@ -68,7 +68,7 @@ export const MCP_OAUTH_STATUSES = Object.values(McpOAuthStatusEnum) as unknown a
 export const McpOAuthStatusSchema = z.enum(MCP_OAUTH_STATUSES);
 
 /**
- * v2.4 §8.3 保留的错误码。
+ * 保留的错误码。
  *
  * 已删除：rollback_blocked / scope_not_allowed / scope_not_configured /
  * scope_escalation / schema_unmigrated / endpoint_origin_mismatch /
@@ -154,7 +154,7 @@ export const isValidMcpOAuthScope = (scope: string): boolean => {
 };
 
 /**
- * AS 实际授予的 scope 必须是请求 scope 的子集（§5.3）。
+ * AS 实际授予的 scope 必须是请求 scope 的子集。
  * 未请求时，AS 也不得自行授予任何 scope。
  */
 export const isMcpOAuthScopeSubset = (granted: string, requested: string): boolean => {

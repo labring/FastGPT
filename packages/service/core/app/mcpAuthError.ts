@@ -1,5 +1,5 @@
 /**
- * MCP 鉴权错误与 `WWW-Authenticate` 挑战解析（v2.4 §6.3）。
+ * MCP 鉴权错误与 `WWW-Authenticate` 挑战解析。
  *
  * 该模块不依赖 MCP SDK 之外的运行时，供 `core/app/mcp.ts` 抛出、
  * `core/app/mcpOAuth/runtime.ts` 判定，避免两处重复实现 401/403 语义。

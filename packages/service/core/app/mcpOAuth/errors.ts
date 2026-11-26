@@ -4,7 +4,7 @@ import {
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
 /**
- * OAuth 错误码 → HTTP 状态/可重试性（v2.4 §8.3）。
+ * OAuth 错误码 → HTTP 状态/可重试性。
  *
  * 已废弃的旧错误码不得出现在这里；
  * 新增错误码必须先加入 `McpOAuthErrorCodeEnum`，本表用 `satisfies` 保证完整性。

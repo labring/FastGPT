@@ -18,7 +18,7 @@ import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oau
 import { assertMcpOAuthUrlSafe, requestMcpOAuthHttp } from './httpRuntime';
 
 /**
- * 客户端注册（v2.4 §5.4 / §5.5）。
+ * 客户端注册。
  *
  * `auto` 顺序固定：CIMD → DCR → manual；manual 为显式手工 Client，不做自动降级。
  * CIMD 的 `client_id` 是本站公开元数据 URL；DCR 使用 RFC 7591，
@@ -163,7 +163,7 @@ const isMcpOAuthClientAuthMethod = (
 
 /**
  * DCR 认证方式：优先 none，其次 client_secret_post / client_secret_basic；
- * AS 未声明时按 client_secret_basic 兼容（与设计 §5.4 的默认一致）。
+ * AS 未声明时按 client_secret_basic 兼容。
  */
 export const pickMcpOAuthDcrAuthMethod = (
   supported: string[] | undefined
@@ -420,7 +420,7 @@ export const selectMcpOAuthClient = async ({
       return await selectDcr();
     } catch (error) {
       // AS 宣称支持 DCR 但实际拒绝/失败时，已配置 manual client 的用户应继续走 manual，
-      // 而不是让每次重新授权都硬失败（设计 §5.4：auto 依次尝试三种来源）。
+      // 而不是让每次重新授权都硬失败（auto 依次尝试三种来源）。
       if (manualClient || (savedClient && savedClientSource === 'manual')) {
         return selectManual();
       }

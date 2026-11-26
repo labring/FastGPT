@@ -77,7 +77,7 @@ describe('MCP OAuth scope 规范化（无 allowlist）', () => {
   });
 });
 
-describe('MCP OAuth 轮询判定（handoff §9.3）', () => {
+describe('MCP OAuth 轮询判定', () => {
   it('使用 2s 间隔，最长 5 分钟', () => {
     expect(MCP_OAUTH_POLL_INTERVAL_MS).toBe(2000);
     expect(MCP_OAUTH_POLL_MAX_DURATION_MS).toBe(300_000);
@@ -87,7 +87,7 @@ describe('MCP OAuth 轮询判定（handoff §9.3）', () => {
     expect(MCP_OAUTH_POLLING_STATES).toEqual(['pending_authorization', 'refreshing']);
     expect(shouldPollMcpOAuthStatus({ state: 'pending_authorization' })).toBe(true);
     expect(shouldPollMcpOAuthStatus({ state: 'refreshing' })).toBe(true);
-    // refresh_due 是可用态，不是进行中态；revoking 不是 v2.4 服务端状态。
+    // refresh_due 是可用态，不是进行中态；revoking 不是服务端状态。
     expect(shouldPollMcpOAuthStatus({ state: 'refresh_due' })).toBe(false);
     expect(shouldPollMcpOAuthStatus({ state: 'revoking' })).toBe(false);
   });
@@ -133,7 +133,7 @@ describe('MCP OAuth 8 态渲染映射', () => {
     expect(hints.size).toBe(8);
   });
 
-  it('每态的动作显隐符合 handoff 状态机', () => {
+  it('每态的动作显隐符合状态机', () => {
     expect(getMcpOAuthStatePresentation('headers').showStart).toBe(false);
     expect(getMcpOAuthStatePresentation('config_error').showStart).toBe(false);
     expect(getMcpOAuthStatePresentation('client_missing')).toMatchObject({
@@ -188,7 +188,7 @@ describe('MCP OAuth 错误码映射', () => {
     expect(getMcpOAuthErrorCopy(null, t).message).toBe('发生未知错误');
   });
 
-  it('用户可见错误码覆盖 v2.4 契约且不含已删除的 allowlist 码', () => {
+  it('用户可见错误码覆盖契约且不含已删除的 allowlist 码', () => {
     expect(MCP_OAUTH_USER_FACING_ERROR_CODES).toContain('mcp_oauth_reauth_required');
     expect(MCP_OAUTH_USER_FACING_ERROR_CODES as readonly string[]).not.toContain(
       'mcp_oauth_scope_not_allowed'

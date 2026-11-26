@@ -4,13 +4,13 @@ import { defineRateLimitInterface } from '../core';
 import { RateLimitSceneEnum } from '../type';
 
 /**
- * MCP OAuth 路由限流（v2.4 §3.3）。
+ * MCP OAuth 路由限流。
  *
  * 所有策略均通过 `defineRateLimitInterface` 声明，key 只由服务端解析出的
  * appId / tmbId / IP 组成；IP 先做 sha256，避免把原始地址写进 Redis key。
  */
 
-/** 与设计中的 `ip/<sha256(ip)>` 对齐；空 IP 由调用方在路由层跳过，禁止共享空桶。 */
+/** IP 段统一取 sha256(ip) 十六进制；空 IP 由调用方在路由层跳过，禁止共享空桶。 */
 export const getMcpOAuthIpRateLimitSegment = (ip: string): string => {
   if (!ip) {
     throw new Error('MCP OAuth IP rate limit requires a non-empty client IP');

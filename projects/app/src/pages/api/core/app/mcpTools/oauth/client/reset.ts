@@ -28,15 +28,12 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 
 /**
- * POST /api/core/app/mcpTools/oauth/client/reset（v2.4 §8.4）。
+ * POST /api/core/app/mcpTools/oauth/client/reset。
  *
  * 清空 client/token/server（seq+1）；保存了 RFC 7592 凭据时尽力注销。
  * 幂等：无可清内容时直接成功。
  */
-async function handler(
-  req: ApiRequestProps<McpOAuthClientResetBodyType>,
-  res: NextApiResponse
-) {
+async function handler(req: ApiRequestProps<McpOAuthClientResetBodyType>, res: NextApiResponse) {
   assertMcpOAuthEnabled();
   const {
     body: { appId: requestedAppId, nodeId }
@@ -91,7 +88,7 @@ async function handler(
     nodeId: node.nodeId,
     expectedCredentialSeq: expectedSeq,
     // clientSource 随 client 一起移除（$unset），不得写 null：schema 只允许
-    // `cimd|dcr|manual`，null 会让 detail 的 legacy 校验整体失败（Stage K10）。
+    // `cimd|dcr|manual`，null 会让 detail 的 legacy 校验整体失败。
     unset: [
       'client',
       'clientSource',
@@ -124,9 +121,7 @@ async function handler(
 
   const revocationEndpoint = server?.revocationEndpoint;
   if (revocationEndpoint && client && token) {
-    const clientSecret = client.clientSecret
-      ? decryptSecretValue(client.clientSecret)
-      : undefined;
+    const clientSecret = client.clientSecret ? decryptSecretValue(client.clientSecret) : undefined;
     const accessToken = decryptMcpOAuthAccessToken(token);
     const refreshToken = decryptMcpOAuthRefreshToken(token);
     const common = {

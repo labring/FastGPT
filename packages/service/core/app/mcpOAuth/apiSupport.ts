@@ -20,7 +20,7 @@ import { buildMcpOAuthCallbackRedirect } from './state';
 import { isMcpOAuthInsecureHttpAllowed } from './httpRuntime';
 
 /**
- * 路由公共支持（v2.4 §8.3、§11）。
+ * 路由公共支持。
  *
  * 统一错误 envelope、限流映射、回调跳转白名单、审计脱敏。
  * 禁止记录 state/token/client secret。
@@ -139,7 +139,7 @@ type McpOAuthErrorRequestLike = { headers?: Record<string, unknown> };
  * 统一的 OAuth 错误回包：固定 envelope + `Retry-After`（仅限流）。
  *
  * 只输出 `oauthCode`/`requestId` 与固定文案；AS 的 `error_description`、URL、header
- * 原文都不会进入响应体（v2.4 §8.3）。
+ * 原文都不会进入响应体。
  */
 const sendMcpOAuthErrorEnvelope = ({
   req,
@@ -172,7 +172,7 @@ const sendMcpOAuthErrorEnvelope = ({
 };
 
 /**
- * 捕获 `McpOAuthApiError` 并输出 v2.4 统一 envelope；原始响应（302/405/304）直接返回。
+ * 捕获 `McpOAuthApiError` 并输出统一 envelope；原始响应（302/405/304）直接返回。
  */
 export const createMcpOAuthApiHandler =
   <Req extends { headers?: Record<string, unknown> }, Res extends NodeApiResponseLike>(
@@ -227,7 +227,7 @@ export const toMcpOAuthRuntimeApiError = (error: unknown): McpOAuthApiError | un
 /**
  * 普通路由（`getTools` / `runTool`）oauth 分支的运行期错误映射。
  *
- * 命中 OAuth 契约时直接写回 v2.4 envelope 并返回 `true`；其余异常返回 `false`，
+ * 命中 OAuth 契约时直接写回统一 envelope 并返回 `true`；其余异常返回 `false`，
  * 继续走 `createApiEntry` 的通用错误处理。调用方只允许在 `authMode === 'oauth'`
  * 分支使用它，保证 headers 模式行为零变化。
  */

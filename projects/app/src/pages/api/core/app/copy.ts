@@ -32,7 +32,7 @@ const isRecord = (value: unknown): value is Record<string, any> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * 复制边界上的 OAuth 清洗（v2.4 §10）：
+ * 复制边界上的 OAuth 清洗：
  * - 同团队复制保留完整 oauth（token / clientSecret / credentialSeq 均可复用，复制后无需重新授权）；
  * - 跨团队 / 导出 / 公共模板剥离 token、clientSecret、registrationAccessToken 与租约，
  *   仅保留 authMode、clientMode、scope、issuer/server 等非密配置；CIMD 可保留 clientId。

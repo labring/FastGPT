@@ -22,7 +22,7 @@ import { MCP_OAUTH_NODE_MAX_BYTES } from './schema';
 import type { ClientSession } from 'mongoose';
 
 /**
- * 目标版本文档与 OAuth 字段写（v2.4 §7）。
+ * 目标版本文档与 OAuth 字段写。
  *
  * 唯一写入口：单条 `updateOne` + `$elemMatch`/arrayFilters + `$inc nodesRevision`。
  * 永不写整个 `nodes`，永不重建版本。
@@ -38,7 +38,7 @@ export const seqMatch = (seq: number) =>
       }
     : { 'toolConfig.mcpToolSet.oauth.credentialSeq': seq };
 
-/** 发布版本解析：`publishedVersionId` 优先，否则最新 `isPublish`（与设计 §7.1 完全一致）。 */
+/** 发布版本解析：`publishedVersionId` 优先，否则最新 `isPublish`。 */
 export const getMcpToolSetVersionDoc = async (
   appId: string,
   session?: ClientSession
@@ -306,7 +306,7 @@ export const deriveMcpOAuthStatus = ({
     return { ...withActions, state: McpOAuthStatusEnum.configError };
   }
 
-  // 缺少发现结果且 URL 缺失 → 无法开始，属于配置错误（§8.2）。
+  // 缺少发现结果且 URL 缺失 → 无法开始，属于配置错误。
   if (!toolSet.url && (!oauth.issuer || !oauth.server)) {
     return { ...withActions, state: McpOAuthStatusEnum.configError };
   }
@@ -426,7 +426,7 @@ export async function getUnavailableMcpAppIds(
 }
 
 /**
- * 用户保存时的 OAuth 合并（v2.4 §7.3）。纯函数，便于 I4 的 update 复用。
+ * 用户保存时的 OAuth 合并。纯函数，便于 update 路径复用。
  */
 export const mergeMcpOAuthFromPublished = ({
   existingOAuth,
@@ -443,7 +443,7 @@ export const mergeMcpOAuthFromPublished = ({
   urlChanged: boolean;
   nextClientMode?: McpOAuthClientMode;
   nextScope?: string;
-  /** URL 变更后重新发现到的 issuer；与旧值不同则丢弃 client（§7.3）。 */
+  /** URL 变更后重新发现到的 issuer；与旧值不同则丢弃 client。 */
   nextIssuer?: string;
 }): { oauth?: McpToolSetOAuthConfigType; credentialSeqDelta: number } => {
   // 未显式传 authMode 表示沿用当前模式，不能因此跳过 URL 变更清理。

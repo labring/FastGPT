@@ -7,7 +7,7 @@ import type {
 import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
 
 /**
- * MCP OAuth 前端纯逻辑（设计 §9）。
+ * MCP OAuth 前端纯逻辑。
  *
  * 刻意不依赖 React / Chakra / 浏览器全局，便于在 vitest 中覆盖：
  * - 轮询判定（进行中状态 + 最长时长）
@@ -17,19 +17,19 @@ import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/ap
  */
 
 /**
- * 进行中状态才轮询（handoff「状态机」/设计 §9.3）。
+ * 进行中状态才轮询。
  *
  * 只允许服务端 8 态中的 `pending_authorization` 与 `refreshing`；
- * `refresh_due` 是可用态，`revoking` 不是 v2.4 服务端状态。
+ * `refresh_due` 是可用态，`revoking` 不是服务端状态。
  */
 export const MCP_OAUTH_POLLING_STATES = ['pending_authorization', 'refreshing'] as const;
 
 export type McpOAuthPollingState = (typeof MCP_OAUTH_POLLING_STATES)[number];
 
-/** handoff：每 2 秒轮询。 */
+/** 轮询间隔 2 秒。 */
 export const MCP_OAUTH_POLL_INTERVAL_MS = 2000;
 
-/** 轮询最长 5 分钟；超时后停止，等待用户手动刷新（设计 §9.3）。 */
+/** 轮询最长 5 分钟；超时后停止，等待用户手动刷新。 */
 export const MCP_OAUTH_POLL_MAX_DURATION_MS = 5 * 60 * 1000;
 
 export const isMcpOAuthPollingState = (state?: string | null): boolean =>
@@ -58,7 +58,7 @@ export const getMcpOAuthClientSourceI18nKey = (source: McpOAuthClientSource): st
 /**
  * scope 按空格分隔、去重、保序；空值即空集。
  *
- * v2.4 没有全局 allowlist：这里只做 RFC 6749 语法层面的空白/去重归一化，
+ * 没有全局 allowlist：这里只做 RFC 6749 语法层面的空白/去重归一化，
  * 不添加、不预填、不静默申请任何 scope。
  */
 export const normalizeMcpOAuthScope = (input?: string | string[] | null): string => {
@@ -217,7 +217,7 @@ const readTranslation = (
   return typeof value === 'string' && value !== key ? value : '';
 };
 
-/** 按 v2.4 §8.3 映射用户文案与建议操作；未知码降级为通用文案 + 错误码。 */
+/** 映射用户文案与建议操作；未知码降级为通用文案 + 错误码。 */
 export const getMcpOAuthErrorCopy = (
   code: string | undefined | null,
   t: McpOAuthTranslate
@@ -269,7 +269,7 @@ export const getMcpOAuthStateI18nKey = (state?: string | null): string => {
 export type McpOAuthStateTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
 /**
- * 8 态 → 详情页展示与动作（handoff「状态机」表）。
+ * 8 态 → 详情页展示与动作。
  *
  * 服务端只返回 8 态；前端不根据 detail 里的 oauth 凭据推断授权状态。
  */
@@ -381,7 +381,7 @@ export const getMcpOAuthStatePresentation = (state?: string | null) =>
       : 'config_error') as McpOAuthStatus
   ];
 
-/** 回调落地后立即清理的一次性 query 参数（handoff 主流程 5/6）。 */
+/** 回调落地后立即清理的一次性 query 参数。 */
 export const MCP_OAUTH_CALLBACK_QUERY_KEYS = ['oauth', 'code'] as const;
 
 /**

@@ -56,7 +56,7 @@ export type McpOAuthConfigProps = {
   clearCallbackError: () => void;
   canManage: boolean;
   /**
-   * 「去授权」前先自动保存当前 URL/authMode/clientMode/scope（设计 §9.2）。
+   * 「去授权」前先自动保存当前 URL/authMode/clientMode/scope。
    * 抛错即中止 start，不得带着未保存的配置发起授权。
    */
   onBeforeStart: () => Promise<void>;
@@ -217,7 +217,7 @@ const McpOAuthConfig = ({
       manualClient = validation.value;
     }
 
-    // 先去授权前保存；保存失败不得继续 start（设计 §9.2）。
+    // 先去授权前保存；保存失败不得继续 start。
     try {
       await onBeforeStart();
     } catch {
