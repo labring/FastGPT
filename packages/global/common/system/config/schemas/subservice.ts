@@ -1,6 +1,6 @@
 import z from 'zod';
 import { SANDBOX_VOLUME_NAME_RE } from '../../../../core/ai/sandbox/volume';
-import { isValidServiceBaseUrl } from '../../../string/url';
+import { isValidHttpUrl, isValidServiceBaseUrl } from '../../../string/url';
 import { nonNegativeInteger, positiveInteger, positiveNumber, textWithDefault } from './primitives';
 
 /** 两类子服务均从此基地址追加固定路由；空值表示尚未配置。 */
@@ -9,6 +9,15 @@ const serviceBaseUrl = z
   .trim()
   .refine((value) => value === '' || isValidServiceBaseUrl(value), {
     message: 'Expected an HTTP(S) base URL without credentials, query or fragment'
+  })
+  .default('');
+
+/** 沙箱容器出网代理地址；留空表示不注入，允许合法 http/https 地址及账密。 */
+const sandboxOutboundProxyUrl = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || isValidHttpUrl(value), {
+    message: 'Expected a valid http:// or https:// proxy URL'
   })
   .default('');
 
@@ -57,7 +66,10 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       maxPerTeam: z.number().int().positive().nullable().default(null),
       npmRegistry: textWithDefault(),
       pypiIndexUrl: textWithDefault(),
-      aptMirror: textWithDefault()
+      aptMirror: textWithDefault(),
+      httpProxy: sandboxOutboundProxyUrl,
+      httpsProxy: sandboxOutboundProxyUrl,
+      noProxy: textWithDefault()
     })
     .prefault({}),
   opensandbox: z
@@ -69,6 +81,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       memoryOvercommitFactor: z.number().min(1).default(1),
       image: textWithDefault(),
       useServerProxy: z.boolean().default(true),
+      enableUpstreamProxy: z.boolean().default(false),
       volumeManagerUrl: serviceBaseUrl,
       volumeManagerToken: textWithDefault(),
       volumeNamePrefix: AgentSandboxVolumeNamePrefixSchema.default(

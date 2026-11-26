@@ -1425,5 +1425,20 @@
   "aliyun_sms_not_configured": "未設定{{service}}",
   "aliyun_sms": "阿里雲簡訊",
   "clear_smtp_config_confirm": "確認清空信箱 SMTP 服務設定？清空後需點擊儲存生效。",
-  "clear_aliyun_sms_confirm": "確認清空阿里雲簡訊服務設定？清空後需點擊儲存生效。"
+  "clear_aliyun_sms_confirm": "確認清空阿里雲簡訊服務設定？清空後需點擊儲存生效。",
+  "sandbox_outbound_proxy": "虛擬機出網代理",
+  "sandbox_http_proxy": "HTTP 代理位址",
+  "sandbox_http_proxy_tip": "注入容器 HTTP_PROXY / http_proxy（需叢集策略放行代理位址，且代理側需限制禁止存取內網及中繼資料位址），修改後僅對新建或重啟沙箱生效。",
+  "sandbox_https_proxy": "HTTPS 代理位址",
+  "sandbox_https_proxy_tip": "注入容器 HTTPS_PROXY / https_proxy（需叢集策略放行代理位址，且代理側需限制禁止存取內網及中繼資料位址），修改後僅對新建或重啟沙箱生效。",
+  "sandbox_no_proxy": "代理排除清單 (NO_PROXY)",
+  "sandbox_no_proxy_tip": "逗號分隔的直連網域、IP 或 CIDR，自動附加 localhost,127.0.0.1,::1。",
+  "invalid_sandbox_outbound_proxy_url": "請輸入合法的 http:// 或 https:// 代理位址",
+  "sandbox_docker_upstream_proxy_title": "Docker 模式出網代理設定範例（OpenSandbox 服務端 config.toml）",
+  "sandbox_docker_upstream_proxy_desc": "請在維護視窗內協調切換：啟用時先開啟上方開關，再設定 OpenSandbox config.toml 並重啟；停用或回滾前先移除 [egress.upstream_proxy] 並重啟，再關閉開關。需確保內網 DNS 可解析公網網域，且上游代理側禁止存取內網及中繼資料位址",
+  "sandbox_docker_upstream_proxy_comment_egress": "啟用 DNS + nftables 出網隔離",
+  "sandbox_docker_upstream_proxy_comment_auth": "可選：代理驗證請求標頭",
+  "sandbox_docker_upstream_proxy_comment_ca": "可選：宿主機上的代理自訂 CA 憑證絕對路徑",
+  "sandbox_enable_upstream_proxy": "啟用 OpenSandbox Egress 代理",
+  "sandbox_enable_upstream_proxy_tip": "開啟後，Docker 模式下建立沙箱時自動下發 credentialProxy.enabled = true，以配合 OpenSandbox config.toml 中的 [egress.upstream_proxy] 使用（上游代理需限制禁止存取內網及中繼資料位址）。啟用請先開此開關再設定 OpenSandbox；停用或回滾請先移除服務端 [egress.upstream_proxy] 再關閉此開關，避免出現 400 失敗視窗。僅對新建或重啟沙箱生效。"
 }
