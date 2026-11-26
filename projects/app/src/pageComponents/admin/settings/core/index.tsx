@@ -37,6 +37,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
 import {
   getSomarkRegionPreset,
+  isSameSomarkBaseUrl,
   PDF_PARSE_TIMEOUT_DEFAULT_SECONDS,
   PDF_PARSE_TIMEOUT_MAX_SECONDS,
   PDF_PARSE_TIMEOUT_MIN_SECONDS,
@@ -165,6 +166,20 @@ const CoreSettingComponent = () => {
       : getSomarkRegionPreset(
           somarkBaseUrl ?? providers.effectiveConfig.documentParse?.customPdf?.somarkBaseUrl
         );
+  const somarkTargetBaseUrl =
+    somarkRegion === 'custom'
+      ? (documentParseDraft?.customPdf?.somarkBaseUrl ?? '')
+      : somarkRegion === 'cn'
+        ? SOMARK_BASE_URL_CN
+        : SOMARK_BASE_URL_GLOBAL;
+  const isSomarkTargetSameAsStored = isSameSomarkBaseUrl(
+    somarkTargetBaseUrl,
+    providers.effectiveConfig.documentParse?.customPdf?.somarkBaseUrl
+  );
+  const hasSomarkTestKey =
+    documentParseDraft?.customPdf?.somarkApiKey !== undefined
+      ? Boolean(documentParseDraft.customPdf.somarkApiKey.trim())
+      : isSomarkTargetSameAsStored && isSecretConfigured('documentParse.customPdf.somarkApiKey');
   const downloadMode = useWatch({ control, name: 'downloadMode' });
   const emailSmtp = useWatch({ control, name: 'email.smtp' });
   const emailUser = useWatch({ control, name: 'email.user' });
@@ -777,7 +792,10 @@ const CoreSettingComponent = () => {
                             config: providers.effectiveConfig,
                             region
                           });
-                          form.clearErrors('documentParse.customPdf.somarkBaseUrl');
+                          form.clearErrors([
+                            'documentParse.customPdf.somarkBaseUrl',
+                            'documentParse.customPdf.somarkApiKey'
+                          ]);
                           if (region === 'global') {
                             field.onChange(SOMARK_BASE_URL_GLOBAL);
                           } else if (region === 'cn') {
@@ -852,21 +870,13 @@ const CoreSettingComponent = () => {
             <DocumentParseTestBar
               payload={{
                 provider: 'somark',
-                somarkBaseUrl:
-                  somarkRegion === 'custom'
-                    ? (documentParseDraft?.customPdf?.somarkBaseUrl ?? '')
-                    : somarkRegion === 'cn'
-                      ? SOMARK_BASE_URL_CN
-                      : SOMARK_BASE_URL_GLOBAL,
+                somarkBaseUrl: somarkTargetBaseUrl,
                 ...(documentParseDraft?.customPdf?.somarkApiKey !== undefined
                   ? { somarkApiKey: documentParseDraft.customPdf.somarkApiKey }
                   : {})
               }}
               isDisabled={
-                !hasSecretValue(
-                  documentParseDraft?.customPdf?.somarkApiKey,
-                  'documentParse.customPdf.somarkApiKey'
-                ) ||
+                !hasSomarkTestKey ||
                 (somarkRegion === 'custom' &&
                   !isValidServiceBaseUrl(
                     documentParseDraft?.customPdf?.somarkBaseUrl?.trim() ?? ''

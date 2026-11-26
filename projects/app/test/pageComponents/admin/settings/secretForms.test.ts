@@ -101,8 +101,8 @@ vi.mock('@chakra-ui/react', () => {
   });
   return {
     Box,
-    Button: ({ children, type = 'button', onClick }: any) =>
-      React.createElement('button', { type, onClick }, children),
+    Button: ({ children, type = 'button', onClick, isDisabled }: any) =>
+      React.createElement('button', { type, onClick, disabled: Boolean(isDisabled) }, children),
     Icon: () => null,
     HStack: Box,
     Flex: Box,
@@ -632,9 +632,15 @@ describe('system configuration secret forms', () => {
     );
     expect(sentOverrides('providers').documentParse.customPdf.timeoutSeconds).toBe(900);
 
-    // 切换到国内站直接写入国内地址
+    // 切换到国内站直接写入国内地址；且未填新 Key 时「测试」按钮联动置灰，避免跨目标发送旧密钥
+    const getDocParseTestButton = () =>
+      [...container.querySelectorAll<HTMLButtonElement>('#documentParse button')].find((button) =>
+        button.textContent?.includes('admin:test_document_parse_file')
+      );
+    expect(getDocParseTestButton()?.disabled).toBe(false);
     await act(async () => Simulate.change(getSomarkSelect(), { target: { value: 'cn' } } as any));
     expect(getCustomUrlInput()).toBeNull();
+    expect(getDocParseTestButton()?.disabled).toBe(true);
     await save();
     expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
       'https://somark.cn/api/v1'

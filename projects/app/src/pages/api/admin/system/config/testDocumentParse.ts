@@ -2,7 +2,10 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
+import {
+  isSameSomarkBaseUrl,
+  normalizeDocumentParseUrl
+} from '@fastgpt/global/common/system/config/schemas/providers';
 import {
   TestDocumentParseBodySchema,
   TestDocumentParseResponseSchema,
@@ -34,7 +37,7 @@ const resolveSecret = ({
 };
 
 const readStoredUrl = (stored: unknown): string =>
-  typeof stored === 'string' ? stored.trim() : '';
+  typeof stored === 'string' ? normalizeDocumentParseUrl(stored) : '';
 
 /**
  * Admin API - 使用内置单页测试 PDF 验证文档增强解析服务配置
@@ -70,8 +73,7 @@ async function handler(
         const storedBaseUrl = readStoredUrl(storedDocParse?.customPdf?.somarkBaseUrl);
         const resolvedBaseUrl =
           body.somarkBaseUrl !== undefined ? body.somarkBaseUrl : storedBaseUrl;
-        const targetMatchesStored =
-          resolveSomarkBaseUrl(resolvedBaseUrl) === resolveSomarkBaseUrl(storedBaseUrl);
+        const targetMatchesStored = isSameSomarkBaseUrl(resolvedBaseUrl, storedBaseUrl);
         return {
           provider: body.provider,
           somarkBaseUrl: resolvedBaseUrl,
@@ -117,7 +119,7 @@ async function handler(
       const isSangfor = body.provider === 'sangfor';
       const storedGroup = isSangfor ? storedDocParse?.sangfor : storedDocParse?.customPdf;
       const storedUrl = readStoredUrl(storedGroup?.url);
-      const resolvedUrl = body.url !== undefined ? body.url.trim() : storedUrl;
+      const resolvedUrl = body.url !== undefined ? normalizeDocumentParseUrl(body.url) : storedUrl;
       const targetMatchesStored = Boolean(storedUrl) && resolvedUrl === storedUrl;
 
       return {

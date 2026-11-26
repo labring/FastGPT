@@ -16,7 +16,7 @@ export const getBackendFileOperationTimeoutMs = () => {
 };
 
 /**
- * 获取 PDF 增强解析（SoMark / Doc2X / TextIn / 自建服务）专用超时时间（毫秒）。
+ * 获取 PDF 增强解析（SoMark / Doc2X / TextIn / 自建服务 / 深信服）专用超时时间（毫秒）。
  * 与普通文件解析超时（performance.parse.fileTimeoutSeconds）独立，默认 600 秒，最小 60 秒由 Schema 与表单限制。
  */
 export const getPdfEnhancedParseTimeoutMs = () => {

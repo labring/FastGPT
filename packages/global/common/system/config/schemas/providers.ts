@@ -17,6 +17,13 @@ export const resolveSomarkBaseUrl = (baseUrl?: string): string => {
   return normalized || SOMARK_BASE_URL_GLOBAL;
 };
 
+/** 判断两个 SoMark 基础地址归一化后是否指向同一目标服务。 */
+export const isSameSomarkBaseUrl = (a?: string, b?: string): boolean =>
+  resolveSomarkBaseUrl(a) === resolveSomarkBaseUrl(b);
+
+/** 规范化自建/深信服文档解析服务地址，供保存与测试边界共享。 */
+export const normalizeDocumentParseUrl = (url?: string): string => (url ?? '').trim();
+
 /** 按存储的 SoMark Base URL 推导前端区域选项；空值或国际站地址统一归为国际站。 */
 export const getSomarkRegionPreset = (baseUrl?: string): SomarkRegionPreset => {
   const normalized = stripUrlTrailingSlash(baseUrl?.trim());
