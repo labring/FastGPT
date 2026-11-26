@@ -260,6 +260,8 @@
   "logs_keys_feedback": "사용자 피드백",
   "logs_keys_lastConversationTime": "마지막 대화 시간",
   "logs_keys_messageCount": "메시지 수",
+  "logs_keys_export_ip": "IP",
+  "logs_keys_export_region": "지역",
   "logs_keys_only_ip": "IP만",
   "logs_keys_only_region": "지역만",
   "logs_keys_points": "소비된 포인트",

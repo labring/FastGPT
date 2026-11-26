@@ -260,6 +260,8 @@
   "logs_keys_feedback": "User Feedback",
   "logs_keys_lastConversationTime": "Last Conversation Time",
   "logs_keys_messageCount": "Message Count",
+  "logs_keys_export_ip": "IP",
+  "logs_keys_export_region": "Region",
   "logs_keys_only_ip": "Only IP",
   "logs_keys_only_region": "Only Region",
   "logs_keys_points": "Points Consumed",

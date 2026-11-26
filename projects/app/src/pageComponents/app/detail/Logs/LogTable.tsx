@@ -36,6 +36,7 @@ import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
+  AppLogExportExtraKeys,
   AppLogKeysEnum,
   AppLogKeysEnumMap,
   DefaultAppLogKeys
@@ -235,7 +236,16 @@ const LogTable = ({
   // 失败提示和 loading 由 PopoverConfirm 统一处理，避免重复 toast。
   const exportLogs = async () => {
     const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-    const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+    // 导出时将「IP及属地」拆为相邻的 IP、属地两列，保持表格列顺序与表头一一对应。
+    const exportColumns = enabledKeys.flatMap((key) =>
+      key === AppLogKeysEnum.REGION
+        ? [
+            { key: AppLogExportExtraKeys.ORIGIN_IP, label: t('app:logs_keys_export_ip') },
+            { key: AppLogKeysEnum.REGION, label: t('app:logs_keys_export_region') }
+          ]
+        : [{ key, label: t(AppLogKeysEnumMap[key]) }]
+    );
+    const headerTitle = exportColumns.map((item) => item.label).join(',');
     await downloadFetch({
       url: '/api/core/app/logs/exportLogs',
       filename: t('app:export_log_filename', { name: appName }),
@@ -249,7 +259,7 @@ const LogTable = ({
         chatSearch: searchQuery,
         searchType,
         title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
-        logKeys: enabledKeys,
+        logKeys: exportColumns.map((item) => item.key),
         sourcesMap: Object.fromEntries(
           Object.entries(ChatSourceMap).map(([key, config]) => [
             key,

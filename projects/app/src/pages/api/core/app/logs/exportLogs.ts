@@ -21,7 +21,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { AppLogExportExtraKeys, AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
@@ -193,7 +193,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const authorizer = member?.name?.trim()
       ? `${authorizerId}:${member.name}`
       : authorizerId || '-';
-    const region = getLocationFromIp(doc.metadata?.originIp, locale);
+    const originIp = doc.metadata?.originIp?.trim();
+    const region = originIp ? getLocationFromIp(originIp, locale) || '-' : '-';
     const averageResponseTime = computeAverageResponseTime(
       itemStats?.totalResponseTime,
       itemStats?.aiMessageCount
@@ -244,6 +245,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         averageResponseTime ? Number(averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (totalPoints ? Number(totalPoints).toFixed(2) : 0),
+      [AppLogExportExtraKeys.ORIGIN_IP]: () => originIp || '-',
       [AppLogKeysEnum.REGION]: () => region,
       [AppLogKeysEnum.VERSION_NAME]: () => versionNameLoader.get(doc.appVersionId),
       chatDetails: () => formatJsonString(itemStats?.chatDetails || [])

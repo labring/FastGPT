@@ -3,7 +3,11 @@ import { createAppApiKeyInputSchema } from '../../chat/api';
 import { ChatPublishSourceResponseSchema } from '../../../../core/chat/publishSource/type';
 import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
-import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
+import {
+  AppLogExportExtraKeys,
+  AppLogKeysEnum,
+  AppLogTimespanEnum
+} from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppChatLogSchema, AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
@@ -259,6 +263,11 @@ export const ExportChatLogsResponseSchema = z.string().meta({
 });
 export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 
+export const ExportAppLogKeySchema = z.enum([
+  ...(Object.values(AppLogKeysEnum) as [AppLogKeysEnum, ...AppLogKeysEnum[]]),
+  AppLogExportExtraKeys.ORIGIN_IP
+]);
+
 /* Export chat log */
 export const ExportChatLogsBodySchema = createAppApiKeyInputSchema(
   AppChatLogsFilterSchema.safeExtend({
@@ -285,9 +294,14 @@ export const ExportChatLogsBodySchema = createAppApiKeyInputSchema(
         example: { api: { label: 'API' }, online: { label: '在线' } },
         description: '来源映射'
       }),
-    logKeys: z.array(z.enum(AppLogKeysEnum)).meta({
-      example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME],
-      description: '日志键'
+    logKeys: z.array(ExportAppLogKeySchema).meta({
+      example: [
+        AppLogKeysEnum.SOURCE,
+        AppLogKeysEnum.CREATED_TIME,
+        AppLogExportExtraKeys.ORIGIN_IP,
+        AppLogKeysEnum.REGION
+      ],
+      description: '导出列键；支持表格日志字段及独立的 originIp（IP）列，顺序与 title 一一对应'
     })
   })
 );

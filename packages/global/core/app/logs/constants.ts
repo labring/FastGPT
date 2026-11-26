@@ -20,6 +20,14 @@ export enum AppLogKeysEnum {
   VERSION_NAME = 'versionName'
 }
 
+export const AppLogExportExtraKeys = {
+  ORIGIN_IP: 'originIp'
+} as const;
+
+export type AppLogExportKeyType =
+  | AppLogKeysEnum
+  | (typeof AppLogExportExtraKeys)[keyof typeof AppLogExportExtraKeys];
+
 export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: i18nT('app:logs_keys_publish_source_type'),
   [AppLogKeysEnum.SOURCE]: i18nT('app:logs_keys_source'),

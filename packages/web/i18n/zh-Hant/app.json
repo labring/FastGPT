@@ -260,6 +260,8 @@
   "logs_keys_feedback": "使用者回饋",
   "logs_keys_lastConversationTime": "最後對話時間",
   "logs_keys_messageCount": "訊息總數",
+  "logs_keys_export_ip": "IP",
+  "logs_keys_export_region": "屬地",
   "logs_keys_only_ip": "僅IP",
   "logs_keys_only_region": "僅屬地",
   "logs_keys_points": "積分消耗",

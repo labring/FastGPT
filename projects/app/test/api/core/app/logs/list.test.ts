@@ -1,7 +1,7 @@
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import exportLogs from '@/pages/api/core/app/logs/exportLogs';
-import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { AppLogExportExtraKeys, AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
 import getLogKeys from '@/pages/api/core/app/logs/getLogKeys';
 import updateLogKeys from '@/pages/api/core/app/logs/updateLogKeys';
@@ -1407,5 +1407,92 @@ describe('logs list API - errorFilter', () => {
     } finally {
       versionFindSpy.mockRestore();
     }
+  });
+
+  it('导出日志支持按 IP 与属地两列分别输出，并在无 IP 时均占位为 -', async () => {
+    const now = Date.now();
+    await MongoChat.create([
+      {
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: 'chat-public-ip',
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        metadata: { originIp: '8.8.8.8' },
+        createTime: new Date(now - 3000),
+        updateTime: new Date(now - 3000)
+      },
+      {
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: 'chat-private-ip',
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        metadata: { originIp: '192.168.1.1' },
+        createTime: new Date(now - 2000),
+        updateTime: new Date(now - 2000)
+      },
+      {
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: 'chat-no-ip',
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        createTime: new Date(now - 1000),
+        updateTime: new Date(now - 1000)
+      }
+    ]);
+
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: '会话 ID,IP,属地,对话详情',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogExportExtraKeys.ORIGIN_IP, AppLogKeysEnum.REGION]
+      }
+    });
+
+    expect(exported.code).toBe(200);
+    const lines = exported.raw.replace(/^\uFEFF/, '').split('\n');
+    expect(lines[0]).toBe('会话 ID,IP,属地,对话详情,');
+
+    const rowMap = new Map(
+      lines.slice(1).map((line) => {
+        const cols = line.split(',');
+        return [cols[0], { ip: cols[1], region: cols[2] }];
+      })
+    );
+
+    expect(rowMap.get('chat-public-ip')?.ip).toBe('8.8.8.8');
+    expect(rowMap.get('chat-public-ip')?.region).toBeTruthy();
+    expect(rowMap.get('chat-public-ip')?.region).not.toBe("'-");
+    expect(rowMap.get('chat-private-ip')).toEqual({ ip: '192.168.1.1', region: '其他' });
+    // sanitizeCsvField 会给前导 '-' 加单引号防公式注入
+    expect(rowMap.get('chat-no-ip')).toEqual({ ip: "'-", region: "'-" });
+
+    // 兼容仅传 region 的旧调用，不产生多余列
+    const legacyExported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: '会话 ID,属地,对话详情',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.REGION]
+      }
+    });
+    expect(legacyExported.code).toBe(200);
+    const legacyLines = legacyExported.raw.replace(/^\uFEFF/, '').split('\n');
+    const legacyNoIpRow = legacyLines.find((line) => line.startsWith('chat-no-ip,'));
+    expect(legacyNoIpRow).toBe("chat-no-ip,'-,[],");
   });
 });
