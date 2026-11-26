@@ -2216,6 +2216,49 @@ paths:
     expect(result.pathData[0].name).toBe('getUsers');
   });
 
+  it('should read YAML booleans the same way as their JSON equivalents', async () => {
+    const openApiYaml = [
+      'openapi: 3.0.0',
+      'info:',
+      '  title: Test API',
+      '  version: 1.0',
+      'paths:',
+      '  /users:',
+      '    get:',
+      '      operationId: getUsers',
+      '      deprecated: false',
+      '      parameters:',
+      '        - name: keyword',
+      '          in: query',
+      '          required: false',
+      '          schema:',
+      '            type: string',
+      '        - name: teamId',
+      '          in: query',
+      '          required: true',
+      '          schema:',
+      '            type: string',
+      '      responses:',
+      "        '200':",
+      '          description: OK',
+      '    post:',
+      '      operationId: createUser',
+      '      deprecated: true',
+      '      responses:',
+      "        '201':",
+      '          description: Created'
+    ].join('\n');
+
+    const result = await str2OpenApiSchema(openApiYaml);
+
+    // deprecated: false 的操作必须保留，只有 deprecated: true 的操作被过滤。
+    expect(result.pathData.map((item) => item.name)).toEqual(['getUsers']);
+    expect(result.pathData[0].params.map(({ name, required }) => ({ name, required }))).toEqual([
+      { name: 'keyword', required: false },
+      { name: 'teamId', required: true }
+    ]);
+  });
+
   it('should handle requestBody in OpenAPI 3.0', async () => {
     const openApiJson = JSON.stringify({
       openapi: '3.0.0',
@@ -2441,6 +2484,50 @@ describe('parseOpenAPISchemaString', () => {
       openapi: '3.0.0',
       info: { title: 'Test', version: '1.0.0' },
       paths: {}
+    });
+  });
+
+  it('types YAML booleans and keeps numeric-looking scalars as text', () => {
+    expect(
+      parseOpenAPISchemaString(
+        [
+          'swagger: 2.0',
+          'info:',
+          '  title: Test',
+          '  version: 1.0',
+          'paths:',
+          '  /a:',
+          '    get:',
+          '      deprecated: false',
+          '      parameters:',
+          '        - name: flag',
+          '          in: query',
+          '          required: TRUE',
+          '          description: "true"',
+          '          schema:',
+          '            type: boolean',
+          '            default: yes'
+        ].join('\n')
+      )
+    ).toEqual({
+      swagger: '2.0',
+      info: { title: 'Test', version: '1.0' },
+      paths: {
+        '/a': {
+          get: {
+            deprecated: false,
+            parameters: [
+              {
+                name: 'flag',
+                in: 'query',
+                required: true,
+                description: 'true',
+                schema: { type: 'boolean', default: 'yes' }
+              }
+            ]
+          }
+        }
+      }
     });
   });
 

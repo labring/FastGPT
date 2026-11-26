@@ -6,6 +6,24 @@ const INVALID_OPENAPI_SCHEMA_MESSAGE = 'Schema is not a valid OpenAPI API defini
 const EXTERNAL_REF_ERROR_MESSAGE = 'Unable to resolve $ref pointer: external $ref is not supported';
 const SUPPORTED_OPENAPI_HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch']);
 
+/**
+ * YAML 文档的标量类型规则：布尔值按 YAML 语义解析，其余标量保持文本。
+ *
+ * `deprecated`、`required`、`nullable` 等字段在下游按布尔值判断，文本 "false" 会被当成真值。
+ * 数字与 null 不做类型转换：未加引号的 `swagger: 2.0`、`version: 1.0` 转成数字后会被 swagger-parser 拒绝，
+ * 而已保存的 YAML Schema 在每次工具运行时都会重新解析。
+ */
+const OPENAPI_YAML_SCHEMA = yaml.FAILSAFE_SCHEMA.extend({
+  implicit: [
+    new yaml.Type('tag:yaml.org,2002:bool', {
+      kind: 'scalar',
+      resolve: (data: unknown) =>
+        typeof data === 'string' && /^(?:true|True|TRUE|false|False|FALSE)$/.test(data),
+      construct: (data: string) => data.toLowerCase() === 'true'
+    })
+  ]
+});
+
 const isPlainObject = (value: unknown): value is Record<string, any> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -163,7 +181,7 @@ export const parseOpenAPISchemaString = (schemaText: string): Record<string, any
       return JSON.parse(schemaText);
     } catch {
       try {
-        return yaml.load(schemaText, { schema: yaml.FAILSAFE_SCHEMA });
+        return yaml.load(schemaText, { schema: OPENAPI_YAML_SCHEMA });
       } catch (error) {
         throw new UserConfigError(
           getErrorMessage(error, INVALID_OPENAPI_SCHEMA_MESSAGE),
