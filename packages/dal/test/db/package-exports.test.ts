@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { isBlockedPrivateDalRepoImport } from '../../privateBoundary.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..');
 
@@ -37,8 +39,72 @@ const ALLOWED_PRO_DAL_SPECIFIERS = [
   '@/dal/db/repos/teamInvoiceTitle/repo.type'
 ] as const;
 
-const STATIC_PRIVATE_DAL_IMPORT_RE =
-  /(?:^|\n)\s*(?:import|export)\s+(?:type\s+)?(?:[^'"`\n]+\s+from\s+)?['"](?:(?:@fastgpt|@)\/dal\/db\/repos\/[^'"]+\/(?:mongo|oceanbase)(?:\/[^'"]*)?|\.\.?\/[^'"]*dal\/db\/repos\/[^'"]+\/(?:mongo|oceanbase)(?:\/[^'"]*)?)['"]/g;
+const extractLiteralText = (node: ts.Node | undefined): string | undefined => {
+  if (node === undefined) {
+    return undefined;
+  }
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  return undefined;
+};
+
+const findBlockedPrivateDalImportsInSource = ({
+  filePath,
+  content
+}: {
+  filePath: string;
+  content: string;
+}): string[] => {
+  const scriptKind = filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    content,
+    ts.ScriptTarget.Latest,
+    false,
+    scriptKind
+  );
+  const specifiers: string[] = [];
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const specifier = extractLiteralText(node.moduleSpecifier);
+      if (specifier !== undefined) {
+        specifiers.push(specifier);
+      }
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      const specifier = extractLiteralText(node.moduleReference.expression);
+      if (specifier !== undefined) {
+        specifiers.push(specifier);
+      }
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      const specifier = extractLiteralText(node.argument.literal);
+      if (specifier !== undefined) {
+        specifiers.push(specifier);
+      }
+    } else if (ts.isCallExpression(node) && node.arguments.length === 1) {
+      const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const isRequireCall = ts.isIdentifier(node.expression) && node.expression.text === 'require';
+      if (isDynamicImport || isRequireCall) {
+        const specifier = extractLiteralText(node.arguments[0]);
+        if (specifier !== undefined) {
+          specifiers.push(specifier);
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+
+  return specifiers.filter((specifier) =>
+    isBlockedPrivateDalRepoImport({ source: specifier, importer: filePath })
+  );
+};
 
 const collectTsFiles = (rootDir: string): string[] => {
   const results: string[] = [];
@@ -138,7 +204,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     }
   });
 
-  it('wires the private DAL repo guard plugin into every workspace Vitest config using the broad @fastgpt alias', async () => {
+  it('wires the private DAL repo guard plugin into every workspace Vitest config using exact repo-root boundaries', async () => {
     const proAdminVitestPath = path.join(REPO_ROOT, 'pro/admin/vitest.config.ts');
     const requirePro = process.env.FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD === '1';
     const configPaths = [
@@ -193,6 +259,15 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         );
       }
 
+      for (const blockedAliasTraversal of [
+        '@/service/../dal/db/repos/teamInvoiceTitle/mongo/repo',
+        '@fastgpt/dal/db/../db/repos/appRegistration/oceanbase/table'
+      ]) {
+        expect(() => guard?.resolveId?.(blockedAliasTraversal)).toThrow(
+          /Blocked private DAL repository import/
+        );
+      }
+
       for (const allowedSpecifier of [
         ...PUBLIC_DAL_REPO_SPECIFIERS,
         ...ALLOWED_PRO_DAL_SPECIFIERS,
@@ -203,6 +278,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         expect(guard?.resolveId?.(allowedSpecifier)).toBeNull();
       }
 
+      // 1. 外部业务与容器层相对路径越界（含短相对路径）均须阻断
       expect(() =>
         guard?.resolveId?.(
           '../../dal/db/repos/teamInvoiceTitle/mongo/repo',
@@ -211,14 +287,104 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
       ).toThrow(/Blocked private DAL repository import/);
       expect(() =>
         guard?.resolveId?.(
+          './repos/teamInvoiceTitle/mongo/schema',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/container.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          './repos/appRegistration/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/container.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
           '../teamInvoiceTitle/mongo/repo',
           path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/other/repo.ts')
         )
       ).toThrow(/Blocked private DAL repository import/);
+
+      // 2. 父子嵌套独立仓储（如 app 与 app/version、wallet 与 wallet/bill）双向互引均须阻断
+      expect(() =>
+        guard?.resolveId?.(
+          '../mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          '../../mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/mongo/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          './version/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          '../version/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/mongo/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          '../mongo/schema',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/wallet/bill/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          './bill/mongo/schema',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/wallet/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+
+      // 3. 跨作用域 registry 与契约测试越界均须阻断
+      expect(() =>
+        guard?.resolveId?.(
+          '../../../../pro/admin/src/dal/db/repos/teamInvoiceTitle/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/registry.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          '../../../../../pro/admin/src/dal/db/repos/teamInvoiceTitle/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/test/db/repos/app/repo.contract.test.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+
+      // 4. 合法同域内部（含嵌套子仓储内部、公开 repo.type、本域 registry 与契约测试）放行
       expect(
         guard?.resolveId?.(
           './mongo/repo',
           path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/teamInvoiceTitle/repo.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          './mongo/repo',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          './schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/mongo/repo.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          '../repo.type',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          './app/version/mongo/schema',
+          path.join(REPO_ROOT, 'packages/dal/db/repos/registry.ts')
         )
       ).toBeNull();
       expect(
@@ -236,7 +402,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     }
   });
 
-  it('verifies Pro DAL skeleton exports and zero static private DAL imports across pro/admin/src', () => {
+  it('verifies Pro DAL skeleton exports and zero AST private DAL imports across DAL, service, app, and Pro', () => {
     const proAdminSrc = path.join(REPO_ROOT, 'pro/admin/src');
     const requirePro = process.env.FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD === '1';
 
@@ -246,26 +412,121 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         `FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD=1 requires ${proAdminSrc}`
       ).toBe(true);
     }
-    if (!fs.existsSync(proAdminSrc)) {
-      return;
+
+    const scanRoots = [
+      path.join(REPO_ROOT, 'packages/dal/db'),
+      path.join(REPO_ROOT, 'packages/service'),
+      path.join(REPO_ROOT, 'projects/app/src')
+    ];
+
+    if (fs.existsSync(proAdminSrc)) {
+      expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/container.ts'))).toBe(true);
+      expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/repos/registry.ts'))).toBe(true);
+      scanRoots.push(proAdminSrc);
     }
 
-    expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/container.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/repos/registry.ts'))).toBe(true);
-
-    const proReposPrefix = path.join(proAdminSrc, 'dal/db/repos') + path.sep;
-    const offenders: string[] = [];
-    for (const filePath of collectTsFiles(proAdminSrc)) {
-      if (filePath.startsWith(proReposPrefix)) {
-        continue;
+    const offenders: Array<{ file: string; specifiers: string[] }> = [];
+    for (const root of scanRoots) {
+      for (const filePath of collectTsFiles(root)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const blocked = findBlockedPrivateDalImportsInSource({ filePath, content });
+        if (blocked.length > 0) {
+          offenders.push({
+            file: path.relative(REPO_ROOT, filePath),
+            specifiers: blocked
+          });
+        }
       }
-      const content = fs.readFileSync(filePath, 'utf8');
-      if (STATIC_PRIVATE_DAL_IMPORT_RE.test(content)) {
-        offenders.push(path.relative(REPO_ROOT, filePath));
-      }
-      STATIC_PRIVATE_DAL_IMPORT_RE.lastIndex = 0;
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it('keeps CI AST scanner and ESLint rule aligned on type imports, multiline imports, and nested repo boundaries', async () => {
+    const rootRequire = createRequire(path.join(REPO_ROOT, 'package.json'));
+    const { ESLint } = rootRequire('eslint') as typeof import('eslint');
+    const eslint = new ESLint({ cwd: REPO_ROOT });
+
+    const blockedCases = [
+      {
+        name: 'short relative import type from container.ts',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/dal/db/container.ts'),
+        code: "import type { Foo } from './repos/teamInvoiceTitle/mongo/schema';\nexport type { Foo };\n"
+      },
+      {
+        name: 'multiline named import via alias',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts'),
+        code: "import {\n  Foo,\n  Bar\n} from '@/dal/db/repos/teamInvoiceTitle/mongo/repo';\nexport { Foo, Bar };\n"
+      },
+      {
+        name: 'multiline export type re-export via relative path',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts'),
+        code: "export type {\n  Foo\n} from '../../dal/db/repos/teamInvoiceTitle/oceanbase/table';\n"
+      },
+      {
+        name: 'inline TypeScript import() type node',
+        filePath: path.join(REPO_ROOT, 'pro/admin/src/dal/db/container.ts'),
+        code: "export type Schema = import('./repos/teamInvoiceTitle/mongo/schema').Foo;\n"
+      },
+      {
+        name: 'nested child repo importing parent private mongo schema',
+        filePath: path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts'),
+        code: "import { x } from '../mongo/schema';\nexport { x };\n"
+      },
+      {
+        name: 'parent repo importing child private mongo schema',
+        filePath: path.join(REPO_ROOT, 'packages/dal/db/repos/app/repo.ts'),
+        code: "import { x } from './version/mongo/schema';\nexport { x };\n"
+      }
+    ];
+
+    for (const testCase of blockedCases) {
+      const astViolations = findBlockedPrivateDalImportsInSource({
+        filePath: testCase.filePath,
+        content: testCase.code
+      });
+      expect(astViolations.length, `AST missed case: ${testCase.name}`).toBeGreaterThan(0);
+
+      const [lintResult] = await eslint.lintText(testCase.code, { filePath: testCase.filePath });
+      const ruleMessages = lintResult.messages.filter(
+        (message) => message.ruleId === 'fastgpt/no-private-dal-repo-imports'
+      );
+      expect(ruleMessages.length, `ESLint missed case: ${testCase.name}`).toBeGreaterThan(0);
+    }
+
+    const allowedCases = [
+      {
+        name: 'nested child repo importing its own mongo repo',
+        filePath: path.join(REPO_ROOT, 'packages/dal/db/repos/app/version/repo.ts'),
+        code: "import { x } from './mongo/repo';\nexport { x };\n"
+      },
+      {
+        name: 'core registry importing nested child repo schema',
+        filePath: path.join(REPO_ROOT, 'packages/dal/db/repos/registry.ts'),
+        code: "import { x } from './app/version/mongo/schema';\nexport { x };\n"
+      },
+      {
+        name: 'pro contract test importing pro repo schema',
+        filePath: path.join(
+          REPO_ROOT,
+          'pro/admin/test/dal/db/repos/teamInvoiceTitle/repo.contract.test.ts'
+        ),
+        code: "import { x } from '../../../../../src/dal/db/repos/teamInvoiceTitle/mongo/schema';\nexport { x };\n"
+      }
+    ];
+
+    for (const testCase of allowedCases) {
+      const astViolations = findBlockedPrivateDalImportsInSource({
+        filePath: testCase.filePath,
+        content: testCase.code
+      });
+      expect(astViolations, `AST false positive: ${testCase.name}`).toEqual([]);
+
+      const [lintResult] = await eslint.lintText(testCase.code, { filePath: testCase.filePath });
+      const ruleMessages = lintResult.messages.filter(
+        (message) => message.ruleId === 'fastgpt/no-private-dal-repo-imports'
+      );
+      expect(ruleMessages, `ESLint false positive: ${testCase.name}`).toEqual([]);
+    }
   });
 });

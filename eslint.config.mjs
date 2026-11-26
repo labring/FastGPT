@@ -3,6 +3,81 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
+import { isBlockedPrivateDalRepoImport } from './packages/dal/privateBoundary.mjs';
+
+const DAL_PRIVATE_BOUNDARY_MESSAGE =
+  '禁止越界导入 DAL 仓储私有 mongo/oceanbase 实现，请改用公开的 .../repo 或 .../repo.type。';
+
+/**
+ * 复用 `privateBoundary.mjs` 精确校验静态/类型/动态导入与重导出是否越界访问私有 DAL 实现。
+ *
+ * @type {import('eslint').Rule.RuleModule}
+ */
+const noPrivateDalRepoImportsRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Disallow importing private DAL repository mongo/oceanbase implementations'
+    },
+    schema: []
+  },
+  create: (context) => {
+    const filename = context.filename;
+    /** @param {any} reportNode @param {unknown} specifier */
+    const checkSpecifier = (reportNode, specifier) => {
+      if (typeof specifier !== 'string') {
+        return;
+      }
+      if (isBlockedPrivateDalRepoImport({ source: specifier, importer: filename })) {
+        context.report({
+          node: reportNode,
+          message: DAL_PRIVATE_BOUNDARY_MESSAGE
+        });
+      }
+    };
+
+    return {
+      ImportDeclaration: (node) => checkSpecifier(node.source, node.source?.value),
+      ExportNamedDeclaration: (node) => {
+        if (node.source !== null && node.source !== undefined) {
+          checkSpecifier(node.source, node.source.value);
+        }
+      },
+      ExportAllDeclaration: (node) => checkSpecifier(node.source, node.source?.value),
+      ImportExpression: (node) => {
+        if (node.source?.type === 'Literal') {
+          checkSpecifier(node.source, node.source.value);
+        }
+      },
+      CallExpression: (node) => {
+        if (
+          node.callee.type === 'Identifier' &&
+          node.callee.name === 'require' &&
+          node.arguments.length === 1 &&
+          node.arguments[0]?.type === 'Literal'
+        ) {
+          checkSpecifier(node.arguments[0], node.arguments[0].value);
+        }
+      },
+      /** @param {any} node */
+      TSExternalModuleReference: (node) => {
+        if (node.expression?.type === 'Literal') {
+          checkSpecifier(node.expression, node.expression.value);
+        }
+      },
+      /** @param {any} node */
+      TSImportType: (node) => {
+        if (node.source?.type === 'Literal') {
+          checkSpecifier(node.source, node.source.value);
+          return;
+        }
+        if (node.argument?.type === 'TSLiteralType' && node.argument.literal?.type === 'Literal') {
+          checkSpecifier(node.argument.literal, node.argument.literal.value);
+        }
+      }
+    };
+  }
+};
 
 // 枚举分组规则集中在来源分类模块；业务代码只消费语义化判断。
 const groupedChatSourceComparisonsSelector =
@@ -82,31 +157,21 @@ export default defineConfig([
   },
   {
     name: 'fastgpt/dal-private-boundary',
-    files: ['packages/**/*.{ts,tsx}', 'projects/**/*.{ts,tsx}', 'pro/**/*.{ts,tsx}'],
-    ignores: [
-      'packages/dal/db/repos/**',
-      'packages/dal/test/db/repos/**',
-      'pro/admin/src/dal/db/repos/**',
-      'pro/admin/test/dal/db/repos/**'
+    files: [
+      'packages/**/*.{ts,tsx}',
+      'projects/**/*.{ts,tsx}',
+      'pro/**/*.{ts,tsx}',
+      'test/**/*.{ts,tsx}'
     ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              regex: '^(?:@fastgpt|@)/dal/db/repos/.+/(?:mongo|oceanbase)(?:/|[?#]|$)',
-              message:
-                '禁止直接导入 DAL 仓储私有 mongo/oceanbase 实现，请改用公开的 .../repo 或 .../repo.type。'
-            },
-            {
-              regex: '(?:^|/)dal/db/repos/.+/(?:mongo|oceanbase)(?:/|[?#]|$)',
-              message:
-                '禁止通过相对路径绕过 DAL 仓储私有边界，请改用公开的 .../repo 或 .../repo.type。'
-            }
-          ]
+    plugins: {
+      fastgpt: {
+        rules: {
+          'no-private-dal-repo-imports': noPrivateDalRepoImportsRule
         }
-      ]
+      }
+    },
+    rules: {
+      'fastgpt/no-private-dal-repo-imports': 'error'
     }
   },
   globalIgnores(
