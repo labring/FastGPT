@@ -15,7 +15,7 @@ export const CommonSystemPath: OpenAPIPath = {
     get: {
       summary: '获取 Pro SSO 接入状态（内部接口）',
       description:
-        '仅供主服务携带 x-fastgpt-pro-token 直连 Pro /api 路由；浏览器代理不提供内部令牌。主服务不传 includeProvider，仅读取 enabled；返回值不含 SSO 地址或凭据。',
+        '仅供主服务携带 x-fastgpt-pro-token 直连 Pro /api 路由；浏览器代理不提供内部令牌。默认仅返回 enabled（兼容旧版主服务），传入 includeProvider=true 时按需探测并返回 isWecom。返回值不含 SSO 地址或凭据。',
       tags: [DevApiTagsMap.commonSystem],
       requestParams: {
         query: ProSsoConfigQuerySchema

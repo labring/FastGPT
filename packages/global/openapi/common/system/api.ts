@@ -34,15 +34,14 @@ export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
  * API: 获取 Pro SSO 接入状态
  * Route: GET /api/common/system/sso/config (Pro 内部接口)
  * Method: GET
- * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；保留 includeProvider 与 isWecom 可选字段以兼容尚未移除探测分支的 Pro 版本
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；仅在显式请求 includeProvider=true 时探测 provider 类型
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
-/** @deprecated 保留以兼容仍解析 includeProvider 参数的 Pro 内部路由，主服务不再传递该参数。 */
 export const ProSsoConfigQuerySchema = z.object({
   includeProvider: BoolSchema.optional().meta({
     description:
-      '已废弃的可选参数；保留以兼容当前 Pro 内部路由，主服务不传该参数，Pro 仅返回 enabled',
+      '是否探测并返回 SSO provider 类型（isWecom）；未传或为 false 时仅返回 enabled，兼容旧版主服务 .strict() 校验并避免密码策略路径触发外部探测',
     example: true
   })
 });
@@ -52,7 +51,8 @@ export const ProSsoConfigResponseSchema = z
   .object({
     enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
     isWecom: z.boolean().optional().meta({
-      description: '已废弃的可选字段；保留以兼容尚未移除探测分支的 Pro 内部接口',
+      description:
+        'SSO 服务是否使用企业微信 provider；仅在 includeProvider=true 且探测成功时返回，未返回表示未探测或无法确认',
       example: false
     })
   })

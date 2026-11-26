@@ -12,7 +12,7 @@ declare global {
   var feConfigs: FastGPTFeConfigsType;
   /** Pro 进程读取统一快照中的 SSO 状态；App 未注入时通过服务间接口读取。 */
   var getSsoConfiguredHandler: (() => boolean | Promise<boolean>) | undefined;
-  /** @deprecated 保留以兼容尚未移除启动注入的 Pro 版本，主服务仅使用 getSsoConfiguredHandler。 */
+  /** 本地测试或同进程场景下读取完整 SSO 状态（含 isWecom）。 */
   var getSsoConfigHandler: (() => ProSsoConfigResponse | Promise<ProSsoConfigResponse>) | undefined;
   var agentUserTmbIds: ReadonlySet<string> | undefined;
 
