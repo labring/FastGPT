@@ -188,7 +188,7 @@ describe('validateSystemMigrationRegistry', () => {
       version: '4.18.0',
       manual: true,
       blockStartup: false,
-      progressSteps: [{ key: 'backfill' }, { key: 'validation' }, { key: 'cleanupLegacyIndex' }]
+      progressSteps: [{ key: 'backfill' }, { key: 'validation' }]
     });
     expect(task).not.toHaveProperty('independent');
     expect(task).not.toHaveProperty('delay');

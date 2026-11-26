@@ -385,6 +385,7 @@ export const systemMigrations = [
     id: '20261126_backfill_llm_request_record_expired_time',
     version: '4.18.0',
     // 须在确认所有旧版本 App 实例已下线（无混跑）后由管理员手动触发执行，避免旧节点持续写入无 expiredTime 记录。
+    // 遵循两版本 Expand-Contract 索引退役规范，本版只扩展与回填，旧 createdAt_1 索引留待 N+1 统一清理。
     manual: true,
     blockStartup: false,
     nameKey: i18nT(
@@ -407,12 +408,6 @@ export const systemMigrations = [
         key: 'validation',
         labelKey: i18nT(
           'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.validation'
-        )
-      },
-      {
-        key: 'cleanupLegacyIndex',
-        labelKey: i18nT(
-          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex'
         )
       }
     ],

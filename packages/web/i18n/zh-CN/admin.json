@@ -927,7 +927,7 @@
   "hnsw_candidate_expansion_factor_controlling_neighbor_search": "HNSW 向量检索候选集扩大倍数，控制近邻搜索探索深度。数值越大召回率越高，计算时间相应增加",
   "max_characters_allowed_when_converting_html_to_markdown": "HTML 转换为 Markdown 允许处理的最大字符上限",
   "dependencies_available_by_default_in_javascript_code_nodes": "JavaScript 代码节点默认可直接使用的依赖包清单",
-  "retention_period_for_detailed_llm_tracing_logs_hours": "LLM 调用链路追踪详情日志的保留时长（小时），修改后仅影响后续落库记录",
+  "retention_period_for_detailed_llm_tracing_logs_hours": "LLM 调用链路追踪详情日志的保留时长（小时），修改后仅影响后续落库记录；升级过渡期若旧版 createdAt_1 TTL 索引仍存在，配置值不可超过旧索引上限",
   "apt_mirror_url_for_linux_package_installation": "Linux 系统软件安装 apt 源地址",
   "max_concurrency_for_vlm_image_understanding_and_description": "VLM 模型图像理解与描述生成的最大处理并发数",
   "max_processing_time_for_a_worker_to_parse_a_single_document": "Worker 进程解析单份文档允许的最长处理时间（秒）",

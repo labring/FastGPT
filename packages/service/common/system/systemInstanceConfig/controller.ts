@@ -1,4 +1,5 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
+import { getLegacyCreatedAtTtlSeconds } from '../../../core/ai/record/mongo/ttl';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
 import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
@@ -629,14 +630,16 @@ export const batchUpdateDomainConfigs = async (
     // 兼容历史库中可能残留的越界 tracking.retentionHours（如旧版 0 或 1440）：
     // 仅在本次未显式提交 retentionHours 时就近收口，避免保存同域其他字段（如 chat.maxQpm）返回 400；
     // 显式提交非法值仍由下方严格 Schema 校验拒绝。
+    let hasSubmittedRetention = false;
     if (domain === 'performance') {
       const submittedTracking = (submittedOverrides as { tracking?: { retentionHours?: unknown } })
         .tracking;
       const mergedTracking = (mergedOverrides as { tracking?: { retentionHours?: unknown } })
         .tracking;
-      const hasSubmittedRetention =
+      hasSubmittedRetention =
         submittedTracking !== undefined &&
-        Object.prototype.hasOwnProperty.call(submittedTracking, 'retentionHours');
+        Object.prototype.hasOwnProperty.call(submittedTracking, 'retentionHours') &&
+        submittedTracking.retentionHours !== undefined;
       if (
         !hasSubmittedRetention &&
         typeof mergedTracking?.retentionHours === 'number' &&
@@ -657,6 +660,32 @@ export const batchUpdateDomainConfigs = async (
     } catch (error) {
       if (error instanceof ZodError) throw configInputError(error);
       throw error;
+    }
+
+    // 过渡期双写 createdAt 时，若库中仍存在旧 createdAt TTL 索引（含 hidden），
+    // MongoDB 会在旧 TTL 到期时提前删记录；因此禁止把 retentionHours 调大到超过旧索引上限，
+    // 避免系统接受并承诺无法兑现的保留时长。未修改 retentionHours 的同域局部保存不受阻断。
+    if (domain === 'performance' && hasSubmittedRetention) {
+      const effectiveRetentionHours = (
+        effectiveConfig as SystemInstanceConfigDomainMap['performance']
+      ).tracking.retentionHours;
+      const legacyTtlSeconds = await getLegacyCreatedAtTtlSeconds();
+      if (legacyTtlSeconds !== null && effectiveRetentionHours * 3600 > legacyTtlSeconds) {
+        const legacyMaxHours = Math.floor(legacyTtlSeconds / 3600);
+        const legacyLimitLabel =
+          legacyTtlSeconds % 3600 === 0
+            ? `${legacyMaxHours} hours`
+            : `${legacyTtlSeconds} seconds (max ${legacyMaxHours} hours)`;
+        throw configInputError(
+          new ZodError([
+            {
+              code: 'custom',
+              path: ['tracking', 'retentionHours'],
+              message: `Cannot set LLM trace retentionHours to ${effectiveRetentionHours} hours while legacy createdAt TTL index (${legacyLimitLabel}) still exists on llm_request_records; wait for next-version index cleanup or drop the legacy index first`
+            }
+          ])
+        );
+      }
     }
 
     // 下载策略依赖同域多个字段：必须校验合并后的完整配置，局部补丁既不能绕过校验，

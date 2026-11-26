@@ -111,9 +111,8 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "채우기 결과 검증",
   "migrations.20261125_backfill_model_reasoning_effort_list.result": "플러그인 프리셋 {{presetCount}}개를 불러와 일치하는 LLM 모델 {{verifiedCount}}개를 검증했습니다.",
   "migrations.20261126_backfill_llm_request_record_expired_time.name": "LLM 추적 기록 만료 시간 채우기",
-  "migrations.20261126_backfill_llm_request_record_expired_time.description": "모든 구버전 App 인스턴스가 종료되어 혼재 쓰기가 없음을 확인한 후 수동으로 실행하세요. 롤백 호환성을 위해 createdAt을 보존한 채 기존 LLM 요청 추적 기록에 expiredTime을 배치로 채우고, 전체 컬렉션 검증 및 새 고정 TTL 인덱스 준비를 확인한 뒤 MONGO_DEPRECATE_INDEX 설정에 따라 기존 createdAt_1 TTL 인덱스를 정리합니다(비표준 사용자 지정 인덱스는 보존).",
+  "migrations.20261126_backfill_llm_request_record_expired_time.description": "모든 구버전 App 인스턴스가 종료되어 혼재 쓰기가 없음을 확인한 후 수동으로 실행하세요. 롤백 호환성을 위해 createdAt을 보존한 채 기존 createdAt_1 TTL 기간을 우선 적용하여 기존 LLM 요청 추적 기록에 expiredTime을 배치로 채우고 전체 컬렉션 및 새 고정 TTL 인덱스 준비를 검증합니다. 기존 createdAt_1 인덱스는 롤백 안전을 위해 본 버전에서 유지되며 다음 버전에서 일괄 정리됩니다.",
   "migrations.20261126_backfill_llm_request_record_expired_time.backfill": "기존 추적 기록 expiredTime 채우기",
-  "migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex": "기존 createdAt_1 TTL 인덱스 정리",
   "migrations.20261126_backfill_llm_request_record_expired_time.validation": "전체 채우기 및 새 TTL 인덱스 검증",
-  "migrations.20261126_backfill_llm_request_record_expired_time.result": "기록 {{scannedCount}}건을 스캔하고 {{backfilledCount}}건을 채웠으며 기존 인덱스 {{legacyIndexDropped}}개를 정리했습니다."
+  "migrations.20261126_backfill_llm_request_record_expired_time.result": "기록 {{scannedCount}}건을 스캔하고 {{backfilledCount}}건을 채웠습니다."
 }
