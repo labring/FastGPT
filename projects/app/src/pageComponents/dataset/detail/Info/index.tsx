@@ -585,6 +585,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
           <Box>
             <MemberManager
+              readOnly={datasetDetail.apiDatasetServer?.permissionSync === true}
               managePer={{
                 defaultRole: ReadRoleVal,
                 permission: datasetDetail.permission,

@@ -20,6 +20,7 @@ export type ConfigPerModalProps = {
   hasParent?: boolean;
   refetchResource?: () => void;
   onChangeOwner?: (tmbId: string) => Promise<unknown>;
+  readOnly?: boolean;
 };
 
 const ConfigPerModal = ({
@@ -31,7 +32,8 @@ const ConfigPerModal = ({
   hasParent,
   onClose,
   refetchResource,
-  onChangeOwner
+  onChangeOwner,
+  readOnly = false
 }: ConfigPerModalProps & {
   onClose: () => void;
 }) => {
@@ -49,7 +51,7 @@ const ConfigPerModal = ({
           <Avatar src={avatar} w={'1.75rem'} borderRadius={'md'} />
           <Box>{name}</Box>
         </HStack>
-        {!isInheritPermission && (
+        {!isInheritPermission && !readOnly && (
           <Box mt={3}>
             <ResumeInherit onResume={resumeInheritPermission} />
           </Box>
@@ -71,14 +73,16 @@ const ConfigPerModal = ({
                     w="full"
                   >
                     <Box fontSize={'sm'}>{t('common:permission.Collaborator')}</Box>
-                    <Button
-                      size="sm"
-                      variant="whitePrimary"
-                      leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                      onClick={onOpenManageModal}
-                    >
-                      {t('common:permission.Manage')}
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        size="sm"
+                        variant="whitePrimary"
+                        leftIcon={<MyIcon w="4" name="common/settingLight" />}
+                        onClick={onOpenManageModal}
+                      >
+                        {t('common:permission.Manage')}
+                      </Button>
+                    )}
                   </Flex>
                   <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
                 </>
@@ -86,7 +90,7 @@ const ConfigPerModal = ({
             }}
           </CollaboratorContextProvider>
         </Box>
-        {onChangeOwner && (
+        {onChangeOwner && !readOnly && (
           <Box mt={4}>
             <Button
               size="md"
@@ -101,7 +105,7 @@ const ConfigPerModal = ({
           </Box>
         )}
       </MyModal>
-      {isChangeOwnerModalOpen && onChangeOwner && (
+      {isChangeOwnerModalOpen && onChangeOwner && !readOnly && (
         <ChangeOwnerModal
           onClose={onCloseChangeOwnerModal}
           avatar={avatar}

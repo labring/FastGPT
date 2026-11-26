@@ -88,6 +88,7 @@ const CollectionFolderCard = ({
         <FolderSlideCard
           showIntro={false}
           showCollaborator={datasetDetail.collectionPermissionEnabled === true}
+          collaboratorReadOnly={datasetDetail.apiDatasetServer?.permissionSync === true}
           name={folder.name}
           onEdit={() =>
             onOpenRenameModal({
@@ -114,7 +115,11 @@ const CollectionFolderCard = ({
             refreshDeps: [collectionId, folder.inheritPermission]
           }}
           isInheritPermission={folder.inheritPermission !== false}
-          resumeInheritPermission={() => putResumeCollectionInheritPermission(collectionId)}
+          resumeInheritPermission={
+            datasetDetail.apiDatasetServer?.permissionSync === true
+              ? undefined
+              : () => putResumeCollectionInheritPermission(collectionId)
+          }
           // 根目录下的 folder 父级是知识库，其余是上级 folder，恒有父级。
           hasParent
           refetchResource={refetchFolder}
