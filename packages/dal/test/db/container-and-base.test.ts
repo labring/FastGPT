@@ -30,6 +30,23 @@ class DemoOceanBaseRepo extends OceanBaseRepositoryBase<
       .executeTakeFirst();
     return this.parseNullable(row);
   }
+
+  public async findByIdWithReadReplica({
+    id,
+    tx,
+    useReadReplica
+  }: {
+    id: string;
+    tx?: DbSession;
+    useReadReplica?: boolean;
+  }) {
+    const row = await this.readDb({ tx, useReadReplica })
+      .selectFrom('demo_items')
+      .selectAll()
+      .where('_id', '=', this.normalizeId(id))
+      .executeTakeFirst();
+    return this.parseNullable(row);
+  }
 }
 
 describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
@@ -92,5 +109,122 @@ describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
       name: 'tx-row'
     });
     expect(txMock.queries).toHaveLength(1);
+  });
+
+  it('routes readDb({ useReadReplica }) to replica only outside transactions and honors logMode topology', async () => {
+    const resolverCalls: Array<{
+      datasource: string;
+      hasNativeTx: boolean;
+      useReadReplica?: boolean;
+    }> = [];
+    const writeMock = createMockOceanBaseKysely(() => ({
+      rows: [{ _id: '68ee0bd23d17260b7829b137', name: 'write-row' }]
+    }));
+    const readMock = createMockOceanBaseKysely(() => ({
+      rows: [{ _id: '68ee0bd23d17260b7829b137', name: 'read-row' }]
+    }));
+    const txMock = createMockOceanBaseKysely(() => ({
+      rows: [{ _id: '68ee0bd23d17260b7829b137', name: 'tx-row' }]
+    }));
+
+    const sharedRuntime = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/app',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/app',
+      oceanBaseExecutorResolver: ({ datasource, nativeTx, useReadReplica }) => {
+        resolverCalls.push({
+          datasource,
+          hasNativeTx: nativeTx !== undefined,
+          useReadReplica
+        });
+        if (nativeTx !== undefined) {
+          return nativeTx;
+        }
+        return useReadReplica ? readMock.db : writeMock.db;
+      }
+    });
+
+    const repo = new DemoOceanBaseRepo(sharedRuntime);
+    expect(await repo.findByIdWithReadReplica({ id: '68ee0bd23d17260b7829b137' })).toEqual({
+      _id: '68ee0bd23d17260b7829b137',
+      name: 'write-row'
+    });
+    expect(
+      await repo.findByIdWithReadReplica({
+        id: '68ee0bd23d17260b7829b137',
+        useReadReplica: true
+      })
+    ).toEqual({
+      _id: '68ee0bd23d17260b7829b137',
+      name: 'read-row'
+    });
+
+    const { session } = createManagedDbSession({
+      dialect: 'oceanbase',
+      datasource: 'main',
+      nativeTx: txMock.db
+    });
+    expect(
+      await repo.findByIdWithReadReplica({
+        id: '68ee0bd23d17260b7829b137',
+        tx: session,
+        useReadReplica: true
+      })
+    ).toEqual({
+      _id: '68ee0bd23d17260b7829b137',
+      name: 'tx-row'
+    });
+
+    expect(resolverCalls).toEqual([
+      { datasource: 'main', hasNativeTx: false, useReadReplica: false },
+      { datasource: 'main', hasNativeTx: false, useReadReplica: true },
+      { datasource: 'main', hasNativeTx: true, useReadReplica: false }
+    ]);
+
+    // log 数据源在 shared 模式下解析为 main，在 separate 模式下保持 log
+    class LogDemoRepo extends OceanBaseRepositoryBase<DemoDb, 'demo_items', typeof DemoReadSchema> {
+      constructor(runtime: DbRuntime) {
+        super({
+          tableName: 'demo_items',
+          readSchema: DemoReadSchema,
+          datasource: 'log',
+          runtime
+        });
+      }
+
+      public async read() {
+        await this.readDb({ useReadReplica: true }).selectFrom('demo_items').selectAll().execute();
+      }
+    }
+
+    await new LogDemoRepo(sharedRuntime).read();
+    expect(resolverCalls.at(-1)).toEqual({
+      datasource: 'main',
+      hasNativeTx: false,
+      useReadReplica: true
+    });
+
+    await closeDbRuntime();
+    const separateRuntime = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/app',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/app',
+      logWriteUrl: 'mysql://root@127.0.0.1:2883/log',
+      oceanBaseExecutorResolver: ({ datasource, nativeTx, useReadReplica }) => {
+        resolverCalls.push({
+          datasource,
+          hasNativeTx: nativeTx !== undefined,
+          useReadReplica
+        });
+        return writeMock.db;
+      }
+    });
+
+    await new LogDemoRepo(separateRuntime).read();
+    expect(resolverCalls.at(-1)).toEqual({
+      datasource: 'log',
+      hasNativeTx: false,
+      useReadReplica: true
+    });
   });
 });

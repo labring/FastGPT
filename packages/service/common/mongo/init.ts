@@ -11,7 +11,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import type { Mongoose } from 'mongoose';
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../logger';
-import { configureMongoDalRuntime } from './dalRuntime';
+import { configureDalRuntime } from '../db/dalRuntime';
 import { connectionLogMongo, connectionMongo, hasSeparateMongoLogUri } from './index';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -23,7 +23,7 @@ const completedDalIndexSyncs = new Set<string>();
 
 const ensureDefaultMongoDalRuntime = (db: Mongoose, url: string) => {
   if (db === connectionMongo && getConfiguredDbRuntime() === undefined && url.trim().length > 0) {
-    configureMongoDalRuntime({ mainWriteUrl: url });
+    configureDalRuntime({ dialect: 'mongo', mainWriteUrl: url });
   }
 };
 

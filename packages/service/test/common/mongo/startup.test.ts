@@ -101,9 +101,10 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(sharedDefault.connectionLogMongo).toBe(sharedDefault.connectionMongo);
     expect(sharedDefault.MONGO_LOG_URL).toBe(sharedDefault.MONGO_URL);
 
-    const { configureMongoDalRuntime: configureDefault } =
-      await import('@fastgpt/service/common/mongo/dalRuntime');
+    const { configureDalRuntime: configureDefault } =
+      await import('@fastgpt/service/common/db/dalRuntime');
     const defaultRuntime = configureDefault({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: undefined
     });
@@ -117,9 +118,10 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(sharedSameUri.hasSeparateMongoLogUri).toBe(false);
     expect(sharedSameUri.connectionLogMongo).toBe(sharedSameUri.connectionMongo);
 
-    const { configureMongoDalRuntime: configureSameUri } =
-      await import('@fastgpt/service/common/mongo/dalRuntime');
+    const { configureDalRuntime: configureSameUri } =
+      await import('@fastgpt/service/common/db/dalRuntime');
     const sameUriRuntime = configureSameUri({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: mocks.env.MONGODB_LOG_URI
     });
@@ -133,8 +135,9 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(separateMod.connectionLogMongo).not.toBe(separateMod.connectionMongo);
     expect(separateMod.MONGO_LOG_URL).toBe('mongodb://127.0.0.1:27017/unused_index_startup_log');
 
-    const { configureMongoDalRuntime } = await import('@fastgpt/service/common/mongo/dalRuntime');
-    const separateRuntime = configureMongoDalRuntime({
+    const { configureDalRuntime } = await import('@fastgpt/service/common/db/dalRuntime');
+    const separateRuntime = configureDalRuntime({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: mocks.env.MONGODB_LOG_URI
     });

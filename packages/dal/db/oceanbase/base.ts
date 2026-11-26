@@ -6,14 +6,16 @@ import { getDbRuntime, type DbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
 import type { DbDatasource, DbSession } from '../types';
 
-/** 解析当前上下文对应的 OceanBase Kysely 执行器（携带 `tx` 时优先走事务连接）。 */
+/** 解析当前上下文对应的 OceanBase Kysely 执行器（携带 `tx` 时优先走事务连接并忽略只读副本）。 */
 export const getOceanBaseExecutor = <TDatabase = Record<string, any>>({
   datasource = 'main',
   tx,
+  useReadReplica = false,
   runtime: explicitRuntime
 }: {
   datasource?: DbDatasource;
   tx?: DbSession;
+  useReadReplica?: boolean;
   runtime?: DbRuntime;
 } = {}): Kysely<TDatabase> => {
   const runtime = explicitRuntime ?? getDbRuntime();
@@ -22,7 +24,9 @@ export const getOceanBaseExecutor = <TDatabase = Record<string, any>>({
   const resolver = runtime.getOceanBaseExecutorResolver();
   return resolver({
     datasource: effectiveDatasource,
-    nativeTx
+    nativeTx,
+    // 活跃事务内强制走写库连接，保证读己之写语义，与 MongoRepositoryBase.readOpts 对齐。
+    useReadReplica: nativeTx !== undefined ? false : useReadReplica
   }) as Kysely<TDatabase>;
 };
 
@@ -62,6 +66,22 @@ export abstract class OceanBaseRepositoryBase<
     return getOceanBaseExecutor<TDatabase>({
       datasource: this.datasource,
       tx,
+      runtime: this.runtime
+    });
+  }
+
+  /** 获取只读查询执行器：活跃事务内强制走主写事务连接，非事务且开启 `useReadReplica` 时可路由只读副本。 */
+  protected readDb({
+    tx,
+    useReadReplica = false
+  }: {
+    tx?: DbSession;
+    useReadReplica?: boolean;
+  } = {}): Kysely<TDatabase> {
+    return getOceanBaseExecutor<TDatabase>({
+      datasource: this.datasource,
+      tx,
+      useReadReplica,
       runtime: this.runtime
     });
   }

@@ -33,6 +33,11 @@ export type DbRuntimeConfig = {
   dialect: DbDialect;
   mainWriteUrl: string;
   /**
+   * 可选只读副本连接串（OceanBase 非事务读路径 `useReadReplica: true` 使用）：
+   * - 未配置或与 `mainWriteUrl` 相同时自动回退复用主写连接池。
+   */
+  mainReadUrl?: string;
+  /**
    * 独立日志库连接串：
    * - 配置时进入 `separate` 模式，使用独立日志连接池；
    * - 未配置（默认）时进入 `shared` 模式，透明回退复用 `main` 连接池。
@@ -56,6 +61,7 @@ export class DbRuntime {
   readonly logMode: DbLogMode;
   readonly maxConnections?: number;
 
+  private readonly separateReadReplica: boolean;
   private readonly logger: DbLogger;
   private readonly metrics: DbMetrics;
   private readonly transactionRunner?: DbTransactionRunner;
@@ -71,9 +77,11 @@ export class DbRuntime {
       throw new DbConfigurationError('Database mainWriteUrl must be a non-empty string');
     }
 
+    const mainReadUrl = normalizeOptionalUrl(config.mainReadUrl);
     const logWriteUrl = normalizeOptionalUrl(config.logWriteUrl);
     this.dialect = config.dialect;
     this.logMode = logWriteUrl !== undefined ? 'separate' : 'shared';
+    this.separateReadReplica = mainReadUrl !== undefined && mainReadUrl !== mainWriteUrl;
     this.maxConnections = config.maxConnections;
     this.logger = config.logger ?? silentLogger;
     this.metrics = config.metrics ?? {};
@@ -90,6 +98,11 @@ export class DbRuntime {
   /** 是否配置了物理独立的日志数据库实例（`separate` 为 `true`，`shared` 回退复用主库时为 `false`）。 */
   hasSeparateLogDatabase(): boolean {
     return this.logMode === 'separate';
+  }
+
+  /** 是否配置了独立于主写库的只读副本连接池。 */
+  hasReadReplica(): boolean {
+    return this.separateReadReplica;
   }
 
   /** 将逻辑数据源解析为物理承接数据源：`shared` 模式下 `log` 透明回退至 `main`。 */
@@ -218,12 +231,19 @@ const getDbRuntimeContext = (): DbRuntimeContext => {
   return context;
 };
 
-const buildConfigurationKey = (config: DbRuntimeConfig): string =>
-  JSON.stringify({
+const buildConfigurationKey = (config: DbRuntimeConfig): string => {
+  const mainWriteUrl = normalizeOptionalUrl(config.mainWriteUrl);
+  const rawMainReadUrl = normalizeOptionalUrl(config.mainReadUrl);
+  const mainReadUrl =
+    rawMainReadUrl !== undefined && rawMainReadUrl !== mainWriteUrl ? rawMainReadUrl : undefined;
+
+  return JSON.stringify({
     dialect: config.dialect,
-    mainWriteUrl: normalizeOptionalUrl(config.mainWriteUrl),
+    mainWriteUrl,
+    mainReadUrl,
     logWriteUrl: normalizeOptionalUrl(config.logWriteUrl)
   });
+};
 
 /**
  * 显式配置进程级默认数据库 Runtime（同拓扑调用幂等，支持 Next.js HMR；切换拓扑前需先关闭）。

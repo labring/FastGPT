@@ -76,6 +76,39 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(afterClose.dialect).toBe('mongo');
   });
 
+  it('tracks separate mainReadUrl via hasReadReplica() and treats mainReadUrl equal to mainWriteUrl as no replica', async () => {
+    const noReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
+    });
+    expect(noReplica.hasReadReplica()).toBe(false);
+
+    const sameUrlReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: '  mysql://root@127.0.0.1:2881/fastgpt  '
+    });
+    expect(sameUrlReplica).toBe(noReplica);
+    expect(sameUrlReplica.hasReadReplica()).toBe(false);
+
+    expect(() =>
+      configureDbRuntime({
+        dialect: 'oceanbase',
+        mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+        mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt'
+      })
+    ).toThrow(DbConfigurationError);
+
+    await closeDbRuntime();
+
+    const withReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt'
+    });
+    expect(withReplica.hasReadReplica()).toBe(true);
+  });
+
   it('emits slow-query warn/error logs and isolates metric callback failures', () => {
     const operationCompleted = vi.fn(() => {
       throw new Error('metrics failure');

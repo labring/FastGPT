@@ -8,6 +8,7 @@ import {
   type CompiledQuery,
   type DatabaseConnection,
   type Driver,
+  type LogConfig,
   type QueryResult
 } from 'kysely';
 import { Mongoose, type Model } from 'mongoose';
@@ -295,7 +296,8 @@ export const createOceanBaseTestHarness = async ({
  * 轻量内存级 OceanBase Kysely 桩执行器（供无 Docker 本地 L0 单测验证编译 SQL、参数绑定与迁移流程）。
  */
 export const createMockOceanBaseKysely = (
-  handler: (query: CompiledQuery) => Promise<QueryResult<any>> | QueryResult<any>
+  handler: (query: CompiledQuery) => Promise<QueryResult<any>> | QueryResult<any>,
+  options?: { log?: LogConfig }
 ): { db: Kysely<any>; queries: CompiledQuery[] } => {
   const queries: CompiledQuery[] = [];
 
@@ -325,7 +327,8 @@ export const createMockOceanBaseKysely = (
       createDriver: () => driver,
       createIntrospector: (innerDb) => new MysqlIntrospector(innerDb),
       createQueryCompiler: () => new MysqlQueryCompiler()
-    }
+    },
+    ...(options?.log !== undefined ? { log: options.log } : {})
   });
 
   return { db, queries };

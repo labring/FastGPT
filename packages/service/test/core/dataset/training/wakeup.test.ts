@@ -5,7 +5,7 @@ import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbDialect } from '@fastgpt/dal/db/types';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
-import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { configureDalRuntime } from '@fastgpt/service/common/db/dalRuntime';
 import {
   bridgeClientSessionToDbSession,
   mongoSessionRun
@@ -22,7 +22,7 @@ describe('dataset training wakeup signal', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     await closeDbRuntime();
-    configureMongoDalRuntime();
+    configureDalRuntime({ dialect: 'mongo' });
   });
   it('deduplicates modes and delivers Pub/Sub wakeup signal to subscribers', async () => {
     const receivedModes: TrainingModeEnum[][] = [];
