@@ -1,4 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 import { Box, Flex, Switch } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -28,6 +35,54 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
+import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
+
+/**
+ * 子目录详情状态的单一读写控制器：通过单调代际号与当前目录 ID 共同校验，
+ * 确保连续切换同步开关或切换目录时，较早的后台/初始读取响应乱序返回不会覆盖较新的提交或读取。
+ */
+export const createFolderDetailController = <TFolder,>({
+  getActiveCollectionId,
+  fetchCollectionById,
+  setFolder
+}: {
+  getActiveCollectionId: () => string;
+  fetchCollectionById: (id: string) => Promise<TFolder>;
+  setFolder: Dispatch<SetStateAction<TFolder | undefined>>;
+}) => {
+  let latestSeq = 0;
+
+  const invalidate = () => {
+    latestSeq += 1;
+  };
+
+  const loadFolder = async (targetCollectionId: string) => {
+    if (getActiveCollectionId() !== targetCollectionId) {
+      return undefined;
+    }
+    const requestSeq = ++latestSeq;
+    const latest = await fetchCollectionById(targetCollectionId);
+    if (requestSeq === latestSeq && getActiveCollectionId() === targetCollectionId) {
+      setFolder(latest);
+    }
+    return latest;
+  };
+
+  const commitFolderPatch = (
+    targetCollectionId: string,
+    updater: (prev: TFolder | undefined) => TFolder | undefined
+  ) => {
+    if (getActiveCollectionId() !== targetCollectionId) return;
+    latestSeq += 1;
+    setFolder(updater);
+  };
+
+  return {
+    loadFolder,
+    commitFolderPatch,
+    invalidate
+  };
+};
 
 /**
  * 计算目录侧栏「同步新增」开关的生效态，与 Pro 同步引擎优先级保持一致：
@@ -96,24 +151,40 @@ const CollectionFolderCard = ({
   const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [isMoving, setIsMoving] = useState(false);
+  const [folder, setFolder] = useState<DatasetCollectionItemType | undefined>(undefined);
   const activeCollectionIdRef = useRef(collectionId);
-  useEffect(() => {
-    activeCollectionIdRef.current = collectionId;
-  }, [collectionId]);
-
-  const {
-    data: folder,
-    loading,
-    mutate: mutateFolder,
-    runAsync: refetchFolder
-  } = useRequest(() => getDatasetCollectionById(collectionId), {
-    manual: false,
-    refreshDeps: [collectionId],
-    onError() {
-      // 目录已被删除或已无权限：退回知识库根目录，避免停留在无效路径。
-      router.replace({ query: { datasetId } });
+  const folderControllerRef = useRef<ReturnType<
+    typeof createFolderDetailController<DatasetCollectionItemType>
+  > | null>(null);
+  const getFolderController = useCallback(() => {
+    if (!folderControllerRef.current) {
+      folderControllerRef.current = createFolderDetailController<DatasetCollectionItemType>({
+        getActiveCollectionId: () => activeCollectionIdRef.current,
+        fetchCollectionById: getDatasetCollectionById,
+        setFolder
+      });
     }
-  });
+    return folderControllerRef.current;
+  }, []);
+
+  useEffect(() => {
+    if (activeCollectionIdRef.current !== collectionId) {
+      activeCollectionIdRef.current = collectionId;
+      getFolderController().invalidate();
+    }
+  }, [collectionId, getFolderController]);
+
+  const { loading, runAsync: refetchFolder } = useRequest(
+    () => getFolderController().loadFolder(collectionId),
+    {
+      manual: false,
+      refreshDeps: [collectionId],
+      onError() {
+        // 目录已被删除或已无权限：退回知识库根目录，避免停留在无效路径。
+        router.replace({ query: { datasetId } });
+      }
+    }
+  );
 
   const { onOpenModal: onOpenRenameModal, EditModal: RenameFolderModal } = useEditTitle({
     title: t('common:Rename')
@@ -134,24 +205,20 @@ const CollectionFolderCard = ({
   const { run: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
     (syncChildren: boolean) => {
       const targetCollectionId = collectionId;
+      const folderController = getFolderController();
       return toggleFolderSyncChildren({
         syncChildren,
         saveSyncChildren: (next) =>
           putDatasetCollectionById({ id: targetCollectionId, syncChildren: next }),
         onCommitted: (next) => {
-          if (activeCollectionIdRef.current === targetCollectionId) {
-            mutateFolder((prev) => (prev ? { ...prev, syncChildren: next } : prev));
-          }
+          folderController.commitFolderPatch(targetCollectionId, (prev) =>
+            prev ? { ...prev, syncChildren: next } : prev
+          );
           if (!next) {
             patchDatasetDetail({ syncAll: false });
           }
         },
-        refreshFolder: async () => {
-          const latest = await getDatasetCollectionById(targetCollectionId);
-          if (activeCollectionIdRef.current === targetCollectionId) {
-            mutateFolder(latest);
-          }
-        },
+        refreshFolder: () => folderController.loadFolder(targetCollectionId),
         refreshDatasetDetail: () => loadDatasetDetail(datasetId)
       });
     },
