@@ -727,7 +727,7 @@ describe('instance config update API', () => {
           }
         ]
       }
-    } as any);
+    });
     expect(initial.results[0].revision).toBe(1);
 
     for (const invalid of ['48', null, 0, 1440, 1.5]) {
@@ -742,7 +742,7 @@ describe('instance config update API', () => {
               }
             ]
           }
-        } as any)
+        })
       ).rejects.toBeInstanceOf(ApiRequestInputParseError);
     }
 
@@ -780,7 +780,7 @@ describe('instance config update API', () => {
             }
           ]
         }
-      } as any);
+      });
 
       expect(saved.results[0].revision).toBe(4);
       expect(saved.results[0].effectiveConfig).toMatchObject({
@@ -800,7 +800,7 @@ describe('instance config update API', () => {
               }
             ]
           }
-        } as any)
+        })
       ).rejects.toBeInstanceOf(ApiRequestInputParseError);
       expect(
         await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()

@@ -1,4 +1,5 @@
 import { vi, describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
 import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
@@ -972,12 +973,19 @@ describe('unvalidated instance config reads and strict saves', () => {
 
     const invalidInputs: unknown[] = [0, -1, 1001, 1.5, '48', null];
     for (const invalid of invalidInputs) {
-      expect(() =>
+      let caughtError: unknown;
+      try {
         parseDomainOverrides({
           domain: 'performance',
           overrides: { tracking: { retentionHours: invalid } }
-        })
-      ).toThrow();
+        });
+      } catch (error) {
+        caughtError = error;
+      }
+      expect(caughtError).toBeInstanceOf(ZodError);
+      if (caughtError instanceof ZodError) {
+        expect(caughtError.issues[0]?.path).toEqual(['tracking', 'retentionHours']);
+      }
     }
 
     expect(clampLlmTraceRetentionHours(0)).toBe(1);
