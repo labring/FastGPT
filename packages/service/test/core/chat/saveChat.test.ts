@@ -734,6 +734,85 @@ describe('pushChatRecords', () => {
       });
     });
 
+    it('should prioritize systemMetadata.originIp over client metadata and strip spoofed client originIp', async () => {
+      const props1 = createMockProps(
+        {
+          chatId: 'system-metadata-origin-ip',
+          source: ChatSourceEnum.api,
+          metadata: {
+            custom: 'keep',
+            originIp: 12345
+          },
+          systemMetadata: {
+            originIp: '139.162.20.230'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props1);
+
+      const chat1 = await MongoChat.findOne({ appId: testAppId, chatId: props1.chatId }).lean();
+      expect(chat1?.metadata).toEqual({
+        custom: 'keep',
+        originIp: '139.162.20.230'
+      });
+
+      // 后续轮次显式传 systemMetadata 时，客户端 metadata.originIp 不得覆盖已保存的服务端 originIp。
+      const props2 = createMockProps(
+        {
+          chatId: props1.chatId,
+          source: ChatSourceEnum.api,
+          metadata: {
+            originIp: '8.8.8.8',
+            extra: 'v2'
+          },
+          systemMetadata: {}
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props2);
+
+      const chat2 = await MongoChat.findOne({ appId: testAppId, chatId: props1.chatId }).lean();
+      expect(chat2?.metadata).toEqual({
+        custom: 'keep',
+        extra: 'v2',
+        originIp: '139.162.20.230'
+      });
+
+      // 未传 systemMetadata 的旧内部调用方（如滚动期 pro）传合法字符串 originIp 仍兼容保留，非字符串则丢弃。
+      const props3 = createMockProps(
+        {
+          chatId: 'legacy-caller-origin-ip',
+          source: ChatSourceEnum.online,
+          metadata: {
+            originIp: '139.162.20.230',
+            custom: 'ok'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props3);
+
+      const chat3 = await MongoChat.findOne({ appId: testAppId, chatId: props3.chatId }).lean();
+      expect(chat3?.metadata).toEqual({ custom: 'ok', originIp: '139.162.20.230' });
+
+      const props4 = createMockProps(
+        {
+          chatId: 'legacy-caller-invalid-origin-ip',
+          source: ChatSourceEnum.api,
+          metadata: {
+            originIp: { spoof: true },
+            custom: 'ok'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props4);
+
+      const chat4 = await MongoChat.findOne({ appId: testAppId, chatId: props4.chatId }).lean();
+      expect(chat4?.metadata).toEqual({ custom: 'ok' });
+    });
+
     it('should track duration seconds', async () => {
       const props = createMockProps(
         {

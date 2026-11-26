@@ -10,7 +10,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
-import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { isUnselectedLogUserFilter, normalizeOriginIp } from '@fastgpt/global/core/app/logs/utils';
 import type {
   getAppChatLogsBody,
   SearchAppChatLogsBody
@@ -75,8 +75,8 @@ export const formatAppChatLogList = async ({
   locale: localeType;
 }) => {
   const listWithRegion = list.map((item) => {
-    const originIp = item.region;
-    const region = getLocationFromIp(originIp ?? undefined, locale);
+    const originIp = normalizeOriginIp(item.region);
+    const region = getLocationFromIp(originIp, locale);
 
     return {
       ...item,

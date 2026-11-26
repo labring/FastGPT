@@ -12,12 +12,11 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-
-export type UserIpTypeValue = 'all' | 'only_ip' | 'only_region';
+import type { AppLogIpDisplayType } from '@fastgpt/global/core/app/logs/utils';
 
 type FilterProps = {
-  userIpType: UserIpTypeValue;
-  setUserIpType: (userIpType: UserIpTypeValue) => void;
+  userIpType: AppLogIpDisplayType;
+  setUserIpType: (userIpType: AppLogIpDisplayType) => void;
   menuButtonProps?: ButtonProps;
 };
 
