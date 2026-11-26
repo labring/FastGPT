@@ -55,6 +55,11 @@ const UsageSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: DatasetCollectionName
     },
+    // 文档训练的单次认领跨关账保留，旧账单不能再次开启一轮训练。
+    trainingCollectionId: {
+      type: Schema.Types.ObjectId,
+      select: false
+    },
 
     // @description It will not be used again in the future.
     list: {

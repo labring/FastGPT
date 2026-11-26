@@ -229,12 +229,110 @@ export const pushSTTUsage = async ({
   });
 };
 
-// Dataset training
+type TrainingUsageModelIds = {
+  vectorModelId: string;
+  agentModelId?: string;
+  vllmModelId?: string;
+};
+
+/** 统一业务建单、补齐明细和历史迁移的训练计费项。 */
+export const getTrainingUsageItems = ({
+  teamId,
+  usageId,
+  vectorModelId,
+  agentModelId,
+  vllmModelId
+}: TrainingUsageModelIds & { teamId: string; usageId: string }) => [
+  {
+    teamId,
+    usageId,
+    itemType: UsageItemTypeEnum.training_vector,
+    name: i18nT('account_usage:embedding_index'),
+    modelId: vectorModelId,
+    amount: 0,
+    inputTokens: 0
+  },
+  ...(agentModelId
+    ? [
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_paragraph,
+          name: i18nT('account_usage:llm_paragraph'),
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_qa,
+          name: i18nT('account_usage:qa'),
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_autoIndex,
+          name: i18nT('account_usage:auto_index'),
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        }
+      ]
+    : []),
+  ...(vllmModelId
+    ? [
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_imageIndex,
+          name: i18nT('account_usage:image_index'),
+          modelId: vllmModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_imageParse,
+          name: i18nT('account_usage:image_parse'),
+          modelId: vllmModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        }
+      ]
+    : [])
+];
+
+/** 同一文档轮次追加阶段时，在持有集合写锁的事务内补齐缺少的明细。 */
+export const ensureTrainingUsageItems = async (
+  input: Parameters<typeof getTrainingUsageItems>[0],
+  session: ClientSession
+): Promise<void> => {
+  const { teamId, usageId } = input;
+  const itemTypes = new Set(
+    await MongoUsageItem.distinct('itemType', { teamId, usageId }).session(session)
+  );
+  const missing = getTrainingUsageItems(input).filter(({ itemType }) => !itemTypes.has(itemType));
+  if (missing.length > 0) {
+    await MongoUsageItem.insertMany(missing, { session, ordered: true });
+  }
+};
+
 export const createTrainingUsage = async ({
   teamId,
   tmbId,
   appName,
   billSource,
+  trainingCollectionId,
   vectorModelId,
   agentModelId,
   vllmModelId,
@@ -244,6 +342,7 @@ export const createTrainingUsage = async ({
   tmbId: string;
   appName: string;
   billSource: UsageSourceEnum;
+  trainingCollectionId?: string;
 
   vectorModelId: string;
   agentModelId?: string;
@@ -258,91 +357,66 @@ export const createTrainingUsage = async ({
           tmbId,
           source: billSource,
           appName,
+          ...(trainingCollectionId && { trainingCollectionId }),
           totalPoints: 0
         }
       ],
       { session, ordered: true }
     );
     await MongoUsageItem.create(
-      [
-        {
-          teamId,
-          usageId: result._id,
-          itemType: UsageItemTypeEnum.training_vector,
-          name: i18nT('account_usage:embedding_index'),
-          modelId: vectorModelId,
-          amount: 0,
-          inputTokens: 0
-        },
-        ...(agentModelId
-          ? [
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_paragraph,
-                name: i18nT('account_usage:llm_paragraph'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_qa,
-                name: i18nT('account_usage:qa'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_autoIndex,
-                name: i18nT('account_usage:auto_index'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              }
-            ]
-          : []),
-        ...(vllmModelId
-          ? [
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_imageIndex,
-                name: i18nT('account_usage:image_index'),
-                modelId: vllmModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_imageParse,
-                name: i18nT('account_usage:image_parse'),
-                modelId: vllmModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              }
-            ]
-          : [])
-      ],
-      {
-        session,
-        ordered: true
-      }
+      getTrainingUsageItems({
+        teamId,
+        usageId: String(result._id),
+        vectorModelId,
+        agentModelId,
+        vllmModelId
+      }),
+      { session, ordered: true }
     );
 
     return { usageId: String(result._id) };
   };
   if (session) return create(session);
   return mongoSessionRun(create);
+};
+
+/** 批量建立文档训练账单，明细和账户由调用方事务一起提交。 */
+export const createTrainingUsages = async (
+  {
+    teamId,
+    tmbId,
+    bills,
+    ...models
+  }: TrainingUsageModelIds & {
+    teamId: string;
+    tmbId: string;
+    bills: { appName: string; trainingCollectionId: string }[];
+  },
+  session: ClientSession
+): Promise<string[]> => {
+  const ids: string[] = [];
+  const batchSize = 1000;
+
+  for (let offset = 0; offset < bills.length; offset += batchSize) {
+    const usages = await MongoUsage.insertMany(
+      bills.slice(offset, offset + batchSize).map((bill) => ({
+        ...bill,
+        teamId,
+        tmbId,
+        source: UsageSourceEnum.training,
+        totalPoints: 0
+      })),
+      { session, ordered: true }
+    );
+    const usageIds = usages.map(({ _id }) => String(_id));
+    await MongoUsageItem.insertMany(
+      usageIds.flatMap((usageId) => getTrainingUsageItems({ teamId, usageId, ...models })),
+      { session, ordered: true }
+    );
+    ids.push(...usageIds);
+  }
+
+  return ids;
 };
 
 // Evaluation

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DatasetDataIndexStageEnum,
   DatasetDataIndexStatusEnum,
   DatasetDataIndexTypeEnum
 } from '@fastgpt/global/core/dataset/data/constants';
@@ -7,6 +8,7 @@ import {
   getDatasetDataExternalIndexes,
   isDatasetDataIndexed,
   indexedDatasetDataMatch,
+  isDatasetDataIndexActive,
   isDatasetDataProcessing,
   isDatasetDataFailed
 } from '@fastgpt/global/core/dataset/data/utils';
@@ -52,9 +54,18 @@ describe('isDatasetDataProcessing', () => {
 
 describe('isDatasetDataFailed', () => {
   it.each(cases)('identifies data failure for $status', ({ status, failed }) => {
-    expect(isDatasetDataFailed(status)).toBe(failed);
+    expect(isDatasetDataFailed({ indexStatus: status })).toBe(failed);
   });
 });
+
+it.each(Object.values(DatasetDataIndexStageEnum))(
+  'keeps %s in processing until the stage fails',
+  (indexStatus) => {
+    expect(isDatasetDataIndexActive({ indexStatus })).toBe(true);
+    expect(isDatasetDataIndexActive({ indexStatus, indexError: true })).toBe(false);
+    expect(isDatasetDataFailed({ indexStatus, indexError: true })).toBe(true);
+  }
+);
 
 describe('isDatasetDataIndexed', () => {
   it.each([

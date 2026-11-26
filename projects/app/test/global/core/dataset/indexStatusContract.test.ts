@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DatasetDataIndexStageEnum,
   DatasetDataIndexStatusEnum,
   DatasetDataIndexStatusMap,
   getDatasetDataIndexStatusMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { getPublicDatasetDataIndexStatus } from '@fastgpt/global/core/dataset/data/utils';
 import { DatasetDataItemSchema, DatasetDataSchema } from '@fastgpt/global/core/dataset/type';
 import { GetDataListItemSchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -28,12 +30,45 @@ const buildItem = (extra: Record<string, unknown> = {}) => ({
 
 describe('indexStatus schema contract', () => {
   /** DS-04：schema 必须接受 indexStatus，否则 strict 模式下写入会静默失效。 */
-  it.each(Object.values(DatasetDataIndexStatusEnum))(
+  it.each(Object.values(DatasetDataIndexStageEnum))(
     'accepts %s on the mongo data schema',
     (indexStatus) => {
       expect(DatasetDataSchema.parse(buildItem({ indexStatus })).indexStatus).toBe(indexStatus);
     }
   );
+
+  it.each(Object.values(DatasetDataIndexStageEnum))(
+    'projects the stored %s stage into the public list contract',
+    (indexStatus) => {
+      const item = buildItem({ indexStatus });
+      const projected = getPublicDatasetDataIndexStatus({ indexStatus });
+      expect(GetDataListItemSchema.parse({ ...item, indexStatus: projected }).indexStatus).toBe(
+        projected
+      );
+    }
+  );
+
+  it('projects the stored phase and error marker without a collection snapshot', () => {
+    const stage = DatasetDataIndexStageEnum;
+    const status = DatasetDataIndexStatusEnum;
+    expect(getPublicDatasetDataIndexStatus({ indexStatus: stage.index })).toBe(status.indexing);
+    expect(getPublicDatasetDataIndexStatus({ indexStatus: stage.index, indexError: true })).toBe(
+      status.error
+    );
+    expect(getPublicDatasetDataIndexStatus({ indexStatus: stage.rebuildIndexPending })).toBe(
+      status.rebuildIndexPending
+    );
+    expect(getPublicDatasetDataIndexStatus({ indexStatus: stage.rebuildIndexRunning })).toBe(
+      status.rebuildIndexRunning
+    );
+    expect(
+      getPublicDatasetDataIndexStatus({
+        indexStatus: stage.rebuildSynonymRunning,
+        indexError: true
+      })
+    ).toBe(status.rebuildSynonymFailed);
+    expect(getPublicDatasetDataIndexStatus({})).toBeUndefined();
+  });
 
   it('rejects unknown status values', () => {
     expect(() => DatasetDataSchema.parse(buildItem({ indexStatus: 'pending' }))).toThrow();

@@ -1,4 +1,36 @@
-import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './constants';
+import { TrainingModeEnum } from '../constants';
+import {
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum,
+  type DatasetDataStoredIndexStatus
+} from './constants';
+
+export const datasetDataDocumentTrainingStatuses = [
+  DatasetDataIndexStageEnum.imageParse,
+  DatasetDataIndexStageEnum.image,
+  DatasetDataIndexStageEnum.auto,
+  DatasetDataIndexStageEnum.index
+] as const;
+
+export type DatasetDataDocumentTrainingStatus =
+  (typeof datasetDataDocumentTrainingStatuses)[number];
+
+/** 初次训练入口按既有训练模式决定文档内首个分块阶段。 */
+export const datasetDataDocumentTrainingStatusByMode: Partial<
+  Record<TrainingModeEnum, DatasetDataDocumentTrainingStatus>
+> = {
+  [TrainingModeEnum.imageParse]: DatasetDataIndexStageEnum.imageParse,
+  [TrainingModeEnum.image]: DatasetDataIndexStageEnum.image,
+  [TrainingModeEnum.auto]: DatasetDataIndexStageEnum.auto,
+  [TrainingModeEnum.index]: DatasetDataIndexStageEnum.index
+};
+
+/** 识别新建分块处于文档训练的增强阶段或最终索引阶段。 */
+export const isDatasetDataDocumentTrainingStatus = (
+  status?: DatasetDataStoredIndexStatus
+): status is DatasetDataDocumentTrainingStatus =>
+  datasetDataDocumentTrainingStatuses.some((value) => value === status);
 
 export const datasetDataSystemIndexTypes = [
   DatasetDataIndexTypeEnum.default,
@@ -30,46 +62,92 @@ export const getDatasetDataExternalIndexes = <T extends { type?: DatasetDataInde
 /**
  * 数据是否已完成索引。
  *
- * 字段缺失代表变更前创建的历史数据：其创建路径先写向量再写主数据，业务语义上已完成
- * 索引，因此运行时一律按 indexed 处理，且不回填字段。
+ * 历史记录可带 indexed，文档训练在提交向量和全文索引后移除状态。
+ * 字段缺失的更早数据也是先写向量再写主数据，因此沿用相同完成语义。
  */
-export const isDatasetDataIndexed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+export const isDatasetDataIndexed = (indexStatus?: DatasetDataStoredIndexStatus) =>
   indexStatus === undefined || indexStatus === DatasetDataIndexStatusEnum.indexed;
 
-/** 两类重建的处理中状态；Mongo 统计与页面判断共用，pending 和 running 合并计数。 */
 export const datasetDataRebuildIndexProcessingStatuses = [
-  DatasetDataIndexStatusEnum.rebuildIndexPending,
-  DatasetDataIndexStatusEnum.rebuildIndexRunning
+  DatasetDataIndexStageEnum.rebuildIndexPending,
+  DatasetDataIndexStageEnum.rebuildIndexRunning
 ];
 export const datasetDataRebuildSynonymProcessingStatuses = [
-  DatasetDataIndexStatusEnum.rebuildSynonymPending,
-  DatasetDataIndexStatusEnum.rebuildSynonymRunning
+  DatasetDataIndexStageEnum.rebuildSynonymPending,
+  DatasetDataIndexStageEnum.rebuildSynonymRunning
 ];
+
+export const isDatasetDataModelRebuild = (status?: DatasetDataStoredIndexStatus) =>
+  datasetDataRebuildIndexProcessingStatuses.some((stage) => stage === status);
+
+export const isDatasetDataSynonymRebuild = (status?: DatasetDataStoredIndexStatus) =>
+  datasetDataRebuildSynonymProcessingStatuses.some((stage) => stage === status);
+
 export const datasetDataRebuildFailedStatuses = [
   DatasetDataIndexStatusEnum.rebuildIndexFailed,
   DatasetDataIndexStatusEnum.rebuildSynonymFailed
 ];
 
-/** 正在重建或等待入队的数据；失败任务由 training 队列继续管理。 */
+/** 文档 Worker 能处理的阶段。 */
+export const datasetDataDocumentWorkStatuses = Object.values(DatasetDataIndexStageEnum);
+
+/** 判断分块是否归文档 Worker 调度。 */
+export const isDatasetDataDocumentWorkStatus = (
+  status?: DatasetDataStoredIndexStatus
+): status is DatasetDataIndexStageEnum =>
+  datasetDataDocumentWorkStatuses.some((stage) => stage === status);
+
+/** 等待或执行重建中的分块。 */
 export const rebuildingDatasetDataMatch = {
   indexStatus: {
     $in: [
       ...datasetDataRebuildIndexProcessingStatuses,
       ...datasetDataRebuildSynonymProcessingStatuses
     ]
-  }
+  },
+  indexError: { $ne: true }
 };
 
-/** 首次索引及两类重建的待处理/处理中状态；轮询与数据写保护使用相同边界。 */
+type DatasetDataIndexState = {
+  indexStatus?: DatasetDataStoredIndexStatus;
+  indexError?: boolean;
+};
+
+/** 分块 API 的等待与进行中状态，供前端轮询使用。 */
 export const isDatasetDataProcessing = (indexStatus?: DatasetDataIndexStatusEnum) =>
   indexStatus !== undefined &&
   (indexStatus === DatasetDataIndexStatusEnum.indexing ||
-    rebuildingDatasetDataMatch.indexStatus.$in.includes(indexStatus));
+    isDatasetDataModelRebuild(indexStatus) ||
+    isDatasetDataSynonymRebuild(indexStatus));
 
-/** 首次训练及两类重建失败；手动保存时必须完整重算索引，才能结束失败任务。 */
-export const isDatasetDataFailed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+/** 服务端从持久化阶段和错误标记判断写保护。 */
+export const isDatasetDataIndexActive = ({ indexStatus, indexError }: DatasetDataIndexState) =>
+  !indexError &&
+  (isDatasetDataDocumentWorkStatus(indexStatus) || isDatasetDataProcessing(indexStatus));
+
+/** 分块读 API 将新阶段投影为仍由前端使用的兼容状态。 */
+export const getPublicDatasetDataIndexStatus = ({
+  indexStatus,
+  indexError
+}: DatasetDataIndexState): DatasetDataIndexStatusEnum | undefined => {
+  if (isDatasetDataDocumentTrainingStatus(indexStatus)) {
+    return indexError ? DatasetDataIndexStatusEnum.error : DatasetDataIndexStatusEnum.indexing;
+  }
+  if (indexError) {
+    if (isDatasetDataModelRebuild(indexStatus))
+      return DatasetDataIndexStatusEnum.rebuildIndexFailed;
+    if (isDatasetDataSynonymRebuild(indexStatus))
+      return DatasetDataIndexStatusEnum.rebuildSynonymFailed;
+  }
+  return indexStatus === undefined ? undefined : DatasetDataIndexStatusEnum[indexStatus];
+};
+
+/** 失败数据手动保存时需要完整重算索引。旧任务按原记录状态识别。 */
+export const isDatasetDataFailed = ({ indexStatus, indexError }: DatasetDataIndexState) =>
+  indexError === true ||
   indexStatus === DatasetDataIndexStatusEnum.error ||
-  (indexStatus !== undefined && datasetDataRebuildFailedStatuses.includes(indexStatus));
+  (indexStatus !== undefined &&
+    datasetDataRebuildFailedStatuses.some((status) => status === indexStatus));
 
 /**
  * 已完成索引（或字段缺失）的 Mongo 查询条件。
@@ -79,7 +157,20 @@ export const indexedDatasetDataMatch = {
   $or: [{ indexStatus: DatasetDataIndexStatusEnum.indexed }, { indexStatus: { $exists: false } }]
 };
 
-/** 重建失败的数据仍保有旧索引；取消旧任务后，后续模型/同义词重建必须仍能选中它。 */
+/** 聚合中的已索引判断。读取原始文档，避免索引把缺失字段视为 null。 */
+export const indexedDatasetDataExpr = {
+  $let: {
+    vars: { data: '$$ROOT' },
+    in: {
+      $or: [
+        { $eq: ['$$data.indexStatus', DatasetDataIndexStatusEnum.indexed] },
+        { $eq: [{ $type: '$$data.indexStatus' }, 'missing'] }
+      ]
+    }
+  }
+};
+
+/** 重建失败的分块仍保有已生成的索引，可重新安排重建。 */
 export const rebuildableDatasetDataMatch = {
   $or: [
     {
@@ -87,6 +178,7 @@ export const rebuildableDatasetDataMatch = {
         $in: [DatasetDataIndexStatusEnum.indexed, ...datasetDataRebuildFailedStatuses]
       }
     },
-    { indexStatus: { $exists: false } }
+    { indexStatus: { $exists: false } },
+    { indexStatus: rebuildingDatasetDataMatch.indexStatus, indexError: true }
   ]
 };
