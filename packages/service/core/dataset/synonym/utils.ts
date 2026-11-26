@@ -4,6 +4,7 @@ import {
   type DatasetSynonymMappingMetadataType,
   type NormalizedSynonymMappingType
 } from '@fastgpt/global/core/dataset/synonym';
+import { XLSX_MAX_COLUMNS } from '@fastgpt/global/common/file/xlsx/workbook';
 import { createHash } from 'node:crypto';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -369,65 +370,29 @@ export const serializeSynonymMappingsToCsv = (
     .join('\r\n')}\r\n`;
 };
 
-/**
- * 按上传格式（xlsx/xls）生成同义词工作簿 Buffer，保持下载格式与上传一致。
- * 表头与解析端（standardizedTermHeaders / synonymHeaderReg）兼容，产物可直接回传。
- */
-export const serializeSynonymMappingsToExcelBuffer = (
-  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
-  extension: 'xlsx' | 'xls'
-) => {
-  // 单表列上限：xls(biff8) 256 列（IV）、xlsx 16384 列；扣除标准术语列后为每行别名上限。
-  // 同一标准词的别名超过上限时拆成多行（重复标准词），解析端会按标准词合并，保证往返无损。
-  const maxColumns = extension === 'xls' ? 256 : 16384;
-  const maxSynonymsPerRow = maxColumns - 1;
-
-  const dataRows: string[][] = [];
-  let maxSynonymCount = 1;
+/** 同一标准词的别名超过 XLSX 列上限时拆行，回导会按标准词合并。 */
+export function* getSynonymExportRows(
+  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>
+) {
+  const maxSynonymsPerRow = XLSX_MAX_COLUMNS - 1;
+  const maxSynonymCount = mappings.reduce(
+    (count, mapping) => Math.max(count, Math.min(mapping.synonymTerms.length, maxSynonymsPerRow)),
+    1
+  );
+  yield ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')];
   for (const mapping of mappings) {
     for (
       let offset = 0;
       offset < Math.max(1, mapping.synonymTerms.length);
       offset += maxSynonymsPerRow
     ) {
-      const group = mapping.synonymTerms.slice(offset, offset + maxSynonymsPerRow);
-      dataRows.push([mapping.standardizedTerm, ...group]);
-      maxSynonymCount = Math.max(maxSynonymCount, group.length);
+      yield [
+        mapping.standardizedTerm,
+        ...mapping.synonymTerms.slice(offset, offset + maxSynonymsPerRow)
+      ];
     }
   }
-
-  const aoa: (string | number)[][] = [
-    ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')],
-    ...dataRows
-  ];
-  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Synonyms');
-  return XLSX.write(workbook, {
-    type: 'buffer',
-    bookType: extension === 'xls' ? 'biff8' : 'xlsx'
-  }) as Buffer;
-};
-
-/** 下载时按上传格式回传：xlsx/xls 生成工作簿，csv 生成 BOM CSV 文本。 */
-export const serializeSynonymMappingsToFile = (
-  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
-  extension: string
-): { buffer: Buffer; contentType: string } => {
-  if (extension === 'xlsx' || extension === 'xls') {
-    return {
-      buffer: serializeSynonymMappingsToExcelBuffer(mappings, extension),
-      contentType:
-        extension === 'xlsx'
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'application/vnd.ms-excel'
-    };
-  }
-  return {
-    buffer: Buffer.from(serializeSynonymMappingsToCsv(mappings), 'utf-8'),
-    contentType: 'text/csv; charset=utf-8'
-  };
-};
+}
 
 /** 解析并规范化 CSV、XLS 或 XLSX 同义词文件。 */
 export const parseSynonymFile = (params: {

@@ -1,7 +1,7 @@
 import { createElement, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { readCsvRawText } from '@fastgpt/web/common/file/utils';
+import { readCsvRawText, readXlsxFirstColumn } from '@fastgpt/web/common/file/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
@@ -19,13 +19,13 @@ const normalizeGuideTextList = (textList: string[]) =>
 
 /**
  * 封装输入引导词库弹窗的数据加载和写操作。
- * 列表增删改采用本地乐观更新，批量导入统一在这里去空白，避免弹窗组件关心 CSV 或 API 细节。
+ * 列表增删改采用本地乐观更新，批量导入统一读取表格第一列并去空白。
  */
 export const useInputGuideLexicon = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { File: SelectFile, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.csv'
+    fileType: '.csv,.xlsx'
   });
   const [newData, setNewData] = useState<string>();
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -159,17 +159,16 @@ export const useInputGuideLexicon = ({ appId }: { appId: string }) => {
     });
   }, []);
 
-  const onSelectFile = useCallback(
+  const { run: onSelectFile } = useRequest(
     async (files: File[]) => {
-      const file = files?.[0];
-      if (file) {
-        const list = await readCsvRawText({ file });
-        // CSV 只取第一列作为引导词，后续列按模板说明忽略。
-        const textList = list.map((item) => item[0] || '');
-        createNewData(textList);
-      }
+      const [file] = files;
+      if (!file) return;
+      const textList = /\.xlsx$/i.test(file.name)
+        ? await readXlsxFirstColumn(file)
+        : (await readCsvRawText({ file })).map(([value]) => value ?? '');
+      createNewData(textList);
     },
-    [createNewData]
+    { errorToast: t('common:import_failed') }
   );
 
   return {

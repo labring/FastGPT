@@ -1,3 +1,5 @@
+import { XLSX_CONTENT_TYPE } from '../../../../common/file/constants';
+import { XlsxDownloadResponseSchema } from '../../../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { SystemOpenApiTagMap } from '../../../tag';
@@ -381,7 +383,8 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导出并下载集合的所有数据块内容'
+          description: '流式返回集合数据块的 XLSX 文件',
+          content: { [XLSX_CONTENT_TYPE]: { schema: XlsxDownloadResponseSchema } }
         }
       }
     }

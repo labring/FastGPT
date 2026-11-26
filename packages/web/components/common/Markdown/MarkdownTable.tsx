@@ -3,7 +3,8 @@ import { Box, HStack, IconButton } from '@chakra-ui/react';
 import MyTooltip from '../MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '../../../hooks/useCopyData';
-import { exportTableToCSV, parseTableToMarkdownString } from './utils';
+import { parseTableToGrid, parseTableToMarkdownString } from './utils';
+import { downloadXlsx } from '../../../common/file/downloadXlsx';
 import MyIcon from '../Icon';
 
 type MarkdownTableProps = {
@@ -13,7 +14,7 @@ type MarkdownTableProps = {
 /**
  * 增强型 Markdown 表格组件：
  * 1. 外层响应式横向滚动包装，防止超长表格撑破外层布局；
- * 2. 右上角悬浮操作栏：支持一键复制为 Markdown、下载为 CSV 文件。
+ * 2. 右上角悬浮操作栏：支持一键复制为 Markdown、下载为 XLSX 文件。
  */
 const MarkdownTable = ({ children }: MarkdownTableProps) => {
   const { t } = useTranslation();
@@ -28,12 +29,12 @@ const MarkdownTable = ({ children }: MarkdownTableProps) => {
     }
   }, [copyData]);
 
-  // 下载为本地 CSV 文件
-  const handleDownloadCSV = useCallback(() => {
-    if (tableRef.current) {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      exportTableToCSV(tableRef.current, `table-${timestamp}`);
-    }
+  const handleDownload = useCallback(async () => {
+    if (!tableRef.current) return;
+    const rows = parseTableToGrid(tableRef.current);
+    if (rows.length === 0) return;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    await downloadXlsx(`table-${timestamp}`, rows);
   }, []);
 
   return (
@@ -83,15 +84,15 @@ const MarkdownTable = ({ children }: MarkdownTableProps) => {
             aria-label={t('common:copy_as_markdown')}
           />
         </MyTooltip>
-        <MyTooltip label={t('common:download_as_csv')} placement="top" hasArrow>
+        <MyTooltip label={t('common:download_as_xlsx')} placement="top" hasArrow>
           <IconButton
             icon={<MyIcon name="export" w={'13px'} />}
             size={'xs'}
             variant={'ghost'}
             color={'myGray.600'}
             _hover={{ color: 'primary.600', bg: 'myGray.100' }}
-            onClick={handleDownloadCSV}
-            aria-label={t('common:download_as_csv')}
+            onClick={handleDownload}
+            aria-label={t('common:download_as_xlsx')}
           />
         </MyTooltip>
       </HStack>

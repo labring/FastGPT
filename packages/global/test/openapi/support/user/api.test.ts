@@ -54,8 +54,8 @@ describe('support user OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/proApi/support/user/team/audit/list']?.post).toBeDefined();
     expect(
       openAPIDocument.paths?.['/proApi/support/user/team/audit/export']?.post?.responses?.[200]
-        ?.content?.['text/csv']
-    ).toBeDefined();
+        ?.content?.['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']?.schema
+    ).toMatchObject({ type: 'string', format: 'binary' });
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/countUnread']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/read']?.get).toBeDefined();

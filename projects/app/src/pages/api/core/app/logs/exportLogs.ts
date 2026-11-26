@@ -13,6 +13,7 @@ import {
   type AppChatLogExportDoc,
   type ExportChatItemBatchStats
 } from '@fastgpt/service/core/app/logs/entity';
+import { iterateCursor } from '@fastgpt/service/common/mongo/utils';
 import type { NextApiResponse } from 'next';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { formatDateWithOffset } from '@fastgpt/global/common/time/fixedOffset';
@@ -22,7 +23,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
-import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { writeXlsxResponse } from '@fastgpt/service/common/file/xlsx/response';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
@@ -44,14 +45,12 @@ import {
   isUnselectedLogUserFilter,
   normalizeOriginIp
 } from '@fastgpt/global/core/app/logs/utils';
+import { parseCsvHeader } from '@fastgpt/service/common/file/csv';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
-const formatJsonString = (data: any) => {
+const formatCell = (data: unknown): string => {
   if (data == null) return '';
-  if (typeof data === 'object') {
-    return sanitizeCsvField(JSON.stringify(data));
-  }
-  return data;
+  return typeof data === 'object' ? JSON.stringify(data) : String(data);
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -93,7 +92,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const variables = (chatConfig.variables || []).filter(
     (item) => item.type !== VariableInputEnum.password
   );
-  const csvHeader = `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`;
+  const header = [...parseCsvHeader(title), ...variables.map(({ label }) => label)];
+  const filename = 'usage.xlsx';
+  const sheetName = 'Chat Logs';
   const logExportAudit = () => {
     addAuditLog({
       tmbId,
@@ -107,12 +108,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     });
   };
 
-  // 用户未选择时鉴权后直接给空 CSV，避免再跑成员聚合和聊天日志 pipeline。
+  // 用户未选择时鉴权后只返回表头，避免再跑成员聚合和聊天日志查询。
   if (isUnselectedLogUserFilter(tmbIds, outLinkUids)) {
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-    res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
-    res.write(csvHeader);
-    res.end();
+    await writeXlsxResponse({ res, filename, sheet: { name: sheetName, rows: () => [header] } });
     logExportAudit();
     return;
   }
@@ -140,30 +138,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     errorFilter
   });
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
-
-  const cursor = createAppChatLogExportCursor({
-    filter: where,
-    needVersionName,
-    needVariables: variables.length > 0
-  });
   const versionNameLoader = createAppVersionNameLoader();
-
-  /** 每个固定批次先批量取名，再按响应背压输出，避免逐行查询和积压整份导出。 */
-  const write = async (value: string) => {
-    if (res.destroyed || res.writableEnded) return;
-    if (res.write(value)) return;
-    await new Promise<void>((resolve) => {
-      const done = () => {
-        res.off('drain', done);
-        res.off('close', done);
-        resolve();
-      };
-      res.once('drain', done);
-      res.once('close', done);
-    });
-  };
 
   type ExportRenderRow = Awaited<
     ReturnType<typeof extendChatPublishSources<AppChatLogExportDoc>>
@@ -193,7 +168,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const titleStr = getDisplayChatTitle({ customTitle: doc.customTitle, title: doc.title });
     const authorizerId = String(doc.tmbId ?? '');
     const member = memberDisplayMap.get(authorizerId);
-    // CSV 保留成员 ID；仅拼接原始姓名，避免缺名成员被展示为 id:unknown。
+    // 保留成员 ID；仅拼接原始姓名，避免缺名成员被展示为 id:unknown。
     const authorizer = member?.name?.trim()
       ? `${authorizerId}:${member.name}`
       : authorizerId || '-';
@@ -203,7 +178,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     );
     const totalPoints = (itemStats?.totalPointsFromChatItem ?? 0) + responsePoints;
 
-    const valueMap: Record<string, () => any> = {
+    const valueMap: Record<string, () => unknown> = {
       [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: () => source,
       [AppLogKeysEnum.SOURCE]: () =>
         getChatPublishSourceName({
@@ -227,21 +202,21 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           chatItemId: item._id,
           feedback: item.userBadFeedback
         }));
-        return formatJsonString({ good: goodItems, bad: badItems });
+        return { good: goodItems, bad: badItems };
       },
       [AppLogKeysEnum.CUSTOM_FEEDBACK]: () => {
         const customItems = (itemStats?.customFeedbackItems || []).map((item: any) => ({
           chatItemId: item._id,
           feedbacks: item.customFeedbacks || []
         }));
-        return formatJsonString(customItems);
+        return customItems;
       },
       [AppLogKeysEnum.ANNOTATED_COUNT]: () => {
         const markItems = (itemStats?.markItems || []).map((item: any) => ({
           chatItemId: item._id,
           feedback: item.adminFeedback
         }));
-        return formatJsonString(markItems);
+        return markItems;
       },
       [AppLogKeysEnum.RESPONSE_TIME]: () =>
         averageResponseTime ? Number(averageResponseTime).toFixed(2) : 0,
@@ -256,27 +231,17 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         });
       },
       [AppLogKeysEnum.VERSION_NAME]: () => versionNameLoader.get(doc.appVersionId),
-      chatDetails: () => formatJsonString(itemStats?.chatDetails || [])
+      chatDetails: () => itemStats?.chatDetails || []
     };
 
-    let rowStr = [...logKeys, 'chatDetails']
-      .map((key) => {
-        const getter = valueMap[key];
-        const val = getter ? getter() : '';
-        return sanitizeCsvField(val ?? '');
-      })
-      .join(',');
-    rowStr += `,${variables
-      .map((variable) => {
-        const value = doc.variables?.[variable.key] || '';
-        return formatJsonString(value);
-      })
-      .join(',')}`;
-
-    return `\n${rowStr}`;
+    return [
+      ...[...logKeys, 'chatDetails'].map((key) => formatCell(valueMap[key]?.())),
+      ...variables.map(({ key }) => formatCell(doc.variables?.[key]))
+    ];
   };
 
-  const flush = async (batch: AppChatLogExportDoc[]) => {
+  /** 同批补齐发布渠道、版本和消息统计，按工作簿背压逐行输出。 */
+  async function* formatBatch(batch: AppChatLogExportDoc[]) {
     const batchChatIds = Array.from(new Set(batch.map((doc) => doc.chatId).filter(Boolean)));
     const [rows, , itemStatsMap, responsePointsMap] = await Promise.all([
       extendChatPublishSources({ list: batch, teamId, appId }),
@@ -297,34 +262,36 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         : Promise.resolve(new Map<string, number>())
     ]);
     for (const row of rows) {
-      if (res.destroyed || res.writableEnded) break;
-      await write(
-        renderRow(row, itemStatsMap.get(row.chatId), responsePointsMap.get(row.chatId) ?? 0)
-      );
+      yield renderRow(row, itemStatsMap.get(row.chatId), responsePointsMap.get(row.chatId) ?? 0);
     }
-  };
+  }
 
-  try {
-    await write(csvHeader);
+  async function* rows(signal: AbortSignal) {
+    yield header;
+    const cursor = createAppChatLogExportCursor({
+      filter: where,
+      needVersionName,
+      needVariables: variables.length > 0
+    });
     let batch: AppChatLogExportDoc[] = [];
-    for await (const doc of cursor) {
-      if (res.destroyed || res.writableEnded) break;
+    for await (const doc of iterateCursor(cursor, signal)) {
       batch.push(doc);
       if (batch.length === 200) {
-        await flush(batch);
+        yield* formatBatch(batch);
         batch = [];
       }
     }
-    if (batch.length && !res.destroyed && !res.writableEnded) await flush(batch);
-  } catch (error) {
-    logger.error('export chat logs error', { error });
-    if (!res.headersSent) res.status(500);
-  } finally {
-    await cursor.close();
-    if (!res.destroyed && !res.writableEnded) res.end();
+    if (batch.length) yield* formatBatch(batch);
   }
 
-  logExportAudit();
+  try {
+    await writeXlsxResponse({ res, filename, sheet: { name: sheetName, rows } });
+  } catch (error) {
+    logger.error('export chat logs error', { error });
+  } finally {
+    logExportAudit();
+  }
 }
 
+export const config = { api: { responseLimit: false } };
 export default NextAPI(handler);

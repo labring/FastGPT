@@ -35,6 +35,7 @@
     "dayjs": "catalog:",
     "i18next": "catalog:",
     "js-cookie": "^3.0.7",
+    "jszip": "^3.10.1",
     "lexical": "0.12.6",
     "lodash-es": "catalog:",
     "next": "catalog:",
@@ -52,6 +53,7 @@
     "rehype-external-links": "^3.0.0",
     "remark-gfm": "catalog:",
     "use-context-selector": "^1.4.4",
+    "xlsx": "0.18.5",
     "zustand": "^4.3.5"
   },
   "devDependencies": {

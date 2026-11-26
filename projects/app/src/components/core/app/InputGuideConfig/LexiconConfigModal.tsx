@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyInput from '@/components/MyInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { fileDownload } from '@/web/common/file/utils';
+import { downloadXlsx } from '@fastgpt/web/common/file/downloadXlsx';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useInputGuideLexicon } from './useInputGuideLexicon';
@@ -60,21 +60,12 @@ const LexiconToolbar = ({
 }) => {
   const { t } = useTranslation();
 
-  const downloadCsvTemplate = () => {
-    const csvTemplate = [
-      t('app:csv_input_lexicon_template_header'),
-      t('app:csv_input_lexicon_template_tip'),
-      t('app:csv_input_lexicon_template_example')
-    ]
-      .map((text) => `"${text.replaceAll('"', '""')}"`)
-      .join('\n');
-
-    fileDownload({
-      text: csvTemplate,
-      type: 'text/csv;charset=utf-8',
-      filename: 'questionGuide_template.csv'
-    });
-  };
+  const downloadTemplate = () =>
+    downloadXlsx('questionGuide_template', [
+      [t('app:csv_input_lexicon_template_header')],
+      [t('app:csv_input_lexicon_template_tip')],
+      [t('app:csv_input_lexicon_template_example')]
+    ]);
 
   return (
     <Flex gap={4} px={8} py={4} mb={4} alignItems={'center'} borderBottom={'base'}>
@@ -96,7 +87,12 @@ const LexiconToolbar = ({
       >
         {t('common:Import')}
       </Button>
-      <Box cursor={'pointer'} onClick={downloadCsvTemplate}>
+      <Box
+        as="button"
+        type="button"
+        aria-label={t('app:csv_input_lexicon_tip')}
+        onClick={downloadTemplate}
+      >
         <QuestionTip ml={-2} label={t('app:csv_input_lexicon_tip')} />
       </Box>
     </Flex>

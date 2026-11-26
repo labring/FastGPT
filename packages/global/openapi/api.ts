@@ -3,6 +3,10 @@ import { IntSchema } from '../common/zod';
 import { JsonValueOpenApiMeta } from '../common/zod/openapi';
 import z from 'zod';
 
+/** OpenAPI 二进制 XLSX 下载响应。 */
+export const XlsxDownloadResponseSchema = z.string().meta({ format: 'binary' });
+export type XlsxDownloadResponseType = z.infer<typeof XlsxDownloadResponseSchema>;
+
 export const PaginationPageSizeLimit = 500;
 
 const paginationPresentation = {

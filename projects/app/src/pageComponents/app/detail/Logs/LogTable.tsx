@@ -240,7 +240,10 @@ const LogTable = ({
   // 失败提示和 loading 由 PopoverConfirm 统一处理，避免重复 toast。
   const exportLogs = async () => {
     const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-    const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+    const headerTitle = [
+      ...enabledKeys.map((k) => t(AppLogKeysEnumMap[k])),
+      t('app:logs_keys_chatDetails')
+    ].join(',');
     await downloadFetch({
       url: '/api/core/app/logs/exportLogs',
       filename: t('app:export_log_filename', { name: appName }),
@@ -253,7 +256,7 @@ const LogTable = ({
         outLinkUids,
         chatSearch: searchQuery,
         searchType,
-        title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
+        title: headerTitle,
         logKeys: enabledKeys,
         sourcesMap: Object.fromEntries(
           Object.entries(ChatSourceMap).map(([key, config]) => [

@@ -1,33 +1,5 @@
-// Function to escape CSV fields to prevent injection attacks
-export const sanitizeCsvField = (field: unknown): string => {
-  if (field === null || field === undefined) return '';
+import Papa from 'papaparse';
 
-  let fieldStr = String(field);
-
-  // Check for dangerous starting characters that could cause CSV injection
-  if (/^[\s\uFEFF]*[=+\-@|]|^[\t\r\n]/.test(fieldStr)) {
-    // Add prefix to neutralize potential formula injection
-    fieldStr = `'${fieldStr}`;
-  }
-
-  // Handle special characters that need escaping in CSV
-  if (
-    fieldStr.includes(',') ||
-    fieldStr.includes('"') ||
-    fieldStr.includes('\n') ||
-    fieldStr.includes('\r')
-  ) {
-    // Escape quotes and wrap field in quotes
-    fieldStr = `"${fieldStr.replace(/"/g, '""')}"`;
-  }
-
-  return fieldStr;
-};
-
-export const generateCsv = (headers: string[], data: string[][]) => {
-  const sanitizedHeaders = headers.map((header) => sanitizeCsvField(header));
-  const sanitizedData = data.map((row) => row.map((cell) => sanitizeCsvField(cell)));
-
-  const csv = [sanitizedHeaders.join(','), ...sanitizedData.map((row) => row.join(','))].join('\n');
-  return csv;
-};
+/** 导出 API 的 title 沿用原先逗号分隔的表头契约。 */
+export const parseCsvHeader = (title: string) =>
+  Papa.parse<string[]>(title, { delimiter: ',' }).data[0] ?? [];

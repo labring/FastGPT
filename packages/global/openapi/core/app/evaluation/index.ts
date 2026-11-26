@@ -1,3 +1,4 @@
+import { XLSX_CONTENT_TYPE } from '../../../../common/file/constants';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -19,7 +20,7 @@ export const AppEvaluationPath: OpenAPIPath = {
   '/proApi/core/app/evaluation/create': {
     post: {
       summary: '创建应用评测',
-      description: '上传 CSV 评测文件，创建应用评测任务并异步执行',
+      description: '上传 CSV 或 XLSX 评测文件，创建应用评测任务并异步执行',
       tags: [DevApiTagsMap.appEvaluation],
       requestBody: {
         content: {
@@ -71,7 +72,7 @@ export const AppEvaluationPath: OpenAPIPath = {
   '/proApi/core/app/evaluation/exportItems': {
     post: {
       summary: '导出应用评测项',
-      description: '将评测任务的评测项导出为 CSV 文件',
+      description: '将评测任务的评测项导出为 XLSX 文件',
       tags: [DevApiTagsMap.appEvaluation],
       requestParams: {
         query: ExportEvaluationItemsQuerySchema
@@ -87,7 +88,7 @@ export const AppEvaluationPath: OpenAPIPath = {
         200: {
           description: '成功导出应用评测项',
           content: {
-            'text/csv': {
+            [XLSX_CONTENT_TYPE]: {
               schema: ExportEvaluationItemsResponseSchema
             }
           }

@@ -28,37 +28,10 @@ export const fetchRemoteMarkdown = async (url: string) => {
 };
 
 /**
- * Escape special characters in CSV cell content
- * @param cell - Cell content to escape
- * @returns Escaped cell content
- */
-export const escapeCsvCell = (cell: string): string => {
-  // Remove leading/trailing whitespace
-  let content = cell.trim();
-
-  // If cell contains comma, double quote, or a line break, wrap in quotes.
-  // 换行必须同时覆盖单独的 \r：裸 CR 同样是 CSV 的记录分隔符（RFC 4180），
-  // 漏掉它会把一条记录拆成两条，后续行整体错位。
-  if (
-    content.includes(',') ||
-    content.includes('"') ||
-    content.includes('\n') ||
-    content.includes('\r')
-  ) {
-    // Escape existing double quotes by doubling them
-    content = content.replace(/"/g, '""');
-    content = `"${content}"`;
-  }
-
-  return content;
-};
-
-/**
- * 将 HTML table 元素解析为二维矩阵网格，单元格保留原始文本（不做 CSV 转义），
- * 由各导出格式（CSV / Markdown）在写出时按自己的语法转义。
+ * 将 HTML table 元素解析为二维矩阵网格，单元格保留原始文本。
  * 针对合并单元格（rowspan / colspan），采用方案 B（值复制填充）：
  * 将合并单元格的值复制填充到其所覆盖的每一个二维虚拟网格中，
- * 保证导出的 CSV 结构绝对对齐、不发生行/列串位，且对数据分析与透视表筛选友好。
+ * 保持导出的行列对齐。
  */
 export const parseTableToGrid = (tableElement: HTMLTableElement): string[][] => {
   const grid: string[][] = [];
@@ -130,46 +103,6 @@ export const parseTableToGrid = (tableElement: HTMLTableElement): string[][] => 
   }
 
   return grid;
-};
-
-/** 按 CSV 语法写出一行：只有需要在 CSV 中转义的单元格才加引号。 */
-const stringifyCsvRow = (row: string[]) => row.map((cell) => escapeCsvCell(cell)).join(',');
-
-/**
- * Export table data to CSV format
- * @param tableElement - HTML table element to export
- * @param filename - Name of the exported file (without extension)
- */
-export const exportTableToCSV = (tableElement: HTMLTableElement, filename: string = 'table') => {
-  const grid = parseTableToGrid(tableElement);
-  if (grid.length === 0) return;
-
-  // Convert to CSV format
-  const csvContent = grid.map((row) => stringifyCsvRow(row)).join('\n');
-
-  // Add BOM for Excel UTF-8 compatibility
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-  // Trigger download
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
-
-/**
- * 将 HTML table 元素解析为 CSV 文本字符串
- */
-export const parseTableToCSVString = (tableElement: HTMLTableElement): string => {
-  const grid = parseTableToGrid(tableElement);
-  if (grid.length === 0) return '';
-  return grid.map((row) => stringifyCsvRow(row)).join('\n');
 };
 
 /**

@@ -145,7 +145,7 @@ function List() {
 
       await downloadFetch({
         url: `/api/core/dataset/exportAll?datasetId=${_id}`,
-        filename: `${name}.csv`
+        filename: `${name}.xlsx`
       });
     },
     {

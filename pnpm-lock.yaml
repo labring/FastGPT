@@ -599,6 +599,9 @@ importers:
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
+      archiver:
+        specifier: ^7.0.1
+        version: 7.0.1
       axios:
         specifier: 'catalog:'
         version: 1.21.1
@@ -645,6 +648,9 @@ importers:
         specifier: ^5.4.6
         version: 5.4.6(zod@4.6.7)
     devDependencies:
+      '@types/archiver':
+        specifier: ^6.0.2
+        version: 6.0.4
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
@@ -991,6 +997,9 @@ importers:
       js-cookie:
         specifier: ^3.0.7
         version: 3.0.7
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       lexical:
         specifier: 0.12.6
         version: 0.12.6
@@ -1042,6 +1051,9 @@ importers:
       use-context-selector:
         specifier: ^1.4.4
         version: 1.4.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.26.0)
+      xlsx:
+        specifier: 0.18.5
+        version: 0.18.5
       zustand:
         specifier: ^4.3.5
         version: 4.5.6(@types/react@18.3.1)(immer@9.0.21)(react@18.3.1)

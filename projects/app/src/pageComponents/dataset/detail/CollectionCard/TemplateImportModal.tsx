@@ -12,6 +12,7 @@ import { useContextSelector } from 'use-context-selector';
 import { getDocPath } from '@/web/common/system/doc';
 import { Trans } from 'next-i18next';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { downloadXlsx } from '@fastgpt/web/common/file/downloadXlsx';
 
 const TemplateImportModal = ({
   onFinish,
@@ -43,23 +44,24 @@ const TemplateImportModal = ({
     }
   );
 
-  const handleDownloadTemplate = () => {
-    const templateContent = `q,a,index,index,metadata
-"Who are you?","I am an AI assistant, here to help with your questions and provide support.","1. What are you?","2. What can you do?","{""source"":""template"",""category"":""faq""}"
-"What are you?","I am an AI assistant designed to help users with their questions and provide support across various topics.","What are you?","How can you help?","{""source"":""template"",""category"":""general""}"`;
-
-    const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  const handleDownloadTemplate = () =>
+    downloadXlsx('template', [
+      ['q', 'a', 'index', 'index', 'metadata'],
+      [
+        'Who are you?',
+        'I am an AI assistant, here to help with your questions and provide support.',
+        '1. What are you?',
+        '2. What can you do?',
+        '{"source":"template","category":"faq"}'
+      ],
+      [
+        'What are you?',
+        'I am an AI assistant designed to help users with their questions and provide support across various topics.',
+        'What are you?',
+        'How can you help?',
+        '{"source":"template","category":"general"}'
+      ]
+    ]);
 
   return (
     <MyModal
@@ -104,7 +106,7 @@ const TemplateImportModal = ({
           leftIcon={<MyIcon name={'common/download'} w={'18px'} />}
           onClick={handleDownloadTemplate}
         >
-          {t('dataset:download_csv_template')}
+          {t('dataset:download_xlsx_template')}
         </Button>
 
         <FileSelector

@@ -769,7 +769,7 @@ export type SearchDatasetTestResponse = z.infer<typeof SearchDatasetTestResponse
 /* ============================================================================
  * API: 导出知识库全部数据
  * Route: GET /api/core/dataset/exportAll
- * Description: 流式输出 CSV 文件
+ * Description: 流式输出 XLSX 文件
  * ============================================================================ */
 export const ExportDatasetQuerySchema = z.object({
   datasetId: ObjectIdSchema.meta({

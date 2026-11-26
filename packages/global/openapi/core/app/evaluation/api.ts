@@ -23,7 +23,7 @@ const EvaluationStatusSchema = z.nativeEnum(EvaluationStatusEnum).meta({
  * API: 创建应用评测
  * Route: POST /api/proApi/core/app/evaluation/create
  * Method: POST
- * Description: 上传 CSV 评测文件，创建应用评测任务并异步执行。
+ * Description: 上传 CSV 或 XLSX 评测文件，创建应用评测任务并异步执行。
  * Tags: ['应用评测']
  * ========================================================================== */
 
@@ -53,7 +53,8 @@ export type CreateEvaluationBodyType = z.infer<typeof CreateEvaluationBodySchema
 export const CreateEvaluationFormSchema = z.object({
   file: z.string().meta({
     format: 'binary',
-    description: 'CSV 评测文件，包含 *q 问题列和 *a 期望答案列'
+    description:
+      'CSV 或 XLSX 评测文件，包含 *q 问题列和 *a 期望答案列。XLSX 仅支持单工作表，且不能包含合并单元格'
   }),
   data: z.string().meta({
     description: '评测参数 JSON 字符串，内容见 CreateEvaluationBodySchema'
@@ -92,7 +93,7 @@ export type DeleteEvaluationItemQueryType = z.infer<typeof DeleteEvaluationItemQ
  * API: 导出应用评测项
  * Route: POST /api/proApi/core/app/evaluation/exportItems
  * Method: POST
- * Description: 将评测任务的评测项导出为 CSV 文件。
+ * Description: 将评测任务的评测项导出为 XLSX 文件。
  * Tags: ['应用评测']
  * ========================================================================== */
 
@@ -104,7 +105,7 @@ export type ExportEvaluationItemsQueryType = z.infer<typeof ExportEvaluationItem
 export const ExportEvaluationItemsBodySchema = z.object({
   title: z.string().min(1).meta({
     example: '问题,期望答案,实际答案,状态,得分',
-    description: 'CSV 固定列标题，使用英文逗号分隔'
+    description: '固定列标题，使用英文逗号分隔'
   }),
   statusMap: z.record(
     z.string(),
@@ -119,7 +120,8 @@ export const ExportEvaluationItemsBodySchema = z.object({
 export type ExportEvaluationItemsBodyType = z.infer<typeof ExportEvaluationItemsBodySchema>;
 
 export const ExportEvaluationItemsResponseSchema = z.string().meta({
-  description: '导出的 CSV 文件内容'
+  description: '导出的 XLSX 文件',
+  format: 'binary'
 });
 export type ExportEvaluationItemsResponseType = z.infer<typeof ExportEvaluationItemsResponseSchema>;
 

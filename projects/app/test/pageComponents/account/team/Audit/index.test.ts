@@ -138,6 +138,8 @@ describe('audit filters and export interactions', () => {
   });
 
   it('resets to page one on confirmed filters, retains page size and exports every match without pagination', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 3, 12, 30, 45));
     await render();
     expect(mocks.getLogs).toHaveBeenLastCalledWith(
       expect.objectContaining({ pageNum: 3, pageSize: 50 })
@@ -156,6 +158,9 @@ describe('audit filters and export interactions', () => {
       expect.objectContaining({ pageNum: 1, pageSize: 50, tmbIds: ['member-a'], events: ['LOGIN'] })
     );
     await act(async () => exportButton().click());
+    expect(mocks.download.mock.calls[0][0].filename).toBe(
+      'account_team:audit_export_filename_2020-01-01_2020-01-02_2026-01-03_12-30-45.xlsx'
+    );
     const downloadBody = mocks.download.mock.calls[0][0].body;
     expect(downloadBody).toMatchObject({
       dateStart: expect.stringContaining('2020-01-01'),

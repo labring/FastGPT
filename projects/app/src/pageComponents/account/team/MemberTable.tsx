@@ -255,7 +255,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               onClick={() => {
                 downloadFetch({
                   url: '/api/proApi/support/user/team/member/export',
-                  filename: `${userInfo.team.teamName}-${format(new Date(), 'yyyyMMddHHmmss')}.csv`
+                  filename: `${userInfo.team.teamName}-${format(new Date(), 'yyyyMMddHHmmss')}.xlsx`
                 });
               }}
             >

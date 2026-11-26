@@ -1,7 +1,5 @@
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { responseWriteController } from '@fastgpt/service/common/response';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -14,25 +12,23 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { Types } from '@fastgpt/service/common/mongo';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { iterateCursor, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   datasetDataSystemIndexTypes,
   getDatasetDataExternalIndexes
 } from '@fastgpt/global/core/dataset/data/utils';
-import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { writeXlsxResponse } from '@fastgpt/service/common/file/xlsx/response';
 import { ExportDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
 import { isDisableSuperAdmin } from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-
-const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type DataItemType = {
   _id: string;
   q: string;
   a: string;
   indexes: DatasetDataSchemaType['indexes'];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 type ExportSchemaType = {
@@ -40,7 +36,7 @@ type ExportSchemaType = {
   hasMetadata?: number;
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   const { datasetId } = parseApiInput({ req, querySchema: ExportDatasetQuerySchema }).query;
 
   // 凭证校验
@@ -126,51 +122,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     ...(hasMetadata ? ['metadata'] : [])
   ];
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename=${encodeURIComponent(dataset.name)}-backup.csv;`
-  );
+  async function* rows(signal: AbortSignal) {
+    yield headers;
+    const cursor = MongoDatasetData.find<DataItemType>(
+      match,
+      'q a indexes metadata',
+      readFromSecondary
+    )
+      .limit(50000)
+      .cursor();
+    for await (const doc of iterateCursor(cursor, signal)) {
+      const indexes = getDatasetDataExternalIndexes(doc.indexes);
+      yield [
+        doc.q || '',
+        doc.a || '',
+        ...Array.from({ length: indexCount }, (_, index) => indexes[index]?.text || ''),
+        ...(hasMetadata ? [doc.metadata ? JSON.stringify(doc.metadata) : ''] : [])
+      ];
+    }
+  }
 
-  const cursor = MongoDatasetData.find<DataItemType>(match, 'q a indexes metadata', {
-    ...readFromSecondary
-  })
-    .limit(50000)
-    .cursor();
-
-  const write = responseWriteController({
+  const download = writeXlsxResponse({
     res,
-    readStream: cursor
+    filename: `${dataset.name}-backup.xlsx`,
+    sheet: { name: 'Dataset', rows }
   });
-
-  write(`\uFEFF${headers.join(',')}`);
-
-  cursor.on('data', (doc: DataItemType) => {
-    const sanitizedQ = sanitizeCsvField(doc.q || '');
-    const sanitizedA = sanitizeCsvField(doc.a || '');
-    const exportIndexes = getDatasetDataExternalIndexes(doc.indexes);
-    const sanitizedIndexes = Array.from({ length: indexCount }, (_, index) =>
-      sanitizeCsvField(exportIndexes[index]?.text || '')
-    );
-    const sanitizedMetadata = hasMetadata
-      ? [sanitizeCsvField(doc.metadata ? JSON.stringify(doc.metadata) : '')]
-      : [];
-
-    write(`\n${[sanitizedQ, sanitizedA, ...sanitizedIndexes, ...sanitizedMetadata].join(',')}`);
-  });
-
-  cursor.on('end', () => {
-    cursor.close();
-    res.end();
-  });
-
-  cursor.on('error', (err) => {
-    logger.error(`export dataset error`, { error: err });
-    res.status(500);
-    res.end();
-  });
-
-  updateExportDatasetLimit(datasetTeamId);
+  void updateExportDatasetLimit(datasetTeamId);
+  await download;
 }
 
 export default NextAPI(handler);

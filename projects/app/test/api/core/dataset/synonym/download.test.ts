@@ -1,3 +1,6 @@
+import { StreamCall } from '@test/utils/request';
+import { readXlsxRows } from '@test/utils/xlsx';
+import { XLSX_CONTENT_TYPE } from '@fastgpt/global/common/file/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockConfigLean, mockAuthDataset, mockGetDatasetSynonymMappings } = vi.hoisted(() => ({
@@ -33,56 +36,30 @@ describe('dataset synonym download API', () => {
     ]);
   });
 
-  it('generates normalized CSV from active Mongo mappings (csv 配置)', async () => {
-    mockConfigLean.mockResolvedValue({
-      _id: synonymId,
-      teamId,
-      datasetId,
-      version: 1,
-      enabled: true,
-      fileName: 'legacy.csv'
-    });
-    const res = { setHeader: vi.fn(), end: vi.fn() } as any;
-    await downloadHandler({ query: { id: synonymId } } as any, res);
+  it.each(['legacy.csv', 'legacy.xls', 'legacy.xlsx'])(
+    'generates an XLSX workbook from active mappings for %s',
+    async (fileName) => {
+      mockConfigLean.mockResolvedValue({
+        _id: synonymId,
+        teamId,
+        datasetId,
+        version: 1,
+        enabled: true,
+        fileName
+      });
+      const res = await StreamCall(downloadHandler, { query: { id: synonymId } });
 
-    expect(mockGetDatasetSynonymMappings).toHaveBeenCalledWith({
-      teamId,
-      datasetId,
-      fileVersion: 1
-    });
-    expect(res.setHeader).toHaveBeenCalledWith(
-      'Content-Disposition',
-      expect.stringContaining('legacy.csv')
-    );
-    // serializeSynonymMappingsToFile 返回 Buffer，内容与旧 CSV 行为逐字节一致
-    const body = vi.mocked(res.end).mock.calls[0][0] as Buffer;
-    expect(body.toString('utf8')).toBe('﻿标准术语,同义词\r\n退款,"退,款"\r\n');
-  });
-
-  // 下载格式跟随上传格式：xlsx 配置回重新生成的工作簿（不再是强制 CSV）。
-  it('regenerates an xlsx workbook when the config was uploaded as xlsx', async () => {
-    mockConfigLean.mockResolvedValue({
-      _id: synonymId,
-      teamId,
-      datasetId,
-      version: 1,
-      enabled: true,
-      fileName: 'legacy.xlsx'
-    });
-    const res = { setHeader: vi.fn(), end: vi.fn() } as any;
-    await downloadHandler({ query: { id: synonymId } } as any, res);
-
-    expect(res.setHeader).toHaveBeenCalledWith(
-      'Content-Disposition',
-      expect.stringContaining('legacy.xlsx')
-    );
-    expect(res.setHeader).toHaveBeenCalledWith(
-      'Content-Type',
-      expect.stringContaining('spreadsheetml')
-    );
-    const buffer = vi.mocked(res.end).mock.calls[0][0] as Buffer;
-    // sheetjs 产物为 zip 容器（PK 头），且非空
-    expect(buffer.length).toBeGreaterThan(0);
-    expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
-  });
+      expect(mockGetDatasetSynonymMappings).toHaveBeenCalledWith({
+        teamId,
+        datasetId,
+        fileVersion: 1
+      });
+      expect(res.headers['Content-Disposition']).toContain('legacy.xlsx');
+      expect(res.headers['Content-Type']).toBe(XLSX_CONTENT_TYPE);
+      expect(readXlsxRows(res.buffer)).toEqual([
+        ['标准术语', '同义词'],
+        ['退款', '退,款']
+      ]);
+    }
+  );
 });

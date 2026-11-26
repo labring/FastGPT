@@ -162,7 +162,7 @@ const CollectionReader = ({
 
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
-      filename: 'data.csv',
+      filename: 'data.xlsx',
       body: {
         ...chatAuthTarget,
         chatId: metadata.chatId,

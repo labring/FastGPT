@@ -13,11 +13,9 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { StreamCall, Call } from '@test/utils/request';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
-
-// 全局 mock 把 responseWriteController 变成了返回 undefined 的空函数，流式导出需要真实实现。
-vi.unmock('@fastgpt/service/common/response');
+import { readXlsxRows } from '@test/utils/xlsx';
 
 type TestUser = { teamId: string; tmbId: string };
 
@@ -150,9 +148,10 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('allowed-q');
-    expect(res.raw).not.toContain('restricted-q');
-    expect(res.raw).not.toContain('restricted-a');
+    expect(readXlsxRows(res.buffer)).toEqual([
+      ['q', 'a'],
+      ['allowed-q', 'allowed-a']
+    ]);
     void restricted;
   });
 
@@ -174,7 +173,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).not.toContain('hidden-q');
+    expect(readXlsxRows(res.buffer)).toEqual([['q', 'a']]);
   });
 
   it('keeps exporting everything when collection permission is disabled', async () => {
@@ -191,7 +190,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('open-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['open-file-q', 'open-file-a']);
   });
 
   it('does not filter for the team owner', async () => {
@@ -210,7 +209,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('owner-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['owner-file-q', 'owner-file-a']);
   });
 
   it('filters collections for the team owner when disableSuperAdmin is on', async () => {
@@ -243,7 +242,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).not.toContain('member-file-q');
+    expect(readXlsxRows(res.buffer)).toEqual([['q', 'a']]);
   });
 
   it('keeps the team-owner bypass for ordinary datasets when disableSuperAdmin is on', async () => {
@@ -268,7 +267,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('member-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['member-file-q', 'member-file-a']);
   });
 
   it('exports all collections for a cross-team root user', async () => {
@@ -289,7 +288,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('root-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['root-file-q', 'root-file-a']);
   });
 
   it('rejects exporting a folder', async () => {

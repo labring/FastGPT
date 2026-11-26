@@ -1397,7 +1397,7 @@
   "audio_cannot_play": "音频无法直接播放",
   "copy_as_markdown": "复制为 Markdown",
   "copy_as_csv": "复制为 CSV",
-  "download_as_csv": "下载为 CSV",
+  "download_as_xlsx": "下载为 XLSX",
   "download_svg": "下载 SVG",
   "download_image": "下载图片",
   "view_fullscreen": "全屏查看",
