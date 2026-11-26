@@ -156,10 +156,35 @@ describe('testModelConnection request timeout', () => {
     }
   );
 
-  it('streams the built-in MPEG-1 Layer 3 sample audio for STT without filesystem access', async () => {
+  it('streams a structurally complete MPEG-1 Layer 3 sample audio for STT without filesystem access', async () => {
     const sampleBuffer = getSampleTestAudioBuffer();
     expect(sampleBuffer.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xfb]));
     expect(sampleBuffer.length).toBeLessThan(8192);
+
+    // 逐帧校验 MPEG-1 Layer 3 帧头与总字节边界，避免截断或损坏的 Base64 常量回归
+    const bitrateTable = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+    const sampleRateTable = [44100, 48000, 32000, 0];
+    let offset = 0;
+    let frameCount = 0;
+    while (offset < sampleBuffer.length) {
+      expect(offset + 4).toBeLessThanOrEqual(sampleBuffer.length);
+      const b0 = sampleBuffer[offset];
+      const b1 = sampleBuffer[offset + 1];
+      const b2 = sampleBuffer[offset + 2];
+      // Frame sync (11 bits) + MPEG-1 (version=3) + Layer 3 (layer=1)
+      expect(b0).toBe(0xff);
+      expect((b1 & 0xfe) === 0xfa).toBe(true);
+      const bitrateKbps = bitrateTable[(b2 >> 4) & 0x0f];
+      const sampleRate = sampleRateTable[(b2 >> 2) & 0x03];
+      const padding = (b2 >> 1) & 0x01;
+      expect(bitrateKbps).toBeGreaterThan(0);
+      expect(sampleRate).toBeGreaterThan(0);
+      const frameLen = Math.floor((144 * bitrateKbps * 1000) / sampleRate) + padding;
+      offset += frameLen;
+      frameCount += 1;
+    }
+    expect(offset).toBe(sampleBuffer.length);
+    expect(frameCount).toBeGreaterThan(20);
 
     const receivedChunks: Buffer[] = [];
     mocks.aiTranscriptions.mockImplementation(async ({ fileStream }: { fileStream: Readable }) => {

@@ -25,15 +25,17 @@ export const TestDocumentParseBodySchema = z.object({
     example: 'https://pdf-parser.example.com/v2/parse/file'
   }),
   key: z.string().optional().meta({
-    description: '自建或深信服认证密钥；省略时自动使用服务端已保存密钥，空字符串表示不使用密钥',
+    description:
+      '自建或深信服认证密钥；省略且目标地址与已保存地址一致时复用已保存密钥，地址变更或传入空字符串时不附带旧密钥',
     example: 'sk-custom-key'
   }),
   somarkBaseUrl: z.string().optional().meta({
-    description: 'SoMark 服务基础地址；空值回退国际站 https://somark.ai/api/v1',
+    description:
+      'SoMark 服务基础地址；省略时使用已保存地址，空值回退国际站 https://somark.ai/api/v1',
     example: 'https://somark.ai/api/v1'
   }),
   somarkApiKey: z.string().optional().meta({
-    description: 'SoMark API Key；省略时自动使用服务端已保存密钥',
+    description: 'SoMark API Key；省略且目标服务地址与已保存地址一致时自动复用服务端已保存密钥',
     example: 'sk-somark-xxx'
   }),
   doc2xKey: z.string().optional().meta({

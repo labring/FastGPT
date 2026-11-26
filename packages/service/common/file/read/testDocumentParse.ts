@@ -1,23 +1,16 @@
-import FormData from 'form-data';
-import z from 'zod';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { isValidHttpUrl, isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
+import { getErrorMessage } from '@fastgpt/global/common/error/utils';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
 import type {
   TestDocumentParseProvider,
   TestDocumentParseResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/testDocumentParse';
-import { axiosWithoutSSRF } from '../../api/axios';
 import { useSomarkServer } from '../../../thirdProvider/somark';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
+import { requestMultipartDocumentParse } from './customPdf';
 
 const DEFAULT_DOCUMENT_PARSE_TEST_TIMEOUT_MS = 60_000;
-
-const CustomParseResponseSchema = z.object({
-  pages: z.number().int().nonnegative(),
-  markdown: z.string()
-});
 
 /**
  * 构造符合 PDF 1.4 规范的最小单页测试 PDF，包含精确 xref 偏移与可渲染文本，
@@ -56,8 +49,22 @@ export const buildSampleTestPdfBuffer = (): Buffer => {
   return Buffer.from(parts.join(''), 'utf8');
 };
 
+const extractTestErrorMessage = (rawError: unknown): string => {
+  const extracted = getErrorMessage(rawError, '').trim();
+  if (extracted) return extracted;
+  if (rawError && typeof rawError === 'object') {
+    try {
+      const serialized = JSON.stringify(rawError);
+      if (serialized && serialized !== '{}') return serialized;
+    } catch {
+      // 忽略循环引用等不可序列化对象，统一回退默认错误文案
+    }
+  }
+  return 'Document parse test failed';
+};
+
 const sanitizeTestError = (rawError: unknown, secrets: Array<string | undefined>): string => {
-  let message = getErrText(rawError, 'Document parse test failed').trim();
+  let message = extractTestErrorMessage(rawError);
   for (const secret of secrets) {
     const trimmed = secret?.trim();
     if (trimmed && trimmed.length >= 4) {
@@ -99,31 +106,6 @@ export const testDocumentParseProvider = async ({
   const samplePdf = buildSampleTestPdfBuffer();
   const secrets = [key, somarkApiKey, doc2xKey, textinAppId, textinSecretCode];
 
-  const parseMultipartEndpoint = async (endpointUrl: string, authKey?: string) => {
-    const trimmedUrl = endpointUrl.trim();
-    if (!trimmedUrl || !isValidHttpUrl(trimmedUrl)) {
-      throw new Error('Invalid parser service URL');
-    }
-    const form = new FormData();
-    form.append('file', samplePdf, {
-      filename: 'sample.pdf',
-      contentType: 'application/pdf'
-    });
-    // 管理员配置的自建/深信服解析地址可能位于内网，使用 axiosWithoutSSRF，同时保持响应协议校验。
-    const { data } = await axiosWithoutSSRF.post<unknown>(trimmedUrl, form, {
-      timeout: timeoutMs,
-      headers: {
-        ...form.getHeaders(),
-        Authorization: authKey?.trim() ? `Bearer ${authKey.trim()}` : undefined
-      }
-    });
-    if (data && typeof data === 'object' && 'error' in data && data.error) {
-      throw data.error;
-    }
-    const parsed = CustomParseResponseSchema.parse(data);
-    return { pages: parsed.pages };
-  };
-
   try {
     if (provider === 'somark') {
       const apiKey = somarkApiKey?.trim();
@@ -158,7 +140,14 @@ export const testDocumentParseProvider = async ({
     }
 
     if (provider === 'customPdf' || provider === 'custom' || provider === 'sangfor') {
-      const { pages } = await parseMultipartEndpoint(url ?? '', key);
+      const { pages } = await requestMultipartDocumentParse({
+        url: url ?? '',
+        key,
+        fileBuffer: samplePdf,
+        filename: 'sample.pdf',
+        contentType: 'application/pdf',
+        timeoutMs
+      });
       return { success: true, pages, responseTimeMs: responseTimeMs() };
     }
 

@@ -2,6 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
 import {
   TestDocumentParseBodySchema,
   TestDocumentParseResponseSchema,
@@ -12,8 +13,19 @@ import { getDomainConfig } from '@fastgpt/service/common/system/systemInstanceCo
 import { testDocumentParseProvider } from '@fastgpt/service/common/file/read/testDocumentParse';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 
-const resolveSecret = (draft: string | undefined, stored: unknown, label: string): string => {
+const resolveSecret = ({
+  draft,
+  stored,
+  label,
+  allowStoredFallback
+}: {
+  draft: string | undefined;
+  stored: unknown;
+  label: string;
+  allowStoredFallback: boolean;
+}): string => {
   if (draft !== undefined) return draft;
+  if (!allowStoredFallback) return '';
   if (stored === undefined || stored === null) return '';
   if (typeof stored !== 'string') {
     throw new ApiHttpError(400, `Invalid stored ${label}`);
@@ -21,9 +33,13 @@ const resolveSecret = (draft: string | undefined, stored: unknown, label: string
   return stored;
 };
 
+const readStoredUrl = (stored: unknown): string =>
+  typeof stored === 'string' ? stored.trim() : '';
+
 /**
  * Admin API - 使用内置单页测试 PDF 验证文档增强解析服务配置
- * 仅超级管理员 root 可调用；草稿省略的密钥字段自动复用服务端已保存凭据。
+ * 仅超级管理员 root 可调用；地址与密钥按同一凭据组解析，仅当目标地址未变更或省略时才复用已保存密钥，
+ * 避免草稿修改服务地址后把原服务凭据发送到新目标。
  */
 async function handler(
   req: ApiRequestProps<TestDocumentParseBody>
@@ -36,59 +52,85 @@ async function handler(
   });
 
   const needsStoredConfig =
-    (body.provider === 'somark' && body.somarkApiKey === undefined) ||
+    (body.provider === 'somark' &&
+      (body.somarkBaseUrl === undefined || body.somarkApiKey === undefined)) ||
     (body.provider === 'doc2x' && body.doc2xKey === undefined) ||
     ((body.provider === 'textin' || body.provider === 'textln') &&
       (body.textinAppId === undefined || body.textinSecretCode === undefined)) ||
     ((body.provider === 'customPdf' || body.provider === 'custom' || body.provider === 'sangfor') &&
-      body.key === undefined);
+      (body.url === undefined || body.key === undefined));
 
   const storedDocParse = needsStoredConfig
     ? (await getDomainConfig('providers')).effectiveConfig.documentParse
     : undefined;
 
-  const baseParams = {
-    provider: body.provider,
-    url: body.url,
-    somarkBaseUrl: body.somarkBaseUrl
-  };
-
   const result = await testDocumentParseProvider(
-    body.provider === 'somark'
-      ? {
-          ...baseParams,
-          somarkApiKey: resolveSecret(
-            body.somarkApiKey,
-            storedDocParse?.customPdf?.somarkApiKey,
-            'Somark API Key'
-          )
-        }
-      : body.provider === 'doc2x'
-        ? {
-            ...baseParams,
-            doc2xKey: resolveSecret(body.doc2xKey, storedDocParse?.customPdf?.doc2xKey, 'Doc2X Key')
-          }
-        : body.provider === 'textin' || body.provider === 'textln'
-          ? {
-              ...baseParams,
-              textinAppId: resolveSecret(
-                body.textinAppId,
-                storedDocParse?.customPdf?.textinAppId,
-                'TextIn AppId'
-              ),
-              textinSecretCode: resolveSecret(
-                body.textinSecretCode,
-                storedDocParse?.customPdf?.textinSecretCode,
-                'TextIn Secret Code'
-              )
-            }
-          : {
-              ...baseParams,
-              key:
-                body.provider === 'sangfor'
-                  ? resolveSecret(body.key, storedDocParse?.sangfor?.key, 'Sangfor key')
-                  : resolveSecret(body.key, storedDocParse?.customPdf?.key, 'Custom PDF parser key')
-            }
+    (() => {
+      if (body.provider === 'somark') {
+        const storedBaseUrl = readStoredUrl(storedDocParse?.customPdf?.somarkBaseUrl);
+        const resolvedBaseUrl =
+          body.somarkBaseUrl !== undefined ? body.somarkBaseUrl : storedBaseUrl;
+        const targetMatchesStored =
+          resolveSomarkBaseUrl(resolvedBaseUrl) === resolveSomarkBaseUrl(storedBaseUrl);
+        return {
+          provider: body.provider,
+          somarkBaseUrl: resolvedBaseUrl,
+          somarkApiKey: resolveSecret({
+            draft: body.somarkApiKey,
+            stored: storedDocParse?.customPdf?.somarkApiKey,
+            label: 'Somark API Key',
+            allowStoredFallback: targetMatchesStored
+          })
+        };
+      }
+
+      if (body.provider === 'doc2x') {
+        return {
+          provider: body.provider,
+          doc2xKey: resolveSecret({
+            draft: body.doc2xKey,
+            stored: storedDocParse?.customPdf?.doc2xKey,
+            label: 'Doc2X Key',
+            allowStoredFallback: true
+          })
+        };
+      }
+
+      if (body.provider === 'textin' || body.provider === 'textln') {
+        return {
+          provider: body.provider,
+          textinAppId: resolveSecret({
+            draft: body.textinAppId,
+            stored: storedDocParse?.customPdf?.textinAppId,
+            label: 'TextIn AppId',
+            allowStoredFallback: true
+          }),
+          textinSecretCode: resolveSecret({
+            draft: body.textinSecretCode,
+            stored: storedDocParse?.customPdf?.textinSecretCode,
+            label: 'TextIn Secret Code',
+            allowStoredFallback: true
+          })
+        };
+      }
+
+      const isSangfor = body.provider === 'sangfor';
+      const storedGroup = isSangfor ? storedDocParse?.sangfor : storedDocParse?.customPdf;
+      const storedUrl = readStoredUrl(storedGroup?.url);
+      const resolvedUrl = body.url !== undefined ? body.url.trim() : storedUrl;
+      const targetMatchesStored = Boolean(storedUrl) && resolvedUrl === storedUrl;
+
+      return {
+        provider: body.provider,
+        url: resolvedUrl,
+        key: resolveSecret({
+          draft: body.key,
+          stored: storedGroup?.key,
+          label: isSangfor ? 'Sangfor key' : 'Custom PDF parser key',
+          allowStoredFallback: targetMatchesStored
+        })
+      };
+    })()
   );
 
   return TestDocumentParseResponseSchema.parse(result);

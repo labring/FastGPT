@@ -695,9 +695,11 @@ describe('migration env wiring', () => {
       legacyEnv: {
         ...baseEnv,
         DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: 'https://sangfor.example.com/parse',
         SANGFOR_PARSE_TIMEOUT_SECONDS: 900
       }
     });
+    expect(pick(sangforLarger, 'providers.documentParse.provider')).toBe('sangfor');
     expect(pick(sangforLarger, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(900);
     expect(pick(sangforLarger, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
 
@@ -707,13 +709,33 @@ describe('migration env wiring', () => {
       legacyEnv: {
         ...baseEnv,
         DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: 'https://sangfor.example.com/parse',
         SANGFOR_PARSE_TIMEOUT_SECONDS: 45
       }
     });
+    expect(pick(sangforSmaller, 'providers.documentParse.provider')).toBe('sangfor');
     expect(
       pick(sangforSmaller, 'providers.documentParse.customPdf.timeoutSeconds')
     ).toBeUndefined();
     expect(pick(sangforSmaller, 'providers.documentParse.sangfor.timeoutSeconds')).toBeUndefined();
+
+    // 开启深信服 ENV 标记但未配 URL 时，旧运行时实际走 SoMark，超时应取 PARSE_FILE_TIMEOUT_SECONDS
+    const sangforFlagWithoutUrl = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        CUSTOM_PDF_PARSE_URL: undefined,
+        SOMARK_API_KEY: 'sk-somark-fallback',
+        PARSE_FILE_TIMEOUT_SECONDS: 1200,
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 600
+      }
+    });
+    expect(pick(sangforFlagWithoutUrl, 'providers.documentParse.provider')).toBe('somark');
+    expect(pick(sangforFlagWithoutUrl, 'providers.documentParse.customPdf.timeoutSeconds')).toBe(
+      1200
+    );
   });
 
   /**

@@ -1,25 +1,17 @@
-import FormData from 'form-data';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
-import z from 'zod';
-import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
+import { requestMultipartDocumentParse } from '../../common/file/read/customPdf';
 import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
-import { appendIultmzhFileParseFields } from './parseConfig';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
-
-const SangforParseResponseSchema = z.object({
-  pages: z.number().int().nonnegative(),
-  markdown: z.string()
-});
 
 /**
  * 解析 sangfor 的 url/key 一组凭据。
@@ -117,10 +109,7 @@ export const parseFromSangfor = async ({
   }
 
   try {
-    const form = new FormData();
-    form.append('file', fileBuffer, { filename: `file.${extension}` });
-    appendIultmzhFileParseFields(form, sangforFileParseConfig);
-    // sangfor.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
+    // sangfor.url 由部署方/root 管理员配置，可能指向内网解析服务，复用无 SSRF 拦截的共享解析请求。
     const timeoutMs = getPdfEnhancedParseTimeoutMs();
     logInstanceConfigRead({
       callsite: 'runtime.thirdProvider.sangfor.parseFromSangfor',
@@ -131,19 +120,14 @@ export const parseFromSangfor = async ({
         }
       ]
     });
-    const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
-      timeout: timeoutMs,
-      headers: {
-        ...form.getHeaders(),
-        Authorization: key ? `Bearer ${key}` : undefined
-      }
+    const response = await requestMultipartDocumentParse({
+      url,
+      key,
+      fileBuffer,
+      filename: `file.${extension}`,
+      timeoutMs,
+      sangforFileParseConfig
     });
-
-    if (data && typeof data === 'object' && 'error' in data && data.error) {
-      throw data.error;
-    }
-
-    const response = SangforParseResponseSchema.parse(data);
     const text = await parseMarkdownBase64Images(response.markdown, {
       parseBase64: true,
       parseHttp: true,

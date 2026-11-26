@@ -1,17 +1,15 @@
-import FormData from 'form-data';
 import path from 'node:path';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
-import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
 import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
-import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
+import { requestMultipartDocumentParse } from './customPdf';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
@@ -263,26 +261,14 @@ const readFileContent = async ({
     const start = Date.now();
     logger.info('Start parsing file via external service', { extension, filename });
 
-    const data = new FormData();
-    data.append('file', buffer, {
-      filename
+    const response = await requestMultipartDocumentParse({
+      url,
+      key: token,
+      fileBuffer: buffer,
+      filename,
+      timeoutMs: getPdfEnhancedParseTimeoutMs(),
+      sangforFileParseConfig
     });
-    appendIultmzhFileParseFields(data, sangforFileParseConfig);
-    const { data: response } = await axios.post<{
-      pages: number;
-      markdown: string;
-      error?: object | string;
-    }>(url, data, {
-      timeout: getPdfEnhancedParseTimeoutMs(),
-      headers: {
-        ...data.getHeaders(),
-        Authorization: token ? `Bearer ${token}` : undefined
-      }
-    });
-
-    if (response.error) {
-      return Promise.reject(response.error);
-    }
 
     logger.info('External file parsing completed', {
       extension,

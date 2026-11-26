@@ -121,6 +121,9 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
   axios: {
     get: vi.fn(),
     post: mockAxiosPost
+  },
+  axiosWithoutSSRF: {
+    post: mockAxiosPost
   }
 }));
 

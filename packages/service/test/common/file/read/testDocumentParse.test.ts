@@ -153,4 +153,45 @@ describe('testDocumentParseProvider', () => {
     expect(invalidUrl.success).toBe(false);
     expect(invalidUrl.error).toContain('Invalid parser service URL');
   });
+
+  it('handles structured upstream error objects without throwing and masks embedded secrets', async () => {
+    axiosPostMock.mockResolvedValueOnce({
+      data: {
+        error: { code: 1001 }
+      }
+    });
+    const numericCodeErr = await testDocumentParseProvider({
+      provider: 'customPdf',
+      url: 'http://10.0.0.10:18080/v2/parse/file',
+      key: 'secret-token-xyz'
+    });
+    expect(numericCodeErr).toMatchObject({
+      success: false,
+      error: '{"code":1001}'
+    });
+
+    axiosPostMock.mockResolvedValueOnce({
+      data: {
+        error: { code: 401, detail: 'rejected secret-token-xyz' }
+      }
+    });
+    const leakedObjErr = await testDocumentParseProvider({
+      provider: 'sangfor',
+      url: 'http://10.0.0.10:18080/v2/parse/file',
+      key: 'secret-token-xyz'
+    });
+    expect(leakedObjErr.success).toBe(false);
+    expect(leakedObjErr.error).not.toContain('secret-token-xyz');
+    expect(leakedObjErr.error).toContain('***');
+
+    axiosPostMock.mockRejectedValueOnce({});
+    const emptyErr = await testDocumentParseProvider({
+      provider: 'customPdf',
+      url: 'http://10.0.0.10:18080/v2/parse/file'
+    });
+    expect(emptyErr).toMatchObject({
+      success: false,
+      error: 'Document parse test failed'
+    });
+  });
 });
