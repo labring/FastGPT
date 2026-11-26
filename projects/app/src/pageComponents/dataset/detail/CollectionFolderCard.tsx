@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { Box, Flex, Switch } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -19,6 +23,11 @@ import {
 } from '@/web/core/dataset/api/collection';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
+import {
+  ApiDatasetTypeMap,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
 
 /**
  * 知识库详情页进入子目录（folder collection）后的右侧栏。
@@ -40,6 +49,8 @@ const CollectionFolderCard = ({
   const router = useRouter();
   const { toast } = useToast();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [isMoving, setIsMoving] = useState(false);
 
@@ -71,6 +82,31 @@ const CollectionFolderCard = ({
       errorToast: t('common:delete_failed')
     }
   );
+
+  const { runAsync: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
+    async (syncChildren: boolean) => {
+      await putDatasetCollectionById({ id: collectionId, syncChildren });
+      await Promise.all([
+        refetchFolder(),
+        // 暂停子目录同步时后端会在同事务内关闭 Dataset.syncAll，同步刷新知识库详情。
+        ...(syncChildren ? [] : [loadDatasetDetail(datasetId)])
+      ]);
+      return syncChildren;
+    },
+    {
+      onSuccess(syncChildren) {
+        toast({
+          title: syncChildren
+            ? t('dataset:sync_children_enabled_next_sync_tip')
+            : t('dataset:sync_children_paused_tip'),
+          status: 'success'
+        });
+      }
+    }
+  );
+
+  const isSyncedApiFolder =
+    isApiDataset && folder?.type === DatasetCollectionTypeEnum.folder && Boolean(folder.apiFileId);
 
   /** 删除后回到被删目录的父级；父级为空表示知识库根目录，此时 parentId 为 undefined 会被序列化丢弃。 */
   const backToParentFolder = () =>
@@ -125,6 +161,24 @@ const CollectionFolderCard = ({
           refetchResource={refetchFolder}
           refreshDeps={[collectionId, folder.inheritPermission]}
         />
+      )}
+
+      {isSyncedApiFolder && folder && (
+        <Box w={'13rem'}>
+          <MyDivider my={6} />
+          <Flex alignItems={'center'}>
+            <FormLabel fontSize={'sm'} color={'myGray.500'}>
+              {t('dataset:sync_new_children')}
+            </FormLabel>
+            <QuestionTip ml={1} label={t('dataset:sync_new_children_tip')} />
+            <Box flex={1} />
+            <Switch
+              isChecked={isCollectionSyncChildrenEnabled(folder)}
+              isDisabled={!folder.permission.hasManagePer || isUpdatingSyncChildren}
+              onChange={(e) => onToggleSyncChildren(e.target.checked)}
+            />
+          </Flex>
+        </Box>
       )}
 
       <RenameFolderModal />

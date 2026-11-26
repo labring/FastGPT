@@ -288,26 +288,20 @@ flowchart TD
 - `Upload.tsx`：
   - 调用 `postCreateDatasetApiDatasetCollection` 时透传 `syncAll`、`apiFiles` 与 `ancestorPaths`。
 
-### 4.2 集合列表页（`CollectionCard`）与知识库信息页（`Info`）
+### 4.2 子目录侧边栏（`CollectionFolderCard`）与知识库信息页（`Info`）
 
-1. **列表数据补齐**：
+1. **列表与详情数据补齐**：
    - `projects/app/src/pages/api/core/dataset/collection/listV2.ts` 在 `selectField` 中增加 `syncChildren: 1`、`apiFileId: 1`。
    - `projects/app/src/pages/api/core/dataset/collection/detail.ts` 返回 `syncChildren`。
-2. **`CollectionCard/index.tsx`（目录行状态与开关）**：
-   - 仅当 `datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]` 时生效。
-   - 对每一条 `type === DatasetCollectionTypeEnum.folder && Boolean(collection.apiFileId) && !collection.isNavigableFolder` 的目录行：
-     - 在名称旁展示轻量同步状态标签（例如 `syncChildren === false` 时显示灰色 Tag“暂停同步新增” / 提示文案“已暂停自动同步该目录新增文件”，`syncChildren !== false` 时显示柔和状态标识或仅在开关列体现，保持列表清爽）。
-     - 在表格列（仅 API 知识库显示“同步新增”列，或置于操作菜单 `MyMenu` + 状态 Tag）提供切换开关：
-       - 有目录 `Manage` 权限：可直接切换 `syncChildren`（调 `putDatasetCollectionById({ id, syncChildren })`，从 `false` 切回 `true` 仅更新标记并通过 Toast 提示“将在下次同步时拉取新增内容”，不立即触发同步）。
-       - 无 `Manage` 权限：只读展示当前同步状态。
-   - 文件行（`apiFile`）与用户自建目录（无 `apiFileId`）该列显示 `-`。
-3. **`CollectionCard/Header.tsx`（当前层级的同步范围提示/开关）**：
-   - 处于知识库根目录（`!parentId`）且为 API 知识库时：展示根级同步状态（`datasetDetail.syncAll`：“同步根目录新增”开/关，具备 Dataset `Manage` 权限可切换；开启时仅更新标记并提示将在下次同步拉取新增内容）。
-   - 处于某个 API 子目录内（`parentId` 存在）且该目录 `syncChildren === false` 时：在顶部路径栏旁展示醒目但克制的提示条/状态胶囊（“当前目录已暂停自动同步新增文件” + 权限允许时提供“恢复同步”快捷操作；恢复仅更新标记并提示下次同步生效）。
-4. **`Info/index.tsx`（知识库右侧配置面板）**：
+2. **`CollectionFolderCard.tsx`（API 子目录右侧配置面板）**：
+   - 集合列表页保持清爽，不新增“同步新增”列与状态标签；目录级 `syncChildren` 控制收口到进入子目录后的右侧边栏 `CollectionFolderCard`，与 `Info` 页的“全量同步”采用一致的 `Switch` 交互。
+   - 仅当 `datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]` 且当前目录为 `type === DatasetCollectionTypeEnum.folder && Boolean(folder.apiFileId)` 时展示“同步新增” `Switch`（配 `QuestionTip`）：
+     - 有目录 `Manage` 权限：可直接切换 `syncChildren`（调 `putDatasetCollectionById({ id, syncChildren })`）；从 `false` 切回 `true` 仅更新标记并通过 Toast 提示“将在下次手动或定时同步时拉取新增文件”，不立即触发同步；从 `true` 切至 `false` 时后端同事务关闭 `Dataset.syncAll`，前端同步刷新知识库详情。
+     - 无 `Manage` 权限：只读展示（`isDisabled`）当前同步状态。
+3. **`Info/index.tsx`（知识库右侧配置面板）**：
    - 仅 API 知识库展示 `syncAll` 开关，放在 `autoSync`（定时同步）附近，并用清晰的文案 + `QuestionTip` 区分（从 `false` 开启时仅更新标记并提示下次同步生效）：
      - **定时同步（`autoSync`）**：控制是否按计划自动触发同步任务。
-     - **同步根目录新增（`syncAll`）**：控制同步时是否自动导入第三方根目录下的新增文件与文件夹。
+     - **全量同步（`syncAll`）**：控制同步时是否自动导入第三方根目录下的全部新增文件与文件夹并恢复已暂停的子目录。
 
 ---
 

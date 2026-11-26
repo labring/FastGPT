@@ -6,13 +6,7 @@ import CollaboratorContextProvider, {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 
-function MemberManager({
-  managePer,
-  readOnly = false
-}: {
-  managePer: MemberManagerInputPropsType;
-  readOnly?: boolean;
-}) {
+function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }) {
   const { t } = useTranslation();
   return (
     <Box>
@@ -24,21 +18,19 @@ function MemberManager({
                 <Box color={'myGray.900'} fontSize={'mini'} fontWeight={'bold'}>
                   {t('common:permission.Collaborator')}
                 </Box>
-                {!readOnly && (
-                  <Flex gap={2}>
-                    <Box>
-                      <MyIcon
-                        onClick={onOpenManageModal}
-                        name="common/setting"
-                        w={'1rem'}
-                        h={'1rem'}
-                        color={'myGray.600'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'primary.500' }}
-                      />
-                    </Box>
-                  </Flex>
-                )}
+                <Flex gap={2}>
+                  <Box>
+                    <MyIcon
+                      onClick={onOpenManageModal}
+                      name="common/setting"
+                      w={'1rem'}
+                      h={'1rem'}
+                      color={'myGray.600'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'primary.500' }}
+                    />
+                  </Box>
+                </Flex>
               </Flex>
               <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
             </>
