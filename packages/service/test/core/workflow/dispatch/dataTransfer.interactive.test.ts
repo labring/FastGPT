@@ -25,12 +25,12 @@ const restoreGraph = (paused: Awaited<ReturnType<typeof runGraph>>) => {
       isEntry: interactive.entryNodeIds.includes(node.nodeId)
     })),
     edges: interactive.memoryEdges,
-    overrides: { variableState: paused.variableState, lastInteractive: interactive }
+    overrides: { variableContext: paused.variableState, lastInteractive: interactive }
   };
 };
 
 describe('interactive workflow output propagation', () => {
-  it('pauses userSelect and resumes only the chosen branch with the selected data', async () => {
+  it.each(['yes', 'right'])('resumes userSelect through the %s output', async (handle) => {
     const source = graphNode({
       id: 'source',
       type: FlowNodeTypeEnum.toolParams,
@@ -70,7 +70,7 @@ describe('interactive workflow output propagation', () => {
       nodes: [source, select, yes, no],
       edges: [
         graphEdge({ source: 'source', target: 'select' }),
-        graphEdge({ source: 'select', target: 'yes', handle: 'yes' }),
+        graphEdge({ source: 'select', target: 'yes', handle }),
         graphEdge({ source: 'select', target: 'no', handle: 'no' })
       ]
     });
@@ -82,6 +82,7 @@ describe('interactive workflow output propagation', () => {
       ...restored,
       overrides: { ...restored.overrides, query: [{ text: { content: 'yes' } }] }
     });
+    expect(resumed.variableState).toBe(paused.variableState);
     expect(graphValues(restored.nodes.find((node) => node.nodeId === 'yes')!)).toEqual({
       selected: 'yes',
       upstream: 0

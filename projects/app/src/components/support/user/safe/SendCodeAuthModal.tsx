@@ -11,32 +11,49 @@ import { useForm } from 'react-hook-form';
 import { useMemoizedFn } from 'ahooks';
 import { useEffect } from 'react';
 import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
-import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
+import type { LoginVerificationCaptchaResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import PuzzleCaptchaModal from './PuzzleCaptchaModal';
 
-/**
- * 图片验证码获取适配器。
- * 登录二次验证由调用方注入 Challenge 作用域的实现，普通场景留空时组件回退到账号作用域接口。
- * 面板与弹窗共用这一份声明，避免两端的适配器契约各自漂移。
- */
-export type GetCaptchaPic = () => Promise<GetImgCaptchaResponse>;
+/** 登录二次验证保留 Challenge 作用域的字符验证码协议，供 Web 与 CLI 继续共用。 */
+export type GetCaptchaPic = () => Promise<LoginVerificationCaptchaResponseType>;
 
-const SendCodeAuthModal = ({
+type SendCodeAuthModalProps = {
+  username: string;
+  purpose: UserVerificationPurpose;
+  onClose: () => void;
+  onSending: boolean;
+  onSendCode: (params: { username: string; captcha: string }) => Promise<void>;
+  getCaptchaPic?: GetCaptchaPic;
+};
+
+/** 仅普通表单切换旋转交互；注入 Challenge 适配器的登录二次验证保持原有行为。 */
+const SendCodeAuthModal = (props: SendCodeAuthModalProps) => {
+  const { username, purpose, onClose, onSendCode, getCaptchaPic } = props;
+  if (getCaptchaPic) {
+    return <LoginCaptchaModal {...props} getCaptchaPic={getCaptchaPic} />;
+  }
+
+  return (
+    <PuzzleCaptchaModal
+      purpose={purpose}
+      getCaptcha={() => getDefaultCaptchaPic(username, purpose)}
+      onClose={onClose}
+      onVerified={async (captcha) => {
+        await onSendCode({ username, captcha });
+        onClose();
+      }}
+    />
+  );
+};
+
+/** 保留登录二次验证的输入、刷新和发送失败后重试行为。 */
+const LoginCaptchaModal = ({
   username,
-  purpose,
   onClose,
   onSending,
   onSendCode,
   getCaptchaPic
-}: {
-  username: string;
-  purpose: UserVerificationPurpose;
-  onClose: () => void;
-
-  onSending: boolean;
-  onSendCode: (e: { username: string; captcha: string }) => Promise<void>;
-  /** 登录二次验证使用 Challenge 作用域的图片验证码，普通场景使用账号作用域。 */
-  getCaptchaPic?: GetCaptchaPic;
-}) => {
+}: SendCodeAuthModalProps & { getCaptchaPic: GetCaptchaPic }) => {
   const { t } = useTranslation();
 
   const { register, handleSubmit } = useForm({
@@ -49,10 +66,7 @@ const SendCodeAuthModal = ({
     data,
     loading,
     run: getCaptcha
-  } = useRequest(
-    useMemoizedFn(() => getCaptchaPic?.() ?? getDefaultCaptchaPic(username, purpose)),
-    { manual: false }
-  );
+  } = useRequest(useMemoizedFn(getCaptchaPic), { manual: false });
 
   const refreshCaptcha = useMemoizedFn(() => {
     getCaptcha();

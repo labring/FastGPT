@@ -64,6 +64,27 @@ describe('UsageDetail STT quantities', () => {
     expect(cells).toEqual(['STT', value, '1.25']);
   });
 
+  it.each([
+    { inputTokens: 125, outputTokens: 17 },
+    { inputTokens: 125, outputTokens: 0 },
+    { inputTokens: 0, outputTokens: 17 },
+    { inputTokens: 0, outputTokens: 0 }
+  ])('shows split counters including zero without a total or duration column: %j', (quantities) => {
+    const { headers, cells } = renderTable([{ moduleName: 'STT', amount: 0, ...quantities }]);
+    expect(headers).toEqual([
+      'account_usage:module_name',
+      'account_usage:input_token_length',
+      'account_usage:output_token_length',
+      'account_usage:total_points_consumed'
+    ]);
+    expect(cells).toEqual([
+      'STT',
+      String(quantities.inputTokens),
+      String(quantities.outputTokens),
+      '0'
+    ]);
+  });
+
   it('keeps missing quantities distinct from zero when historical and new usage share a table', () => {
     const { headers, cells } = renderTable([
       { moduleName: 'Old STT', amount: 1.25, tokens: 77 },
@@ -76,5 +97,31 @@ describe('UsageDetail STT quantities', () => {
       'account_usage:total_points_consumed'
     ]);
     expect(cells).toEqual(['Old STT', '77', '-', '1.25', 'Duration STT', '-', '0', '0']);
+  });
+});
+
+describe('UsageDetail cache token columns', () => {
+  it('hides both cache columns when every module has missing or zero usage', () => {
+    const { headers } = renderTable([
+      { moduleName: 'Historical zero', amount: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      { moduleName: 'No cache', amount: 1 }
+    ]);
+    expect(headers).toEqual(['account_usage:module_name', 'account_usage:total_points_consumed']);
+  });
+
+  it.each([
+    ['cacheReadTokens', 'account_usage:cache_read_token_length'],
+    ['cacheCreationTokens', 'account_usage:cache_creation_token_length']
+  ] as const)('shows %s only when used and leaves other modules blank', (key, header) => {
+    const { headers, cells } = renderTable([
+      { moduleName: 'Cached', amount: 1, [key]: 128 },
+      { moduleName: 'Uncached', amount: 2, cacheReadTokens: 0, cacheCreationTokens: 0 }
+    ]);
+    expect(headers).toEqual([
+      'account_usage:module_name',
+      header,
+      'account_usage:total_points_consumed'
+    ]);
+    expect(cells).toEqual(['Cached', '128', '1', 'Uncached', '', '2']);
   });
 });

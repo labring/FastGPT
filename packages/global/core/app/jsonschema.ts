@@ -1,4 +1,8 @@
 import {
+  MODEL_CONTENT_SCHEMA_KIND,
+  MODEL_CONTENT_SCHEMA_META_KEY
+} from './tool/systemTool/constants';
+import {
   WorkflowIOValueTypeEnum,
   toolValueTypeList,
   valueTypeJsonSchemaMap
@@ -604,12 +608,16 @@ export const jsonSchema2NodeOutput = ({
 }: { jsonSchema?: JSONSchemaOutputType; lang?: string } = {}): FlowNodeOutputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
+    // 多模态包装仅供模型使用，工作流引用直接指向其 value。
+    const isModelContent = value[MODEL_CONTENT_SCHEMA_META_KEY] === MODEL_CONTENT_SCHEMA_KIND;
+    const valueSchema = isModelContent && value.properties?.value ? value.properties.value : value;
     const valueType = getNodeInputTypeFromSchemaInputType({
-      type: value.type,
-      arrayItems: value.items,
-      schema: value
+      type: valueSchema.type,
+      arrayItems: valueSchema.items,
+      schema: valueSchema
     });
     const nodeMetadata = value[JsonSchemaNodeOutputMetadataKey];
+    const { defaultValue: _defaultValue, ...metadataWithoutDefault } = nodeMetadata ?? {};
     const localizedTitle = selectPluginText(value['x-i18n']?.title, lang);
     const localizedDescription =
       value['x-i18n']?.description !== undefined
@@ -617,8 +625,8 @@ export const jsonSchema2NodeOutput = ({
         : value.description;
 
     return {
-      ...(value.default !== undefined ? { defaultValue: value.default } : {}),
-      ...(nodeMetadata ?? {}),
+      ...(!isModelContent && value.default !== undefined ? { defaultValue: value.default } : {}),
+      ...(isModelContent ? metadataWithoutDefault : (nodeMetadata ?? {})),
       id: key,
       key,
       label: localizedTitle || value.title || key,
@@ -627,7 +635,7 @@ export const jsonSchema2NodeOutput = ({
         value?.required === true ||
         jsonSchema?.required?.includes(key),
       type: nodeMetadata?.type ?? FlowNodeOutputTypeEnum.static,
-      valueType: nodeMetadata?.valueType ?? valueType,
+      valueType: isModelContent ? valueType : (nodeMetadata?.valueType ?? valueType),
       description: localizedDescription
     };
   });
@@ -636,7 +644,7 @@ export const jsonSchema2NodeOutput = ({
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
     const data = parseOpenAPISchemaString(yamlStr);
-    const jsonSchema = (await SwaggerParser.dereference(data, {
+    const jsonSchema = (await SwaggerParser.dereference(data as any, {
       resolve: {
         file: false,
         http: false
@@ -657,6 +665,8 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
     })();
 
     const pathData = Object.keys(jsonSchema.paths)
+      // OpenAPI Paths Object 允许 x-* 扩展元数据，跳过以免误解析为接口路径或在值为 null 时触发异常。
+      .filter((path) => !path.startsWith('x-'))
       .map((path) => {
         const methodData: any = jsonSchema.paths[path];
         return Object.keys(methodData)

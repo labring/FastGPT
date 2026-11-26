@@ -1,20 +1,9 @@
 'use client';
-import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  HStack,
-  Input,
-  InputGroup
-} from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getApps } from '@/web/admin/app/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
@@ -23,11 +12,48 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const AppTable = () => {
+  const { t } = useSafeTranslation();
+  const appSearchOptions = useMemo<
+    readonly AdminSearchOption<'username' | 'teamId' | 'teamName' | 'appId' | 'appName'>[]
+  >(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      },
+      {
+        value: 'appId',
+        label: t('admin:composite_search.field_app_id'),
+        placeholder: t('admin:composite_search.placeholder_app_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'appName',
+        label: t('admin:composite_search.field_app_name'),
+        placeholder: t('admin:composite_search.placeholder_app_name')
+      }
+    ],
+    [t]
+  );
   const [appDetail, setAppDetail] = useState<any>();
-  const [searchKey, setSearchKey] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: appSearchOptions });
 
   const {
     data: apps,
@@ -38,10 +64,8 @@ const AppTable = () => {
   } = usePagination(getApps, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-apps-list',
-    params: {
-      searchKey
-    },
-    refreshDeps: [searchKey],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -60,16 +84,17 @@ const AppTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          用户应用
+          {t('admin:user_apps')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <Input
-            placeholder="请输入应用名或应用id搜索"
-            h={'36px'}
-            onChange={(e) => setSearchKey(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={appSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>
         <FixedTableContainer
@@ -90,11 +115,11 @@ const AppTable = () => {
           <Table minW={'1000px'}>
             <Thead>
               <Tr>
-                <Th>应用id</Th>
-                <Th>应用名</Th>
-                <Th>创建者</Th>
-                <Th>团队</Th>
-                <Th>介绍</Th>
+                <Th>{t('admin:app_id_2')}</Th>
+                <Th>{t('admin:app_name_2')}</Th>
+                <Th>{t('admin:creator')}</Th>
+                <Th>{t('admin:team')}</Th>
+                <Th>{t('admin:description')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -111,10 +136,10 @@ const AppTable = () => {
                   <Td textAlign={'center'}>
                     <HStack spacing={2} ml={4}>
                       <Button variant={'whiteBase'} size={'sm'} onClick={() => setAppDetail(item)}>
-                        详情
+                        {t('admin:details')}
                       </Button>
                       <Button variant={'whiteBase'} size={'sm'} onClick={() => routeToApp(item.id)}>
-                        跳转
+                        {t('admin:open')}
                       </Button>
                     </HStack>
                   </Td>
@@ -131,7 +156,7 @@ const AppTable = () => {
             >
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
               <Box mt={2} color={'myGray.500'}>
-                无应用记录～
+                {t('admin:no_apps')}
               </Box>
             </Flex>
           )}
@@ -146,26 +171,27 @@ const AppTable = () => {
 export default AppTable;
 
 function AppDetailModal({ app, onClose }: { app: any; onClose: () => void }) {
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'应用详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用id:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_id_3')}</Box>
         <Box>{app.id}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用名:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_name_3')}</Box>
         <Box>{app.name}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>介绍:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:description_2')}</Box>
         <Box>{app.intro}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>创建者:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:creator_2')}</Box>
         <Box>{app.username}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>创建者 ID:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:creator_id')}</Box>
         <Box>{app.userId}</Box>
       </Flex>
     </MyModal>

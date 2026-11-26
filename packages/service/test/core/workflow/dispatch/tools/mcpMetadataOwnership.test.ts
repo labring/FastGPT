@@ -6,7 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { McpToolConfigSchema } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import {
@@ -14,7 +14,10 @@ import {
   getAppPublishedWorkflowMap,
   getAppVersionById
 } from '@fastgpt/service/core/app/version/controller';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), call: vi.fn() }));
 vi.mock('@fastgpt/service/support/permission/app/auth', async (original) => ({
@@ -116,34 +119,41 @@ describe('MCP metadata ownership across stored versions and dispatch', () => {
         responseChatItemId: 'response',
         usagePush: vi.fn()
       };
-      await runWithContext({ mcpClientMemory: {} }, async () => {
-        for (const [index, requestMeta] of [firstMeta, { revision: 2 }, undefined].entries()) {
-          if (index)
-            await MongoAppVersion.updateOne(
-              { _id: toolVersion._id },
-              { $set: { nodes: toolNodes(requestMeta) } }
-            );
-          if (mode === 'workflow') {
-            const result = await dispatchRunTool({
-              ...common,
-              node: callerWorkflow.nodes[0]
-            } as any);
-            expect(result.error).toBeUndefined();
-          } else {
-            const result = await dispatchTool({
-              ...common,
-              tool: { name: 'Search', avatar: '', toolConfig: callerWorkflow.nodes[0].toolConfig }
-            } as any);
-            expect(result.errorMessage).toBeUndefined();
+      await runWithContext(
+        {
+          mcpClientMemory: {},
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext()
+        },
+        async () => {
+          for (const [index, requestMeta] of [firstMeta, { revision: 2 }, undefined].entries()) {
+            if (index)
+              await MongoAppVersion.updateOne(
+                { _id: toolVersion._id },
+                { $set: { nodes: toolNodes(requestMeta) } }
+              );
+            if (mode === 'workflow') {
+              const result = await dispatchRunTool({
+                ...common,
+                node: callerWorkflow.nodes[0]
+              } as any);
+              expect(result.error).toBeUndefined();
+            } else {
+              const result = await dispatchTool({
+                ...common,
+                tool: { name: 'Search', avatar: '', toolConfig: callerWorkflow.nodes[0].toolConfig }
+              } as any);
+              expect(result.errorMessage).toBeUndefined();
+            }
+            expect(mocks.call.mock.lastCall?.[0]).toEqual({
+              toolName: 'search',
+              params: { query: 'hello' },
+              ...(mode === 'workflow' ? { closeConnection: false } : {}),
+              ...(requestMeta ? { requestMeta } : {})
+            });
           }
-          expect(mocks.call.mock.lastCall?.[0]).toEqual({
-            toolName: 'search',
-            params: { query: 'hello' },
-            ...(mode === 'workflow' ? { closeConnection: false } : {}),
-            ...(requestMeta ? { requestMeta } : {})
-          });
         }
-      });
+      );
       expect(await MongoAppVersion.findById(callerVersion._id).lean()).toEqual(callerBefore);
 
       // The tool-owned draft, explicit version and batch published read paths retain its current configuration.

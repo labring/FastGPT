@@ -106,6 +106,16 @@ export type UploadObjectParams = {
    * - 元数据大小、字符集限制由厂商决定；尽量保持 key 简洁并控制总体大小。
    */
   metadata?: StorageObjectMetadata;
+
+  /**
+   * 取消已发起的上传，可选。
+   *
+   * 说明：
+   * - 触发后 adapter 必须尽快终止底层请求，并以取消错误拒绝当前 Promise
+   *   （优先透传 `Error` 类型的 `abortSignal.reason`，否则构造 `name: 'AbortError'` 的错误）。
+   * - 流式 body 会被销毁；调用方不要再复用该流。
+   */
+  abortSignal?: AbortSignal;
 };
 
 /**
@@ -223,11 +233,23 @@ export type AbortMultipartUploadResult = {
 };
 
 /**
+ * 下载字节范围（闭区间 `[start, end]`，与 HTTP `Range: bytes=start-end` 一致）。
+ */
+export type StorageByteRange = {
+  /** 起始字节偏移（0-based，包含）。 */
+  start: number;
+  /** 结束字节偏移（0-based，包含，需 >= start）。 */
+  end: number;
+};
+
+/**
  * 下载对象入参。
  */
 export type DownloadObjectParams = {
   /** 对象 key。 */
   key: StorageObjectKey;
+  /** 可选字节范围（闭区间 `[start, end]`，用于 HTTP Range 分片读取）。 */
+  range?: StorageByteRange;
   /** 调用方停止消费时用于取消底层下载请求并释放连接。 */
   abortSignal?: AbortSignal;
 };

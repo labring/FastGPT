@@ -11,7 +11,10 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     { pricing: {}, expected: { type: 'duration' } },
     { pricing: { unitPrice: 0 }, expected: { type: 'duration', unitPrice: 0 } },
     { pricing: { unitPrice: 0.4 }, expected: { type: 'duration', unitPrice: 0.4 } },
-    { pricing: { type: 'tokens', unitPrice: 10 }, expected: { type: 'tokens', unitPrice: 10 } }
+    {
+      pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 },
+      expected: { type: 'tokens', inputPrice: 10, outputPrice: 20 }
+    }
   ])(
     'exports STT pricing $pricing without changing database records',
     async ({ pricing, expected }) => {

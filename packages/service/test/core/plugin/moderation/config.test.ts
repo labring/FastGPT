@@ -2,12 +2,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   saveModerationConfig,
   getAdminModerationPluginList,
-  getModerationPolicy
+  getModerationPolicy,
+  deleteModerationPlugin
 } from '../../../../core/plugin/moderation/service';
 import * as remote from '../../../../thirdProvider/fastgptPlugin/moderation';
+import * as lifecycle from '../../../../thirdProvider/fastgptPlugin/lifecycle';
 import { MongoSystemModerationPlugin } from '../../../../core/plugin/moderation/schema';
-import { MongoSystemConfigs } from '../../../../common/system/config/schema';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
 
@@ -183,7 +184,7 @@ describe('moderation configuration save and reload', () => {
     expect(list[0].source).toBe('system');
   });
 
-  it('enables plugin via real MongoSystemConfigs upsert without operator path conflicts', async () => {
+  it('enables plugin via instance configuration upsert without operator path conflicts', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
     const { item: saved } = await saveModerationConfig({
       pluginId: detail.pluginId,
@@ -193,44 +194,25 @@ describe('moderation configuration save and reload', () => {
     expect(saved.enabled).toBe(true);
   });
 
-  it('preserves latest moderation policy values and converges duplicate policy records when enabling a plugin', async () => {
+  it('preserves the stored moderation policy and increments its revision when enabling a plugin', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
-    await MongoSystemConfigs.create([
-      {
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        createTime: new Date('2026-01-01T00:00:00.000Z'),
-        value: {
-          enabled: false,
-          hooks: {
-            userInput: false,
-            modelInput: false,
-            finalOutput: false
-          },
-          strategy: {
-            streamInterval: 100,
-            suspectedRiskAction: 'passAndLog',
-            serviceExceptionAction: 'pass'
-          }
-        }
-      },
-      {
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        createTime: new Date('2026-01-02T00:00:00.000Z'),
-        value: {
-          enabled: true,
-          hooks: {
-            userInput: true,
-            modelInput: true,
-            finalOutput: false
-          },
-          strategy: {
-            streamInterval: 25,
-            suspectedRiskAction: 'blockAndLog',
-            serviceExceptionAction: 'block'
-          }
+    await MongoSystemInstanceConfig.create({
+      domain: 'moderationPolicy',
+      revision: 7,
+      overrides: {
+        enabled: true,
+        hooks: {
+          userInput: true,
+          modelInput: true,
+          finalOutput: false
+        },
+        strategy: {
+          streamInterval: 25,
+          suspectedRiskAction: 'blockAndLog',
+          serviceExceptionAction: 'block'
         }
       }
-    ]);
+    });
 
     await saveModerationConfig({
       pluginId: detail.pluginId,
@@ -253,8 +235,137 @@ describe('moderation configuration save and reload', () => {
         serviceExceptionAction: 'block'
       }
     });
+    const record = await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' }).lean();
+    expect(record).toMatchObject({ revision: 8, overrides: { activePluginId: detail.pluginId } });
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'moderationPolicy' })).toBe(1);
+  });
+
+  it('auto-enables the first configured plugin, keeps subsequent configured plugins inactive, and auto-enables again after last plugin uninstall', async () => {
+    const secondDetail = {
+      ...detail,
+      pluginId: 'second-moderation-plugin',
+      name: 'Second Moderation'
+    };
+    vi.spyOn(remote, 'getModerationPluginDetail').mockImplementation(async ({ pluginId }) =>
+      pluginId === secondDetail.pluginId ? secondDetail : detail
+    );
+    vi.spyOn(remote, 'listModerationPlugins').mockResolvedValue([detail, secondDetail]);
+    vi.spyOn(lifecycle, 'disableSystemPlugin').mockResolvedValue(undefined);
+
+    // 1. 首个插件配置完成时（未显式传 enabled）应自动启用并写入全局 activePluginId
+    const firstResult = await saveModerationConfig({
+      pluginId: detail.pluginId,
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(firstResult.autoEnabled).toBe(true);
+    expect(firstResult.item.enabled).toBe(true);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: detail.pluginId
+    });
+
+    // 2. 已有生效插件时再配置第二个插件，不应自动抢占启用状态
+    const secondResult = await saveModerationConfig({
+      pluginId: secondDetail.pluginId,
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(secondResult.autoEnabled).toBe(false);
+    expect(secondResult.item.enabled).toBe(false);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: detail.pluginId
+    });
+
+    // 3. 卸载全部插件后，再次配置首个新插件仍应自动启用
+    await deleteModerationPlugin({ pluginId: secondDetail.pluginId, source: 'system' });
+    await deleteModerationPlugin({ pluginId: detail.pluginId, source: 'system' });
+
+    const reconfigured = await saveModerationConfig({
+      pluginId: 'third-moderation-plugin',
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(reconfigured.autoEnabled).toBe(true);
+    expect(reconfigured.item.enabled).toBe(true);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: 'third-moderation-plugin'
+    });
+  });
+
+  it('preserves saved plugin version when toggling enablement without version or secrets, while allowing explicit version and secret updates', async () => {
+    const v1Detail = {
+      ...detail,
+      pluginId: 'versioned-moderation',
+      version: '1.0.0'
+    };
+    const v2Detail = {
+      ...detail,
+      pluginId: 'versioned-moderation',
+      version: '2.0.0'
+    };
+    vi.spyOn(remote, 'getModerationPluginDetail').mockImplementation(async ({ version }) =>
+      version === '1.0.0' ? v1Detail : v2Detail
+    );
+
+    await MongoSystemModerationPlugin.create({
+      pluginId: 'versioned-moderation',
+      source: 'system',
+      version: '1.0.0',
+      enabled: false,
+      secretsVal: { enableDefaultDict: true }
+    });
+
+    // 1. 仅切换启用状态（不传 version 和 secretsVal）时，必须保留已保存的 1.0.0 完成探测并写回
+    const toggled = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      enabled: true
+    });
+    expect(remote.getModerationPluginDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '1.0.0'
+      })
+    );
+    expect(remote.checkModerationContent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '1.0.0'
+      })
+    );
+    expect(toggled.item.version).toBe('1.0.0');
     expect(
-      await MongoSystemConfigs.countDocuments({ type: SystemConfigsTypeEnum.moderationPolicy })
-    ).toBe(1);
+      await MongoSystemModerationPlugin.findOne({ pluginId: 'versioned-moderation' }).lean()
+    ).toMatchObject({
+      version: '1.0.0',
+      enabled: true
+    });
+
+    // 2. 显式传 version 时仍允许切换到指定版本
+    const upgraded = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      version: '2.0.0',
+      enabled: true
+    });
+    expect(remote.checkModerationContent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '2.0.0'
+      })
+    );
+    expect(upgraded.item.version).toBe('2.0.0');
+
+    // 3. 重新回退为 1.0.0 后，更新 secretsVal（未指定 version）按最新版本 2.0.0 解析
+    await MongoSystemModerationPlugin.updateOne(
+      { pluginId: 'versioned-moderation' },
+      { $set: { version: '1.0.0' } }
+    );
+    const updatedSecrets = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      secretsVal: { enableDefaultDict: false }
+    });
+    expect(remote.getModerationPluginDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: undefined
+      })
+    );
+    expect(updatedSecrets.item.version).toBe('2.0.0');
   });
 });

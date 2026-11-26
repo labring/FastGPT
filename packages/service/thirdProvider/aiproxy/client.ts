@@ -3,8 +3,10 @@ import { isAiproxyNotFoundError } from './error';
 import { getAIProxyAdminConfig } from './config';
 import {
   AIPROXY_LIST_PAGE_SIZE,
+  AiproxyChannelModelsSchema,
   type AddChannelData,
   type AiproxyChannel,
+  type AiproxyChannelModel,
   type AiproxyDashboardParams,
   type AiproxyDashboardPoint,
   type AiproxyEnvelope,
@@ -238,6 +240,9 @@ export class AIProxyClient {
             channel_id: item.channel_id ?? item.group_channel_id ?? 0,
             max_rpm: item.max_rpm ?? 0,
             max_tpm: item.max_tpm ?? 0,
+            // 旧版监控响应没有缓存数量时保持普通输入计价。
+            cached_tokens: item.cached_tokens ?? 0,
+            cache_creation_tokens: item.cache_creation_tokens ?? 0,
             cache_hit_count: item.cache_hit_count ?? 0
           }))
         }));
@@ -252,6 +257,10 @@ export class AIProxyClient {
     logs: this.createLogOperations('/api/logs'),
     dashboard: this.createDashboardOperations((query) => `/api/dashboardv2/${query}`)
   };
+
+  public async getSystemChannelModels(id: number): Promise<AiproxyChannelModel[]> {
+    return AiproxyChannelModelsSchema.parse(await this.get<unknown>(`/api/channel/${id}/models`));
+  }
 
   /* ═══ Group Scope Operations ═══ */
 

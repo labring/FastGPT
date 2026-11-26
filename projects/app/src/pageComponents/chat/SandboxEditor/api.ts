@@ -1,5 +1,7 @@
 import type {
   SandboxDownloadBody,
+  SandboxExtractZipBody,
+  SandboxExtractZipResponse,
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
   SandboxGetTicketBody,
@@ -9,8 +11,8 @@ import type {
   SandboxUploadQuery,
   SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST, POSTRawFile } from '@/web/common/api/request';
+import { downloadFetch, fetchApiResponse } from '@/web/common/system/utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type SandboxRawTargetRequest = {
@@ -26,6 +28,7 @@ type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
 type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
 type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
+type SandboxExtractZipClientBody = SandboxClientBody<SandboxExtractZipBody>;
 type SandboxUploadClientQuery = SandboxClientBody<SandboxUploadQuery>;
 
 /**
@@ -45,45 +48,21 @@ const normalizeSandboxRequest = <T extends SandboxRawTargetRequest>(data: T): T 
 /**
  * 下载文件或目录（强制下载）
  */
-const fetchSandboxDownloadResponse = (data: SandboxDownloadClientBody) =>
-  fetch('/api/core/ai/sandbox/download', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(normalizeSandboxRequest(data))
+export const downloadSandbox = (data: SandboxDownloadClientBody) =>
+  downloadFetch({
+    url: '/api/core/ai/sandbox/download',
+    body: normalizeSandboxRequest(data),
+    fallbackFilename: `download-${Date.now()}.zip`
   });
-
-export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
-  const response = await fetchSandboxDownloadResponse(data);
-
-  if (!response.ok) {
-    throw new Error('Download failed');
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const fileName =
-    parseContentDispositionFilename(contentDisposition || '') || `download-${Date.now()}.zip`;
-
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
-};
 
 /**
  * 读取沙盒文件原始字节，供大文件绕过 ide-agent WebSocket JSON RPC 读取。
  */
 export const readSandboxFile = async (data: SandboxDownloadClientBody) => {
-  const response = await fetchSandboxDownloadResponse(data);
-
-  if (!response.ok) {
-    throw new Error('Read failed');
-  }
+  const response = await fetchApiResponse({
+    url: '/api/core/ai/sandbox/download',
+    body: normalizeSandboxRequest(data)
+  });
 
   return new Uint8Array(await response.arrayBuffer());
 };
@@ -105,6 +84,12 @@ export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
 
 export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
   POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));
+
+/**
+ * 解压沙盒会话工作区内的 .zip 文件到不冲突的同名目录
+ */
+export const extractSandboxZip = async (data: SandboxExtractZipClientBody) =>
+  POST<SandboxExtractZipResponse>('/core/ai/sandbox/extractZip', normalizeSandboxRequest(data));
 
 /**
  * 将文件作为原始请求体流式写入 sandbox，避免 WebSocket base64 和主站临时文件。

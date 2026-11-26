@@ -18,6 +18,7 @@ import {
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import type { WorkflowSnapshot } from '@fastgpt/global/core/workflow/editor/types';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import workflowFixture from '@fastgpt/workflow-core/test/fixtures/basic-ai/workflow.json';
@@ -32,12 +33,21 @@ const mocks = vi.hoisted(() => ({
   getModels: vi.fn(),
   getToolPreview: vi.fn(),
   parseImport: vi.fn(),
-  initData: vi.fn(),
-  flowData2StoreData: vi.fn(),
-  getNodes: vi.fn(),
-  getEdges: vi.fn(),
+  loadDocument: vi.fn(),
+  serializeRuntime: vi.fn(),
+  materializeWorkflow: vi.fn(),
+  runtime: undefined as any,
+  workflowSnapshot: {} as WorkflowSnapshot,
+  historyCount: 0,
+  contentRevision: 0,
+  historyStates: [] as Array<{
+    canvas: unknown;
+    workflowSnapshot: WorkflowSnapshot;
+    contentRevision: number;
+  }>,
+  rollbackDocument: vi.fn(),
+  confirmDocument: vi.fn(),
   setAppDetail: vi.fn(),
-  pushPastSnapshot: vi.fn(),
   requestAutoLayout: vi.fn(),
   setActivity: vi.fn(),
   dismissBanner: vi.fn(),
@@ -53,14 +63,17 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({ default: () => null }));
 vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowUtilsContext', () => ({
-  WorkflowUtilsContext: {}
+vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
+  useWorkflowRuntime: () => mocks.runtime,
+  useWorkflowSessionActions: () => ({
+    loadDocument: mocks.loadDocument,
+    rollbackDocument: mocks.rollbackDocument,
+    confirmDocument: mocks.confirmDocument
+  })
 }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
-  WorkflowBufferDataContext: {}
-}));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowSnapshotContext', () => ({
-  WorkflowSnapshotContext: {}
+vi.mock('@/web/core/workflow/editor/codec', () => ({
+  serializeRuntime: mocks.serializeRuntime,
+  materializeWorkflow: mocks.materializeWorkflow
 }));
 vi.mock('use-context-selector', () => ({
   useContextSelector: (_context: unknown, select: (value: unknown) => unknown) =>
@@ -141,6 +154,13 @@ const deferred = <T>() => {
   return { promise, resolve, reject };
 };
 
+const workflowSnapshotFromStore = (workflow: any): WorkflowSnapshot =>
+  ({
+    nodes: (workflow?.nodes ?? []).map((node: any) => ({ ...node, issues: [] })),
+    edges: workflow?.edges ?? [],
+    chatConfig: workflow?.chatConfig ?? {}
+  }) as WorkflowSnapshot;
+
 describe('WorkflowBuilder applyVersion', () => {
   let dom: JSDOM;
   let root: Root;
@@ -155,17 +175,52 @@ describe('WorkflowBuilder applyVersion', () => {
     expiresAt: '2099-10-20T00:00:00.000Z'
   };
 
+  const recordCanvasHistory = () => {
+    mocks.historyStates.push({
+      canvas: structuredClone(canvas),
+      workflowSnapshot: mocks.workflowSnapshot,
+      contentRevision: mocks.contentRevision
+    });
+    mocks.historyCount += 1;
+    mocks.contentRevision += 1;
+  };
+
   beforeEach(async () => {
     vi.resetAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     canvas = { nodes: [], edges: [], chatConfig: { welcomeText: 'original' } };
+    mocks.workflowSnapshot = workflowSnapshotFromStore(canvas);
+    mocks.historyCount = 0;
+    mocks.contentRevision = 0;
+    mocks.historyStates = [];
     mocks.appDetail = {
       type: AppTypeEnum.workflow,
       chatConfig: canvas.chatConfig
     } as AppDetailType;
-    mocks.flowData2StoreData.mockImplementation(() => structuredClone(canvas));
-    mocks.getNodes.mockImplementation(() => canvas.nodes);
-    mocks.getEdges.mockImplementation(() => canvas.edges);
+    mocks.serializeRuntime.mockImplementation(() => structuredClone(canvas));
+    mocks.materializeWorkflow.mockImplementation(({ input }) => structuredClone(input));
+    mocks.loadDocument.mockImplementation((content) => {
+      recordCanvasHistory();
+      canvas = structuredClone(content);
+      mocks.workflowSnapshot = workflowSnapshotFromStore(canvas);
+      return { ok: true };
+    });
+    mocks.rollbackDocument.mockImplementation(({ contentRevision }) => {
+      if (contentRevision !== mocks.contentRevision) return false;
+      const previous = mocks.historyStates.pop();
+      if (!previous) return false;
+      canvas = structuredClone(previous.canvas);
+      mocks.workflowSnapshot = previous.workflowSnapshot;
+      mocks.contentRevision = previous.contentRevision;
+      mocks.historyCount = Math.max(0, mocks.historyCount - 1);
+      return true;
+    });
+    mocks.runtime = {
+      getWorkflow: () => mocks.workflowSnapshot,
+      getHistory: () => ({ undoCount: mocks.historyCount, redoCount: 0 }),
+      getSavepoint: () => ({ contentRevision: mocks.contentRevision }),
+      isDisposed: () => false
+    };
     mocks.setAppDetail.mockImplementation((update) => {
       mocks.appDetail = update(mocks.appDetail);
     });
@@ -173,10 +228,6 @@ describe('WorkflowBuilder applyVersion', () => {
     mocks.commit.mockResolvedValue({ ...version, appliedAt: '2026-10-19T01:00:00.000Z' });
     mocks.getModels.mockResolvedValue([]);
     mocks.parseImport.mockImplementation(async ({ config }) => config);
-    mocks.initData.mockImplementation(async (config) => {
-      canvas = structuredClone(config);
-      return 1;
-    });
     mocks.requestAutoLayout.mockResolvedValue('applied');
     mocks.latestVersion = version;
     dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>');
@@ -184,7 +235,9 @@ describe('WorkflowBuilder applyVersion', () => {
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     root = createRoot(dom.window.document.getElementById('root')!);
-    await act(async () => root.render(React.createElement(WorkflowBuilder)));
+    await act(async () =>
+      root.render(React.createElement(WorkflowBuilder, { key: 'unavailable-canvas' }))
+    );
   });
 
   afterEach(async () => {
@@ -208,7 +261,7 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.actions!.isApplying).toBe(true);
     expect(dom.window.document.querySelector('button')!.disabled).toBe(true);
     expect(mocks.load).toHaveBeenCalledOnce();
-    expect(mocks.initData).toHaveBeenCalledOnce();
+    expect(mocks.loadDocument).toHaveBeenCalledOnce();
     expect(mocks.updateAppliedVersion).not.toHaveBeenCalled();
     expect(canvas.nodes).toHaveLength(document.nodes.length);
 
@@ -219,7 +272,14 @@ describe('WorkflowBuilder applyVersion', () => {
     });
     expect(canvas).toEqual({ nodes: [], edges: [], chatConfig: { welcomeText: 'original' } });
     expect(mocks.actions!.isApplying).toBe(false);
-    expect(mocks.pushPastSnapshot).not.toHaveBeenCalled();
+    expect(mocks.rollbackDocument).toHaveBeenCalledWith({
+      runtime: mocks.runtime,
+      contentRevision: 1
+    });
+    expect(mocks.confirmDocument).toHaveBeenCalledWith({
+      runtime: mocks.runtime,
+      contentRevision: 1
+    });
     expect(mocks.updateAppliedVersion).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
       status: 'error',
@@ -230,7 +290,7 @@ describe('WorkflowBuilder applyVersion', () => {
     // 失败后可从横幅重新应用，与卡片共用同一把锁。
     await act(async () => dom.window.document.querySelector('button')!.click());
     expect(canvas.nodes).toHaveLength(document.nodes.length);
-    expect(mocks.pushPastSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.loadDocument).toHaveBeenCalledTimes(2);
     expect(mocks.actions!.isApplying).toBe(false);
     expect(dom.window.document.querySelector('button')!.disabled).toBe(false);
     expect(mocks.toast).toHaveBeenLastCalledWith({
@@ -257,32 +317,29 @@ describe('WorkflowBuilder applyVersion', () => {
     });
   });
 
-  it('keeps the lock until rollback finishes', async () => {
-    const rollback = deferred<number>();
-    mocks.commit.mockRejectedValueOnce(new Error('commit failed'));
-    mocks.initData
-      .mockImplementationOnce(async (config) => {
-        canvas = structuredClone(config);
-        return 1;
-      })
-      .mockReturnValueOnce(rollback.promise);
+  it('preserves edits made after replacing the canvas when the version commit fails', async () => {
+    const commit = deferred<WorkflowBuilderVersion>();
+    mocks.commit.mockReturnValueOnce(commit.promise);
     let pending!: Promise<WorkflowBuilderVersion>;
-    let rejection!: Promise<void>;
     await act(async () => {
       pending = mocks.actions!.applyVersion(version, 'response-1');
-      rejection = expect(pending).rejects.toThrow('commit failed');
     });
-    expect(mocks.initData).toHaveBeenCalledTimes(2);
-    expect(mocks.actions!.isApplying).toBe(true);
-    await expect(mocks.actions!.applyVersion(version, 'response-2')).rejects.toThrow(
-      'being applied'
-    );
-    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.loadDocument).toHaveBeenCalledOnce();
+    expect(mocks.commit).toHaveBeenCalledOnce();
+
+    recordCanvasHistory();
+    canvas.chatConfig = { ...canvas.chatConfig, welcomeText: 'user edit' };
+    mocks.workflowSnapshot = workflowSnapshotFromStore(canvas);
+    const edited = structuredClone(canvas);
 
     await act(async () => {
-      rollback.resolve(2);
-      await rejection;
+      const rejected = expect(pending).rejects.toThrow('commit failed');
+      commit.reject(new Error('commit failed'));
+      await rejected;
     });
+
+    expect(canvas).toEqual(edited);
+    expect(mocks.rollbackDocument).toHaveReturnedWith(false);
     expect(mocks.actions!.isApplying).toBe(false);
   });
 
@@ -308,9 +365,7 @@ describe('WorkflowBuilder applyVersion', () => {
       intro: 'User description',
       chatConfig: workflowConfig.chatConfig
     });
-    expect(mocks.pushPastSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ chatConfig: workflowConfig.chatConfig })
-    );
+    expect(mocks.loadDocument).toHaveBeenCalledOnce();
     expect(mocks.commit).toHaveBeenCalledWith(
       expect.objectContaining({ document: archivedDocument, checksum: version.checksum })
     );
@@ -368,7 +423,7 @@ describe('WorkflowBuilder applyVersion', () => {
     });
 
     expect(canvas).toEqual(edited);
-    expect(mocks.initData).not.toHaveBeenCalled();
+    expect(mocks.loadDocument).not.toHaveBeenCalled();
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.actions!.isApplying).toBe(false);
   });
@@ -381,7 +436,9 @@ describe('WorkflowBuilder applyVersion', () => {
     await act(async () => {
       pending = mocks.actions!.applyVersion(version, 'response-1');
     });
+    recordCanvasHistory();
     canvas.nodes = compileStoreWorkflow(document).nodes.slice(0, 1);
+    mocks.workflowSnapshot = workflowSnapshotFromStore(canvas);
     const edited = structuredClone(canvas);
     await act(async () => {
       const rejected = expect(pending).rejects.toThrow('commit failed');
@@ -390,18 +447,19 @@ describe('WorkflowBuilder applyVersion', () => {
     });
 
     expect(canvas).toEqual(edited);
-    expect(mocks.initData).toHaveBeenLastCalledWith(edited);
+    expect(mocks.loadDocument).toHaveBeenCalledOnce();
+    expect(mocks.rollbackDocument).toHaveBeenCalledWith({
+      runtime: mocks.runtime,
+      contentRevision: 2
+    });
     expect(mocks.actions!.isApplying).toBe(false);
   });
 
   it('preserves the application error and unlocks even when rollback fails', async () => {
     mocks.commit.mockRejectedValueOnce(new Error('commit failed'));
-    mocks.initData
-      .mockImplementationOnce(async (config) => {
-        canvas = structuredClone(config);
-        return 1;
-      })
-      .mockRejectedValueOnce(new Error('rollback failed'));
+    mocks.rollbackDocument.mockImplementationOnce(() => {
+      throw new Error('rollback failed');
+    });
     await act(async () => {
       await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toThrow(
         'commit failed'
@@ -409,7 +467,7 @@ describe('WorkflowBuilder applyVersion', () => {
     });
 
     expect(mocks.actions!.isApplying).toBe(false);
-    expect(mocks.pushPastSnapshot).not.toHaveBeenCalled();
+    expect(mocks.rollbackDocument).toHaveBeenCalledOnce();
     await act(async () => {
       await expect(mocks.actions!.applyVersion(version, 'response-2')).resolves.toHaveProperty(
         'appliedAt'
@@ -418,14 +476,15 @@ describe('WorkflowBuilder applyVersion', () => {
   });
 
   it('rejects an unavailable canvas before writing and releases the lock', async () => {
-    mocks.flowData2StoreData.mockReturnValue(undefined);
+    mocks.runtime = null;
+    await act(async () => root.render(React.createElement(WorkflowBuilder)));
     await act(async () => {
       await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toThrow(
         'canvas is unavailable'
       );
     });
 
-    expect(mocks.initData).not.toHaveBeenCalled();
+    expect(mocks.loadDocument).not.toHaveBeenCalled();
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.actions!.isApplying).toBe(false);
   });
@@ -438,7 +497,7 @@ describe('WorkflowBuilder applyVersion', () => {
       await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toBeDefined();
     });
 
-    expect(mocks.initData).not.toHaveBeenCalled();
+    expect(mocks.loadDocument).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
       status: 'error',
       title: 'workflow_builder_version_expired_toast'
@@ -464,7 +523,7 @@ describe('WorkflowBuilder applyVersion', () => {
       title: 'workflow:workflow_builder_apply_failed',
       description: error.message
     });
-    expect(mocks.initData).not.toHaveBeenCalled();
+    expect(mocks.loadDocument).not.toHaveBeenCalled();
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.actions!.isApplying).toBe(false);
   });

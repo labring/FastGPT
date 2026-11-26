@@ -26,8 +26,6 @@ sources:
   - packages/service/core/chat/chatSchema.ts
   - packages/service/core/chat/chatItemSchema.ts
   - packages/global/core/chat/adapt.ts
-  - sdk/sandbox-adapter/src/contracts/filesystem.ts
-  - sdk/sandbox-adapter/src/polyfills/command-filesystem.ts
 routes:
   - POST /api/proApi/core/workflow/builder/chat
   - POST /api/proApi/core/workflow/builder/version/load

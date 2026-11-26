@@ -7,12 +7,17 @@ import {
   assertMultipartPartNumber,
   assertMultipartUploadId,
   assertMultipartUploadParts,
+  assertStorageDownloadRange,
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
 } from '../assert';
-import { bindAbortSignalToReadable, throwIfStorageDownloadAborted } from '../utils';
+import {
+  bindAbortSignalToReadable,
+  throwIfStorageAborted,
+  throwIfStorageDownloadAborted
+} from '../utils';
 
 type MockFunction<T extends (...args: any[]) => any> = T & {
   mock: unknown;
@@ -110,6 +115,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   const uploadObject = vi.fn(
     async (p: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> => {
       assertStorageObjectKey(p.key);
+      throwIfStorageAborted(p.abortSignal);
       const buf = await bodyToBuffer(p.body);
       const contentLength = p.contentLength ?? buf.length;
       objects.set(p.key, {
@@ -219,13 +225,23 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   const downloadObject = vi.fn(
     async (p: Storage.DownloadObjectParams): Promise<Storage.DownloadObjectResult> => {
       assertStorageObjectKey(p.key);
+      assertStorageDownloadRange(p.range);
       throwIfStorageDownloadAborted(p.abortSignal);
 
       const obj = objects.get(p.key);
       if (!obj) {
         throw new Error(`Object not found: ${p.key}`);
       }
-      const body = bufferToReadable(obj.body);
+      const rangeBody = (() => {
+        if (!p.range) return obj.body;
+        if (p.range.start >= obj.body.length) {
+          const error = new Error('The requested range is not satisfiable');
+          error.name = 'InvalidRange';
+          throw error;
+        }
+        return obj.body.subarray(p.range.start, p.range.end + 1);
+      })();
+      const body = bufferToReadable(rangeBody);
       bindAbortSignalToReadable({ readable: body, abortSignal: p.abortSignal });
 
       return { bucket: bucketName, key: p.key, body };

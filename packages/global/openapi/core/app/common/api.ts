@@ -30,13 +30,14 @@ import {
   PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotsSchema } from '../../../../core/workflow/type/io';
 import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import {
   createPaginationSchema,
   PaginationPageSizeLimit,
   PaginationResponseSchema
 } from '../../../api';
-import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
+import { migrateWorkflowToCurrent } from '../../../../common/workflow/migration';
 import z from 'zod';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -205,14 +206,18 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
     const workflow = migrateWorkflowToCurrent({
       nodes: body.modules,
       edges: body.edges,
-      chatConfig: body.chatConfig
+      chatConfig: body.chatConfig,
+      referenceSnapshots: body.referenceSnapshots
     });
 
     const migratedBody: Record<string, unknown> = {
       ...body,
       nodes: workflow.nodes,
       edges: workflow.edges,
-      chatConfig: workflow.chatConfig
+      chatConfig: workflow.chatConfig,
+      ...(body.referenceSnapshots !== undefined
+        ? { referenceSnapshots: workflow.referenceSnapshots }
+        : {})
     };
     delete migratedBody.modules;
     return migratedBody;
@@ -269,92 +274,94 @@ const CreateAppNodeSchema = z.union([CreateAppPersistedNodeSchema, CreateAppRunt
 
 const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema);
 
-export const CreateAppBodySchema = z
-  .object({
-    parentId: ParentIdSchema.optional().meta({
-      example: '68ad85a7463006c963799a05',
-      description: '父级应用/文件夹 ID'
-    }),
-    inheritPermission: InheritPermissionSchema,
-    name: z.string().min(1).meta({
-      example: '新应用',
-      description: '应用名称'
-    }),
-    avatar: z.string().nullish().meta({
-      example: 'https://example.com/avatar.png',
-      description: '应用头像'
-    }),
-    intro: z.string().nullish().meta({
-      example: '应用介绍',
-      description: '应用介绍'
-    }),
-    type: z.enum(AppTypeEnum).meta({
-      example: AppTypeEnum.workflow,
-      description: '应用类型'
-    }),
-    nodes: z.array(CreateAppNodeSchema).optional().meta({
-      example: [],
-      description:
-        '应用节点配置。普通工作流仅传工具摘要；MCP/HTTP 工具集 App 的首个根节点可按 App 类型传入对应完整配置'
-    }),
-    // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
-    modules: z.never().optional().meta({
-      description: '已废弃：旧版节点配置，建议使用 nodes',
-      deprecated: true
-    }),
-    edges: CreateAppEdgesSchema.optional().meta({
-      example: [],
-      description: '应用连线'
-    }),
-    chatConfig: AppChatConfigInputSchema.strict().optional().meta({
-      description: '聊天配置'
-    }),
-    templateId: z.string().optional().meta({
-      example: 'template-123',
-      description: '模板 ID'
-    }),
-    utmParams: ShortUrlSchema.optional().meta({
-      description: 'UTM 参数'
-    })
+export const CreateAppBodyBaseSchema = z.object({
+  parentId: ParentIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '父级应用/文件夹 ID'
+  }),
+  inheritPermission: InheritPermissionSchema,
+  name: z.string().min(1).meta({
+    example: '新应用',
+    description: '应用名称'
+  }),
+  avatar: z.string().nullish().meta({
+    example: 'https://example.com/avatar.png',
+    description: '应用头像'
+  }),
+  intro: z.string().nullish().meta({
+    example: '应用介绍',
+    description: '应用介绍'
+  }),
+  type: z.enum(AppTypeEnum).meta({
+    example: AppTypeEnum.workflow,
+    description: '应用类型'
+  }),
+  nodes: z.array(CreateAppNodeSchema).optional().meta({
+    example: [],
+    description:
+      '应用节点配置。普通工作流仅传工具摘要；MCP/HTTP 工具集 App 的首个根节点可按 App 类型传入对应完整配置'
+  }),
+  // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
+  modules: z.never().optional().meta({
+    description: '已废弃：旧版节点配置，建议使用 nodes',
+    deprecated: true
+  }),
+  edges: CreateAppEdgesSchema.optional().meta({
+    example: [],
+    description: '应用连线'
+  }),
+  chatConfig: AppChatConfigInputSchema.strict().optional().meta({
+    description: '聊天配置'
+  }),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    description: '已删除引用来源的历史展示元数据'
+  }),
+  templateId: z.string().optional().meta({
+    example: 'template-123',
+    description: '模板 ID'
+  }),
+  utmParams: ShortUrlSchema.optional().meta({
+    description: 'UTM 参数'
   })
-  .superRefine(({ type, nodes }, ctx) => {
-    // 只有匹配类型的工具集 App 根节点保留完整 Schema；工作流节点继续使用持久化摘要。
-    nodes?.forEach((node, index) => {
-      if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
+});
 
-      const isMcpToolSetRoot =
-        type === AppTypeEnum.mcpToolSet &&
-        index === 0 &&
-        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
-        !node.pluginId &&
-        node.toolConfig?.httpToolSet === undefined &&
-        McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).success;
-      const isHttpToolSetRoot =
-        type === AppTypeEnum.httpToolSet &&
-        index === 0 &&
-        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
-        !node.pluginId &&
-        node.toolConfig?.mcpToolSet === undefined &&
-        HttpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.httpToolSet).success;
+export const CreateAppBodySchema = CreateAppBodyBaseSchema.superRefine(({ type, nodes }, ctx) => {
+  // 只有匹配类型的工具集 App 根节点保留完整 Schema；工作流节点继续使用持久化摘要。
+  nodes?.forEach((node, index) => {
+    if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
 
-      if (!isMcpToolSetRoot && !isHttpToolSetRoot) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['nodes', index],
-          message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
-        });
-      }
-    });
-  })
-  .meta({
-    example: {
-      name: '新应用',
-      type: AppTypeEnum.simple,
-      nodes: [],
-      edges: [],
-      parentId: '68ad85a7463006c963799a05'
+    const isMcpToolSetRoot =
+      type === AppTypeEnum.mcpToolSet &&
+      index === 0 &&
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      node.toolConfig?.httpToolSet === undefined &&
+      McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).success;
+    const isHttpToolSetRoot =
+      type === AppTypeEnum.httpToolSet &&
+      index === 0 &&
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      node.toolConfig?.mcpToolSet === undefined &&
+      HttpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.httpToolSet).success;
+
+    if (!isMcpToolSetRoot && !isHttpToolSetRoot) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['nodes', index],
+        message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
+      });
     }
   });
+}).meta({
+  example: {
+    name: '新应用',
+    type: AppTypeEnum.simple,
+    nodes: [],
+    edges: [],
+    parentId: '68ad85a7463006c963799a05'
+  }
+});
 
 export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
@@ -563,6 +570,9 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   chatConfig: OpenAPIAppChatConfigSchema.default({}).meta({
     description: '应用对话运行配置'
   }),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.default([]).meta({
+    description: '已删除引用来源的历史展示元数据'
+  }),
   scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.optional().meta({
     description: '应用级定时触发配置；发布后由定时任务使用'
   }),
@@ -625,7 +635,9 @@ export const UpdateAppBodySchema = z
     nodes: z.never().optional(),
     modules: z.never().optional(),
     edges: z.never().optional(),
-    chatConfig: z.never().optional()
+    chatConfig: z.never().optional(),
+    // 工作流内容只能走 publish 入口，更新应用基础信息时同样拒绝写入。
+    referenceSnapshots: z.never().optional()
   })
   .meta({
     example: {
@@ -721,7 +733,7 @@ export type GetAppBasicInfoBodyType = z.infer<typeof GetAppBasicInfoBodySchema>;
 export const AppBasicInfoSchema = z.object({
   id: ObjectIdSchema.meta({ description: '应用 ID' }),
   name: z.string().meta({ description: '应用名称' }),
-  avatar: z.string().meta({ description: '应用头像' })
+  avatar: z.string().optional().meta({ description: '应用头像' })
 });
 export const GetAppBasicInfoResponseSchema = z.array(AppBasicInfoSchema).meta({
   description: '应用基础信息列表'

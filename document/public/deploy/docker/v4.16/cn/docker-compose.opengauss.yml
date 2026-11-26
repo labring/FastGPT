@@ -79,7 +79,7 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.3.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
@@ -214,7 +214,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.16.2
+    image: ghcr.dockerproxy.net/labring/fastgpt:v4.16.2
     ports:
       - 3000:3000
     networks:
@@ -249,8 +249,6 @@ services:
       DEFAULT_ROOT_PSW: *x-default-root-psw
       # 数据库最大连接数
       DB_MAX_LINK: 5
-      # 自动同步索引
-      SYNC_INDEX: true
       # 系统变量替换等同步字符串处理的最大字符数，单位 M，范围 1~100
       SYSTEM_MAX_STRING_LENGTH_M: 100
       # 文件阅读时的密钥
@@ -308,7 +306,7 @@ services:
       TEXTIN_SECRET_CODE:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.16.2
+    image: ghcr.dockerproxy.net/labring/fastgpt-code-sandbox:v4.16.2
     networks:
       - codesandbox
     restart: always
@@ -362,7 +360,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.23
+    image: ghcr.dockerproxy.net/labring/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:
@@ -372,7 +370,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.2
+    image: ghcr.dockerproxy.net/labring/fastgpt-plugin:v1.1.2
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -426,7 +424,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager:v0.3.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -453,7 +451,7 @@ services:
 
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.3.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -467,7 +465,7 @@ services:
 
   # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy:v0.3.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:

@@ -1,6 +1,13 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  createTestVariableContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createContainerVariableProbe } from '../utils/containerVariableProbe';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -19,6 +26,7 @@ import {
   createWorkflowRuntimeSummary,
   summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 
 const runWorkflowMock = vi.fn();
 
@@ -29,7 +37,7 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(args)
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -44,8 +52,10 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
   };
 });
 
-import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { dispatchParallelRun as dispatchParallelRunWithoutContext } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { createTestWorkflowFileContext, runWithTestWorkflowContext } from '../context/fixtures';
+const dispatchParallelRun = createTestWorkflowDispatch(dispatchParallelRunWithoutContext);
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -69,9 +79,10 @@ const makeNode = (): RuntimeNodeItemType =>
     outputs: []
   }) as RuntimeNodeItemType;
 
+/** 允许构造带旧 childTotalPoints 的历史响应，以验证新汇总不会重复计费。 */
 const makeResponseItem = (
   nodeId: string,
-  override: Partial<ChatHistoryItemResType> = {}
+  override: Partial<ChatHistoryItemResType> & { childTotalPoints?: number } = {}
 ): ChatHistoryItemResType =>
   ({
     id: nodeId,
@@ -128,10 +139,10 @@ const makeProps = (override: Record<string, any> = {}) => {
     runtimeNodes,
     runtimeNodesMap: new Map(runtimeNodes.map((item) => [item.nodeId, item])),
     runtimeEdges: [],
-    variableState: makeVariableState(),
+    variableContext: makeVariableState(),
     usagePush: vi.fn(),
     nodeSummary: createNodeSummary(),
-    checkIsStopping: () => false,
+
     ...override
   } as any;
 };
@@ -144,7 +155,7 @@ describe('dispatchParallelRun', () => {
       warn.mockClear();
       const props = makeProps();
       props.params.loopInputArray = ['a', 'b'];
-      props.variableState.clone.mockImplementation(() => {
+      props.variableContext.clone.mockImplementation(() => {
         throw error;
       });
       try {
@@ -161,9 +172,10 @@ describe('dispatchParallelRun', () => {
   );
 
   it('does not return an old task-local exception after a successful retry', async () => {
-    const props = makeProps();
+    const nodeResponseSink = createWorkflowEntryNodeResponseSink();
+    const props = makeProps({ nodeResponseSink });
     props.params.parallelRunMaxRetryTimes = 1;
-    props.variableState.clone.mockImplementationOnce(() => {
+    props.variableContext.clone.mockImplementationOnce(() => {
       throw new Error('transient state clone failure');
     });
     runWorkflowMock.mockResolvedValueOnce(
@@ -179,11 +191,12 @@ describe('dispatchParallelRun', () => {
 
     const result = await dispatchParallelRun(props);
 
-    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(props.variableContext.clone).toHaveBeenCalledTimes(2);
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
     expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
     expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
     expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
+    expect(nodeResponseSink.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
   it.each([false, true])(
@@ -227,6 +240,20 @@ describe('dispatchParallelRun', () => {
     vi.restoreAllMocks();
   });
 
+  it('从 WorkflowContext 读取停止检查，不启动并行任务', async () => {
+    const checkIsStopping = vi.fn(() => true);
+    const fileContext = await createTestWorkflowFileContext();
+    const props = makeProps();
+
+    await runWithTestWorkflowContext({ checkIsStopping, mcpClientMemory: {}, fileContext }, () =>
+      dispatchParallelRunWithoutContext(props)
+    );
+
+    expect(checkIsStopping).toHaveBeenCalled();
+    expect(runWorkflowMock).not.toHaveBeenCalled();
+    expect(props).not.toHaveProperty('checkIsStopping');
+  });
+
   it('共用 nodeResponseSink 时发布任务包装节点，父响应只保留轻量统计', async () => {
     const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
@@ -259,13 +286,17 @@ describe('dispatchParallelRun', () => {
       'parallel-parent-response_task_0'
     );
     expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('parallel-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.parentId).toBe(
+      'parallel-parent-response'
+    );
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0',
       childResponseCount: 2,
       childrenResponses: undefined
     });
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
+    expect(
+      Reflect.get(nodeResponseSink.publish.mock.calls[0][0][0].response, 'childTotalPoints')
+    ).toBeUndefined();
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.totalPoints).toBeUndefined();
     expect(nodeResponse.totalPoints).toBeUndefined();
     expect(props.nodeSummary.totalPoints).toBe(3);
@@ -401,7 +432,7 @@ describe('dispatchParallelRun', () => {
     parentVariableState.clone = vi.fn(() => taskVariableState);
     parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
     runWorkflowMock.mockImplementation(async (args: any) => {
-      await args.variableState.set('count', 2);
+      await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
       return makeDispatchFlowResponse({
         nodeResponses: [
           makeResponseItem('nestedEnd', {
@@ -414,7 +445,7 @@ describe('dispatchParallelRun', () => {
 
     await dispatchParallelRun(
       makeProps({
-        variableState: parentVariableState
+        variableContext: parentVariableState
       })
     );
 
@@ -432,9 +463,9 @@ describe('dispatchParallelRun', () => {
       .mockReturnValueOnce(task1VariableState);
     runWorkflowMock.mockImplementation(async (args: any) => {
       if (args.nodeResponseParentId.endsWith('_task_0')) {
-        await args.variableState.set('first', 1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('first', 1);
       } else {
-        await args.variableState.set('second', 2);
+        await getCapturedTestWorkflowContext(args).variableContext.set('second', 2);
       }
 
       return makeDispatchFlowResponse({
@@ -455,7 +486,7 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 2,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 0
         },
-        variableState: parentVariableState
+        variableContext: parentVariableState
       })
     );
 
@@ -584,18 +615,12 @@ describe('dispatchParallelRun', () => {
   });
 
   it('失败 attempt 不提交全局变量更新，重试成功后只提交成功 attempt 的更新', async () => {
-    const failedClone = makeVariableState({ count: 0 });
-    const successClone = makeVariableState({ count: 0 });
-    const parentVariableState = makeVariableState({ count: 0 });
-    const originalSet = parentVariableState.set;
-    parentVariableState.clone = vi
-      .fn()
-      .mockReturnValueOnce(failedClone)
-      .mockReturnValueOnce(successClone);
-    parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
+    const parentVariableState = createTestVariableContext({ count: 0 });
+    const commit = vi.spyOn(parentVariableState, 'set');
+    const probe = createContainerVariableProbe(parentVariableState);
     runWorkflowMock
       .mockImplementationOnce(async (args: any) => {
-        await args.variableState.set('count', 1);
+        await probe.writeCount(args, 1);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('failed-node', {
@@ -605,7 +630,7 @@ describe('dispatchParallelRun', () => {
         });
       })
       .mockImplementationOnce(async (args: any) => {
-        await args.variableState.set('count', 2);
+        await probe.writeCount(args, 2);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('nestedEnd', {
@@ -624,19 +649,21 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
         },
-        variableState: parentVariableState
+        runningAppInfo: { isChildApp: false },
+        workflowStreamResponse: probe.writer,
+        variableContext: parentVariableState
       })
     );
 
-    expect(parentVariableState.set).toHaveBeenCalledTimes(1);
-    expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+    expect(commit).toHaveBeenCalledExactlyOnceWith('count', 2);
     expect(parentVariableState.get('count')).toBe(2);
+    expect(probe.updates).toEqual([{ sent: { count: 2 }, committed: 2 }]);
   });
 
-  it('并发任务各自 fork 独立 memoryState，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
-    const parentMemoryState = (
-      await import('@fastgpt/service/core/workflow/memory/state')
-    ).WorkflowMemoryState.fromRecord({
+  it('并发任务各自 fork 独立 memoryContext，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
+    const parentMemoryContext = (
+      await import('@fastgpt/service/core/workflow/dispatch/context/memory')
+    ).WorkflowMemoryContext.fromRecord({
       'app:app_1:extract1': { memory: 'baseline' }
     });
     const seenTaskMemories: any[] = [];
@@ -644,29 +671,31 @@ describe('dispatchParallelRun', () => {
     runWorkflowMock.mockImplementation(async (args: any) => {
       // 每个并发任务都只能看到父 baseline，看不到其他并发任务的未提交写入
       seenTaskMemories.push(
-        args.memoryState.readNodeMemory({
-          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        getCapturedTestWorkflowContext(args).memoryContext.readNodeMemory({
+          runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
           nodeId: 'extract1'
         })
       );
 
       if (args.nodeResponseParentId.endsWith('_task_0_attempt_0')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'failed-attempt' },
           'app:app_1:branch0': { memory: 'failed-branch0' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
         });
       }
       if (args.nodeResponseParentId.endsWith('_task_0_attempt_1')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'task0-recovered' },
           'app:app_1:branch0': { memory: 'task0-branch' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [
             makeResponseItem('nestedEnd', {
               moduleType: FlowNodeTypeEnum.nestedEnd,
@@ -676,12 +705,13 @@ describe('dispatchParallelRun', () => {
         });
       }
       if (args.nodeResponseParentId.includes('_task_1')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'task1-ok' },
           'app:app_1:branch1': { memory: 'task1-branch' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [
             makeResponseItem('nestedEnd', {
               moduleType: FlowNodeTypeEnum.nestedEnd,
@@ -690,19 +720,20 @@ describe('dispatchParallelRun', () => {
           ]
         });
       }
-      args.memoryState.merge({
+      getCapturedTestWorkflowContext(args).memoryContext.merge({
         'app:app_1:extract1': { memory: 'task2-failed' },
         'app:app_1:branch2': { memory: 'task2-branch' }
       });
       return makeDispatchFlowResponse({
-        [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+        [DispatchNodeResponseKeyEnum.memories]:
+          getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
         nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
       });
     });
 
     const result: any = await dispatchParallelRun(
       makeProps({
-        memoryState: parentMemoryState,
+        memoryContext: parentMemoryContext,
         params: {
           loopInputArray: ['a', 'b', 'c'],
           [NodeInputKeyEnum.childrenNodeIdList]: [],

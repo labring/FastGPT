@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../utils/instanceConfig';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getDatasetImageIndexCapability,
@@ -182,10 +183,7 @@ describe('getDatasetImageTrainingMode', () => {
 
 describe('getTrainingModeByCollection', () => {
   beforeEach(() => {
-    global.feConfigs = {
-      ...global.feConfigs,
-      isPlus: true
-    };
+    setTestProLicense(true);
   });
 
   it('图片自动索引有 VLM 或原生 embedding 图片索引能力时进入 image 队列', async () => {

@@ -1,17 +1,15 @@
+import { getWorkflowContext } from '../context';
 import {
   type NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
-import {
-  getReferenceVariableValue,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { isValidReferenceValue } from '@fastgpt/global/common/workflow/reference';
@@ -68,7 +66,8 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variableState, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
+  const { params, runtimeNodesMap, runningAppInfo } = props;
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
 
   const { updateList } = params;
   const nodeIds = Array.from(runtimeNodesMap.keys());

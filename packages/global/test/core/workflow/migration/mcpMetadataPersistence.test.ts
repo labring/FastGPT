@@ -1,12 +1,13 @@
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
 import { describe, expect, it } from 'vitest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import { McpToolConfigSchema } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import {
   PublishAppBodySchema,
   PublishMcpToolSetAppBodySchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -32,10 +33,7 @@ describe('MCP metadata persistence ownership', () => {
     // 上游发布边界只允许工具本体提交完整配置，工作流必须提交摘要。
     expect(PublishAppBodySchema.safeParse(input).success).toBe(false);
     const body = PublishMcpToolSetAppBodySchema.parse(input);
-    const toolSet = migrateWorkflowToCurrent(
-      { ...body, nodes: body.nodes! },
-      { appType: AppTypeEnum.mcpToolSet }
-    );
+    const toolSet = CanonicalWorkflowDataSchema.parse({ ...body, nodes: body.nodes!, edges: [] });
     expect(toolSet.nodes[0].toolConfig?.mcpToolSet?.toolList?.[0]).toHaveProperty(
       'requestMeta',
       requestMeta
@@ -99,11 +97,8 @@ describe('MCP metadata persistence ownership', () => {
     expect(McpToolConfigSchema.parse(tool)).toHaveProperty('requestMeta', requestMeta);
   });
 
-  it('preserves metadata while normalizing the MCP toolset itself', () => {
-    const workflow = migrateWorkflowToCurrent(
-      { nodes: [snapshotNode()] },
-      { appType: AppTypeEnum.mcpToolSet }
-    );
+  it('preserves metadata in the complete tool-owned workflow schema', () => {
+    const workflow = CanonicalWorkflowDataSchema.parse({ nodes: [snapshotNode()], edges: [] });
     expect(workflow.nodes[0].toolConfig?.mcpToolSet?.toolList?.[0]).toHaveProperty(
       'requestMeta',
       requestMeta

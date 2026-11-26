@@ -34,12 +34,13 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm, { AuthValueDisplay } from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
+import { getSecretPlainValue, getSecretCipherValue } from '@fastgpt/global/common/secret/utils';
 import {
   HttpToolSetRuntimeConfigSchema,
   type HttpToolSetNodeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import { buildWorkflowCustomHeaders, type CustomHeaderItem } from './utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type HttpToolsType = {
   id?: string;
@@ -156,10 +157,12 @@ const SchemaConfigModal = ({
       return [];
     }
   });
-  const [customHeaders, setCustomHeaders] = useState<CustomHeaderItem[]>(() => {
+  // 行 ID 只用于界面身份；改名和删除其他行时保留密钥草稿，不写入请求头配置。
+  const [customHeaders, setCustomHeaders] = useState<(CustomHeaderItem & { id: string })[]>(() => {
     try {
       const keyValue = JSON.parse(watchedCustomHeaders || '{}');
       return Object.keys(keyValue).map((key) => ({
+        id: getNanoid(),
         key,
         value: String(keyValue[key] ?? ''),
         secretKey: key
@@ -169,7 +172,6 @@ const SchemaConfigModal = ({
       return [];
     }
   });
-  const [editingHeaderIndex, setEditingHeaderIndex] = useState<number>();
   const headerSecret = watch('headerSecret') ?? {};
   const apiSchemaStr = watch('apiSchemaStr');
   const requestHeaderKeys = new Set(initialRequestHeaderKeys);
@@ -495,16 +497,9 @@ const SchemaConfigModal = ({
               <Tbody>
                 {customHeaders?.map((item, index) => {
                   const storedValue = headerSecret[item.secretKey ?? item.key];
-                  const hasValue = item.edited
-                    ? Boolean(item.value)
-                    : Boolean(
-                        isSecretValueConfigured(storedValue) ||
-                        getSecretPlainValue(storedValue) ||
-                        item.value
-                      );
 
                   return (
-                    <Tr key={`${index}`}>
+                    <Tr key={item.id}>
                       <Td p={0} w={'150px'}>
                         <HttpInput
                           placeholder={t('common:core.module.http.Props name')}
@@ -525,10 +520,12 @@ const SchemaConfigModal = ({
                         <Box display={'flex'} alignItems={'center'}>
                           {isWorkflowNodeConfig ? (
                             <AuthValueDisplay
-                              showInput={editingHeaderIndex === index || !hasValue}
-                              index={index}
-                              onEdit={setEditingHeaderIndex}
-                              value={item.edited ? item.value : ''}
+                              isConfigured={!item.edited && !!getSecretCipherValue(storedValue)}
+                              value={
+                                item.edited
+                                  ? item.value
+                                  : (getSecretPlainValue(storedValue) ?? item.value)
+                              }
                               onChange={(value) =>
                                 setCustomHeaders((prev) => {
                                   const newHeaders = prev.map((h, i) =>
@@ -587,7 +584,7 @@ const SchemaConfigModal = ({
                       onBlur={(val) => {
                         if (!val) return;
                         setCustomHeaders((prev) => {
-                          const newHeaders = [...prev, { key: val, value: '' }];
+                          const newHeaders = [...prev, { id: getNanoid(), key: val, value: '' }];
                           setValue('customHeaders', stringifyCustomHeaders(newHeaders));
                           return newHeaders;
                         });

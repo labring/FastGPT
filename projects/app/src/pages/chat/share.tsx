@@ -261,22 +261,25 @@ const OutLink = (props: Props & BrandingPageProps) => {
         abortCtrl: controller
       });
 
-      // new chat
-      if (completionChatId !== chatId) {
-        onChangeChatId(completionChatId, true);
-      }
+      // 离开中断本地订阅时不回写旧 chatId，也不通知宿主已完成。
+      if (!controller.signal.aborted) {
+        // new chat
+        if (completionChatId !== chatId) {
+          onChangeChatId(completionChatId, true);
+        }
 
-      // hook message
-      window.top?.postMessage(
-        {
-          type: 'shareChatFinish',
-          data: {
-            question: histories[0]?.content,
-            answer: responseText
-          }
-        },
-        '*'
-      );
+        // hook message
+        window.top?.postMessage(
+          {
+            type: 'shareChatFinish',
+            data: {
+              question: histories[0]?.content,
+              answer: responseText
+            }
+          },
+          '*'
+        );
+      }
 
       return { responseText, isNewChat: forbidLoadChatRef.current };
     },
@@ -493,6 +496,7 @@ const OutLink = (props: Props & BrandingPageProps) => {
                   {isPlugin ? (
                     <CustomPluginRunBox
                       complianceTipPlacement={complianceTipPlacement}
+                      isReady={!loading}
                       appId={appId}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
@@ -501,6 +505,8 @@ const OutLink = (props: Props & BrandingPageProps) => {
                         onChangeChatId(getNanoid());
                       }}
                       onStartChat={startChat}
+                      onMarkChatRead={postMarkChatRead}
+                      onChatGenerateStatusChange={onChatGenerateStatusChange}
                     />
                   ) : (
                     <ChatBox

@@ -104,7 +104,7 @@ export async function handler(req: NextApiRequest): Promise<InitOutLinkChatRespo
     app: {
       chatConfig: appChatConfig,
       name: app.name,
-      avatar: app.avatar ?? '',
+      avatar: app.avatar ?? undefined,
       intro: app.intro ?? '',
       type: app.type,
       pluginInputs

@@ -77,8 +77,90 @@ export const ConfirmUploadPkgPluginBodySchema = z.object({
 });
 export type ConfirmUploadPkgPluginBodyType = z.infer<typeof ConfirmUploadPkgPluginBodySchema>;
 
-// Install plugin from url
+/* ============================================================================
+ * API: 从 URL 安装系统插件
+ * Route: POST /api/core/plugin/admin/installWithUrl
+ * Method: POST
+ * Description: 从下载 URL 安装或更新系统插件，全量失败时抛出业务异常，部分成功时返回失败明细
+ * Tags: ['插件管理', 'Write']
+ * ============================================================================ */
+
 export const InstallPluginFromUrlBodySchema = z.object({
-  downloadUrls: z.array(z.string())
+  downloadUrls: z.array(z.string()).meta({
+    example: ['https://marketplace.fastgpt.io/plugin/weather.pkg'],
+    description: '待安装的插件包下载 URL 列表'
+  })
 });
 export type InstallPluginFromUrlBodyType = z.infer<typeof InstallPluginFromUrlBodySchema>;
+
+export const InstallPluginFromUrlFailureSchema = z
+  .object({
+    url: z.string().meta({
+      example: 'https://marketplace.fastgpt.io/plugin/search.pkg',
+      description: '安装失败的插件包下载 URL'
+    }),
+    reason: I18nStringSchema.meta({
+      example: { en: 'Download failed', 'zh-CN': '下载失败' },
+      description: '安装失败的多语言原因说明'
+    })
+  })
+  .meta({
+    description: '单个插件包安装失败明细'
+  });
+
+export const InstallPluginFromUrlInstalledItemSchema = z
+  .object({
+    pluginId: z.string().meta({
+      example: 'systemTool-weather',
+      description: '成功安装的插件 ID'
+    }),
+    version: z.string().optional().meta({
+      example: '1.0.0',
+      description: '成功安装的插件版本'
+    }),
+    etag: z.string().optional().meta({
+      example: 'sha256:abc123',
+      description: '成功安装的插件包内容标识'
+    })
+  })
+  .meta({
+    description: '单个插件包安装成功标识'
+  });
+
+export const InstallPluginFromUrlResponseSchema = z
+  .object({
+    installed: z
+      .array(InstallPluginFromUrlInstalledItemSchema)
+      .optional()
+      .meta({
+        example: [{ pluginId: 'systemTool-weather', version: '1.0.0', etag: 'sha256:abc123' }],
+        description:
+          '本次成功安装的插件列表；空数组表示全量未成功，缺省时按兼容旧版插件服务处理（仅当 failed 少于请求数时视为部分成功）'
+      }),
+    failed: z
+      .array(InstallPluginFromUrlFailureSchema)
+      .optional()
+      .meta({
+        example: [
+          {
+            url: 'https://marketplace.fastgpt.io/plugin/search.pkg',
+            reason: { en: 'Download failed', 'zh-CN': '下载失败' }
+          }
+        ],
+        description: '批量安装中部分失败的插件明细列表；全量失败时接口直接抛出 HTTP 500 业务异常'
+      })
+  })
+  .meta({
+    example: {
+      installed: [{ pluginId: 'systemTool-weather', version: '1.0.0', etag: 'sha256:abc123' }],
+      failed: [
+        {
+          url: 'https://marketplace.fastgpt.io/plugin/search.pkg',
+          reason: { en: 'Download failed', 'zh-CN': '下载失败' }
+        }
+      ]
+    },
+    description:
+      '从 URL 安装插件结果（全量成功时 failed 为空或省略，部分成功时返回成功项与 failed 明细）'
+  });
+export type InstallPluginFromUrlResponseType = z.infer<typeof InstallPluginFromUrlResponseSchema>;

@@ -1,5 +1,5 @@
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
-import type { ClientSession } from '../../../common/mongo';
+import type { ClientSession, MongoDeleteResult } from '../../../common/mongo';
 import { getTmpData, setTmpData } from '../../tmpData/controller';
 import { MongoTmpData } from '../../tmpData/schema';
 
@@ -17,11 +17,13 @@ export const clearMemberModelsCache = ({
 }: {
   teamId: string;
   session?: ClientSession;
-}) =>
+}): Promise<MongoDeleteResult> =>
   MongoTmpData.deleteMany({ dataId: { $regex: getMemberModelsCachePrefix(teamId) } }, { session });
 
 /** 删除全部成员的模型使用权缓存，仅用于批量迁移权限数据。 */
-export const clearAllMemberModelsCache = ({ session }: { session?: ClientSession } = {}) =>
+export const clearAllMemberModelsCache = ({
+  session
+}: { session?: ClientSession } = {}): Promise<MongoDeleteResult> =>
   MongoTmpData.deleteMany({ dataId: { $regex: getMemberModelsCachePrefix() } }, { session });
 
 /** 读取与当前模型目录和管理身份匹配的完整成员 active 模型使用权缓存。 */

@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { InvalidStorageObjectKeyError } from '../../../src/errors';
 import {
@@ -119,6 +119,13 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         const download = await context.storage.downloadObject({ key });
         expect(download).toMatchObject({ bucket: context.bucket, key });
         await expect(readBody(download.body)).resolves.toEqual(content);
+
+        const partial = await context.storage.downloadObject({
+          key,
+          range: { start: 4, end: 10 }
+        });
+        expect(partial).toMatchObject({ bucket: context.bucket, key });
+        await expect(readBody(partial.body)).resolves.toEqual(content.subarray(4, 11));
 
         const signedGet = await context.storage.generatePresignedGetUrl({ key });
         const signedGetResponse = await fetch(signedGet.url);
@@ -540,6 +547,46 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         controller.abort(new Error('integration test aborted'));
         await closePromise;
         expect(body.destroyed).toBe(true);
+      });
+
+      it('uploads a Buffer with an active abortSignal without explicit contentLength', async () => {
+        const key = `${context.rootPrefix}abort/upload-buffer.txt`;
+        const controller = new AbortController();
+
+        await context.storage.uploadObject({
+          key,
+          body: Buffer.from('abort-signal-buffer'),
+          contentType: 'text/plain',
+          abortSignal: controller.signal
+        });
+
+        const { body } = await context.storage.downloadObject({ key });
+        await expect(readBody(body)).resolves.toEqual(Buffer.from('abort-signal-buffer'));
+      });
+
+      it('aborts an in-flight stream upload and settles with the caller reason', async () => {
+        const key = `${context.rootPrefix}abort/upload-in-flight.bin`;
+        const controller = new AbortController();
+        const abortReason = new Error('integration upload aborted');
+        const stream = new PassThrough();
+
+        const uploadPromise = context.storage.uploadObject({
+          key,
+          body: stream,
+          contentLength: 1024 * 1024,
+          contentType: 'application/octet-stream',
+          abortSignal: controller.signal
+        });
+
+        stream.write(Buffer.alloc(16 * 1024, 0x62));
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        controller.abort(abortReason);
+
+        await expect(uploadPromise).rejects.toBe(abortReason);
+        expect(stream.destroyed).toBe(true);
+        await expect(context.storage.checkObjectExists({ key })).resolves.toMatchObject({
+          exists: false
+        });
       });
 
       it('deletes a single object idempotently', async () => {

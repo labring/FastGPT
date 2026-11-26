@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -23,7 +23,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
-import { getWorkflowContext } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
@@ -32,9 +32,9 @@ import {
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../resource/service';
 import {
   getToolNameCandidates,
-  getToolRawId,
   isDebugToolSource,
-  isTeamPluginSource
+  isTeamPluginSource,
+  parseToolsetToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
@@ -46,6 +46,10 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../plugin/teamPluginPolicy';
+import {
+  createPluginToolResponse,
+  projectPluginModelContent
+} from '../ai/agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -75,10 +79,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     params,
     runningUserInfo,
     runningAppInfo,
-    variableState,
-    workflowStreamResponse,
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
@@ -292,12 +295,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }).generateToken()
         : undefined;
 
-      const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
-      const childId = toolConfig.systemTool.toolId.split('/')[1];
+      const { parentId: pluginId, toolName: childId } = parseToolsetToolId(
+        toolConfig.systemTool.toolId
+      );
       let answerText = '';
 
       const res = await pluginClient.runToolStream({
-        pluginId: formatToolId,
+        pluginId,
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
         input: toolInput,
@@ -384,16 +388,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         msg: String(res.error || '')
       });
 
+      const projected = projectPluginModelContent({
+        result,
+        outputSchema: toolDetail.outputSchema,
+        onInvalidField: (field, reason) =>
+          logger.warn('Invalid plugin model content field', { field, reason })
+      });
       return {
-        data: result,
+        data: projected.workflowResult as Record<string, any>,
         [DispatchNodeResponseKeyEnum.answerText]: answerText,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolInput,
-          toolRes: result,
+          toolRes: projected.workflowResult,
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: getWorkflowContext().runtimeControl.isToolCall
+          ? createPluginToolResponse({
+              result: projected.responseResult,
+              content: projected.content
+            })
+          : projected.workflowResult
       };
     } else if (toolConfig?.mcpTool) {
       const mcpTool = toolConfig.mcpTool;

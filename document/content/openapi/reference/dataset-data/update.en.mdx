@@ -1,0 +1,73 @@
+---
+title: 'Update Dataset Data Item'
+seoTitle: 'Update Dataset Data Item - PUT /api/core/dataset/data/update | FastGPT OpenAPI'
+description: 'Update the question, answer, and custom vector indexes of a dataset data item, automatically triggering re-embedding.'
+---
+
+## Endpoint Overview
+
+- **Method** : `PUT`
+- **Path** : `/api/core/dataset/data/update`
+- **Module** : Datasets / Dataset Data
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/PUT/core/dataset/data/update) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/PUT/core/dataset/data/update` )
+
+## Description & Notes
+
+Update `q` , `a` , and custom vector indexes for a dataset data item, triggering re-embedding.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field              | Type            | Required | Default    | Constraints & Description                                                                                                                                                         |
+| ------------------ | --------------- | -------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dataId`           | `string`        | Yes      | -          | Data item ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                        |
+| `q`                | `string`        | Yes      | -          | Primary chunk content / question                                                                                                                                                  |
+| `a`                | `string`        | No       | -          | Supplementary answer / text                                                                                                                                                       |
+| `indexes`          | `object[]`      | No       | -          | Vector index list                                                                                                                                                                 |
+| `indexes[].type`   | `string` (enum) | No       | `"custom"` | Index type (external callers omit or use `custom` ; other types are system-generated). Allowed values: `default` , `imageEmbedding` , `summary` , `question` , `image` , `custom` |
+| `indexes[].text`   | `string`        | Yes      | -          | Indexed text content by default; for `imageEmbedding` , the image `objectKey` or URL                                                                                              |
+| `indexes[].dataId` | `string`        | No       | -          | Optional vector store ID used to reuse matching indexes without re-embedding                                                                                                      |
+| `imageId`          | `string`        | No       | -          | Image ID                                                                                                                                                                          |
+| `indexPrefix`      | `string`        | No       | -          | Prefix title for indexes                                                                                                                                                          |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X PUT "https://cloud.fastgpt.io/api/core/dataset/data/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "dataId": "68ad85a7463006c963799a05",
+  "q": "What is FastGPT?"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "dataId": "68ad85a7463006c963799a05",
+  "q": "What is FastGPT?"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Updated successfully
+
+**Content-Type** : `application/json`
+
+| Field | Type     | Required | Default | Constraints & Description                                             |
+| ----- | -------- | -------- | ------- | --------------------------------------------------------------------- |
+| `q`   | `string` | No       | -       | Display primary question/text with internal S3 image links signed     |
+| `a`   | `string` | No       | -       | Display supplementary answer/text with internal S3 image links signed |

@@ -7,6 +7,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { describe, expect, it } from 'vitest';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 describe('parsePromptToolCall function tests', () => {
   describe('Basic scenarios', () => {
@@ -611,34 +612,33 @@ describe('promptToolCallMessageRewrite function tests', () => {
       expect(result[2].content).toBeNull();
     });
 
-    it('should handle assistant message with multiple tool calls (only first one used)', () => {
+    it('pairs parallel prompt calls with their results by ID in call order', () => {
+      const first = { name: 'tool1', arguments: '{}' };
+      const second = { name: 'tool2', arguments: '{}' };
       const messages: ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' },
         {
           role: 'assistant',
-          content: null,
+          reasoning_content: 'Planning both calls.',
           tool_calls: [
-            {
-              id: 'call_1',
-              type: 'function',
-              function: { name: 'tool1', arguments: '{"param": "value1"}' }
-            },
-            {
-              id: 'call_2',
-              type: 'function',
-              function: { name: 'tool2', arguments: '{"param": "value2"}' }
-            }
+            { id: 'call_1', type: 'function', function: first },
+            { id: 'call_2', type: 'function', function: second }
           ]
-        }
+        },
+        { role: 'tool', tool_call_id: 'call_2', content: 'Result 2' },
+        { role: 'tool', tool_call_id: 'call_1', content: 'Result 1' }
       ];
-      const tools: ChatCompletionTool[] = [];
 
-      const result = promptToolCallMessageRewrite(messages, tools);
-
-      expect(result[2].content).toBe(
-        '1: {"name":"tool1","arguments":"{\\"param\\": \\"value1\\"}"}'
-      );
-      expect(result[2]).not.toHaveProperty('tool_calls');
+      expect(promptToolCallMessageRewrite(messages, []).slice(2)).toEqual([
+        {
+          role: 'assistant',
+          content: `1: ${JSON.stringify(first)}`,
+          reasoning_content: 'Planning both calls.'
+        },
+        { role: 'user', content: '<ToolResponse>\nResult 1\n</ToolResponse>' },
+        { role: 'assistant', content: `1: ${JSON.stringify(second)}`, reasoning_content: '' },
+        { role: 'user', content: '<ToolResponse>\nResult 2\n</ToolResponse>' }
+      ]);
     });
   });
 
@@ -701,6 +701,91 @@ describe('promptToolCallMessageRewrite function tests', () => {
       expect(result[2].role).toBe('user');
       expect(result[2].content).toBe(
         '<ToolResponse>\n{"result":"success","data":[1,2,3]}\n</ToolResponse>'
+      );
+    });
+
+    it('should handle tool message with null content without throwing', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        { role: 'tool', tool_call_id: 'call_123', content: null as unknown as string }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].role).toBe('user');
+      expect(result[2].content).toBe('<ToolResponse>\n\n</ToolResponse>');
+    });
+
+    it('should preserve image-only tool content as placeholder text', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        {
+          role: 'tool',
+          tool_call_id: 'call_123',
+          content: [{ type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }]
+        }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].role).toBe('user');
+      expect(result[2].content).toBe(
+        '<ToolResponse>\n[Image: https://files.example.com/plot.png]\n</ToolResponse>'
+      );
+    });
+
+    it('should mask sandbox preview urls in tool image placeholders', () => {
+      const proxy = getTestInstanceConfig().subservice.agentSandbox.proxy;
+      const original = proxy.previewUrl;
+      proxy.previewUrl = 'https://sandbox-preview.example.com';
+      try {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Test' },
+          {
+            role: 'tool',
+            tool_call_id: 'call_123',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+                }
+              }
+            ]
+          }
+        ];
+        const tools: ChatCompletionTool[] = [];
+
+        const result = promptToolCallMessageRewrite(messages, tools);
+
+        expect(result[2].content).toBe(
+          '<ToolResponse>\n[Image: sandbox preview file]\n</ToolResponse>'
+        );
+      } finally {
+        proxy.previewUrl = original;
+      }
+    });
+
+    it('should join text and image parts in tool content', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        {
+          role: 'tool',
+          tool_call_id: 'call_123',
+          content: [
+            { type: 'text', text: 'Generated plot:' },
+            { type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }
+          ]
+        }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].content).toBe(
+        '<ToolResponse>\nGenerated plot:\n[Image: https://files.example.com/plot.png]\n</ToolResponse>'
       );
     });
   });

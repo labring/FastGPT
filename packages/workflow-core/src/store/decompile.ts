@@ -19,7 +19,8 @@ export const decompileStoreWorkflow = ({
   const documentWithoutEdges = createWorkflowDocument({
     app,
     nodes: decodeWorkflowNodeReferences(parsedWorkflow.nodes),
-    chatConfig: parsedWorkflow.chatConfig ?? {}
+    chatConfig: parsedWorkflow.chatConfig ?? {},
+    referenceSnapshots: parsedWorkflow.referenceSnapshots
   });
 
   return {

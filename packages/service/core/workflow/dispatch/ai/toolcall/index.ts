@@ -7,14 +7,14 @@ import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
 import {
-  runAgentSandboxEntrypoint,
-  withAgentSandboxInitLease
-} from '../../../../ai/sandbox/application/runtime/entrypoint';
+  buildSandboxInputFileScopeKey,
+  getSandboxInputFileNameAllocation
+} from '../../../../ai/sandbox/utils';
+import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
+import { withAgentSandboxLease } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
-import { readWorkflowFileBuffer, getWorkflowSandboxContext } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import {
   getAgentLoopHistories,
@@ -22,12 +22,10 @@ import {
   removeUnfinishedInteractiveHistories
 } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
-import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
 import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
-import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
@@ -54,7 +52,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     lastInteractive,
     runningAppInfo,
     runningUserInfo,
-    externalProvider,
     responseChatItemId,
     params: {
       modelId,
@@ -88,13 +85,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         teamId: sandboxContext.teamId
       })
     : undefined;
-  if (!isAppChat && useAgentSandbox) {
-    await assertSandboxAvailable(sandboxContext.teamId);
-  }
-
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
+    if (!isAppChat && useAgentSandbox) {
+      await assertSandboxAvailable(sandboxContext.teamId);
+    }
     const toolModel = await loadWorkflowModelResource({
       appTeamId: runningAppInfo.teamId,
       userInfo: runningUserInfo,
@@ -158,43 +154,45 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     // 初始化沙盒
+    const workflowSandboxContext = getWorkflowContext().sandboxContext;
+    const inputFileAllocation = workflowSandboxContext
+      ? getSandboxInputFileNameAllocation({
+          scopeKey: buildSandboxInputFileScopeKey(workflowSandboxContext),
+          contextOwner: workflowSandboxContext
+        })
+      : undefined;
     const sandboxClient = useSandbox
       ? await ensureWorkflowSandboxReadyForUse({
-          workflowStreamResponse: props.workflowStreamResponse,
           sourceType: sandboxSourceType,
           sourceId: sandboxSourceId,
           userId: sandboxContext.userId,
           chatId: sandboxContext.chatId,
           teamId: sandboxContext.teamId,
-          prepareRuntime: () =>
-            withAgentSandboxInitLease({
+          prepareRuntime: ({ onUpgrade, onUpgradeComplete }) =>
+            withAgentSandboxLease({
               sandboxId: getRunningSandboxId({
                 sourceType: sandboxSourceType,
                 sourceId: sandboxSourceId,
                 userId: sandboxContext.userId
               }),
-              fn: async () => {
-                const runtime = await prepareSandboxToolRuntime({
+              fn: async (lease) => {
+                lease?.assertValid();
+                return await prepareSandboxToolRuntime({
                   sourceType: sandboxSourceType,
                   sourceId: sandboxSourceId,
                   userId: sandboxContext.userId,
                   chatId: sandboxContext.chatId,
-                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  readInputFile: (url) => getWorkflowContext().fileContext.readBuffer({ url }),
                   files: currentInputFiles.map((file) => ({
                     path: file.sandboxPath!,
                     url: file.url
-                  }))
+                  })),
+                  allocation: inputFileAllocation,
+                  sandboxEntrypoint,
+                  sandboxEntrypointScope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
+                  onUpgrade,
+                  onUpgradeComplete
                 });
-                const effectiveEntrypoint = sandboxEntrypoint?.trim();
-                if (effectiveEntrypoint) {
-                  await runAgentSandboxEntrypoint({
-                    sandbox: runtime.provider,
-                    sandboxEntrypoint: effectiveEntrypoint,
-                    scope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
-                    workDirectory: getSandboxRuntimeProfile().workDirectory
-                  });
-                }
-                return runtime;
               }
             })
         })
@@ -203,7 +201,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
     }
 
-    const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
+    const toolCallMemoryContext = getWorkflowContext().memoryContext.fork(`node:${nodeId}`, {
       history,
       histories: chatHistories,
       hasInteractiveResume: !!lastInteractive
@@ -211,7 +209,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      toolDispatchFlowResponses, // 工具子流程运行详情
+      toolRunTimes: runTimes,
       toolCallInputTokens,
       toolCallOutputTokens,
       toolCallTotalPoints,
@@ -221,27 +219,28 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       error,
       requestIds,
       firstTokenTime
-    } = await runToolCall({
-      ...props,
-      memoryState: toolCallMemoryState,
-      currentInputFiles,
-      sandboxClient,
-      runtimeNodes,
-      runtimeEdges,
-      toolNodes,
-      toolModel,
-      messages: adaptMessages,
-      childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
-        lastInteractive
-      })
-    });
-    const toolMemories = toolCallMemoryState.getDelta();
+    } = await (async () => {
+      const toolContext = getWorkflowContext().getChildContext({
+        memoryContext: toolCallMemoryContext
+      });
+      return runWithContext(toolContext, () =>
+        runToolCall({
+          ...props,
+          currentInputFiles,
+          sandboxClient,
+          runtimeNodes,
+          runtimeEdges,
+          toolNodes,
+          toolModel,
+          messages: adaptMessages,
+          childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+            lastInteractive
+          })
+        })
+      );
+    })();
+    const toolMemories = toolCallMemoryContext.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
-    const { runTimes, toolDetail } =
-      summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
-    // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
-    // 只在无 sink 的调试/单测路径把兼容详情挂回顶层 response。
-    const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
@@ -252,7 +251,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       query: userChatInput,
       completeMessages,
       useVision,
-      toolDetail: toolDetailForResponse,
       finishReason: finish_reason || 'stop',
       requestIds,
       firstTokenTime

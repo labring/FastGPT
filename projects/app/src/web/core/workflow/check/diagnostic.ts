@@ -6,12 +6,13 @@ import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnosti
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { workflowSystemModelSlots } from '@fastgpt/global/core/workflow/model/constants';
+import { getWorkflowInputNameParams } from '@fastgpt/global/common/workflow/editor/utils';
 import type { FlowNodeItemType, WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 import type { TFunction } from 'next-i18next';
 import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowRuleIssue } from '../type';
-import { formatWorkflowRuleIssue } from './message';
+import { formatWorkflowRuleIssue, getWorkflowInputName, translateDynamicKey } from './message';
 
 const legacyIssueCodes: Partial<Record<WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum>> = {
   [WorkflowDiagnosticCodeEnum.requiredInputMissing]: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
@@ -35,7 +36,6 @@ const legacyIssueCodes: Partial<Record<WorkflowDiagnosticCodeEnum, WorkflowCheck
   [WorkflowDiagnosticCodeEnum.referenceOutputNotFound]: WorkflowCheckIssueCodeEnum.invalidReference,
   [WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]:
     WorkflowCheckIssueCodeEnum.invalidReference,
-  [WorkflowDiagnosticCodeEnum.referenceTypeMismatch]: WorkflowCheckIssueCodeEnum.invalidReference,
   [WorkflowDiagnosticCodeEnum.modelRequired]: WorkflowCheckIssueCodeEnum.modelRequired,
   [WorkflowDiagnosticCodeEnum.modelUnavailable]: WorkflowCheckIssueCodeEnum.modelUnavailable
 };
@@ -182,7 +182,7 @@ export const formatWorkflowDiagnostic = ({
     ) {
       // 表单内的动态选项错误应显示具体字段，不能被外层“表单配置”标签覆盖。
       issue.input = undefined;
-      issue.fallbackLabel = params.fieldLabel;
+      issue.params = { inputName: params.fieldLabel };
     }
     if (
       node?.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
@@ -200,10 +200,13 @@ export const formatWorkflowDiagnostic = ({
     diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing ||
     diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateValueMissing
   ) {
-    issue.fieldLabel =
+    const field =
       diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing
         ? 'variable'
         : 'value';
+    issue.fieldLabel = field;
+    // 两条必填诊断共用 code 和 inputKey，子字段参与提示去重。
+    issue.params = { field };
   }
   if (diagnostic.code === WorkflowDiagnosticCodeEnum.codeInputIncomplete)
     issue.inputKey = undefined;
@@ -262,13 +265,11 @@ export const formatWorkflowDiagnostic = ({
           targetHandle?: string;
         }
       | undefined;
+    const inputNameParams = getWorkflowInputNameParams({ node, input });
     const values = {
       ...params,
       nodeId: diagnostic.nodeId ?? node?.nodeId,
-      inputName: (() => {
-        const label = input?.label || input?.debugLabel || diagnostic.inputKey;
-        return label && t ? t(label as ParseKeys) : label;
-      })(),
+      inputName: getWorkflowInputName(inputNameParams, t) ?? diagnostic.inputKey,
       outputKey: params.outputKey,
       source: typeof edge?.source === 'string' ? edge.source : edge?.source?.nodeId,
       target: typeof edge?.target === 'string' ? edge.target : edge?.target?.nodeId,
@@ -276,7 +277,17 @@ export const formatWorkflowDiagnostic = ({
       targetHandle: edge?.targetHandle,
       path: diagnostic.path?.join('.')
     };
-    issue.message = t ? t(messageKey, values) : messageKey;
+    if (diagnostic.code === WorkflowDiagnosticCodeEnum.referenceTypeMismatch) {
+      const { inputName, ...details } = values;
+      issue.params = Object.fromEntries(
+        Object.entries({ ...details, ...(inputNameParams ?? { inputName }) }).filter(
+          (entry): entry is [string, string] => {
+            return typeof entry[1] === 'string';
+          }
+        )
+      );
+    }
+    issue.message = t ? translateDynamicKey(t, { key: messageKey, options: values }) : messageKey;
   } else if (
     !legacyIssueCodes[diagnostic.code] &&
     diagnostic.code !== WorkflowDiagnosticCodeEnum.branchConfigurationInvalid &&

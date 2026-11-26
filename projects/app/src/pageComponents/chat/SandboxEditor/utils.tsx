@@ -1,5 +1,4 @@
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 
 /** 将服务端返回的 session 绝对目录换算为 IDE Agent 接受的 workspace 相对路径。 */
 export const getSandboxIdeSessionRoot = (workspaceRoot: string, sessionWorkDirectory: string) => {
@@ -32,13 +31,6 @@ export const scopeSandboxIdeRpcParams = (method: string, params: unknown, sessio
       to: joinSandboxIdePath(sessionRoot, String(value.to ?? ''))
     };
   }
-  if (method === 'fs/exec') {
-    const quotedRoot = shellQuote(sessionRoot);
-    return {
-      ...value,
-      command: `mkdir -p ${quotedRoot} && cd ${quotedRoot} && ${String(value.command ?? '')}`
-    };
-  }
   if (method.startsWith('fs/') && typeof value.path === 'string') {
     return {
       ...value,
@@ -49,25 +41,29 @@ export const scopeSandboxIdeRpcParams = (method: string, params: unknown, sessio
   return params;
 };
 
-export const getSafeSandboxCommandPath = (path: string) => {
-  const normalizedPath = path.replace(/^\.\//, '');
-  const segments = normalizedPath.split('/');
-  if (
-    path.startsWith('/') ||
-    segments.some((segment) => segment === '..') ||
-    normalizedPath.includes('\u0000')
-  ) {
-    throw new Error('Invalid sandbox path');
-  }
+export const isValidSandboxPathSegment = (name: string) =>
+  !!name && name !== '.' && name !== '..' && !/[\/\\\u0000]/.test(name);
 
-  return normalizedPath === '.' ? '.' : `./${normalizedPath}`;
-};
+/** 基于会话绝对根目录与工作区相对路径计算容器内绝对路径，避免额外执行命令。 */
+export const resolveSandboxAbsolutePaths = (
+  sessionWorkDirectory: string,
+  relativePaths: string[]
+): string[] => {
+  const normalizedRoot = sessionWorkDirectory.replace(/\/+$/, '') || '/';
 
-export const getSafeSandboxPathSegment = (name: string) => {
-  if (!name || name === '.' || name === '..' || /[\/\\\u0000]/.test(name)) {
-    throw new Error('Invalid sandbox path');
-  }
-  return name;
+  return relativePaths.map((path) => {
+    const cleanRelative = path.replace(/^\.\//, '');
+    if (
+      path.startsWith('/') ||
+      cleanRelative.split('/').some((segment) => segment === '..') ||
+      cleanRelative.includes('\u0000')
+    ) {
+      throw new Error('Invalid sandbox path');
+    }
+
+    if (cleanRelative === '.') return normalizedRoot;
+    return normalizedRoot === '/' ? `/${cleanRelative}` : `${normalizedRoot}/${cleanRelative}`;
+  });
 };
 
 export const getSandboxParentPath = (path: string) => {

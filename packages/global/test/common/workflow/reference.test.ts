@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   areWorkflowValueTypesCompatible,
+  getWorkflowInterpolationSourceValueTypes,
   getWorkflowReferenceSourceValueTypes,
   getSelectedInputRenderType,
   nodeInputIsReference,
@@ -8,10 +9,12 @@ import {
   isValidReferenceValue,
   isValidArrayReferenceValue,
   getHandleId,
-  getWorkflowReferenceSourceNodes
+  getWorkflowReferenceSourceNodes,
+  filterSelectableWorkflowNodeOutputs
 } from '@fastgpt/global/common/workflow/reference';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -22,6 +25,20 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+
+it('excludes a disabled error output even when the node catches errors', () => {
+  const output = {
+    id: 'error',
+    key: 'error',
+    type: FlowNodeOutputTypeEnum.error
+  };
+  expect(
+    filterSelectableWorkflowNodeOutputs({
+      outputs: [output, { ...output, id: 'disabled', invalid: true }],
+      catchError: true
+    })
+  ).toEqual([output]);
+});
 
 describe('getWorkflowReferenceSourceNodes', () => {
   it('keeps nearest sources first and ignores missing, self and cross-scope edges', () => {
@@ -309,10 +326,29 @@ describe('getWorkflowReferenceSourceValueTypes', () => {
       WorkflowIOValueTypeEnum.any
     ]);
   });
+
+  it('allows every source type for text interpolation', () => {
+    expect(getWorkflowInterpolationSourceValueTypes()).toEqual(
+      expect.arrayContaining([
+        WorkflowIOValueTypeEnum.string,
+        WorkflowIOValueTypeEnum.number,
+        WorkflowIOValueTypeEnum.boolean,
+        WorkflowIOValueTypeEnum.object,
+        WorkflowIOValueTypeEnum.arrayAny
+      ])
+    );
+  });
 });
 
 describe('areWorkflowValueTypesCompatible', () => {
   it.each([
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.string, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.boolean, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.object, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.arrayString, false],
+    [WorkflowIOValueTypeEnum.number, WorkflowIOValueTypeEnum.string, false],
+    [WorkflowIOValueTypeEnum.boolean, WorkflowIOValueTypeEnum.string, false],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string, true],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.arrayString, true],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.number, false],

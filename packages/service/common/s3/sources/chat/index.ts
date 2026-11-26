@@ -18,6 +18,8 @@ import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLogger, LogCategories } from '../../../logger';
+import { s3AccessLinkService } from '../../accessLink/accessLinkService';
+import { resolveS3DownloadMimeFallbackExtension } from '../../accessLink/utils';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 const getChatFileScope = ({
@@ -111,11 +113,18 @@ export class S3ChatSource extends S3PrivateBucket {
     filename?: string;
   }) {
     const { key, expiredHours = 1, external = false, filename } = params; // 默认一个小时
+    const needsFilenameMetadata = isOpaqueS3FileKey(key) && !filename;
+    // 复用 SDK 安全后缀规则判断是否已能从 filename 或 objectKey 推导后缀；
+    // 推导为空（例如无后缀展示名 cover / png、纯数字后缀或无后缀历史 key）时读取 S3 元数据以补充真实后缀。
+    const needsMimeExtensionFallback = !s3AccessLinkService.resolveDownloadExtension({
+      filename,
+      objectKey: key
+    });
     const fileMetadata =
-      external && isOpaqueS3FileKey(key) && !filename
+      external && (needsFilenameMetadata || needsMimeExtensionFallback)
         ? await this.getFileMetadata(key).catch((error) => {
             if (error !== CommonErrEnum.fileNotFound) {
-              logger.warn('Failed to resolve opaque chat filename from S3 metadata', {
+              logger.warn('Failed to resolve chat file metadata from S3', {
                 key,
                 error
               });
@@ -125,10 +134,21 @@ export class S3ChatSource extends S3PrivateBucket {
         : undefined;
 
     if (external) {
+      const resolvedFilename = filename || fileMetadata?.filename;
+      const fallbackExtension =
+        resolveS3DownloadMimeFallbackExtension(fileMetadata?.contentType) ||
+        (fileMetadata?.filename
+          ? s3AccessLinkService.resolveDownloadExtension({
+              filename: fileMetadata.filename,
+              objectKey: key
+            })
+          : '');
+
       return await this.createExternalUrl({
         key,
         expiredHours,
-        filename: filename || fileMetadata?.filename
+        filename: resolvedFilename,
+        ...(fallbackExtension ? { fallbackExtension } : {})
       });
     }
     return await this.createPreviewUrl({ key, expiredHours });

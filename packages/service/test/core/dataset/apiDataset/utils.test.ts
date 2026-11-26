@@ -3,6 +3,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileParentUpdates,
+  createApiFileSourceResolver,
   planLegacyApiFileFolders,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
@@ -191,6 +192,53 @@ describe('buildApiFileParentUpdates', () => {
   });
 });
 
+describe('createApiFileSourceResolver', () => {
+  it('真实目录 folder 与 folder#dir 并存时不误判为派生目录', () => {
+    const folder = collection({
+      _id: 'folder-id',
+      apiFileId: 'folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const suffixFolder = collection({
+      _id: 'suffix-folder-id',
+      apiFileId: 'folder#dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const resolver = createApiFileSourceResolver([folder, suffixFolder]);
+    expect(resolver.getSourceId(folder)).toBe('folder');
+    expect(resolver.isDerivedFolder(folder)).toBe(false);
+    expect(resolver.getSourceId(suffixFolder)).toBe('folder#dir');
+    expect(resolver.isDerivedFolder(suffixFolder)).toBe(false);
+  });
+
+  it('带 apiFileSourceId 或可证明父子关系的目录识别为派生目录', () => {
+    const modernDerived = collection({
+      _id: 'modern-dir',
+      apiFileId: 'doc-a#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'doc-a' }
+    });
+    const legacyDerived = collection({
+      _id: 'legacy-dir',
+      apiFileId: 'doc-b#dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const legacyDoc = collection({
+      _id: 'legacy-doc',
+      apiFileId: 'doc-b',
+      parentId: 'legacy-dir',
+      type: DatasetCollectionTypeEnum.apiFile
+    });
+    const resolver = createApiFileSourceResolver([modernDerived, legacyDerived, legacyDoc]);
+    expect(resolver.getSourceId(modernDerived)).toBe('doc-a');
+    expect(resolver.isDerivedFolder(modernDerived)).toBe(true);
+    expect(resolver.getSourceId(legacyDerived)).toBe('doc-b');
+    expect(resolver.isDerivedFolder(legacyDerived)).toBe(true);
+    expect(resolver.getSourceId(legacyDoc)).toBe('doc-b');
+    expect(resolver.isDerivedFolder(legacyDoc)).toBe(false);
+  });
+});
+
 describe('getApiFileSyncRootIds', () => {
   it('真实远端 doc#dir 目录不会仅因存在同名正文就被误归并', () => {
     expect(
@@ -254,6 +302,35 @@ describe('getApiFileSyncRootIds', () => {
         collection({ apiFileId: undefined })
       ])
     ).toEqual(['doc', 'real#dir']);
+  });
+});
+
+describe('createApiFileSourceResolver', () => {
+  it('真实目录显式记录自身来源时，不被其下 V1 同名文档误判为派生目录', () => {
+    const realFolder = collection({
+      _id: 'real-dir',
+      apiFileId: 'custom-doc#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'custom-doc#dir' }
+    });
+    const v1Doc = collection({
+      _id: 'v1-doc',
+      apiFileId: 'custom-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      parentId: 'real-dir'
+    });
+    const derivedFolder = collection({
+      _id: 'derived-dir',
+      apiFileId: 'doc#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'doc' }
+    });
+
+    const resolver = createApiFileSourceResolver([realFolder, v1Doc, derivedFolder]);
+    expect(resolver.getSourceId(realFolder)).toBe('custom-doc#dir');
+    expect(resolver.isDerivedFolder(realFolder)).toBe(false);
+    expect(resolver.getSourceId(derivedFolder)).toBe('doc');
+    expect(resolver.isDerivedFolder(derivedFolder)).toBe(true);
   });
 });
 

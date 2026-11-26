@@ -1,4 +1,9 @@
 import type { Readable } from 'node:stream';
+import type { StorageByteRange } from './types';
+
+/** 将闭区间 `[start, end]` 编码为标准 HTTP Range 请求头值。 */
+export const formatHttpByteRangeHeader = (range: StorageByteRange): string =>
+  `bytes=${range.start}-${range.end}`;
 
 /** 将对象 key 编码为 URL path，同时保留对象存储使用的 `/` 层级分隔符。 */
 export const encodeObjectKeyPath = (key: string): string =>

@@ -146,7 +146,7 @@ export const DateTimeTagInput = ({
   usePortal
 }: {
   value?: number | string;
-  onChange: (val: number) => void;
+  onChange: (val: number | undefined) => void;
   placeholder?: string;
   joined?: boolean;
   usePortal?: boolean;
@@ -768,7 +768,7 @@ export const TagValueField = ({
   }
 
   if (tag.tagType === DatasetCollectionTagTypeEnum.datetime) {
-    return <DateTimeTagInput value={value as number} onChange={(val) => onChange(val)} />;
+    return <DateTimeTagInput value={value as number} onChange={(val) => onChange(val ?? '')} />;
   }
 
   if (tag.tagType === DatasetCollectionTagTypeEnum.array) {

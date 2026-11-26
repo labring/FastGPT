@@ -80,7 +80,10 @@ export const createServerTranslator = async <Namespace extends string>({
   );
 
   // 3. 固定每个请求的语言，避免共享实例 changeLanguage 导致并发串语言。
-  const fixedT = instance.getFixedT(locale, 'common');
+  const fixedT = instance.getFixedT(locale, 'common') as (
+    key: string,
+    options?: Record<string, unknown>
+  ) => string;
   const t = (key: string, options?: Record<string, unknown>): string =>
     fixedT(key, { defaultValue: key, ...options });
 

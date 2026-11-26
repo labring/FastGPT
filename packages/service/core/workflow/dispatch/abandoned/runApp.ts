@@ -1,3 +1,4 @@
+import { getWorkflowContext } from '../context';
 /* Abandoned */
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
@@ -20,9 +21,9 @@ type Response = DispatchNodeResultType<{
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     query,
-    variableState,
     params: { userChatInput, history, app }
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');

@@ -3,7 +3,7 @@ import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/consta
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mockparseFileContentFromUrls = vi.hoisted(() => vi.fn());
 
@@ -20,6 +20,7 @@ const WORKFLOW_MAX_FILE_AMOUNT = 7;
 const dispatchReadFiles: typeof dispatchReadFilesWithoutContext = (props) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
       fileContext: {
         limits: { maxFileAmount: WORKFLOW_MAX_FILE_AMOUNT, maxBytesPerFile: 1024 },

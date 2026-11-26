@@ -196,15 +196,24 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
-  it('should parse workflow JSON in agent dashboard', async () => {
+  it('drops dangling edges while retaining valid edges and reference snapshots', async () => {
+    const nodes = [createWorkflowNode('workflowStart', 'a'), createWorkflowNode('answerNode', 'b')];
+    const edge = { source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' };
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
     const result = await parseDashboardImportConfig({
       config: {
         type: AppTypeEnum.workflow,
         name: 'Workflow',
         intro: 'Workflow intro',
-        nodes: [createWorkflowNode('workflowStart')],
-        edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-        chatConfig: { welcomeText: 'hello' }
+        nodes,
+        edges: [edge, { ...edge, target: 'removed-target' }, { ...edge, source: 'removed-source' }],
+        chatConfig: { welcomeText: 'hello' },
+        referenceSnapshots
       },
       scene: 'agent',
       t
@@ -213,9 +222,10 @@ describe('parseDashboardImportConfig', () => {
     expect(result).toEqual({
       appType: AppTypeEnum.workflow,
       workflow: {
-        nodes: [createWorkflowNode('workflowStart')],
-        edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-        chatConfig: { welcomeText: 'hello' }
+        nodes,
+        edges: [edge],
+        chatConfig: { welcomeText: 'hello' },
+        referenceSnapshots
       }
     });
   });
@@ -621,7 +631,12 @@ describe('parseWorkflowImportConfig', () => {
     expect(result).toEqual({
       nodes: [createWorkflowNode('workflowStart')],
       edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-      chatConfig: { welcomeText: 'hello', welcomeConfig: { welcomeText: 'hello' } }
+      chatConfig: {
+        welcomeText: 'hello',
+        welcomeConfig: { welcomeText: 'hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 
@@ -644,8 +659,10 @@ describe('parseWorkflowImportConfig', () => {
       edges: [],
       chatConfig: {
         welcomeText: 'plugin hello',
-        welcomeConfig: { welcomeText: 'plugin hello' }
-      }
+        welcomeConfig: { welcomeText: 'plugin hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 

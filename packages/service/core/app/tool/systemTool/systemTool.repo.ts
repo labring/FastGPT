@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import {
   listRetainedTools,
   getRetainedToolDetail
@@ -14,7 +15,8 @@ import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec'
 import {
   isDebugToolSource,
   isTeamPluginSource,
-  splitCombineToolId
+  splitCombineToolId,
+  splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
@@ -197,18 +199,16 @@ const getSystemToolConfig = async (pluginId: string) => {
 };
 
 const parseSystemToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
-  if (isIsolatedPluginSource(source)) {
+  const parsed = (() => {
     try {
       return splitCombineToolId(pluginId);
-    } catch {
-      return {
-        source: undefined,
-        pluginId
-      };
+    } catch (error) {
+      if (!isIsolatedPluginSource(source)) throw error;
+      return { source: undefined, pluginId };
     }
-  }
+  })();
 
-  return splitCombineToolId(pluginId);
+  return { source: parsed.source, ...splitToolsetToolPluginId(parsed.pluginId) };
 };
 
 const getVisiblePluginStatus = ({
@@ -389,11 +389,14 @@ export class SystemToolRepo {
     includeDisabled?: boolean;
   }): Promise<SystemToolDetailType> => {
     const isIsolatedSource = isIsolatedPluginSource(toolSource);
-    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
+    const {
+      parentId: parentPluginId,
+      toolName: childPluginId,
+      source: idSource
+    } = parseSystemToolId({
       pluginId,
       source: toolSource
     });
-    const [parentPluginId, childPluginId] = rawPluginId.split('/');
     const getChildToolDetail = !!childPluginId;
 
     const dbTool = isTeamPluginSource(toolSource) ? undefined : await getSystemToolConfig(pluginId);
@@ -431,8 +434,8 @@ export class SystemToolRepo {
         versionLabel: appVersion.versionName,
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
-        author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
-        avatar: dbTool.customConfig.avatar ?? app.avatar ?? '',
+        author: dbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
+        avatar: dbTool.customConfig.avatar ?? app.avatar ?? undefined,
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
         inputSchema,
@@ -540,7 +543,7 @@ export class SystemToolRepo {
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? getSystemInstanceConfig().site.name ?? '',
       avatar: childPluginId ? (child?.icon ?? tool.icon) : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
       hasSystemSecret,
@@ -599,8 +602,11 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
     const isIsolatedSource = isIsolatedPluginSource(source);
-    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
-    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+    const {
+      parentId: parentPluginId,
+      toolName: childPluginId,
+      source: idSource
+    } = parseSystemToolId({ pluginId, source });
 
     const exactDbTool = isTeamPluginSource(source)
       ? undefined
@@ -612,10 +618,10 @@ export class SystemToolRepo {
         status: getVisiblePluginStatus({ status: exactDbTool.status, source }),
         source: 'system',
         isToolSet: false,
-        avatar: exactDbTool.customConfig.avatar ?? '',
+        avatar: exactDbTool.customConfig.avatar ?? undefined,
         name: exactDbTool.customConfig.name,
         intro: exactDbTool.customConfig.intro ?? '',
-        author: exactDbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        author: exactDbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
         tags: exactDbTool.customConfig.tags ?? [],
         userGuide: exactDbTool.customConfig.userGuide,
         pluginOrder: exactDbTool.pluginOrder ?? 0,
@@ -639,7 +645,7 @@ export class SystemToolRepo {
     const tool = tools.find((item) => item.pluginId === parentPluginId);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
-    const requestedParentPluginId = pluginId.split('/')[0];
+    const { parentId: requestedParentPluginId } = splitToolsetToolPluginId(pluginId);
     const parentConfigIds = getSystemToolConfigIds(requestedParentPluginId);
     const childConfigIds =
       tool.children?.flatMap((child) =>
@@ -729,11 +735,13 @@ export class SystemToolRepo {
     const missingChildIcon = parent.children?.some((child) => !child.icon) === true;
     if (!parent.isToolSet || !parent.children || !missingChildIcon) return parent;
 
-    const { pluginId: rawPluginId } = parseSystemToolId({ pluginId, source });
-    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+    const {
+      parentId: parentPluginId,
+      toolName: childPluginId,
+      source: idSource
+    } = parseSystemToolId({ pluginId, source });
     if (!parentPluginId || childPluginId) return parent;
 
-    const { source: idSource } = parseSystemToolId({ pluginId, source });
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const childIconMap = await this.getToolsetChildIconMap({
       pluginId: parentPluginId,
@@ -765,7 +773,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
-    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
+    const { parentId: parentToolId, source: idSource } = parseSystemToolId({ pluginId, source });
     const tool = isTeamPluginSource(source) ? undefined : await getSystemToolConfig(pluginId);
     if (tool?.customConfig?.associatedPluginId) {
       const { associatedPluginId } = tool.customConfig;
@@ -784,8 +792,6 @@ export class SystemToolRepo {
         versionDescription: item.versionName
       }));
     }
-
-    const parentToolId = rawPluginId.split('/')[0];
 
     const versions = await withPluginClientLocale(lang, () =>
       pluginClient.listPluginVersions({
@@ -809,10 +815,9 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
-    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
+    const { parentId: parentPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const isIsolatedSource = isIsolatedPluginSource(pluginSource);
-    const [parentPluginId] = rawPluginId.split('/');
 
     const dbTool = isTeamPluginSource(pluginSource)
       ? undefined

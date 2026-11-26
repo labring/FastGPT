@@ -60,13 +60,31 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   createSystemToolResourceContext,
   filterWorkflowToolList,
   hasWorkflowResource,
   createWorkflowResourceContext
-} from '@fastgpt/service/core/workflow/resource/context';
+} from '@fastgpt/service/core/workflow/dispatch/context/resource';
+
+/** 资源单测仍补齐真实文件 Context，不降低生产节点对完整运行依赖的要求。 */
+const runWithResourceContext = async <T>(
+  resourceContext: Parameters<typeof runWithTestWorkflowContext>[0]['resourceContext'],
+  fn: () => T
+): Promise<Awaited<T>> =>
+  await runWithTestWorkflowContext(
+    {
+      resourceContext,
+      mcpClientMemory: {},
+      checkIsStopping: () => false,
+      fileContext: await createTestWorkflowFileContext()
+    },
+    fn
+  );
 
 const createFindResult = (documents: unknown = []) => ({
   lean: vi.fn().mockResolvedValue(documents)
@@ -147,19 +165,17 @@ describe('workflow resource context', () => {
     expect(mocks.mongoDatasetFind).not.toHaveBeenCalled();
     expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
 
-    const childContext = await runWithContext(
-      { mcpClientMemory: {}, resourceContext: rootContext },
-      () =>
-        createWorkflowResourceContext({
-          resources: [{ type: 'dataset', id: 'dataset-2' }],
-          teamId: 'child-team'
-        })
+    const childContext = await runWithResourceContext(rootContext, () =>
+      createWorkflowResourceContext({
+        resources: [{ type: 'dataset', id: 'dataset-2' }],
+        teamId: 'child-team'
+      })
     );
 
     expect(childContext.isRoot).toBe(true);
 
     // root 身份继续传递，但读取快照仍按子工作流团队过滤。
-    await runWithContext({ mcpClientMemory: {}, resourceContext: childContext }, () =>
+    await runWithResourceContext(childContext, () =>
       loadWorkflowDatasetResource({ datasetId: 'dataset-2' })
     );
 
@@ -174,7 +190,7 @@ describe('workflow resource context', () => {
     const modelResource = { type: 'model' as const, id: 'model-1' };
     const context = createWorkflowResourceContext({ resources: [modelResource] });
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       await expect(
         loadWorkflowModelResource({
           modelId: 'model-1',
@@ -221,7 +237,7 @@ describe('workflow resource context', () => {
       isRoot: true
     });
     mocks.mongoDatasetFind.mockReturnValueOnce(createFindResult([{ _id: 'local' }]));
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+    await runWithResourceContext(context, () =>
       expect(
         loadWorkflowDatasetResource({ datasetId: 'local', datasetIds: ['local', 'foreign'] })
       ).rejects.toBe(DatasetErrEnum.unExist)
@@ -245,7 +261,7 @@ describe('workflow resource context', () => {
     mocks.authDatasetByTmbId.mockResolvedValueOnce({
       dataset: { _id: 'foreign', teamId: 'other-team' }
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       await expect(
         loadWorkflowDatasetResource({ datasetId: 'local', tmbId: 'root' })
       ).resolves.toMatchObject({ _id: 'local' });
@@ -279,14 +295,14 @@ describe('workflow resource context', () => {
       userInfo: { teamId: 'current-team', tmbId: 'root' },
       fallbackToDefault: true as const
     };
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+    await runWithResourceContext(context, () =>
       expect(loadWorkflowModelResource(args)).rejects.toMatchObject({
         message: ModelErrEnum.unAuthModel
       })
     );
     expect(handle.getDefaultModelData).not.toHaveBeenCalled();
     const systemContext = createWorkflowResourceContext({ resources, isRoot: true });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: systemContext }, () =>
+    await runWithResourceContext(systemContext, () =>
       expect(loadWorkflowModelResource(args)).resolves.toMatchObject({ modelId: 'foreign-model' })
     );
   });
@@ -307,7 +323,7 @@ describe('workflow resource context', () => {
         teamId: root.teamId,
         isRoot: true
       });
-      await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () => {
+      await runWithResourceContext(context, () => {
         const loaded = loadWorkflowAppResource({
           appId: resource.id,
           type: 'tool',
@@ -323,7 +339,7 @@ describe('workflow resource context', () => {
   it('authorizes legacy model references against member permissions when snapshot misses', async () => {
     const context = createWorkflowResourceContext({ resources: [] });
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       await expect(
         loadWorkflowModelResource({
           model: 'legacy-llm',
@@ -395,7 +411,7 @@ describe('workflow resource context', () => {
       teamId: 'app-team'
     });
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       // 命中子应用快照的模型按 appTeamId 目录放行，不触发运行人鉴权
       await expect(
         loadWorkflowModelResource({
@@ -435,7 +451,7 @@ describe('workflow resource context', () => {
     });
     mocks.assertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       await expect(
         loadWorkflowModelResource({
           modelId: 'deleted-static-model',
@@ -486,9 +502,8 @@ describe('workflow resource context', () => {
         ]
       }
     ] as any;
-    const context = await runWithContext(
-      { mcpClientMemory: {}, resourceContext: rootContext },
-      () => createSystemToolResourceContext({ nodes: systemNodes })
+    const context = await runWithResourceContext(rootContext, () =>
+      createSystemToolResourceContext({ nodes: systemNodes })
     );
     expect(context).toMatchObject({ isRoot: true });
     expect(context.teamId).toBeUndefined();
@@ -496,7 +511,7 @@ describe('workflow resource context', () => {
     expect(hasWorkflowResource({ context, type: 'dataset', id: 'dataset-2' })).toBe(true);
     expect(hasWorkflowResource({ context, type: 'model', id: 'dynamic-model' })).toBe(false);
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       // 命中静态快照的模型不按运行人鉴权。
       await loadWorkflowModelResource({
         modelId: 'static-model-1',
@@ -536,7 +551,7 @@ describe('workflow resource context', () => {
     const context = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'snapshot' }]
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+    await runWithResourceContext(context, async () => {
       await expect(
         loadWorkflowDatasetResource({
           datasetId: 'member',
@@ -556,7 +571,7 @@ describe('workflow resource context', () => {
     const context = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'snapshot' }]
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+    await runWithResourceContext(context, () =>
       expect(
         loadWorkflowDatasetResource({
           datasetId: 'snapshot',
@@ -581,7 +596,7 @@ describe('workflow resource context', () => {
       throw error;
     });
     try {
-      await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      await runWithResourceContext(context, async () => {
         await expect(loadWorkflowDatasetResource({ datasetId: 'dataset' })).rejects.toBe(error);
         await expect(
           loadWorkflowAppResource({ appId: 'tool', type: 'tool', tmbId: 'member' })
@@ -599,7 +614,7 @@ describe('workflow resource context', () => {
       resourceMap: new Map([['tool:missing-tool', resource]])
     };
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+    await runWithResourceContext(resourceContext, () =>
       expect(
         loadWorkflowAppResource({
           appId: resource.id,
@@ -616,7 +631,7 @@ describe('loadWorkflowSkillResources', () => {
     const resourceContext = createWorkflowResourceContext({
       resources: [{ type: 'skill', id: 'missing-skill' }]
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+    await runWithResourceContext(resourceContext, () =>
       expect(
         loadWorkflowSkillResources({ skillIds: ['missing-skill'], tmbId: 'member' })
       ).rejects.toBe(SkillErrEnum.unExist)
@@ -643,7 +658,7 @@ describe('loadWorkflowSkillResources', () => {
       resources: [{ type: 'skill', id: skillId }],
       teamId: owner.teamId
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext }, async () => {
+    await runWithResourceContext(resourceContext, async () => {
       const resources = await loadWorkflowSkillResources({
         skillIds: [skillId, skillId],
         tmbId: member.tmbId
@@ -654,7 +669,7 @@ describe('loadWorkflowSkillResources', () => {
       resources: [{ type: 'skill', id: skillId }],
       teamId: '65f000000000000000000099'
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: otherTeam }, () =>
+    await runWithResourceContext(otherTeam, () =>
       expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
         SkillErrEnum.unExist
       )
@@ -664,7 +679,7 @@ describe('loadWorkflowSkillResources', () => {
       teamId: '65f000000000000000000099',
       isRoot: true
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: root }, () =>
+    await runWithResourceContext(root, () =>
       expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
         SkillErrEnum.unExist
       )
@@ -674,7 +689,7 @@ describe('loadWorkflowSkillResources', () => {
       teamId: '65f000000000000000000099',
       isRoot: true
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: dynamicRoot }, () =>
+    await runWithResourceContext(dynamicRoot, () =>
       expect(
         loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
       ).resolves.toEqual([])
@@ -684,7 +699,7 @@ describe('loadWorkflowSkillResources', () => {
       teamId: owner.teamId,
       isRoot: true
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: sameTeamRoot }, () =>
+    await runWithResourceContext(sameTeamRoot, () =>
       expect(
         loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
       ).resolves.toHaveLength(1)

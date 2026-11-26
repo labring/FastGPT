@@ -1,19 +1,21 @@
 /**
  * 沙盒业务层：在运行态 sandbox 内注入和扫描已发布 Skill。
  *
- * 负责读取 Skill 版本包并写入现有 sandbox，不创建或清理 sandbox 实例。
+ * 负责读取 Skill 版本包并通过 IDE Agent `/archive/extract` 流式解压到现有 sandbox，不创建或清理 sandbox 实例。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxClient } from '../../../infrastructure/opensandbox/opensandbox';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
-import { downloadSkillPackageStream } from '../../../../skill/package';
-import { parseSkillMarkdown } from '../../../../skill/utils';
+import {
+  extractSkillMetadataFromMarkdown,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS
+} from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
-import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
-import { Readable } from 'node:stream';
 import { SKILL_ENTRYPOINT_STATE_LIST_KEY } from '../../../constants';
 import {
   getRuntimeStateValue,
@@ -21,34 +23,51 @@ import {
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from '../state';
+import { extractToSandboxDirectory } from '../../ideAgent';
+import { openSkillPackageTarZstStream } from '../../../../skill/package/storage';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
-const SKILL_INFO_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'];
+const parseCommandOutputNulls = (stdout: string) =>
+  Array.from(new Set(stdout.split('\0').filter(Boolean)));
+// 扫描规则与发布校验同源：prune 基础列表来自 skill/utils，额外跳过沙盒运行与挂载保留目录。
+const SKILL_INFO_SCAN_PRUNE_DIRS = [
+  ...RUNTIME_SKILL_SCAN_PRUNE_DIRS,
+  '.fastgpt',
+  'lost+found'
+] as const;
 
-const getRuntimeSkillsRootPath = (workDirectory: string): string =>
-  joinSandboxPath(workDirectory, 'projects');
-
-const buildSkillInfoFindCommand = (dir: string) => {
+/** 将多个待扫描目录合并为单次 `find -prune` 命令，避免缺省目录导致整条命令失败。 */
+const buildSkillInfoFindCommand = (dirs: string[]) => {
+  const uniqueDirs = Array.from(new Set(dirs.map((dir) => dir.trim()).filter(Boolean)));
+  if (uniqueDirs.length === 0) return 'true';
   const pruneClause = SKILL_INFO_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
     ' -o '
   );
+  const quotedDirs = uniqueDirs
+    .map((dir) => shellQuote(dir.startsWith('-') ? `./${dir}` : dir))
+    .join(' ');
 
-  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+  return [
+    'set --',
+    `for d in ${quotedDirs}; do [ -d "$d" ] && set -- "$@" "$d"; done`,
+    `[ "$#" -eq 0 ] || find "$@" \\( ${pruneClause} \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`
+  ].join('; ');
 };
+
+const MAX_SKILL_EXTRACT_CONCURRENCY = 3;
 
 type GetAgentSkillInfosParams = {
   workDirectory?: string;
   skillDirectories?: string[];
   deployedSkillVersions?: DeployedSkillVersion[];
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
 };
 
 /**
  * 读取传入 sandbox 工作区内可用的 skill 信息。
  *
  * 普通运行和 edit-debug 都以 sandbox 工作区为准：普通运行先注入 skill 包，
- * edit-debug 复用编辑器正在运行的 sandbox，然后统一扫描 SKILL.md。
+ * edit-debug 复用编辑器正在运行的 sandbox，然后通过单次 `find -prune` 统一递归扫描 `SKILL.md` 并跳过无效项。
  */
 export const getAgentSkillInfos = async ({
   workDirectory,
@@ -61,25 +80,24 @@ export const getAgentSkillInfos = async ({
     deployedSkillVersions?.map((version) => [normalizeSandboxDir(version.targetDir), version]) || []
   );
 
-  // 并发 find 所有目录，过滤出错目录，避免级联报错
-  const findResults = await Promise.all(
-    scanDirectories.map(async (dir) => {
-      const { exitCode, stdout, stderr } = await sandbox.execute(buildSkillInfoFindCommand(dir));
-      if (exitCode !== 0) {
-        logger.warn('[Agent Skills] Find command failed for directory', { dir, stderr });
-        return [];
-      }
-      return parseCommandOutputNulls(stdout);
-    })
+  const { exitCode, stdout, stderr } = await sandbox.execute(
+    buildSkillInfoFindCommand(scanDirectories)
   );
+  if (exitCode !== 0) {
+    logger.warn('[Agent Skills] Find command failed for directories', {
+      scanDirectories,
+      stderr
+    });
+    return [];
+  }
 
-  const paths = findResults.flat();
+  const paths = parseCommandOutputNulls(stdout).sort();
   if (paths.length === 0) return [];
 
   const files = await sandbox.readFiles(paths);
 
   return files
-    .map((file) => {
+    .map((file): DeployedSkillInfo | null => {
       if (file.error) {
         logger.error('[Agent Skills] Failed to read skill.md file', {
           path: file.path,
@@ -93,14 +111,13 @@ export const getAgentSkillInfos = async ({
           ? new TextDecoder('utf-8').decode(file.content)
           : String(file.content);
 
-      const { frontmatter, error: parseError } = parseSkillMarkdown(content);
-      if (!frontmatter.name) {
+      const parsed = extractSkillMetadataFromMarkdown(content);
+      if (!parsed.valid) {
         logger.warn(
           '[Agent Skills] Skill parsed without a valid name or has malformed frontmatter',
           {
             path: file.path,
-            parseError,
-            frontmatter
+            error: parsed.error
           }
         );
         return null;
@@ -111,15 +128,16 @@ export const getAgentSkillInfos = async ({
 
       return {
         id: file.path,
-        name: String(frontmatter.name),
-        description: frontmatter.description ? String(frontmatter.description) : '',
+        name: parsed.name,
+        description: parsed.description,
         directory,
         skillMdPath: file.path,
         ...(deployedVersion
           ? {
               appId: deployedVersion.skillId,
               appName: deployedVersion.name,
-              appDescription: deployedVersion.description
+              appDescription: deployedVersion.description,
+              appSource: deployedVersion.source
             }
           : {})
       };
@@ -130,21 +148,22 @@ export const getAgentSkillInfos = async ({
 /**
  * 将已发布的 skill 包注入到调用方传入的 sandbox 实例。
  *
- * skills 必须由调用方完成授权；这里不读取工作流上下文，也不执行成员权限判断。
- * 该函数只负责把 skill 文件写入已有实例。
- * 这样 skill 模块与 sandbox 生命周期保持平级：sandbox 决定何时存在，
- * skill 只在拿到实例后完成文件注入。正式版本保留到缓存或沙盒被显式清理，只有临时目录会自动回收。
+ * 通过 S3 流式传输（`.tar.zst` 直传、`.zip` 走 HTTP Range 实时转码）发往容器 IDE Agent `/archive/extract`
+ * 解压至临时目录（agent 自动创建）后再原子 `moveFiles` 到版本目录，全程零 `/tmp` 落盘。
+ * 已发布版本按 versionId 缓存；只有临时目录会自动回收。
  */
 export const injectAgentSkillFilesToSandbox = async ({
   sandbox,
   skills,
-  workDirectory
+  workDirectory,
+  signal
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   skills: AgentSkillSchemaType[];
   workDirectory: string;
+  signal?: AbortSignal;
 }): Promise<DeployedSkillVersion[]> => {
-  const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
+  const skillsRootPath = joinSandboxPath(workDirectory, 'projects');
   await sandbox.createDirectories([skillsRootPath]);
   const listedEntries = await sandbox.listDirectory(skillsRootPath);
   const listedDirs = listedEntries.filter((entry) => entry.isDirectory).map((entry) => entry.path);
@@ -206,7 +225,6 @@ export const injectAgentSkillFilesToSandbox = async ({
     ({ targetDir }) => !deployableTargetDirs.has(targetDir)
   );
 
-  const maxPackageBytes = getAgentSandboxSkillMaxBytes();
   const results = missingSkills.map(({ version, versionId, targetDir }) => {
     const tempDir = joinSandboxPath(
       skillsRootPath,
@@ -214,75 +232,42 @@ export const injectAgentSkillFilesToSandbox = async ({
         .toString(36)
         .slice(2)}`
     );
-    const zipPath = joinSandboxPath(tempDir, 'package.zip');
-    const quotedZipPath = shellQuote(zipPath);
-    const unzipCommand = `(${[
-      `unzip -Z -t ${quotedZipPath} | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
-      `unzip -Z1 ${quotedZipPath} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
-      `unzip -o -q ${quotedZipPath} -d ${shellQuote(tempDir)}`
-    ].join(' && ')})`;
 
     return {
       storageKey: version.storageKey,
       targetDir,
-      tempDir,
-      zipPath,
-      unzipCommand
+      tempDir
     };
   });
 
-  // 1. Stream each ZIP package directly to its temporary directory.
   if (results.length > 0) {
     const tempDirs = results.map(({ tempDir }) => tempDir);
     const cleanupTempDirs = () => sandbox.deleteDirectories(tempDirs).catch(() => undefined);
-    await sandbox.createDirectories(tempDirs);
 
     try {
-      for (const { storageKey, zipPath } of results) {
-        const packageStream = await downloadSkillPackageStream({ storageKey });
-        try {
-          const [writeResult] = await sandbox.writeFiles([
-            {
-              path: zipPath,
-              data: Readable.toWeb(packageStream) as ReadableStream<Uint8Array>
-            }
-          ]);
-          if (writeResult?.error) {
-            throw new Error(`Failed to write skill ZIP package: ${writeResult.error.message}`);
-          }
-        } finally {
-          if (!packageStream.destroyed) packageStream.destroy();
-        }
-      }
+      await batchRun(
+        results,
+        (current) =>
+          extractToSandboxDirectory({
+            sandbox,
+            targetDirectory: current.tempDir,
+            signal,
+            openBody: () => openSkillPackageTarZstStream({ storageKey: current.storageKey })
+          }),
+        MAX_SKILL_EXTRACT_CONCURRENCY
+      );
     } catch (error) {
-      await cleanupTempDirs();
+      if (!isRedisLeaseError(error) && !signal?.aborted) {
+        await cleanupTempDirs();
+      }
       throw error;
-    }
-
-    // 2. Execute a single unified decompression command inside the sandbox container
-    const finalUnzipCmd = results.map(({ unzipCommand }) => unzipCommand).join(' && ');
-    const extractResult = await sandbox.execute(finalUnzipCmd);
-    if (extractResult.exitCode !== 0) {
-      await cleanupTempDirs();
-      throw new Error(
-        `Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`
-      );
-    }
-
-    const deleteResults = await sandbox.deleteFiles(results.map(({ zipPath }) => zipPath));
-    const failedDelete = deleteResults.find((result) => result.error || !result.success);
-    if (failedDelete) {
-      await cleanupTempDirs();
-      throw new Error(
-        `Failed to remove extracted skill ZIP ${failedDelete.path}: ${failedDelete.error?.message ?? 'delete failed'}`
-      );
     }
 
     try {
       await sandbox.moveFiles(
-        results.map(({ tempDir, targetDir }) => ({ source: tempDir, destination: targetDir }))
+        results.map(({ tempDir, targetDir }) => ({ src: tempDir, dest: targetDir }))
       );
-      // 目录重建后清理对应版本的旧初始化标记，确保下次执行重新触发版本 entrypoint。
+      // 目录重建后清理容器运行态状态中对应版本的旧初始化标记，确保下次执行重新触发版本 entrypoint。
       const stateContext = await readSandboxRuntimeState({ sandbox });
       const oldEntrypoints = getRuntimeStateValue(
         stateContext.state,
@@ -292,19 +277,23 @@ export const injectAgentSkillFilesToSandbox = async ({
         const installedVersionIds = new Set(missingSkills.map(({ versionId }) => versionId));
         const keptEntrypoints = oldEntrypoints.filter((id) => !installedVersionIds.has(id));
         if (keptEntrypoints.length !== oldEntrypoints.length) {
-          setRuntimeStateValue(
-            stateContext.state,
-            SKILL_ENTRYPOINT_STATE_LIST_KEY,
-            keptEntrypoints
-          );
-          await writeSandboxRuntimeState(sandbox, stateContext);
+          setRuntimeStateValue({
+            state: stateContext.state,
+            key: SKILL_ENTRYPOINT_STATE_LIST_KEY,
+            value: keptEntrypoints
+          });
+          await writeSandboxRuntimeState({ sandbox, context: stateContext });
         }
       }
     } catch (error) {
-      await Promise.all([
-        cleanupTempDirs(),
-        sandbox.deleteDirectories(results.map(({ targetDir }) => targetDir)).catch(() => undefined)
-      ]);
+      if (!isRedisLeaseError(error) && !signal?.aborted) {
+        await Promise.all([
+          cleanupTempDirs(),
+          sandbox
+            .deleteDirectories(results.map(({ targetDir }) => targetDir))
+            .catch(() => undefined)
+        ]);
+      }
       throw error;
     }
   }
@@ -314,6 +303,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     name: skill.name,
     description: skill.description || '',
     avatar: skill.avatar,
+    source: skill.source,
     versionId,
     targetDir
   }));

@@ -1,0 +1,10 @@
+{
+  "title": "App Logs",
+  "pages": [
+    "list",
+    "search",
+    "get-total-data",
+    "get-chart-data",
+    "get-users"
+  ]
+}

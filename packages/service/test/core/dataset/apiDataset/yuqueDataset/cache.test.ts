@@ -89,12 +89,10 @@ describe('语雀浏览快照缓存', () => {
     await provider().listFiles({ parentId: '101' });
     const oldBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
     try {
-      Object.defineProperty(serviceEnv, 'YUQUE_DATASET_BASE_URL', {
-        value: 'https://private.yuque.test'
-      });
+      serviceEnv.YUQUE_DATASET_BASE_URL = 'https://private.yuque.test';
       await provider().listFiles({});
     } finally {
-      Object.defineProperty(serviceEnv, 'YUQUE_DATASET_BASE_URL', { value: oldBaseUrl });
+      serviceEnv.YUQUE_DATASET_BASE_URL = oldBaseUrl;
     }
     expect(request).toHaveBeenCalledTimes(5);
     expect(await MongoTmpData.countDocuments({})).toBe(5);

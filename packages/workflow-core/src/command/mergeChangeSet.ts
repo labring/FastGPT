@@ -6,6 +6,7 @@ import {
   type WorkflowChangeSetChunk,
   type WorkflowCommand
 } from './type';
+import { normalizeOptionalVariableKey } from '../config/service';
 
 export class WorkflowChangeSetMergeError extends Error {
   readonly code: WorkflowDiagnosticCodeEnum;
@@ -50,8 +51,12 @@ export const getWorkflowCommandTarget = (command: WorkflowCommand): string | und
     case 'config.set':
     case 'config.unset':
       return `config:${command.path}`;
-    case 'variable.add':
-      return `variable:${command.variable.key}`;
+    case 'variable.add': {
+      const normalizedKey = normalizeOptionalVariableKey(command.variable.key);
+      return normalizedKey !== undefined
+        ? `variable:${normalizedKey}`
+        : `variable:add:${stableJson(command.variable)}`;
+    }
     case 'variable.update':
     case 'variable.remove':
       return `variable:${command.key}`;
@@ -92,7 +97,17 @@ const mergePatchCommand = (
 };
 
 const sortChunks = (chunks: WorkflowChangeSetChunk[]) => {
-  const byId = new Map(chunks.map((chunk) => [chunk.chunkId, chunk]));
+  const byId = new Map<string, WorkflowChangeSetChunk>();
+  for (const chunk of chunks) {
+    if (byId.has(chunk.chunkId)) {
+      throw new WorkflowChangeSetMergeError(
+        WorkflowDiagnosticCodeEnum.changesetChunkIdDuplicate,
+        `Duplicate ChangeSet chunk ID: ${chunk.chunkId}`,
+        { chunkId: chunk.chunkId }
+      );
+    }
+    byId.set(chunk.chunkId, chunk);
+  }
   const state = new Map<string, 'visiting' | 'visited'>();
   const sorted: WorkflowChangeSetChunk[] = [];
   const visit = (chunk: WorkflowChangeSetChunk) => {

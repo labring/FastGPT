@@ -36,6 +36,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type WorkflowCommandResult = {
   document: WorkflowDocument;
+  command: WorkflowCommand;
   changes: WorkflowChangeSummary[];
   warnings: WorkflowDiagnostic[];
   checksum: string;
@@ -59,6 +60,7 @@ export const applyWorkflowCommand = async ({
 }): Promise<WorkflowCommandResult> => {
   const command = WorkflowCommandSchema.parse(rawCommand);
   const nextDocument = structuredClone(document);
+  let normalizedCommand: WorkflowCommand = command;
   const warnings: WorkflowDiagnostic[] = [];
   const changes: WorkflowChangeSummary[] = [];
 
@@ -108,6 +110,9 @@ export const applyWorkflowCommand = async ({
         .map((item) => item.key)
         .filter((key): key is string => typeof key === 'string');
     }
+    const previousInputValue = inputNode.inputs.find(
+      (item) => item.key === command.inputKey
+    )?.value;
     setInputValue({
       document: nextDocument,
       nodeId: command.nodeId,
@@ -121,16 +126,17 @@ export const applyWorkflowCommand = async ({
         previousFieldKeys: previousFormFieldKeys
       });
     }
-    const codeIOSync =
+    // 代码节点动态端口由源码与语言共同决定；语言仅在实际变化时同步，避免重复保存同一语言误删手工输出。
+    const shouldSyncCodeIO =
       inputNode.flowNodeType === FlowNodeTypeEnum.code &&
-      command.inputKey === NodeInputKeyEnum.code &&
-      typeof command.value === 'string'
-        ? syncCodeNodeIO({
-            document: nextDocument,
-            nodeId: command.nodeId,
-            code: command.value
-          })
-        : undefined;
+      ((command.inputKey === NodeInputKeyEnum.code && typeof command.value === 'string') ||
+        (command.inputKey === NodeInputKeyEnum.codeType && command.value !== previousInputValue));
+    const codeIOSync = shouldSyncCodeIO
+      ? syncCodeNodeIO({
+          document: nextDocument,
+          nodeId: command.nodeId
+        })
+      : undefined;
     codeIOSync?.removedOutputs.forEach((output) => {
       if (output.references.length === 0) return;
       warnings.push({
@@ -437,8 +443,18 @@ export const applyWorkflowCommand = async ({
   }
 
   if (command.type === 'variable.add') {
-    addGlobalVariable({ document: nextDocument, variable: command.variable });
-    changes.push({ type: command.type, key: command.variable.key });
+    const addedKey = addGlobalVariable({ document: nextDocument, variable: command.variable });
+    // 规范化实际落盘的变量 key（含省略时的随机生成与首尾空白清理），确保后续重放完全确定。
+    if (command.variable.key !== addedKey) {
+      normalizedCommand = {
+        ...command,
+        variable: {
+          ...command.variable,
+          key: addedKey
+        }
+      };
+    }
+    changes.push({ type: command.type, key: addedKey });
   }
 
   if (command.type === 'variable.update') {
@@ -462,6 +478,7 @@ export const applyWorkflowCommand = async ({
 
   return {
     document: nextDocument,
+    command: normalizedCommand,
     changes,
     warnings,
     checksum: await getWorkflowChecksum(nextDocument)

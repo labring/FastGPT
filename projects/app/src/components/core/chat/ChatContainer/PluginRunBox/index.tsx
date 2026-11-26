@@ -8,17 +8,23 @@ import RenderOutput from './components/RenderOutput';
 import RenderResponseDetail from './components/RenderResponseDetail';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
-const PluginRunBox = (props: PluginRunBoxProps) => {
+export const PluginRunBoxContent = ({ showTab }: { showTab?: PluginRunBoxTabEnum }) => {
   const tab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
-  const formatTab = props.showTab || tab;
+  const formatTab = showTab || tab;
 
   return (
+    <>
+      {formatTab === PluginRunBoxTabEnum.input && <RenderInput />}
+      {formatTab === PluginRunBoxTabEnum.output && <RenderOutput />}
+      {formatTab === PluginRunBoxTabEnum.detail && <RenderResponseDetail />}
+    </>
+  );
+};
+
+const PluginRunBox = (props: PluginRunBoxProps) => {
+  return (
     <PluginRunContextProvider {...props}>
-      <>
-        {formatTab === PluginRunBoxTabEnum.input && <RenderInput />}
-        {formatTab === PluginRunBoxTabEnum.output && <RenderOutput />}
-        {formatTab === PluginRunBoxTabEnum.detail && <RenderResponseDetail />}
-      </>
+      <PluginRunBoxContent showTab={props.showTab} />
     </PluginRunContextProvider>
   );
 };

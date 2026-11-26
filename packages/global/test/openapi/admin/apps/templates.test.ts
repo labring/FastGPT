@@ -29,6 +29,15 @@ const workflow = {
   chatConfig: {}
 };
 
+const referenceSnapshots = [
+  {
+    reference: ['deleted', 'output'],
+    sourceLabel: 'Deleted source',
+    outputLabel: 'Output',
+    icon: 'deleted-avatar'
+  }
+];
+
 const simpleWorkflow = {
   aiSettings: {
     model: 'gpt-4o-mini',
@@ -52,6 +61,16 @@ describe('admin app template schemas', () => {
         workflow
       }).workflow
     ).toEqual(workflow);
+  });
+
+  it('keeps reference snapshots when parsing a workflow template', () => {
+    const result = CreateTemplateBodySchema.parse({
+      ...templateBase,
+      type: AppTypeEnum.workflow,
+      workflow: { ...workflow, referenceSnapshots }
+    });
+
+    expect(result.workflow).toHaveProperty('referenceSnapshots', referenceSnapshots);
   });
 
   it('rejects an unsupported workflow node type', () => {
@@ -128,6 +147,36 @@ describe('admin app template schemas', () => {
         templateId: 'commercial-template',
         type: AppTypeEnum.simple,
         workflow
+      }).success
+    ).toBe(false);
+  });
+
+  it('validates and trims experienceUrl on create and update', () => {
+    const createPayload = { ...templateBase, type: AppTypeEnum.workflow, workflow };
+
+    expect(
+      CreateTemplateBodySchema.parse({
+        ...createPayload,
+        experienceUrl: '  https://demo.example.com/chat?id=1#top  '
+      }).experienceUrl
+    ).toBe('https://demo.example.com/chat?id=1#top');
+    expect(
+      CreateTemplateBodySchema.parse({ ...createPayload, experienceUrl: '  ' }).experienceUrl
+    ).toBe('');
+    expect(CreateTemplateBodySchema.parse(createPayload).experienceUrl).toBeUndefined();
+    expect(
+      CreateTemplateBodySchema.safeParse({ ...createPayload, experienceUrl: 'javascript:alert(1)' })
+        .success
+    ).toBe(false);
+
+    expect(
+      UpdateTemplateBodySchema.parse({ templateId: 'community-demo', experienceUrl: '' })
+        .experienceUrl
+    ).toBe('');
+    expect(
+      UpdateTemplateBodySchema.safeParse({
+        templateId: 'community-demo',
+        experienceUrl: 'demo.example.com'
       }).success
     ).toBe(false);
   });

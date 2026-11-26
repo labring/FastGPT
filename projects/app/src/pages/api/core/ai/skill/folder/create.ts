@@ -18,7 +18,9 @@ import {
   type CreateSkillFolderBody
 } from '@fastgpt/global/core/ai/skill/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -81,6 +83,13 @@ async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL_FOLDER,
+      resources: [
+        buildSkillAuditResource({
+          _id: folderId,
+          name,
+          type: AgentSkillTypeEnum.folder
+        })
+      ],
       params: {
         folderName: name
       }

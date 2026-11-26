@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getOpenTelemetrySink } from '@fastgpt-sdk/otel/logger';
+import { ServerConfigError, UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { parseSupportedOutboundProxyUrl } from '../../../common/proxy/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { EventEmitter } from 'node:events';
 import {
   ChatEntryModerationError,
@@ -15,6 +19,7 @@ import {
   isChatEntryModerationError
 } from '@fastgpt/global/core/chat/error';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   MODERATION_ERROR_BLOCKED_MESSAGE
@@ -133,6 +138,19 @@ describe('processError zod logging', () => {
     expect(processed.httpStatus).toBe(400);
     expect(processed.zodError).toBeTruthy();
     expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps field errors when the request error comes from another module instance', () => {
+    const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'body' });
+    // 模拟热更新或其他 bundle 的类身份：Symbol.for 标识与字段仍存在，instanceof 不再成立。
+    Object.setPrototypeOf(error, Error.prototype);
+    expect(error).not.toBeInstanceOf(ApiRequestInputParseError);
+    const processed = processError({ error, url: '/api/test', defaultCode: 400 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.zodError).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: ['name'] })])
+    );
     expect(logger.error).not.toHaveBeenCalled();
   });
 
@@ -267,6 +285,19 @@ describe('processError HTTP status mapping', () => {
     expect(processed.code).toBe(507002);
     expect(processed.httpStatus).toBe(404);
   });
+
+  it('returns HTTP 403 with the existing business code for unauthorized files', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    jsonRes(res as unknown as Parameters<typeof jsonRes>[0], {
+      code: 403,
+      error: CommonErrEnum.unAuthFile
+    });
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 507003, statusText: CommonErrEnum.unAuthFile })
+    );
+  });
 });
 
 describe('jsonRes HTTP status mapping', () => {
@@ -277,12 +308,25 @@ describe('jsonRes HTTP status mapping', () => {
     }) as unknown as Parameters<typeof jsonRes>[0];
 
   it.each([
+    [ERROR_ENUM.unAuthApiKey, 401],
+    [ERROR_ENUM.insufficientQuota, 402],
+    [TeamErrEnum.aiPointsNotEnough, 402],
+    [ModelErrEnum.unAuthModel, 403],
+    [ModelErrEnum.unConfigured, 500],
+    [AppErrEnum.unAuthApp, 403],
+    [DatasetErrEnum.unExist, 404],
+    [DatasetErrEnum.externalChunkNotConfigured, 503],
+    [ChatErrEnum.chatIsGenerating, 409],
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.captchaRenderQueueFull, 429],
+    [UserErrEnum.captchaRenderQueueTimeout, 503],
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
+    [SandboxErrEnum.agentSandboxMigrationInProgress, 409],
+    [SandboxErrEnum.agentSandboxDiskQuotaExceeded, 403],
     [AppErrEnum.workflowBuilderVersionExpired, 410],
     [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
@@ -299,6 +343,191 @@ describe('jsonRes HTTP status mapping', () => {
         errorType: 'UserError'
       })
     );
+  });
+
+  it.each([
+    [S3ErrEnum.invalidUploadFileType, 510000],
+    [S3ErrEnum.uploadFileTypeMismatch, 510001],
+    [S3ErrEnum.fileUploadDisabled, 510002],
+    [S3ErrEnum.emptyUploadFile, 510003]
+  ] as const)('returns HTTP 400 for registered upload validation error %s', (errorKey, code) => {
+    const res = createResponse();
+
+    // 上传代理已经将这些错误分类为 400，JSON 包装不能再覆盖成默认 500。
+    jsonRes(res, { code: 400, error: new Error(errorKey) });
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code, statusText: errorKey }));
+  });
+
+  it('keeps an explicitly configured server status for an S3 business error', () => {
+    const entry = ERROR_RESPONSE[S3ErrEnum.uploadFileTypeMismatch];
+    const original = entry.httpStatus;
+    const res = createResponse();
+
+    try {
+      entry.httpStatus = 503;
+      jsonRes(res, { code: 400, error: new Error(S3ErrEnum.uploadFileTypeMismatch) });
+      expect(res.status).toHaveBeenCalledWith(503);
+    } finally {
+      entry.httpStatus = original;
+    }
+  });
+
+  it('logs System unexpected error and maps unregistered ServerConfigError to HTTP 500', () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+
+    const serverError = new ServerConfigError('Invalid outbound proxy URL configuration');
+    const processed = processError({ error: serverError, url: '/api/test', defaultCode: 500 });
+
+    expect(processed).toMatchObject({
+      code: 500,
+      httpStatus: 500,
+      message: 'Invalid outbound proxy URL configuration'
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'System unexpected error',
+      expect.objectContaining({
+        url: '/api/test',
+        message: 'Invalid outbound proxy URL configuration',
+        error: serverError
+      })
+    );
+    expect(logger.info).not.toHaveBeenCalled();
+
+    const res = createResponse();
+    jsonRes(res, { code: 500, error: serverError, url: '/api/test' });
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('logs sanitized OTel payloads when ServerConfigError originates from an invalid proxy URL', () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+
+    let proxyError: unknown;
+    try {
+      parseSupportedOutboundProxyUrl('http://user:proxy-secret@bad host:8080');
+    } catch (error) {
+      proxyError = error;
+    }
+
+    const processed = processError({
+      error: proxyError,
+      url: '/api/core/app/httpTools/getApiSchemaByUrl',
+      defaultCode: 500
+    });
+
+    expect(processed.httpStatus).toBe(500);
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    const [logMessage, logProps] = logger.error.mock.calls[0];
+
+    const emittedRecords: unknown[] = [];
+    const sink = getOpenTelemetrySink({
+      loggerProvider: {
+        getLogger: () => ({
+          emit: (record: unknown) => {
+            emittedRecords.push(record);
+          }
+        })
+      } as any
+    });
+    sink({
+      category: ['http', 'error'],
+      level: 'error',
+      timestamp: Date.now(),
+      message: [logMessage],
+      rawMessage: logMessage,
+      properties: logProps
+    });
+
+    const serialized = JSON.stringify(emittedRecords);
+    expect(serialized).toContain('ERR_INVALID_URL');
+    expect(serialized).not.toContain('proxy-secret');
+    expect(serialized).not.toContain('bad host');
+  });
+
+  it('maps ServerConfigError(ModelErrEnum.unExist) to HTTP 500 while keeping explicit UserError at 404', () => {
+    const serverError = new ServerConfigError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+    const explicitError = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+
+    expect(processError({ error: serverError })).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5',
+      httpStatus: 500
+    });
+    expect(processError({ error: explicitError })).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5',
+      httpStatus: 404
+    });
+
+    const serverRes = createResponse();
+    jsonRes(serverRes, { code: 500, error: serverError });
+    expect(serverRes.status).toHaveBeenCalledWith(500);
+    expect(serverRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513000,
+        statusText: ModelErrEnum.unExist,
+        message: 'Model is disabled: GPT-5'
+      })
+    );
+
+    const explicitRes = createResponse();
+    jsonRes(explicitRes, { code: 500, error: explicitError });
+    expect(explicitRes.status).toHaveBeenCalledWith(404);
+  });
+
+  it('maps UserConfigError(ModelErrEnum.unConfigured) to HTTP 400 while preserving code 513001', () => {
+    const error = new UserConfigError(ModelErrEnum.unConfigured);
+    const processed = processError({ error });
+
+    expect(processed).toMatchObject({
+      code: 513001,
+      statusText: ModelErrEnum.unConfigured,
+      httpStatus: 400
+    });
+
+    const res = createResponse();
+    jsonRes(res, { code: 500, error });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513001,
+        statusText: ModelErrEnum.unConfigured
+      })
+    );
+  });
+
+  it('preserves caller-provided 4xx status when a runtime error entry lacks httpStatus', () => {
+    const syntheticKey = 'syntheticMissingHttpStatusTestError';
+    const res = createResponse();
+    (ERROR_RESPONSE as Record<string, any>)[syntheticKey] = {
+      code: 599999,
+      statusText: syntheticKey,
+      message: 'Synthetic validation failure',
+      data: null
+    };
+
+    try {
+      jsonRes(res, { code: 403, error: syntheticKey });
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 599999, statusText: syntheticKey })
+      );
+    } finally {
+      delete (ERROR_RESPONSE as Record<string, any>)[syntheticKey];
+    }
+  });
+
+  it('keeps unregistered internal errors at HTTP 500 even with an S3-range fallback code', () => {
+    const res = createResponse();
+
+    jsonRes(res, { code: 510001, error: new Error('Unexpected storage failure') });
+
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 
   it.each(['httpStatus', 'statusCode'] as const)(
@@ -348,14 +577,24 @@ describe('getSseErrorResponse logging', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 
-  it('keeps specified error responses unchanged for UserError', () => {
-    const error = new UserError(ERROR_ENUM.unAuthorization);
+  it('keeps specified SSE error fields including httpStatus consistent with OpenAPI examples', () => {
+    const authError = new UserError(ERROR_ENUM.unAuthorization);
+    const authResponse = getSseErrorResponse(authError);
 
-    const response = getSseErrorResponse(error);
-
-    expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
-    expect(response.shouldClearCookie).toBe(true);
+    expect(JSON.parse(authResponse.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
+    expect(authResponse.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
+
+    const initError = new UserError(SandboxErrEnum.agentSandboxInitializing);
+    const initPayload = JSON.parse(getSseErrorResponse(initError).data);
+
+    expect(initPayload).toEqual({
+      code: 510001,
+      statusText: SandboxErrEnum.agentSandboxInitializing,
+      message: ERROR_RESPONSE[SandboxErrEnum.agentSandboxInitializing].message,
+      data: null,
+      httpStatus: 409
+    });
   });
 });
 

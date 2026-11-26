@@ -1,8 +1,9 @@
-import { axios } from '../../api/axios';
+import { axios, axiosWithoutSSRF } from '../../api/axios';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { getAxiosContentType, getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -116,17 +117,46 @@ export const guessBase64ImageType = (str: string): string => {
 };
 
 /**
+ * 判断一次图片下载是否命中调用方声明的可信 origin。
+ *
+ * 沙箱预览地址来自服务端配置（AGENT_SANDBOX_PREVIEW_PROXY_URL），可能部署在内网，
+ * 不能被公共 SSRF 内网拦截误杀；这类地址不是用户任意输入，因此允许对该 origin 走
+ * 受限通道。origin 之外的地址仍然走 safe axios，避免把“可信”扩大成任意内网访问。
+ */
+export const isTrustedOriginUrl = (url: string, trustedOrigin?: string) => {
+  if (!trustedOrigin) return false;
+
+  try {
+    const target = new URL(url, serverRequestBaseUrl);
+    const trusted = new URL(trustedOrigin, serverRequestBaseUrl);
+    return target.origin === trusted.origin;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * 下载远程图片并返回 Buffer。
  *
  * 该函数用于文档解析链路中转存 markdown http 图片，因此默认限制为 180 秒和 10MB：
  * 先用 Content-Length 快速拒绝明显超限的资源，下载过程中再按累计字节数中断，避免
  * 第三方图片拖住解析任务或把大响应一次性读进内存。
+ *
+ * 可信 origin 通道关闭自动重定向：safe axios 的每一跳都会做内网校验，而无 SSRF 通道
+ * 一旦跟随 3xx 就会把“只放行配置 origin”扩大成任意地址，因此这里宁可让重定向失败。
  */
 export const getImageBuffer = async (
   url: string,
   options: {
     timeoutMs?: number;
     maxSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
+    /**
+     * 严格校验响应体文件头属于指定图片 MIME 白名单；未指定时保留通用下载器的兼容回退。
+     * 工具视觉通道必须开启此校验，避免把 200 text/html 登录页兜底伪装成 image/jpeg 发给模型。
+     */
+    allowedMimeTypes?: readonly string[];
   } = {}
 ) => {
   logger.debug('Load image to buffer', { url });
@@ -134,65 +164,127 @@ export const getImageBuffer = async (
   try {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
     const maxSize = options.maxSize ?? DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE;
-    const response = await axios.get(url, {
-      baseURL: serverRequestBaseUrl,
-      responseType: 'stream',
-      timeout: timeoutMs,
-      maxContentLength: maxSize
-    });
+    const isTrustedOrigin = isTrustedOriginUrl(url, options.trustedOrigin);
+    const requestClient = isTrustedOrigin ? axiosWithoutSSRF : axios;
+    const abortController = new AbortController();
+    const createTimeoutError = () => new Error(`Image download timed out after ${timeoutMs}ms`);
+    // 贯穿连接、响应头与响应体流读取的总截止定时器：Axios stream 模式的 timeout 不覆盖慢速滴水响应体。
+    const timeoutTimer = setTimeout(() => {
+      abortController.abort(createTimeoutError());
+    }, timeoutMs);
 
-    const contentLength = Number(getAxiosHeaderValue(response?.headers?.['content-length']) || 0);
-    if (contentLength > maxSize) {
-      response.data?.destroy?.();
-      throw new ImageDownloadTooLargeError(contentLength, maxSize);
-    }
+    try {
+      const response = await requestClient.get(url, {
+        baseURL: serverRequestBaseUrl,
+        responseType: 'stream',
+        timeout: timeoutMs,
+        signal: abortController.signal,
+        maxContentLength: maxSize,
+        // 不跟随 3xx：跨 origin 跳转会绕开内网校验，同 origin 跳转也不值得放开。
+        ...(isTrustedOrigin ? { maxRedirects: 0 } : {})
+      });
 
-    const chunks: Buffer[] = [];
-    let totalLength = 0;
+      // 兜底校验：axios 默认 validateStatus 已拒绝非 2xx，这里再显式拒绝一次，
+      // 避免换成不抛错的自定义客户端时把跳转响应当成图片内容继续读取。
+      const status = response?.status;
+      if (typeof status === 'number' && (status < 200 || status >= 300)) {
+        response.data?.destroy?.();
+        throw new Error(`Unexpected image response status: ${status}`);
+      }
 
-    const buffer = await new Promise<Buffer>((resolve, reject) => {
-      response.data.on('data', (chunk: Buffer) => {
-        totalLength += chunk.length;
+      const contentLength = Number(getAxiosHeaderValue(response?.headers?.['content-length']) || 0);
+      if (contentLength > maxSize) {
+        response.data?.destroy?.();
+        throw new ImageDownloadTooLargeError(contentLength, maxSize);
+      }
 
-        if (totalLength > maxSize) {
-          response.data.destroy();
-          return reject(new ImageDownloadTooLargeError(totalLength, maxSize));
+      const chunks: Buffer[] = [];
+      let totalLength = 0;
+
+      const buffer = await new Promise<Buffer>((resolve, reject) => {
+        let settled = false;
+        const finish = (fn: () => void) => {
+          if (settled) return;
+          settled = true;
+          abortController.signal.removeEventListener('abort', onAbort);
+          fn();
+        };
+        const onAbort = () => {
+          response.data?.destroy?.();
+          finish(() => reject(createTimeoutError()));
+        };
+
+        if (abortController.signal.aborted) {
+          onAbort();
+          return;
+        }
+        abortController.signal.addEventListener('abort', onAbort, { once: true });
+
+        response.data.on('data', (chunk: Buffer) => {
+          totalLength += chunk.length;
+
+          if (totalLength > maxSize) {
+            response.data.destroy();
+            return finish(() => reject(new ImageDownloadTooLargeError(totalLength, maxSize)));
+          }
+
+          chunks.push(chunk);
+        });
+
+        response.data.on('end', () => {
+          if (abortController.signal.aborted) {
+            return finish(() => reject(createTimeoutError()));
+          }
+          finish(() => resolve(Buffer.concat(chunks as unknown as Uint8Array[])));
+        });
+
+        response.data.on('error', (err: Error) => {
+          finish(() => reject(abortController.signal.aborted ? createTimeoutError() : err));
+        });
+      });
+
+      const headerContentType = getAxiosContentType(response?.headers?.['content-type']);
+
+      if (options.allowedMimeTypes) {
+        const detectedType = detectImageTypeFromBuffer(buffer);
+        const allowedSet = new Set(options.allowedMimeTypes.map((item) => item.toLowerCase()));
+        if (!detectedType || !allowedSet.has(detectedType.toLowerCase())) {
+          throw new Error(
+            `Invalid or unsupported image content: ${detectedType || headerContentType || 'unknown'}`
+          );
         }
 
-        chunks.push(chunk);
-      });
-
-      response.data.on('end', () => {
-        resolve(Buffer.concat(chunks as unknown as Uint8Array[]));
-      });
-
-      response.data.on('error', reject);
-    });
-
-    const headerContentType = getAxiosContentType(response?.headers?.['content-type']);
-
-    // 检测图片类型的优先级策略
-    const imageType = (() => {
-      // 1. 如果 Header 是有效的图片类型，直接使用
-      if (headerContentType && isValidImageContentType(headerContentType)) {
-        return headerContentType;
+        return {
+          buffer,
+          mime: detectedType
+        };
       }
 
-      // 2. 使用文件头检测（适用于通用二进制类型或无效类型）
-      const detectedType = detectImageTypeFromBuffer(buffer);
-      if (detectedType) {
-        return detectedType;
-      }
+      // 检测图片类型的优先级策略
+      const imageType = (() => {
+        // 1. 如果 Header 是有效的图片类型，直接使用
+        if (headerContentType && isValidImageContentType(headerContentType)) {
+          return headerContentType;
+        }
 
-      // 3. 回退到 base64 推断
-      const base64 = buffer.toString('base64');
-      return guessBase64ImageType(base64);
-    })();
+        // 2. 使用文件头检测（适用于通用二进制类型或无效类型）
+        const detectedType = detectImageTypeFromBuffer(buffer);
+        if (detectedType) {
+          return detectedType;
+        }
 
-    return {
-      buffer,
-      mime: imageType
-    };
+        // 3. 回退到 base64 推断
+        const base64 = buffer.toString('base64');
+        return guessBase64ImageType(base64);
+      })();
+
+      return {
+        buffer,
+        mime: imageType
+      };
+    } finally {
+      clearTimeout(timeoutTimer);
+    }
   } catch (error) {
     logger.warn('Load image to buffer failed', { url, error });
     return Promise.reject(error);
@@ -205,6 +297,10 @@ export const getImageBase64 = async (
     timeoutMs?: number;
     maxSize?: number;
     maxBase64BufferSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
+    /** 严格校验响应体文件头属于指定图片 MIME 白名单。 */
+    allowedMimeTypes?: readonly string[];
   } = {}
 ) => {
   logger.debug('Load image to base64', { url });
@@ -212,7 +308,9 @@ export const getImageBase64 = async (
   try {
     const { buffer, mime } = await getImageBuffer(url, {
       timeoutMs: options.timeoutMs,
-      maxSize: options.maxSize
+      maxSize: options.maxSize,
+      trustedOrigin: options.trustedOrigin,
+      allowedMimeTypes: options.allowedMimeTypes
     });
     const maxBase64BufferSize = options.maxBase64BufferSize ?? DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE;
 
@@ -234,7 +332,7 @@ export const getImageBase64 = async (
 };
 
 export const addEndpointToImageUrl = (text: string) => {
-  const baseURL = serviceEnv.FE_DOMAIN;
+  const baseURL = getSystemInstanceConfig().site.publicUrl;
   const subRoute = serviceEnv.NEXT_PUBLIC_BASE_URL;
   if (!baseURL) return text;
   const escapedSubRoute = subRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

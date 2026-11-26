@@ -1,49 +1,41 @@
 /**
  * Sandbox 领域共享配置派生。
  *
- * 这里只派生已在入口校验的系统配置和环境配置，不依赖 interface、application
+ * 这里只派生已在入口校验的系统配置，不依赖 interface、application
  * 或 infrastructure，供各层单向引用。
+ *
+ * 所有字段以实例配置快照为唯一运行时来源；ENV 只在启动迁移时一次性 seed 进 DB。
  */
-import { MB_BYTES, RESERVED_DISK_MB } from './constants';
-import { serviceEnv } from '../../../env';
+import { storageSizeGiToBytes } from '@fastgpt/global/core/ai/sandbox/constants';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
-/** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB。 */
-export const getAgentSandboxDiskBytes = () => {
-  const storageMB = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI * 1024;
-  const diskMB = Math.round(storageMB / 2 - RESERVED_DISK_MB);
-  if (diskMB <= 0) {
-    throw new Error(
-      `AGENT_SANDBOX_STORAGE_SIZE_GI must be greater than ${RESERVED_DISK_MB * 2}MiB`
-    );
-  }
-  return diskMB * MB_BYTES;
+type AgentSandboxInstanceConfig = ReturnType<
+  typeof getSystemInstanceConfig
+>['subservice']['agentSandbox'];
+
+/** 实例配置中的 Agent Sandbox 域；运行期以该快照为唯一权威。 */
+const getInstanceAgentSandboxConfig = (): AgentSandboxInstanceConfig =>
+  getSystemInstanceConfig().subservice.agentSandbox;
+
+/** 当前实例配置是否已启用 Agent Sandbox。 */
+export const isAgentSandboxEnabled = (): boolean => getInstanceAgentSandboxConfig().enabled;
+
+/** 票据签发、Proxy 反向鉴权和文件预览统一读取同一份实例代理配置。 */
+export const getAgentSandboxProxyConfig = () => getInstanceAgentSandboxConfig().proxy;
+
+/** 实例配置的公共资源与生命周期参数。 */
+export const getAgentSandboxCommonConfig = () => getInstanceAgentSandboxConfig().common;
+
+/** OpenSandbox 连接配置。 */
+export const getAgentSandboxOpenSandboxConfig = () => getInstanceAgentSandboxConfig().opensandbox;
+
+/** 判断当前实例配置是否已启用 Agent Sandbox 且 OpenSandbox 控制面连接信息完整。 */
+export const isAgentSandboxOpenSandboxConfigured = (): boolean => {
+  if (!isAgentSandboxEnabled()) return false;
+  const { baseUrl, apiKey } = getAgentSandboxOpenSandboxConfig();
+  return Boolean(baseUrl && apiKey);
 };
 
-/** 获取 sandbox 冷归档包大小上限，等于磁盘基准。 */
-export const getAgentSandboxArchiveMaxBytes = getAgentSandboxDiskBytes;
-
-/** 获取运行中 sandbox 自动暂停前允许的未活跃分钟数。 */
-export const getAgentSandboxSuspendMinutes = () => serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
-
-/** 获取已暂停 sandbox 自动归档前允许的未活跃天数。 */
-export const getAgentSandboxArchiveInactiveDays = () =>
-  serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
-
-/** 获取 Skill 包大小上限，等于磁盘基准。 */
-export const getAgentSandboxSkillMaxBytes = getAgentSandboxDiskBytes;
-
-/** 获取 IDE 单文件大小上限，等于磁盘基准。 */
-export const getAgentSandboxMaxFileBytes = getAgentSandboxDiskBytes;
-
-/**
- * 获取 Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池）。
- * 服务端系统配置（管理台 systemEnv）优先，env 兜底；undefined 表示不限制。
- */
-export const getAgentSandboxMax = (): number | undefined =>
-  global.systemEnv?.agentSandboxMax ?? serviceEnv.AGENT_SANDBOX_MAX;
-
-/**
- * 获取单团队 Agent sandbox 活跃实例配额；系统配置优先、env 兜底，undefined 表示不限制。
- */
-export const getAgentSandboxMaxPerTeam = (): number | undefined =>
-  global.systemEnv?.agentSandboxMaxPerTeam ?? serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+/** 获取 Agent sandbox 磁盘基准字节数，直接按 PVC 存储容量换算（归档、恢复与 Skill 注入均流式传输，容器 `/tmp` 零暂存）。 */
+export const getAgentSandboxDiskBytes = () =>
+  storageSizeGiToBytes(getAgentSandboxCommonConfig().storageSizeGi);

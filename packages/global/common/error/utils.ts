@@ -132,6 +132,33 @@ export const isUserConfigError = (
     'name' in error &&
     error.name === 'UserConfigError');
 
+// 同一进程中的不同构建模块必须共享错误身份，同时防止普通对象伪造 name 改变响应状态。
+const serverConfigErrorBrand = Symbol.for('fastgpt.ServerConfigError');
+
+/**
+ * 服务端实例级配置缺失或不可用错误（例如实例默认模型被停用或类型不匹配）；
+ * 继承 UserError 以保留稳定业务码、展示文案与 isModelConfigError 兼容，
+ * 并在响应层映射为 HTTP 500 以保留 5xx 链路告警。
+ */
+export class ServerConfigError extends UserError {
+  readonly [serverConfigErrorBrand] = true;
+
+  constructor(message: string, displayMessage?: string, options?: ErrorOptions) {
+    super(message, displayMessage, options);
+    this.name = 'ServerConfigError';
+  }
+}
+
+/**
+ * 跨模块识别服务端实例级配置错误；普通对象仅含同名字段不会被信任。
+ */
+export const isServerConfigError = (error: unknown): error is ServerConfigError =>
+  error instanceof ServerConfigError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    serverConfigErrorBrand in error &&
+    (error as Record<symbol, unknown>)[serverConfigErrorBrand] === true);
+
 /**
  * 表示错误提示已经由业务侧自行展示，通用请求层应跳过重复 toast。
  */

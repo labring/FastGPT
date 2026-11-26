@@ -161,7 +161,7 @@ export const getNewToolPreviewNode = async (
 ) => {
   const preview = await getClientToolPreviewNode({ ...data, getLatestVersion: true });
 
-  if (splitCombineToolId(data.appId).source !== AppToolSourceEnum.personal) {
+  if (splitCombineToolId(preview.pluginId || data.appId).source !== AppToolSourceEnum.personal) {
     return preview;
   }
 

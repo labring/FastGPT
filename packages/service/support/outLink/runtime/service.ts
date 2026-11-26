@@ -4,9 +4,9 @@ import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { createWorkflowResourceContext } from '../../../core/workflow/resource/context';
+import { createWorkflowResourceContext } from '../../../core/workflow/dispatch/context/resource';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -31,7 +31,6 @@ import {
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileLimits
@@ -428,7 +427,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       retainDatasetCite: false,
       nodeResponseWriteConfig: {
         persistToDb: true,
@@ -437,14 +435,20 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     });
 
     // The terminal event carries the authoritative full reply for final correction or delivery.
-    const responseContent =
-      removeAIResponseCite(assistantResponses, false)
-        .map((response) => response.text?.content)
-        .filter(Boolean)
-        .join('\n')
-        .trim() || DEFAULT_REPLY;
+    const responseContent = removeAIResponseCite(assistantResponses, false)
+      .map((response) => response.text?.content)
+      .filter(Boolean)
+      .join('\n')
+      .trim();
 
-    responseController.push({ type: 'done', content: responseContent });
+    if (workflowRuntimeSummary.errorCount > 0) {
+      responseController.push({
+        type: 'error',
+        content: `App run error: ${getErrText(workflowRuntimeSummary.errorText)}`
+      });
+    } else {
+      responseController.push({ type: 'done', content: responseContent || DEFAULT_REPLY });
+    }
     // Wait for delivery so responder failures can be persisted with the final chat round.
     const respondResult = await responseController.result;
     if (!respondResult.success) {

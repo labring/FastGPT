@@ -1,0 +1,1212 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useEffect, useMemo } from 'react';
+import {
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  SimpleGrid
+} from '@chakra-ui/react';
+import { useForm, Controller } from 'react-hook-form';
+import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import { ResourceConfigSchema } from '@fastgpt/global/common/system/config/schemas/resource';
+
+type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
+  SystemInstanceConfigDomainMap['performance'] & {
+    openApiKeyMaxCount: SystemInstanceConfigDomainMap['auth']['openApiKeyMaxCount'];
+    fileUrlExpiredDays: SystemInstanceConfigDomainMap['storage']['fileUrlExpiredDays'];
+    hnswEfSearch: SystemInstanceConfigDomainMap['vector']['hnswEfSearch'];
+    vectorRecallConcurrency: SystemInstanceConfigDomainMap['vector']['vectorRecallConcurrency'];
+  };
+
+/** 数字输入统一尺寸，避免各字段各自声明宽度 */
+const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
+
+/**
+ * 限制与并发页：由原「资源限制」与「性能与并发」合并而成。
+ * 字段跨越 resource / performance / auth / storage / vector 五个配置域，
+ * 保存时逐域提交，各自携带 revision 由服务端做乐观锁校验。
+ */
+const LimitsSettingComponent = () => {
+  const { t } = useSafeTranslation();
+  const datasetArchiveFields = useMemo(
+    () =>
+      [
+        {
+          name: 'maxFiles',
+          label: t('admin:dataset_archive_max_files'),
+          tooltip: t('admin:dataset_archive_max_files_tooltip')
+        },
+        {
+          name: 'maxSourceSizeMiB',
+          label: t('admin:dataset_archive_max_source_size_mib'),
+          tooltip: t('admin:dataset_archive_max_source_size_mib_tooltip')
+        },
+        {
+          name: 'maxConcurrency',
+          label: t('admin:dataset_archive_max_concurrency'),
+          tooltip: t('admin:dataset_archive_max_concurrency_tooltip')
+        },
+        {
+          name: 'prepareTimeoutSeconds',
+          label: t('admin:dataset_archive_prepare_timeout_seconds'),
+          tooltip: t('admin:dataset_archive_prepare_timeout_seconds_tooltip')
+        }
+      ] as const,
+    [t]
+  );
+  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
+  const showVectorRecallConcurrency = isFieldVisible('vector.vectorRecallConcurrency');
+  const showEvaluationMaxRows = isFieldVisible('resource.evaluationMaxRows');
+  const showExportCooldown = isFieldVisible('resource.exportDatasetLimitMinutes');
+  const showWebsiteSyncCooldown = isFieldVisible('resource.websiteSyncLimitMinuted');
+  const showEvaluationConcurrency = isFieldVisible('performance.task.evalConcurrency');
+  const showExportSync = showExportCooldown || showWebsiteSyncCooldown;
+  const showTask = showEvaluationMaxRows || showEvaluationConcurrency;
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'requestAndText', label: t('admin:request_text_limits') },
+      { id: 'folder', label: t('admin:folder_structure_limits') },
+      { id: 'uploadAndExpiry', label: t('admin:file_upload_validity') },
+      { id: 'datasetArchive', label: t('admin:dataset_archive_download') },
+      ...(showExportSync
+        ? [{ id: 'exportSync', label: t('admin:export_sync_rate_limiting') }]
+        : []),
+      { id: 'workflow', label: t('admin:workflow_execution_limits') },
+      { id: 'parse', label: t('admin:document_parsing_limits') },
+      { id: 'dataset', label: t('admin:dataset_processing_concurrency') },
+      { id: 'vectorIndex', label: t('admin:vector_index_parameters') },
+      { id: 'chatAndTracking', label: t('admin:chat_rate_limiting_tracking') },
+      ...(showTask ? [{ id: 'task', label: t('admin:task_concurrency') }] : [])
+    ],
+    [t, showExportSync, showTask]
+  );
+  const resource = useDomainConfig('resource');
+  const performance = useDomainConfig('performance');
+  const auth = useDomainConfig('auth');
+  const storage = useDomainConfig('storage');
+  const vector = useDomainConfig('vector');
+
+  const isLoading =
+    resource.isLoading ||
+    performance.isLoading ||
+    auth.isLoading ||
+    storage.isLoading ||
+    vector.isLoading;
+
+  const form = useForm<LimitsConfigForm>({
+    defaultValues: {
+      ...resource.effectiveConfig,
+      ...performance.effectiveConfig,
+      openApiKeyMaxCount: 100,
+      fileUrlExpiredDays: 90,
+      hnswEfSearch: 200,
+      vectorRecallConcurrency: 0
+    }
+  });
+  const { control, handleSubmit, reset } = form;
+
+  useEffect(() => {
+    if (isLoading) return;
+    reset({
+      ...resource.effectiveConfig,
+      ...performance.effectiveConfig,
+      openApiKeyMaxCount: auth.effectiveConfig?.openApiKeyMaxCount ?? 100,
+      fileUrlExpiredDays: storage.effectiveConfig?.fileUrlExpiredDays ?? 90,
+      hnswEfSearch: vector.effectiveConfig?.hnswEfSearch ?? 200,
+      vectorRecallConcurrency: vector.effectiveConfig?.vectorRecallConcurrency ?? 0
+    });
+  }, [
+    resource.effectiveConfig,
+    performance.effectiveConfig,
+    auth.effectiveConfig,
+    storage.effectiveConfig,
+    vector.effectiveConfig,
+    isLoading,
+    reset
+  ]);
+
+  const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
+    async (formData: LimitsConfigForm) => {
+      // 跨域原子提交：resource、performance、auth、storage、vector 五个域合并为单个事务请求
+      await updateDomainConfigApi({
+        items: [
+          {
+            domain: 'resource',
+            expectedRevision: resource.revision,
+            overrides: {
+              serviceRequestMaxContentLength: Number(formData.serviceRequestMaxContentLength) || 10,
+              serviceAxiosMaxContentLength: formData.serviceAxiosMaxContentLength,
+              systemMaxStringLengthM: Number(formData.systemMaxStringLengthM) || 100,
+              maxFolderDepth: Number(formData.maxFolderDepth) || 4,
+              appFolderMaxAmount: Number(formData.appFolderMaxAmount ?? 1000),
+              datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount ?? 1000),
+              uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
+              uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
+              ...(showEvaluationMaxRows ? { evaluationMaxRows: formData.evaluationMaxRows } : {}),
+              // 清空的输入由 Schema 补齐默认值，避免页面另维护一套归档限制。
+              datasetArchive: ResourceConfigSchema.shape.datasetArchive.parse(
+                formData.datasetArchive
+              ),
+              ...(showExportCooldown
+                ? { exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0 }
+                : {}),
+              ...(showWebsiteSyncCooldown
+                ? { websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0 }
+                : {})
+            }
+          },
+          {
+            domain: 'performance',
+            expectedRevision: performance.revision,
+            overrides: {
+              workflow: formData.workflow,
+              parse: formData.parse,
+              dataset: formData.dataset,
+              chat: formData.chat,
+              tracking: formData.tracking,
+              ...(showEvaluationConcurrency ? { task: formData.task } : {})
+            }
+          },
+          {
+            domain: 'auth',
+            expectedRevision: auth.revision,
+            overrides: {
+              ...(filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>),
+              openApiKeyMaxCount: Number(formData.openApiKeyMaxCount) || 100
+            }
+          },
+          {
+            domain: 'storage',
+            expectedRevision: storage.revision,
+            overrides: {
+              ...(filterConfigDataByEdition('storage', storage.overrides) as Record<
+                string,
+                unknown
+              >),
+              fileUrlExpiredDays:
+                Number(formData.fileUrlExpiredDays) > 0 ? Number(formData.fileUrlExpiredDays) : 90
+            }
+          },
+          {
+            domain: 'vector',
+            expectedRevision: vector.revision,
+            overrides: {
+              ...(filterConfigDataByEdition('vector', vector.overrides) as Record<string, unknown>),
+              hnswEfSearch: Number(formData.hnswEfSearch) || 200,
+              ...(showVectorRecallConcurrency
+                ? { vectorRecallConcurrency: Number(formData.vectorRecallConcurrency ?? 0) }
+                : {})
+            }
+          }
+        ]
+      });
+      await Promise.all([
+        resource.refetch(),
+        performance.refetch(),
+        auth.refetch(),
+        storage.refetch(),
+        vector.refetch()
+      ]);
+    },
+    {
+      successToast: 'admin:settings_saved',
+      errorToast: 'admin:failed_to_save_settings'
+    }
+  );
+
+  const submit = useMemo(() => handleSubmit((data) => onSave(data)), [handleSubmit, onSave]);
+
+  return (
+    <AdminSettingPage
+      form={form}
+      headerTitle={t('admin:page_title_limits')}
+      tocItems={tocItems}
+      isLoading={isLoading}
+      isSaving={isSaving}
+      onSave={submit}
+    >
+      {/* 1. 请求与文本限制 */}
+      <AdminSettingSection id="requestAndText" title={t('admin:request_text_limits')}>
+        <SimpleGrid columns={[1, 2]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:service_http_response_max_size_mib')}
+            tooltip={t('admin:service_http_response_max_size_tip')}
+            isRequired
+          >
+            <Controller
+              name="serviceAxiosMaxContentLength"
+              control={control}
+              rules={{ required: true, min: 0, validate: Number.isInteger }}
+              render={({ field, fieldState }) => (
+                <NumberInput
+                  {...numberInputProps}
+                  min={0}
+                  precision={0}
+                  isInvalid={Boolean(fieldState.error)}
+                  value={field.value ?? ''}
+                  onChange={(text, value) =>
+                    field.onChange(text.trim() === '' || Number.isNaN(value) ? undefined : value)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:workflow_http_response_max_size_mb')}
+            tooltip={t('admin:workflow_http_response_max_size_tip')}
+            isRequired
+          >
+            <Controller
+              name="serviceRequestMaxContentLength"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={500}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:max_characters_for_sync_string_processing_m')}
+            tooltip={t('admin:max_characters_for_cpu_intensive_synchronous_text_processing')}
+            isRequired
+          >
+            <Controller
+              name="systemMaxStringLengthM"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 100}
+                  onChange={(_, val) => field.onChange(val || 100)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:openapi_key_max_count')}
+            tooltip={t('admin:max_personal_openapi_keys_per_team_member')}
+            isRequired
+          >
+            <Controller
+              name="openApiKeyMaxCount"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={10000}
+                  value={field.value ?? 100}
+                  onChange={(_, val) => field.onChange(val || 100)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 2. 文件夹结构限制 */}
+      <AdminSettingSection id="folder" title={t('admin:folder_structure_limits')} showDivider>
+        <SimpleGrid columns={[1, 3]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:max_folder_depth')}
+            tooltip={t('admin:max_folder_nesting_depth_for_apps_and_datasets_2_to_20_level')}
+            isRequired
+          >
+            <Controller
+              name="maxFolderDepth"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={2}
+                  max={20}
+                  value={field.value ?? 4}
+                  onChange={(_, val) => field.onChange(val || 4)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:app_folder_limit')}
+            tooltip={t('admin:max_app_folders_per_team')}
+            isRequired
+          >
+            <Controller
+              name="appFolderMaxAmount"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={10000}
+                  value={field.value ?? 1000}
+                  // 0 = 禁止创建新目录，与旧 env 语义一致，不能用 || 吃掉 0
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:dataset_folder_limit')}
+            tooltip={t('admin:max_dataset_folders_per_team')}
+            isRequired
+          >
+            <Controller
+              name="datasetFolderMaxAmount"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={10000}
+                  value={field.value ?? 1000}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 3. 文件上传与有效期 */}
+      <AdminSettingSection id="uploadAndExpiry" title={t('admin:file_upload_validity')} showDivider>
+        <SimpleGrid columns={[1, 3]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:single_file_upload_size_limit_mb')}
+            tooltip={t('admin:max_size_of_a_single_uploaded_file_mb')}
+            isRequired
+          >
+            <Controller
+              name="uploadFileMaxSize"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={10000}
+                  value={field.value ?? 1000}
+                  onChange={(_, val) => field.onChange(val || 1000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:batch_upload_file_count_limit')}
+            tooltip={t('admin:max_files_per_batch_upload_of_chat_or_dataset_documents')}
+            isRequired
+          >
+            <Controller
+              name="uploadFileMaxAmount"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={5000}
+                  value={field.value ?? 1000}
+                  onChange={(_, val) => field.onChange(val || 1000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:chat_temporary_files_retention_days')}
+            tooltip={t('admin:retention_period_for_short_links_of_files_uploaded_or_refere')}
+            isRequired
+          >
+            <Controller
+              name="fileUrlExpiredDays"
+              control={control}
+              render={({ field }) => (
+                <AdminNumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  maxW={'400px'}
+                  min={0.01}
+                  max={3650}
+                  step={0.5}
+                  value={field.value}
+                  fallbackValue={90}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      <AdminSettingSection
+        id="datasetArchive"
+        title={t('admin:dataset_archive_download')}
+        showDivider
+      >
+        <SimpleGrid columns={[1, 2]} spacing={5}>
+          {datasetArchiveFields.map(({ name, label, tooltip }) => (
+            <AdminFormItem key={name} label={label} tooltip={tooltip} isRequired>
+              <Controller
+                name={`datasetArchive.${name}`}
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                    {...numberInputProps}
+                    min={1}
+                    precision={0}
+                    value={field.value ?? ''}
+                    onChange={(valueAsString, value) =>
+                      field.onChange(
+                        valueAsString.trim() === '' || Number.isNaN(value) ? undefined : value
+                      )
+                    }
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          ))}
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 4. 导出与同步限流 */}
+      {showExportSync && (
+        <AdminSettingSection
+          id="exportSync"
+          title={t('admin:export_sync_rate_limiting')}
+          showDivider
+        >
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            {showExportCooldown && (
+              <AdminFormItem
+                label={t('admin:dataset_export_cooldown_minutes_2')}
+                tooltip={t('admin:cooldown_minutes_between_two_dataset_exports_for_the_same_te')}
+                isRequired
+              >
+                <Controller
+                  name="exportDatasetLimitMinutes"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      {...numberInputProps}
+                      min={0}
+                      max={10000}
+                      value={field.value ?? 0}
+                      onChange={(_, val) => field.onChange(val || 0)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+
+            {showWebsiteSyncCooldown && (
+              <AdminFormItem
+                label={t('admin:website_sync_cooldown_minutes_2')}
+                tooltip={t('admin:cooldown_minutes_between_two_website_syncs_for_the_same_team')}
+                isRequired
+              >
+                <Controller
+                  name="websiteSyncLimitMinuted"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      {...numberInputProps}
+                      min={0}
+                      max={10000}
+                      value={field.value ?? 0}
+                      onChange={(_, val) => field.onChange(val || 0)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+
+      {/* 5. 工作流执行限制 */}
+      <AdminSettingSection id="workflow" title={t('admin:workflow_execution_limits')} showDivider>
+        <SimpleGrid columns={[1, 3]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:max_run_times_per_execution')}
+            tooltip={t('admin:max_node_steps_per_workflow_run_to_prevent_infinite_loops')}
+            isRequired
+          >
+            <Controller
+              name="workflow.maxRunTimes"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={5000}
+                  value={field.value ?? 500}
+                  // 0 是合法取值（禁用工作流），不能用 || 兜底，否则输入 0 会被吃回默认值
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 500 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:max_loop_array_length')}
+            tooltip={t('admin:max_input_array_length_allowed_by_loop_nodes_and_parallel_br')}
+            isRequired
+          >
+            <Controller
+              name="workflow.maxLoopTimes"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={1000}
+                  value={field.value ?? 100}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 100 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:parallel_node_concurrency_limit')}
+            tooltip={t('admin:max_concurrent_threads_for_parallel_branch_execution_must_be')}
+            isRequired
+          >
+            <Controller
+              name="workflow.parallelMaxConcurrency"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 6. 文档解析限制 */}
+      <AdminSettingSection id="parse" title={t('admin:document_parsing_limits')} showDivider>
+        <SimpleGrid columns={[1, 3]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:file_parse_timeout_seconds_2')}
+            tooltip={t('admin:max_processing_time_for_a_worker_to_parse_a_single_document')}
+            isRequired
+          >
+            <Controller
+              name="parse.fileTimeoutSeconds"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={60}
+                  max={6000}
+                  value={field.value ?? 600}
+                  onChange={(_, val) => field.onChange(val || 600)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:xlsx_max_rows')}
+            tooltip={t('admin:max_rows_allowed_when_parsing_excel_spreadsheets')}
+            isRequired
+          >
+            <Controller
+              name="parse.xlsxMaxRows"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={1048576}
+                  value={field.value ?? 100000}
+                  onChange={(_, val) => field.onChange(val || 100000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:xlsx_max_columns')}
+            tooltip={t('admin:max_columns_allowed_when_parsing_excel_spreadsheets')}
+            isRequired
+          >
+            <Controller
+              name="parse.xlsxMaxColumns"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={16384}
+                  value={field.value ?? 1000}
+                  onChange={(_, val) => field.onChange(val || 1000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:xlsx_max_cells')}
+            tooltip={t('admin:max_total_cells_allowed_when_parsing_excel_spreadsheets')}
+            isRequired
+          >
+            <Controller
+              name="parse.xlsxMaxCells"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={10000000}
+                  value={field.value ?? 1000000}
+                  onChange={(_, val) => field.onChange(val || 1000000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:xlsx_max_merged_cells')}
+            tooltip={t('admin:max_merged_cells_allowed_when_parsing_excel_spreadsheets')}
+            isRequired
+          >
+            <Controller
+              name="parse.xlsxMaxMergedCells"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={5000000}
+                  value={field.value ?? 1000000}
+                  onChange={(_, val) => field.onChange(val || 1000000)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:html_conversion_max_characters')}
+            tooltip={t('admin:max_characters_allowed_when_converting_html_to_markdown')}
+            isRequired
+          >
+            <Controller
+              name="parse.maxHtmlTransformChars"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={10000000}
+                  value={field.value ?? 1000000}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000000 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 7. 知识库处理并发 */}
+      <AdminSettingSection
+        id="dataset"
+        title={t('admin:dataset_processing_concurrency')}
+        showDivider
+      >
+        <SimpleGrid columns={[1, 3]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:document_parsing_concurrency_2')}
+            tooltip={t('admin:max_parallel_file_parsing_processes_in_the_dataset_queue')}
+            isRequired
+          >
+            <Controller
+              name="dataset.parseMaxProcess"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:vectorization_concurrency')}
+            tooltip={t('admin:max_concurrent_embedding_tasks_for_dataset_vectorization')}
+            isRequired
+          >
+            <Controller
+              name="dataset.vectorMaxProcess"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:qa_auto_generation_concurrency')}
+            tooltip={t('admin:concurrency_for_auto_qa_pair_splitting_and_generation')}
+            isRequired
+          >
+            <Controller
+              name="dataset.qaMaxProcess"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:multimodal_understanding_concurrency')}
+            tooltip={t('admin:max_concurrency_for_vlm_image_understanding_and_description')}
+            isRequired
+          >
+            <Controller
+              name="dataset.vlmMaxProcess"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={100}
+                  value={field.value ?? 10}
+                  onChange={(_, val) => field.onChange(val || 10)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 8. 向量索引参数 */}
+      <AdminSettingSection id="vectorIndex" title={t('admin:vector_index_parameters')} showDivider>
+        <SimpleGrid columns={[1, 2]} spacing={5}>
+          <AdminFormItem
+            label="HNSW ef_search"
+            tooltip={t('admin:hnsw_candidate_expansion_factor_controlling_neighbor_search')}
+            isRequired
+          >
+            <Controller
+              name="hnswEfSearch"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={100}
+                  max={1000}
+                  value={field.value ?? 200}
+                  onChange={(_, val) => field.onChange(val || 200)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          {showVectorRecallConcurrency && (
+            <AdminFormItem
+              label={t('admin:vector_recall_concurrency')}
+              tooltip={t('admin:vector_recall_concurrency_tip')}
+              isRequired
+            >
+              <Controller
+                name="vectorRecallConcurrency"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                    {...numberInputProps}
+                    min={0}
+                    max={1000}
+                    value={field.value ?? 0}
+                    // 0 = 不限制召回并发，不能用 || 吃掉
+                    onChange={(valueAsString, val) =>
+                      field.onChange(valueAsString === '' ? 0 : val)
+                    }
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          )}
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 9. 对话限流与埋点 */}
+      <AdminSettingSection
+        id="chatAndTracking"
+        title={t('admin:chat_rate_limiting_tracking')}
+        showDivider
+      >
+        <SimpleGrid columns={[1, 2]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:chat_qpm_limit')}
+            tooltip={t('admin:system_wide_chat_requests_per_minute_limit_plan_limits_take')}
+            isRequired
+          >
+            <Controller
+              name="chat.maxQpm"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={0}
+                  max={50000}
+                  value={field.value ?? 5000}
+                  // 0 = 不限流（消费点对 falsy qpm 放行），不能用 || 兜底
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 5000 : val)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:llm_trace_retention_hours')}
+            tooltip={t('admin:retention_period_for_detailed_llm_tracing_logs_hours')}
+            isRequired
+          >
+            <Controller
+              name="tracking.retentionHours"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  {...numberInputProps}
+                  min={1}
+                  max={720}
+                  value={field.value ?? 6}
+                  onChange={(_, val) => field.onChange(val || 6)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 10. 任务并发 */}
+      {showTask && (
+        <AdminSettingSection id="task" title={t('admin:task_concurrency')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            {showEvaluationMaxRows && (
+              <AdminFormItem
+                label={t('admin:evaluation_max_rows')}
+                tooltip={t('admin:evaluation_max_rows_tooltip')}
+                isRequired
+              >
+                <Controller
+                  name="evaluationMaxRows"
+                  control={control}
+                  rules={{
+                    validate: (value) => Number.isSafeInteger(value) && value >= 0
+                  }}
+                  render={({ field, fieldState }) => (
+                    <NumberInput
+                      {...numberInputProps}
+                      min={0}
+                      precision={0}
+                      value={field.value ?? ''}
+                      isInvalid={Boolean(fieldState.error)}
+                      onChange={(_, value) => field.onChange(value)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+            {showEvaluationConcurrency && (
+              <AdminFormItem
+                label={t('admin:evaluation_task_concurrency_limit')}
+                tooltip={t('admin:max_concurrency_for_backend_llm_benchmark_evaluation_tasks')}
+                isRequired
+              >
+                <Controller
+                  name="task.evalConcurrency"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      {...numberInputProps}
+                      min={1}
+                      max={50}
+                      value={field.value ?? 3}
+                      onChange={(valueAsString, val) =>
+                        field.onChange(valueAsString === '' ? 3 : val)
+                      }
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+    </AdminSettingPage>
+  );
+};
+
+export default React.memo(LimitsSettingComponent);

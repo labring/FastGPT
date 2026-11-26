@@ -1,0 +1,91 @@
+---
+title: '获取集合列表（分页）'
+seoTitle: '获取集合列表（分页） - POST /api/core/dataset/collection/listV2 | FastGPT OpenAPI'
+description: '分页查询知识库下的集合与文件夹列表，支持按父目录、关键词和结构化标签条件过滤，并返回文件级有效权限。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/collection/listV2`
+- **所属模块**：知识库 / 集合管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/listV2)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/listV2`）
+
+## 接口说明与注意事项
+
+获取数据集集合列表，支持分页、搜索、标签过滤。需要数据集读权限；传入 parentId 时同时校验该文件夹读权限。知识库开启文件级权限后，列表按当前成员逐条可读的集合过滤，并返回每个集合的有效权限
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段                  | 类型                 | 必填 | 默认值         | 约束与说明                                                                                         |
+| --------------------- | -------------------- | ---- | -------------- | -------------------------------------------------------------------------------------------------- |
+| `datasetId`           | `string`             | 是   | -              | 数据集 ID                                                                                          |
+| `parentId`            | `string \| null`     | 否   | `null`         | 父级目录 ID                                                                                        |
+| `searchText`          | `string`             | 否   | `""`           | 搜索文本。最大长度：100                                                                            |
+| `selectFolder`        | `boolean`            | 否   | `false`        | 只返回文件夹                                                                                       |
+| `tagFilters`          | `object[]`           | 否   | -              | 按标签值过滤。同一标签多值为 OR，不同标签为 AND                                                    |
+| `tagFilters[].tagId`  | `string`             | 是   | -              | 标签 ID。正则：`^[0-9a-fA-F]{24}$`                                                                 |
+| `tagFilters[].values` | `string \| number[]` | 是   | -              | 选中的标签值。文本/选项为字符串，数字为数值，日期为 UTC 毫秒时间戳。同一标签多值为 OR。最少项数：1 |
+| `sortBy`              | `string` (enum)      | 否   | `"updateTime"` | 排序字段，支持名称、创建时间和更新时间。可选值：`name` , `createTime` , `updateTime`               |
+| `sortOrder`           | `string` (enum)      | 否   | `"desc"`       | 排序方向。可选值：`asc` , `desc`                                                                   |
+| `simple`              | `boolean`            | 否   | `false`        | 简单模式（不统计数量）                                                                             |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **按偏移量获取**
+
+通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `offset`   | `integer` | 是   | -      | **互斥参数组：分页参数**。偏移量，从 0 开始。最小值：0；最大值：9007199254740991        |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+- **按页码获取**
+
+通过页码获取，默认第 1 页；pageSize 控制每页条数。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `pageNum`  | `integer` | 否   | `1`    | **互斥参数组：分页参数**。页码，从 1 开始；传入 offset 时忽略。最大值：9007199254740991 |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/collection/listV2" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "offset": 0,
+  "datasetId": "string"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "offset": 0,
+  "datasetId": "string"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回集合列表和总数
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

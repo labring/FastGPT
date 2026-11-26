@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -17,7 +18,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
-import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
@@ -28,13 +30,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
+      defParamCharset: 'utf8'
     });
     filepaths.push(result.fileMetadata.path);
-    const filename = decodeMultipartFilename(result.fileMetadata.originalname);
     const { datasetId, parentId, tags, autoIndexes } = CreateTemplateCollectionFormSchema.parse(
       result.data
     );
+    const filename = result.fileMetadata.originalname;
 
     const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
       req,
@@ -81,6 +84,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       return Promise.reject(i18nT('dataset:template_file_invalid'));
     });
 
+    const collectionType = DatasetCollectionTypeEnum.file;
     const collectionResult = await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -92,7 +96,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         datasetId: dataset._id,
         parentId,
         name: filename,
-        type: DatasetCollectionTypeEnum.file,
+        type: collectionType,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes,
@@ -100,6 +104,20 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       }
     });
     promoted = true;
+
+    void addAuditLog(
+      await buildCollectionCreateAuditLog({
+        teamId,
+        tmbId,
+        dataset,
+        collection: {
+          _id: collectionResult.collectionId,
+          name: filename,
+          type: collectionType,
+          parentId
+        }
+      })
+    );
 
     return collectionResult;
   } catch (error) {

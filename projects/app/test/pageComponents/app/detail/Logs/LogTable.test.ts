@@ -3,12 +3,17 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { getLogKeys, updateLogKeys } from '@/web/core/app/api/log';
+import { getLogKeys, searchAppChatLogs, updateLogKeys } from '@/web/core/app/api/log';
 
 const getLogRows = vi.hoisted(() => vi.fn());
+const translate = vi.hoisted(() => vi.fn());
 
-vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
+vi.mock('ahooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('ahooks')>()),
+  useDebounce: <T>(value: T) => value
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: {} })
 }));
@@ -17,7 +22,7 @@ vi.mock('use-context-selector', () => ({ useContextSelector: () => 'App' }));
 vi.mock('@/web/common/system/utils', () => ({ downloadFetch: vi.fn() }));
 vi.mock('@/web/core/app/api/log', () => ({
   getLogKeys: vi.fn(async () => ({ logKeys: [] })),
-  getAppChatLogs: vi.fn(),
+  searchAppChatLogs: vi.fn(),
   updateLogKeys: vi.fn()
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', async () => {
@@ -39,19 +44,12 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
     }
   };
 });
-vi.mock('@fastgpt/web/hooks/usePagination', () => ({
-  usePagination: () => ({
-    data: getLogRows(),
-    Pagination: () => null,
-    getData: vi.fn(),
-    pageNum: 1,
-    total: 1,
-    pageSize: 20
-  })
-}));
 vi.mock('@fastgpt/web/hooks/useTableMultipleSelect', () => ({
   useTableMultipleSelect: () => ({
     selectedItems: [],
+    setSelectedItems: vi.fn(),
+    isSelecteAll: false,
+    selectAllTrigger: vi.fn(),
     isSelected: () => false,
     getRowSelectionProps: (_item: any, props: any) => props,
     FloatingActionBar: () => null
@@ -86,6 +84,43 @@ vi.mock('@fastgpt/web/components/common/Icon', async () => {
       onClick ? React.createElement('button', { onClick, 'aria-label': name }, name) : null
   };
 });
+vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
+  const React = await import('react');
+  return {
+    FilterInput: ({ value = '', onChange, label, placeholder }: any) =>
+      React.createElement(
+        'div',
+        null,
+        label,
+        React.createElement(
+          'button',
+          {
+            onClick: () => onChange({ target: { value: 'needle' } }),
+            'aria-label': placeholder
+          },
+          value
+        )
+      ),
+    MultiSelectFilter: () => null,
+    createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
+    toMultiSelectFilterQuery: () => undefined,
+    useCommonFilterLabels: () => ({})
+  };
+});
+vi.mock('@fastgpt/web/components/common/TagFilter/SingleSelectFilter', async () => {
+  const React = await import('react');
+  return {
+    default: ({ value, options, onChange }: any) =>
+      React.createElement(
+        'button',
+        {
+          'aria-label': 'app:logs_search_type',
+          onClick: () => onChange(value === 'title' ? 'chatId' : 'title')
+        },
+        options.find((option: any) => option.value === value)?.label
+      )
+  };
+});
 vi.mock('@fastgpt/web/components/common/Avatar', async () => {
   const React = await import('react');
   return { default: ({ src }: { src?: string }) => React.createElement('img', { src, alt: '' }) };
@@ -100,8 +135,13 @@ vi.mock('@fastgpt/web/components/common/MyPopover', async () => {
 vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', async () => {
   const React = await import('react');
   return {
-    default: ({ onConfirm }: any) =>
-      React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+    default: ({ content, onConfirm }: any) =>
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement('span', { 'data-testid': 'export-confirm-content' }, content),
+        React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+      )
   };
 });
 vi.mock('@fastgpt/web/components/common/DndDrag', async () => {
@@ -135,6 +175,9 @@ describe('LogTable identity columns UI', () => {
     vi.stubGlobal('localStorage', dom.window.localStorage);
     vi.stubGlobal('navigator', dom.window.navigator);
     vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('Element', dom.window.Element);
+    vi.stubGlobal('SVGElement', dom.window.SVGElement);
+    dom.window.HTMLElement.prototype.scrollTo = vi.fn();
     vi.stubGlobal('Node', dom.window.Node);
     vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
     vi.stubGlobal('MouseEvent', dom.window.MouseEvent);
@@ -153,7 +196,9 @@ describe('LogTable identity columns UI', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     localStorage.clear();
     vi.clearAllMocks();
+    translate.mockImplementation((key: string) => key);
     vi.mocked(getLogKeys).mockResolvedValue({ logKeys: [] });
+    vi.mocked(searchAppChatLogs).mockImplementation(async () => ({ list: getLogRows() }));
     getLogRows.mockReturnValue([
       {
         _id: 'row',
@@ -176,7 +221,7 @@ describe('LogTable identity columns UI', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
-  const render = async () => {
+  const render = async (props: Record<string, unknown> = {}) => {
     await act(async () =>
       root.render(
         React.createElement(
@@ -184,11 +229,11 @@ describe('LogTable identity columns UI', () => {
           {},
           React.createElement(LogTable, {
             appId: 'app-1',
-            pageSizeCacheKey: 'test',
             sourceFilter: { mode: 'all', values: [] },
             setSourceFilter: () => {},
             dateRange: { from: new Date(), to: new Date() },
-            setDateRange: () => {}
+            setDateRange: () => {},
+            ...props
           })
         )
       )
@@ -197,6 +242,14 @@ describe('LogTable identity columns UI', () => {
   const click = async (element: Element | undefined | null) => {
     expect(element).toBeTruthy();
     await act(async () => element!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  };
+  const setSearch = async () => {
+    const input = container.querySelector('button[aria-label="app:logs_search_title_placeholder"]');
+    expect(input).toBeTruthy();
+    await act(async () => {
+      input!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
   };
   const authorizerToggle = () =>
     [...container.querySelectorAll('button[aria-label="invisible"]')].find((button) =>
@@ -334,5 +387,73 @@ describe('LogTable identity columns UI', () => {
         { key: 'authUser', enable: false }
       ])
     });
+  });
+  it('shows search failure and retries the first page without an end marker', async () => {
+    vi.mocked(searchAppChatLogs)
+      .mockRejectedValueOnce(new Error('503'))
+      .mockResolvedValueOnce({ list: [], nextCursor: undefined });
+    await render();
+
+    expect(container.textContent).toContain('common:load_failed');
+    expect(container.textContent).not.toContain('common:request_end');
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(1);
+
+    await click(
+      [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'common:refresh'
+      )
+    );
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(searchAppChatLogs).mock.calls[1][0].cursor).toBeUndefined();
+    expect(container.textContent).toContain('common:request_end');
+  });
+  it('uses the export confirmation without total in search mode', async () => {
+    await render();
+    await setSearch();
+    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
+      'app:logs_export_confirm_tip_without_total'
+    );
+  });
+  it('loads logs without a search term', async () => {
+    await render();
+    expect(searchAppChatLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ chatSearch: '', searchType: 'title', cursor: undefined }),
+      expect.any(AbortController)
+    );
+    expect(container.querySelector('tbody')?.textContent).toContain('customer-42');
+  });
+  it('restores the selected ID mode and exports with the same filter', async () => {
+    localStorage.setItem('app_log_search_type_app-1', JSON.stringify('chatId'));
+    await render();
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId' }),
+      expect.any(AbortController)
+    );
+    await click(
+      container.querySelector('button[aria-label="app:logs_search_chat_id_placeholder"]')
+    );
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId', chatSearch: 'needle' }),
+      expect.any(AbortController)
+    );
+    await click(
+      [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'confirm-export'
+      )
+    );
+    expect(downloadFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ searchType: 'chatId', chatSearch: 'needle' })
+      })
+    );
+  });
+  it('switches the search mode and remembers it', async () => {
+    await render();
+    await click(container.querySelector('button[aria-label="app:logs_search_type"]'));
+    expect(JSON.parse(localStorage.getItem('app_log_search_type_app-1') || 'null')).toBe('chatId');
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId', cursor: undefined }),
+      expect.any(AbortController)
+    );
   });
 });

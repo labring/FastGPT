@@ -23,46 +23,55 @@ describe('proApi response forwarding', () => {
   const sendRequest = ({
     method = 'POST',
     headers = {},
+    path = '/api/proApi/support/user/account/login/wx/callback?nonce=nonce',
     onChunk
   }: {
     method?: string;
     headers?: Record<string, string>;
+    path?: string;
     onChunk?: (response: IncomingMessage) => void;
   } = {}) =>
-    new Promise<{ status: number; body: string; contentType?: string }>((resolve, reject) => {
-      const client = request(
-        {
-          host: '127.0.0.1',
-          port,
-          path: '/api/proApi/support/user/account/login/wx/callback?nonce=nonce',
-          method,
-          headers
-        },
-        (response) => {
-          const chunks: Buffer[] = [];
-          response.on('data', (chunk: Buffer) => {
-            chunks.push(chunk);
-            onChunk?.(response);
-          });
-          response.on('error', reject);
-          response.on('aborted', () => reject(new Error('Response aborted')));
-          response.on('end', () =>
-            resolve({
-              status: response.statusCode ?? 0,
-              body: Buffer.concat(chunks).toString(),
-              contentType: response.headers['content-type']
-            })
-          );
-        }
-      );
-      client.on('error', reject);
-      client.end(method === 'GET' || method === 'HEAD' ? undefined : '<xml />');
-    });
+    new Promise<{ status: number; body: string; contentType?: string; location?: string }>(
+      (resolve, reject) => {
+        const client = request(
+          {
+            host: '127.0.0.1',
+            port,
+            path,
+            method,
+            headers
+          },
+          (response) => {
+            const chunks: Buffer[] = [];
+            response.on('data', (chunk: Buffer) => {
+              chunks.push(chunk);
+              onChunk?.(response);
+            });
+            response.on('error', reject);
+            response.on('aborted', () => reject(new Error('Response aborted')));
+            response.on('end', () =>
+              resolve({
+                status: response.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString(),
+                contentType: response.headers['content-type'],
+                location: response.headers.location
+              })
+            );
+          }
+        );
+        client.on('error', reject);
+        client.end(method === 'GET' || method === 'HEAD' ? undefined : '<xml />');
+      }
+    );
 
   beforeAll(async () => {
     server = createServer((req, res) => {
+      const url = new URL(req.url ?? '', 'http://localhost');
       const apiRequest = Object.assign(req, {
-        query: { path: ['support', 'user', 'account', 'login', 'wx', 'callback'], nonce: 'nonce' },
+        query: {
+          path: url.pathname.slice('/api/proApi/'.length).split('/'),
+          ...Object.fromEntries(url.searchParams)
+        },
         cookies: {},
         env: process.env,
         body: undefined
@@ -119,6 +128,21 @@ describe('proApi response forwarding', () => {
     expect(response.body).toBe('success');
     expect(jsonResponses).toEqual([]);
     expect(handlerErrors).toEqual([]);
+  });
+
+  it('preserves the storage origin for Pro file redirects', async () => {
+    const storageUrl = 'https://files.example.com/logo.png';
+    fetchUpstream.mockResolvedValue(
+      new Response(null, { status: 301, headers: { Location: storageUrl } })
+    );
+
+    const response = await sendRequest({
+      method: 'GET',
+      path: '/api/proApi/system/img/avatar/logo.png'
+    });
+
+    expect(fetchUpstream.mock.calls[0]?.[0]).toHaveProperty('redirect', 'manual');
+    expect(response).toMatchObject({ status: 301, location: storageUrl, body: '' });
   });
 
   it('waits for every delayed chunk before completing the response', async () => {

@@ -62,10 +62,15 @@ export const onWorkflowEnd = ({
 /** 在 Langfuse 私有上下文中启动节点，不把 observation 标记写入通用 OTEL span。 */
 export const onWorkflowNodeStart = ({
   appId,
+  nodeId,
+  nodeName,
   ...lifecycleProps
-}: WorkflowLifecycleProps & { appId: string }) => {
+}: WorkflowLifecycleProps & { appId: string; nodeId: string; nodeName?: string }) => {
   const enabled = isRootChatWorkflow(lifecycleProps) && isLangfuseEnabled();
-  prepareLangfuseSpan(enabled ? getLangfuseStepStartAttributes(appId) : undefined, 'observation');
+  prepareLangfuseSpan(
+    enabled ? getLangfuseStepStartAttributes({ appId, nodeId, nodeName }) : undefined,
+    'observation'
+  );
 };
 
 /** 节点入参里可能已带规范化模型名（如 agent 节点），作为 response 缺失时的兜底。 */
@@ -74,6 +79,9 @@ const getInputModelName = (input: unknown) => {
   const model = (input as { model?: unknown }).model;
   return typeof model === 'string' && model.trim() ? model : undefined;
 };
+
+/** generation 输出按上报契约保留的推理字段；输入与其他节点仍走默认过滤。 */
+const generationOutputAllowedKeys = new Set(['reasoningText']);
 
 /** 记录有界节点输入输出；仅模型节点附加 generation 和 token 计量。 */
 export const onWorkflowNodeEnd = ({
@@ -93,8 +101,14 @@ export const onWorkflowNodeEnd = ({
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
 
+  const model = response?.model ?? getInputModelName(input);
+  const isGeneration = llmNodeTypes.has(nodeType) && !!model;
+  // 输入始终走默认过滤；只有 generation 输出放行 reasoningText。
   const serializedInput = serializeLangfuseValue(input);
-  const serializedOutput = serializeLangfuseValue(output ?? {});
+  const serializedOutput = serializeLangfuseValue(
+    output ?? {},
+    isGeneration ? { keepExcludedKeys: generationOutputAllowedKeys } : undefined
+  );
   const attributes: Record<string, string> = {};
   if (serializedInput !== undefined) {
     attributes['langfuse.observation.input'] = serializedInput;
@@ -102,8 +116,7 @@ export const onWorkflowNodeEnd = ({
   if (serializedOutput !== undefined) {
     attributes['langfuse.observation.output'] = serializedOutput;
   }
-  const model = response?.model ?? getInputModelName(input);
-  if (llmNodeTypes.has(nodeType) && model) {
+  if (isGeneration && model) {
     attributes['langfuse.observation.type'] = 'generation';
     attributes['langfuse.observation.model.name'] = String(model);
     // 优先使用节点自身响应里的 token；agent 等节点没有 response 时回退到调用方汇总的用量。

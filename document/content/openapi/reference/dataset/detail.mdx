@@ -1,0 +1,255 @@
+---
+title: '获取知识库详情'
+seoTitle: '获取知识库详情 - GET /api/core/dataset/detail | FastGPT OpenAPI'
+description: '根据知识库 ID 获取完整配置详情，包括向量模型、Agent 模型、VLM 模型、分块默认配置、同步状态与当前成员有效权限。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/dataset/detail`
+- **所属模块**：知识库 / 知识库管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/GET/core/dataset/detail)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/GET/core/dataset/detail`）
+
+## 接口说明与注意事项
+
+获取知识库详细信息,包括模型配置、权限和同步状态
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段 | 类型     | 必填 | 默认值 | 约束与说明                           |
+| ---- | -------- | ---- | ------ | ------------------------------------ |
+| `id` | `string` | 是   | -      | 知识库 ID。正则：`^[0-9a-fA-F]{24}$` |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/detail?id=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回知识库详情（不包含创建时间）
+
+**Content-Type** : `application/json`
+
+| 字段                                            | 类型             | 必填 | 默认值             | 约束与说明                                                                                                                    |
+| ----------------------------------------------- | ---------------- | ---- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                                           | `string`         | 是   | -                  | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                          |
+| `parentId`                                      | `string \| null` | 否   | -                  | 父级 ID                                                                                                                       |
+| `userId`                                        | `string`         | 否   | -                  | **已弃用**。用户 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                |
+| `teamId`                                        | `string`         | 是   | -                  | 团队 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                            |
+| `tmbId`                                         | `string`         | 是   | -                  | 团队成员 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                        |
+| `updateTime`                                    | `string`         | 是   | -                  | 更新时间                                                                                                                      |
+| `inheritPermission`                             | `boolean`        | 是   | -                  | 继承权限                                                                                                                      |
+| `collectionPermissionEnabled`                   | `boolean`        | 否   | -                  | collection 级权限开关：false 表示关闭态（默认，可读性等于 dataset）                                                           |
+| `avatar`                                        | `string`         | 是   | `"/icon/logo.svg"` | 头像                                                                                                                          |
+| `name`                                          | `string`         | 是   | -                  | 名称                                                                                                                          |
+| `intro`                                         | `string`         | 是   | -                  | 简介                                                                                                                          |
+| `type`                                          | `string` (enum)  | 是   | -                  | 数据集类型。可选值：`folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk` |
+| `vectorModelId`                                 | `string`         | 否   | -                  | 向量模型 ID                                                                                                                   |
+| `agentModelId`                                  | `string`         | 否   | -                  | AI 模型 ID                                                                                                                    |
+| `vlmModelId`                                    | `string`         | 否   | -                  | 视觉语言模型 ID                                                                                                               |
+| `websiteConfig`                                 | `object`         | 否   | -                  | 网站配置                                                                                                                      |
+| `websiteConfig.url`                             | `string`         | 是   | -                  | 网站 URL                                                                                                                      |
+| `websiteConfig.selector`                        | `string`         | 是   | -                  | 网站选择器                                                                                                                    |
+| `chunkSettings`                                 | `object`         | 否   | -                  | 分块配置                                                                                                                      |
+| `chunkSettings.trainingType`                    | `string` (enum)  | 否   | -                  | 训练类型。可选值：`chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                              |
+| `chunkSettings.chunkTriggerType`                | `string` (enum)  | 否   | -                  | 分块触发时机。可选值：`minSize` , `forceChunk` , `maxSize`                                                                    |
+| `chunkSettings.chunkTriggerMinSize`             | `number`         | 否   | -                  | 分块触发最小大小                                                                                                              |
+| `chunkSettings.dataEnhanceCollectionName`       | `boolean`        | 否   | -                  | 增加集合名到分块里                                                                                                            |
+| `chunkSettings.imageIndex`                      | `boolean`        | 否   | -                  | 图片索引                                                                                                                      |
+| `chunkSettings.autoIndexes`                     | `boolean`        | 否   | -                  | 自动生成索引                                                                                                                  |
+| `chunkSettings.indexPrefixTitle`                | `boolean`        | 否   | -                  | 索引前缀标题                                                                                                                  |
+| `chunkSettings.chunkSettingMode`                | `string` (enum)  | 否   | -                  | 系统参数/自定义参数。可选值：`auto` , `custom` , `intelligent`                                                                |
+| `chunkSettings.chunkSplitMode`                  | `string` (enum)  | 否   | -                  | 分块拆分模式。可选值：`paragraph` , `size` , `char`                                                                           |
+| `chunkSettings.paragraphChunkAIMode`            | `string` (enum)  | 否   | -                  | 段落分块 AI 模式。可选值：`auto` , `force` , `forbid`                                                                         |
+| `chunkSettings.paragraphChunkDeep`              | `number`         | 否   | -                  | 段落分块深度                                                                                                                  |
+| `chunkSettings.paragraphChunkMinSize`           | `number`         | 否   | -                  | 段落分块最小大小                                                                                                              |
+| `chunkSettings.chunkSize`                       | `number`         | 否   | -                  | 分块大小                                                                                                                      |
+| `chunkSettings.chunkSplitter`                   | `string`         | 否   | -                  | 自定义最高优先分割符号                                                                                                        |
+| `chunkSettings.indexSize`                       | `number`         | 否   | -                  | 索引大小                                                                                                                      |
+| `chunkSettings.qaPrompt`                        | `string`         | 否   | -                  | QA 拆分提示词                                                                                                                 |
+| `sangforFileParseConfig`                        | `object`         | 否   | -                  | 外部文档解析配置                                                                                                              |
+| `sangforFileParseConfig.keep_header_footer`     | `boolean`        | 否   | -                  | 是否保留页眉页脚，默认关闭（删除页眉页脚）                                                                                    |
+| `sangforFileParseConfig.keep_appendix`          | `boolean`        | 否   | -                  | 是否保留附录，默认开启                                                                                                        |
+| `sangforFileParseConfig.image_analysis`         | `boolean`        | 否   | -                  | 是否保留图片识别（含印章）结果，默认关闭                                                                                      |
+| `sangforFileParseConfig.chart_analysis`         | `boolean`        | 否   | -                  | 是否保留图表转表格结果（同时保留原图片），默认关闭                                                                            |
+| `apiDatasetServer`                              | `object`         | 否   | -                  | API 服务器配置                                                                                                                |
+| `apiDatasetServer.apiServer`                    | `object`         | 否   | -                  | API 服务器配置                                                                                                                |
+| `apiDatasetServer.apiServer.baseUrl`            | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.apiServer.authorization`      | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.apiServer.basePath`           | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.feishuServer`                 | `object`         | 否   | -                  | 飞书服务器配置                                                                                                                |
+| `apiDatasetServer.feishuServer.appId`           | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.feishuServer.appSecret`       | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.feishuServer.folderToken`     | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.yuqueServer`                  | `object`         | 否   | -                  | 语雀服务器配置                                                                                                                |
+| `apiDatasetServer.yuqueServer.userId`           | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.yuqueServer.token`            | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.yuqueServer.basePath`         | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer`               | `object`         | 否   | -                  | 钉钉知识库配置                                                                                                                |
+| `apiDatasetServer.dingtalkServer.appKey`        | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.appSecret`     | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.userId`        | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.operatorId`    | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.workspaceId`   | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.rootNodeId`    | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.workspaceName` | `string`         | 否   | -                  | -                                                                                                                             |
+| `deleteTime`                                    | `string \| null` | 否   | -                  | 删除时间                                                                                                                      |
+| `autoSync`                                      | `boolean`        | 否   | -                  | 自动同步                                                                                                                      |
+| `externalReadUrl`                               | `string`         | 否   | -                  | **已弃用**。外部读取 URL                                                                                                      |
+| `defaultPermission`                             | `number`         | 否   | -                  | **已弃用**。默认权限                                                                                                          |
+| `apiServer`                                     | `object`         | 否   | -                  | **已弃用**。API 服务器配置                                                                                                    |
+| `apiServer.baseUrl`                             | `string`         | 是   | -                  | -                                                                                                                             |
+| `apiServer.authorization`                       | `string`         | 否   | -                  | -                                                                                                                             |
+| `apiServer.basePath`                            | `string`         | 否   | -                  | -                                                                                                                             |
+| `feishuServer`                                  | `object`         | 否   | -                  | **已弃用**。飞书服务器配置                                                                                                    |
+| `feishuServer.appId`                            | `string`         | 是   | -                  | -                                                                                                                             |
+| `feishuServer.appSecret`                        | `string`         | 否   | -                  | -                                                                                                                             |
+| `feishuServer.folderToken`                      | `string`         | 是   | -                  | -                                                                                                                             |
+| `yuqueServer`                                   | `object`         | 否   | -                  | **已弃用**。语雀服务器配置                                                                                                    |
+| `yuqueServer.userId`                            | `string`         | 是   | -                  | -                                                                                                                             |
+| `yuqueServer.token`                             | `string`         | 否   | -                  | -                                                                                                                             |
+| `yuqueServer.basePath`                          | `string`         | 否   | -                  | -                                                                                                                             |
+| `dingtalkServer`                                | `object`         | 否   | -                  | **已弃用**。钉钉知识库配置                                                                                                    |
+| `dingtalkServer.appKey`                         | `string`         | 是   | -                  | -                                                                                                                             |
+| `dingtalkServer.appSecret`                      | `string`         | 否   | -                  | -                                                                                                                             |
+| `dingtalkServer.userId`                         | `string`         | 是   | -                  | -                                                                                                                             |
+| `dingtalkServer.operatorId`                     | `string`         | 否   | -                  | -                                                                                                                             |
+| `dingtalkServer.workspaceId`                    | `string`         | 否   | -                  | -                                                                                                                             |
+| `dingtalkServer.rootNodeId`                     | `string`         | 否   | -                  | -                                                                                                                             |
+| `dingtalkServer.workspaceName`                  | `string`         | 否   | -                  | -                                                                                                                             |
+| `status`                                        | `string` (enum)  | 是   | -                  | 状态。可选值：`active` , `syncing` , `waiting` , `error`                                                                      |
+| `hasTrainingTask`                               | `boolean`        | 是   | -                  | 是否存在普通训练任务或待处理、处理中、失败的索引/同义词重建数据                                                               |
+| `errorMsg`                                      | `string`         | 否   | -                  | 错误信息                                                                                                                      |
+| `vectorModel`                                   | `object`         | 否   | -                  | 向量模型；模型已删除时为空，已停用模型仍返回展示数据                                                                          |
+| `vectorModel.pricing`                           | `object`         | 否   | -                  | 每固定计价单位的积分单价；缺省免费                                                                                            |
+| `vectorModel.pricing.unitPrice`                 | `number`         | 否   | -                  | 综合单价；Token/TTS 每百万数量，STT 时长模式固定为每 60 秒。最小值：0                                                         |
+| `vectorModel.provider`                          | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vectorModel.model`                             | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vectorModel.name`                              | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vectorModel.scope`                             | `string` (enum)  | 是   | `"system"`         | 可选值：`system` , `team`                                                                                                     |
+| `vectorModel.sortOrder`                         | `integer`        | 否   | -                  | 同一作用域内的模型展示 rank，数值越小越靠前。最小值：0；最大值：9007199254740991                                              |
+| `vectorModel.tmbId`                             | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `vectorModel.teamId`                            | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `vectorModel.isActive`                          | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vectorModel.isUpcomingDeprecation`             | `boolean`        | 否   | -                  | 模型是否即将下架                                                                                                              |
+| `vectorModel.requestUrl`                        | `string`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.requestAuth`                       | `string`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.testMode`                          | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vectorModel.type`                              | `"embedding"`    | 是   | -                  | 固定值：`"embedding"`                                                                                                         |
+| `vectorModel.config`                            | `object`         | 是   | -                  | -                                                                                                                             |
+| `vectorModel.config.defaultToken`               | `number`         | 是   | -                  | -                                                                                                                             |
+| `vectorModel.config.maxToken`                   | `number`         | 是   | -                  | -                                                                                                                             |
+| `vectorModel.config.weight`                     | `number`         | 是   | `0`                | -                                                                                                                             |
+| `vectorModel.config.hidden`                     | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.vision`                     | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.normalization`              | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.batchSize`                  | `number`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.defaultConfig`              | `object`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.dbConfig`                   | `object`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.config.queryConfig`                | `object`         | 否   | -                  | -                                                                                                                             |
+| `vectorModel.modelId`                           | `string`         | 是   | -                  | -                                                                                                                             |
+| `vectorModel.avatar`                            | `string`         | 否   | -                  | -                                                                                                                             |
+| `agentModel`                                    | `object`         | 否   | -                  | AI 模型；模型已删除时为空，已停用模型仍返回展示数据                                                                           |
+| `agentModel.pricing`                            | `object`         | 否   | -                  | LLM 每百万 Tokens 阶梯价格；缺省免费                                                                                          |
+| `agentModel.pricing.tiers`                      | `object[]`       | 否   | -                  | LLM 阶梯价格，下限从上一档上限推导。最多项数：5                                                                               |
+| `agentModel.pricing.tiers[].maxInputTokensK`    | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
+| `agentModel.pricing.tiers[].inputPrice`         | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
+| `agentModel.pricing.tiers[].outputPrice`        | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
+| `agentModel.provider`                           | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `agentModel.model`                              | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `agentModel.name`                               | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `agentModel.scope`                              | `string` (enum)  | 是   | `"system"`         | 可选值：`system` , `team`                                                                                                     |
+| `agentModel.sortOrder`                          | `integer`        | 否   | -                  | 同一作用域内的模型展示 rank，数值越小越靠前。最小值：0；最大值：9007199254740991                                              |
+| `agentModel.tmbId`                              | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `agentModel.teamId`                             | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `agentModel.isActive`                           | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.isUpcomingDeprecation`              | `boolean`        | 否   | -                  | 模型是否即将下架                                                                                                              |
+| `agentModel.requestUrl`                         | `string`         | 否   | -                  | -                                                                                                                             |
+| `agentModel.requestAuth`                        | `string`         | 否   | -                  | -                                                                                                                             |
+| `agentModel.testMode`                           | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.type`                               | `"llm"`          | 是   | -                  | 固定值：`"llm"`                                                                                                               |
+| `agentModel.config`                             | `object`         | 是   | -                  | -                                                                                                                             |
+| `agentModel.config.maxContext`                  | `number`         | 是   | -                  | -                                                                                                                             |
+| `agentModel.config.maxResponse`                 | `number`         | 是   | -                  | -                                                                                                                             |
+| `agentModel.config.quoteMaxToken`               | `number`         | 是   | -                  | -                                                                                                                             |
+| `agentModel.config.maxTemperature`              | `number \| null` | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.showTopP`                    | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.responseFormatList`          | `string[]`       | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.showStopSign`                | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.censor`                      | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.vision`                      | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.audio`                       | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.video`                       | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.reasoning`                   | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.reasoningEffort`             | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.functionCall`                | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.toolChoice`                  | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.defaultSystemChatPrompt`     | `string`         | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.defaultConfig`               | `object`         | 否   | -                  | -                                                                                                                             |
+| `agentModel.config.fieldMap`                    | `object`         | 否   | -                  | -                                                                                                                             |
+| `agentModel.modelId`                            | `string`         | 是   | -                  | -                                                                                                                             |
+| `agentModel.avatar`                             | `string`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel`                                      | `object`         | 否   | -                  | 视觉语言模型                                                                                                                  |
+| `vlmModel.pricing`                              | `object`         | 否   | -                  | LLM 每百万 Tokens 阶梯价格；缺省免费                                                                                          |
+| `vlmModel.pricing.tiers`                        | `object[]`       | 否   | -                  | LLM 阶梯价格，下限从上一档上限推导。最多项数：5                                                                               |
+| `vlmModel.pricing.tiers[].maxInputTokensK`      | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
+| `vlmModel.pricing.tiers[].inputPrice`           | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
+| `vlmModel.pricing.tiers[].outputPrice`          | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
+| `vlmModel.provider`                             | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vlmModel.model`                                | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vlmModel.name`                                 | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
+| `vlmModel.scope`                                | `string` (enum)  | 是   | `"system"`         | 可选值：`system` , `team`                                                                                                     |
+| `vlmModel.sortOrder`                            | `integer`        | 否   | -                  | 同一作用域内的模型展示 rank，数值越小越靠前。最小值：0；最大值：9007199254740991                                              |
+| `vlmModel.tmbId`                                | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `vlmModel.teamId`                               | `string \| null` | 否   | -                  | -                                                                                                                             |
+| `vlmModel.isActive`                             | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.isUpcomingDeprecation`                | `boolean`        | 否   | -                  | 模型是否即将下架                                                                                                              |
+| `vlmModel.requestUrl`                           | `string`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel.requestAuth`                          | `string`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel.testMode`                             | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.type`                                 | `"llm"`          | 是   | -                  | 固定值：`"llm"`                                                                                                               |
+| `vlmModel.config`                               | `object`         | 是   | -                  | -                                                                                                                             |
+| `vlmModel.config.maxContext`                    | `number`         | 是   | -                  | -                                                                                                                             |
+| `vlmModel.config.maxResponse`                   | `number`         | 是   | -                  | -                                                                                                                             |
+| `vlmModel.config.quoteMaxToken`                 | `number`         | 是   | -                  | -                                                                                                                             |
+| `vlmModel.config.maxTemperature`                | `number \| null` | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.showTopP`                      | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.responseFormatList`            | `string[]`       | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.showStopSign`                  | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.censor`                        | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.vision`                        | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.audio`                         | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.video`                         | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.reasoning`                     | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.reasoningEffort`               | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.functionCall`                  | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.toolChoice`                    | `boolean`        | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.defaultSystemChatPrompt`       | `string`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.defaultConfig`                 | `object`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel.config.fieldMap`                      | `object`         | 否   | -                  | -                                                                                                                             |
+| `vlmModel.modelId`                              | `string`         | 是   | -                  | -                                                                                                                             |
+| `vlmModel.avatar`                               | `string`         | 否   | -                  | -                                                                                                                             |
+| `permission`                                    | `object`         | 是   | -                  | 权限对象序列化后的 JSON 结构                                                                                                  |
+| `permission.role`                               | `integer`        | 是   | -                  | 权限角色值。最小值：-9007199254740991；最大值：9007199254740991                                                               |
+| `permission.isOwner`                            | `boolean`        | 是   | -                  | 是否为所有者                                                                                                                  |
+| `permission.hasManagePer`                       | `boolean`        | 是   | -                  | 是否拥有管理权限                                                                                                              |
+| `permission.hasWritePer`                        | `boolean`        | 是   | -                  | 是否拥有写权限                                                                                                                |
+| `permission.hasReadPer`                         | `boolean`        | 是   | -                  | 是否拥有读权限                                                                                                                |
+| `permission.hasManageRole`                      | `boolean`        | 是   | -                  | 是否包含管理角色                                                                                                              |
+| `permission.hasWriteRole`                       | `boolean`        | 是   | -                  | 是否包含写角色                                                                                                                |
+| `permission.hasReadRole`                        | `boolean`        | 是   | -                  | 是否包含读角色                                                                                                                |

@@ -1,12 +1,18 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId, nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import {
+  getHandleId,
+  isValidReferenceValueFormat,
+  isWorkflowReferenceItem,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { getWorkflowContext } from '../context';
+import { createDynamicOptionResolver } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { getNodeErrResponse } from '../utils';
@@ -28,9 +34,9 @@ type UserSelectResponse = DispatchNodeResultType<{
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
     histories,
+    isDebugMode = getWorkflowContext().runtimeControl.mode === 'debug',
     node,
     runtimeNodesMap,
-    variableState,
     params: { description, userSelectOptions },
     query,
     lastInteractive
@@ -44,15 +50,21 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userSelect') {
+    // 旧调试请求没有标记，保留直接传值的用法；有已知来源的单元组仍按引用展开。
+    const debugValueOverride = userSelectOptionInput?.debugValueOverride;
+    const isDebugLiteral =
+      isDebugMode &&
+      (debugValueOverride === true ||
+        (debugValueOverride === undefined &&
+          !isValidReferenceValueFormat(userSelectOptions, runtimeNodesMap) &&
+          (!Array.isArray(userSelectOptions) || !userSelectOptions.some(isWorkflowReferenceItem))));
     const resolvedOptions: UserSelectOptionItemType[] = isReferenceMode
-      ? resolveDynamicOptionStrings({
-          value: userSelectOptions,
-          runtimeNodesMap,
-          variables: variableState?.toRuntimeRecord?.() ?? {}
-        }).map((value, index) => ({
-          key: `option_${index + 1}`,
-          value
-        }))
+      ? createDynamicOptionResolver(props)(userSelectOptions, isDebugLiteral).map(
+          (value, index) => ({
+            key: `option_${index + 1}`,
+            value
+          })
+        )
       : (userSelectOptions as UserSelectOptionItemType[]);
 
     if (isReferenceMode && resolvedOptions.length === 0) {

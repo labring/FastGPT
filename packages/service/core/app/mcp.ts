@@ -24,8 +24,9 @@ import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import dns from 'dns/promises';
 import { isIP, type LookupFunction } from 'net';
-import { Agent, type Dispatcher } from 'undici';
+import { Agent, ProxyAgent, fetch as undiciFetch, type Dispatcher } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
+import { createUndiciOutboundProxyAgent } from '../../common/proxy/utils';
 import {
   isInternalAddress,
   isInternalResolvedIP,
@@ -40,7 +41,7 @@ const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
 type McpChildToolType = McpToolConfigType & {
   id: string;
-  avatar: string;
+  avatar?: string;
   url?: string;
   headerSecret?: StoreSecretValueType;
 };
@@ -62,8 +63,46 @@ const MCP_NETWORK_ERROR_CODES = new Set([
   'UND_ERR_BODY_TIMEOUT',
   'CERT_HAS_EXPIRED',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
-  'ERR_TLS_CERT_ALTNAME_INVALID'
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'UND_ERR_PRX_TLS',
+  'MCP_PROXY_TUNNEL_ERROR'
 ]);
+
+/** 代理握手被拒绝（如 HTTPS CONNECT 非 200 或 HTTP 代理 407 鉴权失败），按外部/配置故障分类。 */
+class McpProxyTunnelError extends Error {
+  readonly code = 'MCP_PROXY_TUNNEL_ERROR';
+
+  constructor(
+    message: string,
+    readonly statusCode?: number
+  ) {
+    super(message);
+    this.name = 'McpProxyTunnelError';
+  }
+}
+
+const toMcpProxyHandshakeError = (error: unknown): McpProxyTunnelError | undefined => {
+  const visited = new Set<unknown>();
+  let current: unknown = error;
+
+  while (typeof current === 'object' && current !== null && !visited.has(current)) {
+    visited.add(current);
+    if ('message' in current && typeof current.message === 'string') {
+      const tunnelMatch = /^Proxy response \((\d{3})\) !== 200 when HTTP Tunneling$/.exec(
+        current.message
+      );
+      if (tunnelMatch) {
+        return new McpProxyTunnelError(current.message, Number(tunnelMatch[1]));
+      }
+      if (current.message === 'Proxy Authentication Required (407)') {
+        return new McpProxyTunnelError(current.message, 407);
+      }
+    }
+    current = 'cause' in current ? current.cause : undefined;
+  }
+
+  return undefined;
+};
 
 type McpRequestInit = RequestInit & {
   dispatcher?: Dispatcher;
@@ -271,12 +310,13 @@ const getMcpRedirectRequestInit = ({
  * 这会让“初始 URL 合法，Location 跳到内网地址”的场景绕过 SSRF 防护。
  * 该 fetch 通过 `redirect: manual` 接管重定向流程，并对每一跳目标重新执行
  * 内网地址校验；跨 host/protocol 跳转时还会移除鉴权类 header，避免 MCP 密钥泄露。
- * 直连请求还会把最终校验过的 DNS 地址固定到 undici dispatcher，避免
- * “检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU。
+ * 直连请求（含命中 NO_PROXY 的目标）会把最终校验过的 DNS 地址固定到 undici Agent，
+ * 避免“检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU；
+ * 命中环境代理时委托给 undici ProxyAgent，目标域名解析与代理侧出站访问控制由代理层负责。
  */
 export const createMcpSafeFetch = ({
   maxRedirects = MCP_SAFE_FETCH_MAX_REDIRECTS,
-  fetchImpl = fetch as McpFetch
+  fetchImpl = undiciFetch as unknown as McpFetch
 }: {
   maxRedirects?: number;
   fetchImpl?: McpFetch;
@@ -290,9 +330,21 @@ export const createMcpSafeFetch = ({
       throw new Error('MCP URL only supports http/https protocol');
     }
 
-    // 代理端会重新解析目标域名，本进程无法保证它连接的是已校验的 IP；必须拒绝。
-    if (getProxyForUrl(url)) {
-      throw new Error('MCP requests through an HTTP proxy are not supported by SSRF protection');
+    // 优先按 proxy-from-env 判断是否走环境代理（已内置 NO_PROXY / no_proxy 匹配）；命中直连返回空串。
+    const proxyUrl = getProxyForUrl(url);
+    if (proxyUrl !== '') {
+      const key = `proxy|${proxyUrl}`;
+      const existing = dispatchers.get(key);
+      if (existing) return existing;
+
+      let dispatcher: ProxyAgent;
+      try {
+        dispatcher = createUndiciOutboundProxyAgent(proxyUrl);
+      } catch (error) {
+        throw new McpProxyTunnelError(error instanceof Error ? error.message : String(error));
+      }
+      dispatchers.set(key, dispatcher);
+      return dispatcher;
     }
 
     const resolved = await resolveMcpConnectAddress(parsedUrl.hostname);
@@ -327,10 +379,22 @@ export const createMcpSafeFetch = ({
 
       const dispatcher = await getDispatcher(currentUrl);
       // dispatcher 必须覆盖调用方传入值，避免自定义 dispatcher 绕过安全 lookup。
-      const response = await fetchImpl(currentUrl, {
-        ...currentInit,
-        dispatcher
-      });
+      let response: Response;
+      try {
+        response = await fetchImpl(currentUrl, {
+          ...currentInit,
+          dispatcher
+        });
+      } catch (error) {
+        // 仅在代理路径识别 undici 代理握手拒绝，避免误将直连通用取消/参数错误归类为外部配置错误。
+        if (dispatcher instanceof ProxyAgent) {
+          const proxyError = toMcpProxyHandshakeError(error);
+          if (proxyError) {
+            throw proxyError;
+          }
+        }
+        throw error;
+      }
 
       if (!isMcpRedirectResponse(response)) {
         return response;
@@ -918,7 +982,7 @@ export const getMCPChildren = async (
     return (toolSet.toolList ?? []).map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-      avatar: app.avatar,
+      avatar: app.avatar ?? undefined,
       url: toolSet.url,
       headerSecret: toolSet.headerSecret ?? undefined
     }));
@@ -938,7 +1002,7 @@ export const getMCPChildren = async (
     description: item.description,
     inputSchema: item.inputSchema,
     id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-    avatar: app.avatar,
+    avatar: app.avatar ?? undefined,
     url: item.url || url,
     headerSecret: item.headerSecret || headerSecret
   }));

@@ -70,7 +70,11 @@ vi.mock('@fastgpt/global/common/i18n/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: { MODULE: { DATASET: { COLLECTION: 'dataset-collection' } } },
+  LogCategories: {
+    MODULE: { DATASET: { COLLECTION: 'dataset-collection' } },
+    // 审计模块顶层会取 INFRA.MONGO 建 logger；漏掉会在模块初始化阶段直接抛错
+    INFRA: { MONGO: 'mongo' }
+  },
   getLogger: () => ({
     warn: vi.fn(),
     error: vi.fn()
@@ -122,6 +126,31 @@ describe('dataset multipart file source lifecycle', () => {
       collectionId: '68ad85a7463006c963799440',
       results: { insertLen: 1 }
     });
+  });
+
+  it.each([
+    ['file name.csv', 'file name.csv'],
+    ['file%20name.csv', 'file%20name.csv'],
+    ['中文%20.csv', '中文%20.csv'],
+    ['100%.csv', '100%.csv']
+  ])('preserves the template filename %s', async (encoded, filename) => {
+    mockResolveFormData.mockResolvedValueOnce({
+      data: { datasetId },
+      fileMetadata: { path: '/tmp/source.csv', originalname: encoded, size: 128 },
+      getReadStream: vi.fn(() => 'local-upload-stream')
+    });
+
+    await templateHandler({} as never);
+
+    expect(mockResolveFormData).toHaveBeenCalledWith(
+      expect.objectContaining({ defParamCharset: 'utf8' })
+    );
+    expect(mockUpload).toHaveBeenCalledWith(expect.objectContaining({ filename }));
+    expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createCollectionParams: expect.objectContaining({ name: filename })
+      })
+    );
   });
 
   it.each([

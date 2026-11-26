@@ -52,6 +52,26 @@ export enum ERROR_ENUM {
   uploadFileIntervalLimit = 'uploadFileIntervalLimit'
 }
 
+/** 业务错误允许映射的标准 HTTP 4xx/5xx 状态码集合 */
+export type ErrorHttpStatus =
+  | 400
+  | 401
+  | 402
+  | 403
+  | 404
+  | 405
+  | 406
+  | 409
+  | 410
+  | 413
+  | 422
+  | 429
+  | 500
+  | 501
+  | 502
+  | 503
+  | 504;
+
 export type ErrType<T> = Record<
   string,
   {
@@ -59,7 +79,7 @@ export type ErrType<T> = Record<
     statusText: T;
     message: string;
     data: null;
-    httpStatus?: number;
+    httpStatus: ErrorHttpStatus;
   }
 >;
 
@@ -70,56 +90,64 @@ export const ERROR_RESPONSE: Record<
     statusText: string;
     message: string;
     data?: any;
-    httpStatus?: number;
+    httpStatus: ErrorHttpStatus;
   }
 > = {
   [ERROR_ENUM.unAuthorization]: {
     code: 401,
     statusText: ERROR_ENUM.unAuthorization,
     message: i18nT('common:code_error.error_message.401'),
-    data: null
+    data: null,
+    httpStatus: 401
   },
   [ERROR_ENUM.unAuthProToken]: {
     code: 401,
     statusText: ERROR_ENUM.unAuthProToken,
     message: 'PRO_TOKEN check error',
-    data: null
+    data: null,
+    httpStatus: 401
   },
   [ERROR_ENUM.tooManyRequest]: {
     code: 429,
     statusText: ERROR_ENUM.tooManyRequest,
     message: i18nT('common:error.too_many_request'),
-    data: null
+    data: null,
+    httpStatus: 429
   },
   [ERROR_ENUM.uploadFileIntervalLimit]: {
     code: 429,
     statusText: ERROR_ENUM.uploadFileIntervalLimit,
     message: i18nT('common:error.upload_file_interval_limit'),
-    data: null
+    data: null,
+    httpStatus: 429
   },
   [ERROR_ENUM.insufficientQuota]: {
     code: 510,
     statusText: ERROR_ENUM.insufficientQuota,
     message: i18nT('common:code_error.error_message.510'),
-    data: null
+    data: null,
+    httpStatus: 402
   },
   [ERROR_ENUM.unAuthModel]: {
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
     message: i18nT('common:code_error.error_message.511'),
-    data: null
+    data: null,
+    httpStatus: 403
   },
   [ERROR_ENUM.unAuthFile]: {
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
     message: i18nT('common:code_error.error_message.513'),
-    data: null
+    data: null,
+    httpStatus: 403
   },
   [ERROR_ENUM.unAuthApiKey]: {
     code: 514,
     statusText: ERROR_ENUM.unAuthApiKey,
     message: i18nT('common:code_error.error_message.514'),
-    data: null
+    data: null,
+    httpStatus: 401
   },
   ...appErr,
   ...chatErr,

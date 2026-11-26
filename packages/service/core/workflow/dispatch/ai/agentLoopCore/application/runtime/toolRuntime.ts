@@ -62,6 +62,7 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
       moderatedResponse !== originalResponse || isModerationBlockErrorMessage(result.errorMessage);
     if (hitModeration) {
       result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+      result.content = undefined;
       result.errorMessage = undefined;
       result.assistantMessages = [];
       result.assistantResponses = undefined;

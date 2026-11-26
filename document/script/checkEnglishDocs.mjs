@@ -132,7 +132,15 @@ export function checkEnglishDocs(contentDir = path.join(documentRoot, 'content')
       // Deployment downloads and shared media keep their resource paths across locales.
       if (!/\.mdx?$/i.test(url.pathname) && path.posix.extname(url.pathname)) continue;
       linkCount++;
-      const target = byUrl.get(url.pathname.replace(/\/$/, ''));
+      const cleanPathname = url.pathname.replace(/\/$/, '');
+      const lookupPathname =
+        url.hostname === 'doc.fastgpt.io' &&
+        cleanPathname !== '/en' &&
+        !cleanPathname.startsWith('/en/') &&
+        !/^\/(?:zh-CN|zh)(?:\/|$)/i.test(cleanPathname)
+          ? `/en${cleanPathname}`
+          : cleanPathname;
+      const target = byUrl.get(lookupPathname);
       if (!target || !target.absolutePath.endsWith('.en.mdx')) {
         report(fileName, `Missing English route ${href}`);
       } else if (url.hash && !target.data.headings.has(decodeURIComponent(url.hash.slice(1)))) {

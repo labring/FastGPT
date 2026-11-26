@@ -1,7 +1,8 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { serviceEnv } from '@fastgpt/service/env';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const redisMock = vi.hoisted(() => ({
   evalScript: vi.fn(),
@@ -26,11 +27,7 @@ import {
   SANDBOX_PREVIEW_SESSION_TTL_SECONDS
 } from '@fastgpt/service/core/ai/sandbox/constants';
 
-const originalEnv = {
-  AGENT_SANDBOX_PROXY_URL: serviceEnv.AGENT_SANDBOX_PROXY_URL,
-  AGENT_SANDBOX_PREVIEW_PROXY_URL: serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
-  AGENT_SANDBOX_PROVIDER: serviceEnv.AGENT_SANDBOX_PROVIDER
-};
+const originalConfig = global.systemInstanceConfig;
 const sandboxId = generateSandboxId({
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
@@ -46,17 +43,32 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
-    Object.assign(serviceEnv, {
-      AGENT_SANDBOX_PROXY_URL: 'wss://agent-proxy.example.com/base/',
-      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/',
-      AGENT_SANDBOX_PROVIDER: 'opensandbox'
+    // 启用开关、服务地址和代理地址统一从当前实例配置读取。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: {
+        agentSandbox: {
+          enabled: true,
+          proxy: {
+            wsUrl: 'wss://agent-proxy.example.com/base/',
+            previewUrl: 'https://agent-preview.example.com:3007/base/',
+            secret: 'test-agent-sandbox-proxy-secret-32-characters'
+          },
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.com',
+            apiKey: 'test-api-key',
+            image: 'fastgpt/sandbox:latest',
+            volumeManagerUrl: 'http://volume-manager.example.com',
+            volumeManagerToken: 'vm-token'
+          }
+        }
+      }
     });
     vi.resetAllMocks();
     redisMock.evalScript.mockResolvedValue(1);
   });
 
   afterEach(() => {
-    Object.assign(serviceEnv, originalEnv);
+    global.systemInstanceConfig = originalConfig;
   });
 
   it('atomically indexes and creates a 24-character session', async () => {
@@ -91,7 +103,7 @@ describe('sandbox preview application', () => {
       };
       const url = await createSandboxPreviewFileUrl({
         context,
-        filePath: '/workspace/dist/index.html'
+        filePath: '/home/sandbox/workspace/dist/index.html'
       });
       const [scriptOptions] = redisMock.evalScript.mock.calls[0];
       const sessionId = String(scriptOptions.args[4]);
@@ -183,33 +195,49 @@ describe('sandbox preview application', () => {
     expect(
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/test dir/预览.html'
+        filePath: '/home/sandbox/workspace/test dir/预览.html'
       })
     ).toBe(
       'https://agent-preview.example.com:3007/base/preview/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
     );
   });
 
+  it('uses the newly loaded preview address without falling back to old ENV', () => {
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://legacy.test');
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+      'https://updated-preview.test/new-base';
+    expect(
+      buildSandboxPreviewFileUrl({
+        sessionId: 'a12345678901234567890123',
+        filePath: '/home/sandbox/workspace/index.html'
+      })
+    ).toBe('https://updated-preview.test/new-base/preview/a12345678901234567890123/index.html');
+    vi.unstubAllEnvs();
+  });
+
   it('requires a dedicated HTTP preview proxy URL', () => {
-    Object.assign(serviceEnv, { AGENT_SANDBOX_PREVIEW_PROXY_URL: undefined });
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = '';
 
     expect(() =>
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/index.html'
+        filePath: '/home/sandbox/workspace/index.html'
       })
-    ).toThrow('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
+    ).toThrow('Agent Sandbox preview proxy URL is not configured');
   });
 
   it('normalizes relative and workspace absolute paths', () => {
     expect(resolveSandboxPreviewPath('./dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
-    expect(resolveSandboxPreviewPath('/workspace/dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+    expect(resolveSandboxPreviewPath('/home/sandbox/workspace/dir/file.txt')).toEqual({
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
+    expect(() => resolveSandboxPreviewPath('/workspace/dir/file.txt')).toThrow(
+      'Sandbox path is outside workspace'
+    );
   });
 
   it('rejects workspace roots, traversal, outside absolute paths and noncanonical segments', () => {

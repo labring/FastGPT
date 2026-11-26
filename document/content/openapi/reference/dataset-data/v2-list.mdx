@@ -1,0 +1,100 @@
+---
+title: '获取数据列表'
+seoTitle: '获取数据列表 - POST /api/core/dataset/data/v2/list | FastGPT OpenAPI'
+description: '分页查询指定集合内的数据块（Chunk / QA）列表，支持按问题或答案关键词搜索，并返回图片签名预览地址。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/data/v2/list`
+- **所属模块**：知识库 / 数据管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/v2/list)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/v2/list`）
+
+## 接口说明与注意事项
+
+分页查询集合内的数据列表，支持关键词搜索，包含图片预览 URL
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段           | 类型     | 必填 | 默认值 | 约束与说明                         |
+| -------------- | -------- | ---- | ------ | ---------------------------------- |
+| `collectionId` | `string` | 是   | -      | 集合 ID。正则：`^[0-9a-fA-F]{24}$` |
+| `searchText`   | `string` | 否   | -      | 搜索关键词，按 q/a 字段模糊匹配    |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **按偏移量获取**
+
+通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `offset`   | `integer` | 是   | -      | **互斥参数组：分页参数**。偏移量，从 0 开始。最小值：0；最大值：9007199254740991        |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+- **按页码获取**
+
+通过页码获取，默认第 1 页；pageSize 控制每页条数。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `pageNum`  | `integer` | 否   | `1`    | **互斥参数组：分页参数**。页码，从 1 开始；传入 offset 时忽略。最大值：9007199254740991 |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/data/v2/list" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "offset": 0,
+  "collectionId": "68ad85a7463006c963799a06"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "offset": 0,
+  "collectionId": "68ad85a7463006c963799a06"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回分页数据列表
+
+**Content-Type** : `application/json`
+
+| 字段                     | 类型            | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                           |
+| ------------------------ | --------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `total`                  | `number`        | 是   | `0`    | -                                                                                                                                                                                                                                    |
+| `list`                   | `object[]`      | 是   | `[]`   | -                                                                                                                                                                                                                                    |
+| `list[]._id`             | `string`        | 是   | -      | 数据 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `list[].datasetId`       | `string`        | 是   | -      | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                 |
+| `list[].collectionId`    | `string`        | 是   | -      | 集合 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `list[].q`               | `string`        | 否   | -      | 问题/主文本                                                                                                                                                                                                                          |
+| `list[].a`               | `string`        | 否   | -      | 回答/补充文本                                                                                                                                                                                                                        |
+| `list[].imageId`         | `string`        | 否   | -      | 图片 ID                                                                                                                                                                                                                              |
+| `list[].imageSize`       | `number`        | 否   | -      | 图片大小（字节）                                                                                                                                                                                                                     |
+| `list[].imagePreviewUrl` | `string`        | 否   | -      | 图片预览 URL                                                                                                                                                                                                                         |
+| `list[].chunkIndex`      | `number`        | 否   | -      | 块索引                                                                                                                                                                                                                               |
+| `list[].indexStatus`     | `string` (enum) | 否   | -      | 索引状态，字段缺失表示已索引的历史数据。可选值：`indexing` , `indexed` , `error` , `rebuildIndexPending` , `rebuildIndexRunning` , `rebuildIndexFailed` , `rebuildSynonymPending` , `rebuildSynonymRunning` , `rebuildSynonymFailed` |
+| `list[].indexErrorMsg`   | `string`        | 否   | -      | 索引错误信息                                                                                                                                                                                                                         |
+| `list[].updated`         | `boolean`       | 否   | -      | 是否已更新                                                                                                                                                                                                                           |

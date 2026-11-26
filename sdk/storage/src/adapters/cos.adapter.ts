@@ -7,12 +7,15 @@ import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  formatHttpByteRangeHeader,
+  getAbortSignalError,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
+  assertStorageDownloadRange,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix,
   assertMultipartContentLength,
@@ -155,8 +158,10 @@ export class CosStorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
 
     const headers: Record<string, string> = {};
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
@@ -169,6 +174,33 @@ export class CosStorageAdapter implements IStorage {
     }
 
     await new Promise<COS.PutObjectResult>((resolve, reject) => {
+      let taskId: COS.TaskId | undefined;
+      let settled = false;
+
+      const cleanup = () => {
+        abortSignal?.removeEventListener('abort', abortUpload);
+      };
+
+      /**
+       * 使用 COS SDK 原生任务取消（onTaskReady + cancelTask）：
+       * - 既能取消排队中（FileParallelLimit 等待）与鉴权中的任务，也能直接 sender.abort() 关闭在途 socket；
+       * - 避免额外 PassThrough 流导致 Buffer/string 丢失 Content-Length，或排队期间 destroy(err) 触发未捕获 error 事件。
+       */
+      const abortUpload = () => {
+        if (taskId) {
+          this.client.cancelTask(taskId);
+        }
+        if (body instanceof Readable && !body.destroyed) {
+          body.destroy();
+        }
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(getAbortSignalError(abortSignal!));
+      };
+
+      abortSignal?.addEventListener('abort', abortUpload, { once: true });
+
       this.client.putObject(
         {
           Bucket: this.options.bucket,
@@ -177,11 +209,22 @@ export class CosStorageAdapter implements IStorage {
           Body: body,
           ContentType: contentType,
           ContentLength: contentLength,
-          Headers: Object.keys(headers).length ? headers : undefined
+          Headers: Object.keys(headers).length ? headers : undefined,
+          onTaskReady: (id) => {
+            taskId = id;
+            if (abortSignal?.aborted) {
+              this.client.cancelTask(id);
+            }
+          }
         },
         (err, data) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           if (err) {
-            return reject(this.handleCosError(err));
+            return reject(
+              abortSignal?.aborted ? getAbortSignalError(abortSignal) : this.handleCosError(err)
+            );
           }
           resolve(data);
         }
@@ -350,6 +393,7 @@ export class CosStorageAdapter implements IStorage {
     params: Storage.DownloadObjectParams
   ): Promise<Storage.DownloadObjectResult> {
     assertStorageObjectKey(params.key);
+    assertStorageDownloadRange(params.range);
     throwIfStorageDownloadAborted(params.abortSignal);
 
     // COS returns the output stream before reporting a missing-object error.
@@ -376,6 +420,7 @@ export class CosStorageAdapter implements IStorage {
         Bucket: this.options.bucket,
         Region: this.options.region,
         Key: params.key,
+        ...(params.range ? { Range: formatHttpByteRangeHeader(params.range) } : {}),
         Output: passThrough
       },
       (err, _data) => {

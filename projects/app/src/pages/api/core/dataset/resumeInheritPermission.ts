@@ -17,6 +17,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { calculateInheritedResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 
@@ -91,7 +92,7 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
-    resources: [{ datasetId: String(dataset._id) }],
+    resources: [buildDatasetAuditResource(dataset)],
     params: {
       targetResource: dataset.name,
       ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})

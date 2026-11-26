@@ -1,5 +1,9 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
-import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  APP_SANDBOX_ENABLED_CHAT_METADATA_KEY,
+  SandboxUnavailableReasonEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
 import {
@@ -34,8 +38,11 @@ export async function resolveSandboxSessionAvailability(
     return { available: true };
   }
 
-  if (!global.feConfigs?.show_agent_sandbox) {
-    return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
+  if (!getSystemInstanceConfig().subservice.agentSandbox.enabled) {
+    return {
+      available: false,
+      reason: SandboxUnavailableReasonEnum.systemDisabled
+    };
   }
 
   if (session.chat?.summary?.hasAgentSandbox === true) {
@@ -66,19 +73,6 @@ export async function resolveSandboxSessionAvailability(
   return resolveAppSandboxAvailability({ appEnabled, teamId: session.teamId });
 }
 
-/** 统一记录并拒绝已经完成身份鉴权、但产品态不允许继续访问的 Sandbox Session。 */
-async function assertSandboxRuntimeSessionAvailable({
-  session
-}: {
-  session: SandboxSessionAuthResult;
-}): Promise<void> {
-  const availability = await resolveSandboxSessionAvailability(session);
-
-  if (!availability.available) {
-    throw createAgentSandboxPermissionDeniedError();
-  }
-}
-
 /**
  * 鉴权并断言 Sandbox 文件/runtime API 可以访问目标 Session。
  *
@@ -88,7 +82,10 @@ export async function authSandboxRuntimeSession(
   authParams: AuthSandboxSessionParams
 ): Promise<SandboxSessionAuthResult> {
   const session = await authSandboxSession(authParams);
-  await assertSandboxRuntimeSessionAvailable({ session });
+  const availability = await resolveSandboxSessionAvailability(session);
+  if (!availability.available) {
+    throw createAgentSandboxPermissionDeniedError();
+  }
 
   return session;
 }

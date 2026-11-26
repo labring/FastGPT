@@ -18,6 +18,10 @@ vi.mock('@/web/core/app/api/tool', () => ({
   getAppToolTemplates: mocks.getAppToolTemplates
 }));
 vi.mock('@/web/core/plugin/toolTag/api', () => ({ getPluginToolTags: vi.fn() }));
+vi.mock('@/web/common/system/useSystemStore', () => ({
+  useSystemStore: (selector: (state: { feConfigs: { codeSandboxEnabled: boolean } }) => unknown) =>
+    selector({ feConfigs: { codeSandboxEnabled: false } })
+}));
 vi.mock('react', () => ({
   useState: (initialValue: unknown) => {
     const index = hookRuntime.cursor++;
@@ -47,7 +51,7 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => ({
     mocks.paginationCalls.push({ api, params: options.params });
     return {
       data: mocks.teamTemplates,
-      isLoading: false,
+      isInitialLoading: false,
       ScrollData: vi.fn()
     };
   }
@@ -64,17 +68,11 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
     }
   };
 });
-vi.mock('ahooks', () => ({ useDebounceEffect: vi.fn() }));
 vi.mock('use-context-selector', () => ({
   useContextSelector: (context: any, selector: (value: any) => unknown) => selector(context.value)
 }));
 vi.mock('@/pageComponents/app/detail/context', () => ({
   AppContext: { value: { appDetail: { _id: 'current-app' } } }
-}));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
-  WorkflowBufferDataContext: {
-    value: { basicNodeTemplates: [], getNodeList: () => [], nodeAmount: 0 }
-  }
 }));
 vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/Flow/components/NodeTemplates/header',

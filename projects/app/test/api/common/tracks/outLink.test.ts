@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '@/pages/api/common/tracks/push';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
@@ -49,7 +50,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   await getRedisRuntime().getCommandConnection().flushdb();
   serviceEnv.SHOW_OUTLINK_BRAND = true;
-  global.feConfigs = { isPlus: true } as any;
+  setTestLicenseActive(true);
   mocks.auth.mockResolvedValue({
     appId: link.appId,
     uid: 'anonymous-visitor',
@@ -153,7 +154,7 @@ describe('handler', () => {
     expect(await TrackModel.countDocuments()).toBe(0);
   });
   it.each(['edition', 'global'])('does not record when disabled by %s', async (disabledBy) => {
-    if (disabledBy === 'edition') global.feConfigs = { isPlus: false } as any;
+    if (disabledBy === 'edition') setTestLicenseActive(false);
     if (disabledBy === 'global') serviceEnv.SHOW_OUTLINK_BRAND = false;
     await request();
     expect(mocks.auth).not.toHaveBeenCalled();

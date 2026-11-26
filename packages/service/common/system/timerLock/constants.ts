@@ -17,12 +17,15 @@ export enum TimerIdEnum {
   stopInactiveSandboxes = 'stopInactiveSandboxes',
   archiveInactiveSandboxes = 'archiveInactiveSandboxes',
   recoverStaleSandboxOperations = 'recoverStaleSandboxOperations',
+  reconcileOrphanSandboxResources = 'reconcileOrphanSandboxResources',
   enterpriseAuthTaskCleanup = 'enterpriseAuthTaskCleanup',
   accountCancellationReminder = 'accountCancellationReminder',
   accountCancellationFinalize = 'accountCancellationFinalize',
   /** 纠正长时间卡在 generating 的会话状态 */
   /** 全局模型状态探测，避免多实例重复调用供应商接口 */
-  modelStatusProbe = 'modelStatusProbe'
+  modelStatusProbe = 'modelStatusProbe',
+  /** 微信个人号在线渠道轮询巡检，兜底恢复中断的轮询链 */
+  wechatPollingReconcile = 'wechatPollingReconcile'
 }
 
 export enum LockNotificationEnum {

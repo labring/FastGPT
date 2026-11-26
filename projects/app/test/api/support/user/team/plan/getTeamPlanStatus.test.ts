@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import getTeamPlanStatusHandler from '@/pages/api/support/user/team/plan/getTeamPlanStatus';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
@@ -67,7 +68,7 @@ describe('getTeamPlanStatus', () => {
 
   it('reads an explicit entitlement override without plan configuration or resource statistics', async () => {
     const { owner } = await getFakeUsers(0);
-    const originalPlans = global.subPlans;
+    const originalPlans = getSystemInstanceConfig().commercial.subPlans;
     await MongoTeamSub.create({
       teamId: owner.teamId,
       type: SubTypeEnum.standard,
@@ -79,7 +80,7 @@ describe('getTeamPlanStatus', () => {
       throw new Error('resource statistics unavailable');
     });
     try {
-      global.subPlans = undefined;
+      getSystemInstanceConfig().commercial.subPlans = undefined;
       const result = await Call<
         Record<string, never>,
         { scope: 'entitlements' },
@@ -89,7 +90,7 @@ describe('getTeamPlanStatus', () => {
       expect(result.data).toEqual({ scope: 'entitlements', canHideShareBrand: true });
       expect(count).not.toHaveBeenCalled();
     } finally {
-      global.subPlans = originalPlans;
+      getSystemInstanceConfig().commercial.subPlans = originalPlans;
     }
   });
 

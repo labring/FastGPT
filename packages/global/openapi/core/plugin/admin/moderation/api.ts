@@ -42,7 +42,9 @@ export type GetModerationPluginListResponseType = z.infer<
 
 export const SaveModerationConfigBodySchema = z.object({
   pluginId: z.string().meta({ description: '插件 ID', example: 'baidu-moderation' }),
-  version: z.string().optional().meta({ description: '指定版本；不传则使用最新版本' }),
+  version: z.string().optional().meta({
+    description: '指定版本；不传且修改配置时使用最新版本，仅切换启用状态时沿用已保存版本'
+  }),
   /**
    * 要保存的配置值。未传的字段保持原值；显式传 null 表示清空该字段。
    * 值为脱敏占位时不会被写入，避免用掩码覆盖真实密钥。

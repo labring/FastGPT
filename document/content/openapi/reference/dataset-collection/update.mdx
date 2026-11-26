@@ -1,0 +1,82 @@
+---
+title: '更新数据集集合信息'
+seoTitle: '更新数据集集合信息 - POST /api/core/dataset/collection/update | FastGPT OpenAPI'
+description: '通过集合 ID 或知识库 ID 与外部文件 ID 更新集合名称、父目录、禁用状态与集合标签，变更父目录时需具备移动权限。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/collection/update`
+- **所属模块**：知识库 / 集合管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/update)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/update`）
+
+## 接口说明与注意事项
+
+更新数据集集合信息，支持通过集合 ID 或数据集 ID+外部文件 ID 定位集合。需要集合写权限；变更 parentId 视为移动，源父级与目标父级均需管理权限（根目录与文件夹之间移动还需团队知识库创建权限），且不接受 inheritPermission，独立态保持独立、继承态保持继承
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段         | 类型                 | 必填 | 默认值 | 约束与说明                                               |
+| ------------ | -------------------- | ---- | ------ | -------------------------------------------------------- |
+| `parentId`   | `string \| null`     | 否   | -      | 父级目录 ID                                              |
+| `name`       | `string`             | 否   | -      | 集合名称                                                 |
+| `tags`       | `string \| object[]` | 否   | -      | 标签列表（支持 String 旧格式或 \{ tag, value \} 新格式） |
+| `forbid`     | `boolean`            | 否   | -      | 是否禁用                                                 |
+| `createTime` | `string`             | 否   | -      | 创建时间                                                 |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **提供 `id`**
+
+| 字段             | 类型     | 必填 | 默认值 | 约束与说明                                                             |
+| ---------------- | -------- | ---- | ------ | ---------------------------------------------------------------------- |
+| `id`             | `string` | 是   | -      | 集合 ID，与 datasetId+externalFileId 二选一。正则：`^[0-9a-fA-F]{24}$` |
+| `datasetId`      | `string` | 否   | -      | 数据集 ID，配合 externalFileId 使用                                    |
+| `externalFileId` | `string` | 否   | -      | 外部文件 ID，配合 datasetId 使用                                       |
+
+- **提供 datasetId、externalFileId**
+
+| 字段             | 类型     | 必填 | 默认值 | 约束与说明                                                             |
+| ---------------- | -------- | ---- | ------ | ---------------------------------------------------------------------- |
+| `datasetId`      | `string` | 是   | -      | 数据集 ID，配合 externalFileId 使用                                    |
+| `externalFileId` | `string` | 是   | -      | 外部文件 ID，配合 datasetId 使用                                       |
+| `id`             | `string` | 否   | -      | 集合 ID，与 datasetId+externalFileId 二选一。正则：`^[0-9a-fA-F]{24}$` |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/collection/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "id": "68ee0bd23d17260b7829b137"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "id": "68ee0bd23d17260b7829b137"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功更新集合信息
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

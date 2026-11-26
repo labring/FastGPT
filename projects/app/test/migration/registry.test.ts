@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemMigration } from '@/migration/registry';
 import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/registry';
+import { createSystemMigrationPlan } from '@/migration/plan';
 
 const createMigration = (id: string): SystemMigration => ({
   id,
@@ -13,23 +14,57 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('keeps only the current release tasks without legacy startup dependencies', () => {
+  it('places system configuration migration first and follows with model pricing and remaining background tasks', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs',
+      '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type'
+      '20261123_cleanup_mongo_indexes',
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources'
     ]);
-    expect(
-      systemMigrations.filter(
-        (task: SystemMigration) =>
-          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
-      )
-    ).toEqual([]);
+    const tasks: readonly SystemMigration[] = systemMigrations;
+    expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs'
+    ]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources'
+    ]);
+
+    const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
+    expect(configMigration).toMatchObject({
+      version: '4.18.0',
+      blockStartup: true,
+      progressSteps: [
+        { key: 'inspect' },
+        { key: 'migrate' },
+        { key: 'cleanup' },
+        { key: 'backfill' },
+        { key: 'validate' }
+      ]
+    });
+    expect(configMigration).not.toHaveProperty('dependsOn');
+    expect(configMigration).not.toHaveProperty('independent');
+    expect(configMigration).not.toHaveProperty('resumable', true);
+    const plan = createSystemMigrationPlan(tasks);
+    expect(plan.startupMigrations.map(({ id }) => id)).toEqual(['20261116_migrate_system_configs']);
+    expect(plan.backgroundMigrations.map(({ id }) => id)).toEqual([
+      '20261120_migrate_model_pricing',
+      '20261022_initialize_dataset_vector_indexes',
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type',
+      '20261123_cleanup_mongo_indexes',
+      '20261117_migrate_sandbox_to_opensandbox',
+      '20261117_cleanup_legacy_sandbox_resources'
+    ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('appends dataset index initialization as a non-blocking automatic task', () => {
+  it('keeps dataset index initialization as a non-blocking automatic task', () => {
     const task = systemMigrations.find(
       ({ id }) => id === '20261022_initialize_dataset_vector_indexes'
     );
@@ -45,7 +80,21 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('onFailure');
   });
 
-  it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+  it('保留聊天来源回填为无依赖的独立自动任务', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_chat_publish_source');
+    expect(task).toMatchObject({
+      id: '20261104_backfill_chat_publish_source',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'chats' }, { key: 'chatLogs' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
+  it('在4.18.0登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
     const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
@@ -59,22 +108,61 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
-  it('appends STT pricing backfill as non-blocking background work', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20261112_backfill_stt_pricing_type',
+  it('registers unified model pricing migration as independent multi-step background work', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261120_migrate_model_pricing');
+    expect(task).toMatchObject({
+      id: '20261120_migrate_model_pricing',
       version: '4.18.0',
-      blockStartup: false,
-      progressSteps: [{ key: 'models' }, { key: 'validation' }]
+      independent: true,
+      progressSteps: [{ key: 'stt' }, { key: 'llmTiers' }, { key: 'validation' }]
     });
-    expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');
-    expect(systemMigrations.at(-1)).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('blockStartup', true);
+  });
+
+  it('registers v4.18.0 deprecated MongoDB index cleanup as an independent background task', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261123_cleanup_mongo_indexes');
+    expect(task).toMatchObject({
+      id: '20261123_cleanup_mongo_indexes',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
+  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tail tasks', () => {
+    const migrateTask = systemMigrations.find(
+      ({ id }) => id === '20261117_migrate_sandbox_to_opensandbox'
+    );
+    const cleanupTask = systemMigrations.at(-1);
+
+    expect(migrateTask).toMatchObject({
+      id: '20261117_migrate_sandbox_to_opensandbox',
+      version: '4.18.0',
+      manual: true,
+      blockStartup: false
+    });
+    expect(migrateTask).not.toHaveProperty('dependsOn');
+
+    expect(cleanupTask).toMatchObject({
+      id: '20261117_cleanup_legacy_sandbox_resources',
+      version: '4.18.0',
+      manual: true,
+      blockStartup: false,
+      dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
+    });
   });
 
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
+      '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261123_cleanup_mongo_indexes'
     ]);
   });
 
@@ -84,6 +172,15 @@ describe('validateSystemMigrationRegistry', () => {
         { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
     ).toThrow('cannot be delayed');
+  });
+
+  it('rejects resumable manual execution', () => {
+    // manual 要求管理员显式入队，resumable 会让它每轮自动重跑，两者语义冲突
+    expect(() =>
+      validateSystemMigrationRegistry([
+        { ...createMigration('20261008_manual_resumable'), manual: true, resumable: true }
+      ])
+    ).toThrow('cannot be resumable');
   });
 
   it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(

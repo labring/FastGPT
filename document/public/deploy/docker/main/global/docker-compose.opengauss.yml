@@ -2,8 +2,6 @@
 # - FastGPT 端口映射为 3000:3000
 # - 建议修改账密后再运行
 
-# root 默认密码（重启后会强制重置该密码成环境变量值）
-x-default-root-psw: &x-default-root-psw '1234'
 # FastGPT 前端访问地址，必须填写用户实际访问 FastGPT 的地址
 x-fe-domain: &x-fe-domain ''
 # Sandbox Proxy WebSocket 地址，必须填写用户实际访问地址
@@ -78,7 +76,7 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
@@ -115,7 +113,7 @@ services:
       retries: 10
       start_period: 30s
   fastgpt-mongo:
-    image: mongo:8.0.34 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: mongo:8.0.38 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -235,7 +233,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.17.4
+    image: ghcr.io/labring/fastgpt:v4.17.5
     ports:
       - 3000:3000
     networks:
@@ -266,12 +264,8 @@ services:
       FE_DOMAIN: *x-fe-domain
       # root key（最高权限）
       ROOT_KEY: *x-system-key
-      # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
-      DEFAULT_ROOT_PSW: *x-default-root-psw
       # 数据库最大连接数
       DB_MAX_LINK: 20
-      # 自动同步索引
-      SYNC_INDEX: true
       # 系统变量替换等同步字符串处理的最大字符数，单位 M，范围 1~100
       SYSTEM_MAX_STRING_LENGTH_M: 100
       # 文件阅读时的密钥
@@ -389,7 +383,7 @@ services:
       <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
       # plugin 服务使用独立数据库，避免和 FastGPT 主库集合冲突。
       MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin
-      DB_MAX_LINK: 100
+      MONGO_MAX_LINK: 100
       AUTH_TOKEN: *x-plugin-auth-token
       FASTGPT_BASE_URL: http://fastgpt-app:3000
       # 工具网络请求，最大请求和响应体
@@ -416,6 +410,9 @@ services:
     restart: always
     networks:
       - app
+    # 通过 Docker 宿主机访问运行时和 egress 容器映射的端口。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     configs:
@@ -437,7 +434,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.3.0
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.4.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -464,7 +461,7 @@ services:
 
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -478,7 +475,7 @@ services:
 
   # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
   fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.3.0
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.4.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:

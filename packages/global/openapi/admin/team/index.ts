@@ -15,7 +15,7 @@ export const AdminTeamsPath: OpenAPIPath = {
   '/proApi/admin/team/getTeams': {
     post: {
       summary: '获取团队列表',
-      description: '分页获取团队列表，支持按团队名称或所有者用户名搜索',
+      description: '分页获取团队列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索',
       tags: [DevApiTagsMap.adminTeams],
       requestBody: {
         content: {

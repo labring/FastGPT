@@ -11,6 +11,7 @@ import { MongoDatasetData } from '../../data/schema';
 import { getFullTextStore, type FullTextSearchItem } from '../../data/textStore';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
+import { trackDatasetSearchStage } from '../../../../common/opsPerf/datasetSearch';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -207,19 +208,23 @@ export const fullTextRecall = async ({
   }
 
   const store = getFullTextStore();
-  const taskItems = await Promise.all(
-    queryTasks.map(async ({ source, query }) => {
-      const items = await store.search({
-        teamId,
-        datasetIds,
-        query,
-        limit,
-        forbidCollectionIdList,
-        filterCollectionIdList
-      });
-      return { source, items };
-    })
+  const taskItems = await trackDatasetSearchStage('fullTextRecall', () =>
+    Promise.all(
+      queryTasks.map(async ({ source, query }) => {
+        const items = await store.search({
+          teamId,
+          datasetIds,
+          query,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+        return { source, items };
+      })
+    )
   );
 
-  return buildResultsFromRecallItems({ taskItems, limit });
+  return trackDatasetSearchStage('fullTextHydrate', () =>
+    buildResultsFromRecallItems({ taskItems, limit })
+  );
 };

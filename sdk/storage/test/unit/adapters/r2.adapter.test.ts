@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { Readable } from 'node:stream';
+import { describe, expect, it, vi } from 'vitest';
 import { R2StorageAdapter } from '../../../src/adapters/r2.adapter';
 
 const createOptions = () => ({
@@ -25,5 +26,40 @@ describe('R2StorageAdapter.constructor', () => {
           vendor: 'aws-s3'
         } as never)
     ).toThrow('Invalid storage vendor: expected "r2"');
+  });
+});
+
+describe('R2StorageAdapter.downloadObject', () => {
+  it('inherits byte range downloads and rejects invalid ranges before dispatch', async () => {
+    const adapter = new R2StorageAdapter(createOptions());
+    const body = Readable.from([Buffer.from('r2-slice')]);
+    const send = vi.fn().mockResolvedValue({ Body: body });
+    (adapter as any).client.send = send;
+
+    const result = await adapter.downloadObject({
+      key: 'dataset/team/file.zip',
+      range: { start: 10, end: 17 }
+    });
+
+    expect(result.body).toBe(body);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-public',
+          Key: 'dataset/team/file.zip',
+          Range: 'bytes=10-17'
+        }
+      }),
+      { abortSignal: undefined }
+    );
+
+    send.mockClear();
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.zip',
+        range: { start: 10, end: 5 }
+      })
+    ).rejects.toThrow('Download range end must be a safe integer >= start');
+    expect(send).not.toHaveBeenCalled();
   });
 });

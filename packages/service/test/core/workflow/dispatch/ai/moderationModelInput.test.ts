@@ -6,10 +6,10 @@ import {
 } from '@fastgpt/global/core/plugin/moderation/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import * as checkerMod from '../../../../../core/plugin/moderation/checker';
-import { dispatchChatCompletion } from '../../../../../core/workflow/dispatch/ai/chat/dispatchChatCompletion';
-import { dispatchRunTools } from '../../../../../core/workflow/dispatch/ai/toolcall';
-import { dispatchRunAgent } from '../../../../../core/workflow/dispatch/ai/agent';
-import { dispatchReadFiles } from '../../../../../core/workflow/dispatch/tools/readFiles';
+import { dispatchChatCompletion as dispatchChatCompletionWithoutContext } from '../../../../../core/workflow/dispatch/ai/chat/dispatchChatCompletion';
+import { dispatchRunTools as dispatchRunToolsWithoutContext } from '../../../../../core/workflow/dispatch/ai/toolcall';
+import { dispatchRunAgent as dispatchRunAgentWithoutContext } from '../../../../../core/workflow/dispatch/ai/agent';
+import { dispatchReadFiles as dispatchReadFilesWithoutContext } from '../../../../../core/workflow/dispatch/tools/readFiles';
 import { createAgentLoopCoreToolRuntime } from '../../../../../core/workflow/dispatch/ai/agentLoopCore/application/runtime/toolRuntime';
 import { createAgentLoopCoreSystemTools } from '../../../../../core/workflow/dispatch/ai/agentLoopCore/application/runtime/systemTools';
 import {
@@ -21,8 +21,9 @@ import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '../../../../../core/workflow/dispatch/constants';
-import { runWorkflow } from '../../../../../core/workflow/dispatch/index';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { runWorkflow as runWorkflowWithoutContext } from '../../../../../core/workflow/dispatch/index';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
+import { createTestWorkflowDispatch } from '../context/fixtures';
 import * as serviceMod from '../../../../../core/plugin/moderation/service';
 
 const { getLLMModelDataMock, parseFileContentFromUrlsMock, getInputFilesMock } = vi.hoisted(() => ({
@@ -59,15 +60,6 @@ vi.mock('../../../../../core/workflow/dispatch/ai/chat/fileContext', async (impo
   };
 });
 
-vi.mock('../../../../../core/workflow/utils/context', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../../core/workflow/utils/context')>();
-  return {
-    ...actual,
-    getWorkflowFileMaxAmount: () => actual.getWorkflowFileContext()?.limits.maxFileAmount ?? 10
-  };
-});
-
 vi.mock('@fastgpt/service/common/string/tiktoken', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/common/string/tiktoken')>();
   return {
@@ -78,6 +70,12 @@ vi.mock('@fastgpt/service/common/string/tiktoken', async (importOriginal) => {
     countPromptTokens: vi.fn(() => 100)
   };
 });
+
+const dispatchChatCompletion = createTestWorkflowDispatch(dispatchChatCompletionWithoutContext);
+const dispatchRunTools = createTestWorkflowDispatch(dispatchRunToolsWithoutContext);
+const dispatchRunAgent = createTestWorkflowDispatch(dispatchRunAgentWithoutContext);
+const dispatchReadFiles = createTestWorkflowDispatch(dispatchReadFilesWithoutContext);
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 
 describe('Model Input Guard node integration', () => {
   beforeEach(() => {
@@ -742,7 +740,7 @@ describe('Model Input Guard node integration', () => {
           ],
           runtimeEdges: [],
           isToolCall: true,
-          variableState,
+          variableContext: variableState,
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -811,7 +809,7 @@ describe('Model Input Guard node integration', () => {
           ],
           runtimeEdges: [],
           isToolCall: true,
-          variableState,
+          variableContext: variableState,
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,

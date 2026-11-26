@@ -148,17 +148,18 @@ function mapServerError({
     });
   }
 
-  // FastGPT 服务端 unAuthApiKey 的业务码为 514 且 HTTP 状态可能是 500，不能仅看 401/403。
+  // 明确的凭证失效/认证拒绝（含老版本以 HTTP 500 包装业务码 514 的场景），提示重新登录或检查 API Key。
   if (
     httpStatus === 401 ||
-    httpStatus === 403 ||
     serverCode === 401 ||
-    serverCode === 403 ||
     serverCode === 514 ||
     statusText === 'unAuthorization' ||
     statusText === 'unAuthApiKey' ||
     statusText === 'unAuthProToken' ||
     statusText === 'unAuthTeam' ||
+    statusText === 'unAuthSso' ||
+    statusText === 'unAuthUser' ||
+    statusText === 'accountCancellationPending' ||
     /accountCancellationPending/i.test(safeMessage)
   ) {
     const isApiKey = serverCode === 514 || statusText === 'unAuthApiKey';
@@ -168,6 +169,24 @@ function mapServerError({
       hint: isApiKey
         ? 'Verify your API Key or check whether it has been deleted/restricted. Run "fastgpt doctor" for diagnostics.'
         : 'Your session may be invalid or expired (7-day TTL). Run "fastgpt login" to re-authenticate.',
+      details: { httpStatus, serverCode, statusText, url: safeUrl }
+    });
+  }
+
+  // 资源权限拒绝（非套餐/配额上限）归类为 AUTH_FORBIDDEN，不误导用户重新登录；
+  // 套餐数量上限、商业版功能受限等带明确业务 statusText 的 HTTP 403 保留为 CliApiError（API_ERROR）。
+  const isPermissionRefusal =
+    (statusText !== undefined &&
+      /^(?:unAuth|canNotEditAdminPermission$|unPermission$|rootOnlyPermit$|agentSandboxPermissionDenied$|inheritPermissionError$|openapiUnAuth$|pluginUnAuth$|collectionPermissionDisabled$)/.test(
+        statusText
+      )) ||
+    ((httpStatus === 403 || serverCode === 403) && (!statusText || statusText === 'error'));
+
+  if (isPermissionRefusal) {
+    return new CliAuthError({
+      code: 'AUTH_FORBIDDEN',
+      message: safeMessage || 'Permission denied',
+      hint: 'You do not have permission for this resource or action. Verify team and resource permissions.',
       details: { httpStatus, serverCode, statusText, url: safeUrl }
     });
   }
@@ -420,7 +439,7 @@ export function createFastGptHttpClient({
     searchParams,
     jsonBody,
     rawBody,
-    formData,
+    contentType,
     signal
   }: {
     client: any;
@@ -429,7 +448,7 @@ export function createFastGptHttpClient({
     searchParams?: Record<string, string | number | boolean>;
     jsonBody?: unknown;
     rawBody?: BodyInit | null;
-    formData?: FormData;
+    contentType?: string;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
     const baseWithSlash = normalizedBaseUrl.endsWith('/')
@@ -439,7 +458,7 @@ export function createFastGptHttpClient({
     let currentMethod = initialMethod;
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
-    let currentFormData = formData;
+    let currentContentType = contentType;
     let currentSearchParams = searchParams;
 
     for (let hop = 0; hop <= 5; hop += 1) {
@@ -453,7 +472,11 @@ export function createFastGptHttpClient({
           ...(currentRawBody !== undefined && currentRawBody !== null
             ? { body: currentRawBody }
             : {}),
-          ...(currentFormData !== undefined ? { body: currentFormData } : {})
+          ...(currentRawBody !== undefined &&
+          currentRawBody !== null &&
+          currentContentType !== undefined
+            ? { headers: { 'content-type': currentContentType } }
+            : {})
         });
       } catch (error) {
         if (error instanceof CliNetworkError) throw error;
@@ -503,7 +526,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         } else if (response.status === 301 || response.status === 302) {
           // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
@@ -511,7 +534,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         }
         // 307 与 308 保留原始 HTTP 方法与请求载荷
@@ -626,12 +649,18 @@ export function createFastGptHttpClient({
         stripAccept: true
       });
 
+      // 预先将 FormData 序列化为字节负载，避免未消费的 undici multipart 流在 ky finally cancel() 时于 Node 24 抛出 ERR_INVALID_STATE
+      const serializedForm = new Response(formData);
+      const multipartContentType = serializedForm.headers.get('content-type') ?? undefined;
+      const multipartBody = new Uint8Array(await serializedForm.arrayBuffer());
+
       const { response, finalUrl } = await executeWithRedirects({
         client,
         initialPath: relativePath,
         method: 'POST',
         searchParams,
-        formData
+        rawBody: multipartBody,
+        contentType: multipartContentType
       });
 
       const rawText = await response.text();

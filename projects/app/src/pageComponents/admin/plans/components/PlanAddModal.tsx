@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -34,6 +35,7 @@ const defaultData: TFormData = {
 };
 
 export default function PlanAddModal(props: { updateData: any }) {
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { updateData } = props;
   const { toast } = useToast();
@@ -67,7 +69,7 @@ export default function PlanAddModal(props: { updateData: any }) {
         expiredTime: expiredTimeISO
       });
       toast({
-        title: '添加成功',
+        title: t('admin:added'),
         status: 'success'
       });
       updateData();
@@ -91,7 +93,7 @@ export default function PlanAddModal(props: { updateData: any }) {
           reset(defaultData);
         }}
       >
-        添加套餐
+        {t('admin:add_plan')}
       </Button>
 
       <MyModal
@@ -102,17 +104,17 @@ export default function PlanAddModal(props: { updateData: any }) {
         footer={
           <>
             <Button variant="whiteBase" onClick={onClose}>
-              关闭
+              {t('admin:close')}
             </Button>
             <Button variant="primary" onClick={handleSubmit(onSubmit)} isLoading={loading}>
-              确定
+              {t('admin:ok')}
             </Button>
           </>
         }
       >
         <FormControl>
           <FormLabel htmlFor="teamId" fontWeight="bold">
-            团队id
+            {t('admin:team_id_3')}
           </FormLabel>
           <Input
             {...register('teamId', {
@@ -120,12 +122,12 @@ export default function PlanAddModal(props: { updateData: any }) {
             })}
             id="teamId"
             variant="outline"
-            placeholder="团队id"
+            placeholder={t('admin:team_id_3')}
           />
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="type" fontWeight="bold">
-            套餐类型
+            {t('admin:plan_type')}
           </FormLabel>
           <Controller
             control={control}
@@ -138,9 +140,12 @@ export default function PlanAddModal(props: { updateData: any }) {
                   onChange(value);
                 }}
                 list={[
-                  { label: '基础套餐', value: SubTypeEnum.standard },
-                  { label: '知识库扩容', value: SubTypeEnum.extraDatasetSize },
-                  { label: 'AI 积分套餐', value: SubTypeEnum.extraPoints }
+                  { label: t('admin:basic_plan'), value: SubTypeEnum.standard },
+                  {
+                    label: t('admin:dataset_storage_expansion'),
+                    value: SubTypeEnum.extraDatasetSize
+                  },
+                  { label: t('admin:ai_points_package'), value: SubTypeEnum.extraPoints }
                 ]}
               />
             )}
@@ -148,10 +153,10 @@ export default function PlanAddModal(props: { updateData: any }) {
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="startTime" fontWeight="bold">
-            开始时间
+            {t('admin:start_time')}
             {errors && !!errors?.startTime && (
               <Box as="span" ml={2} fontSize="12px" color="red.500">
-                *必填
+                {t('admin:required')}
               </Box>
             )}
           </FormLabel>
@@ -165,10 +170,10 @@ export default function PlanAddModal(props: { updateData: any }) {
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="expiredTime" fontWeight="bold">
-            结束时间
+            {t('admin:end_time')}
             {errors && !!errors?.expiredTime && (
               <Box as="span" ml={2} fontSize="12px" color="red.500">
-                *必填
+                {t('admin:required')}
               </Box>
             )}
           </FormLabel>
@@ -184,7 +189,7 @@ export default function PlanAddModal(props: { updateData: any }) {
         {currentType === SubTypeEnum.standard && (
           <FormControl mt={4}>
             <FormLabel htmlFor="level" fontWeight="bold">
-              套餐等级
+              {t('admin:plan_tier')}
             </FormLabel>
             <Controller
               control={control}
@@ -195,10 +200,10 @@ export default function PlanAddModal(props: { updateData: any }) {
                   value={value}
                   onChange={onChange}
                   list={[
-                    { label: '免费版', value: StandardSubLevelEnum.free },
-                    { label: '基础版', value: StandardSubLevelEnum.basic },
-                    { label: '高级版', value: StandardSubLevelEnum.advanced },
-                    { label: '定制版', value: StandardSubLevelEnum.custom }
+                    { label: t('admin:free_edition'), value: StandardSubLevelEnum.free },
+                    { label: t('admin:basic_edition'), value: StandardSubLevelEnum.basic },
+                    { label: t('admin:advanced_edition'), value: StandardSubLevelEnum.advanced },
+                    { label: t('admin:custom'), value: StandardSubLevelEnum.custom }
                   ]}
                 />
               )}
@@ -208,10 +213,10 @@ export default function PlanAddModal(props: { updateData: any }) {
         {currentType === SubTypeEnum.extraDatasetSize && (
           <FormControl mt={4}>
             <FormLabel htmlFor="extraDatasetSize" fontWeight="bold">
-              额外知识库容量
+              {t('admin:extra_dataset_storage')}
               {errors && !!errors?.extraDatasetSize && (
                 <Box as="span" ml={2} fontSize="12px" color="red.500">
-                  *必填
+                  {t('admin:required')}
                 </Box>
               )}
             </FormLabel>
@@ -221,7 +226,7 @@ export default function PlanAddModal(props: { updateData: any }) {
               })}
               id="metadata"
               variant="outline"
-              placeholder="额外知识库容量"
+              placeholder={t('admin:extra_dataset_storage')}
               type="number"
             />
           </FormControl>
@@ -230,10 +235,10 @@ export default function PlanAddModal(props: { updateData: any }) {
           <>
             <FormControl mt={4}>
               <FormLabel htmlFor="totalPoints" fontWeight="bold">
-                总积分
+                {t('admin:total_points')}
                 {errors && !!errors?.totalPoints && (
                   <Box as="span" ml={2} fontSize="12px" color="red.500">
-                    *必填
+                    {t('admin:required')}
                   </Box>
                 )}
               </FormLabel>
@@ -243,16 +248,16 @@ export default function PlanAddModal(props: { updateData: any }) {
                 })}
                 id="metadata"
                 variant="outline"
-                placeholder="总积分"
+                placeholder={t('admin:total_points')}
                 type="number"
               />
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="surplusPoints" fontWeight="bold">
-                剩余积分
+                {t('admin:remaining_points')}
                 {errors && !!errors?.surplusPoints && (
                   <Box as="span" ml={2} fontSize="12px" color="red.500">
-                    *必填
+                    {t('admin:required')}
                   </Box>
                 )}
               </FormLabel>
@@ -262,7 +267,7 @@ export default function PlanAddModal(props: { updateData: any }) {
                 })}
                 id="metadata"
                 variant="outline"
-                placeholder="剩余积分"
+                placeholder={t('admin:remaining_points')}
                 type="number"
               />
             </FormControl>
@@ -271,7 +276,7 @@ export default function PlanAddModal(props: { updateData: any }) {
 
         <FormControl mt={4}>
           <FormLabel htmlFor="price" fontWeight="bold">
-            价格(元)-仅用于记录
+            {t('admin:price_cny_for_reference_only')}
           </FormLabel>
           <Input
             {...register('price', {
@@ -279,7 +284,7 @@ export default function PlanAddModal(props: { updateData: any }) {
             })}
             id="price"
             variant="outline"
-            placeholder="价格"
+            placeholder={t('admin:price')}
             type="number"
           />
         </FormControl>

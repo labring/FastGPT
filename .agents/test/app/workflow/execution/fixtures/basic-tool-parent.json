@@ -1,0 +1,250 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "pluginModule",
+      "templateType": "other",
+      "flowNodeType": "pluginModule",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "colorSchema": "salmon",
+      "intro": "",
+      "name": "Tool",
+      "showStatus": false,
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "label",
+          "label": "label",
+          "value": [
+            "Start",
+            "userChatInput"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "amount",
+          "label": "amount",
+          "value": 0,
+          "valueType": "number",
+          "renderTypeList": [
+            "input",
+            "reference"
+          ],
+          "selectedType": "input",
+          "canEdit": true
+        },
+        {
+          "key": "enabled",
+          "label": "enabled",
+          "value": false,
+          "valueType": "boolean",
+          "renderTypeList": [
+            "input",
+            "reference"
+          ],
+          "selectedType": "input",
+          "canEdit": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "label-id",
+          "key": "label",
+          "label": "label",
+          "valueType": "string",
+          "type": "dynamic"
+        },
+        {
+          "id": "amount",
+          "key": "amount",
+          "label": "amount",
+          "valueType": "number",
+          "type": "dynamic"
+        },
+        {
+          "id": "enabled",
+          "key": "enabled",
+          "label": "enabled",
+          "valueType": "boolean",
+          "type": "dynamic"
+        }
+      ],
+      "nodeId": "Tool",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "pluginId": "__CHILD_TOOL_ID__"
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Reply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "TOOL:{{$Tool.label-id$}}|{{$Tool.amount$}}|{{$Tool.enabled$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Reply",
+      "position": {
+        "x": 600,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Tool",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Tool-target-left"
+    },
+    {
+      "source": "Tool",
+      "target": "Reply",
+      "sourceHandle": "Tool-source-right",
+      "targetHandle": "Reply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

@@ -53,15 +53,18 @@ describe('sandbox checkExist API', () => {
     mocks.resolveSandboxSessionAvailability.mockResolvedValue({ available: true });
   });
 
-  it('keeps existing instance visibility when Sandbox is unavailable', async () => {
+  it.each([
+    SandboxUnavailableReasonEnum.teamPlanUnavailable,
+    SandboxUnavailableReasonEnum.systemDisabled
+  ])('keeps existing instance visibility when Sandbox is unavailable: %s', async (reason) => {
     mocks.resolveSandboxSessionAvailability.mockResolvedValueOnce({
       available: false,
-      reason: SandboxUnavailableReasonEnum.teamPlanUnavailable
+      reason
     });
 
     await expect(handler({ body: { appId, chatId: 'chat-1' } } as any)).resolves.toEqual({
       exists: true,
-      unavailableReason: SandboxUnavailableReasonEnum.teamPlanUnavailable
+      unavailableReason: reason
     });
     expect(mocks.checkSandboxSessionExist).toHaveBeenCalledOnce();
   });

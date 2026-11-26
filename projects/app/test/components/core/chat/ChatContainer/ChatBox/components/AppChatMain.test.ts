@@ -30,11 +30,16 @@ vi.mock('@fastgpt/web/components/common/MyLoading', () => ({
   default: () => React.createElement('div', { 'data-loading-overlay': '' })
 }));
 vi.mock('@chakra-ui/react', () => {
-  const Box = React.forwardRef<HTMLDivElement, React.PropsWithChildren<{ id?: string }>>(
-    function Box({ children, id }, ref) {
-      return React.createElement('div', { id, ref }, children);
-    }
-  );
+  const Box = React.forwardRef<
+    HTMLDivElement,
+    React.PropsWithChildren<{ id?: string; maxW?: string; mx?: string }>
+  >(function Box({ children, id, maxW, mx }, ref) {
+    return React.createElement(
+      'div',
+      { id, ref, 'data-max-width': maxW, 'data-margin-x': mx },
+      children
+    );
+  });
   return { Box, Flex: Box };
 });
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/WelcomeBox', () => ({
@@ -51,7 +56,7 @@ vi.mock('@/components/core/chat/QuickQuestionButton', () => ({ default: () => nu
 type FetchRecords = NonNullable<React.ComponentProps<typeof ChatRecordContextProvider>['fetchFn']>;
 const params = { sourceType: ChatSourceTypeEnum.app, appId: 'app', chatId: 'chat' } as const;
 const welcomeQuestions: string[] = [];
-const boxBodyProps = { id: 'history-viewport' };
+const boxBodyProps = { id: 'history-viewport', maxW: '700px', mx: 'auto' };
 const noop = () => undefined;
 
 /** 构造分页返回的最小 Human 记录，避免初始化与两个方向分别重复存储结构。 */
@@ -158,6 +163,13 @@ describe('AppChatMain pagination through memo and chat context', () => {
     vi.unstubAllGlobals();
   });
   afterAll(() => dom.window.close());
+
+  it('滚动容器占满宽度，聊天内容保持居中限宽', async () => {
+    const viewport = await render(false, false);
+    expect(viewport.getAttribute('data-max-width')).toBe('100%');
+    expect(viewport.firstElementChild?.getAttribute('data-max-width')).toBe('700px');
+    expect(viewport.firstElementChild?.getAttribute('data-margin-x')).toBe('auto');
+  });
 
   it.each(['prev', 'next'] as const)(
     'updates %s request text without changing records',

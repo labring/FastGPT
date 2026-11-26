@@ -34,6 +34,11 @@ const roleOptions: Record<
   worker: {
     enableOfflineQueue: true,
     maxRetriesPerRequest: null
+  },
+  subscriber: {
+    enableOfflineQueue: true,
+    maxRetriesPerRequest: null,
+    autoResendUnfulfilledCommands: true
   }
 };
 

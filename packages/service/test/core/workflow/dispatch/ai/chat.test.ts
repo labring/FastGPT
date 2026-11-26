@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -5,13 +6,17 @@ import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/cor
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getAIChatFileContextConfig,
-  getInputFiles
+  getInputFiles as getInputFilesWithoutContext
 } from '../../../../../core/workflow/dispatch/ai/chat';
 import { rewriteChatMessagesWithFileContext } from '../../../../../core/chat/fileContext';
-import { runWithContext } from '../../../../../core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
 import { serviceEnv } from '../../../../../env';
 import { axios } from '../../../../../common/api/axios';
+import { createTestWorkflowFileContext, runInTestWorkflowContext } from '../context/fixtures';
+
+const getInputFiles: typeof getInputFilesWithoutContext = (props) =>
+  runInTestWorkflowContext(() => getInputFilesWithoutContext(props));
 
 const createHumanMessage = ({
   text,
@@ -88,7 +93,9 @@ describe('getInputFiles', () => {
 
     await runWithContext(
       {
+        checkIsStopping: () => false,
         fileContext: {
+          ...(await createTestWorkflowFileContext()),
           limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
           getIdentity: (target: string) => (target === url ? 'chat:meeting.mp3' : undefined),
           resolveChatFile: (target: string) =>
@@ -126,7 +133,7 @@ describe('getInputFiles', () => {
       ],
       reserveId: true
     });
-    const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    const previousMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
     (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
     const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
       (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;

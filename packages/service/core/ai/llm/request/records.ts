@@ -3,7 +3,6 @@ import type {
   ChatCompletionMessageToolCall,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { saveLLMRequestRecord } from '../../record/controller';
 import type { LLMAccumulatedUsage } from './types';
@@ -51,14 +50,8 @@ export const saveLLMResponseRecord = ({
       usage: {
         inputTokens,
         outputTokens,
-        // 缓存 token 目前只在开发环境展示，线上详情保持精简。
-        ...(isDevEnv
-          ? {
-              cachedTokens: usage.cached_tokens,
-              cacheReadTokens: usage.cache_read_tokens,
-              cacheWriteTokens: usage.cache_write_tokens
-            }
-          : {})
+        cacheReadTokens: usage.cache_read_tokens,
+        cacheCreationTokens: usage.cache_write_tokens
       },
       error
     }

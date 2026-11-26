@@ -13,6 +13,10 @@ import {
   GetModelCatalogResponseSchema,
   GetModelTemplatesQuerySchema,
   GetModelTemplatesResponseSchema,
+  PreviewImportFromChannelQuerySchema,
+  PreviewImportFromChannelResponseSchema,
+  ImportFromChannelBodySchema,
+  ImportFromChannelResponseSchema,
   GetSystemModelConfigJsonResponseSchema,
   GetSystemModelsResponseSchema,
   ModelReferenceSchema,
@@ -95,6 +99,34 @@ export const AIModelPath: OpenAPIPath = {
         200: {
           description: '模型模板列表',
           content: { 'application/json': { schema: GetModelTemplatesResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/previewImportFromChannel': {
+    get: {
+      summary: '预览从系统渠道导入模型',
+      description: '读取渠道上游模型目录，筛除系统已有模型，返回模板或空白配置草稿',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: PreviewImportFromChannelQuerySchema },
+      responses: {
+        200: {
+          description: '按 AIProxy 原始目录顺序返回模型匹配预览',
+          content: { 'application/json': { schema: PreviewImportFromChannelResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/importFromChannel': {
+    post: {
+      summary: '从系统渠道创建模型',
+      description: '逐条创建模型并关联到目标渠道；单条失败不影响后续操作',
+      tags: [DevApiTagsMap.model],
+      requestBody: { content: { 'application/json': { schema: ImportFromChannelBodySchema } } },
+      responses: {
+        200: {
+          description: '与请求操作顺序一致的逐条结果',
+          content: { 'application/json': { schema: ImportFromChannelResponseSchema } }
         }
       }
     }
@@ -229,6 +261,10 @@ export const AIModelPath: OpenAPIPath = {
       summary: '批量获取模型展示详情',
       description: '返回模型名称、图标、类型及当前身份或应用基线内的可用状态，不返回执行配置',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
+      'x-fastgpt-sdk': {
+        resource: 'models',
+        method: 'summary'
+      },
       requestBody: { content: { 'application/json': { schema: GetModelSummariesBodySchema } } },
       responses: {
         200: {
@@ -243,6 +279,10 @@ export const AIModelPath: OpenAPIPath = {
       summary: '获取公开系统模型',
       description: '返回价格页展示所需的最小化 active 系统模型与价格信息，无需鉴权',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
+      'x-fastgpt-sdk': {
+        resource: 'models',
+        method: 'list'
+      },
       responses: {
         200: {
           description: '成功返回公开系统模型列表',
@@ -271,6 +311,10 @@ export const AIModelPath: OpenAPIPath = {
       description:
         '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商。orderBy=custom 时按自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序，默认模型不受展示排序影响。成员展示页可通过 includeSourceMember=true 补充创建人资料，此时始终返回完整目录；外链忽略该参数',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
+      'x-fastgpt-sdk': {
+        resource: 'models',
+        method: 'catalog'
+      },
       requestParams: { query: GetModelCatalogQuerySchema },
       responses: {
         200: {

@@ -17,7 +17,8 @@ import { type SecretValueType } from '@fastgpt/global/common/secret/type';
 import {
   formatSecretReference,
   getSecretReferenceValue,
-  isSecretValueConfigured
+  getSecretPlainValue,
+  getSecretCipherValue
 } from '@fastgpt/global/common/secret/utils';
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
@@ -29,6 +30,7 @@ import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
@@ -139,7 +141,6 @@ export const SecretInputForm = ({
   onSubmit
 }: SecretInputFormProps) => {
   const { t, i18n } = useTranslation();
-  const [editIndex, setEditIndex] = useState<number>();
   const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
     defaultIsOpen: false
   });
@@ -198,7 +199,7 @@ export const SecretInputForm = ({
       );
     })()
   });
-  const { register, unregister, setValue, getValues, handleSubmit, control } = form;
+  const { unregister, setValue, getValues, handleSubmit, control } = form;
   const configType = useWatch({ control, name: 'type' });
   const formValues = useWatch({ control });
 
@@ -228,7 +229,8 @@ export const SecretInputForm = ({
     setFieldModes((prev) => ({ ...prev, [key]: mode }));
     const fieldPath = `value.${key}` as any;
     const fieldValuePath = `value.${key}.value` as any;
-    unregister(fieldValuePath);
+    // 手动密钥现在注册整个 wrapper，切换模式时一并清除旧控件的校验规则。
+    unregister(fieldPath);
     // null 阻止引用控件回退到旧默认值，同时保留必填校验。
     setValue(fieldPath, null);
 
@@ -448,7 +450,6 @@ export const SecretInputForm = ({
                           referenceList,
                           item.inputType
                         );
-                        const showInput = !isSecretValueConfigured(value) || editIndex === i;
                         const fieldLabel = item.label;
 
                         return (
@@ -516,56 +517,27 @@ export const SecretInputForm = ({
                                 }
                               />
                             ) : item.inputType === 'secret' ? (
-                              <Flex alignItems={'center'}>
-                                {showInput ? (
-                                  <Input
+                              <Controller
+                                control={control}
+                                name={`value.${item.key}` as any}
+                                rules={{
+                                  validate: (value) =>
+                                    !item.required ||
+                                    !!getSecretPlainValue(value) ||
+                                    !!getSecretCipherValue(value)
+                                }}
+                                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                                  <SecretValueInput
                                     bg={'myGray.50'}
-                                    h={10}
-                                    py={0}
-                                    display={'flex'}
-                                    alignItems={'center'}
-                                    lineHeight={'normal'}
-                                    _placeholder={{ lineHeight: 'normal' }}
                                     placeholder={item.placeholder ?? fieldLabel}
-                                    {...register(inputKey, {
-                                      required: item.required
-                                    })}
-                                    onFocus={() => setEditIndex(i)}
+                                    value={getSecretPlainValue(value) ?? ''}
+                                    isConfigured={!!getSecretCipherValue(value)}
+                                    isRequired={Boolean(item.required)}
+                                    onChange={(value) => onChange({ value })}
+                                    isInvalid={!!error}
                                   />
-                                ) : (
-                                  <>
-                                    <Flex
-                                      flex={1}
-                                      borderRadius={'6px'}
-                                      border={'0.5px solid'}
-                                      borderColor={'primary.200'}
-                                      bg={'primary.50'}
-                                      h={10}
-                                      px={3}
-                                      alignItems={'center'}
-                                      gap={1}
-                                      mr={1}
-                                    >
-                                      <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-                                      <Box
-                                        fontSize={'sm'}
-                                        fontWeight={'medium'}
-                                        color={'primary.600'}
-                                      >
-                                        {t('common:had_auth_value')}
-                                      </Box>
-                                    </Flex>
-                                    <IconButton
-                                      name="edit"
-                                      onClick={() => {
-                                        setEditIndex(i);
-                                        // 进入编辑态即表示替换该密钥，空提交需要清除旧密文。
-                                        setValue(`value.${item.key}` as any, { value: '' });
-                                      }}
-                                    />
-                                  </>
                                 )}
-                              </Flex>
+                              />
                             ) : item.inputType === 'input' ? (
                               <Controller
                                 control={control}

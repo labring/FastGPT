@@ -34,7 +34,11 @@ export async function handler(
   }).body;
 
   const lang = getLocale(req);
-  const { item: result, auditSnapshot } = await saveModerationConfig({
+  const {
+    item: result,
+    auditSnapshot,
+    autoEnabled
+  } = await saveModerationConfig({
     pluginId,
     version,
     secretsVal,
@@ -47,7 +51,7 @@ export async function handler(
     pluginId,
     pluginName: result.name,
     secretsUpdated: secretsVal !== undefined,
-    nextEnabled: enabled,
+    nextEnabled: enabled ?? (autoEnabled ? true : undefined),
     lang
   });
 

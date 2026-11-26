@@ -244,3 +244,11 @@ To resolve it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensan
 When deploying 4.15.0 through 4.17.4 with the official `main` Docker Compose template (used by default on the deployment page and in `install.sh`), `fastgpt-plugin` leaves `FASTGPT_BASE_URL` unset (the `v4.15` / `v4.16` template sets it starting from 4.15.2). When a plugin tool such as the basic chart tool generates a file, it calls `/api/invoke/fileUpload` via `FASTGPT_BASE_URL`; the default `http://localhost:3000` points back to the plugin container itself and returns 401 (`HTTP Exception: Unauthorized`), causing "Invoke upload file failed".
 
 Add `FASTGPT_BASE_URL: http://fastgpt-app:3000` to the `fastgpt-plugin` environment variables (matching the main FastGPT service name in your Compose file), recreate the container with `docker compose up -d fastgpt-plugin`, and run the tool again.
+
+---
+
+### Why does `tool_choice: none` appear in the logs after several rounds of tool calls?
+
+With native tool calling in v4.14.19, the Tool calling node sets `tool_choice` to `none` by default on the seventh request after six consecutive rounds with tool calls and no answer text. Multiple calls in one round count once. Answer text resets the counter. For a long task, split it across two Tool calling nodes, pass the first node’s AI Response Content to the second, and check each stage in the debugger.
+
+In v4.16.2 through v4.17.4, the next request triggers this guard after five consecutive rounds with no answer text and the same tool names, in the same order, with matching argument-string lengths for each tool. Different argument values of the same length still count as a repeat.

@@ -4,6 +4,7 @@ import { ChatCompletionMessageParamSchema } from '../llm/type';
 import { ChatFileTypeEnum } from '../../chat/constants';
 import { SelectedAgentSkillItemTypeSchema } from '../../app/formEdit/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { optionalNullToUndefined } from '../../../common/zod';
 import { ChatAgentHelperTypeEnum } from './constants';
 
 export const AuxiliaryGenerationChatFileSchema = z.object({
@@ -14,6 +15,12 @@ export const AuxiliaryGenerationChatFileSchema = z.object({
 });
 export type AuxiliaryGenerationChatFileType = z.infer<typeof AuxiliaryGenerationChatFileSchema>;
 
+export const ChatAgentPromptRefVersionSchema = z.enum(['v1', 'v2']).meta({
+  description: '客户端支持的提示词引用协议版本，缺省时返回旧格式',
+  example: 'v2'
+});
+export type ChatAgentPromptRefVersion = z.infer<typeof ChatAgentPromptRefVersionSchema>;
+
 export const ChatAgentHelperMetadataSchema = z.object({
   role: z.string().nullish(),
   taskObject: z.string().nullish(),
@@ -23,6 +30,7 @@ export const ChatAgentHelperMetadataSchema = z.object({
   selectedAgentSkills: z.array(SelectedAgentSkillItemTypeSchema).nullish(),
   fileUpload: z.boolean().nullish(),
   enableSandbox: z.boolean().nullish(),
+  promptRefVersion: ChatAgentPromptRefVersionSchema.optional(),
   modelConfig: z
     .object({
       modelId: z.string().optional().meta({
@@ -37,7 +45,7 @@ export const AuxiliaryGenerationSelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '可选知识库 ID'
   }),
-  avatar: z.string().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '可选知识库头像'
   }),
   name: z.string().meta({

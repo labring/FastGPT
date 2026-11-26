@@ -22,10 +22,18 @@ import {
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import {
+  buildCollectionAuditResource,
+  buildDatasetAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -33,48 +41,51 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
   // 不传 dataId 时是批量重试：collectionId 和 datasetId 分别限定不同的重试范围。
   if (!body.dataId) {
-    const { retryMatch, retryTeamId, tmbId, datasetName, collectionName } = await (async () => {
-      if (body.collectionId) {
-        const { collection, teamId, tmbId } = await authDatasetCollection({
+    const { retryMatch, retryTeamId, tmbId, datasetName, collectionName, auditResource } =
+      await (async () => {
+        if (body.collectionId) {
+          const { collection, teamId, tmbId } = await authDatasetCollection({
+            req,
+            authToken: true,
+            authApiKey: true,
+            collectionId: body.collectionId,
+            per: WritePermissionVal
+          });
+
+          return {
+            retryMatch: {
+              teamId: collection.teamId,
+              datasetId: collection.datasetId,
+              collectionId: collection._id
+            },
+            retryTeamId: String(teamId),
+            tmbId,
+            datasetName: collection.dataset.name,
+            collectionName: collection.name as string | undefined,
+            auditResource: buildCollectionAuditResource(collection)
+          };
+        }
+
+        const { teamId, tmbId, dataset } = await authDataset({
           req,
           authToken: true,
           authApiKey: true,
-          collectionId: body.collectionId,
+          datasetId: body.datasetId!,
           per: WritePermissionVal
         });
 
         return {
           retryMatch: {
-            teamId: collection.teamId,
-            datasetId: collection.datasetId,
-            collectionId: collection._id
+            teamId,
+            datasetId: dataset._id
           },
           retryTeamId: String(teamId),
           tmbId,
-          datasetName: collection.dataset.name,
-          collectionName: collection.name as string | undefined
+          datasetName: dataset.name,
+          collectionName: undefined,
+          auditResource: buildDatasetAuditResource(dataset)
         };
-      }
-
-      const { teamId, tmbId, dataset } = await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        datasetId: body.datasetId!,
-        per: WritePermissionVal
-      });
-
-      return {
-        retryMatch: {
-          teamId,
-          datasetId: dataset._id
-        },
-        retryTeamId: String(teamId),
-        tmbId,
-        datasetName: dataset.name,
-        collectionName: undefined
-      };
-    })();
+      })();
 
     await retryFailedTrainingTasks(retryMatch);
 
@@ -85,6 +96,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         tmbId,
         teamId: retryTeamId,
         event: DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY,
+        resources: [auditResource],
         params: {
           datasetName,
           collectionName: collectionName!
@@ -95,6 +107,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         tmbId,
         teamId: retryTeamId,
         event: DatasetAuditEventEnum.DATASET_TRAINING_RETRY,
+        resources: [auditResource],
         params: {
           datasetName
         }
@@ -183,6 +196,10 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       },
       { session }
     );
+    await publishTrainingWakeup({
+      modes: [nextMode ?? data.mode],
+      tx: bridgeClientSessionToDbSession(session)
+    });
   });
 
   // 单条重试写入独立事件：它只影响一个分块，与批量重试分开统计。
@@ -190,6 +207,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     tmbId,
     teamId: String(collection.teamId),
     event: DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY,
+    resources: [buildCollectionAuditResource(collection)],
     params: {
       datasetName: collection.dataset?.name ?? '',
       collectionName: collection.name

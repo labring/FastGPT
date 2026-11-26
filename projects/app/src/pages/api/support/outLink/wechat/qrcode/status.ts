@@ -1,9 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { wechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 import { NextAPI } from '@/service/middleware/entry';
-import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { startWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
+import { getWechatQrStatus } from '@fastgpt/service/support/outLink/wechat/service';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -21,7 +18,7 @@ async function handler(
 ): Promise<WechatQrcodeStatusResponseType> {
   res.setHeader('Cache-Control', 'no-store');
 
-  const { outLinkId } = parseApiInput({
+  const { outLinkId, attemptId } = parseApiInput({
     req,
     querySchema: WechatQrcodeStatusQuerySchema
   }).query;
@@ -34,36 +31,8 @@ async function handler(
   });
   await assertWechatOutLink(outLink);
 
-  const qrData = await wechatQrLoginCache.get({ outLinkId, tmbId });
-  if (!qrData) {
-    return WechatQrcodeStatusResponseSchema.parse({ status: 'expired' });
-  }
-
-  const client = new ILinkClient();
-  const statusData = await client.getQRCodeStatus(qrData.qrcode);
-
-  if (statusData.status === 'confirmed' && statusData.bot_token && statusData.ilink_bot_id) {
-    await MongoOutLink.updateOne(
-      { _id: outLink._id },
-      {
-        $set: {
-          'app.token': statusData.bot_token,
-          'app.baseUrl': statusData.baseurl || 'https://ilinkai.weixin.qq.com',
-          'app.accountId': statusData.ilink_bot_id,
-          'app.userId': statusData.ilink_user_id || '',
-          'app.status': 'online',
-          'app.loginTime': new Date().toISOString(),
-          'app.syncBuf': '',
-          'app.lastError': ''
-        }
-      }
-    );
-
-    await wechatQrLoginCache.delete({ outLinkId, tmbId });
-    await startWechatPolling(outLink.shareId);
-  }
-
-  return WechatQrcodeStatusResponseSchema.parse({ status: statusData.status });
+  const status = await getWechatQrStatus({ outLink, tmbId, requestedAttemptId: attemptId });
+  return WechatQrcodeStatusResponseSchema.parse({ status });
 }
 
 export default NextAPI(handler);

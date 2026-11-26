@@ -67,8 +67,12 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
         typeof params.path !== 'string'
       )
         return false;
+      // 与 sandbox_read_file 工具保持一致，允许解析工作区外目录（如 $HOME/.fastgpt）以识别内部只读路径。
       const filePath = posix.normalize(
-        sandbox.client.resolveRuntimePath(params.path, { allowAbsolutePath: true })
+        sandbox.client.resolveRuntimePath(params.path, {
+          allowAbsolutePath: true,
+          allowOutsideWorkspace: true
+        })
       );
       return internalReadDirectories.some(
         (directory) => filePath === directory || filePath.startsWith(`${directory}/`)

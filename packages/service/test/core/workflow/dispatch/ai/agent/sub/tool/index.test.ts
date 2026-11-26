@@ -1,12 +1,18 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { dispatchTool as dispatchToolWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '@fastgpt/service/core/workflow/utils';
+const dispatchTool = createTestWorkflowDispatch(dispatchToolWithoutContext);
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const {
   authAppByTmbIdMock,
@@ -17,6 +23,7 @@ const {
   mcpToolCallMock,
   runToolStreamMock,
   getSystemToolRuntimeMock,
+  getSystemToolDetailMock,
   mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
@@ -27,6 +34,7 @@ const {
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
+  getSystemToolDetailMock: vi.fn(),
   mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -82,7 +90,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: vi.fn(() => ({
-      getSystemToolRuntime: getSystemToolRuntimeMock
+      getSystemToolRuntime: getSystemToolRuntimeMock,
+      getSystemToolDetail: getSystemToolDetailMock
     }))
   }
 }));
@@ -114,12 +123,16 @@ const createDispatchToolProps = (
     },
     chatId: 'chat',
     uid: 'uid',
-    variableState: {
+    variableContext: {
       get: vi.fn()
     }
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  beforeEach(() => {
+    getSystemToolDetailMock.mockResolvedValue({ outputSchema: undefined });
+  });
+
   it.each([false, true])('preserves Agent MCP results and detects isError=%s', async (isError) => {
     const tool = { name: 'search', description: 'Search' };
     const nodes = [
@@ -139,6 +152,139 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(result.nodeResponse?.errorText).toBe(isError ? 'MCP call failed' : undefined);
     expect(result.nodeResponse?.toolRes).toEqual(toolResult);
     expect(JSON.parse(result.response)).toEqual(toolResult);
+  });
+
+  it('passes the complete child ID to the plugin when invoking a tool expanded from a system toolset', async () => {
+    const parentId = 'systemTool-search';
+    const childId = 'catalog/search';
+    const toolId = `${parentId}/${childId}`;
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      children: [{ id: childId, name: 'Catalog Search' }]
+    });
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: toolId,
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0
+    });
+    runToolStreamMock.mockResolvedValueOnce({ output: { ok: true } });
+    const [child] = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode: {
+        nodeId: 'search',
+        inputs: [],
+        toolConfig: {
+          systemToolSet: {
+            toolId: parentId,
+            toolList: [{ toolId: childId, name: 'Catalog Search' }]
+          }
+        }
+      }
+    });
+
+    expect(child.toolConfig?.systemTool?.toolId).toBe(toolId);
+    const result = await dispatchTool(createDispatchToolProps(child.toolConfig!));
+    expect(result.errorMessage).toBeUndefined();
+    expect(getSystemToolDetailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: toolId })
+    );
+    expect(runToolStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: 'search', childId })
+    );
+  });
+
+  it('projects plugin values and orders each value before its images', async () => {
+    const marked = { type: 'object', 'x-fastgpt-output-kind': 'model-content' };
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      outputSchema: { properties: { summary: marked, charts: marked } }
+    });
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'search',
+      version: '2.0.0',
+      currentCost: 0,
+      systemKeyCost: 0
+    });
+    const image = {
+      type: 'image_url' as const,
+      image_url: { url: 'https://files.example.com/chart.png' }
+    };
+    runToolStreamMock.mockResolvedValueOnce({
+      output: {
+        jobId: 'task-123',
+        summary: { value: 'ready', images: [image] },
+        charts: { value: [42], images: [] }
+      }
+    });
+    const props = createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.tool.version = '2.0.0';
+    const result = await dispatchTool(props);
+    expect(getSystemToolDetailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: 'systemTool-search', version: '2.0.0' })
+    );
+    expect(JSON.parse(result.response)).toEqual({
+      jobId: 'task-123',
+      summary: '"ready"',
+      charts: '[42]'
+    });
+    expect(result.content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      { type: 'text', text: '"ready"' },
+      image,
+      { type: 'text', text: '[42]' }
+    ]);
+  });
+
+  it('does not infer legacy content when plugin output schema is unavailable', async () => {
+    runToolStreamMock.mockResolvedValueOnce({
+      output: {
+        content: [
+          { type: 'text', text: 'legacy' },
+          { type: 'image_url', image_url: { url: '[image omitted]' } }
+        ]
+      }
+    });
+
+    const result = await dispatchTool(
+      createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } })
+    );
+
+    expect(result.content).toBeUndefined();
+    expect(mockLogger.warn).not.toHaveBeenCalledWith(
+      'Plugin output schema unavailable; skip model content extraction',
+      { toolId: 'systemTool-search' }
+    );
+    expect(JSON.parse(result.response).content).toEqual([
+      { type: 'text', text: 'legacy' },
+      { type: 'image_url', image_url: { url: '[image omitted]' } }
+    ]);
+  });
+
+  it('converts MCP image blocks into image parts and masks the base64 text', async () => {
+    const tool = { name: 'search', description: 'Search' };
+    const nodes = [
+      { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValueOnce({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValueOnce({ nodes });
+    getMCPChildrenMock.mockResolvedValueOnce([tool]);
+    const toolResult = {
+      content: [
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ]
+    };
+    mcpToolCallMock.mockResolvedValueOnce(toolResult);
+
+    const result = await dispatchTool(
+      createDispatchToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.content).toEqual([
+      { type: 'text', text: result.response },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+    ]);
+    // 文本里不再带一份 base64；原始结果仍保留在节点响应里供详情展示。
+    expect(result.response).not.toContain('AAAA');
+    expect(result.nodeResponse?.toolRes).toEqual(toolResult);
   });
 
   it.each(['mcp', 'http'] as const)(
@@ -231,6 +377,8 @@ describe('dispatchTool runtime toolset auth', () => {
 
       await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,

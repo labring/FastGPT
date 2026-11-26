@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SandboxUnavailableReasonEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
@@ -18,12 +22,13 @@ import {
 describe('resolveAppSandboxAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
   });
 
   it('returns systemDisabled without checking the team plan', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(
       resolveAppSandboxAvailability({ appEnabled: true, teamId: 'team_1' })
@@ -66,12 +71,13 @@ describe('resolveAppSandboxAvailability', () => {
 describe('assertSandboxAvailable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
   });
 
   it('rejects before the team check when the system feature is disabled', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(assertSandboxAvailable('team_1')).rejects.toMatchObject({
       message: SandboxErrEnum.agentSandboxPermissionDenied

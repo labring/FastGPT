@@ -58,10 +58,14 @@ const InvalidPriceInputStyles = {
 };
 
 export const emptyPriceTier = {
-  maxInputTokens: undefined,
+  maxInputTokensK: undefined,
   inputPrice: undefined,
-  outputPrice: undefined
+  outputPrice: undefined,
+  cacheReadPrice: undefined,
+  cacheCreationPrice: undefined
 };
+
+const priceFields = ['inputPrice', 'outputPrice', 'cacheReadPrice', 'cacheCreationPrice'] as const;
 
 const getOptionalNumber = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined;
@@ -90,6 +94,12 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
   setValue: UseFormSetValue<AIModelDocumentDataType>;
 }) {
   const { t } = useSafeTranslation();
+  const priceLabels = {
+    inputPrice: t('common:model.input_price'),
+    outputPrice: t('common:model.output_price'),
+    cacheReadPrice: t('common:model.cache_read_price'),
+    cacheCreationPrice: t('common:model.cache_creation_price')
+  };
   const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});
   const {
     fields: priceTierFields,
@@ -100,7 +110,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
 
   const ensureNextEmptyPriceTier = useCallback(
     (index: number, value?: number, inputEl?: HTMLInputElement | null, lowerBound?: number) => {
-      if (typeof value !== 'number' || Number.isNaN(value)) return;
+      if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) return;
       if (typeof lowerBound === 'number' && value <= lowerBound) return;
 
       const tiers = getValues('pricing.tiers') ?? [];
@@ -124,14 +134,11 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
   const clearPriceTier = useCallback(
     (index: number) => {
       if (priceTierFields.length === 1) {
-        setValue(`pricing.tiers.${index}.maxInputTokens` as never, undefined as never, {
+        setValue(`pricing.tiers.${index}.maxInputTokensK` as never, undefined as never, {
           shouldDirty: true
         });
-        setValue(`pricing.tiers.${index}.inputPrice` as never, undefined as never, {
-          shouldDirty: true
-        });
-        setValue(`pricing.tiers.${index}.outputPrice` as never, undefined as never, {
-          shouldDirty: true
+        priceFields.forEach((key) => {
+          setValue(`pricing.tiers.${index}.${key}`, undefined as never, { shouldDirty: true });
         });
         return;
       }
@@ -157,6 +164,17 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
         }
       }}
     >
+      <Box
+        px={3}
+        py={3}
+        fontSize="12px"
+        color="myGray.600"
+        whiteSpace="normal"
+        borderBottom="1px solid"
+        borderColor="myGray.200"
+      >
+        {t('config_model:model.cache_price_tip')}
+      </Box>
       <FixedTableLayout
         scrollMode="normal"
         rootProps={{ h: 'auto', maxH: '320px' }}
@@ -165,6 +183,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
         renderHeader={({ headerTableWidth }) => (
           <Table
             size="sm"
+            minW="736px"
             boxShadow="none"
             sx={{
               tableLayout: 'fixed',
@@ -174,9 +193,16 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
             }}
           >
             <colgroup>
-              <col />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '224px' }} />
+              {priceFields.map((key) => (
+                <col
+                  key={key}
+                  style={{
+                    width:
+                      key === 'cacheReadPrice' || key === 'cacheCreationPrice' ? '128px' : '96px'
+                  }}
+                />
+              ))}
               <col style={{ width: '64px' }} />
             </colgroup>
             <Thead bg="#FBFBFC" h="32px">
@@ -192,28 +218,21 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                 >
                   {t('common:model.price_tier_range')}
                 </Th>
-                <Th
-                  px={3}
-                  py="4px"
-                  h="32px"
-                  w="100px"
-                  fontSize="12px"
-                  borderRight="1px solid"
-                  borderColor="myGray.200"
-                >
-                  {t('common:model.input_price')}
-                </Th>
-                <Th
-                  px={3}
-                  py="4px"
-                  h="32px"
-                  w="100px"
-                  fontSize="12px"
-                  borderRight="1px solid"
-                  borderColor="myGray.200"
-                >
-                  {t('common:model.output_price')}
-                </Th>
+                {priceFields.map((key) => (
+                  <Th
+                    key={key}
+                    textTransform="none"
+                    px={3}
+                    py="4px"
+                    h="32px"
+                    w={key === 'cacheReadPrice' || key === 'cacheCreationPrice' ? '128px' : '96px'}
+                    fontSize="12px"
+                    borderRight="1px solid"
+                    borderColor="myGray.200"
+                  >
+                    {priceLabels[key]}
+                  </Th>
+                ))}
                 <Th
                   px={3}
                   py="4px"
@@ -232,6 +251,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
         renderBody={() => (
           <Table
             size="sm"
+            minW="736px"
             w="100%"
             boxShadow="none"
             sx={{
@@ -241,9 +261,16 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
             }}
           >
             <colgroup>
-              <col />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '224px' }} />
+              {priceFields.map((key) => (
+                <col
+                  key={key}
+                  style={{
+                    width:
+                      key === 'cacheReadPrice' || key === 'cacheCreationPrice' ? '128px' : '96px'
+                  }}
+                />
+              ))}
               <col style={{ width: '64px' }} />
             </colgroup>
             <Tbody>
@@ -253,21 +280,21 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                 const previousTierMax =
                   index === 0
                     ? 0
-                    : typeof previousTier?.maxInputTokens === 'number' &&
-                        Number.isFinite(previousTier.maxInputTokens)
-                      ? previousTier.maxInputTokens
+                    : typeof previousTier?.maxInputTokensK === 'number' &&
+                        Number.isFinite(previousTier.maxInputTokensK)
+                      ? previousTier.maxInputTokensK
                       : 0;
                 const lowerBound = index === 0 ? 0 : previousTierMax;
                 const isLastTier = index === priceTierFields.length - 1;
                 const isInvalidMaxInput =
                   invalidMaxInputMap[index] ??
-                  (typeof currentTier?.maxInputTokens === 'number' &&
-                    currentTier.maxInputTokens <= lowerBound);
+                  (typeof currentTier?.maxInputTokensK === 'number' &&
+                    (!Number.isInteger(currentTier.maxInputTokensK) ||
+                      currentTier.maxInputTokensK <= lowerBound));
                 const isEmptyAction =
-                  !currentTier?.maxInputTokens &&
-                  !currentTier?.inputPrice &&
-                  !currentTier?.outputPrice;
-                const maxInputTokensRegister = register(`pricing.tiers.${index}.maxInputTokens`, {
+                  !currentTier?.maxInputTokensK &&
+                  priceFields.every((key) => currentTier?.[key] === undefined);
+                const maxInputTokensKRegister = register(`pricing.tiers.${index}.maxInputTokensK`, {
                   min: lowerBound,
                   setValueAs: getOptionalNumber
                 });
@@ -295,30 +322,34 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                           }}
                           {...PriceInputStyles}
                         />
-                        <Box>{` < ${t('common:Input')} <= `}</Box>
+                        <Box>{`${index === 0 ? ' ≤ ' : ' < '}${t('common:Input')} ≤ `}</Box>
                         <Input
                           type="number"
-                          step="any"
-                          min={lowerBound}
+                          step={1}
+                          min={lowerBound + 1}
                           placeholder={isLastTier ? t('config_model:price_tier_open_ended') : ''}
-                          {...maxInputTokensRegister}
+                          {...maxInputTokensKRegister}
                           {...PriceInputStyles}
                           onChange={(event) => {
-                            maxInputTokensRegister.onChange(event);
+                            maxInputTokensKRegister.onChange(event);
                             const nextValue = getOptionalNumber(event.target.value);
                             setInvalidMaxInputMap((state) => ({
                               ...state,
                               [index]:
-                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                                typeof nextValue === 'number'
+                                  ? !Number.isInteger(nextValue) || nextValue <= lowerBound
+                                  : false
                             }));
                           }}
                           onBlur={(event) => {
-                            maxInputTokensRegister.onBlur(event);
+                            maxInputTokensKRegister.onBlur(event);
                             const nextValue = getOptionalNumber(event.target.value);
                             setInvalidMaxInputMap((state) => ({
                               ...state,
                               [index]:
-                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                                typeof nextValue === 'number'
+                                  ? !Number.isInteger(nextValue) || nextValue <= lowerBound
+                                  : false
                             }));
                             ensureNextEmptyPriceTier(
                               index,
@@ -332,44 +363,48 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                         />
                       </Flex>
                     </Td>
-                    {(['inputPrice', 'outputPrice'] as const).map((priceKey) => {
-                      const name = `pricing.tiers.${index}.${priceKey}` as const;
-                      const priceRegister = register(name, {
-                        setValueAs: (value) => {
-                          const price = getOptionalNumber(value);
-                          return price === undefined ? price : roundModelPrice(price);
-                        },
-                        onBlur: (event) => {
-                          const price = getOptionalNumber(event.target.value);
-                          if (price === undefined) return;
-                          setValue(name, roundModelPrice(price), { shouldDirty: true });
-                        }
-                      });
-                      return (
-                        <Td
-                          key={priceKey}
-                          px={0}
-                          py="2.5px"
-                          borderTop="1px solid"
-                          borderRight="1px solid"
-                          borderColor="myGray.200"
-                        >
-                          <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
-                            <Input
-                              type="number"
-                              step={0.01}
-                              {...priceRegister}
-                              {...PriceInputStyles}
-                              {...BorderlessPriceInputStyles}
-                              {...FixedPriceValueInputStyles}
-                            />
-                            <Box flexShrink={0} color="myGray.500">
-                              {t('common:support.wallet.subscription.point')}
-                            </Box>
-                          </Flex>
-                        </Td>
-                      );
-                    })}
+                    {priceFields.map((key) => (
+                      <Td
+                        key={key}
+                        px={0}
+                        py="2.5px"
+                        borderTop="1px solid"
+                        borderRight="1px solid"
+                        borderColor="myGray.200"
+                      >
+                        <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
+                          <Input
+                            type="number"
+                            step={0.01}
+                            min={0}
+                            aria-label={priceLabels[key]}
+                            {...register(`pricing.tiers.${index}.${key}`, {
+                              setValueAs: (value) => {
+                                const price = getOptionalNumber(value);
+                                return price === undefined || price < 0
+                                  ? price
+                                  : roundModelPrice(price);
+                              },
+                              min: 0,
+                              onBlur: (event) => {
+                                const price = getOptionalNumber(event.target.value);
+                                if (price === undefined || price < 0) return;
+                                // 离开价格输入时同步可见值，避免保存值与输入框精度不一致。
+                                setValue(`pricing.tiers.${index}.${key}`, roundModelPrice(price), {
+                                  shouldDirty: true
+                                });
+                              }
+                            })}
+                            {...PriceInputStyles}
+                            {...BorderlessPriceInputStyles}
+                            {...FixedPriceValueInputStyles}
+                          />
+                          <Box flexShrink={0} color="myGray.500">
+                            {t('common:support.wallet.subscription.point')}
+                          </Box>
+                        </Flex>
+                      </Td>
+                    ))}
                     <Td
                       w="64px"
                       maxW="64px"
@@ -381,6 +416,8 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                       <Button
                         variant="ghost"
                         size="sm"
+                        minW={0}
+                        w="100%"
                         color={isEmptyAction ? 'myGray.400' : 'primary.600'}
                         fontWeight="600"
                         onClick={() => clearPriceTier(index)}

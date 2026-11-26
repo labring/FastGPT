@@ -130,24 +130,58 @@ const createMockBucketClass = (defaultName: string) => {
     async putObject(key: string, body: any) {
       await this.client.uploadObject({ key, body });
     }
+    protected async uploadObjectWithTTL(params: {
+      key: string;
+      body: any;
+      contentType?: string;
+      contentLength?: number;
+      filename?: string;
+      signal?: AbortSignal;
+    }) {
+      await this.client.uploadObject({
+        key: params.key,
+        body: params.body,
+        contentType: params.contentType,
+        ...(params.contentLength !== undefined ? { contentLength: params.contentLength } : {}),
+        metadata: {
+          originFilename: encodeURIComponent(params.filename || 'mock-file')
+        },
+        ...(params.signal ? { abortSignal: params.signal } : {})
+      });
+    }
     async uploadFileByBody(params: {
       key: string;
       body: any;
       contentType?: string;
       filename?: string;
     }) {
-      await this.client.uploadObject({
-        key: params.key,
-        body: params.body,
-        contentType: params.contentType,
-        metadata: {
-          originFilename: encodeURIComponent(params.filename || 'mock-file')
-        }
-      });
+      await this.uploadObjectWithTTL(params);
       return {
         key: params.key,
         accessUrl: await this.createExternalUrl({ key: params.key })
       };
+    }
+    async uploadStreamWithMultipart(params: {
+      key: string;
+      body: AsyncIterable<Buffer | Uint8Array | string>;
+      contentType: string;
+      filename?: string;
+    }) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of params.body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const buffer = Buffer.concat(chunks);
+      await this.client.uploadObject({
+        key: params.key,
+        body: buffer,
+        contentType: params.contentType,
+        contentLength: buffer.length,
+        metadata: {
+          originFilename: encodeURIComponent(params.filename || 'mock-file')
+        }
+      });
+      return { sizeBytes: buffer.length };
     }
     async getFileStream() {
       return null;

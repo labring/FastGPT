@@ -11,7 +11,7 @@ export const AdminSystemToolListItemSchema = z.object({
   status: PluginStatusSchema.meta({ description: '工具的状态' }),
   // source: z.string().meta({ description: '工具的来源, system 或 teamId' }),
   isToolSet: z.boolean().meta({ description: '是否为工具集' }),
-  avatar: z.string().meta({ description: '工具的图标' }),
+  avatar: z.string().optional().meta({ description: '工具的图标' }),
   name: PluginTextSchema.meta({ description: '工具的名称' }),
   intro: PluginTextSchema.meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),

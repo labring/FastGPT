@@ -93,9 +93,9 @@ const apiKeyTableFields = [
   'apiKey',
   'sourceMember',
   'usagePoints',
+  'createTime',
   'expiredTime',
   'lastUsedTime',
-  'createTime',
   'actions'
 ] as const;
 type ApiKeyTableField = (typeof apiKeyTableFields)[number];
@@ -231,7 +231,7 @@ export const ApiKeyTableHeader = ({
         {feConfigs?.docUrl && (
           <Button
             as={Link}
-            href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+            href={getDocPath('/openapi/intro')}
             target={'_blank'}
             size={'sm'}
             variant={'whitePrimary'}
@@ -382,16 +382,16 @@ const ApiKeyTable = ({
     apiKey: { label: 'API KEY', width: '130px' },
     sourceMember: { label: t('apikey:owner_member'), width: '140px' },
     usagePoints: { label: t('common:support.outlink.Usage points'), width: '150px' },
+    createTime: { label: t('apikey:create_time'), width: '160px' },
     expiredTime: { label: t('common:expired_time'), width: '120px' },
     lastUsedTime: { label: t('apikey:last_used_time'), width: '160px' },
-    createTime: { label: t('apikey:create_time'), width: '160px' },
     actions: { label: t('common:Action'), width: '92px' }
   };
   const tableColumns = apiKeyTableFields
     .filter((field) => {
       if (field === 'usagePoints' || field === 'expiredTime') return hasUsagePlan;
       if (field === 'sourceMember') return isAppKey;
-      return field !== 'createTime' || !isPublishMode || isAppKey;
+      return true;
     })
     .map((field) => ({ field, ...tableHeaders[field] }));
 

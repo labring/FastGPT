@@ -1,4 +1,6 @@
-export const S3_DOWNLOAD_ALIAS_SIGN_VERSION = 'v1';
+export const S3_DOWNLOAD_ALIAS_SIGN_VERSION_V1 = 'v1';
+export const S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2 = 'v2';
+export const S3_DOWNLOAD_ALIAS_SIGN_VERSION = S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2;
 export const S3_DOWNLOAD_ALIAS_ID_LENGTH = 16;
 export const S3_DOWNLOAD_SIGNATURE_LENGTH = 22;
 export const S3_UPLOAD_TOKEN_LENGTH = 22;
@@ -19,7 +21,23 @@ export const S3_DOWNLOAD_EXPIRE_BUCKET_THRESHOLD_MS = {
   medium: 24 * 60 * 60 * 1000
 } as const;
 
-export const S3_SIGNED_DOWNLOAD_ALIAS_PATTERN =
-  /^[A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64}$/;
+const S3_DOWNLOAD_ALIAS_ID_SOURCE = '[A-Za-z0-9_-]{12,32}';
+const S3_DOWNLOAD_EXP_MINUTE36_SOURCE = '[0-9a-z]{1,8}';
+const S3_DOWNLOAD_SIGNATURE_V1_SOURCE = '[A-Za-z0-9_-]{16,64}';
+const S3_DOWNLOAD_SIGNATURE_V2_SOURCE = '[A-Za-z0-9]{16,64}';
+const S3_DOWNLOAD_EXTENSION_SOURCE = '(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}';
+
+/** 短链可携带的安全文件扩展名（不含前导点，小写字母数字且至少含一个字母，避免纯数字版本号）。 */
+export const S3_DOWNLOAD_EXTENSION_PATTERN = new RegExp(`^${S3_DOWNLOAD_EXTENSION_SOURCE}$`);
+
+/** 存量 v1 点分格式：<aliasId>.<expMinute36>.<sig> */
+export const S3_SIGNED_DOWNLOAD_ALIAS_V1_PATTERN = new RegExp(
+  `^(${S3_DOWNLOAD_ALIAS_ID_SOURCE})\\.(${S3_DOWNLOAD_EXP_MINUTE36_SOURCE})\\.(${S3_DOWNLOAD_SIGNATURE_V1_SOURCE})$`
+);
+
+/** 新版 v2 连字符格式：v2-<aliasId>-<expMinute36>-<sig>[.<ext>] */
+export const S3_SIGNED_DOWNLOAD_ALIAS_V2_PATTERN = new RegExp(
+  `^${S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2}-(${S3_DOWNLOAD_ALIAS_ID_SOURCE})-(${S3_DOWNLOAD_EXP_MINUTE36_SOURCE})-(${S3_DOWNLOAD_SIGNATURE_V2_SOURCE})(?:\\.(${S3_DOWNLOAD_EXTENSION_SOURCE}))?$`
+);
 
 export const S3_UPLOAD_TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,64}$/;

@@ -1,10 +1,13 @@
+import { systemInstanceConfigDomainOverrideSchemaMap } from '@fastgpt/global/common/system/config/schema';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch, Textarea } from '@chakra-ui/react';
 import type { ExternalProviderWorkflowVarType } from '@fastgpt/global/common/system/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import type { ReactNode } from 'react';
@@ -20,6 +23,7 @@ const ThirdPartyVariables = ({
   title: string;
   titleExtra?: ReactNode;
 }) => {
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   const [currentThirdPartyVariable, setCurrentThirdPartyVariable] =
@@ -59,7 +63,7 @@ const ThirdPartyVariables = ({
             })
           }
         >
-          新增
+          {t('admin:add')}
         </Button>
       </Flex>
 
@@ -73,18 +77,18 @@ const ThirdPartyVariables = ({
         fontSize={'mini'}
         fontWeight={'medium'}
       >
-        <Box w={2 / 10}>名称</Box>
+        <Box w={2 / 10}>{t('admin:name')}</Box>
         <Box w={3 / 10} pl={4}>
           key
         </Box>
-        <Box w={3 / 10}>说明</Box>
-        <Box w={1 / 10}>启用</Box>
-        <Box w={1 / 10}>操作</Box>
+        <Box w={3 / 10}>{t('admin:description_3')}</Box>
+        <Box w={1 / 10}>{t('admin:enable')}</Box>
+        <Box w={1 / 10}>{t('admin:actions')}</Box>
       </Flex>
 
       <Flex mt={2} gap={1} flexDirection={'column'}>
         {variableList.map((item) => (
-          <Flex key={item.name} alignItems={'center'} fontSize={'sm'}>
+          <Flex key={item.key} alignItems={'center'} fontSize={'sm'}>
             <Box w={2 / 10} display={'flex'} alignItems={'center'} pl={4}>
               <MyIcon name={'common/variable'} width={'18px'} mr={1.5} />
               {item.name}
@@ -97,7 +101,7 @@ const ThirdPartyVariables = ({
                 navigator.clipboard.writeText(`{{${item.key}}}`);
                 toast({
                   status: 'success',
-                  title: '复制成功'
+                  title: t('admin:copied')
                 });
               }}
             >
@@ -189,42 +193,71 @@ const ThirdPartyVariableItemModal = ({
   onClose: () => void;
   onSubmit: (data: ExternalProviderWorkflowVarType) => void;
 }) => {
-  const { register, setValue, handleSubmit } = useForm({
+  const { t } = useSafeTranslation();
+  const form = useForm({
     defaultValues: currentThirdPartyVariable
   });
+  const { register, setValue, control, handleSubmit } = form;
+  const isOpen = useWatch({ control, name: 'isOpen' });
 
   return (
     <MyModal
       title={'自定义工作流变量'}
+      onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} variant={'whiteBase'}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确定</Button>
+          <Button
+            onClick={handleSubmit((data) => {
+              const result = systemInstanceConfigDomainOverrideSchemaMap.providers.safeParse({
+                externalProviderWorkflowVariables: [data]
+              });
+              if (!result.success) {
+                getConfigFormErrors({ error: result.error, values: form.getValues() }).forEach(
+                  ({ name, message }) => form.setError(name as never, { type: 'validate', message })
+                );
+                return;
+              }
+              onSubmit(data);
+            })}
+          >
+            {t('admin:ok')}
+          </Button>
         </>
       }
     >
       <>
         <Box color={'myGray.900'} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          变量名
+          {t('admin:variable_name')}
         </Box>
-        <Input {...register('name', { required: true })} bg={'myGray.50'} placeholder={'变量名'} />
+        <Input
+          isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
+          {...register('name', { required: true })}
+          bg={'myGray.50'}
+          placeholder={'变量名'}
+        />
       </>
 
       <>
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          说明
+          {t('admin:description_3')}
         </Box>
-        <Textarea {...register('intro')} bg={'myGray.50'} placeholder={'说明'} />
+        <Textarea
+          isInvalid={Boolean(form.getFieldState('intro', form.formState).error)}
+          {...register('intro')}
+          bg={'myGray.50'}
+          placeholder={'说明'}
+        />
       </>
 
       <Flex mt={6}>
         <Box display={'flex'} color={'myGray.900'} flex={1} fontWeight={'medium'} fontSize={'14px'}>
-          启用
+          {t('admin:enable')}
         </Box>
         <Switch
-          {...register('isOpen')}
+          isChecked={Boolean(isOpen)}
           size={'sm'}
           onChange={(e) => setValue('isOpen', e.target.checked)}
         />
@@ -232,9 +265,14 @@ const ThirdPartyVariableItemModal = ({
 
       <>
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          使用量查询地址
+          {t('admin:usage_query_url')}
         </Box>
-        <Input {...register('url')} bg={'myGray.50'} placeholder={'使用量查询地址'} />
+        <Input
+          isInvalid={Boolean(form.getFieldState('url', form.formState).error)}
+          {...register('url')}
+          bg={'myGray.50'}
+          placeholder={'使用量查询地址'}
+        />
       </>
     </MyModal>
   );

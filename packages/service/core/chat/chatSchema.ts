@@ -181,25 +181,15 @@ defineIndex(ChatSchema, {
 });
 
 /* get chat logs */
-// 1. Common get
-defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1 } });
+// 1. Common get & cursor search, ordered by updateTime then _id.
+// 旧前缀索引 { appId: 1, updateTime: -1 } 已迁移至 legacyDeprecatedIndexCleanup.ts 显式清理目录。
+defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1, _id: -1 } });
 // Get history(tmbId)
 defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 // clearHistory(API)
 defineIndex(ChatSchema, {
   key: { appId: 1, source: 1, tmbId: 1, updateTime: -1 }
 });
-// 旧版 generating 清理索引已由 Redis lease 取代；仅登记本项目创建过的索引供自动清理。
-defineIndex(ChatSchema, {
-  key: { chatGenerateStatus: 1, updateTime: 1 },
-  options: {
-    partialFilterExpression: {
-      chatGenerateStatus: 0
-    }
-  },
-  deprecated: true
-});
-
 /* 反馈过滤的索引 */
 // 2. Has good feedback filter
 defineIndex(ChatSchema, {

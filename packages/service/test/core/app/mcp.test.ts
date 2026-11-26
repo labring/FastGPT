@@ -1,11 +1,13 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
+import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Agent, fetch as undiciFetch } from 'undici';
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 // --- Hoisted mocks ---
 const { mockDereference } = vi.hoisted(() => ({
@@ -33,7 +35,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../../common/logger';
 import * as requestProfiling from '../../../common/profiling';
 
@@ -51,11 +52,10 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
-const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
 
 afterEach(() => {
-  mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+  getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
   vi.unstubAllEnvs();
 });
 
@@ -67,6 +67,7 @@ const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
 
 const closeServer = (server: http.Server) =>
   new Promise<void>((resolve, reject) => {
+    server.closeAllConnections?.();
     server.close((err) => (err ? reject(err) : resolve()));
   });
 
@@ -1062,7 +1063,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should reject a DNS rebinding answer before sending the request', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
@@ -1078,7 +1079,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should reject mixed public and private DNS answers', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup').mockResolvedValue([
@@ -1097,7 +1098,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should validate the socket address again for every redirect target', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup')
@@ -1137,7 +1138,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should connect using the validated IP without another DNS lookup', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) return;
 
@@ -1158,26 +1159,301 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
-  it('should fail closed when an HTTP proxy would resolve the target', async () => {
+  it('should delegate proxied requests to ProxyAgent without requiring local DNS resolution', async () => {
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+    const lookup = vi.spyOn(dns, 'lookup');
+    const proxyRequests: Array<{ url?: string; host?: string }> = [];
+    const proxyServer = await listen((req, res) => {
+      proxyRequests.push({ url: req.url, host: req.headers.host });
+      res.end(JSON.stringify({ ok: true, proxiedUrl: req.url }));
+    });
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${getServerPort(proxyServer)}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const response = await safeFetch('http://proxy-only.example.test/mcp');
+      expect(await response.json()).toEqual({
+        ok: true,
+        proxiedUrl: 'http://proxy-only.example.test/mcp'
+      });
+      expect(proxyRequests).toEqual([
+        {
+          url: 'http://proxy-only.example.test/mcp',
+          host: 'proxy-only.example.test'
+        }
+      ]);
+      expect(lookup).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+      await closeServer(proxyServer);
+    }
+  });
+
+  it('should still reject private or loopback targets when an HTTP proxy is configured', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:3128');
     vi.stubEnv('NO_PROXY', '');
-    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.stubEnv('no_proxy', '');
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['10.0.0.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     const fetchImpl = vi.fn();
     const safeFetch = createMcpSafeFetch({ fetchImpl });
 
     try {
-      await expect(safeFetch('http://proxy.example.test/mcp')).rejects.toThrow(
-        'MCP requests through an HTTP proxy are not supported by SSRF protection'
+      await expect(safeFetch('http://127.0.0.1/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
+      await expect(safeFetch('http://169.254.169.254/latest/meta-data')).rejects.toBe(
+        PRIVATE_URL_TEXT
       );
+      await expect(safeFetch('http://private.example.test/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
       expect(fetchImpl).not.toHaveBeenCalled();
     } finally {
       await safeFetch.close();
     }
   });
 
+  it('should block redirects to internal targets when using an HTTP proxy', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+    const proxyServer = await listen((_req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', 'http://127.0.0.1:8080/mcp');
+      res.end('redirect');
+    });
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${getServerPort(proxyServer)}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      await expect(safeFetch('http://proxy.example.test/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
+    } finally {
+      await safeFetch.close();
+      await closeServer(proxyServer);
+    }
+  });
+
+  it('should bypass the HTTP proxy and keep pinned-DNS direct fetch when NO_PROXY matches', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:3128');
+    vi.stubEnv('NO_PROXY', 'direct.example.test');
+    vi.stubEnv('no_proxy', '');
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const lookup = vi
+      .spyOn(dns, 'lookup')
+      .mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('ok'));
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      const response = await safeFetch('http://direct.example.test/mcp');
+      expect(await response.text()).toBe('ok');
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const dispatcher = fetchImpl.mock.calls[0]?.[1]?.dispatcher;
+      expect(dispatcher).toBeInstanceOf(Agent);
+      expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
+      expect(lookup).toHaveBeenCalledTimes(1);
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should evaluate NO_PROXY per hop across redirects from proxied host to NO_PROXY host', async () => {
+    getTestInstanceConfig().security.checkInternalIp = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) return;
+
+    const directTarget = await listen((req, res) => {
+      res.end(JSON.stringify({ direct: true, host: req.headers.host }));
+    }, '0.0.0.0');
+    const directPort = getServerPort(directTarget);
+
+    let proxyHits = 0;
+    const proxyServer = await listen((_req, res) => {
+      proxyHits += 1;
+      res.statusCode = 302;
+      res.setHeader('Location', `http://${carrierHost}:${directPort}/mcp`);
+      res.end('redirect');
+    });
+
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+    const safeFetch = createMcpSafeFetch();
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${getServerPort(proxyServer)}`);
+      vi.stubEnv('NO_PROXY', carrierHost);
+      vi.stubEnv('no_proxy', '');
+
+      const response = await safeFetch('http://proxied.example.test/mcp');
+      expect(await response.json()).toEqual({
+        direct: true,
+        host: `${carrierHost}:${directPort}`
+      });
+      expect(proxyHits).toBe(1);
+    } finally {
+      await safeFetch.close();
+      await Promise.all([closeServer(proxyServer), closeServer(directTarget)]);
+    }
+  });
+
+  it.each([
+    {
+      name: 'HTTPS proxy CONNECT 407 Proxy Authentication Required',
+      targetUrl: 'https://auth-required.example.test/mcp',
+      envKey: 'HTTPS_PROXY',
+      statusCode: 407,
+      statusText: 'Proxy Authentication Required',
+      viaConnect: true
+    },
+    {
+      name: 'HTTPS proxy CONNECT 403 Forbidden',
+      targetUrl: 'https://blocked.example.test/mcp',
+      envKey: 'HTTPS_PROXY',
+      statusCode: 403,
+      statusText: 'Forbidden',
+      viaConnect: true
+    },
+    {
+      name: 'HTTP forward proxy 407 Proxy Authentication Required',
+      targetUrl: 'http://auth-required.example.test/mcp',
+      envKey: 'HTTP_PROXY',
+      statusCode: 407,
+      statusText: 'Proxy Authentication Required',
+      viaConnect: false
+    }
+  ])(
+    'should classify $name as UserConfigError without otel alerting in MCPClient',
+    async ({ targetUrl, envKey, statusCode, statusText, viaConnect }) => {
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const proxyServer = await listen((_req, res) => {
+        res.writeHead(statusCode, statusText);
+        res.end();
+      });
+      if (viaConnect) {
+        proxyServer.on('connect', (_req, socket) => {
+          socket.end(`HTTP/1.1 ${statusCode} ${statusText}\r\n\r\n`);
+        });
+      }
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const infoLog = vi.spyOn(logger, 'info');
+
+      try {
+        vi.stubEnv(envKey, `http://127.0.0.1:${getServerPort(proxyServer)}`);
+        vi.stubEnv('NO_PROXY', '');
+        vi.stubEnv('no_proxy', '');
+
+        const mcpClient = new MCPClient({
+          url: targetUrl,
+          headers: {}
+        });
+
+        await expect(mcpClient.getTools()).rejects.toMatchObject({
+          name: 'UserConfigError',
+          cause: expect.objectContaining({
+            code: 'MCP_PROXY_TUNNEL_ERROR',
+            statusCode
+          })
+        });
+        expect(infoLog).toHaveBeenCalledWith(
+          'Streamable HTTP error',
+          expect.objectContaining({
+            otel: false,
+            error: expect.objectContaining({
+              code: 'MCP_PROXY_TUNNEL_ERROR',
+              statusCode
+            })
+          })
+        );
+      } finally {
+        await closeServer(proxyServer);
+      }
+    }
+  );
+
+  it.each(['socks5', 'socks5h'] as const)(
+    'should route MCP requests via %s:// proxy without local target DNS resolution',
+    async (scheme) => {
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const lookup = vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
+
+      const targetServer = await listen((req, res) => {
+        res.end(JSON.stringify({ ok: true, host: req.headers.host, url: req.url }));
+      });
+      const targetPort = getServerPort(targetServer);
+
+      const socksTargets: Array<{ atyp: number; host: string; port: number }> = [];
+      const socksSockets = new Set<net.Socket>();
+      const socksServer = net.createServer((client) => {
+        socksSockets.add(client);
+        let stage = 0;
+        client.on('data', (chunk) => {
+          if (stage === 0) {
+            stage = 1;
+            client.write(Buffer.from([0x05, 0x00]));
+          } else if (stage === 1) {
+            stage = 2;
+            const atyp = chunk[3];
+            const hostLen = atyp === 0x03 ? chunk[4] : 0;
+            const host = atyp === 0x03 ? chunk.subarray(5, 5 + hostLen).toString('utf8') : '';
+            const port = chunk.readUInt16BE(5 + hostLen);
+            socksTargets.push({ atyp, host, port });
+            const upstream = net.connect(targetPort, '127.0.0.1', () => {
+              socksSockets.add(upstream);
+              client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 0]));
+              upstream.pipe(client);
+              client.pipe(upstream);
+            });
+            upstream.on('error', () => client.destroy());
+            client.on('close', () => {
+              socksSockets.delete(client);
+              socksSockets.delete(upstream);
+              upstream.destroy();
+            });
+          }
+        });
+      });
+      await new Promise<void>((resolve) => socksServer.listen(0, '127.0.0.1', resolve));
+      const socksAddress = socksServer.address();
+      if (!socksAddress || typeof socksAddress === 'string') {
+        throw new Error('Invalid SOCKS5 server address');
+      }
+
+      const safeFetch = createMcpSafeFetch();
+      try {
+        vi.stubEnv('ALL_PROXY', `${scheme}://127.0.0.1:${socksAddress.port}`);
+        vi.stubEnv('NO_PROXY', '');
+        vi.stubEnv('no_proxy', '');
+
+        const response = await safeFetch('http://mcp-socks.example.test/mcp');
+        expect(await response.json()).toEqual({
+          ok: true,
+          host: 'mcp-socks.example.test',
+          url: '/mcp'
+        });
+        expect(socksTargets).toEqual([{ atyp: 0x03, host: 'mcp-socks.example.test', port: 80 }]);
+        expect(lookup).not.toHaveBeenCalled();
+      } finally {
+        await safeFetch.close();
+        for (const s of socksSockets) s.destroy();
+        await Promise.all([
+          new Promise<void>((resolve) => socksServer.close(() => resolve())),
+          closeServer(targetServer)
+        ]);
+      }
+    }
+  );
+
   it('should follow safe redirects hop by hop', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1206,7 +1482,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should block redirects to loopback addresses', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1235,7 +1511,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should enforce max redirect count', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1259,7 +1535,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should drop sensitive headers when redirect target changes', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;

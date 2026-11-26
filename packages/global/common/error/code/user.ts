@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
 /* team: 503000 */
 export enum UserErrEnum {
@@ -17,24 +17,34 @@ export enum UserErrEnum {
   newPasswordSameAsOld = 'newPasswordSameAsOld',
   oldPasswordError = 'oldPasswordError',
   ssoPasswordUnavailable = 'ssoPasswordUnavailable',
-  verificationChannelUnavailable = 'verificationChannelUnavailable'
+  verificationChannelUnavailable = 'verificationChannelUnavailable',
+  captchaRenderQueueFull = 'captchaRenderQueueFull',
+  captchaRenderQueueTimeout = 'captchaRenderQueueTimeout'
 }
-const errList = [
+const errList: Array<{
+  statusText: UserErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: UserErrEnum.notUser,
-    message: i18nT('common:code_error.account_not_found')
+    message: i18nT('common:code_error.account_not_found'),
+    httpStatus: 404
   },
   {
     statusText: UserErrEnum.userExist,
-    message: i18nT('common:code_error.account_exist')
+    message: i18nT('common:code_error.account_exist'),
+    httpStatus: 409
   },
   {
     statusText: UserErrEnum.account_psw_error,
-    message: i18nT('common:code_error.account_error')
+    message: i18nT('common:code_error.account_error'),
+    httpStatus: 401
   },
   {
     statusText: UserErrEnum.unAuthSso,
-    message: i18nT('user:sso_auth_failed')
+    message: i18nT('user:sso_auth_failed'),
+    httpStatus: 401
   },
   {
     statusText: UserErrEnum.invalidVerificationCode,
@@ -53,7 +63,8 @@ const errList = [
   },
   {
     statusText: UserErrEnum.invalidAccount,
-    message: i18nT('common:code_error.invalid_account')
+    message: i18nT('common:code_error.invalid_account'),
+    httpStatus: 400
   },
   {
     statusText: UserErrEnum.accountCancellationPending,
@@ -89,6 +100,16 @@ const errList = [
     statusText: UserErrEnum.oldPasswordError,
     message: i18nT('common:user.Old password is error'),
     httpStatus: 400
+  },
+  {
+    statusText: UserErrEnum.captchaRenderQueueFull,
+    message: i18nT('common:error.captcha_queue_full'),
+    httpStatus: 429
+  },
+  {
+    statusText: UserErrEnum.captchaRenderQueueTimeout,
+    message: i18nT('common:error.captcha_queue_timeout'),
+    httpStatus: 503
   }
 ];
 export default errList.reduce((acc, cur, index) => {
@@ -99,7 +120,7 @@ export default errList.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${UserErrEnum}`>);

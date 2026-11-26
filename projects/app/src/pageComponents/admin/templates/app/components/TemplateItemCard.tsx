@@ -1,4 +1,6 @@
-import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/admin/app/templates/api';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { putUpdateTemplate } from '@/web/admin/app/templates/api';
+import type { UpdateTemplateBodyType } from '@fastgpt/global/openapi/admin/app/templates/api';
 import { Box, Checkbox, Flex, Switch, Td, Tr } from '@chakra-ui/react';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -32,34 +34,14 @@ const TemplateCard = ({
   property: string;
   refreshTemplates: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const isPluginSystemTemplate = template.templateId.startsWith(`${AppToolSourceEnum.community}-`);
   const isRecommend = isPluginSystemTemplate
     ? template.isPromoted === true
     : template.tags.includes('recommendation');
 
-  const getTemplateUpdateBody = (
-    patch: Partial<Omit<AdminUpdateTemplateBodyType, 'templateId'>>
-  ): AdminUpdateTemplateBodyType => {
-    if (isPluginSystemTemplate) {
-      return {
-        templateId: template.templateId,
-        isActive: patch.isActive,
-        isPromoted: patch.isPromoted,
-        promoteTags: patch.promoteTags,
-        hideTags: patch.hideTags,
-        recommendText: patch.recommendText
-      };
-    }
-
-    return {
-      ...template,
-      ...patch
-    };
-  };
-
   const { runAsync: updateSystemTemplate, loading } = useRequest(
-    async (e: AdminUpdateTemplateBodyType) => {
+    async (e: UpdateTemplateBodyType) => {
       return putUpdateTemplate(e);
     },
     {
@@ -127,7 +109,7 @@ const TemplateCard = ({
                 borderRadius={'full'}
                 color={'myGray.900'}
               >
-                精选
+                {t('admin:featured_2')}
               </Box>
             </Box>
           )}
@@ -144,7 +126,7 @@ const TemplateCard = ({
               borderRadius={'sm'}
               flexShrink={0}
             >
-              系统
+              {t('admin:system')}
             </Box>
           )}
         </Flex>
@@ -167,10 +149,10 @@ const TemplateCard = ({
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            const newTemplate = getTemplateUpdateBody({
+            updateSystemTemplate({
+              templateId: template.templateId,
               isActive: !template?.isActive
             });
-            updateSystemTemplate(newTemplate);
           }}
         >
           <Switch isChecked={template.isActive} />
@@ -187,14 +169,19 @@ const TemplateCard = ({
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            const newTemplate = isPluginSystemTemplate
-              ? getTemplateUpdateBody({ isPromoted: !isRecommend })
-              : getTemplateUpdateBody({
-                  tags: isRecommend
-                    ? template.tags.filter((tag) => tag !== AppTemplateTypeEnum.recommendation)
-                    : [...template.tags, AppTemplateTypeEnum.recommendation]
-                });
-            updateSystemTemplate(newTemplate);
+            updateSystemTemplate(
+              isPluginSystemTemplate
+                ? {
+                    templateId: template.templateId,
+                    isPromoted: !isRecommend
+                  }
+                : {
+                    templateId: template.templateId,
+                    tags: isRecommend
+                      ? template.tags.filter((tag) => tag !== AppTemplateTypeEnum.recommendation)
+                      : [...template.tags, AppTemplateTypeEnum.recommendation]
+                  }
+            );
           }}
         >
           <Checkbox isChecked={isRecommend} size={'lg'} />

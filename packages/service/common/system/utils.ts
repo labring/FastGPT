@@ -2,10 +2,19 @@ import {
   createInternalAddressChecker,
   PRIVATE_URL_TEXT
 } from '@fastgpt/global/common/system/network';
-import { serviceEnv } from '../../env';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from './migrationCoverageLog';
 
 const { isInternalAddress, isInternalResolvedIP } = createInternalAddressChecker({
-  checkInternalIp: () => serviceEnv.CHECK_INTERNAL_IP
+  checkInternalIp: () => {
+    const value = getSystemInstanceConfig().security.checkInternalIp;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.system.utils.isInternalAddress',
+      fields: [{ path: 'security.checkInternalIp', value }]
+    });
+    return value;
+  }
 });
 
 export { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT };
@@ -25,14 +34,14 @@ export const checkUrlSafety = async (url: string, fieldName = 'URL'): Promise<vo
   try {
     parsed = new URL(url);
   } catch {
-    return Promise.reject(new Error(`${fieldName} must be a valid URL`));
+    return Promise.reject(new UserConfigError(`${fieldName} must be a valid URL`));
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return Promise.reject(new Error(`${fieldName} must use http or https protocol`));
+    return Promise.reject(new UserConfigError(`${fieldName} must use http or https protocol`));
   }
 
   if (await isInternalAddress(url)) {
-    return Promise.reject(new Error(`${fieldName}: ${PRIVATE_URL_TEXT}`));
+    return Promise.reject(new UserConfigError(`${fieldName}: ${PRIVATE_URL_TEXT}`));
   }
 };
