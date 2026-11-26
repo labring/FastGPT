@@ -23,7 +23,7 @@ Follow [the domain glossary](./CONTEXT.md). Use these page contracts:
 - Reference: responsibility, inputs, configuration, outputs, boundaries, verified example.
 - Concept: object relationships, selection criteria, links to tasks and references.
 
-Frontmatter supports `title`, `description`, `icon`, `draft`, `releaseTime`, `sidebarTag`, and `upgradeTags`. Setting `draft: true` excludes a locale page from routes, navigation, search, sitemap, static index, and LLM exports; run `pnpm --dir document initDocToc` when publishing a draft. Quote values containing a colon. Use descriptive image alt text, inspect media for credentials and private data, and keep research screenshots separate from approved public assets.
+Frontmatter supports `title`, `description`, `icon`, `draft`, `releaseTime`, `sidebarTag`, and `upgradeTags`. Setting `draft: true` excludes a locale page from routes, navigation, search, sitemap, static index, and LLM exports; run `pnpm --dir document initDocToc` when publishing a draft. Quote values containing a colon. Use `<Alert context="info">` from `@/components/docs/Alert` for reader notices and tips instead of plain Markdown `>` blockquotes (use `context="warning"` or `context="error"` only for warnings/risks). Capture full-screen UI screenshots with clear red highlight boxes marking the relevant controls, use descriptive image alt text, inspect media for credentials and private data, and keep research screenshots separate from approved public assets.
 
 ```mdx
 ---
