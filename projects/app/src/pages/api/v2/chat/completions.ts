@@ -451,9 +451,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
-      metadata: {
-        originIp,
-        ...metadata
+      metadata,
+      systemMetadata: {
+        originIp
       },
       workflowRuntimeSummary,
       durationSeconds

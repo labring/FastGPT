@@ -6,6 +6,7 @@ import {
 } from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { PDF_PARSE_TIMEOUT_DEFAULT_SECONDS } from '@fastgpt/global/common/system/config/schemas/providers';
 import { NumSchema } from '@fastgpt/global/common/zod';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
@@ -296,6 +297,7 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['resource'];
 
   // ---------- performance ----------
+  const legacyFileTimeoutSeconds = optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS);
   overrides.performance = compact({
     workflow: compact({
       maxRunTimes: optionalNumber(legacyEnv.WORKFLOW_MAX_RUN_TIMES),
@@ -305,7 +307,7 @@ export const buildLegacyDomainOverrides = ({
         optionalNumber(legacyEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
     }),
     parse: compact({
-      fileTimeoutSeconds: optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS),
+      fileTimeoutSeconds: legacyFileTimeoutSeconds,
       xlsxMaxRows: optionalNumber(legacyEnv.XLSX_PARSE_MAX_ROWS),
       xlsxMaxColumns: optionalNumber(legacyEnv.XLSX_PARSE_MAX_COLUMNS),
       xlsxMaxCells: optionalNumber(legacyEnv.XLSX_PARSE_MAX_CELLS),
@@ -364,32 +366,48 @@ export const buildLegacyDomainOverrides = ({
     legacy: legacyPdfCredentials,
     env: envPdfCredentials
   });
-  const customPdf = {
-    url: customPdfCredentials.url,
-    key: customPdfCredentials.key,
-    somarkApiKey:
-      optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(legacyEnv.SOMARK_API_KEY),
-    doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY),
-    textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
-    textinSecretCode:
-      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE),
-    price: optionalNumber(legacyCustomPdf.price)
-  };
   const sangforCredentials = isSangfor
     ? resolveCredentialGroup({ legacy: legacyPdfCredentials, env: envPdfCredentials })
     : { url: undefined, key: undefined };
+  const somarkApiKey =
+    optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(legacyEnv.SOMARK_API_KEY);
+  const doc2xKey = optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY);
+  const textinAppId =
+    optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID);
+  const textinSecretCode =
+    optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE);
 
-  // 旧运行时没有 provider 选择，按 custom → somark → textin → doc2x 的固定顺序选择第一个
-  // 可用凭据。迁移时把这一实际选择固化为 provider，运行期改为按 provider 分派，
-  // 避免管理员切换后仍被旧凭据抢占。
+  // 旧运行时没有 provider 选择，按 sangfor(需有 URL) → custom → somark → textin → doc2x 的固定顺序选择第一个
+  // 可用凭据。迁移时把这一实际选择固化为 provider，并按最终生效服务选择旧超时来源。
   const documentParseProvider = (() => {
     if (isSangfor && sangforCredentials.url) return 'sangfor' as const;
-    if (customPdf.url) return 'customPdf' as const;
-    if (customPdf.somarkApiKey) return 'somark' as const;
-    if (customPdf.textinAppId && customPdf.textinSecretCode) return 'textin' as const;
-    if (customPdf.doc2xKey) return 'doc2x' as const;
+    if (customPdfCredentials.url) return 'customPdf' as const;
+    if (somarkApiKey) return 'somark' as const;
+    if (textinAppId && textinSecretCode) return 'textin' as const;
+    if (doc2xKey) return 'doc2x' as const;
     return undefined;
   })();
+
+  const legacyPdfTimeoutSeconds =
+    documentParseProvider === 'sangfor'
+      ? optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+      : legacyFileTimeoutSeconds;
+  const customPdf = {
+    url: customPdfCredentials.url,
+    key: customPdfCredentials.key,
+    somarkApiKey,
+    doc2xKey,
+    textinAppId,
+    textinSecretCode,
+    // 旧版文档增强解析（含深信服）统一复用 customPdf.timeoutSeconds；
+    // 仅在旧值大于默认值（600 秒）时自动回填到独立超时，避免小值反向缩短或触发最小 60 秒校验失败。
+    timeoutSeconds:
+      typeof legacyPdfTimeoutSeconds === 'number' &&
+      legacyPdfTimeoutSeconds > PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+        ? legacyPdfTimeoutSeconds
+        : undefined,
+    price: optionalNumber(legacyCustomPdf.price)
+  };
 
   overrides.providers = compact({
     documentParse: compact({
@@ -398,8 +416,7 @@ export const buildLegacyDomainOverrides = ({
       sangfor: compact({
         url: sangforCredentials.url,
         key: sangforCredentials.key,
-        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS),
-        timeoutSeconds: optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS)
       })
     }),
     externalProviderWorkflowVariables: Array.isArray(feConfigs.externalProviderWorkflowVariables)

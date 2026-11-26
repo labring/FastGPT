@@ -3,6 +3,43 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
+import ts from 'typescript';
+import { findBlockedPrivateDalImportsInSource } from './packages/dal/privateBoundary.mjs';
+
+const DAL_PRIVATE_BOUNDARY_MESSAGE =
+  '禁止越界导入 DAL 仓储私有 mongo/oceanbase 实现，请改用公开的 .../repo 或 .../repo.type。';
+
+/**
+ * 复用 `privateBoundary.mjs` 的 TypeScript AST 提取器精确校验静态/类型/动态导入与重导出，
+ * 确保 ESLint 规则与 CI 静态扫描保持完全一致的语法覆盖与作用域边界。
+ *
+ * @type {import('eslint').Rule.RuleModule}
+ */
+const noPrivateDalRepoImportsRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Disallow importing private DAL repository mongo/oceanbase implementations'
+    },
+    schema: []
+  },
+  create: (context) => ({
+    Program: () => {
+      const content = context.sourceCode?.text ?? context.getSourceCode().text;
+      const violations = findBlockedPrivateDalImportsInSource({
+        filePath: context.filename,
+        content,
+        ts
+      });
+      for (const violation of violations) {
+        context.report({
+          loc: violation.loc,
+          message: DAL_PRIVATE_BOUNDARY_MESSAGE
+        });
+      }
+    }
+  })
+};
 
 // 枚举分组规则集中在来源分类模块；业务代码只消费语义化判断。
 const groupedChatSourceComparisonsSelector =
@@ -78,6 +115,25 @@ export default defineConfig([
             '多个 ChatSourceTypeEnum 的组合判断必须使用 @fastgpt/global/common/chat/source 中的语义化函数。'
         }
       ]
+    }
+  },
+  {
+    name: 'fastgpt/dal-private-boundary',
+    files: [
+      'packages/**/*.{ts,tsx}',
+      'projects/**/*.{ts,tsx}',
+      'pro/**/*.{ts,tsx}',
+      'test/**/*.{ts,tsx}'
+    ],
+    plugins: {
+      fastgpt: {
+        rules: {
+          'no-private-dal-repo-imports': noPrivateDalRepoImportsRule
+        }
+      }
+    },
+    rules: {
+      'fastgpt/no-private-dal-repo-imports': 'error'
     }
   },
   globalIgnores(

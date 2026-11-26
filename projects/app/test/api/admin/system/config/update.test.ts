@@ -624,4 +624,135 @@ describe('instance config update API', () => {
       }
     );
   });
+
+  it('requires explicitly replacing or clearing stored document parse credentials when their target URL changes', async () => {
+    // 1. 初始保存三类可配置地址及对应密钥
+    const init = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: {
+              documentParse: {
+                provider: 'somark',
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.ai/api/v1',
+                  somarkApiKey: 'sk-somark-global',
+                  url: 'https://custom-a.example.com/v2/parse/file',
+                  key: 'sk-custom-a'
+                },
+                sangfor: {
+                  url: 'https://sangfor-a.example.com/parse',
+                  key: 'sk-sangfor-a'
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(init.results[0].revision).toBe(1);
+
+    // 2. 地址未实质变化（含尾斜杠归一化）且保留旧密钥时允许保存其他字段
+    const sameEndpoint = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 1,
+            overrides: {
+              documentParse: {
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.ai/api/v1/',
+                  somarkApiKey: { isSecret: true },
+                  timeoutSeconds: 900
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(sameEndpoint.results[0].revision).toBe(2);
+
+    // 3. 分别修改 SoMark / 自建 / 深信服地址但保留旧密钥标记（或省略密钥）时，全部拒绝且不写库
+    for (const [overrides, expectedPath] of [
+      [
+        {
+          documentParse: {
+            customPdf: {
+              somarkBaseUrl: 'https://somark.cn/api/v1',
+              somarkApiKey: { isSecret: true }
+            }
+          }
+        },
+        ['providers', 'documentParse', 'customPdf', 'somarkApiKey']
+      ],
+      [
+        {
+          documentParse: {
+            customPdf: {
+              url: 'https://custom-b.example.com/v2/parse/file',
+              key: { isSecret: true }
+            }
+          }
+        },
+        ['providers', 'documentParse', 'customPdf', 'key']
+      ],
+      [
+        {
+          documentParse: {
+            sangfor: {
+              url: 'https://sangfor-b.example.com/parse'
+            }
+          }
+        },
+        ['providers', 'documentParse', 'sangfor', 'key']
+      ]
+    ] as const) {
+      await expect(
+        callUpdate({
+          body: {
+            items: [{ domain: 'providers', expectedRevision: 2, overrides }]
+          }
+        } as any)
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ApiRequestInputParseError);
+        const issues = (error as ApiRequestInputParseError).cause.issues;
+        expect(issues[0]?.path).toEqual(expectedPath);
+        return true;
+      });
+    }
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.revision
+    ).toBe(2);
+
+    // 4. 改地址同时显式替换或清空对应密钥时允许保存
+    const updated = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 2,
+            overrides: {
+              documentParse: {
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.cn/api/v1',
+                  somarkApiKey: 'sk-somark-cn',
+                  url: 'https://custom-b.example.com/v2/parse/file',
+                  key: ''
+                },
+                sangfor: {
+                  url: 'https://sangfor-b.example.com/parse',
+                  key: 'sk-sangfor-b'
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(updated.results[0].revision).toBe(3);
+  });
 });
