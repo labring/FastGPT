@@ -267,10 +267,10 @@ const NavbarItemModal = ({
       }
     >
       <Box color={'myGray.800'} fontWeight={'bold'} mb={2}>
-        {t('admin:avatar_name')}
+        {t('common:avatar_and_name')}
       </Box>
       <Flex>
-        <MyTooltip label={t('admin:click_to_upload_avatar')}>
+        <MyTooltip label={t('common:set_avatar')}>
           {avatar ? (
             <Avatar
               flexShrink={0}

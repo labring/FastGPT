@@ -18,6 +18,7 @@ import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -107,19 +108,20 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       title={t('common:core.app.setting')}
     >
       <ModalBody>
-        <Box fontSize={'sm'}>{t('common:core.app.Name and avatar')}</Box>
+        <Box fontSize={'sm'}>{t('common:avatar_and_name')}</Box>
         <Flex mt={2} alignItems={'center'}>
-          <Avatar
-            src={avatar}
-            w={['26px', '34px']}
-            h={['26px', '34px']}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            mr={4}
-            title={t('common:set_avatar')}
-            onClick={handleAvatarSelectorOpen}
-          />
-          <FormControl>
+          <MyTooltip label={t('common:set_avatar')}>
+            <Avatar
+              flexShrink={0}
+              src={avatar}
+              w={['26px', '34px']}
+              h={['26px', '34px']}
+              cursor={'pointer'}
+              borderRadius={'md'}
+              onClick={handleAvatarSelectorOpen}
+            />
+          </MyTooltip>
+          <FormControl ml={4}>
             <Input
               bg={'myWhite.600'}
               placeholder={t('common:core.app.Set a name for your app')}

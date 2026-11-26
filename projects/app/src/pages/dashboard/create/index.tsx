@@ -278,7 +278,7 @@ const CreateAppsPage = () => {
           </Box>
           <Box mb={5}>
             <Box color={'myGray.900'} fontWeight={'medium'} mb={2.5} letterSpacing={'0.15px'}>
-              {t('common:app_icon_and_name')}
+              {t('common:avatar_and_name')}
             </Box>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
