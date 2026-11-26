@@ -1308,6 +1308,7 @@
   "ops_perf_fulltext_engine": "全文引擎",
   "ops_perf_kpi_total_count": "檢索總次數",
   "ops_perf_kpi_search_avg": "檢索平均耗時",
+  "ops_perf_kpi_search_avg_tip": "端到端檢索時間，包含問題優化、向量生成、資料庫查詢、重排與後處理等全鏈路耗時",
   "ops_perf_kpi_rerank_avg": "搜尋結果重排平均耗時",
   "ops_perf_kpi_query_ext_avg": "問題優化平均耗時",
   "ops_perf_kpi_db_avg": "資料庫平均耗時",

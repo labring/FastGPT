@@ -278,9 +278,8 @@ export const EventWaterfallCard = ({
           borderColor={event.status === 'error' ? 'red.200' : 'orange.200'}
           fontSize={'xs'}
           color={event.status === 'error' ? 'red.700' : 'orange.700'}
-          fontFamily={'mono'}
         >
-          [{event.errorCode}] {resolveErrorCodeLabel(event.errorCode)}
+          {resolveErrorCodeLabel(event.errorCode)}
         </Box>
       )}
 

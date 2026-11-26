@@ -1308,6 +1308,7 @@
   "ops_perf_fulltext_engine": "Full-Text Engine",
   "ops_perf_kpi_total_count": "Total Searches",
   "ops_perf_kpi_search_avg": "Avg Search Latency",
+  "ops_perf_kpi_search_avg_tip": "End-to-end search latency, including query extension, embedding, database retrieval, rerank, and post-processing",
   "ops_perf_kpi_rerank_avg": "Avg Rerank Latency",
   "ops_perf_kpi_query_ext_avg": "Avg Query Ext Latency",
   "ops_perf_kpi_db_avg": "Avg DB Latency",

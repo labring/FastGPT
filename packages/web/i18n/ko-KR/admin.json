@@ -1308,6 +1308,7 @@
   "ops_perf_fulltext_engine": "전문 엔진",
   "ops_perf_kpi_total_count": "총 검색 수",
   "ops_perf_kpi_search_avg": "평균 검색 지연",
+  "ops_perf_kpi_search_avg_tip": "쿼리 최적화, 임베딩 생성, DB 조회, 재정렬 및 후처리를 포함한 종단 간 전체 검색 지연 시간",
   "ops_perf_kpi_rerank_avg": "평균 리랭크 지연",
   "ops_perf_kpi_query_ext_avg": "평균 쿼리 최적화 지연",
   "ops_perf_kpi_db_avg": "평균 DB 지연",
