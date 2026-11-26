@@ -927,7 +927,7 @@
   "hnsw_candidate_expansion_factor_controlling_neighbor_search": "HNSW 벡터 검색 후보 확대 배수로 근접 이웃 탐색 깊이를 제어합니다. 값이 클수록 재현율과 계산 시간이 증가합니다.",
   "max_characters_allowed_when_converting_html_to_markdown": "HTML을 Markdown으로 변환할 때 허용되는 최대 문자 수",
   "dependencies_available_by_default_in_javascript_code_nodes": "JavaScript 코드 노드에서 기본 사용 가능한 의존성 목록",
-  "retention_period_for_detailed_llm_tracing_logs_hours": "LLM 호출 추적 상세 로그 보관 기간 (시간)",
+  "retention_period_for_detailed_llm_tracing_logs_hours": "LLM 호출 추적 상세 로그 보관 기간 (시간). 변경 사항은 이후 새로 저장되는 기록에만 적용됩니다.",
   "apt_mirror_url_for_linux_package_installation": "Linux 패키지 설치용 apt 미러 주소",
   "max_concurrency_for_vlm_image_understanding_and_description": "VLM 모델 이미지 이해 및 설명 생성 최대 동시 처리 수",
   "max_processing_time_for_a_worker_to_parse_a_single_document": "워커 프로세스가 단일 문서를 파싱하는 최대 허용 시간 (초)",

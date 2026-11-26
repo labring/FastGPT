@@ -955,6 +955,30 @@ describe('unvalidated instance config reads and strict saves', () => {
     });
   });
 
+  it('constrains performance.tracking.retentionHours strictly to 1..1000', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1 } }
+      }).tracking.retentionHours
+    ).toBe(1);
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1000 } }
+      }).tracking.retentionHours
+    ).toBe(1000);
+
+    for (const invalid of [0, -1, 1001, 1.5]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'performance',
+          overrides: { tracking: { retentionHours: invalid } }
+        })
+      ).toThrow();
+    }
+  });
+
   it('distinguishes unset domain overrides from corrupted non-object root values', () => {
     expect(
       resolveDomainEffectiveConfig({

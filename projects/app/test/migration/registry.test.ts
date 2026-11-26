@@ -24,7 +24,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261126_backfill_llm_request_record_expired_time'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -62,7 +63,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
-      '20261125_backfill_model_reasoning_effort_list'
+      '20261125_backfill_model_reasoning_effort_list',
+      '20261126_backfill_llm_request_record_expired_time'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -161,8 +163,10 @@ describe('validateSystemMigrationRegistry', () => {
     });
   });
 
-  it('registers model reasoningEffortList backfill at tail as a manual background task', () => {
-    const task = systemMigrations.at(-1);
+  it('registers model reasoningEffortList backfill as a manual background task', () => {
+    const task = systemMigrations.find(
+      ({ id }) => id === '20261125_backfill_model_reasoning_effort_list'
+    );
     expect(task).toMatchObject({
       id: '20261125_backfill_model_reasoning_effort_list',
       version: '4.18.0',
@@ -176,13 +180,28 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
   });
 
+  it('registers LLM request record expiredTime backfill at tail as an independent background task', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261126_backfill_llm_request_record_expired_time',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'backfill' }, { key: 'cleanupLegacyIndex' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+    expect(task).not.toHaveProperty('dependsOn');
+  });
+
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
       '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261123_cleanup_mongo_indexes'
+      '20261123_cleanup_mongo_indexes',
+      '20261126_backfill_llm_request_record_expired_time'
     ]);
   });
 

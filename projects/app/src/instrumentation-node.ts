@@ -167,7 +167,7 @@ export async function registerNodeInstrumentation() {
     // 加载初始化配置
     await runInitializationStep({
       step: 'get-init-config',
-      action: () => getInitConfig({ refreshLLMRequestRecordTTL: false }),
+      action: () => getInitConfig(),
       logger,
       getErrText
     });

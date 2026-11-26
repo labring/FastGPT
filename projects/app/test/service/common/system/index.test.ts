@@ -7,9 +7,7 @@ const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(),
   reload: vi.fn(),
   storage: vi.fn(),
-  buckets: vi.fn(),
-  refreshTTL: vi.fn(),
-  configureTTLSchema: vi.fn()
+  buckets: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/system/systemInstanceConfig/service', () => ({
   systemInstanceConfig: { initialize: mocks.reload, setFrontendContext: vi.fn() }
@@ -22,22 +20,10 @@ vi.mock('@fastgpt/service/common/s3', async (original) => ({
   ...(await original<Record<string, unknown>>()),
   initS3Buckets: mocks.buckets
 }));
-vi.mock('@fastgpt/service/core/ai/record/service', () => ({
-  refreshLLMRequestRecordTTL: mocks.refreshTTL
-}));
-vi.mock('@fastgpt/service/core/ai/record/schema', () => ({
-  configureLLMRequestRecordTTLIndex: mocks.configureTTLSchema
-}));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', async (original) => ({
   ...(await original<Record<string, unknown>>()),
   pluginClient: { getPluginServiceFeatures: vi.fn().mockResolvedValue({}) }
 }));
-
-const configWithRetentionHours = (retentionHours: number) => {
-  const config = resolveSystemInstanceConfig({});
-  config.performance.tracking.retentionHours = retentionHours;
-  return config;
-};
 
 describe('initSystemConfig', () => {
   beforeEach(() => {
@@ -46,8 +32,6 @@ describe('initSystemConfig', () => {
     mocks.reload.mockResolvedValue(resolveSystemInstanceConfig({}));
     mocks.storage.mockReturnValue(false);
     mocks.buckets.mockReset();
-    mocks.refreshTTL.mockResolvedValue(true);
-    mocks.configureTTLSchema.mockReset();
   });
 
   it('retries failed bucket creation on the next refresh and then stops rebuilding unchanged storage', async () => {
@@ -59,25 +43,11 @@ describe('initSystemConfig', () => {
     mocks.buckets.mockImplementationOnce(() => {
       throw new Error('temporary bucket failure');
     });
-    const reload = () => initSystemConfig({ refreshLLMRequestRecordTTL: false });
+    const reload = () => initSystemConfig();
     await expect(reload()).rejects.toThrow('temporary bucket failure');
     await reload();
     expect(mocks.buckets).toHaveBeenCalledTimes(2);
     await reload();
     expect(mocks.buckets).toHaveBeenCalledTimes(2);
-  });
-
-  it('syncs TTL schema in memory without querying log DB when refreshLLMRequestRecordTTL is false', async () => {
-    vi.resetModules();
-    const { initSystemConfig } =
-      await vi.importActual<typeof import('@/service/common/system')>('@/service/common/system');
-    mocks.reload.mockResolvedValue(configWithRetentionHours(48));
-
-    await initSystemConfig({ refreshLLMRequestRecordTTL: false });
-    expect(mocks.refreshTTL).not.toHaveBeenCalled();
-    expect(mocks.configureTTLSchema).toHaveBeenCalledWith(48 * 3600);
-
-    await initSystemConfig();
-    expect(mocks.refreshTTL).toHaveBeenCalledTimes(1);
   });
 });

@@ -43,7 +43,6 @@ vi.mock(
 
 import handler from '@/pages/api/admin/system/config/update';
 import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import * as llmRecordService from '@fastgpt/service/core/ai/record/service';
 
 const callUpdate = handler as unknown as (request: {
   body: unknown;
@@ -136,7 +135,7 @@ describe('instance config update API', () => {
     });
     expect(reads).toBe(2);
     expect(reloadSpy).not.toHaveBeenCalled();
-    expect(mocks.initSystemConfig).toHaveBeenCalledWith({ refreshLLMRequestRecordTTL: false });
+    expect(mocks.initSystemConfig).toHaveBeenCalledWith();
     expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalled();
     readSpy.mockRestore();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
@@ -563,63 +562,24 @@ describe('instance config update API', () => {
     );
   });
 
-  it('applies log TTL inside the save transaction only when retentionHours changes and rolls back on failure', async () => {
-    const applyTTL = vi
-      .spyOn(llmRecordService, 'applyLLMRequestRecordTTL')
-      .mockResolvedValue(undefined);
-
-    // 1. 保存 performance 但未改 retentionHours 时不触碰日志库
-    const unchanged = await callUpdate({
-      body: {
-        items: [
-          {
-            domain: 'performance',
-            expectedRevision: 0,
-            overrides: { chat: { maxQpm: 3000 } }
-          }
-        ]
-      }
-    } as any);
-    expect(unchanged.results[0].revision).toBe(1);
-    expect(applyTTL).not.toHaveBeenCalled();
-
-    // 2. retentionHours 变化时在事务提交前同步更新日志库 TTL
+  it('persists performance tracking retentionHours directly without modifying log TTL indexes', async () => {
     const updated = await callUpdate({
       body: {
         items: [
           {
             domain: 'performance',
-            expectedRevision: 1,
+            expectedRevision: 0,
             overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
           }
         ]
       }
     } as any);
-    expect(updated.results[0].revision).toBe(2);
-    expect(applyTTL).toHaveBeenCalledExactlyOnceWith({ retentionHours: 48, maxTimeMS: 10_000 });
-    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith({ refreshLLMRequestRecordTTL: false });
 
-    // 3. TTL 更新失败时抛错并回滚主库配置事务，不静默提交
-    mocks.initSystemConfig.mockClear();
-    applyTTL.mockRejectedValueOnce(new Error('log db collMod failed'));
-    await expect(
-      callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 2,
-              overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 12 } }
-            }
-          ]
-        }
-      } as any)
-    ).rejects.toThrow('log db collMod failed');
-
-    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+    expect(updated.results[0].revision).toBe(1);
+    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
       {
-        revision: 2,
+        revision: 1,
         overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
       }
     );

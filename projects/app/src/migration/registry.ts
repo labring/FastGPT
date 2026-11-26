@@ -16,6 +16,7 @@ import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes
 import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
+import { backfillLLMRequestRecordExpiredTime } from './tasks/4180/20261126_backfill_llm_request_record_expired_time';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -379,6 +380,42 @@ export const systemMigrations = [
       }
     ],
     run: backfillModelReasoningEffortListMigration
+  },
+  {
+    id: '20261126_backfill_llm_request_record_expired_time',
+    version: '4.18.0',
+    // 独立后台回填历史 LLM 追踪记录的 expiredTime 并清理旧 createdAt_1 TTL 索引，不阻塞业务启动。
+    independent: true,
+    nameKey: i18nT(
+      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.name'
+    ),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.result'
+    ),
+    progressSteps: [
+      {
+        key: 'backfill',
+        labelKey: i18nT(
+          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.backfill'
+        )
+      },
+      {
+        key: 'cleanupLegacyIndex',
+        labelKey: i18nT(
+          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.cleanupLegacyIndex'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.validation'
+        )
+      }
+    ],
+    run: backfillLLMRequestRecordExpiredTime
   }
 ] as const satisfies readonly SystemMigration[];
 
