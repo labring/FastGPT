@@ -37,7 +37,8 @@ import { Alert } from '@/components/docs/Alert';
 
 - **国内镜像源**：FastGPT 停止向阿里云发布镜像，国内 Docker Compose 模板改用 `ghcr.dockerproxy.net/labring/` 获取 FastGPT、Plugin、Code Sandbox 与 Agent Sandbox 系列服务镜像；`install.sh` 同步调整为「国内镜像源 / 全球镜像源」。
 - **默认对象存储改为 RustFS**：默认 Docker Compose 模板改用 `fastgpt-rustfs`（`rustfs:1.0.4`，单盘 `/data` 拓扑，命名卷 `fastgpt-rustfs`）替换 `fastgpt-minio`，`STORAGE_S3_ENDPOINT` 与 `NO_PROXY` 同步指向 `fastgpt-rustfs`；已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs)。
-- **MongoDB 默认版本与初始化升级**：`main` Compose 模板默认 MongoDB 升级为 `8.0.38`（`x86_64` CPU 需满足 MongoDB 8.0 指令集要求），初始化与健康检查统一改用 `mongosh` 检查副本集可写主节点就绪后再放行依赖服务，并完善停机信号转发。
+- **MongoDB 默认版本与初始化升级**：`main` Compose 模板默认 MongoDB 升级为 `8.3.17`（`x86_64` CPU 需满足 MongoDB 8.x 指令集要求），初始化与健康检查统一改用 `mongosh` 检查副本集可写主节点就绪后再放行依赖服务，并完善停机信号转发。
+- **PostgreSQL 默认版本与持久化路径升级**：`main` Compose 模板默认 PG 向量库升级为 `pgvector/pgvector:0.8.7-pg18`，`fastgpt-aiproxy-pg` 改为标准 `postgres:18.7`（国内源统一切换至 `docker.m.daocloud.io`），两者的数据卷挂载路径同步调整为 `/var/lib/postgresql` 以适配 PostgreSQL 18 布局；该调整仅面向全新部署，已有 PG 15 数据卷不可直接挂载。
 - **插件服务独立数据库与回调地址**：Docker Compose 模板为 `fastgpt-plugin` 将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库、显式设置 `DB_MAX_LINK=100`（避免与主库集合混用），补齐 `FASTGPT_BASE_URL=http://fastgpt-app:3000` 并增加对 `fastgpt-mongo` 健康检查的依赖。自定义部署应填写插件容器可访问的主服务地址；若插件容器日志出现反向上传文件 `401`，优先核对该地址，修正后重建插件容器并重试工具。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
 - **Agent Sandbox 服务与健康检查调整**：Compose 模板中的 OpenSandbox Server 升级至 `release-1.2.1`，并预置 `host.docker.internal:host-gateway` 映射使服务可访问沙盒对宿主机发布的端口（使用该主机名的自定义 Compose 部署需将此映射加入 `fastgpt-opensandbox-server` 的 `extra_hosts`）；`fastgpt-agent-sandbox-proxy` 新增 `FASTGPT_APP_REQUEST_TIMEOUT_SECS=60`。`fastgpt-code-sandbox`、`fastgpt-opensandbox-server` 与 `fastgpt-volume-manager` 健康检查改用内置 `node` / `python` 执行，并移除仓库静态清单 `deploy/k8s/volume-manager.yaml`（K8s 卷管理配置参见 [OpenSandbox 配置](/self-host/config/sandbox/opensandbox)）。
 

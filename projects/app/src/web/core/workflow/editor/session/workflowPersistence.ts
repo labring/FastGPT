@@ -113,8 +113,8 @@ export const serializeWorkflowData = ({
 /**
  * 运行与发布共用的校验 gate：Core 完整检查结构、IO、模型和绑定，Runtime 补充编辑期引用与资源问题。
  * 模型权限按应用基线回查；异步检查期间文档或 Session 变化时丢弃结果，避免放行未检查的数据。
- * 普通保存直接使用 serializeWorkflowData；校验失败只写焦点与提示，不返回不完整文档。
- * hideTip 只抑制提示和焦点定位。
+ * 普通保存直接使用 serializeWorkflowData。校验失败时标红并提示，拒绝运行或发布。
+ * hideTip 同时抑制标红与提示。
  */
 export const serializeWorkflowAndCheckData = async ({
   runtimeRef,

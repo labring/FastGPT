@@ -283,14 +283,14 @@ async function fetchIdeAgentRoute(params: {
           ...params.headers,
           ...(isGet ? {} : { 'Content-Type': body ? 'application/zstd' : 'application/json' })
         },
-        // Node fetch 发送流式 POST 请求体时必须声明 half duplex；同时注入加长超时 dispatcher。
+        // Node fetch 发送流式 POST 请求体时必须声明 half duplex；同时与 GET /disk-usage 共用该 dispatcher 绕过宿主机代理。
+        dispatcher: ideAgentHttpDispatcher,
         ...(isGet
           ? {}
           : {
               ...(body
                 ? { body: Readable.toWeb(body) as RequestInit['body'], duplex: 'half' }
-                : { body: JSON.stringify(params.jsonBody ?? {}) }),
-              dispatcher: ideAgentHttpDispatcher
+                : { body: JSON.stringify(params.jsonBody ?? {}) })
             }),
         signal
       };

@@ -681,6 +681,7 @@ export class OpenSandboxClient {
           ...(options?.operationId ? { operationId: options.operationId } : {})
         },
         networkPolicy: config.networkPolicy,
+        ...(config.credentialProxy ? { credentialProxy: config.credentialProxy } : {}),
         volumes: config.volumes,
         extensions: config.extensions,
         signal: options?.signal

@@ -1,5 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Input,
   NumberInput,
@@ -22,7 +23,7 @@ import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
+import { isValidHttpUrl, isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import {
   AgentSandboxProxyConfigSchema,
   AgentSandboxVolumeNamePrefixSchema,
@@ -34,6 +35,11 @@ import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const isValidOptionalUrl = (url?: string) => !url || isValidServiceBaseUrl(url);
+const isValidOptionalProxyUrl = (url?: string) => !url?.trim() || isValidHttpUrl(url);
+const CodeLight = dynamic(() => import('@/components/Markdown/components/CodeLight'), {
+  ssr: false
+});
+const DOCKER_UPSTREAM_PROXY_CODE_MATCH = /language-([\w-]+)/.exec('language-toml#config.toml');
 
 const AgentSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
@@ -86,21 +92,53 @@ const AgentSandboxSubserviceComponent = () => {
       ...(enabled ? [{ id: 'proxy', label: t('admin:sandbox_proxy_settings') }] : []),
       { id: 'specs', label: t('admin:shared_resource_specs') },
       { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
-      { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
+      { id: 'mirrors', label: t('admin:package_mirror_acceleration') },
+      ...(enabled ? [{ id: 'outboundProxy', label: t('admin:sandbox_outbound_proxy') }] : [])
     ],
     [enabled, t]
+  );
+
+  const dockerUpstreamProxyConfigExample = useMemo(
+    () =>
+      `# ${t('admin:sandbox_docker_upstream_proxy_title')}
+# ${t('admin:sandbox_docker_upstream_proxy_desc')}
+
+# ${t('admin:sandbox_docker_upstream_proxy_comment_egress')}
+[egress]
+mode = "dns+nft"
+
+[egress.upstream_proxy]
+url = "http://proxy.corp.local:3128"
+# ${t('admin:sandbox_docker_upstream_proxy_comment_auth')}
+# authorization = "Basic <base64>"
+# ${t('admin:sandbox_docker_upstream_proxy_comment_ca')}
+# ca_cert_path = "/etc/ssl/certs/proxy-ca.pem"`,
+    [t]
   );
 
   const onSave = handleSubmit(async (formData) => {
     const isEnabled = formData.agentSandbox.enabled;
     const isKubernetesActive =
       isEnabled && formData.agentSandbox.opensandbox.runtime === 'kubernetes';
-    // 隐藏的无效数字草稿不能阻断切换运行态或停用服务；可见字段仍由 RHF 与服务端校验。
+    // 隐藏的无效数字或代理草稿不能阻断切换运行态或停用服务；可见字段仍由 RHF 与服务端校验。
     const resolveOvercommitFactor = (value: number, previous = 1) =>
       isKubernetesActive || (Number.isFinite(value) && value >= 1) ? value : previous;
+    const resolveHiddenProxyUrl = (value: string | undefined, previous = '') =>
+      isKubernetesActive || isValidOptionalProxyUrl(value) ? value : previous;
     // 关闭服务时隐藏的无效草稿回退到已保存值，允许管理员正常停用。
     const sanitizedAgentSandbox: DeepPartial<SubserviceConfigForm['agentSandbox']> = {
       ...formData.agentSandbox,
+      common: {
+        ...formData.agentSandbox.common,
+        httpProxy: resolveHiddenProxyUrl(
+          formData.agentSandbox.common.httpProxy,
+          effectiveConfig.agentSandbox?.common?.httpProxy
+        ),
+        httpsProxy: resolveHiddenProxyUrl(
+          formData.agentSandbox.common.httpsProxy,
+          effectiveConfig.agentSandbox?.common?.httpsProxy
+        )
+      },
       proxy: !isEnabled
         ? {
             wsUrl: AgentSandboxProxyConfigSchema.shape.wsUrl.safeParse(
@@ -158,6 +196,9 @@ const AgentSandboxSubserviceComponent = () => {
     if (!value?.trim()) return t('admin:required');
     return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
   };
+
+  const validateOutboundProxyUrl = (value?: string) =>
+    isValidOptionalProxyUrl(value) || t('admin:invalid_sandbox_outbound_proxy_url');
 
   const validateVolumeNamePrefix = (value?: string) => {
     if (!value?.trim()) return t('admin:required');
@@ -771,6 +812,86 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
+
+      {/* 6. 虚拟机出网代理 */}
+      {enabled && (
+        <AdminSettingSection
+          id="outboundProxy"
+          title={t('admin:sandbox_outbound_proxy')}
+          showDivider
+        >
+          {isKubernetesRuntime ? (
+            <SimpleGrid columns={[1, 3]} spacing={5}>
+              <AdminFormItem
+                label={t('admin:sandbox_http_proxy')}
+                tooltip={t('admin:sandbox_http_proxy_tip')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.common.httpProxy', form.formState).error
+                  )}
+                  {...register('agentSandbox.common.httpProxy', {
+                    validate: validateOutboundProxyUrl
+                  })}
+                  placeholder="http://proxy.corp.local:3128"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:sandbox_https_proxy')}
+                tooltip={t('admin:sandbox_https_proxy_tip')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.common.httpsProxy', form.formState).error
+                  )}
+                  {...register('agentSandbox.common.httpsProxy', {
+                    validate: validateOutboundProxyUrl
+                  })}
+                  placeholder="http://proxy.corp.local:3128"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:sandbox_no_proxy')}
+                tooltip={t('admin:sandbox_no_proxy_tip')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.common.noProxy', form.formState).error
+                  )}
+                  {...register('agentSandbox.common.noProxy')}
+                  placeholder=".corp.local,10.0.0.0/8"
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+          ) : (
+            <>
+              <Controller
+                name="agentSandbox.opensandbox.enableUpstreamProxy"
+                control={control}
+                render={({ field }) => (
+                  <AdminSwitchRow
+                    name={field.name}
+                    label={t('admin:sandbox_enable_upstream_proxy')}
+                    tooltip={t('admin:sandbox_enable_upstream_proxy_tip')}
+                    isChecked={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+
+              <CodeLight
+                className="language-toml#config.toml"
+                codeBlock
+                match={DOCKER_UPSTREAM_PROXY_CODE_MATCH}
+              >
+                {dockerUpstreamProxyConfigExample}
+              </CodeLight>
+            </>
+          )}
+        </AdminSettingSection>
+      )}
     </AdminSettingPage>
   );
 };
