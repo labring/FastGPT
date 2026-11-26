@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Flex, Switch } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -30,6 +30,48 @@ import {
 import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
 
 /**
+ * 计算目录侧栏「同步新增」开关的生效态，与 Pro 同步引擎优先级保持一致：
+ * 当知识库级 `syncAll` 为 true（含后端已兼容的存量 `SYSTEM_ROOT` 哨兵）时，
+ * 即使局部导入补建的祖先目录 `syncChildren === false`，同步引擎仍会拉取该目录新增内容。
+ */
+export const resolveFolderSyncChildrenChecked = ({
+  datasetSyncAll,
+  folder
+}: {
+  datasetSyncAll?: boolean;
+  folder?: { syncChildren?: boolean };
+}) => Boolean(datasetSyncAll) || isCollectionSyncChildrenEnabled(folder);
+
+/**
+ * 执行目录 `syncChildren` 切换：仅以写入接口响应确认保存结果；
+ * 写入成功后立即同步本地权威状态并后台独立刷新详情，避免刷新失败被误报为写入失败。
+ */
+export const toggleFolderSyncChildren = async ({
+  syncChildren,
+  saveSyncChildren,
+  onCommitted,
+  refreshFolder,
+  refreshDatasetDetail
+}: {
+  syncChildren: boolean;
+  saveSyncChildren: (syncChildren: boolean) => Promise<unknown>;
+  onCommitted: (syncChildren: boolean) => void;
+  refreshFolder: () => Promise<unknown>;
+  refreshDatasetDetail: () => Promise<unknown>;
+}) => {
+  await saveSyncChildren(syncChildren);
+  onCommitted(syncChildren);
+
+  void refreshFolder().catch(() => {});
+  if (!syncChildren) {
+    // 暂停子目录同步时后端会在同事务内关闭 Dataset.syncAll，后台同步最新知识库详情。
+    void refreshDatasetDetail().catch(() => {});
+  }
+
+  return syncChildren;
+};
+
+/**
  * 知识库详情页进入子目录（folder collection）后的右侧栏。
  *
  * 结构与列表页 FolderSlideCard 完全一致（名称+编辑 / 操作 / 协作者），仅按 collection 的数据能力裁剪：
@@ -50,13 +92,19 @@ const CollectionFolderCard = ({
   const { toast } = useToast();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const patchDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.patchDatasetDetail);
   const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [isMoving, setIsMoving] = useState(false);
+  const activeCollectionIdRef = useRef(collectionId);
+  useEffect(() => {
+    activeCollectionIdRef.current = collectionId;
+  }, [collectionId]);
 
   const {
     data: folder,
     loading,
+    mutate: mutateFolder,
     runAsync: refetchFolder
   } = useRequest(() => getDatasetCollectionById(collectionId), {
     manual: false,
@@ -83,15 +131,29 @@ const CollectionFolderCard = ({
     }
   );
 
-  const { runAsync: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
-    async (syncChildren: boolean) => {
-      await putDatasetCollectionById({ id: collectionId, syncChildren });
-      await Promise.all([
-        refetchFolder(),
-        // 暂停子目录同步时后端会在同事务内关闭 Dataset.syncAll，同步刷新知识库详情。
-        ...(syncChildren ? [] : [loadDatasetDetail(datasetId)])
-      ]);
-      return syncChildren;
+  const { run: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
+    (syncChildren: boolean) => {
+      const targetCollectionId = collectionId;
+      return toggleFolderSyncChildren({
+        syncChildren,
+        saveSyncChildren: (next) =>
+          putDatasetCollectionById({ id: targetCollectionId, syncChildren: next }),
+        onCommitted: (next) => {
+          if (activeCollectionIdRef.current === targetCollectionId) {
+            mutateFolder((prev) => (prev ? { ...prev, syncChildren: next } : prev));
+          }
+          if (!next) {
+            patchDatasetDetail({ syncAll: false });
+          }
+        },
+        refreshFolder: async () => {
+          const latest = await getDatasetCollectionById(targetCollectionId);
+          if (activeCollectionIdRef.current === targetCollectionId) {
+            mutateFolder(latest);
+          }
+        },
+        refreshDatasetDetail: () => loadDatasetDetail(datasetId)
+      });
     },
     {
       onSuccess(syncChildren) {
@@ -173,7 +235,10 @@ const CollectionFolderCard = ({
             <QuestionTip ml={1} label={t('dataset:sync_new_children_tip')} />
             <Box flex={1} />
             <Switch
-              isChecked={isCollectionSyncChildrenEnabled(folder)}
+              isChecked={resolveFolderSyncChildrenChecked({
+                datasetSyncAll: datasetDetail.syncAll,
+                folder
+              })}
               isDisabled={!folder.permission.hasManagePer || isUpdatingSyncChildren}
               onChange={(e) => onToggleSyncChildren(e.target.checked)}
             />

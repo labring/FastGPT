@@ -396,9 +396,9 @@ flowchart TD
   - [x] 懒加载目录树 + 已选/变更摘要面板，支持三态勾选与已导入目录展开；
   - [x] 支持初始定位到当前目录；
   - [x] 移除所有 `RootCollectionId` / `ROOT_FOLDER` 逻辑，改传 `syncAll` 与祖先路径。
-- [x] 改造 `projects/app/src/pageComponents/dataset/detail/CollectionCard/index.tsx`、`Header.tsx` 与 `Info/index.tsx`：
-  - [x] 列表目录行展示并可切换 `syncChildren`（按权限控制，开启仅更新标记并提示下次同步生效）；
-  - [x] 头部与信息页展示并可切换 `Dataset.syncAll`（与 `autoSync` 清晰区分，开启仅更新标记并提示下次同步生效），进入暂停同步的子目录时展示提示与快捷恢复入口。
+- [x] 改造 `projects/app/src/pageComponents/dataset/detail/CollectionFolderCard.tsx` 与 `Info/index.tsx`：
+  - [x] 子目录侧边栏展示并可切换 `syncChildren` 开关（按 `dataset.syncAll || folder.syncChildren` 对齐同步引擎优先级，按目录 `Manage` 权限控制，开启仅更新标记并提示下次同步生效，暂停同步关闭 `Dataset.syncAll`）；
+  - [x] 信息页展示并可切换 `Dataset.syncAll`（与 `autoSync` 清晰区分，开启仅更新标记并提示下次同步生效）。
 - [x] 补全 `zh-CN` / `en` / `zh-Hant` / `ko-KR` i18n 文案（`packages/web/i18n/{zh-CN,en,zh-Hant,ko-KR}/{dataset,account_team,system_migration}.json`）。
 
 ### 阶段五：系统迁移任务与局部测试
