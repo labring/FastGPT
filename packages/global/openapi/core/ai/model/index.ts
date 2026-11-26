@@ -105,8 +105,9 @@ export const AIModelPath: OpenAPIPath = {
   },
   '/core/ai/model/previewImportFromChannel': {
     get: {
-      summary: '预览从系统渠道导入模型',
-      description: '读取渠道上游模型目录，筛除系统已有模型，返回模板或空白配置草稿',
+      summary: '预览从渠道导入模型',
+      description:
+        '读取渠道上游模型目录并与模板匹配。system 仅 root 可用，team 需安装模型权限且仅访问当前成员的渠道',
       tags: [DevApiTagsMap.model],
       requestParams: { query: PreviewImportFromChannelQuerySchema },
       responses: {
@@ -119,8 +120,9 @@ export const AIModelPath: OpenAPIPath = {
   },
   '/core/ai/model/importFromChannel': {
     post: {
-      summary: '从系统渠道创建模型',
-      description: '逐条创建模型并关联到目标渠道；单条失败不影响后续操作',
+      summary: '从渠道创建模型',
+      description:
+        '逐条创建模型并关联到目标渠道。system 仅 root 可用，team 需安装模型权限且仅写入当前成员的模型和渠道',
       tags: [DevApiTagsMap.model],
       requestBody: { content: { 'application/json': { schema: ImportFromChannelBodySchema } } },
       responses: {

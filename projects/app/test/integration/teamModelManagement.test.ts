@@ -1,4 +1,5 @@
 import { setTestLicenseActive, getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -32,6 +33,7 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 }));
 vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   getModelProviderMetadata: () => ({ providers: [], aiproxyChannels: [] }),
+  getModelProviders: () => [],
   preloadModelProviders: vi.fn().mockResolvedValue(undefined),
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
 }));
@@ -43,6 +45,8 @@ import modelConfigHandler from '@/pages/api/core/ai/model/config';
 import createHandler from '@/pages/api/core/ai/model/create';
 import createFromTemplatesHandler from '@/pages/api/core/ai/model/createFromTemplates';
 import deleteHandler from '@/pages/api/core/ai/model/delete';
+import importFromChannelHandler from '@/pages/api/core/ai/model/importFromChannel';
+import previewImportFromChannelHandler from '@/pages/api/core/ai/model/previewImportFromChannel';
 import templatesHandler from '@/pages/api/core/ai/model/templates';
 import updateChannelsHandler from '@/pages/api/core/ai/model/updateChannels';
 
@@ -52,6 +56,7 @@ type MockChannel = {
   name: string;
   key: string;
   models: string[];
+  catalog?: { id: string }[];
   model_mapping?: Record<string, string>;
   priority?: number;
   configs?: Record<string, unknown>;
@@ -59,7 +64,7 @@ type MockChannel = {
   group_id?: string;
 };
 
-const GROUP_PATH = /^\/api\/group\/([^/]+)\/channel(s)?(?:\/(\d+|search))?\/?(?:\?.*)?$/;
+const GROUP_PATH = /^\/api\/group\/([^/]+)\/channel(s)?(?:\/(\d+|search)(\/models)?)?\/?(?:\?.*)?$/;
 
 /** 构造完整的模型草稿，team/system 作用域由接口入参决定，不信任草稿里的归属字段。 */
 const modelDraft = (model: string, name = model) => ({
@@ -144,8 +149,15 @@ describe('team model management integration: permission, member isolation and AI
         return ok({ channels: bucket, total: bucket.length });
       }
       const channel = bucket?.find((item) => item.id === id);
-      if (!channel) return notFound();
-      if (req.method === 'GET') return ok(channel);
+      if (!channel) {
+        if (req.method === 'GET' && !match[4]) {
+          return res
+            .writeHead(500)
+            .end(JSON.stringify({ success: false, message: 'group_channel record not found' }));
+        }
+        return notFound();
+      }
+      if (req.method === 'GET') return ok(match[4] ? (channel.catalog ?? []) : channel);
       if (req.method === 'PUT') {
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
@@ -284,6 +296,14 @@ describe('team model management integration: permission, member isolation and AI
           auth: plain,
           body: { templates: [{ type: ModelTypeEnum.llm, model: 'tpl' }], channelType: 'team' }
         }),
+        Call(previewImportFromChannelHandler, {
+          auth: plain,
+          query: { channelId: 1, channelType: 'team' }
+        }),
+        Call(importFromChannelHandler, {
+          auth: plain,
+          body: { channelId: 1, channelType: 'team', models: [modelDraft('plain-model')] }
+        }),
         Call(templatesHandler, { auth: plain, query: { channelType: 'team' } }),
         Call(modelConfigHandler, { auth: plain, query: { channelType: 'team' } }),
         Call(channelListHandler, { auth: plain, query: { channelType: 'team' } }),
@@ -397,6 +417,94 @@ describe('team model management integration: permission, member isolation and AI
       });
       expect(rootRes.code).toBe(200);
       expect(rootRes.data.models).toHaveLength(1);
+    });
+  });
+
+  describe('channel imports for members', () => {
+    it('imports a model into the current member catalog even when other catalogs have the same name', async () => {
+      const { installer, otherInstaller } = await createMembers();
+      const shared = modelDraft('vendor/shared-model');
+      const root = await getRootUser();
+      const system = await Call(createHandler, {
+        auth: root,
+        body: {
+          modelData: { ...shared, scope: ModelScopeEnum.system },
+          channelType: 'system'
+        }
+      });
+      expect(system.code).toBe(200);
+      const other = await Call(createHandler, {
+        auth: otherInstaller,
+        body: { modelData: shared, channelType: 'team' }
+      });
+      expect(other.code).toBe(200);
+      const existing = await Call(createHandler, {
+        auth: installer,
+        body: { modelData: modelDraft('installed-alias'), channelType: 'team' }
+      });
+      expect(existing.code).toBe(200);
+      const groupId = `fastgpt:tmb:${installer.tmbId}`;
+      const channel = addChannel(groupId, {
+        id: 101,
+        name: 'import channel',
+        models: ['installed-alias'],
+        model_mapping: { 'installed-alias': 'vendor/installed-model' },
+        catalog: [{ id: 'vendor/installed-model' }, { id: shared.model }]
+      });
+      const query = { channelType: 'team', channelId: channel.id };
+
+      const preview = await Call(previewImportFromChannelHandler, { auth: installer, query });
+      expect(preview.code, preview.error).toBe(200);
+      expect(preview.data.items).toEqual([
+        expect.objectContaining({ providerModelSlug: shared.model })
+      ]);
+      const imported = await Call(importFromChannelHandler, {
+        auth: installer,
+        body: { ...query, models: [shared] }
+      });
+      expect(imported.code, imported.error).toBe(200);
+      expect(imported.data.results).toEqual([
+        { model: shared.model, modelId: expect.any(String), status: 'success' }
+      ]);
+      expect(requests).toContainEqual({
+        method: 'PUT',
+        url: `/api/group/${encodeURIComponent(groupId)}/channel/${channel.id}`
+      });
+      expect(channel.models).toEqual(['installed-alias', shared.model]);
+      const config = await Call(modelConfigHandler, {
+        auth: installer,
+        query: { channelType: 'team' }
+      });
+      expect(config.data.models).toContainEqual(
+        expect.objectContaining({
+          modelId: imported.data.results[0].modelId,
+          model: shared.model,
+          scope: ModelScopeEnum.team,
+          channels: [expect.objectContaining({ id: channel.id })]
+        })
+      );
+      expect(channel.model_mapping).toEqual({ 'installed-alias': 'vendor/installed-model' });
+      const refreshed = await Call(previewImportFromChannelHandler, { auth: installer, query });
+      expect(refreshed.data.items).toEqual([]);
+    });
+
+    it('rejects preview and submit for a different member’s channel', async () => {
+      const { installer, otherInstaller } = await createMembers();
+      const foreign = addChannel(`fastgpt:tmb:${otherInstaller.tmbId}`, {
+        id: 101,
+        name: 'other channel',
+        models: [],
+        catalog: [{ id: 'vendor/model' }]
+      });
+      const query = { channelType: 'team', channelId: foreign.id };
+      const preview = await Call(previewImportFromChannelHandler, { auth: installer, query });
+      const imported = await Call(importFromChannelHandler, {
+        auth: installer,
+        body: { ...query, models: [modelDraft('vendor/model')] }
+      });
+      expect(preview.error).toBe(ModelErrEnum.channelNotExist);
+      expect(imported.error).toBe(ModelErrEnum.channelNotExist);
+      expect(foreign.models).toEqual([]);
     });
   });
 

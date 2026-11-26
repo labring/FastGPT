@@ -5,6 +5,6 @@ import type {
 
 export type ImportPreviewRow = PreviewImportFromChannelResponse['items'][number];
 export type RowResult = {
-  status: ImportFromChannelResponse['results'][number]['status'] | 'unknown';
+  status: ImportFromChannelResponse['results'][number]['status'];
   error?: string;
 };

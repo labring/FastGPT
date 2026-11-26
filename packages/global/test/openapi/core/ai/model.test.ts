@@ -13,6 +13,7 @@ import {
   UpdateModelStatusBodySchema,
   ImportedSystemModelSchema,
   MyLLMModelItemSchema,
+  PreviewImportFromChannelQuerySchema,
   PreviewImportFromChannelResponseSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
@@ -115,6 +116,7 @@ describe('admin system model API schemas', () => {
 
     const body = ImportFromChannelBodySchema.parse({
       channelId: 1,
+      channelType: 'system',
       models: [{ ...modelData, isActive: false, sortOrder: 10 }, modelData]
     });
 
@@ -126,6 +128,15 @@ describe('admin system model API schemas', () => {
       modelData
     ]);
     expect(body.models[0]).not.toHaveProperty('sortOrder');
+  });
+
+  it('requires channelType to preview and apply a channel import', () => {
+    const preview = PreviewImportFromChannelQuerySchema.safeParse({ channelId: 1 });
+    const apply = ImportFromChannelBodySchema.safeParse({ channelId: 1, models: [] });
+    const scopeIssue = expect.objectContaining({ path: ['channelType'] });
+
+    expect(preview.error?.issues).toEqual([scopeIssue]);
+    expect(apply.error?.issues).toEqual([scopeIssue]);
   });
 
   it('rejects associating an existing model through channel import', () => {

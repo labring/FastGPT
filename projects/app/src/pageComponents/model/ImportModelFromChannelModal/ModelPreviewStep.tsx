@@ -19,7 +19,11 @@ import type {
   AIModelDataType,
   AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/utils';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import {
+  channelTypeToScope,
+  mergeChannelTemplateModelData
+} from '@fastgpt/global/core/ai/model/utils';
 import {
   defaultProvider,
   type ModelProviderItemType
@@ -83,6 +87,7 @@ export const isUnsupportedChannelCatalogError = (error: unknown) =>
     error.statusText === ModelErrEnum.channelCatalogUnsupported
   );
 type RowCatalog = {
+  channelType: ChannelType;
   availableTemplates: AIModelDocumentDataType[];
   templateMap: Map<string, AIModelDocumentDataType>;
   providerById: Map<string, ModelProviderItemType>;
@@ -147,12 +152,14 @@ export const resolveRowSelection = ({
 /** 用同一份草稿测试和导入，模型标识始终采用上游 ID。 */
 const resolveImportDraft = ({
   row,
+  channelType,
   presetKey,
   selectedPresetData,
   modelType,
   createModelData
 }: {
   row: ImportPreviewRow;
+  channelType: ChannelType;
   presetKey: string;
   selectedPresetData: PreviewModelData;
   modelType?: ModelTypeEnum;
@@ -177,7 +184,8 @@ const resolveImportDraft = ({
       contextLength,
       maxCompletionTokens
     }),
-    model: providerModelSlug
+    model: providerModelSlug,
+    scope: channelTypeToScope(channelType)
   };
 };
 
@@ -191,10 +199,12 @@ export const resolveModelTestTarget = (
 
 const ImportModelTestButton = ({
   target,
+  channelType,
   channelId,
   channelName
 }: {
   target: ImportModelTestTarget;
+  channelType: ChannelType;
   channelId: number;
   channelName: string;
 }) => {
@@ -202,7 +212,7 @@ const ImportModelTestButton = ({
   const { testingChannelIds, testModelChannel } = useModelChannelTest({
     target,
     channels: [{ id: channelId, name: channelName }],
-    channelType: 'system'
+    channelType
   });
 
   return (
@@ -299,6 +309,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     : undefined;
   const modelTestTarget = resolveModelTestTarget({
     row,
+    channelType: catalog.channelType,
     presetKey: selectedPresetKey,
     selectedPresetData,
     modelType,
@@ -423,6 +434,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
         {catalog.channel && (
           <ImportModelTestButton
             target={modelTestTarget}
+            channelType={catalog.channelType}
             channelId={catalog.channel.id}
             channelName={catalog.channel.name}
           />
@@ -433,6 +445,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
 });
 
 const ModelPreviewStep = ({
+  channelType,
   channelId,
   channel,
   installedModels,
@@ -441,6 +454,7 @@ const ModelPreviewStep = ({
   onSubmit,
   onPrevious
 }: {
+  channelType: ChannelType;
   channelId: number;
   channel?: ModelChannelSummary;
   installedModels: Pick<AIModelDataType, 'model'>[];
@@ -482,7 +496,7 @@ const ModelPreviewStep = ({
     });
 
     try {
-      const preview = await getImportPreviewFromChannel({ channelId });
+      const preview = await getImportPreviewFromChannel({ channelId, channelType });
       if (!isCurrentRequest()) return;
       updateState((draft) => {
         draft.items = preview.items;
@@ -493,7 +507,7 @@ const ModelPreviewStep = ({
           draft.templateLoading = true;
         });
         try {
-          const templateResponse = await getModelTemplates({ channelType: 'system' });
+          const templateResponse = await getModelTemplates({ channelType });
           if (isCurrentRequest()) {
             updateState((draft) => {
               draft.templates = templateResponse.models;
@@ -526,7 +540,7 @@ const ModelPreviewStep = ({
         });
       }
     }
-  }, [channelId, updateState]);
+  }, [channelId, channelType, updateState]);
 
   useEffect(() => {
     void loadPreview();
@@ -561,6 +575,7 @@ const ModelPreviewStep = ({
   );
   const catalog = useMemo<RowCatalog>(
     () => ({
+      channelType,
       availableTemplates,
       templateMap,
       providerById,
@@ -570,6 +585,7 @@ const ModelPreviewStep = ({
       templateLoading: state.templateLoading
     }),
     [
+      channelType,
       availableTemplates,
       templateMap,
       providerById,
@@ -712,6 +728,7 @@ const ModelPreviewStep = ({
       const { isActive, presetKey, modelType, selectedPresetData } = resolveSelection(row);
       const modelData = resolveImportDraft({
         row,
+        channelType,
         presetKey,
         modelType,
         selectedPresetData,

@@ -9,19 +9,21 @@ const {
   createModelMock,
   getSystemModelHandleMock,
   resolveChannelMock,
-  getSystemChannelModelsMock,
+  getModelCatalogMock,
   getTypeMetasMock,
   getModelProvidersMock,
   refreshTemplatesMock,
+  updateGroupChannelMock,
   updateChannelMock
 } = vi.hoisted(() => ({
   createModelMock: vi.fn(),
   getSystemModelHandleMock: vi.fn(),
   resolveChannelMock: vi.fn(),
-  getSystemChannelModelsMock: vi.fn(),
+  getModelCatalogMock: vi.fn(),
   getTypeMetasMock: vi.fn(),
   getModelProvidersMock: vi.fn(),
   refreshTemplatesMock: vi.fn(),
+  updateGroupChannelMock: vi.fn(),
   updateChannelMock: vi.fn()
 }));
 
@@ -45,9 +47,9 @@ vi.mock('@fastgpt/service/core/ai/model/template', () => ({
 }));
 vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
   aiProxyClient: {
-    getSystemChannelModels: getSystemChannelModelsMock,
     getTypeMetas: getTypeMetasMock,
-    system: { channels: { update: updateChannelMock } }
+    group: () => ({ channels: { update: updateGroupChannelMock } }),
+    system: { channels: { getModelCatalog: getModelCatalogMock, update: updateChannelMock } }
   }
 }));
 
@@ -67,6 +69,11 @@ const createModelData = (model: string, isActive?: boolean): CreateModelData => 
 });
 
 describe('apply model imports from channel', () => {
+  const scope = {
+    channelType: 'system' as const,
+    teamId: '6000000000000000000000aa',
+    tmbId: '60000000000000000000000a'
+  };
   let channel: AiproxyChannel;
 
   beforeEach(() => {
@@ -83,7 +90,7 @@ describe('apply model imports from channel', () => {
     getSystemModelHandleMock.mockResolvedValue({
       getSystemModels: () => [{ modelId: 'existing-id', model: 'existing-model' }]
     });
-    getSystemChannelModelsMock.mockResolvedValue([
+    getModelCatalogMock.mockResolvedValue([
       {
         id: 'openai/unknown-model',
         architecture: { output_modalities: ['text', 'embedding'] },
@@ -94,15 +101,17 @@ describe('apply model imports from channel', () => {
     getTypeMetasMock.mockResolvedValue({ 1: { name: ' OpenAI ' } });
     getModelProvidersMock.mockReturnValue([{ id: 'openai', name: 'openai' }]);
     refreshTemplatesMock.mockResolvedValue([]);
-    updateChannelMock.mockImplementation(async (_id: number, patch: Partial<AiproxyChannel>) => {
+    const updateChannel = async (_id: number, patch: Partial<AiproxyChannel>) => {
       Object.assign(channel, patch);
-    });
+    };
+    updateChannelMock.mockImplementation(updateChannel);
+    updateGroupChannelMock.mockImplementation(updateChannel);
   });
 
   it('infers a unique cached provider and keeps context length when type is unresolved', async () => {
     const preview = await previewImportFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a'
+      ...scope
     });
 
     expect(preview.items[0]).toMatchObject({ contextLength: 48000, maxCompletionTokens: 2048 });
@@ -120,7 +129,7 @@ describe('apply model imports from channel', () => {
 
     const preview = await previewImportFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a'
+      ...scope
     });
 
     expect(preview.items[0].candidate).toMatchObject({
@@ -132,7 +141,7 @@ describe('apply model imports from channel', () => {
   });
 
   it('maps an unsupported channel catalog to a stable model error', async () => {
-    getSystemChannelModelsMock.mockRejectedValueOnce(
+    getModelCatalogMock.mockRejectedValueOnce(
       Object.assign(new AxiosError('model catalog is unsupported for this channel type'), {
         response: { status: 501 }
       })
@@ -141,7 +150,7 @@ describe('apply model imports from channel', () => {
     await expect(
       previewImportFromChannel({
         channelId: 1,
-        tmbId: '60000000000000000000000a'
+        ...scope
       })
     ).rejects.toMatchObject({
       name: 'UserError',
@@ -152,7 +161,7 @@ describe('apply model imports from channel', () => {
   it('excludes configured models by exact name and target-channel alias', async () => {
     channel.models = ['existing-model'];
     channel.model_mapping = { 'existing-model': 'vendor/opaque-id' };
-    getSystemChannelModelsMock.mockResolvedValueOnce([
+    getModelCatalogMock.mockResolvedValueOnce([
       { id: 'vendor/opaque-id' },
       { id: 'existing-model' },
       { id: 'vendor/new-model' }
@@ -160,7 +169,7 @@ describe('apply model imports from channel', () => {
 
     const preview = await previewImportFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a'
+      ...scope
     });
 
     expect(preview.items.map(({ providerModelSlug }) => providerModelSlug)).toEqual([
@@ -173,12 +182,12 @@ describe('apply model imports from channel', () => {
     getSystemModelHandleMock.mockResolvedValue({
       getSystemModels: () => [{ modelId: 'existing-id', model: 'mini' }]
     });
-    getSystemChannelModelsMock.mockResolvedValueOnce([{ id: 'openai/gpt-4o-mini' }]);
+    getModelCatalogMock.mockResolvedValueOnce([{ id: 'openai/gpt-4o-mini' }]);
     refreshTemplatesMock.mockResolvedValueOnce([createModelData('gpt-4o-mini')]);
 
     const preview = await previewImportFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a'
+      ...scope
     });
 
     expect(preview.items).toMatchObject([
@@ -192,11 +201,11 @@ describe('apply model imports from channel', () => {
   it('keeps a nonmatching model available when a target alias points elsewhere', async () => {
     channel.models = ['existing-model'];
     channel.model_mapping = { 'existing-model': 'old/provider-id' };
-    getSystemChannelModelsMock.mockResolvedValueOnce([{ id: 'vendor/existing-model' }]);
+    getModelCatalogMock.mockResolvedValueOnce([{ id: 'vendor/existing-model' }]);
 
     const preview = await previewImportFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a'
+      ...scope
     });
 
     expect(preview.items[0].candidate).toMatchObject({ category: 'blank' });
@@ -211,8 +220,7 @@ describe('apply model imports from channel', () => {
 
     const results = await importFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a',
-      teamId: '6000000000000000000000aa',
+      ...scope,
       models: [
         createModelData('upstream/duplicate'),
         createModelData('upstream/created-without-binding'),
@@ -237,28 +245,129 @@ describe('apply model imports from channel', () => {
     expect(results.results[2]).toMatchObject({ status: 'success', modelId: 'successful-id' });
   });
 
-  it('uses provider model slug for new models and honors enabled state', async () => {
-    createModelMock.mockResolvedValueOnce({ modelId: 'disabled-id' });
-    channel.models = ['existing-model'];
-    channel.model_mapping = { 'existing-model': 'vendor/existing-model' };
+  it.each(['system', 'team'] as const)(
+    'adds the upstream model with the %s channel update and honors enabled state',
+    async (channelType) => {
+      createModelMock.mockResolvedValueOnce({ modelId: 'disabled-id' });
+      channel.models = ['existing-model'];
+      channel.model_mapping = { 'existing-model': 'vendor/existing-model' };
 
-    const results = await importFromChannel({
+      const results = await importFromChannel({
+        channelId: 1,
+        ...scope,
+        channelType,
+        models: [createModelData('upstream/disabled-model', false)]
+      });
+
+      expect(results.results.map(({ status }) => status)).toEqual(['success']);
+      expect(createModelMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channelType,
+          modelData: expect.objectContaining({ model: 'upstream/disabled-model', isActive: false })
+        })
+      );
+      const update = channelType === 'system' ? updateChannelMock : updateGroupChannelMock;
+      expect(update).toHaveBeenCalledExactlyOnceWith(1, {
+        models: ['existing-model', 'upstream/disabled-model'],
+        model_mapping: { 'existing-model': 'vendor/existing-model' }
+      });
+    }
+  );
+
+  it.each([true, false])(
+    'rechecks an interrupted binding that committed: %s',
+    async (committed) => {
+      const model = 'vendor/interrupted-model';
+      createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
+      updateChannelMock.mockImplementationOnce(async (_id, patch) => {
+        if (committed) Object.assign(channel, patch);
+        throw new AxiosError('connection interrupted', 'ECONNRESET');
+      });
+
+      const { results } = await importFromChannel({
+        channelId: 1,
+        ...scope,
+        models: [createModelData(model)]
+      });
+
+      expect(results).toEqual([
+        {
+          model,
+          modelId: 'created-id',
+          ...(committed
+            ? { status: 'success' }
+            : { status: 'unknown', error: 'connection interrupted' })
+        }
+      ]);
+    }
+  );
+
+  it.each(['system', 'team'] as const)(
+    'keeps an unconfirmed %s binding unknown after a server error',
+    async (channelType) => {
+      const model = 'vendor/unconfirmed-model';
+      createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
+      const update = channelType === 'system' ? updateChannelMock : updateGroupChannelMock;
+      update.mockRejectedValueOnce(
+        Object.assign(new AxiosError('failed to bind model to channel'), {
+          response: { status: 500 }
+        })
+      );
+
+      const { results } = await importFromChannel({
+        channelId: 1,
+        ...scope,
+        channelType,
+        models: [createModelData(model)]
+      });
+
+      expect(results).toEqual([
+        {
+          model,
+          modelId: 'created-id',
+          status: 'unknown',
+          error: 'failed to bind model to channel'
+        }
+      ]);
+    }
+  );
+
+  it('blocks a concurrent import for the same system channel before creating its model', async () => {
+    const updateStarted = Promise.withResolvers<void>();
+    const completeUpdate = Promise.withResolvers<void>();
+    createModelMock.mockResolvedValueOnce({ modelId: 'first-id' });
+    updateChannelMock.mockImplementationOnce(async (_id, patch) => {
+      updateStarted.resolve();
+      await completeUpdate.promise;
+      Object.assign(channel, patch);
+    });
+    const first = importFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a',
-      teamId: '6000000000000000000000aa',
-      models: [createModelData('upstream/disabled-model', false)]
+      ...scope,
+      models: [createModelData('first')]
     });
+    const second = {
+      channelId: 1,
+      ...scope,
+      tmbId: '60000000000000000000000b',
+      models: [createModelData('second')]
+    };
 
-    expect(results.results.map(({ status }) => status)).toEqual(['success']);
-    expect(createModelMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        modelData: expect.objectContaining({ model: 'upstream/disabled-model', isActive: false })
-      })
-    );
-    expect(updateChannelMock).toHaveBeenCalledExactlyOnceWith(1, {
-      models: ['existing-model', 'upstream/disabled-model'],
-      model_mapping: { 'existing-model': 'vendor/existing-model' }
-    });
+    await Promise.race([updateStarted.promise, first]);
+    try {
+      await expect(importFromChannel(second)).rejects.toMatchObject({
+        name: 'RedisLeaseUnavailableError'
+      });
+      expect(createModelMock).toHaveBeenCalledTimes(1);
+    } finally {
+      completeUpdate.resolve();
+      await first;
+    }
+
+    createModelMock.mockResolvedValueOnce({ modelId: 'second-id' });
+    const { results } = await importFromChannel(second);
+    expect(results).toEqual([{ status: 'success', model: 'second', modelId: 'second-id' }]);
+    expect(channel.models).toEqual(['first', 'second']);
   });
 
   it('omits the patch mapping key when the channel has no mappings', async () => {
@@ -266,8 +375,7 @@ describe('apply model imports from channel', () => {
     createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
     await importFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a',
-      teamId: '6000000000000000000000aa',
+      ...scope,
       models: [createModelData('new-upstream')]
     });
 
@@ -279,8 +387,7 @@ describe('apply model imports from channel', () => {
 
     const results = await importFromChannel({
       channelId: 1,
-      tmbId: '60000000000000000000000a',
-      teamId: '6000000000000000000000aa',
+      ...scope,
       models: [createModelData('new-upstream')]
     });
 

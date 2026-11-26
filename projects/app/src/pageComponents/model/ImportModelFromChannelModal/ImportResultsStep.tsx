@@ -1,5 +1,6 @@
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tooltip, Tr } from '@chakra-ui/react';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import type {
   CreateModelData,
   ModelChannelSummary
@@ -123,6 +124,7 @@ const ImportResultsTable = ({
 };
 
 const ImportResultsStep = ({
+  channelType,
   channelId,
   channel,
   models,
@@ -131,6 +133,7 @@ const ImportResultsStep = ({
   onRefresh,
   onImportSuccess
 }: {
+  channelType: ChannelType;
   channelId: number;
   channel?: ModelChannelSummary;
   models: CreateModelData[];
@@ -163,7 +166,7 @@ const ImportResultsStep = ({
     try {
       let shouldRefresh = false;
       try {
-        const response = await postImportModelsFromChannel({ channelId, models });
+        const response = await postImportModelsFromChannel({ channelId, channelType, models });
         const resultByModel = new Map(response.results.map((result) => [result.model, result]));
         for (const { model } of models) {
           const result = resultByModel.get(model);
@@ -173,7 +176,7 @@ const ImportResultsStep = ({
             result
               ? {
                   status: result.status,
-                  error: result.status === 'failed' ? result.error : undefined
+                  error: result.status === 'success' ? undefined : result.error
                 }
               : { status: 'unknown' }
           );

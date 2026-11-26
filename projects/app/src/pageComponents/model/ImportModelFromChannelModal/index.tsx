@@ -3,6 +3,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import type {
   AIModelDataType,
   AIModelDocumentDataType
@@ -24,6 +25,7 @@ type ImportFlowState = {
 };
 
 const ImportModelFromChannelModal = ({
+  channelType,
   channels,
   installedModels,
   providers,
@@ -31,6 +33,7 @@ const ImportModelFromChannelModal = ({
   onSuccess,
   onClose
 }: {
+  channelType: ChannelType;
   channels: ModelChannelSummary[];
   installedModels: Pick<AIModelDataType, 'model'>[];
   providers: ModelProviderItemType[];
@@ -66,6 +69,7 @@ const ImportModelFromChannelModal = ({
     >
       {flow.step === 'select' && (
         <SelectChannelStep
+          channelType={channelType}
           channelId={flow.channelId}
           onChannelChange={(channelId) => setFlow({ step: 'select', channelId })}
           channels={channels}
@@ -78,6 +82,7 @@ const ImportModelFromChannelModal = ({
       {flow.step !== 'select' && flow.channelId !== '' && (
         <Box display={flow.step === 'preview' ? 'block' : 'none'} h="100%" minH={0}>
           <ModelPreviewStep
+            channelType={channelType}
             channelId={flow.channelId}
             channel={channel}
             installedModels={installedModels}
@@ -90,6 +95,7 @@ const ImportModelFromChannelModal = ({
       )}
       {flow.step === 'results' && flow.channelId !== '' && flow.models && (
         <ImportResultsStep
+          channelType={channelType}
           channelId={flow.channelId}
           channel={channel}
           models={flow.models}
