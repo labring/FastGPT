@@ -120,15 +120,28 @@ describe('formatDbModelToDocumentData', () => {
       }
     };
 
-    // JSON 导出 / 持久化文档转换保留缺省语义，避免将运行期兜底六档写回数据库
-    const exportedDoc = formatDbModelToDocumentData(legacyRaw);
-    expect(exportedDoc.type).toBe(ModelTypeEnum.llm);
-    if (exportedDoc.type === ModelTypeEnum.llm) {
-      expect(exportedDoc.config.reasoningEffortList).toBeUndefined();
+    // JSON 导出 / 持久化文档转换保留缺省语义（含历史 null），避免阻断加载或把运行期六档写回数据库
+    for (const rawDoc of [
+      legacyRaw,
+      { ...legacyRaw, config: { ...legacyRaw.config, reasoningEffortList: null } }
+    ]) {
+      const exportedDoc = formatDbModelToDocumentData(rawDoc);
+      expect(exportedDoc.type).toBe(ModelTypeEnum.llm);
+      if (exportedDoc.type === ModelTypeEnum.llm) {
+        expect(exportedDoc.config.reasoningEffortList).toBeUndefined();
+      }
     }
 
-    // 运行期模型加载对缺省、空数组及全未知枚举兜底为全部 6 档
-    for (const rawList of [undefined, [], ['only_unknown_level']]) {
+    // 写入 Schema 仍严格拒绝 null
+    expect(
+      LLMModelConfigSchema.safeParse({
+        ...legacyRaw.config,
+        reasoningEffortList: null
+      }).success
+    ).toBe(false);
+
+    // 运行期模型加载对缺省、null、空数组及全未知枚举兜底为全部 6 档
+    for (const rawList of [undefined, null, [], ['only_unknown_level']]) {
       const runtime = formatDbModelToRuntimeModel(
         {
           ...legacyRaw,

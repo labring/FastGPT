@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelScopeEnum,
+  ModelTypeEnum,
+  REASONING_EFFORT_LEVELS
+} from '@fastgpt/global/core/ai/constants';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationFailedRecord,
@@ -9,6 +13,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import {
   flatModelToDocumentData,
   formatDbModelToDocumentData
@@ -686,7 +691,34 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
       );
     }
 
-    // 2) 旧版插件未携带 reasoningEffortList 时安装新模板，也不得写入兜底六档
+    // 2) 存量 reasoningEffortList: null 在回填前可正常加载运行时目录（六档兜底）与导出 JSON，且随后可被精准回填
+    const nullListLegacy = await seedModel({
+      model: 'gemini-2.5-pro',
+      config: {
+        maxContext: 1000000,
+        maxResponse: 64000,
+        quoteMaxToken: 500000,
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: null
+      }
+    });
+    const rawNullFromDb = (await MongoAIModel.findById(nullListLegacy._id).lean()) as Record<
+      string,
+      unknown
+    >;
+    const exportedNullDoc = formatDbModelToDocumentData(rawNullFromDb);
+    expect(exportedNullDoc.type).toBe(ModelTypeEnum.llm);
+    if (exportedNullDoc.type === ModelTypeEnum.llm) {
+      expect(exportedNullDoc.config.reasoningEffortList).toBeUndefined();
+    }
+    const runtimeNullModel = formatDbModelToRuntimeModel(rawNullFromDb, { fallbackProvider: true });
+    expect(runtimeNullModel.type).toBe(ModelTypeEnum.llm);
+    if (runtimeNullModel.type === ModelTypeEnum.llm) {
+      expect(runtimeNullModel.config.reasoningEffortList).toEqual([...REASONING_EFFORT_LEVELS]);
+    }
+
+    // 3) 旧版插件未携带 reasoningEffortList 时安装新模板，也不得写入兜底六档
     const installedFromLegacyPlugin = flatModelToDocumentData({
       type: ModelTypeEnum.llm,
       provider: 'ChatGLM',
@@ -704,7 +736,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     }
     const inserted = await MongoAIModel.collection.insertOne(installedFromLegacyPlugin as any);
 
-    // 3) 升级插件后执行手动回填，两条记录均可准确回填插件预设（而非停留在含 none 的六档）
+    // 4) 升级插件后执行手动回填，三条记录均可准确回填插件预设（而非停留在含 none 的六档）
     mocks.listModels.mockResolvedValue([
       ...pluginPresets,
       {
@@ -725,10 +757,13 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     const result = await backfillModelReasoningEffortListMigration(context);
     expect(result).toEqual({
       presetCount: 3,
-      verifiedCount: 2
+      verifiedCount: 3
     });
     expect((await MongoAIModel.findById(legacy._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['none', 'high']
+    });
+    expect((await MongoAIModel.findById(nullListLegacy._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['low', 'high']
     });
     expect((await MongoAIModel.findById(inserted.insertedId).lean())?.config).toMatchObject({
       reasoningEffortList: ['low', 'high', 'xhigh']

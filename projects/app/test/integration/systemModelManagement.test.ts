@@ -450,7 +450,7 @@ describe('system model management integration: MongoDB transactions and runtime 
       ((await MongoAIModel.findById(templateModelId).lean())?.config as any)?.reasoningEffortList
     ).toEqual(['minimal', 'high']);
 
-    // 4. 数据库中同时存在历史未配列表记录与含未知未来枚举记录时，loadInstalledModels 均能正常加载
+    // 4. 数据库中同时存在历史缺省、null 列表与含未知未来枚举记录时，loadInstalledModels 均能正常加载
     await MongoAIModel.collection.insertMany([
       {
         ...createDraft('legacy-reasoning'),
@@ -460,6 +460,17 @@ describe('system model management integration: MongoDB transactions and runtime 
           quoteMaxToken: 24000,
           reasoning: true,
           reasoningEffort: true
+        }
+      },
+      {
+        ...createDraft('null-list-reasoning'),
+        config: {
+          maxContext: 32000,
+          maxResponse: 16000,
+          quoteMaxToken: 24000,
+          reasoning: true,
+          reasoningEffort: true,
+          reasoningEffortList: null
         }
       },
       {
@@ -476,26 +487,28 @@ describe('system model management integration: MongoDB transactions and runtime 
     ]);
     await loadInstalledModels();
 
-    const legacyModel = getCachedSystemModelHandle()?.findModelData(
-      { model: 'legacy-reasoning' },
-      { type: ModelTypeEnum.llm }
-    );
-    expect(legacyModel?.config.reasoningEffortList).toEqual([
-      'none',
-      'minimal',
-      'low',
-      'medium',
-      'high',
-      'xhigh'
-    ]);
-    expect(getSupportedReasoningEfforts(legacyModel)).toEqual([
-      'none',
-      'minimal',
-      'low',
-      'medium',
-      'high',
-      'xhigh'
-    ]);
+    for (const modelName of ['legacy-reasoning', 'null-list-reasoning']) {
+      const loadedModel = getCachedSystemModelHandle()?.findModelData(
+        { model: modelName },
+        { type: ModelTypeEnum.llm }
+      );
+      expect(loadedModel?.config.reasoningEffortList).toEqual([
+        'none',
+        'minimal',
+        'low',
+        'medium',
+        'high',
+        'xhigh'
+      ]);
+      expect(getSupportedReasoningEfforts(loadedModel)).toEqual([
+        'none',
+        'minimal',
+        'low',
+        'medium',
+        'high',
+        'xhigh'
+      ]);
+    }
 
     const futureModel = getCachedSystemModelHandle()?.findModelData(
       { model: 'future-db-reasoning' },

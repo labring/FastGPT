@@ -50,6 +50,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 
 /**
  * 文档读取边界兼容归一化：
+ * - 将历史或待回填记录中的 `reasoningEffortList: null` 归一为缺省值，避免在手动回填前阻断目录加载与 JSON 导出；
  * - 过滤历史或高版本插件带来的未识别思考等级并按标准顺序去重，避免单个未知枚举值阻断目录、导出或模板加载；
  * - 保留未配置时的 `undefined` 缺省语义，避免 JSON 导出保存或旧插件模板安装把运行期兜底六档固化到数据库；
  * - 运行期空/缺省兜底由 `formatDbModelToRuntimeModel` 与 `getSupportedReasoningEfforts` 统一提供。
@@ -67,6 +68,10 @@ const normalizeLlmConfigForRead = (
     return config;
   }
   const llmConfig = config as Record<string, unknown>;
+  if (llmConfig.reasoningEffortList === null) {
+    const { reasoningEffortList: _ignored, ...restConfig } = llmConfig;
+    return restConfig;
+  }
   if (!Array.isArray(llmConfig.reasoningEffortList)) {
     return config;
   }
