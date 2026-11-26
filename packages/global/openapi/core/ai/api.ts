@@ -65,6 +65,11 @@ export const LLMRequestRecordSchema = z.object({
   response: z.record(z.string(), z.any()).meta({
     description: 'LLM 响应内容'
   }),
+  createdAt: z.coerce.date().optional().meta({
+    deprecated: true,
+    example: '2024-01-01T00:00:00.000Z',
+    description: '已弃用：旧版创建时间字段，新落库记录不再写入'
+  }),
   expiredTime: z.coerce.date().optional().meta({
     example: '2024-01-01T06:00:00.000Z',
     description: '过期时间'

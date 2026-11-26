@@ -21,8 +21,13 @@ const LLMRequestRecordSchema = new Schema({
     type: Schema.Types.Mixed,
     required: true
   },
-  expiredTime: {
+  /** @deprecated 旧版创建时间字段，新落库记录不再写入，保留 Schema 定义仅兼容历史文档读取 */
+  createdAt: {
     type: Date
+  },
+  expiredTime: {
+    type: Date,
+    required: true
   }
 });
 

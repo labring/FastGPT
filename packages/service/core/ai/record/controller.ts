@@ -1,11 +1,10 @@
+import { addHours } from 'date-fns';
 import { MongoLLMRequestRecord } from './schema';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { LLM_TRACE_RETENTION_DEFAULT_HOURS } from '@fastgpt/global/common/system/config/schemas/performance';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
-
-const MS_PER_HOUR = 60 * 60 * 1000;
 
 export const createLLMRequestId = () => {
   return getNanoid(12);
@@ -16,14 +15,14 @@ export const createLLMRequestId = () => {
  * 修改保留时长后仅影响后续落库记录，不影响已入库文档。
  */
 export const getLLMRequestRecordExpiredTime = (
-  baseTimeMs = Date.now(),
+  baseTime: Date | number = new Date(),
   retentionHours = getSystemInstanceConfig().performance.tracking.retentionHours
 ): Date => {
   const safeHours =
     typeof retentionHours === 'number' && Number.isFinite(retentionHours) && retentionHours > 0
       ? retentionHours
       : LLM_TRACE_RETENTION_DEFAULT_HOURS;
-  return new Date(baseTimeMs + safeHours * MS_PER_HOUR);
+  return addHours(baseTime, safeHours);
 };
 
 const base64OmittedPlaceholder = '[base64 omitted]';

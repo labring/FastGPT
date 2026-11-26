@@ -137,10 +137,8 @@ export const backfillLLMRequestRecordBatch = async ({
 
   for (const doc of docs) {
     if (!isValidDate(doc.expiredTime)) {
-      const baseTimeMs = isValidDate(doc.createdAt)
-        ? doc.createdAt.getTime()
-        : doc._id.getTimestamp().getTime();
-      const expiredTime = getLLMRequestRecordExpiredTime(baseTimeMs, retentionHours);
+      const baseTime = isValidDate(doc.createdAt) ? doc.createdAt : doc._id.getTimestamp();
+      const expiredTime = getLLMRequestRecordExpiredTime(baseTime, retentionHours);
 
       operations.push({
         updateOne: {
