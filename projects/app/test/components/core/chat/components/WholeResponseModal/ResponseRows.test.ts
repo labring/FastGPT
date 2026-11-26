@@ -62,18 +62,18 @@ const renderAiChatRows = (moduleOverride: Partial<ChatHistoryItemResType>) => {
 };
 
 describe('AiChatRows token usage display', () => {
-  it('renders input, output, cache read, and cache creation tokens with middle-dot separators', () => {
+  it('formats token counts with thousand separators and middle-dot separators', () => {
     const rows = renderAiChatRows({
-      inputTokens: 4152,
+      inputTokens: 25226,
       outputTokens: 735,
-      cacheReadTokens: 2048,
+      cacheReadTokens: 17408,
       cacheCreationTokens: 512
     });
 
     expect(rows).toEqual([
       {
         label: 'Tokens 消耗',
-        value: '输入 4152 · 输出 735 · 缓存读取 2048 · 缓存创建 512'
+        value: '输入 25,226 · 输出 735 · 缓存读取 17,408 · 缓存创建 512'
       }
     ]);
   });
@@ -90,7 +90,7 @@ describe('AiChatRows token usage display', () => {
     expect(rows).toEqual([
       {
         label: 'Tokens 消耗',
-        value: '输入 4152 · 输出 735 · 缓存读取 1024'
+        value: '输入 4,152 · 输出 735 · 缓存读取 1,024'
       }
     ]);
   });
@@ -123,9 +123,9 @@ describe('AiChatRows token usage display', () => {
       expected: []
     },
     {
-      name: 'legacy total tokens row when positive',
-      data: { tokens: 500 },
-      expected: [{ label: 'Tokens 消耗', value: '500' }]
+      name: 'legacy total tokens row with thousand separators when positive',
+      data: { tokens: 2500 },
+      expected: [{ label: 'Tokens 消耗', value: '2,500' }]
     }
   ])('handles $name', ({ data, expected }) => {
     expect(renderAiChatRows(data)).toEqual(expected);
@@ -149,7 +149,7 @@ describe('AiChatRows token usage display', () => {
   it('renders compressTextAgent token breakdown with cache metrics and hides zero fields', () => {
     const rows = renderAiChatRows({
       compressTextAgent: {
-        inputTokens: 300,
+        inputTokens: 1500,
         outputTokens: 60,
         cacheReadTokens: 120,
         cacheCreationTokens: 0,
@@ -159,7 +159,7 @@ describe('AiChatRows token usage display', () => {
 
     expect(rows).toEqual([
       { label: '问题优化模型积分消耗', value: '0.5' },
-      { label: '问题优化模型 Tokens 消耗', value: '输入 300 · 输出 60 · 缓存读取 120' }
+      { label: '问题优化模型 Tokens 消耗', value: '输入 1,500 · 输出 60 · 缓存读取 120' }
     ]);
   });
 });

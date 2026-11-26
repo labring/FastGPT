@@ -272,6 +272,8 @@ type TokenUsageCounts = {
 const hasPositiveTokenCount = (value?: number): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+const formatTokenNumber = (value: number) => value.toLocaleString('en-US');
+
 /**
  * 统一展示 LLM Token 消耗明细（输入 / 输出 / 缓存读取 / 缓存创建），缺省或零值项自动省略。
  */
@@ -319,7 +321,7 @@ const TokenUsageRow = ({ label, usage }: { label: string; usage: TokenUsageCount
                 fontWeight={500}
                 style={{ fontVariantNumeric: 'tabular-nums' }}
               >
-                {item.value}
+                {formatTokenNumber(item.value)}
               </Box>
             </React.Fragment>
           ))}
@@ -357,7 +359,7 @@ export const AiChatRows = ({
       {hasPositiveTokenCount(activeModule.tokens) && (
         <Row
           label={t('chat:response.llm_tokens')}
-          value={`${activeModule.tokens}`}
+          value={formatTokenNumber(activeModule.tokens)}
           renderStringAsMarkdown={false}
         />
       )}
