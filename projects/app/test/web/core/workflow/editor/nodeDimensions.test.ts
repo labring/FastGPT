@@ -273,6 +273,24 @@ describe('workflow viewport fitting', () => {
     expect(viewport?.y).toBeCloseTo(-166.667);
   });
 
+  it('uses the padded point bounds for zoom and the entry position for the center', () => {
+    const entry = { id: 'start', position: { x: -200, y: 100 } };
+    const width = 1000;
+    const height = 500;
+    const viewport = getViewportForNodeIds({
+      width,
+      height,
+      nodes: [entry, { id: 'remote', position: { x: 300, y: 200 } }],
+      dimensions: new Map([['start', measuredDimension({ width: 10000, height: 10000 })]]),
+      padding: 0.3,
+      minZoom: 0.15,
+      positionOnly: { center: entry.position }
+    });
+
+    const zoom = width / (500 * 1.3);
+    expect(viewport).toEqual({ x: width / 2 + 200 * zoom, y: height / 2 - 100 * zoom, zoom });
+  });
+
   it('excludes folded descendants and returns no viewport without measured targets', () => {
     const dimensions = new Map([
       ['parent', measuredDimension({ width: 100, height: 100 })],

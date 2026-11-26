@@ -22,11 +22,7 @@ import '@xyflow/react/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { type THelperLine } from '@/web/core/workflow/type';
-import {
-  useWorkflowIssueFocusAction,
-  useWorkflowIssueFocusRef,
-  useWorkflowRuntime
-} from '@/web/core/workflow/editor/session/workflowSession';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -459,15 +455,9 @@ export const dropEdgeDisconnectsOfRemovedNodes = (
 ): EdgeDisconnectValue[] =>
   edges.filter((edge) => !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target));
 
-/**
- * 收集需要取消选中的节点 id：只留当前真的选中、且不是标红焦点的节点。
- *
- * 返回空数组意味着调用方一个变更都不该发：空变更也会换掉画布数组身份，带动全部节点卡片重渲染。
- * 标红焦点节点由投影层强制 `selected: true`（不经过任何变更事件），跳过它才不会在保存 gate
- * 定位之后把该节点的选中态清掉。
- */
-export const collectClearSelectionIds = (nodes: readonly Node[], skipNodeId?: string): string[] =>
-  nodes.filter((node) => node.selected && node.id !== skipNodeId).map((node) => node.id);
+/** 收集当前已选中的节点，清理选中态时只更新这些节点。 */
+export const collectClearSelectionIds = (nodes: readonly Node[]): string[] =>
+  nodes.filter((node) => node.selected).map((node) => node.id);
 
 /**
  * 收集与本次选中互斥的节点 id（后操作优先）：选中容器就取消其已选中的子节点，
@@ -500,10 +490,9 @@ const deselectChanges = (nodeIds: readonly string[]): NodeSelectionChange[] =>
 export const useClearCanvasSelection = () => {
   const applyNodeChanges = useWorkflowCanvasRendererValue((v) => v.applyNodeChanges);
   const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
-  const issueFocusRef = useWorkflowIssueFocusRef();
 
   return useMemoizedFn(() => {
-    const nodeIds = collectClearSelectionIds(getNodes(), issueFocusRef.current);
+    const nodeIds = collectClearSelectionIds(getNodes());
     if (nodeIds.length === 0) return;
     applyNodeChanges(deselectChanges(nodeIds));
   });
@@ -524,9 +513,6 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const actions = useWorkflowActions();
   const canvas = useCanvas();
 
-  /** 标红焦点归 host：取消选中标红节点时清除焦点，画布不再自己维护错误标记。 */
-  const focusIssueNode = useWorkflowIssueFocusAction();
-  const issueFocusRef = useWorkflowIssueFocusRef();
   const runtime = useWorkflowRuntime();
   // 三个都是 setState dispatcher，身份恒定；整体订阅会让 hover 带动本 hook 的消费方刷新。
   const setHoverEdgeId = useWorkflowUIValue((v) => v.setHoverEdgeId);
@@ -658,12 +644,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
       change.selected = true;
     }
 
-    // 错误节点失焦（取消选中）时清除标红，与原版点击节点取消标红行为一致。
-    // 标红焦点的权威在 host，直接比焦点 id，不再从投影塞进 data 的 isError 反推。
-    if (!change.selected) {
-      if (issueFocusRef.current === change.id) focusIssueNode(undefined);
-      return;
-    }
+    if (!change.selected) return;
 
     // 父子互斥(后操作优先): 选父则取消其已选 children;选子则取消已选父。
     const node = getNode(change.id);

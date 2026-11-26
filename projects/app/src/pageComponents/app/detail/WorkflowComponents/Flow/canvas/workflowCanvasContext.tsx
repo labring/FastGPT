@@ -20,7 +20,6 @@ import {
   useStoreApi
 } from '@xyflow/react';
 import {
-  useWorkflowIssueFocusRef,
   useWorkflowOverlayRef,
   useWorkflowRuntime,
   useWorkflowViewTick
@@ -166,6 +165,9 @@ type PendingFocusRequest = {
   options?: ViewportFitOptions;
 };
 
+const needsFitMeasurements = (options?: ViewportFitOptions) =>
+  !options?.useEstimatedDimensions && !options?.positionOnly;
+
 const defaultViewport: CanvasViewport = {
   x: 0,
   y: 0,
@@ -214,8 +216,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const runtime = useWorkflowRuntime();
   const viewTick = useWorkflowViewTick();
   const overlaysRef = useWorkflowOverlayRef();
-  // 标红焦点归 host：投影时合并，画布数组不再是问题状态的写入方。
-  const issueFocusRef = useWorkflowIssueFocusRef();
 
   // 交互状态层：reactflow 本地数组，语义值以 Runtime 投影为准。
   const [nodes, setNodesRaw] = useState<CanvasNode[]>([]);
@@ -591,15 +591,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         });
     const nextModes = new Map<string, WorkflowRenderMode>();
     const nextMeasurementNodeIds = new Set<string>();
-    const pendingFitNodeIds = pendingFitRef.current
-      ? new Set(
-          getUnmeasuredViewportFitNodeIds({
-            nodes: viewportNodes,
-            nodeIds: pendingFitRef.current.nodeIds,
-            dimensions: measuredDimensions
-          })
-        )
-      : new Set<string>();
+    const pendingFit = pendingFitRef.current;
+    const pendingFitNodeIds =
+      pendingFit && needsFitMeasurements(pendingFit.options)
+        ? new Set(
+            getUnmeasuredViewportFitNodeIds({
+              nodes: viewportNodes,
+              nodeIds: pendingFit.nodeIds,
+              dimensions: measuredDimensions
+            })
+          )
+        : new Set<string>();
 
     nextNodes.forEach(({ id }) => {
       const isFull = renderedGraph.fullNodeIds.has(id);
@@ -803,7 +805,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const projected = projectRuntimeCanvas({
       runtime: runtime!,
       overlays: overlaysRef.current,
-      errorNodeId: issueFocusRef.current,
       localNodes: nodesRef.current,
       localEdges: edgesRef.current,
       cache: projectionCache.current
@@ -813,10 +814,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   /**
-   * 重投影的四条触发源，缺一条画布就会与数据不一致：
+   * 画布重投影的触发源：
    * - 语义（节点/边/chatConfig 变更）与几何（位置、折叠）：直接订阅 runtime 事件。
    *   这两条只有画布需要，不再绕 host 的通用计数器，语义派生因此不会被几何提交带动。
-   * - overlay 写入与标红焦点：host 的 renderer view 通道，数据存在 ref 里，靠 viewTick 失效。
+   * - overlay 写入：host 的 renderer view 通道，数据存在 ref 里，靠 viewTick 失效。
    *   viewTick 变化时重挂订阅并顺带补一次投影，覆盖「文档事件先于视图数据清理」的顺序。
    */
   useEffect(() => {
@@ -876,16 +877,14 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const next = applyReactFlowNodeChanges(effectiveChanges, prev);
-    if (next !== prev) {
-      setCanvasNodes(next);
-    }
+    if (next !== prev) setCanvasNodes(next);
   });
 
   /** 按高层 node id intent 更新选中态，调用方不需要理解 ReactFlow NodeChange。 */
   const selectNodes = useMemoizedFn((nodeIds: readonly string[]) => {
     const selectedNodeIds = new Set(nodeIds);
     const changes = nodesRef.current
-      .filter((node) => node.selected !== selectedNodeIds.has(node.id))
+      .filter((node) => Boolean(node.selected) !== selectedNodeIds.has(node.id))
       .map((node) => ({
         id: node.id,
         type: 'select' as const,
@@ -893,10 +892,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }));
     if (changes.length === 0) return;
 
-    const next = applyReactFlowNodeChanges(changes, nodesRef.current);
-    if (next !== nodesRef.current) {
-      setCanvasNodes(next);
-    }
+    applyNodeChanges(changes);
   });
 
   const applyEdgeChanges = useMemoizedFn((changes: EdgeChange<Edge<any>>[]) => {
@@ -919,21 +915,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       isFolded: node.data.isFolded
     }));
 
-  const applyViewportFit = (request: PendingFitRequest) => {
-    const viewport = getViewportForNodeIds({
-      nodes: toViewportNodes(),
-      nodeIds: request.nodeIds,
-      dimensions: getFitDimensions(),
-      width: canvasWidth,
-      height: canvasHeight,
-      ...request.options
-    });
-    if (!viewport) return false;
-    pendingFitRef.current = undefined;
-    setViewport(viewport);
-    return true;
-  };
-
   const requestViewportFit = (request: PendingFitRequest) => {
     const viewportNodes = toViewportNodes();
     const fitNodeIds = getViewportFitNodeIds({
@@ -946,24 +927,31 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
     pendingFitRef.current = request;
 
-    const missingNodeIds = getUnmeasuredViewportFitNodeIds({
-      nodes: viewportNodes,
-      nodeIds: request.nodeIds,
-      dimensions: getFitDimensions()
-    });
-    if (!request.options?.useEstimatedDimensions && missingNodeIds.length > 0) {
+    const dimensions = getFitDimensions();
+    if (needsFitMeasurements(request.options) && fitNodeIds.some((id) => !dimensions.has(id))) {
       reconcileRenderState(nodesRef.current);
       scheduleMeasurementFrame();
       return false;
     }
 
-    return applyViewportFit(request);
+    const viewport = getViewportForNodeIds({
+      nodes: viewportNodes,
+      nodeIds: request.nodeIds,
+      dimensions,
+      width: canvasWidth,
+      height: canvasHeight,
+      ...request.options
+    });
+    if (!viewport) return false;
+    pendingFitRef.current = undefined;
+    setViewport(viewport);
+    return true;
   };
 
-  const applyPendingViewportFit = () => {
+  const applyPendingViewportFit = useMemoizedFn(() => {
     const request = pendingFitRef.current;
     if (request) requestViewportFit(request);
-  };
+  });
 
   const scheduleFocusFrame = useMemoizedFn(() => {
     if (focusFrameRef.current !== undefined) return;
@@ -1045,7 +1033,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     scheduleFocusFrame();
   });
 
-  /** 直接按完整节点图和测量尺寸设置 viewport，不依赖 React Flow 当前渲染集合。 */
+  /** 按完整节点图适配 viewport，首屏可只用坐标估算。 */
   const fitNodes = useMemoizedFn(
     (nodeIds?: readonly string[], options?: ViewportFitOptions): boolean => {
       if (pendingFocusRef.current) {
