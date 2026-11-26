@@ -802,7 +802,7 @@ describe('cleanupLegacySandboxResources', () => {
     const leaseSpy = vi.mocked(leaseMod.withSandboxLease);
     const prevImpl = leaseSpy.getMockImplementation()!;
     leaseSpy.mockImplementationOnce(async (params) => {
-      if (params.label.startsWith('verify-legacy-zip:')) {
+      if (params.label.startsWith('cleanup-legacy-zip:')) {
         await MongoSandboxInstance.collection.updateOne(
           { _id: row._id },
           {
@@ -829,25 +829,25 @@ describe('cleanupLegacySandboxResources', () => {
     expect(s3State.objects.has(zipKey)).toBe(false);
   });
 
-  it('preserves package.zip when a non-deleting active v2 row has no migrated v3 row during cleanupLegacyZips', async () => {
+  it('preserves package.zip when active v2 target v3 is missing or matched only by business identity with missing tar.zst', async () => {
     const activeApp = await seedApp(false);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
 
-    const v2Row = await insertLegacySandboxRow({
+    const v2MissingTarget = await insertLegacySandboxRow({
       provider: 'opensandbox',
       sourceId: activeApp.appId,
       teamId: activeApp.teamId,
       status: SandboxInstanceStatusEnum.archived
     });
-    const zstKey = buildSandboxArchiveObjectKey(v2Row.sandboxId, 'gen1');
+    const zstKey = buildSandboxArchiveObjectKey(v2MissingTarget.sandboxId, 'gen1');
     await insertV3SandboxRow({
-      _id: v2Row._id,
+      _id: v2MissingTarget._id,
       provider: 'opensandbox',
-      sandboxId: v2Row.sandboxId,
-      sourceType: v2Row.sourceType,
-      sourceId: v2Row.sourceId,
-      userId: v2Row.userId,
+      sandboxId: v2MissingTarget.sandboxId,
+      sourceType: v2MissingTarget.sourceType,
+      sourceId: v2MissingTarget.sourceId,
+      userId: v2MissingTarget.userId,
       teamId: activeApp.teamId,
       status: SandboxInstanceStatusEnum.archived,
       storage: {
@@ -860,44 +860,82 @@ describe('cleanupLegacySandboxResources', () => {
         }
       }
     });
-    const zipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2Row.sandboxId}/package.zip`;
+    const missingTargetZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2MissingTarget.sandboxId}/package.zip`;
     s3State.objects.set(zstKey, Buffer.from('zst-payload!!'));
-    s3State.objects.set(zipKey, Buffer.from('legacy-zip'));
+    s3State.objects.set(missingTargetZipKey, Buffer.from('legacy-zip'));
+
+    // 业务身份一致但 sandboxId 不同的 v3 记录缺失 .tar.zst 时，同样不得绕过归档校验删掉旧 ZIP。
+    const v2Alias = await insertLegacySandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    await insertV3SandboxRow({
+      provider: 'opensandbox',
+      sandboxId: `${v2Alias.sandboxId}-renamed`,
+      sourceType: v2Alias.sourceType,
+      sourceId: v2Alias.sourceId,
+      userId: v2Alias.userId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived,
+      storage: {
+        archive: {
+          objectKey: buildSandboxArchiveObjectKey(`${v2Alias.sandboxId}-renamed`, 'gen1'),
+          generation: 'gen1',
+          format: 'tar.zst',
+          sizeBytes: 64,
+          archivedAt: new Date()
+        }
+      }
+    });
+    const aliasZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${v2Alias.sandboxId}/package.zip`;
+    s3State.objects.set(aliasZipKey, Buffer.from('legacy-alias-zip'));
 
     const state = createMigrationContext();
     await state.context.saveCheckpoint({
-      lastDocId: String(v2Row._id),
+      lastDocId: String(v2Alias._id),
       devboxesDone: true,
       lastZipKey: null,
       zipsDone: false,
       deletedDevboxes: 0,
       deletedVolumes: 0,
       deletedZips: 0,
-      processedDocs: 1,
+      processedDocs: 2,
       processedZips: 0
     });
-    // 模拟 preflight 通过后 v3 记录缺失的场景，确保 cleanupLegacyZips 阶段仍拒绝删除旧 package.zip。
+    // 模拟 preflight 通过后 v3 记录被并发移除，验证 cleanupLegacyZips 在租约内单次查验后仍拒绝删旧 ZIP。
     let removedV3 = false;
     vi.mocked(state.context.reportProgress).mockImplementation(async (progress) => {
       if (!removedV3 && progress.key === 'preflight' && progress.status === 'succeeded') {
         removedV3 = true;
-        await MongoSandboxInstance.collection.deleteOne({ _id: v2Row._id });
+        await MongoSandboxInstance.collection.deleteOne({ _id: v2MissingTarget._id });
       }
     });
 
     await expect(cleanupLegacySandboxResources(state.context)).rejects.toThrow(
       'failed safety verification'
     );
-    expect(s3State.objects.has(zipKey)).toBe(true);
-    expect(state.failures()).toEqual([
-      expect.objectContaining({
-        stageKey: 'cleanupLegacyZips',
-        data: { key: zipKey, sandboxId: v2Row.sandboxId },
-        reason: {
-          message: expect.stringContaining('not migrated to v3')
-        }
-      })
-    ]);
+    expect(s3State.objects.has(missingTargetZipKey)).toBe(true);
+    expect(s3State.objects.has(aliasZipKey)).toBe(true);
+    expect(state.failures()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stageKey: 'cleanupLegacyZips',
+          data: { key: missingTargetZipKey, sandboxId: v2MissingTarget.sandboxId },
+          reason: {
+            message: expect.stringContaining('not migrated to v3')
+          }
+        }),
+        expect.objectContaining({
+          stageKey: 'cleanupLegacyZips',
+          data: { key: aliasZipKey, sandboxId: v2Alias.sandboxId },
+          reason: {
+            message: expect.stringContaining('missing in S3')
+          }
+        })
+      ])
+    );
   });
 
   it('propagates real S3 listObjects failures in preflight instead of silently skipping ghost zip cleanup', async () => {

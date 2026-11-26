@@ -198,6 +198,26 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     return context.saveCheckpoint(checkpoint);
   };
 
+  const findTargetV3 = (params: {
+    sandboxId: string;
+    legacyRow?: Pick<SandboxMigrationDoc, 'sourceType' | 'sourceId' | 'userId'> | null;
+  }) =>
+    targetCollection.findOne<SandboxMigrationDoc>(
+      params.legacyRow
+        ? {
+            $or: [
+              {
+                sourceType: params.legacyRow.sourceType,
+                sourceId: params.legacyRow.sourceId,
+                userId: params.legacyRow.userId
+              },
+              { provider: SANDBOX_PROVIDER, sandboxId: params.sandboxId }
+            ]
+          }
+        : { provider: SANDBOX_PROVIDER, sandboxId: params.sandboxId },
+      { projection: SANDBOX_MIGRATION_PROJECTION }
+    );
+
   const validateTargetTarZstArchive = async (
     targetRow: SandboxMigrationDoc
   ): Promise<{ missingObjectKey?: string }> => {
@@ -245,15 +265,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
           }
 
           const active = await isSandboxSourceActive(latest, activeSourceCache);
-          const targetV3 = await targetCollection.findOne<SandboxMigrationDoc>(
-            {
-              $or: [
-                { sourceType: latest.sourceType, sourceId: latest.sourceId, userId: latest.userId },
-                { provider: SANDBOX_PROVIDER, sandboxId: latest.sandboxId }
-              ]
-            },
-            { projection: SANDBOX_MIGRATION_PROJECTION }
-          );
+          const targetV3 = await findTargetV3({ sandboxId: latest.sandboxId, legacyRow: latest });
 
           if (active && latest.status !== SandboxInstanceStatusEnum.deleting) {
             if (!targetV3) {
@@ -349,61 +361,48 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     const rawSandboxId = match[1];
 
     try {
-      const legacyRow = await legacyCollection.findOne<SandboxMigrationDoc>(
-        {
-          sandboxId: rawSandboxId,
-          status: { $ne: SandboxInstanceStatusEnum.deleting }
-        },
-        { projection: SANDBOX_MIGRATION_PROJECTION }
-      );
-      if (
-        legacyRow &&
-        (await isSandboxSourceActive(legacyRow, activeSourceCache)) &&
-        !(await hasMigratedV3Record(legacyRow))
-      ) {
-        throw new Error(
-          'Active legacy sandbox row is not migrated to v3; preserving legacy package.zip'
-        );
-      }
+      await withSandboxLease({
+        sandboxId: rawSandboxId,
+        label: `cleanup-legacy-zip:${rawSandboxId}`,
+        signal: context.signal,
+        fn: async (lease) => {
+          AbortSignal.any([context.signal, lease.signal]).throwIfAborted();
 
-      const targetRow = await targetCollection.findOne<SandboxMigrationDoc>(
-        {
-          provider: SANDBOX_PROVIDER,
-          sandboxId: rawSandboxId
-        },
-        { projection: SANDBOX_MIGRATION_PROJECTION }
-      );
+          const legacyRow = await legacyCollection.findOne<SandboxMigrationDoc>(
+            {
+              sandboxId: rawSandboxId,
+              status: { $ne: SandboxInstanceStatusEnum.deleting }
+            },
+            { projection: SANDBOX_MIGRATION_PROJECTION }
+          );
+          const targetRow = await findTargetV3({ sandboxId: rawSandboxId, legacyRow });
 
-      if (targetRow && (await isSandboxSourceActive(targetRow, activeSourceCache))) {
-        const { missingObjectKey } = await validateTargetTarZstArchive(targetRow);
-        if (missingObjectKey) {
-          await withSandboxLease({
-            sandboxId: targetRow.sandboxId,
-            label: `verify-legacy-zip:${targetRow.sandboxId}`,
-            signal: context.signal,
-            fn: async (lease) => {
-              AbortSignal.any([context.signal, lease.signal]).throwIfAborted();
-              const latestRow = await targetCollection.findOne<SandboxMigrationDoc>(
-                { _id: targetRow._id },
-                { projection: SANDBOX_MIGRATION_PROJECTION }
+          // 活跃非 deleting 的 v2 记录必须命中可核验的 v3 记录，避免缺失或匹配口径不一致时跳过归档校验误删旧 ZIP。
+          if (
+            legacyRow &&
+            (await isSandboxSourceActive(legacyRow, activeSourceCache)) &&
+            !targetRow
+          ) {
+            throw new Error(
+              'Active legacy sandbox row is not migrated to v3; preserving legacy package.zip'
+            );
+          }
+
+          if (targetRow && (await isSandboxSourceActive(targetRow, activeSourceCache))) {
+            const { missingObjectKey } = await validateTargetTarZstArchive(targetRow);
+            if (missingObjectKey) {
+              throw new Error(
+                'Target tar.zst archive object is missing in S3; preserving package.zip'
               );
-              if (latestRow && (await isSandboxSourceActive(latestRow, activeSourceCache))) {
-                const recheck = await validateTargetTarZstArchive(latestRow);
-                if (recheck.missingObjectKey) {
-                  throw new Error(
-                    'Target tar.zst archive object is missing in S3; preserving package.zip'
-                  );
-                }
-              }
-              lease.assertValid();
             }
-          });
-        }
-      }
+          }
 
-      await s3Source.deleteArchiveObject({ key });
-      checkpoint.deletedZips += 1;
-      failures.delete(key);
+          lease.assertValid();
+          await s3Source.deleteArchiveObject({ key });
+          checkpoint.deletedZips += 1;
+          failures.delete(key);
+        }
+      });
     } catch (error) {
       context.signal.throwIfAborted();
       failures.set(key, {
