@@ -1,46 +1,10 @@
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
-// 同义词重建入队已接管实例配置（94ae033d7）：isDatasetSynonymEnabled 读快照叶子 ?? serviceEnv。
-// 本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，预置"域存在、叶子缺省"种子快照走兜底分支。
-(global as any).systemInstanceConfig = {
-  site: {},
-  auth: {},
-  security: {},
-  feature: {},
-  commercial: {},
-  resource: {},
-  performance: {
-    workflow: {},
-    parse: {},
-    dataset: {},
-    chat: {},
-    streamResume: {},
-    tracking: {},
-    task: {},
-    channel: {}
-  },
-  storage: {},
-  vector: {},
-  providers: {
-    documentParse: { customPdf: {}, sangfor: {} },
-    dataSource: {},
-    externalProviderWorkflowVariables: []
-  },
-  subservice: {
-    plugin: {},
-    codeSandbox: {},
-    aiProxy: {},
-    mcp: {},
-    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
-  }
-};
-
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexStatusEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -51,10 +15,9 @@ import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/core/ai/model/catalog/service');
-
-import { enqueueNextDatasetRebuildTask } from '@/service/core/dataset/queues/rebuild';
-import { enqueueNextDatasetSynonymRebuildTask } from '@/service/core/dataset/queues/rebuildSynonym';
-import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
+vi.mock('@fastgpt/dal/redis/bullmq/services/datasetTraining', () => ({
+  datasetTrainingMQService: { enqueueBatch: vi.fn().mockResolvedValue([]) }
+}));
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let currentModel: EmbeddingModelDataType;
@@ -108,7 +71,6 @@ describe('rebuild paths skip pending index data', () => {
   beforeEach(async () => {
     testRoot = await getRootUser();
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
-    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     const defaultEmbedding = getModelTestDefaults().embedding!;
     currentModel = {
       ...defaultEmbedding,
@@ -152,12 +114,15 @@ describe('rebuild paths skip pending index data', () => {
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
 
-    // 重建种子任务只覆盖已索引数据与历史数据，且每条数据只有一条任务。
-    const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id }).lean();
-    expect(tasks.map((task) => String(task.dataId)).sort()).toEqual(
+    // 文档队列只标记已索引数据与历史数据，未训练分块保留原阶段。
+    const pending = await MongoDatasetData.find({
+      datasetId: dataset._id,
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
+    }).lean();
+    expect(pending.map(({ _id }) => String(_id)).sort()).toEqual(
       [String(indexed._id), String(legacy._id)].sort()
     );
-    expect(tasks.every((task) => task.mode === TrainingModeEnum.rebuildIndex)).toBe(true);
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
 
     // 待索引数据不被选中，也没有重建标记残留。
     expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
@@ -179,116 +144,11 @@ describe('rebuild paths skip pending index data', () => {
     });
     expect(res.code).toBe(200);
     expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
     });
-    expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
-      mode: TrainingModeEnum.rebuildIndex
+    expect(await MongoDatasetCollection.findById(collection._id).lean()).toMatchObject({
+      training: { status: 'active', usageId: expect.any(String) }
     });
-  });
-
-  it('keeps index rebuild mode when synonym support is enabled', async () => {
-    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
-    const { root, dataset, collection } = await createContext();
-    const data = await createData({
-      root,
-      dataset,
-      collection,
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending,
-      synonymVersion: 1
-    });
-    await expect(
-      enqueueNextDatasetRebuildTask({
-        teamId: String(root.teamId),
-        tmbId: String(root.tmbId),
-        datasetId: String(dataset._id),
-        billId: 'bill-id'
-      })
-    ).resolves.toBe(true);
-    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
-    });
-    expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
-      mode: TrainingModeEnum.rebuildIndex
-    });
-  });
-
-  /** CP-09：同义词重建不选中 indexing 数据，不产生第二条任务。 */
-  it('does not select pending index data for synonym rebuild', async () => {
-    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
-    const { root, dataset, collection } = await createContext();
-    await MongoDatasetSynonym.create({
-      teamId: root.teamId,
-      datasetId: dataset._id,
-      version: 2,
-      enabled: true
-    });
-    const indexingPending = await createData({
-      root,
-      dataset,
-      collection,
-      indexStatus: DatasetDataIndexStatusEnum.indexing,
-      synonymVersion: 1
-    });
-    const indexed = await createData({
-      root,
-      dataset,
-      collection,
-      indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending,
-      synonymVersion: 1
-    });
-
-    const enqueued = await enqueueNextDatasetSynonymRebuildTask({
-      teamId: String(root.teamId),
-      tmbId: String(root.tmbId),
-      datasetId: String(dataset._id),
-      billId: 'bill-id'
-    });
-
-    expect(enqueued).toBe(true);
-    const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id }).lean();
-    expect(tasks).toHaveLength(1);
-    expect(String(tasks[0].dataId)).toBe(String(indexed._id));
-    expect(tasks[0].mode).toBe(TrainingModeEnum.rebuildSynonym);
-
-    // 待索引数据保持原状，标记未被推进。
-    expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
-      synonymVersion: 1,
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
-  });
-
-  /** CP-09：只有待索引数据时同义词重建正常收敛，不产生任务也不残留中间状态。 */
-  it('converges without residue when every row is pending index', async () => {
-    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
-    const { root, dataset, collection } = await createContext();
-    await MongoDatasetSynonym.create({
-      teamId: root.teamId,
-      datasetId: dataset._id,
-      version: 2,
-      enabled: true
-    });
-    await createData({
-      root,
-      dataset,
-      collection,
-      indexStatus: DatasetDataIndexStatusEnum.indexing,
-      synonymVersion: 1
-    });
-
-    const enqueued = await enqueueNextDatasetSynonymRebuildTask({
-      teamId: String(root.teamId),
-      tmbId: String(root.tmbId),
-      datasetId: String(dataset._id),
-      billId: 'bill-id'
-    });
-
-    expect(enqueued).toBe(false);
     expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
-    expect(
-      await MongoDatasetData.countDocuments({
-        datasetId: dataset._id,
-        synonymRebuildingVersion: { $exists: true }
-      })
-    ).toBe(0);
   });
 });

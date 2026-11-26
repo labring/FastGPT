@@ -35,10 +35,7 @@ import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemIn
   }
 };
 
-import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetSynonymMutationTypeEnum,
   DatasetSynonymSchemaVersion,
@@ -47,26 +44,32 @@ import {
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
-const { mockAuthDataset, mockCreateTrainingUsage } = vi.hoisted(() => ({
+const { mockAuthDataset, mockCreateTrainingUsages, mockEnqueue } = vi.hoisted(() => ({
   mockAuthDataset: vi.fn(),
-  mockCreateTrainingUsage: vi.fn()
+  mockCreateTrainingUsages: vi.fn(),
+  mockEnqueue: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
 }));
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createTrainingUsage: mockCreateTrainingUsage
+  createTrainingUsages: mockCreateTrainingUsages
+}));
+vi.mock('@fastgpt/service/core/dataset/training/runtime', () => ({
+  enqueueDatasetTrainingBatch: mockEnqueue
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
   const getModelData = (_ref: unknown, options?: { type?: string; vision?: boolean }) => {
@@ -105,7 +108,10 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
 });
 
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexStatusEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import {
   getDatasetSynonymMatcher,
@@ -116,6 +122,7 @@ const teamId = new Types.ObjectId();
 const tmbId = new Types.ObjectId();
 const datasetId = new Types.ObjectId();
 const collectionId = new Types.ObjectId();
+const trainingUsageId = String(new Types.ObjectId());
 
 const createMapping = (
   standardizedTerm = '退款',
@@ -131,6 +138,19 @@ const createMapping = (
 });
 
 describe('createDatasetSynonymMutation', () => {
+  beforeAll(async () => {
+    // 该套件执行真实事务，先等相关集合和索引建完，避免首个事务与后台建索引争锁。
+    await Promise.all([
+      MongoDataset.init(),
+      MongoDatasetCollection.init(),
+      MongoDatasetData.init(),
+      MongoDatasetQaTraining.init(),
+      MongoDatasetTraining.init(),
+      MongoDatasetSynonym.init(),
+      MongoDatasetSynonymMapping.init()
+    ]);
+  });
+
   beforeEach(async () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
@@ -141,7 +161,16 @@ describe('createDatasetSynonymMutation', () => {
       tmbId: String(tmbId),
       dataset: { name: 'Dataset', vectorModel: 'embedding', vlmModel: 'vlm-model' }
     });
-    mockCreateTrainingUsage.mockResolvedValue({ usageId: new Types.ObjectId() });
+    mockCreateTrainingUsages.mockReset();
+    mockCreateTrainingUsages.mockResolvedValue([trainingUsageId]);
+    await MongoDataset.create({
+      _id: datasetId,
+      teamId,
+      tmbId,
+      name: 'Dataset',
+      vectorModel: 'embedding',
+      agentModel: 'agent-model'
+    });
     await MongoDatasetCollection.create({
       _id: collectionId,
       teamId,
@@ -152,7 +181,7 @@ describe('createDatasetSynonymMutation', () => {
     });
   });
 
-  it('marks the whole rebuild before seeding and leaves first-time indexing data alone', async () => {
+  it('marks every indexed chunk for one document job and leaves first-time indexing alone', async () => {
     const datas = await MongoDatasetData.create(
       Array.from({ length: 7 }, (_, i) => ({
         teamId,
@@ -178,21 +207,15 @@ describe('createDatasetSynonymMutation', () => {
     expect(
       await MongoDatasetData.countDocuments({
         datasetId,
-        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending
+        indexStatus: DatasetDataIndexStageEnum.rebuildSynonymPending
       })
-    ).toBe(4);
-    expect(
-      await MongoDatasetData.countDocuments({
-        datasetId,
-        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning
-      })
-    ).toBe(2);
-    const tasks = await MongoDatasetTraining.find({ datasetId }).lean();
-    expect(tasks).toHaveLength(2);
-    expect(
-      tasks.every((task) => task.mode === TrainingModeEnum.rebuildSynonym && task.expireAt === null)
-    ).toBe(true);
-    expect(tasks.every((task) => !('synonymVersion' in task))).toBe(true);
+    ).toBe(6);
+    expect(await MongoDatasetTraining.countDocuments({ datasetId })).toBe(0);
+    expect(mockEnqueue).toHaveBeenCalledOnce();
+    expect(mockEnqueue).toHaveBeenCalledWith({
+      teamId: String(teamId),
+      collectionIds: [String(collectionId)]
+    });
     expect(await MongoDatasetData.findById(datas[6]._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexing,
       q: 'original-6',
@@ -201,7 +224,7 @@ describe('createDatasetSynonymMutation', () => {
     });
   });
 
-  it('atomically activates mappings and creates independent synonym rebuild tasks', async () => {
+  it('atomically activates mappings and opens a billed document rebuild', async () => {
     const data = await MongoDatasetData.create({
       teamId,
       tmbId,
@@ -236,18 +259,18 @@ describe('createDatasetSynonymMutation', () => {
     await expect(MongoDatasetSynonymMapping.findOne({ datasetId }).lean()).resolves.toMatchObject({
       fileVersion: 1
     });
-    await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.rebuildSynonym,
-      expireAt: null,
-      q: '',
-      a: '',
-      indexes: [],
-      retryCount: 3
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+      indexStatus: DatasetDataIndexStageEnum.rebuildSynonymPending
     });
-    expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
+    await expect(MongoDatasetCollection.findById(collectionId).lean()).resolves.toMatchObject({
+      training: { status: 'active', usageId: trainingUsageId }
+    });
+    expect(mockCreateTrainingUsages).toHaveBeenCalledWith(
       expect.objectContaining({
-        vectorModelId: '507f1f77bcf86cd799439021'
-      })
+        vectorModelId: '507f1f77bcf86cd799439021',
+        bills: [{ appName: 'Collection', trainingCollectionId: String(collectionId) }]
+      }),
+      expect.anything()
     );
     expect(result.affectedDataCount).toBe(1);
   });
@@ -412,7 +435,7 @@ describe('createDatasetSynonymMutation', () => {
         type: DatasetSynonymMutationTypeEnum.delete
       })
     ).rejects.toThrow('知识库正在训练或者重建中');
-    expect(mockCreateTrainingUsage).not.toHaveBeenCalled();
+    expect(mockCreateTrainingUsages).not.toHaveBeenCalled();
   });
 
   it('rolls back mappings, config and data markers when the transaction fails', async () => {
@@ -444,7 +467,7 @@ describe('createDatasetSynonymMutation', () => {
     );
   });
 
-  it('rolls back the matcher switch when the first rebuild seed cannot be created', async () => {
+  it('rolls back the matcher switch when document billing cannot be created', async () => {
     const data = await MongoDatasetData.create({
       teamId,
       tmbId,
@@ -453,9 +476,7 @@ describe('createDatasetSynonymMutation', () => {
       q: 'original',
       indexes: []
     });
-    const createTrainingSpy = vi
-      .spyOn(MongoDatasetTraining, 'create')
-      .mockRejectedValue(new Error('training insert failed'));
+    mockCreateTrainingUsages.mockRejectedValueOnce(new Error('training billing failed'));
 
     await expect(
       createDatasetSynonymMutation({
@@ -466,14 +487,14 @@ describe('createDatasetSynonymMutation', () => {
         size: 10,
         type: DatasetSynonymMutationTypeEnum.upload
       })
-    ).rejects.toThrow('training insert failed');
-    createTrainingSpy.mockRestore();
+    ).rejects.toThrow('training billing failed');
 
     await expect(MongoDatasetSynonym.countDocuments({ datasetId })).resolves.toBe(0);
     await expect(MongoDatasetSynonymMapping.countDocuments({ datasetId })).resolves.toBe(0);
     await expect(MongoDatasetTraining.countDocuments({ datasetId })).resolves.toBe(0);
+    expect(mockEnqueue).not.toHaveBeenCalled();
     await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
-      'synonymRebuildingVersion'
+      'indexStatus'
     );
   });
 
