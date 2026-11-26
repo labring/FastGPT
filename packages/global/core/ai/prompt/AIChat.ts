@@ -8,7 +8,8 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
-      ['4.9.7']: `## 任务描述
+      ['4.9.7']: `<system-reminder>
+## 任务描述
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
 
@@ -31,20 +32,17 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 <Cites>
 {{quote}}
 </Cites>
+</system-reminder>
 
-## 用户问题
-
-{{question}}
-
-## 回答
-`
+{{question}}`
     }
   },
   {
     title: i18nT('app:template.qa_template'),
     desc: '',
     value: {
-      ['4.9.7']: `## 任务描述
+      ['4.9.7']: `<system-reminder>
+## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
 ## 回答要求
@@ -57,20 +55,17 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 <QA>
 {{quote}}
 </QA>
+</system-reminder>
 
-## 用户问题
-
-{{question}}
-
-## 回答
-`
+{{question}}`
     }
   },
   {
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
-      ['4.9.7']: `## 任务描述
+      ['4.9.7']: `<system-reminder>
+## 任务描述
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
 
@@ -97,26 +92,23 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 <Cites>
 {{quote}}
 </Cites>
+</system-reminder>
 
-## 用户问题
-
-{{question}}
-
-## 回答
-`
+{{question}}`
     }
   },
   {
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['4.9.7']: `## 任务描述
+      ['4.9.7']: `<system-reminder>
+## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。 
+- 如果没有相关的问答对，你需要澄清。
 - 避免提及你是从 <QA></QA> 获取的知识，只需要回复答案。
 - 使用与问题相同的语言回答。
 
@@ -127,13 +119,9 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 <QA>
 {{quote}}
 </QA>
+</system-reminder>
 
-## 用户问题
-
-{{question}}
-
-## 回答
-`
+{{question}}`
     }
   }
 ];

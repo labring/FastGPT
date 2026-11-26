@@ -212,6 +212,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolRunTimes: runTimes,
       toolCallInputTokens,
       toolCallOutputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       toolCallTotalPoints,
       completeMessages = [], // 实际发送给模型的消息，只保留文本用于预览。
       assistantResponses = [], // FastGPT 持久化到 assistant.value 的响应。
@@ -247,6 +249,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       totalPoints: modelTotalPoints,
       toolCallInputTokens,
       toolCallOutputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       modelName,
       query: userChatInput,
       completeMessages,

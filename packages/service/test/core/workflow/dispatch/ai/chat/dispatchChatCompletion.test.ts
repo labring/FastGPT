@@ -34,6 +34,8 @@ const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
   useRealFileFlow: false,
   useRealDatasetCite: false,
+  mockInputFiles: [] as Array<{ type: string; url: string; name?: string }>,
+
   modelSupportsAudio: false,
   modelSupportsVideo: false,
   maxContext: 8192
@@ -86,7 +88,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', async (im
     >();
   return {
     ...mod,
-    getDatasetCiteData: (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
+    getDatasetCiteData: async (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
       fixture.useRealDatasetCite ? mod.getDatasetCiteData(props) : { userInput: 'question' }
   };
 });
@@ -100,7 +102,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (im
     getAIChatFileContextConfig: (props: Parameters<typeof mod.getAIChatFileContextConfig>[0]) =>
       fixture.useRealFileFlow ? mod.getAIChatFileContextConfig(props) : {},
     getInputFiles: (props: Parameters<typeof mod.getInputFiles>[0]) =>
-      fixture.useRealFileFlow ? mod.getInputFiles(props) : []
+      fixture.useRealFileFlow ? mod.getInputFiles(props) : fixture.mockInputFiles
   };
 });
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
@@ -112,7 +114,8 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 }));
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 1),
-  countGptMessagesTokensBatch: vi.fn(async (groups: unknown[]) => groups.map(() => 1))
+  countGptMessagesTokensBatch: vi.fn(async (groups: unknown[]) => groups.map(() => 1)),
+  countPromptTokensBatch: vi.fn(async (texts: unknown[]) => texts.map(() => 1))
 }));
 
 describe('dispatchChatCompletion token summary', () => {
@@ -745,4 +748,146 @@ describe('periodic chat history across persisted rounds', () => {
       }
     }
   );
+});
+describe('dispatchChatCompletion empty input guard', () => {
+  afterEach(() => {
+    fixture.useRealDatasetCite = false;
+    fixture.mockInputFiles = [];
+    requestMock.mockReset();
+  });
+
+  const runDispatch = (params: Record<string, unknown>) => {
+    requestMock.mockClear();
+    return dispatchChatCompletion({
+      node: { name: 'Chat', inputs: [] },
+      histories: [],
+      runningUserInfo: { teamId: 'team' },
+      runningAppInfo: { teamId: 'team' },
+      externalProvider: {},
+      params,
+      nodeSummary: createNodeSummary(),
+      usagePush: vi.fn()
+    } as any);
+  };
+
+  it.each([
+    { label: 'default user role', aiChatQuoteRole: undefined },
+    { label: 'explicit system role', aiChatQuoteRole: 'system' }
+  ])(
+    'rejects empty userChatInput with empty quoteQA and no files ($label)',
+    async ({ aiChatQuoteRole }) => {
+      fixture.useRealDatasetCite = true;
+
+      const result = await runDispatch({
+        userChatInput: '',
+        quoteQA: [],
+        aiChatQuoteRole
+      });
+
+      expect(requestMock).not.toHaveBeenCalled();
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+        errorText: 'chat:AI_input_is_empty'
+      });
+    }
+  );
+
+  it('rejects empty rendered input when custom user quotePrompt omits {{question}} and quoteQA is empty', async () => {
+    fixture.useRealDatasetCite = true;
+
+    const result = await runDispatch({
+      userChatInput: 'hello',
+      quoteQA: [],
+      aiChatQuoteRole: 'user',
+      quotePrompt: '{{quote}}'
+    });
+
+    expect(requestMock).not.toHaveBeenCalled();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      errorText: 'chat:AI_input_is_empty'
+    });
+  });
+
+  it('allows file-only requests when userChatInput is empty under default user quote role', async () => {
+    fixture.useRealDatasetCite = true;
+    fixture.mockInputFiles = [
+      { type: ChatFileTypeEnum.image, url: 'https://example.com/a.png', name: 'a.png' }
+    ];
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'described image',
+      finish_reason: 'stop',
+      requestId: 'req-file-only',
+      usage: { inputTokens: 10, outputTokens: 5 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      quoteQA: []
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.answerText]).toBe('described image');
+  });
+
+  it('allows legacy user quotePrompt requests with substantive quoteQA even when userChatInput is empty', async () => {
+    fixture.useRealDatasetCite = true;
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'summarized quote',
+      finish_reason: 'stop',
+      requestId: 'req-quote-only',
+      usage: { inputTokens: 20, outputTokens: 10 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      aiChatQuoteRole: 'user',
+      quotePrompt: '{{quote}}',
+      quoteTemplate: '{{q}}',
+      quoteQA: [
+        {
+          id: 'chunk-1',
+          datasetId: 'ds-1',
+          collectionId: 'col-1',
+          sourceName: 'doc.md',
+          chunkIndex: 0,
+          q: 'retrieved knowledge content',
+          a: '',
+          updateTime: new Date(),
+          score: []
+        }
+      ]
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      query: 'retrieved knowledge content'
+    });
+  });
+
+  it('allows custom user quotePrompt containing expanded workflow variable content when quoteQA and userChatInput are empty', async () => {
+    fixture.useRealDatasetCite = true;
+    requestMock.mockResolvedValueOnce({
+      completeMessages: [],
+      answerText: 'summary from variable',
+      finish_reason: 'stop',
+      requestId: 'req-var-prompt',
+      usage: { inputTokens: 18, outputTokens: 8 }
+    });
+
+    const result = await runDispatch({
+      userChatInput: '',
+      aiChatQuoteRole: 'user',
+      quotePrompt: '请总结：来自上游变量的正文\n{{quote}}',
+      quoteQA: []
+    });
+
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      query: '请总结：来自上游变量的正文\n'
+    });
+  });
 });

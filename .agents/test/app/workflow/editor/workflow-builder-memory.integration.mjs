@@ -237,8 +237,9 @@ function readFileStep(relativePath, file) {
     name: 'sandbox_read_file',
     args: { path: relativePath },
     verify: ({ raw }) => {
+      const plain = raw.replace(/^\d+→/gm, '');
       assert.ok(
-        raw.includes(file.content.trimEnd()),
+        plain.includes(file.content.trimEnd()),
         '模型工具没有完整读出已保存内容：' + relativePath
       );
       assert.ok(!raw.includes('[Showing lines '), '本场景不能把截断读取算作完整需求恢复');
