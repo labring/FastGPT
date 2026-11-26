@@ -80,6 +80,35 @@ export default defineConfig([
       ]
     }
   },
+  {
+    name: 'fastgpt/dal-private-boundary',
+    files: ['packages/**/*.{ts,tsx}', 'projects/**/*.{ts,tsx}', 'pro/**/*.{ts,tsx}'],
+    ignores: [
+      'packages/dal/db/repos/**',
+      'packages/dal/test/db/repos/**',
+      'pro/admin/src/dal/db/repos/**',
+      'pro/admin/test/dal/db/repos/**'
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(?:@fastgpt|@)/dal/db/repos/.+/(?:mongo|oceanbase)(?:/|[?#]|$)',
+              message:
+                '禁止直接导入 DAL 仓储私有 mongo/oceanbase 实现，请改用公开的 .../repo 或 .../repo.type。'
+            },
+            {
+              regex: '(?:^|/)dal/db/repos/.+/(?:mongo|oceanbase)(?:/|[?#]|$)',
+              message:
+                '禁止通过相对路径绕过 DAL 仓储私有边界，请改用公开的 .../repo 或 .../repo.type。'
+            }
+          ]
+        }
+      ]
+    }
+  },
   globalIgnores(
     [
       '**/node_modules/',

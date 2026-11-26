@@ -1,10 +1,58 @@
+import path from 'node:path';
+
 const PRIVATE_DAL_REPO_IMPORT_RE =
-  /^@fastgpt\/dal\/db\/repos\/.+\/(?:mongo|oceanbase)(?:\/|[?#]|$)/;
+  /^(?:@fastgpt|@)\/dal\/db\/repos\/.+\/(?:mongo|oceanbase)(?:\/|[?#]|$)/;
 const BLOCKED_PRIVATE_DAL_REPO_PREFIX = '\0blocked-private-dal-repo:';
+const RESOLVED_PRIVATE_DAL_REPO_PATH_RE =
+  /(?:^|\/)(?:packages\/dal|pro\/admin\/src\/dal)\/db\/repos\/(.+?)\/(?:mongo|oceanbase)(?:\/|$)/;
+const ALLOWED_REPO_CONTRACT_TEST_RE =
+  /(?:^|\/)(?:packages\/dal\/test\/db|pro\/admin\/test\/dal\/db)\/repos\//;
+const DAL_REPO_IMPORTER_RE = /(?:^|\/)(?:packages\/dal|pro\/admin\/src\/dal)\/db\/repos\/(.+)$/;
+
+const stripQueryAndHash = (value: string): string =>
+  value.replace(/[?#].*$/, '').replaceAll('\\', '/');
+
+const isBlockedRelativeDalRepoImport = ({
+  source,
+  importer
+}: {
+  source: string;
+  importer?: string;
+}): boolean => {
+  if (importer === undefined || (!source.startsWith('./') && !source.startsWith('../'))) {
+    return false;
+  }
+
+  const cleanSource = stripQueryAndHash(source);
+  const cleanImporter = stripQueryAndHash(importer);
+  const resolved = path.posix.normalize(
+    path.posix.join(path.posix.dirname(cleanImporter), cleanSource)
+  );
+  const targetMatch = resolved.match(RESOLVED_PRIVATE_DAL_REPO_PATH_RE);
+  if (targetMatch === null) {
+    return false;
+  }
+
+  if (ALLOWED_REPO_CONTRACT_TEST_RE.test(cleanImporter)) {
+    return false;
+  }
+
+  const targetDomain = targetMatch[1];
+  const importerMatch = cleanImporter.match(DAL_REPO_IMPORTER_RE);
+  const importerSubpath = importerMatch?.[1];
+  if (
+    importerSubpath === 'registry.ts' ||
+    (importerSubpath !== undefined && importerSubpath.startsWith(`${targetDomain}/`))
+  ) {
+    return false;
+  }
+
+  return true;
+};
 
 /**
- * 共享 Vitest / Vite 插件：阻断通过宽泛 `@fastgpt` 源码别名绕过
- * `packages/dal/package.json` `exports` 直接引用仓储私有 `mongo/*` 或 `oceanbase/*` 路径。
+ * 共享 Vitest / Vite 插件：阻断通过 `@fastgpt`、`@` 别名或相对路径绕过
+ * DAL 仓储边界直接引用私有 `mongo/*` 或 `oceanbase/*` 实现。
  *
  * 位于 `packages/dal/` 内以兼容独立 App Docker 构建上下文。
  */
@@ -22,10 +70,11 @@ export const blockPrivateDalRepoImports = () => ({
       ]
     }
   }),
-  resolveId: (source: string) => {
+  resolveId: (source: string, importer?: string) => {
     const blockedSpecifier = source.startsWith(BLOCKED_PRIVATE_DAL_REPO_PREFIX)
       ? source.slice(BLOCKED_PRIVATE_DAL_REPO_PREFIX.length)
-      : PRIVATE_DAL_REPO_IMPORT_RE.test(source)
+      : PRIVATE_DAL_REPO_IMPORT_RE.test(source) ||
+          isBlockedRelativeDalRepoImport({ source, importer })
         ? source
         : undefined;
 

@@ -22,6 +22,52 @@ const PRIVATE_DAL_REPO_SPECIFIERS = [
   '@fastgpt/dal/db/repos/appRegistration/oceanbase'
 ] as const;
 
+const PRIVATE_PRO_DAL_REPO_SPECIFIERS = [
+  '@/dal/db/repos/teamInvoiceTitle/mongo/repo',
+  '@/dal/db/repos/teamInvoiceTitle/mongo',
+  '@/dal/db/repos/teamInvoiceTitle/oceanbase/table',
+  '@/dal/db/repos/wallet/bill/mongo/schema',
+  '@/dal/db/repos/wallet/bill/oceanbase/repo.ts'
+] as const;
+
+const ALLOWED_PRO_DAL_SPECIFIERS = [
+  '@/dal/db/container',
+  '@/dal/db/repos/registry',
+  '@/dal/db/repos/teamInvoiceTitle/repo',
+  '@/dal/db/repos/teamInvoiceTitle/repo.type'
+] as const;
+
+const STATIC_PRIVATE_DAL_IMPORT_RE =
+  /(?:^|\n)\s*(?:import|export)\s+(?:type\s+)?(?:[^'"`\n]+\s+from\s+)?['"](?:(?:@fastgpt|@)\/dal\/db\/repos\/[^'"]+\/(?:mongo|oceanbase)(?:\/[^'"]*)?|\.\.?\/[^'"]*dal\/db\/repos\/[^'"]+\/(?:mongo|oceanbase)(?:\/[^'"]*)?)['"]/g;
+
+const collectTsFiles = (rootDir: string): string[] => {
+  const results: string[] = [];
+  if (!fs.existsSync(rootDir)) {
+    return results;
+  }
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const dir = stack.pop()!;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (
+        entry.name === 'node_modules' ||
+        entry.name === '.next' ||
+        entry.name === 'dist' ||
+        entry.name === 'coverage'
+      ) {
+        continue;
+      }
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (entry.isFile() && /\.(?:ts|tsx)$/.test(entry.name)) {
+        results.push(fullPath);
+      }
+    }
+  }
+  return results.sort();
+};
+
 const getErrorCode = (error: unknown): string | undefined => {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     const code = (error as { code?: unknown }).code;
@@ -38,7 +84,7 @@ type ResolveGuardPlugin = {
       alias?: Array<{ find: RegExp | string; replacement: string }>;
     };
   };
-  resolveId?: (source: string) => unknown;
+  resolveId?: (source: string, importer?: string) => unknown;
 };
 
 describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
@@ -135,6 +181,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
 
       for (const specifier of [
         ...PRIVATE_DAL_REPO_SPECIFIERS,
+        ...PRIVATE_PRO_DAL_REPO_SPECIFIERS,
         '@fastgpt/dal/db/repos/app/version/mongo/repo',
         '@fastgpt/dal/db/repos/app/version/oceanbase/table'
       ]) {
@@ -148,12 +195,77 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
 
       for (const allowedSpecifier of [
         ...PUBLIC_DAL_REPO_SPECIFIERS,
+        ...ALLOWED_PRO_DAL_SPECIFIERS,
         '@fastgpt/dal/db/mongo/base',
         '@fastgpt/dal/db/oceanbase/base',
         './mongo/repo'
       ]) {
         expect(guard?.resolveId?.(allowedSpecifier)).toBeNull();
       }
+
+      expect(() =>
+        guard?.resolveId?.(
+          '../../dal/db/repos/teamInvoiceTitle/mongo/repo',
+          path.join(REPO_ROOT, 'pro/admin/src/service/wallet/invoice.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(() =>
+        guard?.resolveId?.(
+          '../teamInvoiceTitle/mongo/repo',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/other/repo.ts')
+        )
+      ).toThrow(/Blocked private DAL repository import/);
+      expect(
+        guard?.resolveId?.(
+          './mongo/repo',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/teamInvoiceTitle/repo.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          './teamInvoiceTitle/mongo/schema',
+          path.join(REPO_ROOT, 'pro/admin/src/dal/db/repos/registry.ts')
+        )
+      ).toBeNull();
+      expect(
+        guard?.resolveId?.(
+          '../../../../../src/dal/db/repos/teamInvoiceTitle/mongo/schema',
+          path.join(REPO_ROOT, 'pro/admin/test/dal/db/repos/teamInvoiceTitle/repo.contract.test.ts')
+        )
+      ).toBeNull();
     }
+  });
+
+  it('verifies Pro DAL skeleton exports and zero static private DAL imports across pro/admin/src', () => {
+    const proAdminSrc = path.join(REPO_ROOT, 'pro/admin/src');
+    const requirePro = process.env.FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD === '1';
+
+    if (requirePro) {
+      expect(
+        fs.existsSync(proAdminSrc),
+        `FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD=1 requires ${proAdminSrc}`
+      ).toBe(true);
+    }
+    if (!fs.existsSync(proAdminSrc)) {
+      return;
+    }
+
+    expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/container.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(proAdminSrc, 'dal/db/repos/registry.ts'))).toBe(true);
+
+    const proReposPrefix = path.join(proAdminSrc, 'dal/db/repos') + path.sep;
+    const offenders: string[] = [];
+    for (const filePath of collectTsFiles(proAdminSrc)) {
+      if (filePath.startsWith(proReposPrefix)) {
+        continue;
+      }
+      const content = fs.readFileSync(filePath, 'utf8');
+      if (STATIC_PRIVATE_DAL_IMPORT_RE.test(content)) {
+        offenders.push(path.relative(REPO_ROOT, filePath));
+      }
+      STATIC_PRIVATE_DAL_IMPORT_RE.lastIndex = 0;
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
