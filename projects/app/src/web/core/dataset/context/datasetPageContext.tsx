@@ -1,12 +1,4 @@
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-  useState
-} from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
@@ -77,69 +69,6 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   collectionFolderAccessMode: 'read'
 });
 
-/**
- * 知识库详情状态的单一读写控制器：通过单调代际号隔离在途读取与写入提交，
- * 确保较早发起的 `getDatasetById` 乱序返回时无法覆盖较新的写入、局部提交或更新的读取。
- */
-export const createDatasetDetailActions = ({
-  getCurrentDatasetId,
-  fetchDatasetById,
-  saveDatasetById,
-  setDatasetDetail
-}: {
-  getCurrentDatasetId: () => string;
-  fetchDatasetById: (id: string) => Promise<DatasetItemType>;
-  saveDatasetById: (data: UpdateDatasetBody) => Promise<unknown>;
-  setDatasetDetail: Dispatch<SetStateAction<DatasetItemType>>;
-}) => {
-  let latestSeq = 0;
-
-  const invalidate = () => {
-    latestSeq += 1;
-  };
-
-  const loadDatasetDetail = async (id: string) => {
-    const currentDatasetId = getCurrentDatasetId();
-    if (currentDatasetId && currentDatasetId !== id) {
-      return fetchDatasetById(id);
-    }
-    const requestSeq = ++latestSeq;
-    const data = await fetchDatasetById(id);
-    if (requestSeq === latestSeq && (!getCurrentDatasetId() || getCurrentDatasetId() === id)) {
-      setDatasetDetail(data);
-    }
-    return data;
-  };
-
-  const patchDatasetDetail = (patch: Partial<DatasetItemType>) => {
-    latestSeq += 1;
-    setDatasetDetail((prev) => ({ ...prev, ...patch }));
-  };
-
-  const updateDataset = async (data: UpdateDatasetBody) => {
-    await saveDatasetById(data);
-
-    const currentDatasetId = getCurrentDatasetId();
-    if (currentDatasetId === data.id) {
-      const requestSeq = ++latestSeq;
-      const detail = await fetchDatasetById(currentDatasetId);
-      if (requestSeq === latestSeq) {
-        setDatasetDetail({
-          ...detail,
-          apiDatasetServer: filterApiDatasetServerPublicData(detail.apiDatasetServer)
-        });
-      }
-    }
-  };
-
-  return {
-    loadDatasetDetail,
-    patchDatasetDetail,
-    updateDataset,
-    invalidate
-  };
-};
-
 export const DatasetPageContextProvider = ({
   children,
   datasetId
@@ -166,41 +95,25 @@ export const DatasetPageContextProvider = ({
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
-  const activeDatasetIdRef = useRef(datasetId);
-  const datasetDetailActionsRef = useRef<ReturnType<typeof createDatasetDetailActions> | null>(
-    null
-  );
-  const getDatasetDetailActions = useCallback(() => {
-    if (!datasetDetailActionsRef.current) {
-      datasetDetailActionsRef.current = createDatasetDetailActions({
-        getCurrentDatasetId: () => activeDatasetIdRef.current,
-        fetchDatasetById: getDatasetById,
-        saveDatasetById: putDatasetById,
-        setDatasetDetail
+  const loadDatasetDetail = async (id: string) => {
+    const data = await getDatasetById(id);
+    setDatasetDetail(data);
+    return data;
+  };
+  const patchDatasetDetail = useCallback((patch: Partial<DatasetItemType>) => {
+    setDatasetDetail((prev) => ({ ...prev, ...patch }));
+  }, []);
+  const updateDataset = async (data: UpdateDatasetBody) => {
+    await putDatasetById(data);
+
+    if (datasetId === data.id) {
+      const detail = await getDatasetById(datasetId);
+      setDatasetDetail({
+        ...detail,
+        apiDatasetServer: filterApiDatasetServerPublicData(detail.apiDatasetServer)
       });
     }
-    return datasetDetailActionsRef.current;
-  }, []);
-
-  useEffect(() => {
-    if (activeDatasetIdRef.current !== datasetId) {
-      activeDatasetIdRef.current = datasetId;
-      getDatasetDetailActions().invalidate();
-    }
-  }, [datasetId, getDatasetDetailActions]);
-
-  const loadDatasetDetail = useCallback(
-    (id: string) => getDatasetDetailActions().loadDatasetDetail(id),
-    [getDatasetDetailActions]
-  );
-  const patchDatasetDetail = useCallback(
-    (patch: Partial<DatasetItemType>) => getDatasetDetailActions().patchDatasetDetail(patch),
-    [getDatasetDetailActions]
-  );
-  const updateDataset = useCallback(
-    (data: UpdateDatasetBody) => getDatasetDetailActions().updateDataset(data),
-    [getDatasetDetailActions]
-  );
+  };
 
   // dataset tags
   const {
