@@ -738,14 +738,14 @@
           const cmd =
             env.cleanupCommand ||
             (meta.project && meta.workdir
-              ? `docker compose -p ${meta.project} -f ${meta.workdir}/docker-compose.yml down -v --remove-orphans && rm -rf ${meta.workdir}`
+              ? `docker compose --profile '*' -p ${meta.project} -f ${meta.workdir}/docker-compose.yml down -v --remove-orphans && (docker compose --profile '*' -p ${meta.project} -f ${meta.workdir}/docker-compose.yml config --images | xargs -r -n 1 docker image rm || true) && (rm -rf ${meta.workdir} 2>/dev/null || sudo rm -rf ${meta.workdir})`
               : '');
           if (cmd) {
             wrap.append(
               el('div', {
                 text: cleaned
-                  ? '已执行的清理命令（仅作留档）：'
-                  : '待用户确认后执行的清理命令（不影响宿主机其他服务）：',
+                  ? '已执行的零痕迹清理命令（服务/容器/数据库卷/网络/镜像/临时目录，仅作留档）：'
+                  : '待用户确认后执行的零痕迹清理命令（移除服务、容器、数据库卷、网络、镜像与临时目录，不影响宿主机其他运行服务）：',
                 className: 'meta-label'
               }),
               el('div', { text: cmd, className: 'cleanup-box' })

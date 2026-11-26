@@ -1,16 +1,16 @@
 ---
 name: release-deploy-test
-description: FastGPT 版本发布或部署模板变更后的端到端部署与 UI 验收测试。当用户指定部署模板（如 pg/milvus/oceanbase/seekdb/opengauss/zilliz、cn/global）、版本号或镜像 tag，要求在测试主机部署并完成登录激活、模型配置、知识库、应用对话、分享链接验证及生成带截图的 HTML 测试报告时触发。测试完成后默认保留环境供用户复核，仅在用户确认后彻底清理容器、卷与数据。
+description: FastGPT 版本发布或部署模板变更后的端到端部署与 UI 验收测试。当用户指定部署模板（如 pg/milvus/oceanbase/seekdb/opengauss/zilliz、cn/global）、版本号或镜像 tag，要求在测试主机部署并完成登录激活、模型配置、知识库、应用对话、分享链接验证及生成带截图的 HTML 测试报告时触发。测试完成后默认保留环境供用户复核，仅在用户确认后彻底清理服务、容器、数据库（卷与目录）、网络、镜像与临时目录，不留痕迹。
 ---
 
 # FastGPT 发布部署验收 (`release-deploy-test`)
 
-用于版本发布后或部署模板升级后的端到端部署验收：从目标 Docker Compose 模板拉起全新隔离实例，校验底层容器与数据库健康，通过浏览器执行简体中文全链路 UI 测试并留存关键截图，基于内置模板生成离线可打开的 HTML 测试报告清单；**验收完成后保留环境供用户自测，待用户明确确认后再清理全部环境与数据**。
+用于版本发布后或部署模板升级后的端到端部署验收：从目标 Docker Compose 模板拉起全新隔离实例，校验底层容器与数据库健康，通过浏览器执行简体中文全链路 UI 测试并留存关键截图，基于内置模板生成离线可打开的 HTML 测试报告清单；**验收完成后保留环境供用户自测，待用户明确确认后再彻底清理全部服务、容器、数据库数据、网络、镜像与临时目录，不留痕迹**。
 
 ## 核心铁律
 
-1. **绝不自动清理测试环境**：验收完成后必须保持容器、数据卷与分享链接持续运行，向用户交付访问信息与报告，**仅在用户明确回复确认后**才执行清理。
-2. **宿主机强隔离**：部署前先检查宿主机已有容器、端口与卷，全程使用独立 Compose 项目名（`-p fg_rel_<tag>_<ts>`）与独立远程目录（`/tmp/fastgpt-rel-<tag>-<ts>`）；清理时严格限定在该项目名与临时目录内，严禁波及宿主机原有服务。
+1. **绝不自动清理测试环境**：验收完成后必须保持容器、数据卷与分享链接持续运行，向用户交付访问信息与报告，**仅在用户明确回复确认后**才执行彻底清理。
+2. **宿主机强隔离与零痕迹清理**：部署前先在临时目录留存宿主机基线快照（容器、卷、镜像），全程使用独立 Compose 项目名（`-p fg_rel_<tag>_<ts>`）与独立远程目录（`/tmp/fastgpt-rel-<tag>-<ts>`）；清理时必须同步移除本次测试产生的**全部服务、容器（含动态沙盒容器）、数据库持久化卷与挂载目录、网络、镜像（含 `prepull` profile 与新拉取镜像）及临时目录**，做到不留痕迹且不破坏宿主机原有运行服务。
 3. **测试报告与截图零泄密、零入仓**：上游 AIProxy / 模型渠道的真实 API Key 严禁写入报告 JSON、HTML、聊天回复或截图；测试产物统一放在仓库外临时目录或会话 artifact 目录，不得提交到 Git 仓库。
 4. **中文界面与真实链路**：浏览器优先使用 `ego-browser`（EGO Lite），在登录页即切换为**简体中文**后再执行全链路操作与截图；保持模板内置 `fastgpt-aiproxy` 链路不变，由内置 AIProxy 转发至上游模型渠道（如 dev AIProxy），确保模板中的 AIProxy 与其 PostgreSQL 库一并得到验证。
 5. **不修改仓库部署模板**：若需调整 `x-fe-domain`、镜像 tag 或宿主机端口映射，仅修改拷贝到临时部署目录的副本，绝不改动仓库内 `document/public/deploy/` 或 `deploy/` 源文件。
@@ -46,9 +46,16 @@ node .agents/skills/system/release-deploy-test/scripts/render-report.mjs init \
 
 按以下顺序执行，并同步用 `scripts/render-report.mjs update` 记录每项实际结果：
 
-1. **`D01` 宿主机前置检查与模板准备**
+1. **`D01` 宿主机前置检查、基线快照与模板准备**
    - 检查目标主机当前运行容器、卷与常用端口占用（`3000`、`3006`、`9000`、`9001` 等）；若默认端口被非本次服务占用，仅在临时 compose 副本中调整宿主机端口映射，绝不停掉无关容器。
-   - 在目标主机创建独立目录 `/tmp/fastgpt-rel-<tag>-<ts>` 并上传/写入模板副本：
+   - 在目标主机创建独立目录 `/tmp/fastgpt-rel-<tag>-<ts>`，拉起前先保存宿主机基线快照，供后续彻底清理时精准识别本次新增资源（不留痕迹且不误伤宿主机原有服务）：
+     ```bash
+     mkdir -p "<workdir>"
+     docker ps -aq | sort -u > "<workdir>/.baseline-containers.txt"
+     docker volume ls -q | sort -u > "<workdir>/.baseline-volumes.txt"
+     docker images -q --no-trunc | sort -u > "<workdir>/.baseline-images.txt"
+     ```
+   - 上传/写入模板副本至 `<workdir>/docker-compose.yml`：
      - 填入 `x-fe-domain: http://<host-ip>:<port>`（以及需要时填入 `x-agent-sandbox-proxy-url`、`x-agent-sandbox-preview-proxy-url`），保证生成的分享链接与文件预览地址可直接访问。
      - 如用户指定发布版本 tag，仅替换临时副本中对应镜像 tag，并记录最终实际镜像列表。
    - 执行 `docker compose -p <project> -f <workdir>/docker-compose.yml config -q` 校验语法无误。
@@ -131,19 +138,39 @@ node .agents/skills/system/release-deploy-test/scripts/render-report.mjs render 
      - HTML 报告文件链接（可直接在浏览器打开查看清单与截图）
      - 测试环境访问地址、管理员账号与已激活测试密码、公开分享链接
      - 明确提示：**测试环境与数据已保留，可自行登录验证；确认无需保留后回复“清理环境”即可一键移除**。
-2. **收到用户明确清理指令后（清理阶段）**：
-   - 仅清理本次部署对应的隔离项目与临时目录：
+2. **收到用户明确清理指令后（零痕迹彻底清理阶段）**：
+   - 必须完整清除本次验收涉及的 **服务、容器（含动态沙盒容器）、数据库（所有命名卷、匿名卷、会话卷与宿主机挂载目录）、网络、镜像（含 `prepull` profile 镜像）及临时目录**，不留痕迹（以下命令兼容 POSIX `sh`/`bash`/`zsh`，且仅作用于本次测试资源，不误伤宿主机并行运行的其他服务）：
      ```bash
-     docker compose -p "<compose-project-name>" -f "<remote-workdir>/docker-compose.yml" down -v --remove-orphans
-     rm -rf "<remote-workdir>"
+     # 1. 停止并移除本次 Compose 全部服务、容器、数据库/对象存储卷与网络（含 prepull profile）
+     docker compose --profile '*' -p "<compose-project-name>" -f "<remote-workdir>/docker-compose.yml" down -v --remove-orphans
+
+     # 2. 清除残留的项目标签卷及本次测试动态创建的 OpenSandbox 沙盒容器与 fastgpt-session* 会话卷（对照基线防误删）
+     docker volume ls -q -f "label=com.docker.compose.project=<compose-project-name>" | xargs -r docker volume rm -f
+     docker ps -aq --filter "label=opensandbox.io/sandbox-id" | sort -u > "<remote-workdir>/.cur-sandbox-containers.txt"
+     comm -13 "<remote-workdir>/.baseline-containers.txt" "<remote-workdir>/.cur-sandbox-containers.txt" | xargs -r docker rm -fv
+     docker volume ls -q --filter "name=fastgpt-session" | sort -u > "<remote-workdir>/.cur-sandbox-volumes.txt"
+     comm -13 "<remote-workdir>/.baseline-volumes.txt" "<remote-workdir>/.cur-sandbox-volumes.txt" | xargs -r docker volume rm -f
+
+     # 3. 清除本次 Compose 声明的全部镜像（含数据库、主服务、伴生服务与 prepull 沙盒镜像）；
+     #    不加 -f 以自动保护正被宿主机其他运行容器占用的共享镜像（如公共 redis），其余测试镜像全部移除
+     docker compose --profile '*' -p "<compose-project-name>" -f "<remote-workdir>/docker-compose.yml" config --images \
+       | sort -u | xargs -r -n 1 docker image rm || true
+
+     # 4. 彻底删除远程临时工作目录及其内配置文件与任何 bind-mount 数据库目录（容器 UID 属主文件按需提权删除）
+     rm -rf "<remote-workdir>" 2>/dev/null || sudo rm -rf "<remote-workdir>"
      ```
-   - 二次复核：`docker ps -a`、`docker volume ls`、`docker network ls` 确认无本次项目残留，且宿主机原有无关容器仍正常运行。
+   - **五维零残留复核**（缺一不可）：
+     1. **服务与容器**：`docker ps -a` 确认无本次测试容器及动态沙盒容器残留，宿主机原有无关容器仍正常运行。
+     2. **数据库与卷**：`docker volume ls` 确认无本次项目卷（`mongo`/`pg`/`aiproxy_pg`/`redis`/`rustfs`/`milvus`/`ob`/`seekdb`、`fastgpt-session*` 等）及新增匿名卷残留。
+     3. **网络**：`docker network ls` 确认本次 `fastgpt_*` 网络均已移除。
+     4. **镜像**：对照部署前 `.baseline-images.txt` 与 `docker images` 确认本次模板声明及新拉取的数据库、应用与沙盒镜像均已移除（若某基础镜像因正被宿主机原有无关容器占用而保留，向用户如实说明）。
+     5. **宿主机文件**：确认 `[ ! -e "<remote-workdir>" ]`，无残留配置文件或挂载数据库目录；同时关闭 EGO Lite 中本次新建的测试标签页/任务空间。
    - 可选更新报告状态为已清理并重新渲染：
      ```bash
      node .agents/skills/system/release-deploy-test/scripts/render-report.mjs meta \
        --input "<report-dir>/report.json" \
        --set "retentionStatus=cleaned" \
-       --set "cleanupNote=用户确认后已移除全部容器、数据卷、网络与远程临时目录，未影响宿主机原有服务。"
+       --set "cleanupNote=用户确认后已彻底清除全部服务、容器、数据库卷与目录、网络、镜像及临时目录，五维复核零残留，未影响宿主机原有服务。"
      node .agents/skills/system/release-deploy-test/scripts/render-report.mjs render \
        --input "<report-dir>/report.json" \
        --out "<report-dir>/release-deploy-report.html"

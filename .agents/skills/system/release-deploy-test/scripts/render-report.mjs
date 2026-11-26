@@ -40,11 +40,11 @@ function createDefaultChecklist() {
     {
       id: 'D01',
       phase: '阶段一：部署与基础设施',
-      title: '宿主机前置检查与模板准备',
+      title: '宿主机前置检查、基线快照与模板准备',
       steps: [
         '检查目标宿主机运行中的容器、数据卷与端口占用，确保与现有服务隔离',
-        '复制指定版本的 Docker Compose 模板至独立临时目录，配置 x-fe-domain 及按需镜像 tag',
-        '执行 docker compose config -q 校验模板语法'
+        '在独立临时目录记录宿主机现有容器、卷与镜像基线快照（供确认后零痕迹清理比对）',
+        '复制指定版本的 Docker Compose 模板至临时目录，配置 x-fe-domain 及按需镜像 tag 并通过 docker compose config -q 校验'
       ],
       expected: '宿主机无端口/容器冲突，模板副本校验通过且未改动仓库源文件',
       actual: '',
@@ -369,9 +369,10 @@ function handleInit(opts) {
       shareUrl: '',
       cleanupCommand:
         project && workdir
-          ? `docker compose -p ${project} -f ${workdir}/docker-compose.yml down -v --remove-orphans && rm -rf ${workdir}`
+          ? `docker compose --profile '*' -p ${project} -f ${workdir}/docker-compose.yml down -v --remove-orphans && (docker compose --profile '*' -p ${project} -f ${workdir}/docker-compose.yml config --images | xargs -r -n 1 docker image rm || true) && (rm -rf ${workdir} 2>/dev/null || sudo rm -rf ${workdir})`
           : '',
-      cleanupNote: '测试完成后保持环境运行，待用户验证确认后再执行清理。'
+      cleanupNote:
+        '测试完成后保持环境运行，待用户验证确认后再彻底清除服务、容器、数据库（卷与目录）、网络、镜像与临时目录，不留痕迹。'
     },
     items: createDefaultChecklist()
   };
