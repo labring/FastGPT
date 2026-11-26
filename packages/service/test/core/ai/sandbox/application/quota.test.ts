@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Agent } from 'undici';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -186,6 +187,7 @@ describe('docker disk soft-limit quota', () => {
       'http://127.0.0.1:1319/disk-usage',
       expect.objectContaining({
         method: 'GET',
+        dispatcher: expect.any(Agent),
         headers: expect.objectContaining({
           'x-proxy': '1',
           'x-fastgpt-agent-token': 'secret-token-1'

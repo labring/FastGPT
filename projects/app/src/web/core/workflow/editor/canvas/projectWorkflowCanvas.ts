@@ -57,7 +57,6 @@ type NodeCacheEntry = {
   structureKey: string;
   view: WorkflowNodeViewSnapshot | undefined;
   overlay: Partial<ViewOverlayData> | undefined;
-  isError: boolean;
   selected: boolean | undefined;
   dragging: boolean | undefined;
   width: number | null | undefined;
@@ -93,7 +92,7 @@ export const createProjectionCache = (): ProjectionCache => ({
 // region projectionRuntime Runtime canvas projection
 
 /** 交互字段只在本地数组上维护；重投影时按 id 保留，避免手势中被 runtime 值覆盖。 */
-const INTERACTION_FIELDS = ['selected', 'dragging', 'width', 'height', 'measured'] as const;
+const INTERACTION_FIELDS = ['dragging', 'width', 'height', 'measured'] as const;
 
 /** 字段值和 Issue 由 scoped field/issue 订阅承载，不改变节点外壳的缓存身份。 */
 const getNodeStructureKey = (snapshot: WorkflowNodeSnapshot) => {
@@ -142,15 +141,12 @@ const getNodeStructureKey = (snapshot: WorkflowNodeSnapshot) => {
 export const projectRuntimeCanvas = ({
   runtime,
   overlays,
-  errorNodeId,
   localNodes,
   localEdges,
   cache
 }: {
   runtime: WorkflowRuntimePort;
   overlays: ViewDataOverlayMap;
-  /** host 问题焦点节点：仅在该节点仍有 error 时标红；其余节点还原本地选中态。 */
-  errorNodeId?: string;
   localNodes: CanvasNode[];
   localEdges: Edge<any>[];
   cache: ProjectionCache;
@@ -162,8 +158,6 @@ export const projectRuntimeCanvas = ({
     const nodeId = snapshot.nodeId;
     const view = runtime.getNodeView(nodeId);
     const overlay = overlays[nodeId];
-    const isError =
-      errorNodeId === nodeId && snapshot.issues.some((issue) => issue.level === 'error');
     const local = localNodeById.get(nodeId);
     const selected = local?.selected;
     const dragging = local?.dragging;
@@ -181,7 +175,6 @@ export const projectRuntimeCanvas = ({
       cached.structureKey === structureKey &&
       cached.view === view &&
       cached.overlay === overlay &&
-      cached.isError === isError &&
       cached.selected === selected &&
       cached.dragging === dragging &&
       cached.width === width &&
@@ -208,8 +201,7 @@ export const projectRuntimeCanvas = ({
       ...nodeData,
       // isFolded 存在 Node View 上（语义快照不含），投影时合并，否则折叠状态在画布上丢失。
       isFolded: view?.isFolded,
-      ...overlay,
-      ...(isError ? { isError: true } : {})
+      ...overlay
     };
     const node: CanvasNode = {
       id: nodeId,
@@ -218,9 +210,7 @@ export const projectRuntimeCanvas = ({
       position,
       selected,
       zIndex,
-      ...(local ? pick(local, [...INTERACTION_FIELDS]) : {}),
-      // 标红焦点节点保持选中：与旧 onUpdateNodeError 一致，定位后无需再点一次即可操作该节点。
-      ...(isError ? { selected: true } : {})
+      ...(local ? pick(local, [...INTERACTION_FIELDS]) : {})
     };
 
     cache.nodes.set(nodeId, {
@@ -228,7 +218,6 @@ export const projectRuntimeCanvas = ({
       structureKey,
       view,
       overlay,
-      isError,
       selected,
       dragging,
       width,

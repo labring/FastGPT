@@ -159,7 +159,7 @@ describe('opensandbox runtimeProfile and utils', () => {
     });
   });
 
-  it('enforces protected internal network deny rules on docker runtime', () => {
+  it('enforces protected internal network deny rules and preserves caller deny ports on docker runtime', () => {
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
 
     const spec = buildOpenSandboxCreateConfig({
@@ -169,7 +169,7 @@ describe('opensandbox runtimeProfile and utils', () => {
           egress: [
             { action: 'allow', target: '10.0.0.0/8' },
             { action: 'deny', target: 'localhost' },
-            { action: 'deny', target: '198.51.100.0/24' }
+            { action: 'deny', target: '198.51.100.0/24', ports: [443] }
           ]
         }
       }
@@ -183,12 +183,49 @@ describe('opensandbox runtimeProfile and utils', () => {
       expect.arrayContaining([
         { action: 'deny', target: 'localhost' },
         { action: 'deny', target: '127.0.0.0/8' },
-        { action: 'deny', target: '198.51.100.0/24' }
+        { action: 'deny', target: '198.51.100.0/24', ports: [443] }
       ])
     );
     expect(spec.networkPolicy?.egress?.filter((rule) => rule.target === 'localhost')).toHaveLength(
       1
     );
     expect(spec.networkPolicy?.egress?.some((rule) => rule.action === 'allow')).toBe(false);
+  });
+
+  it('delegates outbound proxy env, noProxy dedupe, and credentialProxy by runtime', () => {
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'kubernetes';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.enableUpstreamProxy = true;
+    getTestInstanceConfig().subservice.agentSandbox.common.noProxy = '.corp.local';
+    expect(
+      buildBaseSandboxRuntimeEnv({ workDirectory: '/home/sandbox/workspace' })
+    ).not.toHaveProperty('NO_PROXY');
+
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.common, {
+      httpProxy: 'http://user:pass@10.1.2.3:3128',
+      httpsProxy: 'https://proxy.corp.local:8443',
+      noProxy: ' Localhost, .corp.local , 10.0.0.0/8 , 127.0.0.1 '
+    });
+    expect(buildBaseSandboxRuntimeEnv({ workDirectory: '/home/sandbox/workspace' })).toMatchObject({
+      HTTP_PROXY: 'http://user:pass@10.1.2.3:3128',
+      http_proxy: 'http://user:pass@10.1.2.3:3128',
+      HTTPS_PROXY: 'https://proxy.corp.local:8443',
+      https_proxy: 'https://proxy.corp.local:8443',
+      NO_PROXY: 'localhost,127.0.0.1,::1,.corp.local,10.0.0.0/8',
+      no_proxy: 'localhost,127.0.0.1,::1,.corp.local,10.0.0.0/8'
+    });
+    const k8sSpec = buildOpenSandboxCreateConfig({
+      createConfig: { credentialProxy: { enabled: true } }
+    });
+    expect(k8sSpec.networkPolicy).toBeUndefined();
+    expect(k8sSpec.credentialProxy).toBeUndefined();
+
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
+    expect(
+      buildBaseSandboxRuntimeEnv({ workDirectory: '/home/sandbox/workspace' })
+    ).not.toHaveProperty('HTTP_PROXY');
+    expect(buildOpenSandboxCreateConfig().credentialProxy).toEqual({ enabled: true });
+
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.enableUpstreamProxy = false;
+    expect(buildOpenSandboxCreateConfig().credentialProxy).toBeUndefined();
   });
 });

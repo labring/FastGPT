@@ -38,11 +38,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useWorkflowUIValue } from './canvasState';
 import { WorkflowSelectionProvider } from '../context/workflowSelectionContext';
 import { useTranslation } from 'next-i18next';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import {
-  useWorkflowIssueFocusNodeId,
-  useWorkflowRuntime
-} from '@/web/core/workflow/editor/session/workflowSession';
-import { getLayoutDimension, WORKFLOW_NODE_MEASUREMENT_ESTIMATE } from './nodeDimensions';
+  getLayoutDimension,
+  shouldRenderWorkflowNodesFully,
+  WORKFLOW_NODE_FOCUS_OPTIONS,
+  WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+} from './nodeDimensions';
 import {
   ConnectionTargetHandle,
   NodeShellSourceHandles
@@ -438,6 +440,7 @@ const ViewportObserver = () => {
 
 /** 画布背景：写成模块常量，内联字面量会让 ReactFlow 每次渲染都收到新的 style 对象。 */
 const canvasStyle = { background: '#F7F8FA' };
+const viewportPadding = 0.3;
 
 /** 鼠标模式依赖 Shift 临时框选，触摸板模式改为直接拖动框选。 */
 export const getCanvasSelectionProps = (mode: 'drag' | 'select') =>
@@ -571,8 +574,6 @@ const WorkflowCanvas = () => {
       console.warn('[Workflow auto layout] Failed to align nodes:', error);
     });
   }, [autoLayout]);
-  const issueFocusNodeId = useWorkflowIssueFocusNodeId();
-
   const {
     handleNodesChange,
     handleEdgeChange,
@@ -601,28 +602,30 @@ const WorkflowCanvas = () => {
   );
   const onMoveEnd = useCallback(() => setMovingCanvas(false), []);
 
-  const startNodeId = nodes.find(
-    (node) =>
-      node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-      node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
-  )?.id;
-  const fittedStartRuntimeRef = useRef<unknown>();
+  const fittedRuntimeRef = useRef<typeof runtime>();
 
   useEffect(() => {
-    if (!runtime || nodes.length === 0) return;
-    if (fittedStartRuntimeRef.current === runtime) return;
-    if (startNodeId) {
-      focusNodes([startNodeId], { padding: 0.3 });
+    if (!runtime || nodes.length === 0 || fittedRuntimeRef.current === runtime) return;
+    // 切回编辑页时按 React Flow 保留的单选恢复视口。
+    const selectedNodes = nodes.filter((node) => node.selected);
+    if (selectedNodes.length === 1) {
+      focusNodes([selectedNodes[0].id], WORKFLOW_NODE_FOCUS_OPTIONS);
+    } else if (shouldRenderWorkflowNodesFully(nodes.length)) {
+      fitNodes(undefined, { padding: viewportPadding, minZoom: 0 });
     } else {
-      fitNodes(undefined, { padding: 0.3 });
+      const startNode = nodes.find(
+        (node) =>
+          node.data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+          node.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+      );
+      fitNodes(undefined, {
+        padding: viewportPadding,
+        minZoom: 0.15,
+        positionOnly: { center: startNode?.position }
+      });
     }
-    fittedStartRuntimeRef.current = runtime;
-  }, [fitNodes, focusNodes, nodes.length, runtime, startNodeId]);
-
-  useEffect(() => {
-    if (!issueFocusNodeId) return;
-    focusNodes([issueFocusNodeId], { padding: 0.3, minZoom: 0.6 });
-  }, [focusNodes, issueFocusNodeId]);
+    fittedRuntimeRef.current = runtime;
+  }, [fitNodes, focusNodes, nodes, runtime]);
 
   return (
     <>

@@ -785,6 +785,43 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
   });
 });
 
+describe('agentSandbox.common outbound proxy validation', () => {
+  it('defaults to empty/false, trims valid http/https proxy URLs, and rejects invalid URLs', () => {
+    const defaults = getDomainDefaultConfig('subservice').agentSandbox;
+    expect(defaults.common).toMatchObject({ httpProxy: '', httpsProxy: '', noProxy: '' });
+    expect(defaults.opensandbox.enableUpstreamProxy).toBe(false);
+
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: {
+        agentSandbox: {
+          common: {
+            httpProxy: ' http://127.0.0.1:7890 ',
+            httpsProxy: 'https://user:pass@10.1.2.3:8443/',
+            noProxy: '.corp.local,10.0.0.0/8'
+          },
+          opensandbox: { enableUpstreamProxy: true }
+        }
+      }
+    }).agentSandbox;
+    expect(effective.common).toMatchObject({
+      httpProxy: 'http://127.0.0.1:7890',
+      httpsProxy: 'https://user:pass@10.1.2.3:8443/',
+      noProxy: '.corp.local,10.0.0.0/8'
+    });
+    expect(effective.opensandbox.enableUpstreamProxy).toBe(true);
+
+    for (const bad of ['ftp://proxy.corp.local:21', 'not-a-url']) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'subservice',
+          overrides: { agentSandbox: { common: { httpProxy: bad } } }
+        })
+      ).toThrow();
+    }
+  });
+});
+
 describe('unvalidated instance config reads and strict saves', () => {
   it('retains invalid known fields and incomplete opensandbox config on reads without warning while rejecting saves', () => {
     const raw = {

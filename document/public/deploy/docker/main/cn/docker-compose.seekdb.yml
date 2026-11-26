@@ -125,7 +125,7 @@ services:
       retries: 1000
       start_period: 10s
   fastgpt-mongo:
-    image: docker.m.daocloud.io/library/mongo:8.0.38 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: docker.m.daocloud.io/library/mongo:8.3.17 # x86_64 CPU 需满足 MongoDB 8.x 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -531,11 +531,11 @@ services:
       timeout: 5s
       retries: 10
   fastgpt-aiproxy-pg:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
+    image: docker.m.daocloud.io/library/postgres:18.7 # docker hub
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
-      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:/var/lib/postgresql
     networks:
       - aiproxy
     environment:

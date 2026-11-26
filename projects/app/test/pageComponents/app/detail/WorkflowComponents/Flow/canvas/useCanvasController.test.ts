@@ -31,9 +31,7 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
   useStoreApi: () => ({})
 }));
 vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
-  useWorkflowRuntime: () => controllerState.runtime,
-  useWorkflowIssueFocusAction: () => () => undefined,
-  useWorkflowIssueFocusRef: () => ({ current: undefined })
+  useWorkflowRuntime: () => controllerState.runtime
 }));
 vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
   useWorkflowActions: () => ({
@@ -402,16 +400,11 @@ describe('collectClearSelectionIds', () => {
   const nodes = [
     selectionNode('a', { selected: true }),
     selectionNode('b'),
-    selectionNode('c', { selected: true }),
-    selectionNode('focus', { selected: true })
+    selectionNode('c', { selected: true })
   ];
 
   it('returns only the ids of nodes that are actually selected', () => {
-    expect(collectClearSelectionIds(nodes)).toEqual(['a', 'c', 'focus']);
-  });
-
-  it('skips the focused issue node so save-gate positioning keeps it selected', () => {
-    expect(collectClearSelectionIds(nodes, 'focus')).toEqual(['a', 'c']);
+    expect(collectClearSelectionIds(nodes)).toEqual(['a', 'c']);
   });
 
   it('returns empty when nothing is selected so the caller emits no change at all', () => {

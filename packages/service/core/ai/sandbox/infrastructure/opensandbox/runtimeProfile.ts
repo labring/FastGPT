@@ -15,32 +15,11 @@ import {
 import { joinSandboxPath } from '../../utils';
 import type { Volume } from '@alibaba-group/opensandbox';
 import { SANDBOX_PROVIDER, type SandboxProviderType } from '../../type';
+import { buildOpenSandboxNetworkOptions, buildSandboxOutboundProxyEnv } from './network';
 import type { ImageSpec, ResourceLimits, SandboxCreateSpec } from './type';
 import { parseImageSpec } from './utils';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/usr/local/bin/entrypoint.sh';
-
-const OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES = [
-  { action: 'deny' as const, target: 'localhost' },
-  { action: 'deny' as const, target: '127.0.0.0/8' },
-  { action: 'deny' as const, target: '::1/128' },
-  { action: 'deny' as const, target: '10.0.0.0/8' },
-  { action: 'deny' as const, target: '100.64.0.0/10' },
-  { action: 'deny' as const, target: '169.254.0.0/16' },
-  { action: 'deny' as const, target: '172.16.0.0/12' },
-  { action: 'deny' as const, target: '192.168.0.0/16' },
-  { action: 'deny' as const, target: '224.0.0.0/4' },
-  { action: 'deny' as const, target: 'fc00::/7' },
-  { action: 'deny' as const, target: 'fe80::/10' },
-  { action: 'deny' as const, target: '*.local' },
-  { action: 'deny' as const, target: 'host.docker.internal' },
-  { action: 'deny' as const, target: 'host.orb.internal' },
-  { action: 'deny' as const, target: 'docker.orb.internal' },
-  { action: 'deny' as const, target: 'gateway.orb.internal' },
-  { action: 'deny' as const, target: 'proxyproxy.orb.internal' },
-  { action: 'deny' as const, target: '*.orb.internal' },
-  { action: 'deny' as const, target: '*.orb.local' }
-];
 
 const SANDBOX_STATIC_RUNTIME_PATHS = {
   workDirectory: OPEN_SANDBOX_DEFAULT_ROOT_PATH,
@@ -83,22 +62,6 @@ const resolveImageSpec = (
   return image?.repository ? image : fallback;
 };
 
-function buildOpenSandboxNetworkPolicy(policy?: SandboxCreateSpec['networkPolicy']) {
-  const protectedTargets = new Set(
-    OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES.map(({ target }) => target)
-  );
-  return {
-    // 公网默认放行；调用方仅可追加 deny 规则，不得篡改或绕过平台内置内网封禁规则。
-    defaultAction: 'allow' as const,
-    egress: [
-      ...OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES,
-      ...(policy?.egress?.filter(
-        ({ action, target }) => action === 'deny' && (!target || !protectedTargets.has(target))
-      ) ?? [])
-    ]
-  };
-}
-
 /** 获取 OpenSandbox 运行态 profile（含当前配置默认镜像）。 */
 export function getSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const defaultImage = parseImageSpec(getAgentSandboxOpenSandboxConfig().image.trim());
@@ -117,6 +80,7 @@ export function getSandboxRuntimeProfile(): SandboxRuntimeProfile {
  * - 注入容器临时层运行态目录与 `fastgpt-ide-agent` WebSocket/单文件上限；
  * - 仅在 Docker 运行时注入 `FASTGPT_DISK_SOFT_LIMIT_BYTES` 开启卷容量软限制与终端 `RLIMIT_FSIZE`，
  *   Kubernetes 下不注入并交由原生 PVC 控制；
+ * - 若后台配置了 `httpProxy`/`httpsProxy`，同步注入大小写代理变量与合并回环排除项后的 `NO_PROXY`/`no_proxy`；
  * - 设置 `HOME`、`FASTGPT_WORKDIR`、`PIP_BREAK_SYSTEM_PACKAGES=1` 与 `PIP_NO_CACHE_DIR=1`。
  */
 export function buildBaseSandboxRuntimeEnv({
@@ -135,19 +99,24 @@ export function buildBaseSandboxRuntimeEnv({
   };
 } = {}): Record<string, string> {
   const normalizedWorkDir = workDirectory.replace(/\/+$/, '') || OPEN_SANDBOX_DEFAULT_ROOT_PATH;
+  const { runtime } = getAgentSandboxOpenSandboxConfig();
 
   return {
     HOME: OPEN_SANDBOX_DEFAULT_HOME_PATH,
     FASTGPT_WORKDIR: normalizedWorkDir,
     FASTGPT_RUNTIME_DIR: OPEN_SANDBOX_CONTAINER_RUNTIME_DIR,
     FASTGPT_IDE_MAX_FILE_BYTES: String(ideAgentMaxFileBytes),
-    ...(getAgentSandboxOpenSandboxConfig().runtime === 'docker'
+    ...(runtime === 'docker'
       ? { FASTGPT_DISK_SOFT_LIMIT_BYTES: String(ideAgentMaxFileBytes) }
       : {}),
     FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: String(ideAgentWsLimits.maxMessageBytes),
     FASTGPT_IDE_WS_MAX_FRAME_BYTES: String(ideAgentWsLimits.maxFrameBytes),
     PIP_BREAK_SYSTEM_PACKAGES: '1',
-    PIP_NO_CACHE_DIR: '1'
+    PIP_NO_CACHE_DIR: '1',
+    ...buildSandboxOutboundProxyEnv({
+      runtime,
+      proxyConfig: getAgentSandboxCommonConfig()
+    })
   };
 }
 
@@ -156,7 +125,7 @@ export function buildBaseSandboxRuntimeEnv({
  *
  * - entrypoint 默认使用 `/usr/local/bin/entrypoint.sh`，位于系统目录不受 `/home/sandbox` 挂卷覆盖；
  * - Kubernetes 下不下发 `ephemeral-storage`（由集群侧自行控制），仅在配置了 CPU/内存超售倍数时下发对应 `resourceRequests`；
- * - Kubernetes 下不下发 `networkPolicy`（交由 Helm `CiliumNetworkPolicy` 统一隔离，避免触发 `NET_ADMIN` sidecar）。
+ * - Kubernetes 下不下发 `networkPolicy` 与 `credentialProxy`（交由 Helm `CiliumNetworkPolicy` 统一隔离，避免触发 `NET_ADMIN` sidecar）。
  */
 export function buildOpenSandboxCreateConfig(
   input: SandboxRuntimeCreateConfigInput = {}
@@ -167,6 +136,7 @@ export function buildOpenSandboxCreateConfig(
   const isKubernetesRuntime = opensandboxConfig.runtime === 'kubernetes';
   const {
     networkPolicy: requestedNetworkPolicy,
+    credentialProxy: _requestedCredentialProxy,
     resourceRequests: requestedResourceRequests,
     ...createConfigWithoutPolicies
   } = createConfig;
@@ -224,9 +194,6 @@ export function buildOpenSandboxCreateConfig(
 
   const env = input.env || createConfig.env ? { ...createConfig.env, ...input.env } : undefined;
   const volumes = input.volumes ?? createConfig.volumes;
-  const networkPolicy = isKubernetesRuntime
-    ? undefined
-    : buildOpenSandboxNetworkPolicy(requestedNetworkPolicy);
 
   return {
     ...createConfigWithoutPolicies,
@@ -236,7 +203,11 @@ export function buildOpenSandboxCreateConfig(
     ...(resourceRequests ? { resourceRequests } : {}),
     entrypoint,
     ...(env ? { env } : {}),
-    ...(networkPolicy ? { networkPolicy } : {}),
+    ...buildOpenSandboxNetworkOptions({
+      runtime: opensandboxConfig.runtime,
+      enableUpstreamProxy: opensandboxConfig.enableUpstreamProxy,
+      networkPolicy: requestedNetworkPolicy
+    }),
     ...(volumes ? { volumes } : {})
   };
 }

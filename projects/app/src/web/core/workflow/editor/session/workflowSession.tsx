@@ -3,7 +3,7 @@
  *
  * 拥有 Runtime 生命周期与 adapter 挂载、版本列表与整文档替换切换、Savepoint 与出站序列化入口、
  * 环境事实注入（模型目录与 sandbox，供 Runtime 算 Issue View）、Issue View 刷新触发与
- * 标红焦点定位、本地草稿与离开保护。
+ * 节点标红、本地草稿与离开保护。
  * overlay/patchViewData 是正式的 renderer view 通道：debug 结果、搜索高亮与教程元信息
  * 按节点合并进画布投影，不进 Runtime Document，也不参与 undo/redo。
  */
@@ -28,7 +28,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { LoopRunBreakNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunBreak';
 import {
   hydrateWorkflowEditor,
@@ -134,10 +133,9 @@ type WorkflowSessionValue = {
 
   isSaved: boolean;
 
-  /** 问题焦点节点 id：投影据此标红并选中该节点；undefined 表示无焦点。 */
+  /** 当前标红的节点 id，供节点卡片读取。 */
   issueFocusNodeId?: string;
-  issueFocusRef: MutableRefObject<string | undefined>;
-  /** 标红并定位到指定节点；传 undefined 只清除标红（节点被点击或取消选中）。 */
+  /** 标红指定节点，传 undefined 清除标红。 */
   focusIssueNode: (nodeId?: string) => void;
 
   sessionActions: WorkflowSessionActions;
@@ -190,7 +188,6 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   patchViewData: notImplemented,
   isSaved: true,
   issueFocusNodeId: undefined,
-  issueFocusRef: { current: undefined },
   focusIssueNode: notImplemented,
   sessionActions: {
     initRuntime: notImplemented,
@@ -287,9 +284,6 @@ export const useWorkflowHistory = (): WorkflowHistoryState => {
 export const useWorkflowViewTick = () =>
   useContextSelector(WorkflowViewTickContext, (value) => value);
 
-export const useWorkflowIssueFocusRef = () =>
-  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusRef);
-
 export const useWorkflowOverlayRef = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.overlaysRef);
 
@@ -320,7 +314,7 @@ export const useWorkflowOverlayValue = (nodeId?: string) => {
  * 语义通道：订阅 runtime 事件，但按 `getWorkflow()` 的快照身份决定是否重渲染。
  *
  * Runtime 只在语义版本变化时更换快照对象（纯几何提交与瞬时拖拽帧不换），overlay 写入与
- * 标红焦点更是根本不产生 runtime 事件，所以拖拽落点、写 debug 结果、搜索高亮与标红定位
+ * 标红焦点更是根本不产生 runtime 事件，所以拖拽落点、写 debug 结果、搜索高亮与节点标红
  * 都不会带动语义派生列表重渲染；也不需要任何计数器，不存在「忘了 bump」这类 bug。
  *
  * 快照是 Runtime 版本缓存的产物：同一语义版本内身份恒定，因此可以直接当 `useMemo` 的缓存 key。
@@ -429,36 +423,22 @@ export const WorkflowSessionProvider = ({
   const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
   const issueFocusRef = useRef<string | undefined>(undefined);
   const environmentModelsRef = useRef<Pick<WorkflowEnvironment, 'models' | 'defaultModelIds'>>();
-  const updateIssueFocusNode = useMemoizedFn((nodeId?: string) => {
-    if (issueFocusRef.current === nodeId) return false;
+  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
+    if (issueFocusRef.current === nodeId) return;
     issueFocusRef.current = nodeId;
     setIssueFocusNodeId(nodeId);
-    return true;
   });
   const bumpView = useMemoizedFn(() => {
     setViewTick((tick) => tick + 1);
   });
-  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
-    if (updateIssueFocusNode(nodeId)) {
-      bumpView();
-    }
-  });
-  /** 首屏延后聚焦首个错误；孤立的起始节点只保留气泡，避免空白流程初次进入被强制拉红。 */
+  /** 首屏延后标红第一个有 error 的节点。 */
   const focusInitialIssue = useMemoizedFn((current: WorkflowRuntimePort) => {
     window.setTimeout(() => {
       if (runtimeRef.current !== current || current.isDisposed()) return;
       const firstErrorNode = current
         .getWorkflow()
         .nodes.find((node) => node.issues.some((issue) => issue.level === 'error'));
-      if (!firstErrorNode) return;
-
-      const errorIssues = firstErrorNode.issues.filter((issue) => issue.level === 'error');
-      const isEntryNode =
-        firstErrorNode.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-        firstErrorNode.flowNodeType === FlowNodeTypeEnum.pluginInput;
-      const isIsolatedEntryOnly =
-        isEntryNode && errorIssues.every((issue) => issue.code === 'isolated_node');
-      if (!isIsolatedEntryOnly) focusIssueNode(firstErrorNode.nodeId);
+      if (firstErrorNode) focusIssueNode(firstErrorNode.nodeId);
     }, 300);
   });
   // 订阅回调里回写页面状态，用 ref 避免 chatConfig 变化导致重新订阅。
@@ -520,7 +500,7 @@ export const WorkflowSessionProvider = ({
 
   const resetSessionState = useMemoizedFn((nextVersions: WorkflowVersionEntry[]) => {
     clearOverlays();
-    updateIssueFocusNode(undefined);
+    focusIssueNode(undefined);
     pendingSaveRevision.current = undefined;
     pendingReplacementRef.current = undefined;
     saveCoordinator.invalidate();
@@ -593,7 +573,7 @@ export const WorkflowSessionProvider = ({
     resetSessionState,
     setVersions,
     teardownRuntime,
-    updateIssueFocusNode
+    focusIssueNode
   ]);
 
   // 只同步挂载后的 SystemConfigDrawer 修改；首屏配置由载入的云端版本或本地草稿提供。
@@ -609,11 +589,6 @@ export const WorkflowSessionProvider = ({
   const isDirty = useRuntimeSavepoint(runtime, savepointTick);
   const isSaved = !isDirty && (!runtime || !recoveryNeedsSave);
 
-  /**
-   * 问题焦点：标红哪个节点由 host 单点持有（旧行为同一时刻只标红一个），投影合并进节点 data。
-   * 传入 nodeId 时更新焦点序号，画布在尺寸进入 Dimension Index 后负责定位；传 undefined 只清除
-   * 标红，用于节点被点击或取消选中的场景，此时不应移动视口。
-   */
   const serializeWorkflow = useMemoizedFn(() =>
     serializeWorkflowData({
       runtimeRef,
@@ -775,7 +750,7 @@ export const WorkflowSessionProvider = ({
         };
       }
       clearOverlays();
-      updateIssueFocusNode(undefined);
+      focusIssueNode(undefined);
       pendingSaveRevision.current = undefined;
       bumpView();
       return res;
@@ -879,9 +854,9 @@ export const WorkflowSessionProvider = ({
       if (!res.change) return true;
 
       clearOverlays();
-      updateIssueFocusNode(undefined);
+      focusIssueNode(undefined);
       pendingSaveRevision.current = undefined;
-      // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay 与标红焦点，
+      // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay，
       // 这里再 bump 一次让画布按清理后的视图数据重投影。
       bumpView();
       return true;
@@ -1084,7 +1059,6 @@ export const WorkflowSessionProvider = ({
       patchViewData,
       isSaved,
       issueFocusNodeId,
-      issueFocusRef,
       focusIssueNode,
       sessionActions,
       persistence,
