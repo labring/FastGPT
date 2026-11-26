@@ -8,13 +8,24 @@ import {
   datasetDataRebuildFailedStatuses,
   datasetDataRebuildIndexProcessingStatuses,
   datasetDataRebuildSynonymProcessingStatuses,
-  indexedDatasetDataExpr
+  indexedDatasetDataExpr,
+  isDatasetDataSynonymRebuild
 } from '@fastgpt/global/core/dataset/data/utils';
 
 /** 集合列表和详情共用相同的数据阶段筛选。 */
 export const datasetDataTrainingStatusMatch = {
   indexStatus: { $in: [...datasetDataDocumentWorkStatuses, ...datasetDataRebuildFailedStatuses] }
 };
+
+/** 只匹配文档训练 Worker 可以领取的分块。 */
+export const getRunnableDatasetIndexMatch = (synonymEnabled: boolean) => ({
+  indexStatus: {
+    $in: synonymEnabled
+      ? datasetDataDocumentWorkStatuses
+      : datasetDataDocumentWorkStatuses.filter((status) => !isDatasetDataSynonymRebuild(status))
+  },
+  indexError: { $ne: true }
+});
 
 const indexFailed = { $eq: [{ $ifNull: ['$indexError', false] }, true] };
 const sumCondition = (condition: Record<string, unknown>) => ({

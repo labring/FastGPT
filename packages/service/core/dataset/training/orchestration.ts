@@ -23,7 +23,7 @@ import {
 import { MongoUsage } from '../../../support/wallet/usage/schema';
 import { serviceEnv } from '../../../env';
 import { MongoDatasetCollection } from '../collection/schema';
-import { datasetDataTrainingStatusMatch } from '../data/query';
+import { datasetDataTrainingStatusMatch, getRunnableDatasetIndexMatch } from '../data/query';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
 import { MongoDataset } from '../schema';
@@ -139,6 +139,30 @@ export const hasDatasetTrainingTask = (
     indexStatus: datasetDataTrainingStatusMatch.indexStatus,
     session
   });
+
+/** 检查仍可执行的解析、QA 和分块工作，供知识库同步判断。 */
+export const hasActiveDatasetTrainingTask = async (scope: DatasetTrainingScope): Promise<boolean> => {
+  const activeRound = { ...scope, 'training.status': 'active' };
+  if (
+    await MongoDatasetCollection.exists({ ...activeRound, 'training.parse.status': 'active' }).read(
+      'primary'
+    )
+  ) {
+    return true;
+  }
+
+  const collectionIds = await MongoDatasetCollection.distinct('_id', activeRound).read('primary');
+  if (collectionIds.length === 0) return false;
+
+  const workScope = { ...scope, collectionId: { $in: collectionIds } };
+  return Boolean(
+    (await MongoDatasetQaTraining.exists({ ...workScope, status: 'active' }).read('primary')) ||
+    (await MongoDatasetData.exists({
+      ...workScope,
+      ...getRunnableDatasetIndexMatch(serviceEnv.DATASET_SYNONYM_ENABLED)
+    }).read('primary'))
+  );
+};
 
 /** 保护文档训练的现有工作项，允许新重建处理旧版取消后遗留的失败分块。 */
 export const hasBlockingDatasetTrainingTask = (
