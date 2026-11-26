@@ -10,26 +10,26 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import {
   PushDataBodySchema,
+  PushDataResponseSchema,
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { datasetDataDocumentTrainingStatusByMode } from '@fastgpt/global/core/dataset/data/utils';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import {
-  preCreateDatasetDataAndPushToTrainingQueue,
-  pushDataListToTrainingQueue
-} from '@fastgpt/service/core/dataset/training/controller';
+  appendDatasetIndexTraining,
+  appendDatasetQaTraining
+} from '@fastgpt/service/core/dataset/training/orchestration';
+import { enqueueDatasetTrainingBatch } from '@fastgpt/service/core/dataset/training/runtime';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
@@ -71,15 +71,16 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     { type: 'llm', vision: true, optional: true }
   );
 
+  const { supportImageIndex, supportImageEmbedding } = getDatasetImageIndexCapability({
+    vectorModel: vectorModelData,
+    vlmModel: vlmModelData
+  });
   const mode = getTrainingModeByCollection({
     ...collection,
     ...(body.trainingType && { trainingType: body.trainingType }),
     ...(body.autoIndexes !== undefined && { autoIndexes: body.autoIndexes }),
     ...(body.imageIndex !== undefined && { imageIndex: body.imageIndex }),
-    supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: vectorModelData,
-      vlmModel: vlmModelData
-    }).supportImageIndex
+    supportImageIndex
   });
 
   // auth dataset limit
@@ -106,56 +107,40 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     data
   });
 
-  return mongoSessionRun(async (session) => {
-    const traingUsageId = await (async () => {
-      if (billId) return billId;
-      const { usageId: newUsageId } = await createTrainingUsage({
-        teamId,
-        tmbId,
-        appName: collection.name,
-        billSource: UsageSourceEnum.training,
-        vectorModelId: vectorModelData.modelId!,
-        agentModelId: agentModelData.modelId,
-        vllmModelId: vlmModelData?.modelId,
-        session
-      });
-      return newUsageId;
-    })();
-
+  const trainingInput = {
+    teamId,
+    tmbId,
+    datasetId: String(collection.datasetId),
+    collectionId,
+    data: normalized.data,
+    ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
+    billId,
+    vectorModelId: vectorModelData.modelId!,
+    agentModelId: agentModelData.modelId,
+    vlmModelId: vlmModelData?.modelId
+  };
+  const { insertLen, dataIds } = await (async () => {
     if (mode === TrainingModeEnum.qa) {
-      return pushDataListToTrainingQueue({
-        ...body,
-        data: normalized.data,
-        ...(normalized.imageUploadKeys.length > 0 && {
-          imageUploadKeys: normalized.imageUploadKeys
-        }),
-        session,
-        billId: traingUsageId,
-        mode,
-        teamId,
-        tmbId,
-        datasetId: collection.datasetId,
-        vectorModel: vectorModelData,
-        agentModel: agentModelData,
-        vlmModel: vlmModelData
-      });
+      return appendDatasetQaTraining({ ...trainingInput, agentModel: agentModelData });
     }
+    const indexStatus = datasetDataDocumentTrainingStatusByMode[mode];
+    if (!indexStatus) throw new Error(`Unsupported dataset append training mode: ${mode}`);
 
-    return preCreateDatasetDataAndPushToTrainingQueue({
-      ...body,
-      data: normalized.data,
-      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
-      session,
-      billId: traingUsageId,
-      mode, // Use collection's training mode
-      teamId,
-      tmbId,
-      datasetId: collection.datasetId,
-      vectorModel: vectorModelData,
+    return appendDatasetIndexTraining({
+      ...trainingInput,
+      indexStatus,
+      indexSize: body.indexSize,
       agentModel: agentModelData,
-      vlmModel: vlmModelData
+      vlmModel: vlmModelData,
+      supportImageEmbedding
     });
-  });
+  })();
+
+  if (insertLen > 0) {
+    await enqueueDatasetTrainingBatch({ collectionIds: [collectionId], teamId });
+  }
+
+  return PushDataResponseSchema.parse({ insertLen, dataIds });
 }
 
 export default NextAPI(handler);

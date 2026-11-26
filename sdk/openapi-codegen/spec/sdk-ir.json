@@ -28977,6 +28977,20 @@
                             "required": false
                           },
                           {
+                            "name": "reasoningEffortList",
+                            "schema": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "enum",
+                                "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                                "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                              },
+                              "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                            },
+                            "required": false,
+                            "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          {
                             "name": "functionCall",
                             "schema": {
                               "kind": "primitive",
@@ -29379,6 +29393,20 @@
                               "type": "boolean"
                             },
                             "required": false
+                          },
+                          {
+                            "name": "reasoningEffortList",
+                            "schema": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "enum",
+                                "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                                "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                              },
+                              "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                            },
+                            "required": false,
+                            "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                           },
                           {
                             "name": "functionCall",
@@ -37678,6 +37706,27 @@
                                           "type": "boolean"
                                         },
                                         "required": false
+                                      },
+                                      {
+                                        "name": "reasoningEffortList",
+                                        "schema": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "enum",
+                                            "values": [
+                                              "none",
+                                              "minimal",
+                                              "low",
+                                              "medium",
+                                              "high",
+                                              "xhigh"
+                                            ],
+                                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                                          },
+                                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                                        },
+                                        "required": false,
+                                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                                       },
                                       {
                                         "name": "functionCall",
@@ -73516,6 +73565,20 @@
                         "required": false
                       },
                       {
+                        "name": "reasoningEffortList",
+                        "schema": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "enum",
+                            "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                        },
+                        "required": false,
+                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                      },
+                      {
                         "name": "functionCall",
                         "schema": {
                           "kind": "primitive",
@@ -73918,6 +73981,20 @@
                           "type": "boolean"
                         },
                         "required": false
+                      },
+                      {
+                        "name": "reasoningEffortList",
+                        "schema": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "enum",
+                            "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                        },
+                        "required": false,
+                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                       },
                       {
                         "name": "functionCall",
@@ -77111,6 +77188,27 @@
                                       "type": "boolean"
                                     },
                                     "required": false
+                                  },
+                                  {
+                                    "name": "reasoningEffortList",
+                                    "schema": {
+                                      "kind": "array",
+                                      "items": {
+                                        "kind": "enum",
+                                        "values": [
+                                          "none",
+                                          "minimal",
+                                          "low",
+                                          "medium",
+                                          "high",
+                                          "xhigh"
+                                        ],
+                                        "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                                      },
+                                      "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                                    },
+                                    "required": false,
+                                    "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                                   },
                                   {
                                     "name": "functionCall",

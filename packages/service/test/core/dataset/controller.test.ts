@@ -1,10 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   delDatasetRelevantData,
   dispatchDatasetStorageCleanup
 } from '@fastgpt/service/core/dataset/controller';
+import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -31,6 +34,7 @@ const { executeS3DeleteJob } = await vi.importActual<
 >('@fastgpt/service/common/s3/queue/delete');
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
+
 
 /**
  * 构造「冬瓜 ← 枕瓜」词条的两个版本：version-1 是历史残留，version 是当前生效版本。
@@ -62,6 +66,45 @@ const seedSynonymConfig = async ({
   );
   return config;
 };
+
+it('rolls back collection, QA source and pending chunk deletion together', async () => {
+  const teamId = new Types.ObjectId().toString();
+  const datasetId = new Types.ObjectId().toString();
+  const tmbId = new Types.ObjectId().toString();
+  const collection = await MongoDatasetCollection.create({
+    teamId,
+    datasetId,
+    tmbId,
+    name: 'Deleting document',
+    type: DatasetCollectionTypeEnum.virtual
+  });
+  const scope = { teamId, datasetId, tmbId, collectionId: collection._id };
+  const qa = await MongoDatasetQaTraining.create({ ...scope, q: 'Pending QA source' });
+  const chunk = await MongoDatasetData.create({
+    ...scope,
+    q: 'Pending index chunk',
+    indexStatus: DatasetDataIndexStageEnum.index
+  });
+  const datasets = [{ _id: datasetId, teamId }];
+  const failure = new Error('Dataset delete failed after cleaning its contents');
+
+  await expect(
+    mongoSessionRun(async (session) => {
+      await delDatasetRelevantData({ datasets, session });
+      throw failure;
+    })
+  ).rejects.toBe(failure);
+
+  expect(await MongoDatasetCollection.exists({ _id: collection._id })).toBeTruthy();
+  expect(await MongoDatasetQaTraining.exists({ _id: qa._id })).toBeTruthy();
+  expect(await MongoDatasetData.exists({ _id: chunk._id })).toBeTruthy();
+
+  await mongoSessionRun((session) => delDatasetRelevantData({ datasets, session }));
+
+  expect(await MongoDatasetCollection.exists({ _id: collection._id })).toBeNull();
+  expect(await MongoDatasetQaTraining.exists({ _id: qa._id })).toBeNull();
+  expect(await MongoDatasetData.exists({ _id: chunk._id })).toBeNull();
+});
 
 describe('delDatasetRelevantData synonym retention', () => {
   beforeEach(() => {

@@ -1,5 +1,6 @@
 import { readChunkImagePrefixIdForRebuild } from '@fastgpt/service/core/dataset/collection/entity';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { enqueueDatasetTrainingBatch } from '@fastgpt/service/core/dataset/training/runtime';
 import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import {
   bridgeClientSessionToDbSession,
@@ -44,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     isRoot
   });
 
-  return mongoSessionRun(async (session) => {
+  const result = await mongoSessionRun(async (session) => {
     const chunkImagePrefixId = await readChunkImagePrefixIdForRebuild({
       teamId: String(collection.teamId),
       datasetId: String(collection.datasetId),
@@ -114,8 +115,11 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
       });
     })();
 
-    return ReTrainingCollectionResponseSchema.parse({ collectionId });
+    return { collectionId };
   });
+
+  await enqueueDatasetTrainingBatch({ teamId, collectionIds: [result.collectionId] });
+  return ReTrainingCollectionResponseSchema.parse({ collectionId: result.collectionId });
 }
 
 export default NextAPI(handler);

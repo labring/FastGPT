@@ -10,8 +10,9 @@ import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDataset } from '../schema';
+import { MongoDatasetCollection } from '../collection/schema';
+import type { ClientSession } from '../../../common/mongo';
 import { removeImageByPath } from '../../../common/file/image/controller';
-import { MongoDatasetTraining } from '../training/schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { resourcePermissionRepo } from '../../../support/permission/repository/resourcePermissionRepo';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -19,26 +20,30 @@ import { removeDatasetVectorIndexes } from '../vectorData/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
-export const deleteDatasetsImmediate = async ({
-  teamId,
-  datasetIds
-}: {
-  teamId: string;
-  datasetIds: string[];
-}) => {
-  // delete training data
-  await MongoDatasetTraining.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  });
+/** 在标记知识库删除前，移除这些知识库的定时同步调度。 */
+export const removeDatasetSyncSchedulers = async (datasetIds: string[]) => {
+  await Promise.all(datasetIds.map(removeDatasetSyncJobScheduler));
+};
 
-  // Remove cron job
-  await Promise.all(
-    datasetIds.map((id) => {
-      return removeDatasetSyncJobScheduler(id);
-    })
+/** 在删除标记生效时同时撤销在途训练的提交权。 */
+export const markDatasetsForDeletion = async (
+  { teamId, datasetIds }: { teamId: string; datasetIds?: string[] },
+  session: ClientSession
+) => {
+  const ids = datasetIds && { $in: datasetIds };
+  await MongoDataset.updateMany(
+    { teamId, ...(ids && { _id: ids }) },
+    { $set: { deleteTime: new Date() } },
+    { session }
+  );
+  // 集合版本和 Worker 回写使用同一写锁。也锁住尚未分配 runId 的活跃轮次。
+  await MongoDatasetCollection.updateMany(
+    { teamId, ...(ids && { datasetId: ids }), 'training.status': 'active' },
+    { $unset: { 'training.runId': '' }, $inc: { 'training.revision': 1 } },
+    { session }
   );
 };
+
 // Clear a team datasets
 export const deleteTeamAllDatasets = async (teamId: string) => {
   const datasets = await MongoDataset.find(
@@ -47,10 +52,7 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
     },
     { _id: 1, parentId: 1 }
   );
-  await deleteDatasetsImmediate({
-    teamId,
-    datasetIds: datasets.map((d) => d._id)
-  });
+  await removeDatasetSyncSchedulers(datasets.map((dataset) => dataset._id));
 
   const datasetIdSet = new Set(datasets.map((dataset) => String(dataset._id)));
   const deleteRootDatasets = datasets.filter(
@@ -58,19 +60,7 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
   );
 
   await mongoSessionRun(async (session) => {
-    await MongoDataset.updateMany(
-      {
-        teamId
-      },
-      {
-        $set: {
-          deleteTime: new Date()
-        }
-      },
-      {
-        session
-      }
-    );
+    await markDatasetsForDeletion({ teamId }, session);
     await Promise.all(
       deleteRootDatasets.map((dataset) => {
         return addDatasetDeleteJob({

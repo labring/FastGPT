@@ -4,7 +4,7 @@ import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';
 import { deleteCollectionPermissions } from '../../support/permission/collection/controller';
 import { type ClientSession } from '../../common/mongo';
-import { MongoDatasetTraining } from './training/schema';
+import { MongoDatasetQaTraining } from './training/qaSchema';
 import { MongoDatasetData } from './data/schema';
 import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { getFullTextStore } from './data/textStore';
@@ -62,7 +62,7 @@ export async function findDatasetAndAllChildren({
 }
 
 export async function getCollectionWithDataset(collectionId: string) {
-  const data = await MongoDatasetCollection.findById(collectionId)
+  const data = await MongoDatasetCollection.findById(collectionId, { training: 0 })
     .populate<{ dataset: DatasetSchemaType }>('dataset')
     .lean();
   if (!data) {
@@ -143,11 +143,9 @@ export async function delDatasetRelevantData(
     ];
   })();
 
-  // delete training data
-  await MongoDatasetTraining.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).session(session);
+  // 集合先参与事务写入，阻止仍持有 runId 的 Worker 在清理期间提交新分块。
+  await MongoDatasetCollection.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
+  await MongoDatasetQaTraining.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
 
   // 同义词配置和映射属于 dataset 数据，即使功能关闭也必须随知识库删除。
   // 例外：web 站点改分块设置等「数据重建而非删除知识库」的调用方传
@@ -190,12 +188,8 @@ export async function delDatasetRelevantData(
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
 
-  // delete collections and their permission snapshots (same transaction)
+  // Delete collection permission snapshots in the same transaction.
   const collectionIds = collections.map((item) => String(item._id));
-  await MongoDatasetCollection.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).session(session);
   await deleteCollectionPermissions({ teamId, collectionIds, session });
 
   for (const datasetId of datasetIds) {

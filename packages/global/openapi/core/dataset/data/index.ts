@@ -280,12 +280,14 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回插入条数',
-          content: {
-            'application/json': {
-              schema: PushDataResponseSchema
-            }
-          }
+          description: '成功返回插入条数及数据 ID',
+          content: { 'application/json': { schema: PushDataResponseSchema } }
+        },
+        400: {
+          description: '提供的账单无效或不能用于本轮训练'
+        },
+        409: {
+          description: '文档本轮已有不同的训练账单'
         }
       }
     }

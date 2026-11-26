@@ -21,7 +21,8 @@ const {
   mockFindOne,
   mockBulkWrite,
   mockCreateTrainingUsage,
-  mockTrainingInsertMany,
+  mockCreateTrainingUsages,
+  mockEnqueueDatasetTrainingBatch,
   mockCreateOrGetCollectionTags,
   mockPermissionEnabled,
   mockFindByResource,
@@ -33,7 +34,8 @@ const {
   mockFindOne: vi.fn(),
   mockBulkWrite: vi.fn(),
   mockCreateTrainingUsage: vi.fn(),
-  mockTrainingInsertMany: vi.fn(),
+  mockCreateTrainingUsages: vi.fn(),
+  mockEnqueueDatasetTrainingBatch: vi.fn(),
   mockCreateOrGetCollectionTags: vi.fn(),
   mockPermissionEnabled: vi.fn(),
   mockFindByResource: vi.fn(),
@@ -91,22 +93,17 @@ vi.mock('@fastgpt/service/core/dataset/collection/schema', async (importOriginal
   };
 });
 
-// T2-10 只关心「落库文档带了什么」，训练账单、标签解析与解析队列入队不是断言对象
+// 批量创建的写入端口使用同一 session；Redis 投递在事务提交后发生。
 vi.mock('@fastgpt/service/support/wallet/usage/controller', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  createTrainingUsage: mockCreateTrainingUsage
+  createTrainingUsage: mockCreateTrainingUsage,
+  createTrainingUsages: mockCreateTrainingUsages
 }));
-vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@fastgpt/service/core/dataset/training/schema')>();
-  return {
-    ...actual,
-    MongoDatasetTraining: {
-      ...actual.MongoDatasetTraining,
-      insertMany: mockTrainingInsertMany
-    }
-  };
-});
+vi.mock('@fastgpt/service/core/dataset/training/runtime', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  enqueueDatasetTrainingBatch: mockEnqueueDatasetTrainingBatch
+}));
+
 // 模型目录依赖全局配置，测试环境无；给定句柄不影响 chunkSize/indexSize 的计算分支
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -692,13 +689,15 @@ describe('formatCollectionParamsByDataset', () => {
 describe('createApiFileCollectionsBatch', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
+    mockCreateTrainingUsages.mockImplementation(async ({ bills }: { bills: unknown[] }) =>
+      bills.map((_, index) => `usage-${index + 1}`)
+    );
+    mockEnqueueDatasetTrainingBatch.mockResolvedValue(undefined);
     mockInsertMany.mockImplementation(async (docs) => docs);
-    mockTrainingInsertMany.mockResolvedValue([]);
     mockPermissionEnabled.mockResolvedValue(false);
   });
 
-  it('200 个同父级文件复用模型、标签和 ACL 计算，并将结果整批写入集合与队列', async () => {
+  it('200 个同父级文件复用模型、标签和 ACL 计算，并按文档保存解析工作与账单', async () => {
     mockParentFolder('parent');
     const resolvedTags = [{ tagId: 'tag-id-1', value: ['t-1'] }];
     mockCreateOrGetCollectionTags.mockResolvedValue(resolvedTags);
@@ -723,9 +722,15 @@ describe('createApiFileCollectionsBatch', () => {
     expect(mockCreateOrGetCollectionTags.mock.calls[0][0]).toMatchObject({ tags: ['t-1'] });
     expect(mockInsertMany).toHaveBeenCalledTimes(1);
     const [docs] = mockInsertMany.mock.calls[0];
-    for (const doc of docs) {
+    for (const [index, doc] of docs.entries()) {
       expect(doc).toMatchObject({ indexSize: 100, chunkSize: chunkAutoChunkSize });
       expect(doc.tags).toEqual(resolvedTags);
+      expect(doc.training).toEqual({
+        status: 'active',
+        usageId: `usage-${index + 1}`,
+        revision: 1,
+        parse: { status: 'active' }
+      });
     }
     expect(mockPermissionEnabled).toHaveBeenCalledTimes(1);
     expect(mockFindByResourceIds).toHaveBeenCalledExactlyOnceWith({
@@ -737,77 +742,66 @@ describe('createApiFileCollectionsBatch', () => {
     expect(mockFindByResource).not.toHaveBeenCalled();
     expect(mockWriteResources).toHaveBeenCalledTimes(1);
     expect(mockWriteResources.mock.calls[0][0].resources).toHaveLength(200);
-    expect(mockTrainingInsertMany).toHaveBeenCalledTimes(1);
-    expect(mockTrainingInsertMany).toHaveBeenCalledWith(
-      result.collectionIds.map((collectionId) =>
-        expect.objectContaining({ collectionId, mode: 'parse', billId: 'usage-1' })
-      ),
-      { session: {}, ordered: true }
+    expect(mockCreateTrainingUsages).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        bills: result.collectionIds.map((collectionId, index) => ({
+          appName: files[index].name,
+          trainingCollectionId: collectionId
+        }))
+      }),
+      mockInsertMany.mock.calls[0][1].session
     );
-    expect(mockCreateTrainingUsage).toHaveBeenCalledTimes(1);
+    expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();
   });
 
   it.each([
     {
-      name: '缺省共享账单、内部事务',
-      billing: undefined,
-      session: undefined,
-      names: ['first +1'],
-      bills: ['first-bill', 'first-bill']
+      name: '自开事务',
+      session: undefined
     },
     {
-      name: '逐文件账单、调用方事务',
-      billing: { mode: 'perFile' as const },
-      session: {} as ClientSession,
-      names: ['first', 'second'],
-      bills: ['first-bill', 'second-bill']
-    },
-    {
-      name: '复用已有账单、调用方事务',
-      billing: { mode: 'shared' as const, billId: 'existing' },
-      session: {} as ClientSession,
-      names: [],
-      bills: ['existing', 'existing']
+      name: '调用方持有事务',
+      session: {} as ClientSession
     }
-  ])(
-    '$name：集合、ACL、账单及队列共用事务，账单逐项对应',
-    async ({ billing, session, names, bills }) => {
-      mockPermissionEnabled.mockResolvedValue(true);
-      mockFindByResource.mockResolvedValue([]);
-      mockCreateTrainingUsage
-        .mockResolvedValueOnce({ usageId: 'first-bill' })
-        .mockResolvedValueOnce({ usageId: 'second-bill' });
-      const result = await createApiFileCollectionsBatch({
-        dataset: makeDataset(),
-        files: [makeFile('first'), makeFile('second')],
-        createCollectionParams: collectionParams,
-        billing,
-        indexLimitEstimate: 0,
-        session
+  ])('$name：按文档计费，投递由事务持有方负责', async ({ session }) => {
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResource.mockResolvedValue([]);
+    const result = await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('first'), makeFile('second')],
+      createCollectionParams: collectionParams,
+      indexLimitEstimate: 0,
+      session
+    });
+    expect(result.collectionIds).toHaveLength(2);
+    expect(mockInsertMany).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
+    const transaction = mockInsertMany.mock.calls[0][1].session;
+    if (session) expect(transaction).toBe(session);
+    expect(mockWriteResources.mock.calls[0][0].session).toBe(transaction);
+    expect(mockCreateTrainingUsages).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        bills: [
+          { appName: 'first', trainingCollectionId: result.collectionIds[0] },
+          { appName: 'second', trainingCollectionId: result.collectionIds[1] }
+        ]
+      }),
+      transaction
+    );
+    if (session) {
+      expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();
+    } else {
+      expect(mockEnqueueDatasetTrainingBatch).toHaveBeenCalledExactlyOnceWith({
+        teamId,
+        collectionIds: result.collectionIds
       });
-      expect(result.collectionIds).toHaveLength(2);
-      expect(mockInsertMany).toHaveBeenCalledTimes(1);
-      expect(mockWriteResources).toHaveBeenCalledTimes(1);
-      expect(mockCreateTrainingUsage.mock.calls.map(([args]) => args.appName)).toEqual(names);
-      const transaction = mockInsertMany.mock.calls[0][1].session;
-      if (session) expect(transaction).toBe(session);
-      expect(mockWriteResources.mock.calls[0][0].session).toBe(transaction);
-      for (const [args] of mockCreateTrainingUsage.mock.calls)
-        expect(args.session).toBe(transaction);
-      expect(mockTrainingInsertMany).toHaveBeenCalledExactlyOnceWith(
-        result.collectionIds.map((collectionId, index) =>
-          expect.objectContaining({ collectionId, billId: bills[index] })
-        ),
-        { session: transaction, ordered: true }
-      );
     }
-  );
+  });
 
   it.each([
-    { stage: 'bill', write: mockCreateTrainingUsage },
+    { stage: 'bill', write: mockCreateTrainingUsages },
     { stage: 'collection', write: mockInsertMany },
-    { stage: 'acl', write: mockWriteResources },
-    { stage: 'queue', write: mockTrainingInsertMany }
+    { stage: 'acl', write: mockWriteResources }
   ])('$stage 写入失败向事务调用方抛错，停止后续写入', async ({ stage, write }) => {
     const error = new Error(`${stage} failed`);
     mockPermissionEnabled.mockResolvedValue(true);
@@ -821,7 +815,7 @@ describe('createApiFileCollectionsBatch', () => {
         session: {} as ClientSession
       })
     ).rejects.toBe(error);
-    if (stage !== 'queue') expect(mockTrainingInsertMany).not.toHaveBeenCalled();
+    expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();
     if (stage === 'collection') expect(mockWriteResources).not.toHaveBeenCalled();
   });
 
@@ -836,8 +830,8 @@ describe('createApiFileCollectionsBatch', () => {
     ).resolves.toEqual({ collectionIds: [] });
     expect(mockCreateOrGetCollectionTags).not.toHaveBeenCalled();
     expect(mockCreateTrainingUsage).not.toHaveBeenCalled();
+    expect(mockCreateTrainingUsages).not.toHaveBeenCalled();
     expect(mockInsertMany).not.toHaveBeenCalled();
-    expect(mockTrainingInsertMany).not.toHaveBeenCalled();
   });
 
   it('file 的 inheritPermission 逐文件取值，缺省保持继承', async () => {

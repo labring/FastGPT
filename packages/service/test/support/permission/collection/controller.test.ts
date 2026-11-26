@@ -18,7 +18,6 @@ import {
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
 import { MongoUsageItem } from '@fastgpt/service/support/wallet/usage/usageItemSchema';
 import * as modelCatalog from '@fastgpt/service/core/ai/model/catalog/service';
@@ -503,7 +502,7 @@ describe.sequential('createCollections / createCollectionPermission', () => {
     ).toBe(0);
   });
 
-  it('解析队列写入失败时真实事务回滚集合、ACL 和逐文件账单', async () => {
+  it('账单明细写入失败时真实事务回滚集合、ACL 和逐文件账单', async () => {
     const users = await getFakeUsers(1);
     const dataset = await createDataset({ user: users.owner });
     const teamId = String(users.owner.teamId);
@@ -528,7 +527,7 @@ describe.sequential('createCollections / createCollectionPermission', () => {
       }
     } as unknown as Awaited<ReturnType<typeof modelCatalog.getTeamModelHandle>>);
     const error = new Error('queue unavailable');
-    const queueWrite = vi.spyOn(MongoDatasetTraining, 'insertMany').mockRejectedValueOnce(error);
+    const queueWrite = vi.spyOn(MongoUsageItem, 'insertMany').mockRejectedValueOnce(error);
     const { mongoSessionRun: runRealTransaction } = await vi.importActual<
       typeof import('@fastgpt/service/common/mongo/sessionRun')
     >('@fastgpt/service/common/mongo/sessionRun');
@@ -547,7 +546,6 @@ describe.sequential('createCollections / createCollectionPermission', () => {
               datasetId,
               type: DatasetCollectionTypeEnum.apiFile
             },
-            billing: { mode: 'perFile' },
             session
           })
         )

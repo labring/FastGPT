@@ -24,6 +24,7 @@ import { readDatasetSourceRawText } from '../read';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
+import { enqueueDatasetTrainingBatch } from '../training/runtime';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 import { getCollectionCollaborators } from '../../../support/permission/collection/collaborator';
 import { carryOverCollectionPermission } from '../../../support/permission/collection/controller';
@@ -373,7 +374,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText !== collection.hashRawText) {
-    await mongoSessionRun(async (session) => {
+    const result = await mongoSessionRun(async (session) => {
       const chunkImagePrefixId = await readChunkImagePrefixIdForRebuild({
         teamId: String(collection.teamId),
         datasetId: String(collection.datasetId),
@@ -396,7 +397,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       });
 
       // Create new collection
-      const { collectionId } = await createCollectionAndInsertData({
+      const created = await createCollectionAndInsertData({
         session,
         dataset,
         rawText: rawText,
@@ -414,11 +415,19 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
       await carryOverCollectionPermission({
         teamId: collection.teamId,
-        collectionId,
+        collectionId: created.collectionId,
         collaborators,
         session
       });
+      return created;
     });
+
+    if (result.results.insertLen > 0) {
+      await enqueueDatasetTrainingBatch({
+        teamId: collection.teamId,
+        collectionIds: [result.collectionId]
+      });
+    }
 
     return DatasetCollectionSyncResultEnum.success;
   } else if (title && collection.name !== title) {
