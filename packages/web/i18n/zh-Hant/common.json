@@ -1406,6 +1406,7 @@
   "source_label": "來源 {{index}}",
   "enable_word_wrap": "啟用自動換行",
   "disable_word_wrap": "停用自動換行",
+  "copy_code": "複製程式碼",
   "copied": "已複製",
   "download_png": "下載 PNG",
   "open_in_new_tab": "新分頁開啟",

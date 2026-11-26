@@ -1397,6 +1397,7 @@
   "source_label": "소스 {{index}}",
   "enable_word_wrap": "자동 줄바꿈 활성화",
   "disable_word_wrap": "자동 줄바꿈 비활성화",
+  "copy_code": "코드 복사",
   "copied": "복사됨",
   "download_png": "PNG 다운로드",
   "open_in_new_tab": "새 탭에서 열기",
