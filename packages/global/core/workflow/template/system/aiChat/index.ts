@@ -22,13 +22,14 @@ import {
 import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
 import { isEmptyModelValue } from '../../../../ai/model/reference';
+import { DEFAULT_AI_CHAT_QUOTE_ROLE } from './type';
 
 export const AiChatQuoteRole = {
   key: NodeInputKeyEnum.aiChatQuoteRole,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  value: 'user' // user or system
+  value: DEFAULT_AI_CHAT_QUOTE_ROLE // user or system
 };
 export const AiChatQuoteTemplate = {
   key: NodeInputKeyEnum.aiChatQuoteTemplate,

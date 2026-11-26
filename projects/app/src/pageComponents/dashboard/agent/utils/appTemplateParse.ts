@@ -1,7 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppType, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { AiChatQuoteRoleSchema } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import { parseAiChatQuoteRole } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
@@ -89,7 +89,7 @@ export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
   const { type: _type, name: _name, intro: _intro, ...formConfig } = config;
   const defaultForm = getDefaultAppForm();
   const rawAiSettings = (config.aiSettings as Record<string, unknown> | undefined) || {};
-  const parsedQuoteRole = AiChatQuoteRoleSchema.safeParse(rawAiSettings.aiChatQuoteRole);
+  const aiChatQuoteRole = parseAiChatQuoteRole(rawAiSettings.aiChatQuoteRole);
   const { aiChatQuoteRole: _ignoredQuoteRole, ...restAiSettings } = rawAiSettings;
   const form = {
     ...defaultForm,
@@ -97,7 +97,7 @@ export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
     aiSettings: {
       ...defaultForm.aiSettings,
       ...restAiSettings,
-      ...(parsedQuoteRole.success ? { aiChatQuoteRole: parsedQuoteRole.data } : {})
+      ...(aiChatQuoteRole !== undefined ? { aiChatQuoteRole } : {})
     },
     dataset: {
       ...defaultForm.dataset,
@@ -204,7 +204,7 @@ const parseSimpleImportWorkflow = ({
   }
 
   const rawQuoteRole = (config.aiSettings as Record<string, unknown>).aiChatQuoteRole;
-  if (rawQuoteRole !== undefined && !AiChatQuoteRoleSchema.safeParse(rawQuoteRole).success) {
+  if (rawQuoteRole !== undefined && parseAiChatQuoteRole(rawQuoteRole) === undefined) {
     throw new Error(t('app:type_not_recognized'));
   }
 

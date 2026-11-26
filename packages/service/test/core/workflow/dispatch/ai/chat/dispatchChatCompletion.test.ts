@@ -73,9 +73,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', async (im
   return {
     ...mod,
     getDatasetCiteData: async (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
-      fixture.useRealDatasetCite
-        ? mod.getDatasetCiteData(props)
-        : { userInput: 'question', systemPrompt: '', hasEffectiveUserInput: true }
+      fixture.useRealDatasetCite ? mod.getDatasetCiteData(props) : { userInput: 'question' }
   };
 });
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (importOriginal) => {

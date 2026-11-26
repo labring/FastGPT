@@ -2,7 +2,11 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import {
+  DEFAULT_AI_CHAT_QUOTE_ROLE,
+  resolveAiChatQuoteRole,
+  type AiChatQuoteRoleType
+} from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { serviceEnv } from '../../../../../env';
 import { filterSearchResultsByMaxChars } from '../../../utils';
 import type { ChatProps } from './type';
@@ -14,7 +18,7 @@ export const getDatasetCiteData = async ({
   quoteQA = [],
   model,
   quoteTemplate,
-  aiChatQuoteRole = 'user',
+  aiChatQuoteRole = DEFAULT_AI_CHAT_QUOTE_ROLE,
   datasetQuotePrompt = '',
   userChatInput,
   version,
@@ -65,34 +69,35 @@ export const getDatasetCiteData = async ({
 
   // Prompt 显式包含问题时必须放到 user role，避免 system prompt 无法承载用户问题变量。
   const quoteRole =
-    aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
+    resolveAiChatQuoteRole(aiChatQuoteRole) === 'user' ||
+    datasetQuotePrompt.includes('{{question}}')
+      ? 'user'
+      : 'system';
 
   const defaultQuotePrompt = getQuotePrompt(version, quoteRole);
 
   const datasetQuotePromptTemplate = datasetQuotePrompt || defaultQuotePrompt;
 
-  const replaceInputValue =
-    useDatasetQuote && quoteRole === 'user'
-      ? datasetQuotePromptTemplate.replace(/\{\{(quote|question)\}\}/g, (_, key: string) =>
-          key === 'quote' ? datasetQuoteText : userChatInput
-        )
-      : userChatInput;
+  // 内置默认 User 模板在问题与引用均为空时不注入纯固定提醒文案，避免掩盖空输入或污染纯附件请求；
+  // 自定义模板可能包含工作流已展开的变量正文，保持原有渲染语义。
+  const shouldRenderUserQuotePrompt =
+    useDatasetQuote &&
+    quoteRole === 'user' &&
+    (Boolean(datasetQuotePrompt) || Boolean(userChatInput) || Boolean(datasetQuoteText));
+
+  const replaceInputValue = shouldRenderUserQuotePrompt
+    ? datasetQuotePromptTemplate.replace(/\{\{(quote|question)\}\}/g, (_, key: string) =>
+        key === 'quote' ? datasetQuoteText : userChatInput
+      )
+    : userChatInput;
 
   const systemPrompt =
     useDatasetQuote && quoteRole === 'system'
       ? datasetQuotePromptTemplate.replace(/\{\{quote\}\}/g, () => datasetQuoteText)
       : '';
 
-  // 仅内置默认 User 模板会在问题与引用均为空时产出纯固定提示文案；
-  // 自定义模板可能包含已由工作流展开的全局变量，沿用渲染结果非空语义以保持历史兼容。
-  const hasEffectiveUserInput =
-    useDatasetQuote && quoteRole === 'user' && !datasetQuotePrompt
-      ? Boolean(userChatInput) || Boolean(datasetQuoteText)
-      : Boolean(replaceInputValue);
-
   return {
     userInput: replaceInputValue,
-    systemPrompt,
-    hasEffectiveUserInput
+    systemPrompt
   };
 };

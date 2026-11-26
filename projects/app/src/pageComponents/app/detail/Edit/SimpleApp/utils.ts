@@ -22,7 +22,10 @@ import {
   AiChatQuoteRole,
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
-import { AiChatQuoteRoleSchema } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import {
+  parseAiChatQuoteRole,
+  resolveAiChatQuoteRole
+} from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -115,12 +118,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.sandboxEntrypoint
       );
-      const parsedQuoteRole = AiChatQuoteRoleSchema.safeParse(
+      defaultAppForm.aiSettings.aiChatQuoteRole = parseAiChatQuoteRole(
         findInputValueByKey(node.inputs, NodeInputKeyEnum.aiChatQuoteRole)
       );
-      if (parsedQuoteRole.success) {
-        defaultAppForm.aiSettings.aiChatQuoteRole = parsedQuoteRole.data;
-      }
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -295,8 +295,6 @@ export function form2AppWorkflow(
     };
   }
   function aiChatTemplate(formData: AppFormEditFormType): StoreNodeItemType {
-    const parsedQuoteRole = AiChatQuoteRoleSchema.safeParse(formData.aiSettings.aiChatQuoteRole);
-
     return {
       nodeId: aiChatNodeId,
       name: t(AiChatModule.name),
@@ -338,10 +336,10 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        // 存量简易应用可能显式保存了 system 角色；仅接受符合 AiChatQuoteRoleSchema 的值，缺省或非法值回退模板默认 user。
+        // 存量简易应用可能显式保存了 system 角色；编辑保存往返经统一契约归一化，非法或缺失值回退默认 user。
         {
           ...AiChatQuoteRole,
-          value: parsedQuoteRole.success ? parsedQuoteRole.data : AiChatQuoteRole.value
+          value: resolveAiChatQuoteRole(formData.aiSettings.aiChatQuoteRole)
         },
         AiChatQuoteTemplate,
         AiChatQuotePrompt,

@@ -1,7 +1,7 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { getUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
+import { pickUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
 
 export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   totalPoints: number;
@@ -38,27 +38,19 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   finishReason,
   requestIds,
   firstTokenTime
-}: CreateAgentLoopCoreToolCallNodeResponseParams): Record<string, unknown> => {
-  const usedCacheReadTokens = getUsedCacheTokens(cacheReadTokens);
-  const usedCacheCreationTokens = getUsedCacheTokens(cacheCreationTokens);
-
-  return {
-    totalPoints,
-    toolCallInputTokens,
-    toolCallOutputTokens,
-    ...(usedCacheReadTokens !== undefined ? { cacheReadTokens: usedCacheReadTokens } : {}),
-    ...(usedCacheCreationTokens !== undefined
-      ? { cacheCreationTokens: usedCacheCreationTokens }
-      : {}),
-    model: modelName,
-    query,
-    historyPreview: getHistoryPreview(
-      GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-      10000,
-      useVision
-    ),
-    finishReason,
-    llmRequestIds: requestIds,
-    firstTokenTime
-  };
-};
+}: CreateAgentLoopCoreToolCallNodeResponseParams): Record<string, unknown> => ({
+  totalPoints,
+  toolCallInputTokens,
+  toolCallOutputTokens,
+  ...pickUsedCacheTokens({ cacheReadTokens, cacheCreationTokens }),
+  model: modelName,
+  query,
+  historyPreview: getHistoryPreview(
+    GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
+    10000,
+    useVision
+  ),
+  finishReason,
+  llmRequestIds: requestIds,
+  firstTokenTime
+});

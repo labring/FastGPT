@@ -115,17 +115,27 @@ describe('dataset citation synonym compatibility', () => {
     expect(result.systemPrompt).toBe('');
     expect(result.userInput).toContain('alias');
     expect(result.userInput).toContain('question');
-    expect(result.hasEffectiveUserInput).toBe(true);
+
+    // 非法或空字符串角色同样按统一契约回退默认 user，避免运行时与编辑器行为分叉。
+    const emptyRoleResult = await getDatasetCiteData({
+      quoteQA: [item],
+      model: { config: { quoteMaxToken: 1000 } } as LLMModelDataType,
+      quoteTemplate: '{{q}}',
+      aiChatQuoteRole: '' as any,
+      userChatInput: 'question',
+      useDatasetQuote: true
+    });
+    expect(emptyRoleResult.systemPrompt).toBe('');
+    expect(emptyRoleResult.userInput).toContain('alias');
   });
 
-  it('distinguishes substantive quote content from static user template boilerplate', async () => {
+  it('omits built-in default user template when both question and quote are empty, while preserving custom prompts', async () => {
     const emptyDefault = await run({
       quoteQA: [],
       datasetQuotePrompt: '',
       userChatInput: ''
     });
-    expect(emptyDefault.userInput).toContain('<system-reminder>');
-    expect(emptyDefault.hasEffectiveUserInput).toBe(false);
+    expect(emptyDefault.userInput).toBe('');
 
     const quoteOnly = await run({
       quoteQA: [item],
@@ -133,7 +143,6 @@ describe('dataset citation synonym compatibility', () => {
       userChatInput: ''
     });
     expect(quoteOnly.userInput).toContain('alias');
-    expect(quoteOnly.hasEffectiveUserInput).toBe(true);
 
     const systemEmptyQuestion = await run({
       quoteQA: [item],
@@ -141,7 +150,7 @@ describe('dataset citation synonym compatibility', () => {
       datasetQuotePrompt: '{{quote}}',
       userChatInput: ''
     });
-    expect(systemEmptyQuestion.hasEffectiveUserInput).toBe(false);
+    expect(systemEmptyQuestion.userInput).toBe('');
 
     const customExpandedVar = await run({
       quoteQA: [],
@@ -149,6 +158,5 @@ describe('dataset citation synonym compatibility', () => {
       userChatInput: ''
     });
     expect(customExpandedVar.userInput).toBe('请总结：来自工作流变量的正文\n');
-    expect(customExpandedVar.hasEffectiveUserInput).toBe(true);
   });
 });
