@@ -91,7 +91,6 @@ jobs:
         run: |
           pnpm --filter @fastgpt-sdk/storage typecheck
           pnpm --filter @fastgpt-sdk/otel typecheck
-          pnpm --filter @fastgpt-sdk/sandbox-adapter typecheck
 
       - name: Typecheck app
         env:

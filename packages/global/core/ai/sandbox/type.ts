@@ -1,24 +1,19 @@
-import z from 'zod';
 import { SandboxUnavailableReasonEnum } from './constants';
+import z from 'zod';
 
 export const SandboxUnavailableReasonSchema = z.enum(SandboxUnavailableReasonEnum);
 export type SandboxUnavailableReason = z.infer<typeof SandboxUnavailableReasonSchema>;
+
+export type ExecuteResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  truncated?: boolean;
+  durationMs?: number;
+};
 
 export const SandboxImageConfigSchema = z.object({
   repository: z.string(),
   tag: z.string().optional()
 });
 export type SandboxImageConfigType = z.infer<typeof SandboxImageConfigSchema>;
-
-export const SandboxRuntimeStatusSchema = z.enum(['readyToInit', 'upgradeRequired', 'upgrading']);
-export const SandboxRuntimeStatusResponseSchema = z.object({
-  status: SandboxRuntimeStatusSchema.meta({
-    example: 'upgradeRequired',
-    description: 'Sandbox runtime image upgrade status'
-  }),
-  lastError: z.string().optional().meta({
-    example: 'Failed to archive sandbox',
-    description: 'Most recent runtime upgrade failure'
-  })
-});
-export type SandboxRuntimeStatusResponse = z.infer<typeof SandboxRuntimeStatusResponseSchema>;

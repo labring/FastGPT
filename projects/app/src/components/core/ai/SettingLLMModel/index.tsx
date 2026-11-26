@@ -3,7 +3,10 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getModelDetail } from '@/web/core/ai/model/modelData';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getLLMSupportParams,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -77,22 +80,23 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
               )
                 return;
               const currentData = latestData.current;
-              const settings = (() => {
+              const support = getLLMSupportParams(modelData);
+              const settings =
                 // 只清理有显式开关的工作流配置，隐藏配置的表单交给后端判断模型能力。
-                if (
-                  props.showMultimodalConfig === false ||
-                  currentData.aiChatVision === undefined ||
-                  !modelData
-                ) {
-                  return currentData;
-                }
-                return filterModelMultimodalSettings({
-                  settings: currentData,
-                  support: getLLMSupportParams(modelData)
-                });
-              })();
+                props.showMultimodalConfig === false || currentData.aiChatVision === undefined
+                  ? currentData
+                  : filterModelMultimodalSettings({
+                      settings: currentData,
+                      support
+                    });
               onChange({
                 ...settings,
+                ...(currentData.aiChatReasoningEffort !== undefined && {
+                  aiChatReasoningEffort: normalizeModelReasoningEffort(
+                    currentData.aiChatReasoningEffort,
+                    support.reasoningEffortList
+                  )
+                }),
                 modelId: e
               });
             }}

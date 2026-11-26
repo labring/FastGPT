@@ -19,7 +19,12 @@ import {
   saveLLMResponseRecord as persistLLMResponseRecord
 } from './records';
 import { createCompleteResponse } from './response/complete';
-import { normalizeCompletionFinishReason } from './response/normalize';
+import {
+  isTerminatedFinishReason,
+  normalizeCompletionFinishReason,
+  reconcileFinalToolCalls,
+  redactToolCalls
+} from './response/normalize';
 import { createStreamResponse } from './response/stream';
 import type { CreateLLMResponseProps, LLMResponse } from './types';
 import {
@@ -91,7 +96,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     usedUserOpenAIKey: false
   };
   let hasSavedLLMRequestRecord = false;
-  const moderatedToolCallIdSet = new Set<string>();
 
   try {
     // 自带“继续”的循环：finish_reason=length 时追加已生成内容后继续请求。
@@ -247,65 +251,73 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         });
       })();
 
-      const blockedToolCallIdSet = new Set<string>();
-      // 锚点 3：模型生成的工具参数检查 - 违规脱敏参数并标记由 Agent Loop 直接回填统一审核结果，不中断整个 Loop
-      if (!parsedResponse.isBlockedByModeration && parsedResponse.toolCalls?.length) {
+      const rawRoundToolCalls = parsedResponse.toolCalls;
+      const roundFinishReason = normalizeCompletionFinishReason({
+        rawFinishReason: parsedResponse.finish_reason,
+        isStreamResponse: currentIsStreamResponse,
+        hasResponse:
+          !!parsedResponse.answerText ||
+          !!parsedResponse.reasoningText ||
+          !!rawRoundToolCalls?.length,
+        error: parsedResponse.error
+      });
+
+      // 锚点 3：模型生成的工具参数检查 - 已终止/出错响应工具将被整组丢弃，跳过无效外部审核；
+      // 其余违规交由 reconcileFinalToolCalls 统一脱敏为 '{}' 并标记为 'moderation'，不中断整个 Loop。
+      const moderatedToolCallIds = await (async (): Promise<ReadonlySet<string>> => {
+        if (
+          parsedResponse.isBlockedByModeration ||
+          isTerminatedFinishReason(roundFinishReason) ||
+          !rawRoundToolCalls?.length
+        ) {
+          return new Set();
+        }
         const toolCheck = await checkToolParamsModeration({
-          toolCalls: parsedResponse.toolCalls,
+          toolCalls: rawRoundToolCalls,
           context: { teamId, requestId }
         });
-        if (!toolCheck.isPass) {
-          const blockedIds =
-            toolCheck.blockedToolCallIds ?? parsedResponse.toolCalls.map((call) => call.id);
-          blockedIds.forEach((id) => {
-            blockedToolCallIdSet.add(id);
-            moderatedToolCallIdSet.add(id);
-          });
-          parsedResponse.toolCalls = parsedResponse.toolCalls.map((call) =>
-            blockedToolCallIdSet.has(call.id)
-              ? {
-                  ...call,
-                  function: {
-                    ...call.function,
-                    arguments: '{}'
-                  }
-                }
-              : call
-          );
+        if (toolCheck.isPass) {
+          return new Set();
         }
-      }
+        return new Set(toolCheck.blockedToolCallIds ?? rawRoundToolCalls.map((call) => call.id));
+      })();
 
-      // 审核全部通过后派发回调（未被审核拦截的内容正常对外派发）
-      const isBlockedByModeration = parsedResponse.isBlockedByModeration;
-      if (!currentIsStreamResponse) {
-        if (!isBlockedByModeration) {
+      // 每轮底层响应即按本轮 finish_reason 立即收敛工具：
+      // 1) 避免 maxContinuations>1 的 length 续写把半截 arguments 带入下一轮请求触发 400；
+      // 2) 防止中间 length 调用在后续正常结束时被误判为可执行工具。
+      const { toolCalls: reconciledRoundToolCalls, blockedToolCalls: roundBlockedToolCalls } =
+        reconcileFinalToolCalls({
+          toolCalls: rawRoundToolCalls,
+          finishReason: roundFinishReason,
+          moderatedToolCallIds
+        });
+
+      // 审核与收敛完成后派发非流式/审核缓冲流的工具回调（已被审核拦截的调用不对外派发）。
+      if (!parsedResponse.isBlockedByModeration) {
+        if (!currentIsStreamResponse) {
           if (parsedResponse.reasoningText) {
             args.onReasoning?.({ text: parsedResponse.reasoningText });
           }
           if (parsedResponse.answerText) {
             args.onStreaming?.({ text: parsedResponse.answerText });
           }
-          if (parsedResponse.toolCalls?.length) {
-            parsedResponse.toolCalls.forEach((call) => {
-              if (!blockedToolCallIdSet.has(call.id)) {
-                args.onToolCall?.({ call });
-              }
-            });
-          }
         }
-      } else if (
-        parsedResponse.isOutputModerationEnabled &&
-        !isBlockedByModeration &&
-        parsedResponse.toolCalls?.length
-      ) {
-        parsedResponse.toolCalls.forEach((call) => {
-          if (!blockedToolCallIdSet.has(call.id)) {
-            args.onToolCall?.({ call });
-          }
-        });
+        if (!currentIsStreamResponse || parsedResponse.isOutputModerationEnabled) {
+          reconciledRoundToolCalls?.forEach((call) => {
+            if (!moderatedToolCallIds.has(call.id)) {
+              args.onToolCall?.({ call });
+            }
+          });
+        }
       }
 
-      accumulator.appendResponse(parsedResponse);
+      accumulator.appendResponse({
+        ...parsedResponse,
+        toolCalls: reconciledRoundToolCalls,
+        rawToolCalls: rawRoundToolCalls,
+        errorRecordToolCalls: redactToolCalls(rawRoundToolCalls, moderatedToolCallIds),
+        blockedToolCalls: roundBlockedToolCalls
+      });
 
       if (accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
@@ -326,10 +338,13 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     const {
-      assistantMessage,
       answerText,
       reasoningText,
-      toolCalls,
+      toolCalls: accumulatedToolCalls,
+      rawToolCalls,
+      errorRecordToolCalls,
+      blockedToolCalls: accumulatedBlockedToolCalls,
+      rawAssistantMessage,
       finish_reason: rawFinishReason,
       usage,
       error: responseError,
@@ -340,9 +355,23 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const finish_reason = normalizeCompletionFinishReason({
       rawFinishReason,
       isStreamResponse,
-      hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
+      hasResponse: !!answerText || !!reasoningText || !!rawToolCalls?.length,
       error
     });
+    // 若多轮续写最终以 close / error / content_filter 收尾，整组清空工具，避免残余中间轮调用流出。
+    const { toolCalls, blockedToolCalls } = (() => {
+      if (!isTerminatedFinishReason(finish_reason)) {
+        return {
+          toolCalls: accumulatedToolCalls,
+          blockedToolCalls: accumulatedBlockedToolCalls
+        };
+      }
+      return {
+        toolCalls: accumulatedToolCalls !== undefined ? [] : undefined,
+        blockedToolCalls: {}
+      };
+    })();
+    const assistantMessage = accumulator.buildAssistantMessage(toolCalls);
 
     // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
     // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）
@@ -352,10 +381,11 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         messages: requestBody.messages as ChatCompletionMessageParam[],
         tools: requestBody.tools as ChatCompletionTool[] | undefined
       }));
+    // 上游省略 usage 时按模型真实生成的原始输出估算 outputTokens，避免清洗/丢弃工具参数后低估计费。
     const outputTokens =
       usage?.completion_tokens ||
       (await countGptMessagesTokens({
-        messages: [assistantMessage]
+        messages: [rawAssistantMessage]
       }));
 
     /**
@@ -386,20 +416,21 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const isNotResponse =
       !answerText &&
       !reasoningText &&
-      !toolCalls?.length &&
+      !rawToolCalls?.length &&
       !error &&
       (finish_reason === 'stop' || !finish_reason);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
     if (saveLLMResponseRecord && teamId) {
       // 先保存模型结果，再生成系统兜底错误，避免覆盖 Mongo 原始输出与结束原因。
+      // error 场景保留逐轮绑定审核脱敏后的排障 toolCalls，其余场景写入收敛后的结果。
       persistLLMResponseRecord({
         teamId,
         requestId,
         requestBody: requestBody as ChatCompletionCreateParams,
         answerText,
         reasoningText,
-        toolCalls,
+        toolCalls: finish_reason === 'error' ? errorRecordToolCalls : toolCalls,
         finishReason: finish_reason,
         usage,
         inputTokens,
@@ -429,9 +460,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       answerText,
       reasoningText,
       toolCalls,
-      ...(moderatedToolCallIdSet.size > 0
-        ? { moderatedToolCallIds: Array.from(moderatedToolCallIdSet) }
-        : {}),
+      ...(Object.keys(blockedToolCalls).length > 0 ? { blockedToolCalls } : {}),
       finish_reason,
       usage: {
         inputTokens,

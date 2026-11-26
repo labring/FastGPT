@@ -1911,6 +1911,16 @@ describe('runPiAgentLoop', () => {
         })
       ])
     );
+
+    const controller = new AbortController();
+    await sandboxTool.execute('call_sandbox_abort', { command: 'sleep 10' }, controller.signal);
+    expect(runSandboxToolsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        toolName: 'sandbox_shell',
+        args: '{"command":"sleep 10"}',
+        signal: controller.signal
+      })
+    );
   });
 
   it('adapts llmParams into pi-agent payload without carrying workflow-only fields', async () => {

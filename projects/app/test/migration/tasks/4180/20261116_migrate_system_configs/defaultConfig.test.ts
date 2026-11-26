@@ -20,7 +20,10 @@ import {
 // 原子初始化必须使用远端测试库的真实事务，不能沿用全局的无事务替身。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
 
 describe('readDefaultInstanceConfig', () => {
   let directory: string;

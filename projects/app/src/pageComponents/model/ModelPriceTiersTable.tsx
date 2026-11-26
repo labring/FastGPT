@@ -58,7 +58,7 @@ const InvalidPriceInputStyles = {
 };
 
 export const emptyPriceTier = {
-  maxInputTokens: undefined,
+  maxInputTokensK: undefined,
   inputPrice: undefined,
   outputPrice: undefined,
   cacheReadPrice: undefined,
@@ -134,7 +134,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
   const clearPriceTier = useCallback(
     (index: number) => {
       if (priceTierFields.length === 1) {
-        setValue(`pricing.tiers.${index}.maxInputTokens` as never, undefined as never, {
+        setValue(`pricing.tiers.${index}.maxInputTokensK` as never, undefined as never, {
           shouldDirty: true
         });
         priceFields.forEach((key) => {
@@ -280,21 +280,21 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                 const previousTierMax =
                   index === 0
                     ? 0
-                    : typeof previousTier?.maxInputTokens === 'number' &&
-                        Number.isFinite(previousTier.maxInputTokens)
-                      ? previousTier.maxInputTokens
+                    : typeof previousTier?.maxInputTokensK === 'number' &&
+                        Number.isFinite(previousTier.maxInputTokensK)
+                      ? previousTier.maxInputTokensK
                       : 0;
                 const lowerBound = index === 0 ? 0 : previousTierMax;
                 const isLastTier = index === priceTierFields.length - 1;
                 const isInvalidMaxInput =
                   invalidMaxInputMap[index] ??
-                  (typeof currentTier?.maxInputTokens === 'number' &&
-                    (!Number.isInteger(currentTier.maxInputTokens) ||
-                      currentTier.maxInputTokens <= lowerBound));
+                  (typeof currentTier?.maxInputTokensK === 'number' &&
+                    (!Number.isInteger(currentTier.maxInputTokensK) ||
+                      currentTier.maxInputTokensK <= lowerBound));
                 const isEmptyAction =
-                  !currentTier?.maxInputTokens &&
+                  !currentTier?.maxInputTokensK &&
                   priceFields.every((key) => currentTier?.[key] === undefined);
-                const maxInputTokensRegister = register(`pricing.tiers.${index}.maxInputTokens`, {
+                const maxInputTokensKRegister = register(`pricing.tiers.${index}.maxInputTokensK`, {
                   min: lowerBound,
                   setValueAs: getOptionalNumber
                 });
@@ -328,10 +328,10 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                           step={1}
                           min={lowerBound + 1}
                           placeholder={isLastTier ? t('config_model:price_tier_open_ended') : ''}
-                          {...maxInputTokensRegister}
+                          {...maxInputTokensKRegister}
                           {...PriceInputStyles}
                           onChange={(event) => {
-                            maxInputTokensRegister.onChange(event);
+                            maxInputTokensKRegister.onChange(event);
                             const nextValue = getOptionalNumber(event.target.value);
                             setInvalidMaxInputMap((state) => ({
                               ...state,
@@ -342,7 +342,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                             }));
                           }}
                           onBlur={(event) => {
-                            maxInputTokensRegister.onBlur(event);
+                            maxInputTokensKRegister.onBlur(event);
                             const nextValue = getOptionalNumber(event.target.value);
                             setInvalidMaxInputMap((state) => ({
                               ...state,
@@ -378,11 +378,6 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                             step={0.01}
                             min={0}
                             aria-label={priceLabels[key]}
-                            placeholder={
-                              key === 'cacheReadPrice' || key === 'cacheCreationPrice'
-                                ? t('common:model.cache_price_default')
-                                : undefined
-                            }
                             {...register(`pricing.tiers.${index}.${key}`, {
                               setValueAs: (value) => {
                                 const price = getOptionalNumber(value);

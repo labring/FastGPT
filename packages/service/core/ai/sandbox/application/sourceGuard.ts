@@ -70,3 +70,13 @@ export async function assertSandboxSourceDeleted(params: {
     );
   }
 }
+
+/** 批量查询已标记软删除的 Skill ID 集合，避免删除编排 N+1 查询。 */
+export async function findDeletedSkillIds(skillIds: string[]): Promise<Set<string>> {
+  if (skillIds.length === 0) return new Set();
+  const rows = await MongoAgentSkills.find(
+    { _id: { $in: skillIds }, deleteTime: { $ne: null } },
+    { _id: 1 }
+  ).lean();
+  return new Set(rows.map((row) => String(row._id)));
+}

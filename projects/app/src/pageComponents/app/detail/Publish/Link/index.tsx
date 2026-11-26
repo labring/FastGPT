@@ -28,6 +28,7 @@ import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { formatOutLinkUsagePoints } from '../utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
@@ -157,14 +158,12 @@ const Share = ({
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>
-                  {Math.round(item.usagePoints)}
-                  {feConfigs?.isPlus
-                    ? `${
-                        item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
-                          ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:Unlimited')}`
-                      }`
-                    : ''}
+                  {formatOutLinkUsagePoints({
+                    usagePoints: item.usagePoints,
+                    maxUsagePoints: item.limit?.maxUsagePoints,
+                    isPlus: feConfigs?.isPlus,
+                    unlimitedLabel: t('common:Unlimited')
+                  })}
                 </Td>
                 {feConfigs?.isPlus && (
                   <Td>

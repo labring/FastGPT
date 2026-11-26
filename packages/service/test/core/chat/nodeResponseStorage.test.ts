@@ -953,6 +953,8 @@ describe('WorkflowNodeResponseWriter', () => {
         totalPoints: 6,
         inputTokens: 10,
         outputTokens: 20,
+        cacheReadTokens: 30,
+        cacheCreationTokens: 40,
         customOutputs: { huge: 'payload' },
         quoteList: [
           {
@@ -993,6 +995,8 @@ describe('WorkflowNodeResponseWriter', () => {
       runningTime: 1.2,
       inputTokens: 10,
       outputTokens: 20,
+      cacheReadTokens: 30,
+      cacheCreationTokens: 40,
       totalPoints: 6,
       childResponseCount: 1
     });

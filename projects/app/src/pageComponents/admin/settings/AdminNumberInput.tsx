@@ -35,6 +35,7 @@ const AdminNumberInput = ({
       variant={'whiteOutline'}
       min={min}
       max={max}
+      clampValueOnBlur={false}
       {...rest}
       value={displayValue}
       onChange={(valueAsString, valueAsNumber) => {
@@ -44,7 +45,8 @@ const AdminNumberInput = ({
         }
       }}
       onBlur={() => {
-        const current = (draft ?? String(resolvedValue)).trim();
+        if (draft === null) return;
+        const current = draft.trim();
         setDraft(null);
         const parsed = current === '' ? Number.NaN : Number(current);
         if (!Number.isFinite(parsed)) {

@@ -72,7 +72,12 @@ UID generation 替换），不是仅表示 API Server 接受了 DELETE 请求。
 | `VM_AUTH_TOKEN` | ✅ | - | API 鉴权 Token |
 | `VM_RUNTIME` | | `kubernetes` | 运行时：`kubernetes` 或 `docker` |
 | `VM_PORT` | | `3001` | 监听端口 |
-| `VM_LOG_LEVEL` | | `info` | 日志级别：`debug` / `info` / `none` |
+| `LOG_ENABLE_CONSOLE` | | `true` | 是否开启控制台日志输出 |
+| `LOG_CONSOLE_LEVEL` | | `info` | 控制台日志级别：`trace` / `debug` / `info` / `warning` / `error` / `fatal` |
+| `LOG_ENABLE_OTEL` | | `false` | 是否开启 OpenTelemetry 日志上报 |
+| `LOG_OTEL_URL` | | `http://localhost:4318/v1/logs` | OpenTelemetry OTLP 日志接收地址 |
+| `LOG_OTEL_SERVICE_NAME` | | `fastgpt-volume-manager` | OpenTelemetry 服务名 |
+| `LOG_OTEL_LEVEL` | | `warning` | OpenTelemetry 日志上报级别 |
 | `VM_DOCKER_SOCKET` | | `/var/run/docker.sock` | Docker socket 路径（docker 模式） |
 | `VM_K8S_NAMESPACE` | | `opensandbox` | PVC 所在命名空间（k8s 模式） |
 | `VM_K8S_PVC_STORAGE_CLASS` | | `''` | PVC StorageClass（k8s 模式） |
@@ -130,8 +135,6 @@ src/
 ├── env.ts                # 环境变量校验
 ├── routes/
 │   └── volumes.ts        # /v1/volumes 路由
-├── services/
-│   └── VolumeService.ts  # 业务逻辑层
 ├── drivers/
 │   ├── IVolumeDriver.ts  # 驱动接口
 │   ├── DockerVolumeDriver.ts
@@ -142,8 +145,8 @@ src/
 
 ## 日志
 
-通过 `VM_LOG_LEVEL` 控制：
+统一使用 `@fastgpt-sdk/otel/logger` 输出结构化日志（按 `volume-manager:server`、`volume-manager:api`、`volume-manager:driver` 分类），通过 `LOG_ENABLE_CONSOLE` / `LOG_CONSOLE_LEVEL` / `LOG_ENABLE_OTEL` / `LOG_OTEL_*` 环境变量控制：
 
-- `none` — 关闭所有业务日志
-- `info` — 输出关键操作（请求进入、操作结果）
-- `debug` — 输出详细信息（驱动层请求 URL、HTTP 响应状态）
+- `LOG_ENABLE_CONSOLE=false` — 关闭控制台日志输出
+- `info`（默认）— 输出服务监听、卷创建/删除及请求异常
+- `debug` — 额外输出只读查询与驱动层 HTTP 请求/响应状态

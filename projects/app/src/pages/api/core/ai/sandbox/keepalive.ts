@@ -6,9 +6,7 @@ import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import {
   SandboxKeepaliveBodySchema,
-  SandboxKeepaliveResponseSchema,
-  type SandboxKeepaliveBody,
-  type SandboxKeepaliveResponse
+  type SandboxKeepaliveBody
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 /**
@@ -16,12 +14,10 @@ import {
  *
  * 职责：
  * 1. 仅限内部 Proxy（agent-sandbox-proxy）持有正确的秘钥签名时调用。
- * 2. 校验通过后，直接对指定的应用和会话沙盒实例执行 ensureAvailable()，从而刷新实例的活跃时间。
+ * 2. 校验通过后，仅对已运行的沙盒实例刷新活跃时间，不唤醒已停止或冷归档的实例。
  * 3. 避免暴露给外网客户端，提供极高安全性。
  */
-async function handler(
-  req: ApiRequestProps<SandboxKeepaliveBody>
-): Promise<SandboxKeepaliveResponse> {
+async function handler(req: ApiRequestProps<SandboxKeepaliveBody>): Promise<void> {
   authAgentSandboxProxy(req);
 
   const { sourceType, sourceId, userId, chatId } = parseApiInput({
@@ -37,8 +33,6 @@ async function handler(
       chatId
     })
   );
-
-  return SandboxKeepaliveResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

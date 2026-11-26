@@ -499,4 +499,35 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     expect(fetchSignalAborted).toBe(true);
     expect(stream.state).toBe('aborted');
   });
+
+  it('never replays non-retryable one-time ticket GET operations even when maxRetries > 0', async () => {
+    let attempts = 0;
+    const noReplayClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-key',
+      maxRetries: 2,
+      fetch: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return createJsonResponse({
+            status: 503,
+            body: { message: 'Temporary overload' },
+            headers: { 'retry-after': '0' }
+          });
+        }
+        return createJsonResponse({
+          status: 410,
+          body: { code: 501024, statusText: 'archiveInvalidTicket', message: 'Ticket expired' }
+        });
+      }
+    });
+
+    await expect(
+      noReplayClient.datasets.collections.batchDownload(
+        { ticket: 'once-only-ticket' },
+        { maxRetries: 2 }
+      )
+    ).rejects.toThrow(FastGptServerError);
+    expect(attempts).toBe(1);
+  });
 });

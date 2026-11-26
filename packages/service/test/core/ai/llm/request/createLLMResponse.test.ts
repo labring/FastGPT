@@ -48,7 +48,8 @@ vi.mock('@fastgpt/service/core/ai/record/controller', async (importOriginal) => 
   saveLLMRequestRecord: vi.fn()
 }));
 
-vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
+vi.mock('@fastgpt/global/core/ai/llm/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/core/ai/llm/utils')>()),
   removeDatasetCiteText: vi.fn((text: string) => text),
   normalizeToolResponseContent: vi.fn((content: unknown) =>
     typeof content === 'string' ? content : JSON.stringify(content)
@@ -60,6 +61,8 @@ vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
     multimodal: false,
     temperature: true,
     reasoning: false,
+    reasoningEffort: false,
+    reasoningEffortList: [],
     topP: true,
     stop: true,
     responseFormat: false,
@@ -120,6 +123,7 @@ const defaultSupportParams = {
   temperature: true,
   reasoning: false,
   reasoningEffort: false,
+  reasoningEffortList: [] as ('none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh')[],
   topP: true,
   stop: true,
   responseFormat: false,
@@ -2130,7 +2134,15 @@ describe('createLLMResponse', () => {
         expect(create).toHaveBeenCalledTimes(2);
         expect(result.answerText).toBe(previousOutput === 'text' ? 'prior answer' : '');
         expect(result.reasoningText).toBe(previousOutput === 'reasoning' ? 'prior thought' : '');
-        expect(result.toolCalls ?? []).toEqual(previousOutput === 'tool' ? previousToolCalls : []);
+        // 首轮因 length 截断产生的工具调用会立即改写为 '{}' 并保持 blocked，不能因后续轮正常结束而变为可执行。
+        expect(result.toolCalls ?? []).toEqual(
+          previousOutput === 'tool'
+            ? [{ id: 'call_1', type: 'function', function: { name: 'search', arguments: '{}' } }]
+            : []
+        );
+        if (previousOutput === 'tool') {
+          expect(result.blockedToolCalls).toEqual({ call_1: 'length' });
+        }
         expect(result.responseEmptyTip).toBeUndefined();
         expect(result.usage).toMatchObject({ inputTokens: 20, outputTokens: 4 });
 
@@ -2271,7 +2283,8 @@ describe('createLLMResponse', () => {
       mockGetLLMSupportParams.mockReturnValueOnce({
         ...defaultSupportParams,
         reasoning: true,
-        reasoningEffort: true
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'medium', 'high']
       });
 
       const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());

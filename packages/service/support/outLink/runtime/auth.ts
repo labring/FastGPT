@@ -74,11 +74,8 @@ export async function authOutLinkLimit({
     return Promise.reject(new UserError('分享链接已过期'));
   }
 
-  if (
-    outLink.limit.maxUsagePoints &&
-    outLink.limit.maxUsagePoints > -1 &&
-    outLink.usagePoints > outLink.limit.maxUsagePoints
-  ) {
+  const maxUsagePoints = outLink.limit.maxUsagePoints ?? -1;
+  if (maxUsagePoints > -1 && outLink.usagePoints >= maxUsagePoints) {
     return Promise.reject(new UserError('链接超出使用限制'));
   }
 

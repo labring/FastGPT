@@ -3,12 +3,19 @@ import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generation
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   ResumeStreamParamsSchema,
+  StreamNoNeedToBeResumeSchema,
   type StreamNoNeedToBeResumeType
 } from '@fastgpt/global/openapi/core/ai/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -25,9 +32,15 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
   chatItemResponsePreviewProjection,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
-import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  removeAIResponseCite,
+  stripModerationRecordsFromNodeResponses
+} from '@fastgpt/global/core/chat/utils';
+import { getChatItemValueType } from '@/service/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -106,6 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     authToken: true
   });
   const { teamId, showCite = true, canWrite = false } = authRes;
+  const isOutLink = authRes.authType === AuthUserTypeEnum.outLink;
   const canReadModerationRecords = Boolean(canWrite);
   const resolvedSourceId = authRes.sourceId;
 
@@ -132,7 +146,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   const findCompletedChat = async (): Promise<StreamNoNeedToBeResumeType> => {
-    const chat = await findCurrentChat();
+    const [chat, app] = await Promise.all([
+      findCurrentChat(),
+      sourceType === ChatSourceTypeEnum.app
+        ? (authRes.app ?? MongoApp.findById(resolvedSourceId, 'type').lean())
+        : null
+    ]);
+    const isPlugin = app?.type === AppTypeEnum.workflowTool;
     const result = await getChatItems({
       sourceType,
       sourceId: resolvedSourceId,
@@ -140,25 +160,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       field:
         'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
       limit: completedChatPageSize,
-      nodeResponseMode: 'preview',
+      nodeResponseMode: isPlugin ? 'full' : 'preview',
       nodeResponsePreviewProjection: chatItemResponsePreviewProjection
     });
 
-    const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    const previewHistories = await addPreviewUrlToChatItems(
+      result.histories,
+      isPlugin ? 'workflowTool' : 'chatFlow'
+    );
+    const histories =
+      isOutLink && !isPlugin
+        ? previewHistories.map((item) => sanitizeOutLinkChatHistoryItem(item, showCite))
+        : previewHistories;
 
-    const list = transformPreviewHistories(histories, showCite).map((item) => {
+    const rawList = isPlugin ? histories : transformPreviewHistories(histories, showCite);
+    const list = rawList.map((item) => {
       const chatItem = {
         ...item,
         // 已弃用的兼容别名；客户端聊天业务统一使用 dataId。
         id: item.dataId!
       };
+      if (isPlugin && !showCite && chatItem.obj === ChatRoleEnum.AI) {
+        chatItem.value = removeAIResponseCite(chatItem.value, false);
+      }
+      if (isPlugin) {
+        chatItem.value = chatItem.value.map((value) => ({
+          ...value,
+          type: getChatItemValueType(value)
+        }));
+      }
       if (!canReadModerationRecords && chatItem.obj === ChatRoleEnum.AI && chatItem.responseData) {
         chatItem.responseData = stripModerationRecordsFromNodeResponses(chatItem.responseData);
       }
       return chatItem;
     });
 
-    return {
+    return StreamNoNeedToBeResumeSchema.parse({
       ...chat,
       hasBeenRead: true,
       records: {
@@ -167,7 +204,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         hasMorePrev: result.hasMorePrev,
         hasMoreNext: result.hasMoreNext
       }
-    };
+    });
   };
 
   const makeSureTheCompletedChatHasBeenRead = async () => {

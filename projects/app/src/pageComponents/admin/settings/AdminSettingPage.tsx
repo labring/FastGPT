@@ -2,10 +2,12 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { throttle } from 'lodash-es';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import AdminHeader from '../AdminHeader';
+import { hasDirtyFields } from '../utils';
 import AdminSettingTOC, { type SettingTOCItem } from './AdminSettingTOC';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useFormState, type Control, type UseFormReturn } from 'react-hook-form';
 import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 
 type AdminSettingPageProps = {
@@ -15,12 +17,35 @@ type AdminSettingPageProps = {
   tocItems: SettingTOCItem[];
   isLoading?: boolean;
   isSaving?: boolean;
+  /** 表单外的额外未保存状态（如未托管在 form 中的本地草稿或子表单）；传入 form 时会与 form.isDirty 取并集。 */
+  isUnsaved?: boolean;
   onSave?: () => void | Promise<unknown>;
   form?: UseFormReturn<any>;
   fieldAliases?: Record<string, string>;
   onSaveError?: (error: unknown) => void;
   children: React.ReactNode;
   maxW?: string;
+};
+
+const UnsavedBadge = () => {
+  const { t } = useSafeTranslation();
+  return (
+    <MyTag py={0} px={1} showDot bg={'transparent'} colorSchema={'red'}>
+      {t('common:core.app.not_saved')}
+    </MyTag>
+  );
+};
+
+// 独立订阅 RHF dirtyFields，避免外层 React.memo 阻断非受控输入更新，也不引发整页重渲染。
+const FormUnsavedBadge = ({
+  control,
+  isUnsaved
+}: {
+  control: Control<any>;
+  isUnsaved?: boolean;
+}) => {
+  const { dirtyFields } = useFormState({ control });
+  return isUnsaved || hasDirtyFields(dirtyFields) ? <UnsavedBadge /> : null;
 };
 
 /**
@@ -36,6 +61,7 @@ const AdminSettingPage = ({
   tocItems,
   isLoading = false,
   isSaving = false,
+  isUnsaved = false,
   onSave,
   form,
   fieldAliases,
@@ -61,8 +87,17 @@ const AdminSettingPage = ({
       if (errors[0]) form.setFocus(errors[0].name);
     }
   };
-  const [activeId, setActiveId] = useState<string>('');
-  const currentActiveId = activeId || tocItems[0]?.id || '';
+  const [activeId, setActiveId] = useState<string>(() =>
+    typeof window !== 'undefined' ? window.location.hash.slice(1) : ''
+  );
+  const currentActiveId = tocItems.some((item) => item.id === activeId)
+    ? activeId
+    : tocItems[0]?.id || '';
+
+  // 当前高亮项从动态目录中移除时在渲染阶段同步回退，避免该目录项再次出现后误跳回旧高亮位置
+  if (activeId && currentActiveId !== activeId) {
+    setActiveId(currentActiveId);
+  }
 
   // 滚动监听，实时计算当前视口中最高亮的首个可见大区。
   // 每帧都会触发且内部多次 getBoundingClientRect 强制同步布局，沿用旧版 100ms 节流避免滚动掉帧。
@@ -95,13 +130,34 @@ const AdminSettingPage = ({
   // 卸载时取消挂起的节流调用，避免在已卸载组件上 setState
   useEffect(() => () => handleScroll.cancel(), [handleScroll]);
 
+  // 支持跨页跳转带锚点（如 /admin/settings/core#email）在数据加载完成后定位到目标区块。
+  useEffect(() => {
+    if (isLoading || typeof window === 'undefined') return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [isLoading]);
+
   const headerActions =
     headerRightContent ||
     (onSave && (
-      <Button colorScheme={'blue'} size={'sm'} px={6} isLoading={isSaving} onClick={save}>
+      <Button
+        colorScheme={'blue'}
+        size={'sm'}
+        px={6}
+        isLoading={isSaving}
+        isDisabled={isLoading}
+        onClick={save}
+      >
         {t('common:Save')}
       </Button>
     ));
+
+  const titleExtra = (() => {
+    if (isLoading) return null;
+    if (form) return <FormUnsavedBadge control={form.control} isUnsaved={isUnsaved} />;
+    return isUnsaved ? <UnsavedBadge /> : null;
+  })();
 
   const content = (
     <>
@@ -111,6 +167,7 @@ const AdminSettingPage = ({
         {headerTitle && (
           <AdminHeader
             title={headerTitle}
+            titleExtra={titleExtra}
             description={headerDescription}
             rightContent={headerActions}
           />

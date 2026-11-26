@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.18.0.2",
+  "version": "4.18.0.3",
   "private": false,
   "browserslist": [
     "Chrome >= 80",
@@ -46,7 +46,6 @@
     "@emotion/styled": "catalog:",
     "@fastgpt-sdk/otel": "workspace:*",
     "@langfuse/otel": "5.11.1",
-    "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/dal": "workspace:*",
     "@fastgpt/global": "workspace:*",

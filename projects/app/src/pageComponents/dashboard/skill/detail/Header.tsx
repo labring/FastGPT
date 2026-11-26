@@ -399,6 +399,7 @@ export const HeaderDialogs = () => {
       {isPublishModalOpen && (
         <SaveAndPublishModal
           title={t('common:Publish')}
+          tip={t('skill:version_publish_tips')}
           isLoading={isSaving || isConfirmingPublish}
           onClose={onPublishModalClose}
           onConfirm={async (versionName) => {

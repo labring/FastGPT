@@ -1,12 +1,13 @@
 'use client';
 import React from 'react';
-import { Badge, Box, Flex, Grid, HStack, Text } from '@chakra-ui/react';
+import { Box, Flex, Grid, HStack, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import {
   DATASET_SEARCH_STAGE_SPECS,
   type OpsPerfErrorCode
 } from '@fastgpt/global/common/opsPerf/constants';
 import type { DatasetSearchPerfEventItem } from '@fastgpt/global/openapi/admin/ops/performance';
+import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const STAGE_COLOR_MAP: Record<string, string> = {
@@ -97,8 +98,8 @@ export const EventWaterfallCard = ({
 
   const axisMaxMs = Math.max(event.totalMs, ...bars.map((bar) => bar.spanEndMs), 1);
 
-  const statusColorScheme =
-    event.status === 'error' ? 'red' : event.status === 'degraded' ? 'orange' : 'green';
+  const statusColorScheme: ColorSchemaType =
+    event.status === 'error' ? 'red' : event.status === 'degraded' ? 'yellow' : 'green';
   const statusLabel =
     event.status === 'error'
       ? t('admin:ops_perf_status_error')
@@ -126,21 +127,21 @@ export const EventWaterfallCard = ({
       >
         <Box>
           <HStack spacing={2} flexWrap={'wrap'}>
-            <Badge colorScheme={statusColorScheme} fontSize={'xs'} borderRadius={'sm'}>
+            <MyTag type={'borderFill'} colorSchema={statusColorScheme}>
               {statusLabel}
-            </Badge>
-            <Badge colorScheme={'blue'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+            </MyTag>
+            <MyTag type={'borderFill'} colorSchema={'blue'}>
               {modeLabelMap[event.dims.searchMode] ?? event.dims.searchMode}
-            </Badge>
+            </MyTag>
             {event.detail.pgUsesHnsw === false && (
-              <Badge colorScheme={'gray'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+              <MyTag type={'borderFill'} colorSchema={'gray'}>
                 {t('admin:ops_perf_route_pg_exact')}
-              </Badge>
+              </MyTag>
             )}
             {event.detail.pgUsesHnsw === true && (
-              <Badge colorScheme={'green'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+              <MyTag type={'borderFill'} colorSchema={'green'}>
                 {t('admin:ops_perf_route_pg_hnsw')}
-              </Badge>
+              </MyTag>
             )}
           </HStack>
           <Text fontSize={'xs'} color={'myGray.500'} mt={1.5} fontFamily={'mono'}>
@@ -277,9 +278,8 @@ export const EventWaterfallCard = ({
           borderColor={event.status === 'error' ? 'red.200' : 'orange.200'}
           fontSize={'xs'}
           color={event.status === 'error' ? 'red.700' : 'orange.700'}
-          fontFamily={'mono'}
         >
-          [{event.errorCode}] {resolveErrorCodeLabel(event.errorCode)}
+          {resolveErrorCodeLabel(event.errorCode)}
         </Box>
       )}
 
@@ -327,14 +327,16 @@ export const EventWaterfallCard = ({
                     </Text>
                   )}
                   {bar.group !== 'serial' && (
-                    <Badge
+                    <MyTag
+                      type={'borderFill'}
+                      colorSchema={bar.group === 'parallel-vector' ? 'blue' : 'pink'}
                       fontSize={'10px'}
-                      colorScheme={bar.group === 'parallel-vector' ? 'blue' : 'pink'}
-                      variant={'subtle'}
+                      px={1.5}
+                      py={0.5}
                       flexShrink={0}
                     >
                       ∥
-                    </Badge>
+                    </MyTag>
                   )}
                 </Flex>
 

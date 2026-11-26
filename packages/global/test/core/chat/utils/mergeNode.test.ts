@@ -487,6 +487,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         tokens: 10,
         inputTokens: 6,
         outputTokens: 4,
+        cacheReadTokens: 2,
+        cacheCreationTokens: 1,
         toolCallInputTokens: 20,
         toolCallOutputTokens: 8,
         embeddingTokens: 7,
@@ -509,6 +511,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         compressTextAgent: {
           inputTokens: 4,
           outputTokens: 2,
+          cacheReadTokens: 3,
+          cacheCreationTokens: 1,
           totalPoints: 0.1
         }
       },
@@ -524,6 +528,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         tokens: 15,
         inputTokens: 9,
         outputTokens: 6,
+        cacheReadTokens: 5,
+        cacheCreationTokens: 2,
         toolCallInputTokens: 30,
         toolCallOutputTokens: 12,
         embeddingTokens: 8,
@@ -546,6 +552,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         compressTextAgent: {
           inputTokens: 8,
           outputTokens: 3,
+          cacheReadTokens: 4,
+          cacheCreationTokens: 2,
           totalPoints: 0.2
         }
       }
@@ -563,6 +571,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         tokens: 25,
         inputTokens: 15,
         outputTokens: 10,
+        cacheReadTokens: 7,
+        cacheCreationTokens: 3,
         toolCallInputTokens: 50,
         toolCallOutputTokens: 20,
         embeddingTokens: 15,
@@ -585,6 +595,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
         compressTextAgent: {
           inputTokens: 12,
           outputTokens: 5,
+          cacheReadTokens: 7,
+          cacheCreationTokens: 3,
           totalPoints: expect.closeTo(0.3)
         }
       })

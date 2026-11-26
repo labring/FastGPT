@@ -10,6 +10,11 @@ import {
 } from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { withMongoDdlConnection } from '@fastgpt/dal/db/mongo/runtime';
+import {
+  LEGACY_DEPRECATED_MONGO_INDEXES,
+  runLegacyDeprecatedMongoIndexCleanup
+} from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -77,7 +82,7 @@ describe('runtime configuration scope indexes', () => {
     expect(await model.countDocuments()).toBe(2);
     expect(getSchemaDeprecatedMongoIndexes(MongoSystemInstanceConfig.schema)).toEqual([]);
   });
-  it('removes only the deprecated legacy scope index and retains migration source records', async () => {
+  it('removes only the deprecated legacy scope index via explicit cleanup and retains migration source records', async () => {
     const model = createModel({ schema: MongoSystemConfigs.schema, prefix: 'RuntimeScopeIndexes' });
     await model.collection.createIndex({ type: 1 });
     await model.collection.createIndex(
@@ -89,15 +94,21 @@ describe('runtime configuration scope indexes', () => {
       }
     );
     await model.create({ type: 'subPlans', value: { extraDatasetSize: { price: 4 } } });
+    // Schema itself no longer holds deprecated tombstones; startup sync is additive-only
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual([]);
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    expect(await getIndexNames(model)).toContain('runtime_scope_type_unique');
+
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'systemConfigs'),
+      collectionOverrides: { systemConfigs: model.collection.collectionName }
+    });
+    expect(cleanupRes).toEqual([
+      expect.objectContaining({ indexName: 'runtime_scope_type_unique', status: 'dropped' })
+    ]);
     expect(await getIndexNames(model)).not.toContain('runtime_scope_type_unique');
     expect(await getIndexNames(model)).toContain('type_1');
     expect(await model.countDocuments()).toBe(1);
-    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ indexName: 'runtime_scope_type_unique', key: { type: 1 } })
-      ])
-    );
   });
 });
 
@@ -293,7 +304,7 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
   });
 
-  it('keeps legacy share and customer indexes while removing obsolete chat indexes', async () => {
+  it('keeps legacy share and customer indexes while removing obsolete chat indexes via explicit cleanup', async () => {
     const schema = new Schema({}, { autoIndex: false });
     const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
     defineIndex(schema, { key, options });
@@ -307,7 +318,7 @@ describe('MongoIndexManager.syncModelIndexes', () => {
         ([key]) => JSON.stringify(key) === JSON.stringify({ appId: 1, updateTime: -1, _id: -1 })
       )!;
     defineIndex(schema, { key: cursorLogKey, options: cursorLogOptions });
-    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
     await model.collection.createIndex(
       { shareId: 1, outLinkUid: 1, updateTime: -1 },
@@ -327,7 +338,11 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
     await model.collection.createIndex({ shareId: 1 }, { name: 'customer_share_index' });
 
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'chats'),
+      collectionOverrides: { chats: model.collection.collectionName }
+    });
     const indexNames = await getIndexNames(model);
     expect(indexNames).toContain('appId_1_updateTime_-1__id_-1');
     expect(indexNames).not.toContain('appId_1_updateTime_-1');
@@ -338,16 +353,14 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
     expect(indexNames).toContain('customer_chat_index');
     expect(indexNames).toContain('customer_share_index');
-    expect(result.cleanupReport.items).toEqual(
+    expect(cleanupRes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          action: 'drop',
-          applied: true,
+          status: 'dropped',
           indexName: 'appId_1_updateTime_-1'
         }),
         expect.objectContaining({
-          action: 'drop',
-          applied: true,
+          status: 'dropped',
           indexName: 'chatGenerateStatus_1_updateTime_1'
         })
       ])
@@ -363,17 +376,14 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     ).toBe(false);
   });
 
-  it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
+  it('replaces model status testedAt indexes with requestEndedAt indexes via explicit cleanup', async () => {
     const schema = new Schema({}, { autoIndex: false });
     defineIndex(schema, { key: { modelId: 1, requestEndedAt: -1 } });
     defineIndex(schema, {
       key: { requestEndedAt: 1 },
       options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'ModelStatusProbeIndex' });
     await model.collection.createIndex(
       { modelId: 1, testedAt: -1 },
@@ -385,6 +395,12 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
 
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'model_status_probe_records'
+      ),
+      collectionOverrides: { model_status_probe_records: model.collection.collectionName }
+    });
 
     const indexes = await model.collection.indexes();
     expect(indexes.map(({ name }) => name)).toEqual(
@@ -697,15 +713,12 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 });
 
 describe('dataset collection index consolidation', () => {
-  it('replaces three managed indexes without growing the index count or breaking legacy hints', async () => {
+  it('replaces three managed indexes via explicit cleanup without growing the index count or breaking legacy hints', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'CollectionConsolidatedIndex' });
     await model.collection.createIndex({
       teamId: 1,
@@ -717,7 +730,13 @@ describe('dataset collection index consolidation', () => {
     await model.collection.createIndex({ teamId: 1, 'metadata.relatedImgId': 1 });
     await model.collection.createIndex({ fileId: 1 }, { name: 'customer_file_lookup' });
 
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'dataset_collections'
+      ),
+      collectionOverrides: { dataset_collections: model.collection.collectionName }
+    });
     const names = await getIndexNames(model);
     expect(names.size).toBe(10); // 9 条内置索引（含 _id）及 1 条客户索引。
     expect(names).toContain('teamId_1_fileId_1');
@@ -726,7 +745,7 @@ describe('dataset collection index consolidation', () => {
     expect(names).toContain('teamId_1_datasetId_1_type_1_parentId_1_inheritPermission_1__id_1');
     expect(names).toContain('teamId_1_datasetId_1_forbid_1__id_1');
     expect(names).toContain('customer_file_lookup');
-    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
+    expect(cleanupRes.filter(({ status }) => status === 'dropped')).toHaveLength(3);
     expect(names).not.toContain('teamId_1_datasetId_1_tags_1');
     expect(names).not.toContain('teamId_1_metadata.relatedImgId_1');
     expect(names).not.toContain('teamId_1_datasetId_1_parentId_1_inheritPermission_1');
@@ -748,17 +767,21 @@ describe('dataset training TTL index migration', () => {
 });
 
 describe('dataset rebuild status index migration', () => {
-  it('drops the old rebuilding index and retains the replacement and customer indexes', async () => {
+  it('drops the old rebuilding index via explicit cleanup and retains the replacement and customer indexes', async () => {
     const schema = new Schema(
       { rebuilding: Boolean, indexStatus: String, teamId: String, datasetId: String },
       { autoIndex: false }
     );
     defineIndex(schema, { key: { indexStatus: 1, teamId: 1, datasetId: 1 } });
-    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema));
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'DatasetRebuildIndex' });
     await model.collection.createIndex({ rebuilding: 1, teamId: 1, datasetId: 1 });
     await model.collection.createIndex({ rebuilding: 1 }, { name: 'customer_rebuild_status' });
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'dataset_datas'),
+      collectionOverrides: { dataset_datas: model.collection.collectionName }
+    });
     const names = await getIndexNames(model);
     expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
     expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
@@ -767,26 +790,289 @@ describe('dataset rebuild status index migration', () => {
 });
 
 describe('sandbox quota index migration', () => {
-  it('removes the old source quota index and retains current and customer indexes', async () => {
+  it('removes the old source quota index via explicit cleanup and retains current v3 and customer indexes', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoSandboxInstance.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'SandboxQuotaIndex' });
     await model.collection.createIndex({ sourceType: 1, status: 1, provider: 1 });
     await model.collection.createIndex({ sourceType: 1 }, { name: 'customer_sandbox_source' });
 
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'agent_sandbox_instances_v2'
+      ),
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName }
+    });
 
     const names = await getIndexNames(model);
     expect(names).not.toContain('sourceType_1_status_1_provider_1');
+    expect(names).toContain('provider_1_sandboxId_1');
     expect(names).toContain('teamId_1_status_1');
     expect(names).toContain('status_1_lastActiveAt_1');
+    expect(names).toContain('status_1_operation.heartbeatAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
+    expect(names).toContain('fg_sandbox_inst_claim_name');
     expect(names).toContain('customer_sandbox_source');
+    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
+  });
+});
+
+describe('legacy deprecated index explicit option signature protection', () => {
+  it('declares explicit options on every LEGACY_DEPRECATED_MONGO_INDEXES entry and refuses to drop customer-customized same-name same-key indexes', async () => {
+    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
+    for (const entry of LEGACY_DEPRECATED_MONGO_INDEXES) {
+      expect(entry.options).toBeDefined();
+      expect(typeof entry.options).toBe('object');
+    }
+
+    const userIdEntry = LEGACY_DEPRECATED_MONGO_INDEXES.find(
+      (entry) => entry.indexName === 'userId_1'
+    );
+    expect(userIdEntry).toBeDefined();
+    expect(userIdEntry?.options).toEqual({});
+
+    const chatCursorEntry = LEGACY_DEPRECATED_MONGO_INDEXES.find(
+      (entry) => entry.collectionName === 'chats' && entry.indexName === 'appId_1_updateTime_-1'
+    );
+    expect(chatCursorEntry).toBeDefined();
+    expect(chatCursorEntry?.options).toEqual({});
+
+    const customerVariants: Array<{
+      label: string;
+      createOptions: Record<string, unknown>;
+    }> = [
+      {
+        label: 'partial unique index',
+        createOptions: {
+          name: 'userId_1',
+          unique: true,
+          partialFilterExpression: { status: 'active' }
+        }
+      },
+      {
+        label: 'partial non-unique index',
+        createOptions: {
+          name: 'userId_1',
+          partialFilterExpression: { status: 'active' }
+        }
+      },
+      {
+        label: 'TTL index',
+        createOptions: {
+          name: 'userId_1',
+          expireAfterSeconds: 3600
+        }
+      },
+      {
+        label: 'collation index',
+        createOptions: {
+          name: 'userId_1',
+          collation: { locale: 'en', strength: 2 }
+        }
+      }
+    ];
+
+    for (const variant of customerVariants) {
+      const schema = new Schema({ userId: String, status: String }, { autoIndex: false });
+      const model = createModel({ schema, prefix: 'LegacyOptProtect' });
+      await model.collection.createIndex({ userId: 1 }, variant.createOptions as any);
+
+      const results = await runLegacyDeprecatedMongoIndexCleanup({
+        entries: [userIdEntry!],
+        collectionOverrides: { [userIdEntry!.collectionName]: model.collection.collectionName }
+      });
+
+      expect(results, `expected skipped_mismatch for ${variant.label}`).toEqual([
+        expect.objectContaining({
+          indexName: 'userId_1',
+          status: 'skipped_mismatch'
+        })
+      ]);
+      expect(await getIndexNames(model)).toContain('userId_1');
+    }
+  });
+
+  it('previews, drops matching retired agent_sandbox_instances_v2 indexes, and preserves option-mismatched custom indexes', async () => {
+    const sandboxEntries = LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+      (entry) => entry.collectionName === 'agent_sandbox_instances_v2'
+    );
+    expect(sandboxEntries.map((entry) => entry.indexName)).toEqual([
+      'sourceType_1_status_1_provider_1',
+      'status_1_metadata.operation.heartbeatAt_1'
+    ]);
+
+    const schema = new Schema(
+      { sourceType: String, status: String, provider: String, metadata: Object },
+      { autoIndex: false }
+    );
+    const model = createModel({ schema, prefix: 'SandboxExplicitCleanup' });
+    await model.collection.createIndex(
+      { sourceType: 1, status: 1, provider: 1 },
+      { name: 'sourceType_1_status_1_provider_1' }
+    );
+    // 同名同 key 但带 partialFilterExpression 的自定义索引应被保守保留
+    await model.collection.createIndex(
+      { status: 1, 'metadata.operation.heartbeatAt': 1 },
+      {
+        name: 'status_1_metadata.operation.heartbeatAt_1',
+        partialFilterExpression: { status: 'running' }
+      }
+    );
+
+    const preview = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: sandboxEntries,
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName },
+      apply: false
+    });
+    expect(preview).toEqual([
+      expect.objectContaining({
+        indexName: 'sourceType_1_status_1_provider_1',
+        status: 'dropped'
+      }),
+      expect.objectContaining({
+        indexName: 'status_1_metadata.operation.heartbeatAt_1',
+        status: 'skipped_mismatch'
+      })
+    ]);
+    expect(Array.from(await getIndexNames(model))).toEqual(
+      expect.arrayContaining([
+        'sourceType_1_status_1_provider_1',
+        'status_1_metadata.operation.heartbeatAt_1'
+      ])
+    );
+
+    const applied = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: sandboxEntries,
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName },
+      apply: true
+    });
+    expect(applied).toEqual([
+      expect.objectContaining({
+        indexName: 'sourceType_1_status_1_provider_1',
+        status: 'dropped'
+      }),
+      expect.objectContaining({
+        indexName: 'status_1_metadata.operation.heartbeatAt_1',
+        status: 'skipped_mismatch'
+      })
+    ]);
+    const finalNames = await getIndexNames(model);
+    expect(finalNames).not.toContain('sourceType_1_status_1_provider_1');
+    expect(finalNames).toContain('status_1_metadata.operation.heartbeatAt_1');
+  });
+});
+
+describe('Step 0 Mongo index safety fixes', () => {
+  it('respects MONGO_DEPRECATE_INDEX=false by creating missing indexes without dropping deprecated ones', async () => {
+    const schema = new Schema({ currentField: String, legacyField: String }, { autoIndex: false });
+    defineIndex(schema, { key: { currentField: 1 }, options: { name: 'current_field_1' } });
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema, prefix: 'DeprecateGate' });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+
+    const prev = process.env.MONGO_DEPRECATE_INDEX;
+    process.env.MONGO_DEPRECATE_INDEX = 'false';
+    try {
+      const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+      const names = await getIndexNames(model);
+
+      expect(names).toContain('current_field_1');
+      expect(names).toContain('legacy_field_1');
+      expect(result.cleanupReport.apply).toBe(false);
+      expect(result.cleanupReport.items).toEqual([
+        expect.objectContaining({
+          action: 'drop',
+          applied: false,
+          indexName: 'legacy_field_1'
+        })
+      ]);
+    } finally {
+      if (prev === undefined) {
+        delete process.env.MONGO_DEPRECATE_INDEX;
+      } else {
+        process.env.MONGO_DEPRECATE_INDEX = prev;
+      }
+    }
+  });
+
+  it('matches compound text indexes including non-text prefix fields and rejects mismatched prefixes', async () => {
+    const matchingSchema = new Schema(
+      { teamId: String, name: String, description: String },
+      { autoIndex: false }
+    );
+    defineIndex(matchingSchema, {
+      key: { teamId: 1, name: 'text', description: 'text' },
+      options: { name: 'compound_text_legacy' },
+      deprecated: true
+    });
+    const matchingModel = createModel({ schema: matchingSchema, prefix: 'CompoundTextMatch' });
+    await matchingModel.collection.createIndex(
+      { teamId: 1, name: 'text', description: 'text' },
+      { name: 'compound_text_legacy' }
+    );
+
+    const matchResult = await MongoIndexManager.syncModelIndexes({ model: matchingModel, logger });
+    expect(await getIndexNames(matchingModel)).not.toContain('compound_text_legacy');
+    expect(matchResult.cleanupReport.items).toEqual([
+      expect.objectContaining({ action: 'drop', applied: true, indexName: 'compound_text_legacy' })
+    ]);
+
+    // 前导列从 teamId 换成 otherId（同名同 text 权重但前导列不同），必须按 skip_mismatch 保留，绝不误删。
+    const mismatchedSchema = new Schema(
+      { teamId: String, otherId: String, name: String, description: String },
+      { autoIndex: false }
+    );
+    defineIndex(mismatchedSchema, {
+      key: { teamId: 1, name: 'text', description: 'text' },
+      options: { name: 'compound_text_mismatch' },
+      deprecated: true
+    });
+    const mismatchedModel = createModel({
+      schema: mismatchedSchema,
+      prefix: 'CompoundTextMismatch'
+    });
+    await mismatchedModel.collection.createIndex(
+      { otherId: 1, name: 'text', description: 'text' },
+      { name: 'compound_text_mismatch' }
+    );
+
+    const mismatchResult = await MongoIndexManager.syncModelIndexes({
+      model: mismatchedModel,
+      logger
+    });
+    expect(await getIndexNames(mismatchedModel)).toContain('compound_text_mismatch');
+    expect(mismatchResult.cleanupReport.items).toEqual([
+      expect.objectContaining({
+        action: 'skip_mismatch',
+        applied: false,
+        indexName: 'compound_text_mismatch'
+      })
+    ]);
+  });
+
+  it('opens an isolated DDL connection with autoIndex disabled and socketTimeoutMS=0 and closes it after execution', async () => {
+    const uri = process.env.MONGODB_URI;
+    expect(uri).toBeTruthy();
+
+    let capturedAutoIndex: unknown;
+    let capturedReadyStateInside: number | undefined;
+    let capturedDdlDb: { connection: { readyState: number } } | undefined;
+
+    await withMongoDdlConnection({
+      url: uri!,
+      execute: async (ddlDb) => {
+        capturedAutoIndex = ddlDb.get('autoIndex');
+        capturedReadyStateInside = ddlDb.connection.readyState;
+        capturedDdlDb = ddlDb;
+      }
+    });
+
+    expect(capturedAutoIndex).toBe(false);
+    expect(capturedReadyStateInside).toBe(1);
+    expect(capturedDdlDb?.connection.readyState).toBe(0);
   });
 });

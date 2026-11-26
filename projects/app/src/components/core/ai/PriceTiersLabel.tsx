@@ -96,7 +96,15 @@ const SummaryLine = ({
   );
 };
 
-/** 阶梯上限以 K Tokens 展示，四类单价共用同一个百万 Tokens 单位说明。 */
+const hasTierPrice = (
+  tiers: ModelPriceTierType[],
+  priceKey: 'inputPrice' | 'outputPrice' | 'cacheReadPrice' | 'cacheCreationPrice'
+) => tiers.some((tier) => getDisplayPrice(tier[priceKey]) !== undefined);
+
+const getVisibleCacheKeys = (tiers: ModelPriceTierType[]) =>
+  (['cacheRead', 'cacheCreation'] as const).filter((key) => hasTierPrice(tiers, `${key}Price`));
+
+/** 阶梯上限以 K Tokens 展示，各类单价共用同一个百万 Tokens 单位说明；未配置的缓存列整列隐藏。 */
 const TierBreakdownTable = ({
   tiers,
   unitLabel
@@ -106,7 +114,7 @@ const TierBreakdownTable = ({
 }) => {
   const { t } = useTranslation();
   const priceLabels = usePriceLabels();
-  const priceKeys = ['input', 'output', 'cacheRead', 'cacheCreation'] as const;
+  const priceKeys = ['input', 'output', ...getVisibleCacheKeys(tiers)] as const;
 
   return (
     <Box p={2} fontSize="12px">
@@ -149,9 +157,9 @@ const TierBreakdownTable = ({
           </Thead>
           <Tbody>
             {tiers.map((tier, index) => {
-              const lowerBound = tiers[index - 1]?.maxInputTokens ?? 0;
+              const lowerBound = tiers[index - 1]?.maxInputTokensK ?? 0;
               const upperBound =
-                tier.maxInputTokens === undefined ? '' : ` ≤ ${tier.maxInputTokens}`;
+                tier.maxInputTokensK === undefined ? '' : ` ≤ ${tier.maxInputTokensK}`;
               return (
                 <Tr key={index}>
                   <Td>
@@ -170,7 +178,7 @@ const TierBreakdownTable = ({
   );
 };
 
-/** 默认显示输入和输出摘要，模型选择弹窗可直接展示两类缓存价格。 */
+/** 默认显示输入和输出摘要，模型选择弹窗可按需展示已配置的缓存价格。 */
 const PriceTiersLabel = ({
   config,
   unitLabel,
@@ -184,13 +192,11 @@ const PriceTiersLabel = ({
 }) => {
   if (config.scope === ModelScopeEnum.team) return <Box>-</Box>;
   const tiers = getDisplayPriceTiers(config);
-  const showDetails =
-    tiers.length > 1 ||
-    tiers.some(
-      (tier) =>
-        getDisplayPrice(tier.cacheReadPrice) !== undefined ||
-        getDisplayPrice(tier.cacheCreationPrice) !== undefined
-    );
+  const visibleCacheKeys = getVisibleCacheKeys(tiers);
+  const showDetails = tiers.length > 1 || visibleCacheKeys.length > 0;
+  const summaryKeys = showCachePrices
+    ? (['input', 'output', ...visibleCacheKeys] as const)
+    : (['input', 'output'] as const);
 
   return (
     <MyTooltip
@@ -207,10 +213,7 @@ const PriceTiersLabel = ({
         w="fit-content"
         tabIndex={showDetails ? 0 : undefined}
       >
-        {(showCachePrices
-          ? (['input', 'output', 'cacheRead', 'cacheCreation'] as const)
-          : (['input', 'output'] as const)
-        ).map((priceKey) => (
+        {summaryKeys.map((priceKey) => (
           <SummaryLine
             key={priceKey}
             tiers={tiers}

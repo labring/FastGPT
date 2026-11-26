@@ -28,6 +28,7 @@ import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { formatOutLinkUsagePoints } from '../utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -151,14 +152,12 @@ const OffiAccount = ({
               <Tr key={item._id}>
                 <Td>{item.name} </Td>
                 <Td>
-                  {Math.round(item.usagePoints)}
-                  {feConfigs?.isPlus
-                    ? `${
-                        item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
-                          ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:Unlimited')}`
-                      }`
-                    : ''}
+                  {formatOutLinkUsagePoints({
+                    usagePoints: item.usagePoints,
+                    maxUsagePoints: item.limit?.maxUsagePoints,
+                    isPlus: feConfigs?.isPlus,
+                    unlimitedLabel: t('common:Unlimited')
+                  })}
                 </Td>
                 {feConfigs?.isPlus && (
                   <Td>

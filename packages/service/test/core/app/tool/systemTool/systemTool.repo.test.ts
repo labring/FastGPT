@@ -1181,6 +1181,25 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
+  it('normalizes legacy null customConfig.avatar to undefined in getSystemToolDisplayInfo', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-legacy-tool',
+      status: PluginStatusEnum.Normal,
+      customConfig: {
+        name: 'Legacy Workflow Tool',
+        avatar: null,
+        version: 'v1',
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'commercial-legacy-tool'
+    });
+
+    expect(tool.avatar).toBeUndefined();
+  });
+
   it('fills parent toolset children icons from detail for expanded child templates', async () => {
     const inputSchema = {
       type: 'object',

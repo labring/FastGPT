@@ -1,4 +1,4 @@
-import type { LogLevel, LogRecord } from '@logtape/logtape';
+import type { LogLevel, LogRecord, Sink } from '@logtape/logtape';
 import { getConsoleSink, withFilter } from '@logtape/logtape';
 import { getPrettyFormatter } from '@logtape/pretty';
 import { mapLevelToSeverityNumber } from './helpers';
@@ -19,6 +19,23 @@ type CreateSinksResult = {
   sinks: SinkConfig;
   composedSinks: LoggerSinkId[];
 };
+
+type DisposableSink = Sink & Partial<Disposable & AsyncDisposable>;
+
+/** 透传底层 sink 的同步/异步 dispose 钩子，避免 `withFilter` 包装导致 `disposeLogger()` 跳过缓冲排空。 */
+function withDisposableFilter(
+  sink: DisposableSink,
+  filter: (record: LogRecord) => boolean
+): DisposableSink {
+  const filtered: DisposableSink = withFilter(sink, filter);
+  if (typeof sink[Symbol.dispose] === 'function') {
+    filtered[Symbol.dispose] = () => sink[Symbol.dispose]!();
+  }
+  if (typeof sink[Symbol.asyncDispose] === 'function') {
+    filtered[Symbol.asyncDispose] = () => sink[Symbol.asyncDispose]!();
+  }
+  return filtered;
+}
 
 const defaultConsoleOptions: Required<ConsoleLoggerOptions> = {
   enabled: true,
@@ -97,7 +114,7 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
   };
 
   if (consoleOptions.enabled) {
-    sinks.console = withFilter(
+    sinks.console = withDisposableFilter(
       getConsoleSink({
         ...sinkConfig,
         formatter: getPrettyFormatter({
@@ -126,7 +143,7 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
       throw new Error('`otel.serviceName` is required when OpenTelemetry logging is enabled');
     }
 
-    sinks.otel = withFilter(
+    sinks.otel = withDisposableFilter(
       getOpenTelemetrySink({
         serviceName: otelOptions.serviceName,
         loggerName: otelOptions.loggerName,

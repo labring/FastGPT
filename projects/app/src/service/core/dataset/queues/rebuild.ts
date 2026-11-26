@@ -2,11 +2,15 @@ import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemIn
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
+import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 
 type DatasetRebuildContext = {
   teamId: string;
@@ -15,15 +19,16 @@ type DatasetRebuildContext = {
   billId: string;
 };
 
-/**
- * 原子领取一条处于 rebuildIndexPending 的 data，并写入现有 training 队列。
- * 只负责模型切换的 rebuildIndex 阶段，索引内容由 worker 从 data 读取。
- */
-export const enqueueNextDatasetRebuildTask = async (
-  context: DatasetRebuildContext,
-  session?: ClientSession
-) => {
-  const enqueue = async (session: ClientSession) => {
+const enqueueOneRebuildTask = async ({
+  context,
+  session,
+  emitWakeup = true
+}: {
+  context: DatasetRebuildContext;
+  session?: ClientSession;
+  emitWakeup?: boolean;
+}) => {
+  const enqueue = async (activeSession: ClientSession) => {
     while (true) {
       const data = await MongoDatasetData.findOneAndUpdate(
         {
@@ -37,7 +42,7 @@ export const enqueueNextDatasetRebuildTask = async (
             updateTime: new Date()
           }
         },
-        { session }
+        { session: activeSession }
       ).select({
         _id: 1,
         collectionId: 1,
@@ -47,12 +52,12 @@ export const enqueueNextDatasetRebuildTask = async (
 
       const collection = await MongoDatasetCollection.findById(data.collectionId)
         .select('_id')
-        .session(session);
+        .session(activeSession);
       if (!collection) {
         await MongoDatasetData.updateOne(
           { _id: data._id },
           { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } },
-          { session }
+          { session: activeSession }
         );
         continue;
       }
@@ -71,14 +76,29 @@ export const enqueueNextDatasetRebuildTask = async (
             retryCount: 3
           }
         ],
-        { session, ordered: true }
+        { session: activeSession, ordered: true }
       );
+      if (emitWakeup) {
+        await publishTrainingWakeup({
+          modes: [TrainingModeEnum.rebuildIndex],
+          tx: bridgeClientSessionToDbSession(activeSession)
+        });
+      }
       return true;
     }
   };
 
   return session ? enqueue(session) : mongoSessionRun(enqueue);
 };
+
+/**
+ * 原子领取一条处于 rebuildIndexPending 的 data，并写入现有 training 队列。
+ * 只负责模型切换的 rebuildIndex 阶段，索引内容由 worker 从 data 读取。
+ */
+export const enqueueNextDatasetRebuildTask = async (
+  context: DatasetRebuildContext,
+  session?: ClientSession
+) => enqueueOneRebuildTask({ context, session, emitWakeup: true });
 
 /**
  * 创建受 vector worker 并发上限约束的种子任务，后续任务由 worker 链式补充。
@@ -88,7 +108,7 @@ export const seedDatasetRebuildTasks = async (
   context: DatasetRebuildContext,
   session?: ClientSession
 ) => {
-  const seed = async (session: ClientSession) => {
+  const seed = async (activeSession: ClientSession) => {
     const seedCount = (getSystemInstanceConfig().performance.dataset.vectorMaxProcess ?? 10) * 2;
     logInstanceConfigRead({
       callsite: 'runtime.app.dataset.queue.rebuild.seedWithSession',
@@ -97,8 +117,15 @@ export const seedDatasetRebuildTasks = async (
     });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
-      if (!(await enqueueNextDatasetRebuildTask(context, session))) break;
+      if (!(await enqueueOneRebuildTask({ context, session: activeSession, emitWakeup: false })))
+        break;
       createdCount += 1;
+    }
+    if (createdCount > 0) {
+      await publishTrainingWakeup({
+        modes: [TrainingModeEnum.rebuildIndex],
+        tx: bridgeClientSessionToDbSession(activeSession)
+      });
     }
     return createdCount;
   };
@@ -114,9 +141,12 @@ export const seedDatasetRebuildTasks = async (
   let createdCount = 0;
   for (let i = 0; i < seedCount; i++) {
     try {
-      if (!(await enqueueNextDatasetRebuildTask(context))) break;
+      if (!(await enqueueOneRebuildTask({ context, emitWakeup: false }))) break;
       createdCount += 1;
     } catch {}
+  }
+  if (createdCount > 0) {
+    await publishTrainingWakeup({ modes: [TrainingModeEnum.rebuildIndex] });
   }
   return createdCount;
 };

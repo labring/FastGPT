@@ -38059,11 +38059,12 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
-                                      "maxInputTokens": {
-                                        "description": "本档输入上限，单位 M Tokens；省略表示无限",
-                                        "example": 1,
-                                        "type": "number",
-                                        "minimum": 0
+                                      "maxInputTokensK": {
+                                        "description": "本档输入上限，单位 K Tokens；省略表示无限",
+                                        "example": 32,
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 9007199254740991
                                       },
                                       "inputPrice": {
                                         "description": "每百万输入 Tokens 的积分单价",
@@ -38287,11 +38288,12 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
-                                      "maxInputTokens": {
-                                        "description": "本档输入上限，单位 M Tokens；省略表示无限",
-                                        "example": 1,
-                                        "type": "number",
-                                        "minimum": 0
+                                      "maxInputTokensK": {
+                                        "description": "本档输入上限，单位 K Tokens；省略表示无限",
+                                        "example": 32,
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 9007199254740991
                                       },
                                       "inputPrice": {
                                         "description": "每百万输入 Tokens 的积分单价",
@@ -43966,11 +43968,12 @@
                                             "items": {
                                               "type": "object",
                                               "properties": {
-                                                "maxInputTokens": {
-                                                  "description": "本档输入上限，单位 M Tokens；省略表示无限",
-                                                  "example": 1,
-                                                  "type": "number",
-                                                  "minimum": 0
+                                                "maxInputTokensK": {
+                                                  "description": "本档输入上限，单位 K Tokens；省略表示无限",
+                                                  "example": 32,
+                                                  "type": "integer",
+                                                  "exclusiveMinimum": 0,
+                                                  "maximum": 9007199254740991
                                                 },
                                                 "inputPrice": {
                                                   "description": "每百万输入 Tokens 的积分单价",
@@ -44645,11 +44648,12 @@
                                                 "items": {
                                                   "type": "object",
                                                   "properties": {
-                                                    "maxInputTokens": {
-                                                      "description": "本档输入上限，单位 M Tokens；省略表示无限",
-                                                      "example": 1,
-                                                      "type": "number",
-                                                      "minimum": 0
+                                                    "maxInputTokensK": {
+                                                      "description": "本档输入上限，单位 K Tokens；省略表示无限",
+                                                      "example": 32,
+                                                      "type": "integer",
+                                                      "exclusiveMinimum": 0,
+                                                      "maximum": 9007199254740991
                                                     },
                                                     "inputPrice": {
                                                       "description": "每百万输入 Tokens 的积分单价",

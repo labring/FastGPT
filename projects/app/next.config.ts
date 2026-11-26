@@ -83,7 +83,8 @@ const nextConfig: NextConfig = {
       }
     }
   },
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
+  // i18next v26 的浏览器产物含 Safari 13.0 不支持的语法，交给 Next.js 按 browserslist 降级。
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', 'i18next'],
   serverExternalPackages: [
     '@node-rs/jieba',
     'bullmq',

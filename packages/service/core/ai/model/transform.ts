@@ -1,5 +1,6 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { normalizeReasoningEffortList } from '@fastgpt/global/core/ai/llm/utils';
 import {
   AIModelDocumentDataSchema,
   ModelPricingSchema,
@@ -23,6 +24,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
     'video',
     'reasoning',
     'reasoningEffort',
+    'reasoningEffortList',
     'functionCall',
     'toolChoice',
     'defaultSystemChatPrompt',
@@ -47,6 +49,41 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 };
 
 /**
+ * 文档读取边界兼容归一化：
+ * - 将历史或待回填记录中的 `reasoningEffortList: null` 归一为缺省值，避免在手动回填前阻断目录加载与 JSON 导出；
+ * - 过滤历史或高版本插件带来的未识别思考等级并按标准顺序去重，避免单个未知枚举值阻断目录、导出或模板加载；
+ * - 保留未配置时的 `undefined` 缺省语义，避免 JSON 导出保存或旧插件模板安装把运行期兜底六档固化到数据库；
+ * - 运行期空/缺省兜底由 `formatDbModelToRuntimeModel` 与 `getSupportedReasoningEfforts` 统一提供。
+ */
+const normalizeLlmConfigForRead = (
+  type: unknown,
+  config: unknown
+): Record<string, unknown> | unknown => {
+  if (
+    type !== ModelTypeEnum.llm ||
+    !config ||
+    typeof config !== 'object' ||
+    Array.isArray(config)
+  ) {
+    return config;
+  }
+  const llmConfig = config as Record<string, unknown>;
+  if (llmConfig.reasoningEffortList === null) {
+    const { reasoningEffortList: _ignored, ...restConfig } = llmConfig;
+    return restConfig;
+  }
+  if (!Array.isArray(llmConfig.reasoningEffortList)) {
+    return config;
+  }
+  return {
+    ...llmConfig,
+    reasoningEffortList: normalizeReasoningEffortList(
+      llmConfig.reasoningEffortList.filter((item): item is string => typeof item === 'string')
+    )
+  };
+};
+
+/**
  * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
  * 历史 STT 价格缺少类型时按时长读取；无法识别的价格按免费处理，避免阻断业务。
  * 不回写数据库；后台迁移记录坏数据，新 API/JSON 写入仍严格校验。
@@ -65,11 +102,15 @@ export const formatDbModelToDocumentData = (
       );
       return result.success ? result.data : undefined;
     }
-    // 未迁移的小数阶梯上限或异常价格按免费处理，避免后台迁移完成前阻断模型目录加载。
+    // 旧阶梯上限由迁移读取。这里仅保留新上限及价格，尚未回填时首档按无限上限计费。
     const result = ModelPricingSchema.safeParse(pricing);
     return result.success ? result.data : undefined;
   })();
-  return AIModelDocumentDataSchema.parse({ ...dbModel, pricing });
+  return AIModelDocumentDataSchema.parse({
+    ...dbModel,
+    config: normalizeLlmConfigForRead(dbModel.type, dbModel.config),
+    pricing
+  });
 };
 
 /** 将插件扁平模型协议转换为 `ai_models` 使用的 canonical 文档。 */
@@ -80,12 +121,12 @@ export const flatModelToDocumentData = (input: Record<string, any>): AIModelDocu
   }
 
   const configKeys = configKeysMap[normalized.type as ModelTypeEnum] ?? [];
-  const config = {
+  const config = normalizeLlmConfigForRead(normalized.type, {
     ...Object.fromEntries(
       configKeys.filter((key) => normalized[key] !== undefined).map((key) => [key, normalized[key]])
     ),
     ...(normalized.config && typeof normalized.config === 'object' ? normalized.config : {})
-  };
+  });
 
   return AIModelDocumentDataSchema.parse(
     Object.fromEntries(

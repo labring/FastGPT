@@ -2,7 +2,7 @@ import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '..
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
-import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../common/zod';
 import { JsonValueOpenApiMeta } from '../../../common/zod/openapi';
 
 /* Dataset node */
@@ -10,7 +10,7 @@ export const SelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '可选知识库 ID'
   }),
-  avatar: z.string().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '可选知识库头像'
   }),
   name: z.string().meta({
@@ -33,7 +33,7 @@ export const StoredSelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '知识库 ID'
   }),
-  avatar: z.string().optional().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '知识库头像快照'
   }),
   name: z.string().optional().meta({

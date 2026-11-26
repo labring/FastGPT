@@ -115,7 +115,7 @@ describe('ModelPriceTiersTable', () => {
   it('rounds visible input and output prices while preserving precise tier boundaries', async () => {
     await render([
       {
-        maxInputTokens: 32,
+        maxInputTokensK: 32,
         inputPrice: 2,
         outputPrice: 4,
         cacheReadPrice: 0,
@@ -139,7 +139,7 @@ describe('ModelPriceTiersTable', () => {
     expect(input('outputPrice').value).toBe('1.01');
     await act(async () => container.querySelector('form')!.requestSubmit());
     expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).tiers![0]).toMatchObject({
-      maxInputTokens: 32,
+      maxInputTokensK: 32,
       inputPrice: 0.13,
       outputPrice: 1.01,
       cacheReadPrice: 0,
@@ -150,15 +150,15 @@ describe('ModelPriceTiersTable', () => {
     const clear = () => container.querySelector<HTMLButtonElement>('tbody button')!;
     await act(async () => clear().click());
     expect(form.getValues('pricing.tiers')).toEqual([
-      { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }
+      { maxInputTokensK: undefined, inputPrice: undefined, outputPrice: undefined }
     ]);
-    await fill('maxInputTokens', '272');
+    await fill('maxInputTokensK', '272');
     await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     expect(form.getValues('pricing.tiers')).toHaveLength(2);
-    expect(input('maxInputTokens').value).toBe('272');
+    expect(input('maxInputTokensK').value).toBe('272');
     await act(async () => clear().click());
     expect(form.getValues('pricing.tiers')).toEqual([
-      { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }
+      { maxInputTokensK: undefined, inputPrice: undefined, outputPrice: undefined }
     ]);
   });
 
@@ -178,7 +178,8 @@ describe('cache price editing', () => {
     for (const key of ['inputPrice', 'outputPrice', 'cacheReadPrice', 'cacheCreationPrice']) {
       expect(input(key)).toBeDefined();
     }
-    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+    expect(input('cacheReadPrice').placeholder).toBe('');
+    expect(input('cacheCreationPrice').placeholder).toBe('');
     expect(input('cacheReadPrice').value).toBe('');
   });
 
@@ -200,7 +201,8 @@ describe('cache price editing', () => {
     await render([{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 }]);
     await fill('cacheReadPrice', '');
     expect(form.getValues('pricing.tiers.0.cacheReadPrice')).toBeUndefined();
-    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+    expect(input('cacheReadPrice').placeholder).toBe('');
+    expect(input('cacheReadPrice').value).toBe('');
   });
 
   it('rejects negative cache prices instead of rounding them into free caching', async () => {

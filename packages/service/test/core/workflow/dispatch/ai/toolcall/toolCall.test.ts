@@ -890,12 +890,16 @@ describe('runToolCall compression node responses', () => {
             moduleName: AgentUsageModuleName.agentCall,
             inputTokens: 10,
             outputTokens: 5,
+            cacheReadTokens: 6,
+            cacheCreationTokens: 2,
             totalPoints: 1
           },
           {
             moduleName: 'child_tool',
             inputTokens: 30,
             outputTokens: 20,
+            cacheReadTokens: 10,
+            cacheCreationTokens: 4,
             totalPoints: 4
           }
         ]
@@ -906,11 +910,13 @@ describe('runToolCall compression node responses', () => {
 
     expect(result.toolCallInputTokens).toBe(10);
     expect(result.toolCallOutputTokens).toBe(5);
+    expect(result.cacheReadTokens).toBe(6);
+    expect(result.cacheCreationTokens).toBe(2);
     expect(result.toolCallTotalPoints).toBe(1);
   });
 
   it('executes sandbox as an agent-loop system tool', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     runAgentLoopMock.mockImplementation(async (options) => {
       expect(options.runtime.systemTools).toEqual(
         expect.objectContaining({

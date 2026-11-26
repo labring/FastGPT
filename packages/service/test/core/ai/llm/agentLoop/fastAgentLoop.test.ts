@@ -506,6 +506,62 @@ describe('runFastAgentMainLoop', () => {
     );
   });
 
+  it('aborts sandbox tool AbortSignal when checkIsStopping flips true during execution', async () => {
+    let stopping = false;
+    let capturedSignal: AbortSignal | undefined;
+    runSandboxToolsMock.mockImplementationOnce(async (params: { signal?: AbortSignal }) => {
+      capturedSignal = params.signal;
+      await new Promise<void>((resolve) => {
+        if (params.signal?.aborted) {
+          resolve();
+          return;
+        }
+        params.signal?.addEventListener('abort', () => resolve(), { once: true });
+        setTimeout(() => {
+          stopping = true;
+        }, 25);
+      });
+      return {
+        success: true,
+        input: { command: 'sleep 10' },
+        response: 'Command execution aborted',
+        durationSeconds: 0.1
+      };
+    });
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_sandbox_stop',
+        name: 'sandbox_shell',
+        args: { command: 'sleep 10' }
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        checkIsStopping: () => stopping,
+        toolCatalog: {
+          runtimeTools: [],
+          sandboxTools: createAgentLoopSandboxTools()
+        },
+        sandboxToolContext: {
+          client: {} as any
+        }
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'run long shell command'
+          }
+        ]
+      }
+    });
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(result.status).toBe('aborted');
+  });
+
   it.each([
     {
       name: 'set_plan',

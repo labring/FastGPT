@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupTestsByConfig } from '../../scripts/test/light.mjs';
+import { getConfigNames, groupTestsByConfig } from '../../scripts/test/light.mjs';
 
 describe('test:light', () => {
   it('同一 workspace 的单元测试和集成测试按各自配置分组', () => {
@@ -17,5 +17,11 @@ describe('test:light', () => {
         configPath.endsWith('packages/service/vitest.integration.config.ts')
       )
     ).toBe(true);
+  });
+
+  it('将 L0 纯内存单测（*.unit.test.ts）优先路由到零数据库 vitest.unit.config.ts', () => {
+    expect(getConfigNames('packages/service/test/support/demo/service.unit.test.ts')[0]).toBe(
+      'vitest.unit.config.ts'
+    );
   });
 });

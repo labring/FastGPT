@@ -1,11 +1,14 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
+import { pickUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
 
 export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   totalPoints: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   modelName: string;
   query: string;
   completeMessages: ChatCompletionMessageParam[];
@@ -26,6 +29,8 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   totalPoints,
   toolCallInputTokens,
   toolCallOutputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   modelName,
   query,
   completeMessages,
@@ -37,6 +42,7 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   totalPoints,
   toolCallInputTokens,
   toolCallOutputTokens,
+  ...pickUsedCacheTokens({ cacheReadTokens, cacheCreationTokens }),
   model: modelName,
   query,
   historyPreview: getHistoryPreview(

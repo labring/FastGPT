@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
-import { X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
   getProductionDocsUrl,
@@ -21,28 +21,40 @@ const localeFlags: Record<string, string> = {
   'zh-CN': '🇨🇳'
 };
 
+const defaultLocales: Array<{ locale: FastGPTDocsLocale; name: string }> = [
+  { locale: 'en', name: 'English' },
+  { locale: 'zh-CN', name: '简体中文' }
+];
+
 type LanguageSwitcherProps = {
   className?: string;
   buttonClassName?: string;
   menuClassName?: string;
 };
 
-/** Render a visible crawlable alternate-locale link and a client-only browser-language suggestion notice. */
+/** Render a dropdown language selector displaying the active language and crawlable alternate link. */
 export function LanguageSwitcher({
   className,
-  buttonClassName
+  buttonClassName,
+  menuClassName
 }: LanguageSwitcherProps) {
   const { locale, locales = [], onChange } = useI18n();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const [suggestedLocale, setSuggestedLocale] = useState<FastGPTDocsLocale | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const currentLocale: FastGPTDocsLocale = locale === 'en' ? 'en' : 'zh-CN';
   const stripped = stripDocsLocalePrefix(pathname);
   const isPreview = isPreviewDocsSite();
+  const availableLocales = locales.length > 0 ? locales : defaultLocales;
 
   const buildOptionHref = (targetLocale: FastGPTDocsLocale): string => {
     if (isPreview) {
-      return stripped.pathname === '/' ? `/${targetLocale}` : `/${targetLocale}${stripped.pathname}`;
+      return stripped.pathname === '/'
+        ? `/${targetLocale}`
+        : `/${targetLocale}${stripped.pathname}`;
     }
     return getProductionDocsUrl(targetLocale, stripped.pathname);
   };
@@ -58,6 +70,7 @@ export function LanguageSwitcher({
   const navigateToLocale = (targetLocale: FastGPTDocsLocale, targetHref: string) => {
     persistPreferredLocale(targetLocale);
     setSuggestedLocale(null);
+    setOpen(false);
 
     const isProductionHostname = ['doc.fastgpt.cn', 'doc.fastgpt.io'].includes(
       window.location.hostname
@@ -76,6 +89,35 @@ export function LanguageSwitcher({
 
     onChange?.(targetLocale);
   };
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname, currentLocale]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   useEffect(() => {
     try {
@@ -107,14 +149,14 @@ export function LanguageSwitcher({
     })();
 
     const isAvailable =
-      detectedLocale !== null && locales.some((item) => item.locale === detectedLocale);
+      detectedLocale !== null && availableLocales.some((item) => item.locale === detectedLocale);
     if (isAvailable && detectedLocale !== currentLocale) {
       setSuggestedLocale(detectedLocale);
       return;
     }
 
     setSuggestedLocale(null);
-  }, [currentLocale, locales]);
+  }, [availableLocales, currentLocale]);
 
   const dismissNotice = () => {
     try {
@@ -125,51 +167,126 @@ export function LanguageSwitcher({
     setSuggestedLocale(null);
   };
 
-  const alternateLocale: FastGPTDocsLocale = currentLocale === 'en' ? 'zh-CN' : 'en';
-  const alternateItem = locales.find((item) => item.locale === alternateLocale);
-  const alternateLabel =
-    alternateItem?.name ?? (alternateLocale === 'en' ? 'English' : '简体中文');
-  const alternateHref = buildOptionHref(alternateLocale);
-  const suggestedHref =
-    suggestedLocale !== null ? buildOptionHref(suggestedLocale) : undefined;
+  const currentItem = availableLocales.find((item) => item.locale === currentLocale);
+  const currentLabel = currentItem?.name ?? (currentLocale === 'en' ? 'English' : '简体中文');
+  const suggestedHref = suggestedLocale !== null ? buildOptionHref(suggestedLocale) : undefined;
 
   return (
     <>
-      <a
-        href={alternateHref}
-        hrefLang={alternateLocale}
-        lang={alternateLocale}
-        data-language-switch={alternateLocale}
-        aria-label={alternateLocale === 'en' ? 'Switch to English' : '切换至中文文档'}
-        onClick={(event) => {
-          if (
-            event.button === 0 &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.shiftKey &&
-            !event.altKey
-          ) {
-            event.preventDefault();
-            navigateToLocale(alternateLocale, alternateHref);
-          } else {
-            persistPreferredLocale(alternateLocale);
-            setSuggestedLocale(null);
-          }
-        }}
-        className={cn(
-          'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-fd-border bg-fd-background px-2.5 text-xs font-medium text-fd-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-primary/30',
-          buttonClassName,
-          className
-        )}
-      >
-        <span
-          className="flex size-5 shrink-0 items-center justify-center text-base leading-none"
-          aria-hidden="true"
+      <div ref={containerRef} className={cn('relative flex shrink-0', className)}>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={currentLocale === 'en' ? 'Choose language' : '选择语言'}
+          data-open={open}
+          onClick={() => setOpen((prev) => !prev)}
+          className={cn(
+            'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-fd-border bg-fd-background px-2.5 text-xs font-medium text-fd-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-primary/30 data-[open=true]:bg-fd-accent data-[open=true]:text-fd-accent-foreground',
+            buttonClassName
+          )}
         >
-          {localeFlags[alternateLocale] ?? '🌐'}
-        </span>
-        <span className="min-w-0 truncate">{alternateLabel}</span>
-      </a>
+          <span
+            className="flex size-5 shrink-0 items-center justify-center text-base leading-none"
+            aria-hidden="true"
+          >
+            {localeFlags[currentLocale] ?? '🌐'}
+          </span>
+          <span className="min-w-0 truncate">{currentLabel}</span>
+          <ChevronDown
+            className={cn(
+              'ms-auto size-3.5 shrink-0 text-fd-muted-foreground transition-transform',
+              open && 'rotate-180'
+            )}
+            aria-hidden="true"
+          />
+        </button>
+        <div
+          role="listbox"
+          aria-label={currentLocale === 'en' ? 'Languages' : '语言列表'}
+          hidden={!open}
+          className={cn(
+            'absolute right-0 bottom-full z-50 mb-2 flex min-w-[11rem] flex-col gap-1 overflow-hidden rounded-xl border bg-fd-popover/95 p-1 text-sm text-fd-popover-foreground shadow-lg backdrop-blur-lg',
+            !open && 'hidden',
+            menuClassName
+          )}
+        >
+          {availableLocales.map((item) => {
+            const optionLocale: FastGPTDocsLocale = item.locale === 'en' ? 'en' : 'zh-CN';
+            const active = optionLocale === currentLocale;
+            const optionClassName = cn(
+              'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-left text-fd-popover-foreground transition-colors hover:bg-fd-accent',
+              active && 'font-semibold text-[#3370FF] dark:text-blue-400'
+            );
+            const optionContent = (
+              <>
+                <span
+                  className="flex size-5 shrink-0 items-center justify-center text-base leading-none"
+                  aria-hidden="true"
+                >
+                  {localeFlags[optionLocale] ?? '🌐'}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                <Check
+                  className={cn(
+                    'size-3.5 shrink-0 text-[#3370FF] dark:text-blue-400',
+                    !active && 'invisible'
+                  )}
+                  aria-hidden="true"
+                />
+              </>
+            );
+
+            if (active) {
+              return (
+                <button
+                  key={optionLocale}
+                  type="button"
+                  role="option"
+                  aria-selected={true}
+                  onClick={() => setOpen(false)}
+                  className={optionClassName}
+                >
+                  {optionContent}
+                </button>
+              );
+            }
+
+            const optionHref = buildOptionHref(optionLocale);
+            return (
+              <a
+                key={optionLocale}
+                href={optionHref}
+                hrefLang={optionLocale}
+                lang={optionLocale}
+                data-language-switch={optionLocale}
+                role="option"
+                aria-selected={false}
+                onClick={(event) => {
+                  if (
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    navigateToLocale(optionLocale, optionHref);
+                  } else {
+                    persistPreferredLocale(optionLocale);
+                    setSuggestedLocale(null);
+                    setOpen(false);
+                  }
+                }}
+                className={optionClassName}
+              >
+                {optionContent}
+              </a>
+            );
+          })}
+        </div>
+      </div>
       {suggestedLocale !== null &&
         suggestedHref !== undefined &&
         typeof document !== 'undefined' &&
