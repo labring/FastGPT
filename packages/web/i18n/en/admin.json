@@ -1418,5 +1418,11 @@
   "ops_perf_err_filter_error": "Collection permission or metadata filter query failed",
   "ops_perf_err_image_caption_error": "Image captioning (VLM) failed",
   "ops_perf_err_post_process_error": "Search result merge or post-processing failed",
-  "ops_perf_err_search_error": "Dataset search execution failed"
+  "ops_perf_err_search_error": "Dataset search execution failed",
+  "please_configure_smtp_first": "Please configure {{service}} first",
+  "smtp_service": "SMTP Service",
+  "aliyun_sms_not_configured": "{{service}} is not configured",
+  "aliyun_sms": "Alibaba Cloud SMS",
+  "clear_smtp_config_confirm": "Clear the SMTP email service configuration? Click Save for the change to take effect.",
+  "clear_aliyun_sms_confirm": "Clear the Alibaba Cloud SMS service configuration? Click Save for the change to take effect."
 }

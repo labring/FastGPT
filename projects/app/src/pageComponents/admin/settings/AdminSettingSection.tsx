@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, Text } from '@chakra-ui/react';
+import { Box, Flex, Text } from '@chakra-ui/react';
 
 type AdminSettingSectionProps = {
   id: string;
   title: string;
+  rightContent?: React.ReactNode;
   children: React.ReactNode;
   showDivider?: boolean;
 };
@@ -12,15 +13,19 @@ type AdminSettingSectionProps = {
 const AdminSettingSection = ({
   id,
   title,
+  rightContent,
   children,
   showDivider = false
 }: AdminSettingSectionProps) => {
   return (
     <Box id={id} scrollMarginTop={'24px'}>
       {showDivider && <Box h={'1px'} bg={'myGray.200'} my={8} />}
-      <Text fontSize={'lg'} fontWeight={'bold'} color={'myGray.900'} mb={5}>
-        {title}
-      </Text>
+      <Flex alignItems={'center'} justifyContent={'space-between'} mb={5}>
+        <Text fontSize={'lg'} fontWeight={'bold'} color={'myGray.900'}>
+          {title}
+        </Text>
+        {rightContent}
+      </Flex>
       <Box>{children}</Box>
     </Box>
   );

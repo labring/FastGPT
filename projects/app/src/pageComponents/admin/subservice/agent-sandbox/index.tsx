@@ -295,6 +295,7 @@ const AgentSandboxSubserviceComponent = () => {
                           value={field.value}
                           onChange={field.onChange}
                           isConfigured={isOpenSandboxApiKeyConfigured}
+                          isRequired
                         />
                       )}
                     />
@@ -467,6 +468,7 @@ const AgentSandboxSubserviceComponent = () => {
                           value={field.value}
                           onChange={field.onChange}
                           isConfigured={isVolumeManagerTokenConfigured}
+                          isRequired
                         />
                       )}
                     />
@@ -526,6 +528,7 @@ const AgentSandboxSubserviceComponent = () => {
                         value={field.value}
                         onChange={field.onChange}
                         isConfigured={isSecretConfigured('agentSandbox.proxy.secret')}
+                        isRequired
                         isInvalid={Boolean(error)}
                       />
                     ) : (

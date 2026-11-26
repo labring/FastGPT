@@ -532,6 +532,7 @@ export const SecretInputForm = ({
                                     placeholder={item.placeholder ?? fieldLabel}
                                     value={getSecretPlainValue(value) ?? ''}
                                     isConfigured={!!getSecretCipherValue(value)}
+                                    isRequired={Boolean(item.required)}
                                     onChange={(value) => onChange({ value })}
                                     isInvalid={!!error}
                                   />

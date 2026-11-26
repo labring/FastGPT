@@ -45,7 +45,8 @@ const AdminNumberInput = ({
         }
       }}
       onBlur={() => {
-        const current = (draft ?? String(resolvedValue)).trim();
+        if (draft === null) return;
+        const current = draft.trim();
         setDraft(null);
         const parsed = current === '' ? Number.NaN : Number(current);
         if (!Number.isFinite(parsed)) {

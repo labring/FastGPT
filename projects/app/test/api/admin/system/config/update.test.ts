@@ -7,6 +7,7 @@ import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestPa
 import type { UpdateDomainConfigResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 vi.hoisted(() => vi.resetModules());
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
 const mocks = vi.hoisted(() => ({
@@ -42,6 +43,7 @@ vi.mock(
 
 import handler from '@/pages/api/admin/system/config/update';
 import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import * as llmRecordService from '@fastgpt/service/core/ai/record/service';
 
 const callUpdate = handler as unknown as (request: {
   body: unknown;
@@ -134,7 +136,7 @@ describe('instance config update API', () => {
     });
     expect(reads).toBe(2);
     expect(reloadSpy).not.toHaveBeenCalled();
-    expect(mocks.initSystemConfig).toHaveBeenCalled();
+    expect(mocks.initSystemConfig).toHaveBeenCalledWith({ refreshLLMRequestRecordTTL: false });
     expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalled();
     readSpy.mockRestore();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
@@ -148,6 +150,43 @@ describe('instance config update API', () => {
       expect(audit).toMatchObject({ metadata: { name: 'root' } });
       expect(String(audit?.teamId)).toBe(mocks.teamId);
       expect(String(audit?.tmbId)).toBe(mocks.tmbId);
+    });
+  });
+
+  it('awaits initSystemConfig before returning so immediate getInitData reads the refreshed snapshot', async () => {
+    let releaseReload!: () => void;
+    let reloaded = false;
+    mocks.initSystemConfig.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseReload = () => {
+            reloaded = true;
+            resolve();
+          };
+        })
+    );
+
+    let finished = false;
+    const pending = callUpdate({
+      body: {
+        items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'Refreshed name' } }]
+      }
+    } as any).then((res) => {
+      finished = true;
+      return res;
+    });
+
+    await vi.waitFor(() => expect(mocks.initSystemConfig).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(finished).toBe(false);
+
+    releaseReload();
+    const response = await pending;
+    expect(reloaded).toBe(true);
+    expect(response.results[0]).toMatchObject({
+      domain: 'site',
+      revision: 1,
+      effectiveConfig: { name: 'Refreshed name' }
     });
   });
 
@@ -521,6 +560,68 @@ describe('instance config update API', () => {
           sso: expect.objectContaining({ icon: copiedIcon })
         })
       })
+    );
+  });
+
+  it('applies log TTL inside the save transaction only when retentionHours changes and rolls back on failure', async () => {
+    const applyTTL = vi
+      .spyOn(llmRecordService, 'applyLLMRequestRecordTTL')
+      .mockResolvedValue(undefined);
+
+    // 1. 保存 performance 但未改 retentionHours 时不触碰日志库
+    const unchanged = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 0,
+            overrides: { chat: { maxQpm: 3000 } }
+          }
+        ]
+      }
+    } as any);
+    expect(unchanged.results[0].revision).toBe(1);
+    expect(applyTTL).not.toHaveBeenCalled();
+
+    // 2. retentionHours 变化时在事务提交前同步更新日志库 TTL
+    const updated = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 1,
+            overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
+          }
+        ]
+      }
+    } as any);
+    expect(updated.results[0].revision).toBe(2);
+    expect(applyTTL).toHaveBeenCalledExactlyOnceWith({ retentionHours: 48, maxTimeMS: 10_000 });
+    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith({ refreshLLMRequestRecordTTL: false });
+
+    // 3. TTL 更新失败时抛错并回滚主库配置事务，不静默提交
+    mocks.initSystemConfig.mockClear();
+    applyTTL.mockRejectedValueOnce(new Error('log db collMod failed'));
+    await expect(
+      callUpdate({
+        body: {
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 2,
+              overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 12 } }
+            }
+          ]
+        }
+      } as any)
+    ).rejects.toThrow('log db collMod failed');
+
+    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
+      {
+        revision: 2,
+        overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
+      }
     );
   });
 });

@@ -1465,6 +1465,5 @@
   "puzzle_captcha_load_failed": "图片加载失败，请点击换一张",
   "model.cache_read_price": "缓存读取",
   "model.cache_creation_price": "缓存创建",
-  "model.cache_price_default": "同输入价",
   "core.dataset.error.permissionSyncManaged": "该知识库的文件权限由外部 API 文件库同步维护，无法在此修改"
 }

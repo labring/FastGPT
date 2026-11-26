@@ -29,17 +29,21 @@ function loadModule(file, { imports, env = {} }) {
     }
   });
   const exports = {};
-  vm.runInNewContext(outputText, {
-    exports,
-    require: (id) => {
-      assert.ok(Object.hasOwn(imports, id), `Unexpected import: ${id}`);
-      return imports[id];
+  vm.runInNewContext(
+    outputText,
+    {
+      exports,
+      require: (id) => {
+        assert.ok(Object.hasOwn(imports, id), `Unexpected import: ${id}`);
+        return imports[id];
+      },
+      process: { env, cwd: () => path.resolve(__dirname, '..') },
+      URL,
+      Headers,
+      Response
     },
-    process: { env, cwd: () => path.resolve(__dirname, '..') },
-    URL,
-    Headers,
-    Response
-  }, { filename });
+    { filename }
+  );
   return exports;
 }
 
@@ -52,6 +56,13 @@ test('docs locale follows the configured build host', () => {
   assert.equal(resolveDocsSiteVariant({ siteVariant: 'preview' }), 'preview');
   assert.equal(resolveDocsSiteVariant({ homeOrigin: 'https://fastgpt.cn' }), 'cn');
   assert.equal(resolveDocsSiteVariant({ homeOrigin: 'https://fastgpt.io' }), 'io');
+  assert.equal(resolveDocsSiteVariant({ homeOrigin: 'http://localhost:3000' }), 'preview');
+  assert.equal(resolveDocsSiteVariant({ homeOrigin: 'http://127.0.0.1:3000' }), 'preview');
+  assert.equal(resolveDocsSiteVariant({ homeOrigin: 'http://[::1]:3000' }), 'preview');
+  assert.equal(
+    resolveDocsSiteVariant({ siteVariant: 'cn', homeOrigin: 'http://localhost:3000' }),
+    'cn'
+  );
   assert.deepEqual(stripDocsLocalePrefix('/zh-CN/guide/getting-started?tab=1#top'), {
     locale: 'zh-CN',
     pathname: '/guide/getting-started',
@@ -111,14 +122,19 @@ test('LanguageSwitcher emits a visible crawlable alternate-locale anchor in SSR 
             ]
           })
         },
-        'lucide-react': { X: () => null },
+        'lucide-react': { Check: () => null, ChevronDown: () => null, X: () => null },
         '@/lib/cn': { cn: (...parts) => parts.filter(Boolean).join(' ') },
         '@/lib/fastgpt-home-url': routing
       }
     });
 
     const ssrHtml = renderToStaticMarkup(React.createElement(LanguageSwitcher));
+    const currentLabel = activeLocale === 'en' ? 'English' : '简体中文';
     assert.ok(!ssrHtml.includes('sr-only'), 'LanguageSwitcher anchor must remain directly visible');
+    assert.match(
+      ssrHtml,
+      new RegExp(`<button[^>]*aria-haspopup="listbox"[^>]*>${'.*?'}${currentLabel}.*?</button>`)
+    );
     assert.match(
       ssrHtml,
       new RegExp(
@@ -162,7 +178,9 @@ for (const [locale, homeOrigin, timestamp] of [
               locale: language,
               slugs: ['single-locale'],
               url: '/single-locale',
-              data: { _file: { path: language === 'en' ? 'single-locale.en.mdx' : 'single-locale.mdx' } }
+              data: {
+                _file: { path: language === 'en' ? 'single-locale.en.mdx' : 'single-locale.mdx' }
+              }
             }
           ]
         : []),
@@ -196,7 +214,9 @@ for (const [locale, homeOrigin, timestamp] of [
               return pages.filter((page) => page.locale === selectedLocale);
             },
             getPage: (slugs, selectedLocale) =>
-              pages.find((page) => page.locale === selectedLocale && page.slugs.join('/') === slugs.join('/'))
+              pages.find(
+                (page) => page.locale === selectedLocale && page.slugs.join('/') === slugs.join('/')
+              )
           }
         },
         'next/server': { NextResponse },
@@ -221,7 +241,9 @@ for (const [locale, homeOrigin, timestamp] of [
             '    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/single-locale" />',
             '    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/single-locale" />'
           ].join('\n');
-    assert.equal(await response.text(), `<?xml version="1.0" encoding="UTF-8"?>
+    assert.equal(
+      await response.text(),
+      `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>${docsOrigin}/guide</loc>
@@ -250,7 +272,8 @@ for (const [locale, homeOrigin, timestamp] of [
     <loc>${docsOrigin}/single-locale</loc>
 ${singleLocaleAlternates}
   </url>
-</urlset>`);
+</urlset>`
+    );
   });
 }
 
@@ -308,7 +331,10 @@ for (const [homeOrigin, docsOrigin] of [
       'Applebot-Extended',
       'Amazonbot'
     ]) {
-      assert.ok(text.includes(`User-Agent: ${agent}\nAllow: /\nDisallow: /api/`), `Missing ${agent}`);
+      assert.ok(
+        text.includes(`User-Agent: ${agent}\nAllow: /\nDisallow: /api/`),
+        `Missing ${agent}`
+      );
     }
     assert.ok(text.includes(`# AI Context: ${docsOrigin}/llms.txt`));
     assert.ok(text.includes(`# Pricing & Editions: ${docsOrigin}/pricing.md`));
@@ -409,9 +435,21 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   assert.ok(body.includes('https://doc.fastgpt.io/pricing.md'));
   const zhLlmsIndex = llmsMarkdown.buildLlmsIndexText('zh-CN');
   assert.ok(zhLlmsIndex.includes('https://doc.fastgpt.cn/openapi.json'));
-  assert.ok(body.includes('- [Getting Started](https://doc.fastgpt.io/guide/getting-started): Build your first FastGPT agent.'));
-  assert.ok(body.includes('- [OpenAPI Intro](https://doc.fastgpt.io/openapi/intro): Authenticate and call FastGPT APIs.'));
-  assert.ok(body.includes('- [Self-Host Overview](https://doc.fastgpt.io/self-host): Deploy and operate FastGPT.'));
+  assert.ok(
+    body.includes(
+      '- [Getting Started](https://doc.fastgpt.io/guide/getting-started): Build your first FastGPT agent.'
+    )
+  );
+  assert.ok(
+    body.includes(
+      '- [OpenAPI Intro](https://doc.fastgpt.io/openapi/intro): Authenticate and call FastGPT APIs.'
+    )
+  );
+  assert.ok(
+    body.includes(
+      '- [Self-Host Overview](https://doc.fastgpt.io/self-host): Deploy and operate FastGPT.'
+    )
+  );
   assert.ok(!body.includes('/openapi/legacy/app'));
   assert.ok(!body.includes('/self-host/upgrading/outdated/48'));
 
@@ -518,9 +556,13 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
     }
   });
   const compactFullText = await compactFullLlms.buildLlmsFullText('en');
-  assert.ok(compactFullText.includes('url: https://doc.fastgpt.io/openapi/reference/dataset-search/search'));
+  assert.ok(
+    compactFullText.includes('url: https://doc.fastgpt.io/openapi/reference/dataset-search/search')
+  );
   assert.ok(compactFullText.includes('title: Search Datasets API'));
-  assert.ok(compactFullText.includes('https://doc.fastgpt.io/openapi/reference/dataset-search/search.md'));
+  assert.ok(
+    compactFullText.includes('https://doc.fastgpt.io/openapi/reference/dataset-search/search.md')
+  );
   assert.ok(compactFullText.includes('https://doc.fastgpt.io/llms-openapi.txt'));
   assert.ok(!compactFullText.includes('| `scope` | `object` |'));
   const fullOpenApiBundleText = await compactFullLlms.buildLlmsFullText('en', 'openapi');
@@ -579,12 +621,8 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
 });
 
 test('schema helpers expand search titles and emit rich-result compliant JSON-LD', () => {
-  const {
-    resolvePageSeoTitle,
-    generateArticleSchema,
-    generateWebSiteSchema,
-    generateFaqSchema
-  } = loadModule('../lib/schema.ts', { imports: {} });
+  const { resolvePageSeoTitle, generateArticleSchema, generateWebSiteSchema, generateFaqSchema } =
+    loadModule('../lib/schema.ts', { imports: {} });
 
   assert.equal(
     resolvePageSeoTitle({
@@ -677,7 +715,10 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
   });
   assert.equal(schema['@type'], 'TechArticle');
   assert.equal(schema.publisher['@id'], 'https://fastgpt.cn/#organization');
-  assert.equal(schema.publisher.logo.url, 'https://doc.fastgpt.cn/favicon/android-chrome-512x512.png');
+  assert.equal(
+    schema.publisher.logo.url,
+    'https://doc.fastgpt.cn/favicon/android-chrome-512x512.png'
+  );
   assert.equal(schema.image, 'https://doc.fastgpt.cn/og-image.png');
   assert.equal(schema.datePublished, '2026-10-20T00:00:00.000Z');
   assert.equal(schema.dateModified, '2026-10-20T00:00:00.000Z');
@@ -689,11 +730,10 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
   assert.equal(siteSchema['@graph'].length, 2);
   assert.equal(siteSchema['@graph'][0]['@type'], 'Organization');
   assert.equal(siteSchema['@graph'][0]['@id'], 'https://fastgpt.io/#organization');
-  assert.deepEqual([...siteSchema['@graph'][0].sameAs], [
-    'https://github.com/labring/FastGPT',
-    'https://fastgpt.io',
-    'https://fastgpt.cn'
-  ]);
+  assert.deepEqual(
+    [...siteSchema['@graph'][0].sameAs],
+    ['https://github.com/labring/FastGPT', 'https://fastgpt.io', 'https://fastgpt.cn']
+  );
   assert.equal(siteSchema['@graph'][1]['@type'], 'WebSite');
   assert.equal(siteSchema['@graph'][1].url, 'https://doc.fastgpt.io/guide/getting-started');
 
@@ -743,7 +783,10 @@ test('middleware resolves section landings, language roots, and historical paths
   const cliSkillPath = '/cli/skill.md';
   const cliSkillResponse = middleware(new NextRequest(`http://localhost:3210${cliSkillPath}`));
   assert.equal(cliSkillResponse.headers.get('x-middleware-next'), '1');
-  assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url: cliSkillPath }), false);
+  assert.equal(
+    unstable_doesMiddlewareMatch({ config: middlewareConfig, url: cliSkillPath }),
+    false
+  );
   assert.ok(fs.existsSync(path.join(__dirname, '../public', cliSkillPath)));
 
   const cases = [
@@ -768,8 +811,14 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/self-host/config/sandbox/common', '/zh-CN/self-host/config/sandbox/opensandbox'],
     ['/zh-CN/docs/introduction/development/configuration', '/zh-CN/self-host/config/env'],
     ['/zh-CN/docs/introduction/development/signoz', '/zh-CN/self-host/config/signoz'],
-    ['/zh-CN/docs/introduction/development/modelConfig/intro', '/zh-CN/self-host/config/model/intro'],
-    ['/zh-CN/docs/introduction/development/modelConfig/one-api', '/zh-CN/self-host/config/model/intro'],
+    [
+      '/zh-CN/docs/introduction/development/modelConfig/intro',
+      '/zh-CN/self-host/config/model/intro'
+    ],
+    [
+      '/zh-CN/docs/introduction/development/modelConfig/one-api',
+      '/zh-CN/self-host/config/model/intro'
+    ],
     ['/zh-CN/self-host/config/model/ai-proxy', '/zh-CN/self-host/config/model/intro'],
     ['/zh-CN/self-host/config/model/ppio', '/zh-CN/self-host/config/model/intro'],
     ['/zh-CN/development/docker', '/zh-CN/self-host/deploy/docker'],
@@ -777,20 +826,38 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
     ['/zh-CN/self-host/upgrading/4-16/4163', '/zh-CN/self-host/upgrading/4-17/4170'],
     ['/zh-CN/docs/introduction/development/upgrading/48', '/zh-CN/self-host/upgrading/outdated/48'],
-    ['/zh-CN/docs/introduction/development/upgrading/4110', '/zh-CN/self-host/upgrading/outdated/4110'],
+    [
+      '/zh-CN/docs/introduction/development/upgrading/4110',
+      '/zh-CN/self-host/upgrading/outdated/4110'
+    ],
     ['/zh-CN/upgrading/4-8/48', '/zh-CN/self-host/upgrading/outdated/48'],
     ['/zh-CN/upgrading/4-10/4100', '/zh-CN/self-host/upgrading/outdated/4100'],
     ['/zh-CN/guide/build/agentv2/startup', '/zh-CN/guide/build/agentv2/vm'],
     ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
-    ['/zh-CN/docs/introduction/guide/dashboard/workflow/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
+    [
+      '/zh-CN/docs/introduction/guide/dashboard/workflow/sandbox',
+      '/zh-CN/guide/build/workflow/nodes/sandbox-v2'
+    ],
     ['/zh-CN/guide/dashboard/workflow/ai_chat', '/zh-CN/guide/build/workflow/nodes/ai_chat'],
     ['/zh-CN/guide/build/workflow/nodes/laf', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
-    ['/zh-CN/guide/build/tools/system-plugins/bing_search_plugin', '/zh-CN/plugin/team-installation'],
+    [
+      '/zh-CN/guide/build/tools/system-plugins/bing_search_plugin',
+      '/zh-CN/plugin/team-installation'
+    ],
     ['/zh-CN/use-cases/app-cases/feishu_webhook', '/zh-CN/guide/build/publish/feishu'],
-    ['/zh-CN/use-cases/app-cases/english_essay_correction_bot', '/zh-CN/guide/getting-started/first-agent'],
+    [
+      '/zh-CN/use-cases/app-cases/english_essay_correction_bot',
+      '/zh-CN/guide/getting-started/first-agent'
+    ],
     ['/zh-CN/use-cases/app-cases/unknown_legacy_case', '/zh-CN/guide/getting-started'],
-    ['/zh-CN/docs/introduction/guide/team_permissions/customDomain', '/zh-CN/guide/workspace/customDomain'],
-    ['/zh-CN/docs/introduction/guide/course/collection_tags', '/zh-CN/guide/dataset/collection_tags'],
+    [
+      '/zh-CN/docs/introduction/guide/team_permissions/customDomain',
+      '/zh-CN/guide/workspace/customDomain'
+    ],
+    [
+      '/zh-CN/docs/introduction/guide/course/collection_tags',
+      '/zh-CN/guide/dataset/collection_tags'
+    ],
     ['/zh-CN/docs/introduction/guide/course/welcomeText', '/zh-CN/guide/build/general/welcomeText'],
     ['/zh-CN/docs/introduction/guide/course/voiceInput', '/zh-CN/guide/build/general/voiceInput'],
     ['/zh-cn/docs/openapi/intro', '/zh-CN/openapi/intro'],
@@ -814,20 +881,35 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/openapi/best-practices', '/zh-CN/openapi/intro'],
     ['/zh-CN/openapi/reference', '/zh-CN/openapi/api-reference'],
     ['/en/openapi/reference', '/en/openapi/api-reference'],
-    ['/zh-CN/introduction/guide/knowledge_base/externalFile', '/zh-CN/guide/dataset/third-party/third_dataset'],
-    ['/zh-CN/introduction/guide/plugins/how_to_submit_system_plugin', '/zh-CN/plugin/system-tool-development'],
+    [
+      '/zh-CN/introduction/guide/knowledge_base/externalFile',
+      '/zh-CN/guide/dataset/third-party/third_dataset'
+    ],
+    [
+      '/zh-CN/introduction/guide/plugins/how_to_submit_system_plugin',
+      '/zh-CN/plugin/system-tool-development'
+    ],
     ['/zh-CN/protocol', '/zh-CN/guide/version/opensource/license'],
     ['/zh-CN/protocol/open-source', '/zh-CN/guide/version/opensource/license'],
     ['/zh-CN/introduction/shopping_cart', '/zh-CN/guide/version/commercial'],
     ['/zh-CN/introduction/shopping_cart/saas', '/zh-CN/guide/version/commercial'],
     ['/zh-CN/introduction/development/quick-start', '/zh-CN/self-host/deploy/docker'],
     ['/zh-CN/introduction/development/custom-models', '/zh-CN/self-host/config/model/intro'],
-    ['/zh-CN/self-host/custom-models/bge-rerank', '/zh-CN/self-host/custom-models/legacy/bge-rerank'],
-    ['/zh-CN/self-host/custom-models/chatglm2-m3e', '/zh-CN/self-host/custom-models/legacy/chatglm2-m3e'],
+    [
+      '/zh-CN/self-host/custom-models/bge-rerank',
+      '/zh-CN/self-host/custom-models/legacy/bge-rerank'
+    ],
+    [
+      '/zh-CN/self-host/custom-models/chatglm2-m3e',
+      '/zh-CN/self-host/custom-models/legacy/chatglm2-m3e'
+    ],
     ['/zh-CN/self-host/custom-models/chatglm2', '/zh-CN/self-host/custom-models/legacy/chatglm2'],
     ['/zh-CN/self-host/custom-models/m3e', '/zh-CN/self-host/custom-models/legacy/m3e'],
     ['/zh-CN/self-host/custom-models/marker', '/zh-CN/self-host/custom-models/legacy/marker'],
-    ['/en/docs/development/custom-models/bge-rerank', '/en/self-host/custom-models/legacy/bge-rerank'],
+    [
+      '/en/docs/development/custom-models/bge-rerank',
+      '/en/self-host/custom-models/legacy/bge-rerank'
+    ],
     ['/zh-CN/introduction/development/community', '/zh-CN/guide/getting-started'],
     ['/zh-CN/introduction/development/upgrading', '/zh-CN/self-host/upgrading/upgrade-instruction'],
     ['/zh-CN/introduction/development/design', '/zh-CN/self-host/design/dataset'],
@@ -838,13 +920,19 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/guide/build/publish', '/zh-CN/guide/build/publish/versions'],
     ['/zh-CN/guide/build/skill', '/zh-CN/guide/build/skill/intro'],
     ['/zh-CN/guide/build/tools', '/zh-CN/guide/build/tools/overview'],
-    ['/zh-CN/guide/build/tools/system-plugins', '/zh-CN/guide/build/tools/system-plugins/upload_system_tool'],
+    [
+      '/zh-CN/guide/build/tools/system-plugins',
+      '/zh-CN/guide/build/tools/system-plugins/upload_system_tool'
+    ],
     ['/zh-CN/guide/build/workflow', '/zh-CN/guide/build/workflow/intro'],
     ['/zh-CN/guide/build/workflow/nodes', '/zh-CN/guide/build/workflow/nodes/ai_chat'],
     ['/zh-CN/guide/chat', '/zh-CN/guide/chat/html'],
     ['/zh-CN/guide/dataset', '/zh-CN/guide/dataset/lifecycle'],
     ['/zh-CN/guide/dataset/third-party', '/zh-CN/guide/dataset/third-party/api_dataset'],
-    ['/zh-CN/guide/getting-started/examples', '/zh-CN/guide/getting-started/examples/email-assistant'],
+    [
+      '/zh-CN/guide/getting-started/examples',
+      '/zh-CN/guide/getting-started/examples/email-assistant'
+    ],
     ['/zh-CN/guide/version', '/zh-CN/guide/version/cloud/intro'],
     ['/zh-CN/guide/version/cloud', '/zh-CN/guide/version/cloud/intro'],
     ['/zh-CN/guide/version/opensource', '/zh-CN/guide/version/opensource/intro'],
@@ -889,8 +977,14 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/docs/workflow/modules/laf/', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
     ['/docs/workflow/modules/text_editor/', '/zh-CN/guide/build/workflow/nodes/text_editor'],
     ['/docs/workflow/modules/tfswitch/', '/zh-CN/guide/build/workflow/nodes/tfswitch'],
-    ['/docs/workflow/modules/custom_feedback/', '/zh-CN/guide/build/workflow/nodes/custom_feedback'],
-    ['/docs/workflow/modules/coreferenceresolution/', '/zh-CN/guide/build/workflow/nodes/coreferenceResolution']
+    [
+      '/docs/workflow/modules/custom_feedback/',
+      '/zh-CN/guide/build/workflow/nodes/custom_feedback'
+    ],
+    [
+      '/docs/workflow/modules/coreferenceresolution/',
+      '/zh-CN/guide/build/workflow/nodes/coreferenceResolution'
+    ]
   ];
 
   const contentRoot = path.join(__dirname, '../content');
@@ -898,7 +992,11 @@ test('middleware resolves section landings, language roots, and historical paths
     const request = new NextRequest(`http://localhost:3210${input}?ref=legacy`);
     const response = middleware(request);
     assert.equal(response.status, 301, `${input} status`);
-    assert.equal(response.headers.get('cache-control'), 'public, max-age=3600', `${input} cache-control`);
+    assert.equal(
+      response.headers.get('cache-control'),
+      'public, max-age=3600',
+      `${input} cache-control`
+    );
     const location = new URL(response.headers.get('location'));
     assert.equal(location.pathname, expected, `${input} pathname`);
     assert.equal(location.search, '?ref=legacy', `${input} query`);
@@ -929,10 +1027,7 @@ test('middleware resolves section landings, language roots, and historical paths
 
   const anonPass = middleware(new NextRequest('http://localhost:3210/en/openapi/intro'));
   assert.equal(anonPass.status, 200);
-  assert.equal(
-    anonPass.headers.get('cache-control'),
-    'public, max-age=0, must-revalidate'
-  );
+  assert.equal(anonPass.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
   assert.equal(anonPass.headers.get('content-language'), 'en');
   assert.equal(anonPass.headers.get('x-robots-tag'), 'noindex, nofollow');
   assert.ok(varyTokens(anonPass).includes('accept'));
@@ -946,9 +1041,14 @@ test('middleware resolves section landings, language roots, and historical paths
   assert.equal(markdownNegotiated.status, 200);
   assert.ok(varyTokens(markdownNegotiated).includes('accept'));
 
-  const localizedPricing = middleware(new NextRequest('http://localhost:3210/en/pricing.md?src=agent'));
+  const localizedPricing = middleware(
+    new NextRequest('http://localhost:3210/en/pricing.md?src=agent')
+  );
   assert.equal(localizedPricing.status, 301);
-  assert.equal(localizedPricing.headers.get('location'), 'http://localhost:3210/pricing.md?src=agent');
+  assert.equal(
+    localizedPricing.headers.get('location'),
+    'http://localhost:3210/pricing.md?src=agent'
+  );
 
   const cookiePreviewRedirect = middleware(
     new NextRequest('http://localhost:3210/openapi/intro', { headers: { cookie: 'FD_LOCALE=en' } })
@@ -973,10 +1073,7 @@ test('middleware resolves section landings, language roots, and historical paths
     })
   );
   assert.equal(legacyEnDomain.status, 301);
-  assert.equal(
-    legacyEnDomain.headers.get('location'),
-    'https://doc.fastgpt.io/openapi/intro'
-  );
+  assert.equal(legacyEnDomain.headers.get('location'), 'https://doc.fastgpt.io/openapi/intro');
 
   for (const [legacyHost, rootEndpoint, expectedOrigin] of [
     ['doc.fastgpt.in', '/robots.txt', 'https://doc.fastgpt.cn'],
@@ -989,7 +1086,10 @@ test('middleware resolves section landings, language roots, and historical paths
     ['doc.tryfastgpt.ai', '/openapi.json', 'https://doc.fastgpt.io'],
     ['doc.tryfastgpt.ai', '/static.json', 'https://doc.fastgpt.io']
   ]) {
-    assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url: rootEndpoint }), true);
+    assert.equal(
+      unstable_doesMiddlewareMatch({ config: middlewareConfig, url: rootEndpoint }),
+      true
+    );
     const legacyDiscovery = middleware(
       new NextRequest(`https://${legacyHost}${rootEndpoint}`, {
         headers: { host: legacyHost }
@@ -1138,10 +1238,7 @@ test('middleware resolves section landings, language roots, and historical paths
       })
     );
     assert.equal(prefixedMd.status, 301);
-    assert.equal(
-      prefixedMd.headers.get('location'),
-      `https://${host}/openapi/intro.md?raw=1`
-    );
+    assert.equal(prefixedMd.headers.get('location'), `https://${host}/openapi/intro.md?raw=1`);
   }
 
   const staleCookiePass = middleware(
@@ -1190,9 +1287,7 @@ test('middleware resolves section landings, language roots, and historical paths
       continue;
     }
     const finalPathname =
-      res.status === 301
-        ? new URL(res.headers.get('location')).pathname
-        : `/${locale}${rel}`;
+      res.status === 301 ? new URL(res.headers.get('location')).pathname : `/${locale}${rel}`;
     const slug = finalPathname.replace(/^\/(?:zh-CN|en)\//, '');
     const targetCandidates = [
       path.join(contentRoot, `${slug}${ext}`),
@@ -1210,8 +1305,20 @@ test('middleware resolves section landings, language roots, and historical paths
 
 test('openapi.json and [lang]/openapi.json serve locale-isolated OpenAPI 3.1 specs with CORS and noindex headers', async () => {
   for (const [variant, homeOrigin, expectedLang, expectedServer, forbiddenServer] of [
-    ['cn', 'https://fastgpt.cn', 'zh-CN', 'https://cloud.fastgpt.cn/api', 'https://cloud.fastgpt.io/api'],
-    ['io', 'https://fastgpt.io', 'en', 'https://cloud.fastgpt.io/api', 'https://cloud.fastgpt.cn/api']
+    [
+      'cn',
+      'https://fastgpt.cn',
+      'zh-CN',
+      'https://cloud.fastgpt.cn/api',
+      'https://cloud.fastgpt.io/api'
+    ],
+    [
+      'io',
+      'https://fastgpt.io',
+      'en',
+      'https://cloud.fastgpt.io/api',
+      'https://cloud.fastgpt.cn/api'
+    ]
   ]) {
     const routing = loadModule('../lib/fastgpt-home-url.ts', {
       imports: { './docs-locale': require('../lib/docs-locale') },
@@ -1243,9 +1350,15 @@ test('openapi.json and [lang]/openapi.json serve locale-isolated OpenAPI 3.1 spe
     assert.equal(parsed.openapi, '3.1.0');
     assert.equal(Object.keys(parsed.paths).length, 50);
     assert.equal(parsed.servers[0]?.url, expectedServer);
-    assert.ok(!bodyText.includes(forbiddenServer), `Must exclude ${forbiddenServer} in ${variant} spec`);
+    assert.ok(
+      !bodyText.includes(forbiddenServer),
+      `Must exclude ${forbiddenServer} in ${variant} spec`
+    );
     if (expectedLang === 'en') {
-      assert.ok(!/\p{Script=Han}/u.test(bodyText), 'English OpenAPI spec must contain zero Han characters');
+      assert.ok(
+        !/\p{Script=Han}/u.test(bodyText),
+        'English OpenAPI spec must contain zero Han characters'
+      );
     }
   }
 
@@ -1281,9 +1394,12 @@ test('openapi.json and [lang]/openapi.json serve locale-isolated OpenAPI 3.1 spe
     ['zh-CN', 'https://cloud.fastgpt.cn/api'],
     ['en', 'https://cloud.fastgpt.io/api']
   ]) {
-    const res = await getLocalizedOpenApi(new Request(`https://preview.example.com/${lang}/openapi.json`), {
-      params: Promise.resolve({ lang })
-    });
+    const res = await getLocalizedOpenApi(
+      new Request(`https://preview.example.com/${lang}/openapi.json`),
+      {
+        params: Promise.resolve({ lang })
+      }
+    );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('access-control-allow-origin'), '*');
     assert.equal(res.headers.get('content-language'), lang);
