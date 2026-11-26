@@ -1,6 +1,6 @@
 ---
 title: Upgrade Guide
-description: "Follow the standard FastGPT self-hosted upgrade procedure covering image tag conventions, startup migrations, background migrations, and version steps."
+description: 'Follow the standard FastGPT self-hosted upgrade procedure covering image tag conventions, startup migrations, background migrations, and version steps.'
 ---
 
 ## Version Policy
@@ -48,6 +48,8 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 - Commercial edition image: ghcr.dockerproxy.net/labring/fastgpt-pro
 
 Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.
+
+> **Note**: Database images and volume mount paths in the latest Compose templates are intended for **new deployments** (for example, both the vector database `fastgpt-vector` and `fastgpt-aiproxy-pg` now default to PostgreSQL 18 mounted at `/var/lib/postgresql`, and MongoDB defaults to `8.3.17`). When upgrading an existing FastGPT deployment, keep your existing images and volume mount paths for both PostgreSQL services and MongoDB, and update only the FastGPT application and companion service images. Perform any database version switch as a separate migration step after taking backups.
 
 If your existing Docker Compose file uses the previous Alibaba Cloud registry, update each FastGPT service's full image reference during the upgrade, including the repository and tag. If you use Agent Sandbox, point its pre-pull image and `AGENT_SANDBOX_OPENSANDBOX_IMAGE` at the same updated image.
 

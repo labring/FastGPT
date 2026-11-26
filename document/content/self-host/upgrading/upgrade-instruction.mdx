@@ -1,6 +1,6 @@
 ---
 title: 版本&升级说明
-description: "阅读 FastGPT 自部署版本升级标准操作指南，掌握镜像版本号规则、启动迁移、后台迁移与跨版本升级流程。"
+description: '阅读 FastGPT 自部署版本升级标准操作指南，掌握镜像版本号规则、启动迁移、后台迁移与跨版本升级流程。'
 ---
 
 ## 版本说明
@@ -48,6 +48,8 @@ FastGPT 升级通常包括两个步骤：
 - 商业版镜像: ghcr.dockerproxy.net/labring/fastgpt-pro
 
 各服务使用目标版本部署模板指定的镜像 Tag。配套服务的版本号可能各自独立，升级前记录完整镜像组合与配置。
+
+> **注意**：全新部署模板中的数据库镜像与数据卷挂载路径会随大版本演进（例如默认 PostgreSQL 向量库 `fastgpt-vector` 与 AI Proxy 数据库 `fastgpt-aiproxy-pg` 已升级至 PG 18 且挂载路径调整为 `/var/lib/postgresql`，MongoDB 已更新至 `8.3.17`）。已有部署升级 FastGPT 应用时，请保留两套 PostgreSQL 与 MongoDB 原有的镜像及数据卷挂载配置，仅更新应用及配套服务镜像；数据库版本切换应作为独立迁移步骤在备份后单独执行。
 
 如果现有 Docker Compose 使用旧阿里云地址，升级时按上表更新 FastGPT 服务的完整镜像引用，包括仓库地址和标签。启用 Agent Sandbox 时，同时更新预拉取镜像和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，使它们指向同一镜像。
 
