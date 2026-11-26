@@ -20,9 +20,8 @@ export async function registerNodeInstrumentation() {
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
       { initSystemUser },
-      { startSystemSync },
       { startCron },
-      { startTrainingQueue },
+      { reconcileDatasetTrainingDocuments },
       { preLoadWorker },
       { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
@@ -50,9 +49,8 @@ export async function registerNodeInstrumentation() {
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@fastgpt/service/support/user/systemUser'),
-      import('@/service/common/system/sync'),
       import('@/service/common/system/cron'),
-      import('@/service/core/dataset/training/utils'),
+      import('@/service/core/dataset/training/documentReconcile'),
       import('@fastgpt/service/worker/preload'),
       import('@fastgpt/service/core/ai/model/catalog/service'),
       import('@fastgpt/service/common/middle/tracks/processor'),
@@ -254,31 +252,22 @@ export async function registerNodeInstrumentation() {
         getErrText
       });
 
-      await Promise.all([
-        runInitializationStep({
-          step: 'start-system-sync',
-          stage: InitialErrorEnum.REDIS_ERROR,
-          action: () => startSystemSync(),
-          logger,
-          getErrText
-        }),
-        runInitializationStep({
-          step: 'init-bullmq-workers',
-          stage: InitialErrorEnum.REDIS_ERROR,
-          action: () => initBullMQWorkers(),
-          logger,
-          getErrText
-        })
-      ]);
+      await runInitializationStep({
+        step: 'init-bullmq-workers',
+        stage: InitialErrorEnum.REDIS_ERROR,
+        action: () => initBullMQWorkers(),
+        logger,
+        getErrText
+      });
       await runInitializationStep({
         step: 'start-cron',
         action: () => startCron(),
         logger,
         getErrText
       });
-      await runInitializationStep({
-        step: 'start-training-queue',
-        action: () => startTrainingQueue(true),
+      runBackgroundInitializationStep({
+        step: 'reconcile-dataset-training',
+        action: reconcileDatasetTrainingDocuments,
         logger,
         getErrText
       });

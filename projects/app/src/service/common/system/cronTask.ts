@@ -7,7 +7,7 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetQaTraining } from '@fastgpt/service/core/dataset/training/qaSchema';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 /*
@@ -58,7 +58,7 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
         logger.warn('Dataset collection not found, cleaning related records', { ...item });
 
         await retryFn(async () => {
-          await MongoDatasetTraining.deleteMany({
+          await MongoDatasetQaTraining.deleteMany({
             teamId: item.teamId,
             datasetId: item.datasetId,
             collectionId: item.collectionId

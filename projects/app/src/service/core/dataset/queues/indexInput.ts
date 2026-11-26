@@ -1,26 +1,17 @@
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import type {
-  DatasetDataSchemaType,
-  DatasetSchemaType,
-  DatasetTrainingSchemaType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
-type PopulateType = {
-  dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel' | 'vlmModelId' | 'vlmModel'>;
-  collection: { name: string; indexPrefixTitle: boolean; imageIndex?: boolean };
-  data?: {
-    _id: string;
-    q: string;
-    a?: string;
-    imageId?: string;
-    indexes: DatasetDataSchemaType['indexes'];
-  };
+type TrainingIndexesSource = {
+  teamId: string;
+  dataset: Pick<DatasetSchemaType, 'vlmModelId' | 'vlmModel'>;
+  collection: { imageIndex?: boolean };
+  indexes?: PushDataChunkType['indexes'];
 };
-type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 
 /**
  * 获取首次训练时需要从训练任务透传给 data 层的外部索引。
@@ -30,11 +21,8 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 生成的文本描述索引，只有当前集合仍开启图片索引且 VLM 可用时才保留。
  * 普通文本索引不读取视觉模型配置；已知配置错误只移除图片描述索引，其他异常向上抛出。
  */
-export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType) => {
-  const sourceIndexes = trainingData.indexes?.length
-    ? trainingData.indexes.map((index) => ({ ...index }))
-    : trainingData.data?.indexes || [];
-  const externalIndexes = sourceIndexes.filter(
+export const getIndexTrainingBaseIndexes = async (trainingData: TrainingIndexesSource) => {
+  const externalIndexes = (trainingData.indexes ?? []).filter(
     (index) => !isDatasetDataSystemIndexType(index.type)
   );
   if (!externalIndexes.some((index) => index.type === DatasetDataIndexTypeEnum.image)) {
@@ -57,20 +45,4 @@ export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType
   return externalIndexes.filter(
     (index) => index.type !== DatasetDataIndexTypeEnum.image || supportVlm
   );
-};
-
-/**
- * 获取首次训练最终写入的数据。q/a 使用本轮训练记录的实际值，空串允许主动清空。
- * rebuild 不使用此输入：它只从已存 data.indexes 重建向量。
- */
-export const getIndexTrainingUpdateInput = async (trainingData: TrainingDataType) => {
-  if (!trainingData.data) return;
-
-  return {
-    q: trainingData.q,
-    a: trainingData.a,
-    imageId: trainingData.data.imageId,
-    indexes: await getIndexTrainingBaseIndexes(trainingData),
-    imageDescMap: trainingData.imageDescMap
-  };
 };

@@ -1,12 +1,6 @@
 import type { TrackEventName } from '@/web/common/system/constants';
 
 declare global {
-  var qaQueueLen: number;
-  var vectorQueueLen: number;
-  var synonymQueueLen: number;
-  var preCreatedQueueLen: number;
-  var datasetParseQueueLen: number;
-
   interface Window {
     QRCode: any;
     umami?: {

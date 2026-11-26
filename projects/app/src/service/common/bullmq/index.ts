@@ -9,6 +9,7 @@ import { initAgentSkillCreateWorker } from '@fastgpt/service/core/ai/skill/manag
 import { initAgentSkillDeleteWorker } from '@fastgpt/service/core/ai/skill/delete';
 import { initDatasetVectorIndexWorker } from '@fastgpt/service/core/dataset/vectorData/mq';
 import { initDatasetPermissionSyncWorker } from '@fastgpt/service/core/dataset/datasetPermissionSync';
+import { initDatasetTrainingWorker } from '@/service/core/dataset/training/documentWorker';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
@@ -21,6 +22,7 @@ export const initBullMQWorkers = () => {
     initTeamDeleteWorker(),
     initCollectionUpdateWorker(),
     initDatasetVectorIndexWorker(),
+    initDatasetTrainingWorker(),
     initAgentSkillCreateWorker(),
     initAgentSkillDeleteWorker(),
     initDatasetPermissionSyncWorker(),

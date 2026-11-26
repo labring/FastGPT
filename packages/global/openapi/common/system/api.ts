@@ -129,7 +129,7 @@ export type GetSystemInitDataResponse = z.infer<typeof GetSystemInitDataResponse
  * API: 唤醒训练队列
  * Route: GET /api/common/system/unlockTask
  * Method: GET
- * Description: 尝试鉴权并唤醒当前实例的知识库训练队列
+ * Description: 鉴权成功后尝试恢复当前团队因欠费暂停的知识库文档训练。
  * Tags: ['系统接口', 'Write']
  * ============================================================================ */
 
