@@ -268,9 +268,17 @@ const mergeChatMetadata = ({
     ...sanitizedClientMetadata
   };
 
-  // originIp 仅取服务端 systemMetadata 或既有合法字符串，防止客户端覆盖或写入非字符串值。
-  const resolvedOriginIp =
-    normalizeOriginIp(systemMetadata?.originIp) ?? normalizeOriginIp(existingMetadata?.originIp);
+  // originIp 优先取服务端 systemMetadata；传入 systemMetadata 时忽略客户端 originIp，
+  // 未传 systemMetadata 时仅兼容合法字符串（用于滚动升级期尚未迁移的 pro 等内部调用方）。
+  const resolvedOriginIp = (() => {
+    const systemOriginIp = normalizeOriginIp(systemMetadata?.originIp);
+    if (systemOriginIp !== undefined) return systemOriginIp;
+    if (systemMetadata === undefined) {
+      const legacyOriginIp = normalizeOriginIp(_clientOriginIp);
+      if (legacyOriginIp !== undefined) return legacyOriginIp;
+    }
+    return normalizeOriginIp(existingMetadata?.originIp);
+  })();
   if (resolvedOriginIp !== undefined) {
     merged.originIp = resolvedOriginIp;
   } else {
