@@ -5,7 +5,7 @@ import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from './schema';
 import { findAndLockTrainingTask, type FindAndLockTrainingTaskOptions } from './entity';
 import type { ClientSession } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import {
   getModelErrorRetryDelayMs,
   isNonRetryableModelError
@@ -200,7 +200,7 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
       }
       await publishTrainingWakeup({
         modes: [next.mode],
-        session
+        tx: bridgeClientSessionToDbSession(session)
       });
     });
   const fail = async (
@@ -421,7 +421,7 @@ export const retryFailedTrainingTasks = async (
       if (updates.length) await MongoDatasetData.bulkWrite(updates, { session });
       await publishTrainingWakeup({
         modes: tasks.map((task) => task.mode),
-        session
+        tx: bridgeClientSessionToDbSession(session)
       });
       return tasks;
     });
