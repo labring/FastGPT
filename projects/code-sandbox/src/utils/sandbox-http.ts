@@ -1,12 +1,18 @@
 import http from 'http';
 import https from 'https';
-import { isIP } from 'net';
+import net, { isIP } from 'net';
 import dns from 'dns/promises';
-import { checkServerIdentity } from 'tls';
-import { ServerConfigError } from '@fastgpt/global/common/error/utils';
-import { HttpProxyAgent } from 'http-proxy-agent';
+import tls, { checkServerIdentity } from 'tls';
+import {
+  parseSupportedOutboundProxyUrl,
+  resolveValidatedHttpForwardTargetUri,
+  SUPPORTED_HTTP_PROXY_PROTOCOLS,
+  SUPPORTED_SOCKS5_PROXY_PROTOCOLS
+} from '@fastgpt/global/common/proxy/utils';
+import { HttpProxyAgent, type HttpProxyAgentOptions } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
+import { SocksClient, type SocksProxy } from 'socks';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { isInternalAddress, isInternalResolvedIP } from './ipCheck.util';
 
@@ -31,8 +37,9 @@ export type SandboxHttpRequestPayload = {
   timeoutMs?: number;
 };
 
-const SUPPORTED_HTTP_PROXY_PROTOCOLS = new Set(['http:', 'https:']);
-const SUPPORTED_SOCKS5_PROXY_PROTOCOLS = new Set(['socks:', 'socks5:', 'socks5h:']);
+type HttpProxySetRequestPropsArgs = Parameters<HttpProxyAgent<string>['setRequestProps']>;
+type HttpProxyConnectArgs = Parameters<HttpProxyAgent<string>['connect']>;
+type SocksProxyConnectArgs = Parameters<SocksProxyAgent['connect']>;
 
 const createAbortError = () => {
   const error = new Error('The operation was aborted');
@@ -40,84 +47,246 @@ const createAbortError = () => {
   return error;
 };
 
-/**
- * 构造不含代理 URL/凭据细节的出站代理配置错误，避免把含认证信息的代理地址暴露到异常或日志中。
- */
-const createOutboundProxyConfigError = (message: string, error?: unknown): ServerConfigError => {
-  const code =
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code?: unknown }).code === 'string' &&
-    /^[A-Z0-9_]+$/.test((error as { code: string }).code)
-      ? (error as { code: string }).code
-      : undefined;
-
-  const configError = new ServerConfigError(message);
-  if (code) {
-    Object.assign(configError, { code });
-  }
-  return configError;
+const buildProxyTlsOptions = (proxyUrl: URL): { rejectUnauthorized: true; servername?: string } => {
+  const proxyHost = proxyUrl.hostname.replace(/^\[|\]$/g, '');
+  return {
+    // 代理层 TLS 证书始终严格校验，并为域名形式的 https:// 代理补齐 SNI。
+    rejectUnauthorized: true,
+    ...(proxyUrl.protocol === 'https:' && !isIP(proxyHost) ? { servername: proxyHost } : {})
+  };
 };
 
+const waitForSocketConnect = (socket: net.Socket, onPostConnectError: () => void) =>
+  new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      socket.off('connect', onConnect);
+      socket.off('error', onError);
+      socket.off('close', onClose);
+    };
+    const onConnect = () => {
+      cleanup();
+      // 在交接给 SocksClient 前的微任务窗口内吸收并发 abort 触发的 socket error，避免未捕获异常。
+      socket.on('error', onPostConnectError);
+      resolve();
+    };
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+    const onClose = () => {
+      cleanup();
+      reject(new Error('Proxy connection closed before connect'));
+    };
+
+    socket.once('connect', onConnect);
+    socket.once('error', onError);
+    socket.once('close', onClose);
+  });
+
 /**
- * 解析并校验受支持的出站代理 URL（对齐 @fastgpt/service 的 http/https/socks/socks5/socks5h 语义）。
+ * 面向明文 HTTP 目标的转发代理 Agent：
+ * 1. 基于已通过 SSRF 预检的 targetUrl 锁定 Host 与绝对转发 URI，阻断 `//`、`/\\` 路径二次解析劫持；
+ * 2. 连接 https:// 代理时始终严格校验证书并发送代理域名 SNI。
  */
-const parseSandboxOutboundProxyUrl = (proxyUrl: string): URL => {
-  let parsed: URL;
-  try {
-    parsed = new URL(proxyUrl);
-  } catch (error) {
-    throw createOutboundProxyConfigError('Invalid outbound proxy URL configuration', error);
+class PinnedHttpProxyAgent extends HttpProxyAgent<string> {
+  private readonly targetUrl: URL;
+
+  constructor(proxyUrl: URL, targetUrl: URL, opts?: HttpProxyAgentOptions<string>) {
+    super(proxyUrl, {
+      ...opts,
+      ...buildProxyTlsOptions(proxyUrl)
+    });
+    this.targetUrl = targetUrl;
   }
 
-  if (
-    !SUPPORTED_HTTP_PROXY_PROTOCOLS.has(parsed.protocol) &&
-    !SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(parsed.protocol)
-  ) {
-    throw new ServerConfigError(
-      `Unsupported outbound proxy protocol: ${parsed.protocol} (supported: http, https, socks, socks5, socks5h)`
-    );
+  override setRequestProps(
+    req: HttpProxySetRequestPropsArgs[0],
+    opts: HttpProxySetRequestPropsArgs[1]
+  ): void {
+    const validatedHref = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+    const targetPort = this.targetUrl.port ? Number(this.targetUrl.port) : 80;
+    req.setHeader('host', this.targetUrl.host);
+    req.path = validatedHref;
+    super.setRequestProps(req, {
+      ...opts,
+      secureEndpoint: false,
+      port: targetPort
+    });
+    req.path = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
   }
 
-  return parsed;
-};
+  override async connect(req: HttpProxyConnectArgs[0], opts: HttpProxyConnectArgs[1]) {
+    // 对齐 HttpProxyAgent.connect：先清空已缓冲的 _header，再锁定 Host 与目标 URI。
+    (req as { _header?: string | null })._header = null;
+    req.setHeader('host', this.targetUrl.host);
+    req.path = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+    return super.connect(req, {
+      ...opts,
+      secureEndpoint: false
+    });
+  }
+}
+
+/**
+ * 支持 AbortSignal 即时中断的 SOCKS5 代理 Agent：
+ * socks 库的 socket_options 仅透传给 socket.connect() 而非 new net.Socket({ signal })，
+ * 导致调用方在 SOCKS5 握手阶段取消时无法立即打断连接。这里先使用带 signal 的 net.connect
+ * 建立 TCP 连接，再通过 existing_socket 交给 SocksClient 完成握手，使取消与超时均可立即中断。
+ */
+class AbortableSocksProxyAgent extends SocksProxyAgent {
+  private readonly signal: AbortSignal;
+
+  constructor(proxyUrl: URL, { timeout, signal }: { timeout: number; signal: AbortSignal }) {
+    // socks-proxy-agent 仅对 socks:// 与 socks5h:// 委托代理侧解析目标域名，统一将 socks5:// 归一化为 socks5h://。
+    const normalizedUri =
+      proxyUrl.protocol === 'socks5:'
+        ? proxyUrl.href.replace(/^socks5:/i, 'socks5h:')
+        : proxyUrl.href;
+    super(normalizedUri, {
+      keepAlive: false,
+      timeout
+    });
+    this.signal = signal;
+  }
+
+  override async connect(req: SocksProxyConnectArgs[0], opts: SocksProxyConnectArgs[1]) {
+    if (this.signal.aborted) {
+      throw this.signal.reason ?? createAbortError();
+    }
+    if (!opts.host) {
+      throw new Error('No `host` defined!');
+    }
+
+    const rawProxyHost = this.proxy.host ?? this.proxy.ipaddress ?? '';
+    const proxyHost = rawProxyHost.replace(/^\[|\]$/g, '');
+    const socksProxy: SocksProxy =
+      proxyHost === rawProxyHost
+        ? this.proxy
+        : (() => {
+            const cloned: SocksProxy = {
+              host: proxyHost,
+              port: this.proxy.port,
+              type: this.proxy.type
+            };
+            // 保持 userId/password 不可枚举，避免 SocksClientError 序列化时泄露凭据。
+            if (this.proxy.userId) {
+              Object.defineProperty(cloned, 'userId', {
+                value: this.proxy.userId,
+                enumerable: false
+              });
+            }
+            if (this.proxy.password !== undefined) {
+              Object.defineProperty(cloned, 'password', {
+                value: this.proxy.password,
+                enumerable: false
+              });
+            }
+            return cloned;
+          })();
+
+    const rawSocket = net.connect({
+      host: proxyHost,
+      port: this.proxy.port,
+      signal: this.signal
+    });
+    const ignoreSocketError = () => {};
+
+    try {
+      await waitForSocketConnect(rawSocket, ignoreSocketError);
+      if (this.signal.aborted) {
+        throw this.signal.reason ?? createAbortError();
+      }
+
+      const connectionPromise = SocksClient.createConnection({
+        proxy: socksProxy,
+        destination: {
+          host: opts.host,
+          port: typeof opts.port === 'number' ? opts.port : parseInt(String(opts.port), 10)
+        },
+        command: 'connect',
+        timeout: this.timeout ?? undefined,
+        existing_socket: rawSocket
+      });
+      rawSocket.off('error', ignoreSocketError);
+
+      const { socket } = await connectionPromise;
+      if (this.signal.aborted) {
+        socket.destroy();
+        throw this.signal.reason ?? createAbortError();
+      }
+
+      if (opts.secureEndpoint) {
+        const { host: _host, path: _path, port: _port, ...tlsOpts } = opts;
+        const servername =
+          tlsOpts.servername === undefined && opts.host && !isIP(opts.host)
+            ? opts.host
+            : tlsOpts.servername;
+        const tlsSocket = tls.connect({
+          ...tlsOpts,
+          ...(servername ? { servername } : {}),
+          socket
+        });
+        tlsSocket.once('error', () => {
+          req.destroy();
+          socket.destroy();
+          tlsSocket.destroy();
+        });
+        return tlsSocket;
+      }
+
+      return socket;
+    } catch (error) {
+      rawSocket.on('error', ignoreSocketError);
+      rawSocket.destroy();
+      if (this.signal.aborted) {
+        throw this.signal.reason ?? createAbortError();
+      }
+      throw error;
+    }
+  }
+}
 
 /**
  * 按目标协议与代理协议构造单次请求使用的出站代理 Agent（直接组合基础 agent，避免将 pac-proxy-agent 打入单文件 bundle）。
  */
 const createSandboxProxyAgent = ({
+  targetUrl,
   proxyUrl,
   isHttpsTarget,
   timeout,
   signal
 }: {
+  targetUrl: URL;
   proxyUrl: URL;
   isHttpsTarget: boolean;
   timeout: number;
   signal: AbortSignal;
 }): http.Agent => {
   if (SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(proxyUrl.protocol)) {
-    // socks-proxy-agent 仅对 socks:// 与 socks5h:// 委托代理侧解析目标域名，这里统一将 socks5:// 归一化为 socks5h://。
-    const normalizedUri =
-      proxyUrl.protocol === 'socks5:'
-        ? proxyUrl.href.replace(/^socks5:/i, 'socks5h:')
-        : proxyUrl.href;
-    return new SocksProxyAgent(normalizedUri, {
-      keepAlive: false,
+    return new AbortableSocksProxyAgent(proxyUrl, {
       timeout,
-      socketOptions: { signal }
+      signal
     });
   }
 
   if (isHttpsTarget) {
     return new HttpsProxyAgent(proxyUrl, {
       keepAlive: false,
-      signal
+      signal,
+      ...buildProxyTlsOptions(proxyUrl)
     });
   }
 
-  return new HttpProxyAgent(proxyUrl, {
+  return new PinnedHttpProxyAgent(proxyUrl, targetUrl, {
     keepAlive: false,
     signal
   });
@@ -191,7 +360,7 @@ export async function runSandboxHttpRequest({
   signal?.throwIfAborted();
 
   const rawProxyUrl = getProxyForUrl(payload.url);
-  const proxyUrl = rawProxyUrl ? parseSandboxOutboundProxyUrl(rawProxyUrl) : undefined;
+  const proxyUrl = rawProxyUrl ? parseSupportedOutboundProxyUrl(rawProxyUrl) : undefined;
   const isHttps = parsed.protocol === 'https:';
   const normalizedHostname = parsed.hostname.replace(/^\[|\]$/g, '');
   const connectHostname = proxyUrl
@@ -249,6 +418,7 @@ export async function runSandboxHttpRequest({
   let timedOut = false;
   const agent = proxyUrl
     ? createSandboxProxyAgent({
+        targetUrl: parsed,
         proxyUrl,
         isHttpsTarget: isHttps,
         timeout,

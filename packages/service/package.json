@@ -75,6 +75,7 @@
     "proxy-from-env": "^1.1.0",
     "safe-regex": "^2.1.1",
     "sharp": "0.35.5",
+    "socks-proxy-agent": "^8.0.5",
     "tar-stream": "catalog:",
     "turndown": "^7.1.2",
     "undici": "catalog:",

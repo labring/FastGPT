@@ -843,6 +843,9 @@ importers:
       sharp:
         specifier: 0.35.5
         version: 0.35.5(@types/node@24.13.3)
+      socks-proxy-agent:
+        specifier: ^8.0.5
+        version: 8.0.5
       tar-stream:
         specifier: 'catalog:'
         version: 3.2.2(bare-buffer@3.7.1)
@@ -1844,6 +1847,9 @@ importers:
       qs:
         specifier: 'catalog:'
         version: 6.17.0
+      socks:
+        specifier: ^2.8.3
+        version: 2.8.10
       socks-proxy-agent:
         specifier: ^8.0.5
         version: 8.0.5

@@ -210,6 +210,7 @@ const createSingleHopAgent = async ({
 }): Promise<http.Agent> => {
   if (proxyUrl) {
     return createNodeOutboundProxyAgent({
+      targetUrl: parsedUrl,
       proxyUrl,
       rejectUnauthorized,
       proxyAuthorization

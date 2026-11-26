@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
+import dnsCallback from 'node:dns';
 import dns from 'node:dns/promises';
 import http from 'node:http';
 import https from 'node:https';
@@ -583,7 +584,38 @@ describe('sandbox HTTP request lifecycle', () => {
       expect(JSON.stringify(invalidError)).not.toContain('secret-pass');
       expect((invalidError as Error).message).not.toContain('secret-pass');
 
+      process.env.HTTP_PROXY = 'http://user%ZZ:percent-secret@127.0.0.1:8080';
+      let malformedCredError: unknown;
+      try {
+        await runSandboxHttpRequest({
+          payload: { url: 'http://target.example.test/' },
+          limits: defaultLimits,
+          state: { requestCount: 0 }
+        });
+      } catch (error) {
+        malformedCredError = error;
+      }
+      expect(isServerConfigError(malformedCredError)).toBe(true);
+      expect(JSON.stringify(malformedCredError)).not.toContain('percent-secret');
+      expect((malformedCredError as Error).message).not.toContain('percent-secret');
+      expect((malformedCredError as Error).message).not.toContain('%ZZ');
+
       delete process.env.HTTP_PROXY;
+      process.env.ALL_PROXY = 'socks5://user:socks%2G-secret@127.0.0.1:1080';
+      let malformedSocksCredError: unknown;
+      try {
+        await runSandboxHttpRequest({
+          payload: { url: 'http://target.example.test/' },
+          limits: defaultLimits,
+          state: { requestCount: 0 }
+        });
+      } catch (error) {
+        malformedSocksCredError = error;
+      }
+      expect(isServerConfigError(malformedSocksCredError)).toBe(true);
+      expect(JSON.stringify(malformedSocksCredError)).not.toContain('socks%2G-secret');
+      expect((malformedSocksCredError as Error).message).not.toContain('socks%2G-secret');
+
       process.env.ALL_PROXY = 'ftp://secret-user:secret-pass@127.0.0.1:21';
       let unsupportedError: unknown;
       try {
@@ -696,6 +728,174 @@ describe('sandbox HTTP request lifecycle', () => {
       expect(seenHosts).toEqual([`[${ipv6}]:8080`]);
     } finally {
       await closeServer(proxy);
+    }
+  });
+
+  it('HTTP 转发代理对 // 与 /\\ 开头路径仍锁定预检目标 authority', async () => {
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+    const seenUrls: string[] = [];
+    const seenHosts: (string | undefined)[] = [];
+    const proxy = await startServer(
+      http.createServer((req, res) => {
+        seenUrls.push(req.url ?? '');
+        seenHosts.push(req.headers.host);
+        res.end(`forwarded:${req.url}`);
+      })
+    );
+
+    process.env.HTTP_PROXY = `http://127.0.0.1:${getServerPort(proxy)}`;
+
+    try {
+      const doubleSlashUrl = 'http://target.example.test//127.0.0.1:8080/secret';
+      const res1 = await runSandboxHttpRequest({
+        payload: { url: doubleSlashUrl },
+        limits: defaultLimits,
+        state: { requestCount: 0 }
+      });
+      expect(res1.status).toBe(200);
+      expect(res1.data).toBe(`forwarded:${doubleSlashUrl}`);
+
+      const res2 = await runSandboxHttpRequest({
+        payload: { url: 'http://target.example.test/\\127.0.0.1:8080/secret' },
+        limits: defaultLimits,
+        state: { requestCount: 0 }
+      });
+      expect(res2.status).toBe(200);
+      expect(res2.data).toBe(`forwarded:${doubleSlashUrl}`);
+
+      expect(seenUrls).toEqual([doubleSlashUrl, doubleSlashUrl]);
+      expect(seenHosts).toEqual(['target.example.test', 'target.example.test']);
+    } finally {
+      await closeServer(proxy);
+    }
+  });
+
+  it.each(['timeout', 'abort'] as const)(
+    'SOCKS5 握手阶段 %s 时立即中止请求并关闭代理连接',
+    async (mode) => {
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      let proxySocket: net.Socket | undefined;
+      const socketClosed = Promise.withResolvers<void>();
+      const proxy = await startServer(
+        net.createServer((socket) => {
+          proxySocket = socket;
+          socket.on('error', () => {});
+          socket.once('close', () => socketClosed.resolve());
+          // 刻意不响应 SOCKS5 握手，模拟代理握手卡死。
+          socket.resume();
+        })
+      );
+      process.env.ALL_PROXY = `socks5://127.0.0.1:${getServerPort(proxy)}`;
+
+      const connected = once(proxy, 'connection', { signal: AbortSignal.timeout(2000) });
+      const controller = new AbortController();
+      const startedAt = Date.now();
+
+      const pending = runSandboxHttpRequest({
+        payload: {
+          url: 'http://target.example.test/socks-hang',
+          timeoutMs: mode === 'timeout' ? 300 : 5000
+        },
+        limits: defaultLimits,
+        state: { requestCount: 0 },
+        signal: controller.signal
+      }).then(
+        () => ({ ok: true }),
+        (error: unknown) => error
+      );
+
+      try {
+        await connected;
+        if (mode === 'abort') controller.abort();
+        const error = await pending;
+        const elapsedMs = Date.now() - startedAt;
+
+        if (mode === 'timeout') {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe('Request timeout');
+        } else {
+          expect(error).toMatchObject({ name: 'AbortError' });
+          expect(elapsedMs).toBeLessThan(2000);
+        }
+
+        const closeDeadline = AbortSignal.timeout(2000);
+        await Promise.race([
+          socketClosed.promise,
+          new Promise<never>((_resolve, reject) =>
+            closeDeadline.addEventListener(
+              'abort',
+              () => reject(new Error('SOCKS5 proxy socket stayed open')),
+              { once: true }
+            )
+          )
+        ]);
+      } finally {
+        proxySocket?.destroy();
+        await closeServer(proxy);
+      }
+    }
+  );
+
+  it('域名形式的 https:// 代理转发明文 HTTP 请求时应携带代理域名 SNI', async () => {
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+    const origLookup = dnsCallback.lookup;
+    vi.spyOn(dnsCallback, 'lookup').mockImplementation(((
+      hostname: string,
+      optionsOrCb: any,
+      maybeCb?: any
+    ) => {
+      const options = typeof optionsOrCb === 'function' ? {} : optionsOrCb || {};
+      const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+      if (hostname === 'target.example.test') {
+        if (options.all) {
+          cb(null, [{ address: '127.0.0.1', family: 4 }]);
+          return;
+        }
+        cb(null, '127.0.0.1', 4);
+        return;
+      }
+      return (origLookup as any)(hostname, optionsOrCb, maybeCb);
+    }) as any);
+
+    const sniNames: string[] = [];
+    const seenUrls: string[] = [];
+    const httpsProxy = await startServer(
+      https.createServer(
+        {
+          ...tlsFixture,
+          SNICallback: (servername, cb) => {
+            sniNames.push(servername);
+            cb(null, tls.createSecureContext(tlsFixture));
+          }
+        },
+        (req, res) => {
+          seenUrls.push(req.url ?? '');
+          res.end(`https-proxy-plain:${req.url}`);
+        }
+      )
+    );
+
+    process.env.HTTP_PROXY = `https://target.example.test:${getServerPort(httpsProxy)}`;
+
+    try {
+      const res = await runSandboxHttpRequest({
+        payload: { url: 'http://plain.example.test/hello' },
+        limits: defaultLimits,
+        state: { requestCount: 0 }
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.data).toBe('https-proxy-plain:http://plain.example.test/hello');
+      expect(seenUrls).toEqual(['http://plain.example.test/hello']);
+      expect(sniNames).toEqual(['target.example.test']);
+    } finally {
+      await closeServer(httpsProxy);
     }
   });
 });
