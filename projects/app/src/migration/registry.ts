@@ -16,7 +16,6 @@ import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes
 import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
-import { backfillLLMRequestRecordExpiredTime } from './tasks/4180/20261126_backfill_llm_request_record_expired_time';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -380,38 +379,6 @@ export const systemMigrations = [
       }
     ],
     run: backfillModelReasoningEffortListMigration
-  },
-  {
-    id: '20261126_backfill_llm_request_record_expired_time',
-    version: '4.18.0',
-    // 须在确认所有旧版本 App 实例已下线（无混跑）后由管理员手动触发执行，避免旧节点持续写入无 expiredTime 记录。
-    // 遵循两版本 Expand-Contract 索引退役规范，本版只扩展与回填，旧 createdAt_1 索引留待 N+1 统一清理。
-    manual: true,
-    blockStartup: false,
-    nameKey: i18nT(
-      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.name'
-    ),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.description'
-    ),
-    resultKey: i18nT(
-      'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.result'
-    ),
-    progressSteps: [
-      {
-        key: 'backfill',
-        labelKey: i18nT(
-          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.backfill'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20261126_backfill_llm_request_record_expired_time.validation'
-        )
-      }
-    ],
-    run: backfillLLMRequestRecordExpiredTime
   }
 ] as const satisfies readonly SystemMigration[];
 

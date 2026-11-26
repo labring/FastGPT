@@ -927,7 +927,7 @@
   "hnsw_candidate_expansion_factor_controlling_neighbor_search": "HNSW candidate expansion factor controlling neighbor search depth. Larger values raise recall and computation time.",
   "max_characters_allowed_when_converting_html_to_markdown": "Max characters allowed when converting HTML to Markdown",
   "dependencies_available_by_default_in_javascript_code_nodes": "Dependencies available by default in JavaScript code nodes",
-  "retention_period_for_detailed_llm_tracing_logs_hours": "Retention period for detailed LLM tracing logs (hours). Changes only apply to newly stored records. While the legacy createdAt_1 TTL index still exists during upgrade transition, this value cannot exceed the legacy index TTL limit.",
+  "retention_period_for_detailed_llm_tracing_logs_hours": "Retention period for detailed LLM tracing logs (hours). Changes only apply to newly stored records.",
   "apt_mirror_url_for_linux_package_installation": "APT mirror URL for Linux package installation",
   "max_concurrency_for_vlm_image_understanding_and_description": "Max concurrency for VLM image understanding and description generation",
   "max_processing_time_for_a_worker_to_parse_a_single_document": "Max processing time for a worker to parse a single document (seconds)",

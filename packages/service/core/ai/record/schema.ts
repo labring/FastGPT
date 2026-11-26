@@ -21,7 +21,7 @@ const LLMRequestRecordSchema = new Schema({
     type: Schema.Types.Mixed,
     required: true
   },
-  /** @deprecated 旧版创建时间字段，过渡期双写保留以兼容 v4.17.x 滚动升级与回滚读取 */
+  /** @deprecated 旧版创建时间字段，保留 Schema 兼容读取存量记录，新记录不再写入 */
   createdAt: {
     type: Date
   },

@@ -122,7 +122,6 @@ export const saveLLMRequestRecord = async (params: {
   response: any;
 }) => {
   try {
-    const now = new Date();
     await MongoLLMRequestRecord.create({
       teamId: params.teamId,
       requestId: params.requestId,
@@ -130,9 +129,8 @@ export const saveLLMRequestRecord = async (params: {
       response: sanitizeLLMRequestRecordPayload(params.response, {
         omitErrorStack: true
       }),
-      // 过渡期继续写入 createdAt，保证 v4.17.x 混跑与回滚时 getRecord 校验不中断。
-      createdAt: now,
-      expiredTime: getLLMRequestRecordExpiredTime(now)
+      // 不再写入 createdAt，避免旧版 createdAt_1 TTL 索引提前删除新记录；旧记录由旧索引自然过期，N+1 统一清理旧索引。
+      expiredTime: getLLMRequestRecordExpiredTime()
     });
   } catch (error) {
     // 记录错误但不影响主流程

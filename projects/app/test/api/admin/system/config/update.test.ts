@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
-import { LEGACY_LLM_RECORD_TTL_INDEX_NAME } from '@fastgpt/service/core/ai/record/mongo/ttl';
-import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import * as auditUtils from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -51,16 +49,13 @@ const callUpdate = handler as unknown as (request: {
 }) => Promise<UpdateDomainConfigResponse>;
 
 describe('instance config update API', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     mocks.edition = 'pro';
     mocks.initSystemConfig.mockRejectedValue(new Error('Runtime apply unavailable'));
     mocks.syncSiteAvatarLifecycle.mockRejectedValue(new Error('Avatar cleanup unavailable'));
     mocks.copyForSiteReference.mockImplementation(async ({ avatar }: { avatar: string }) => avatar);
-    await MongoLLMRequestRecord.collection.drop().catch((error: { code?: number }) => {
-      if (error.code !== 26) throw error;
-    });
   });
 
   it('allows community admins to save and read Agent Sandbox while keeping secrets encrypted', async () => {
@@ -769,88 +764,6 @@ describe('instance config update API', () => {
           }
         } as any)
       ).rejects.toThrow();
-    }
-  );
-
-  it.each([
-    { label: 'active', hidden: false },
-    { label: 'hidden', hidden: true }
-  ])(
-    'rejects raising retentionHours above a live $label legacy createdAt_1 TTL index while allowing lower values and partial saves',
-    async ({ hidden }) => {
-      await MongoLLMRequestRecord.collection.createIndex(
-        { createdAt: 1 },
-        {
-          name: LEGACY_LLM_RECORD_TTL_INDEX_NAME,
-          expireAfterSeconds: 6 * 3600,
-          ...(hidden ? { hidden: true } : {})
-        }
-      );
-
-      // 超过旧 createdAt_1 上限（6h）时必须拒绝，避免系统接受会被旧 TTL 提前删除的保留时长承诺。
-      await expect(
-        callUpdate({
-          body: {
-            items: [
-              {
-                domain: 'performance',
-                expectedRevision: 0,
-                overrides: { tracking: { retentionHours: 48 } }
-              }
-            ]
-          }
-        } as any)
-      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
-      expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'performance' })).toBe(0);
-
-      // 小于等于旧上限（如 3h）允许保存，且同域未改 retentionHours 的局部更新不受阻断。
-      const reduced = await callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 0,
-              overrides: { tracking: { retentionHours: 3 } }
-            }
-          ]
-        }
-      } as any);
-      expect(reduced.results[0].effectiveConfig).toMatchObject({
-        tracking: { retentionHours: 3 }
-      });
-
-      const partial = await callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 1,
-              overrides: { chat: { maxQpm: 2000 } }
-            }
-          ]
-        }
-      } as any);
-      expect(partial.results[0].effectiveConfig).toMatchObject({
-        chat: { maxQpm: 2000 },
-        tracking: { retentionHours: 3 }
-      });
-
-      // 移除旧 createdAt_1 后，调大到 48h 立即放行。
-      await MongoLLMRequestRecord.collection.dropIndex(LEGACY_LLM_RECORD_TTL_INDEX_NAME);
-      const raised = await callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 2,
-              overrides: { tracking: { retentionHours: 48 } }
-            }
-          ]
-        }
-      } as any);
-      expect(raised.results[0].effectiveConfig).toMatchObject({
-        tracking: { retentionHours: 48 }
-      });
     }
   );
 });

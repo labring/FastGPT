@@ -308,7 +308,7 @@ describe('LLM request record team isolation', () => {
     expect(String(teamBRecord?.teamId)).toBe('507f1f77bcf86cd799439012');
   });
 
-  it('dual-writes createdAt and expiredTime from retentionHours, clamps legacy out-of-range values, and declares a fixed TTL index', async () => {
+  it('writes expiredTime without createdAt from retentionHours, clamps legacy out-of-range values, and declares a fixed TTL index', async () => {
     const ttlIndex = MongoLLMRequestRecord.schema
       .indexes()
       .find(([key]) => Object.keys(key).length === 1 && key.expiredTime === 1);
@@ -368,9 +368,9 @@ describe('LLM request record team isolation', () => {
       requestId: 'req_legacy_over'
     });
 
-    // 过渡期双写 createdAt 以兼容 v4.17.x 混跑与回滚读接口校验。
-    expect(first?.createdAt).toBeInstanceOf(Date);
-    expect(second?.createdAt).toBeInstanceOf(Date);
+    // 新记录不写入 createdAt，确保旧版 createdAt_1 TTL 索引不会提前删除新记录。
+    expect(first?.createdAt).toBeUndefined();
+    expect(second?.createdAt).toBeUndefined();
     expect(first?.expiredTime).toBeInstanceOf(Date);
     expect(second?.expiredTime).toBeInstanceOf(Date);
     expect(first!.expiredTime.getTime()).toBeGreaterThanOrEqual(t1Before + 12 * 3600_000);
