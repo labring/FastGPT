@@ -158,8 +158,4 @@ describe('user api', () => {
       { maxQuantity: 1 }
     );
   });
-
-  it('should export members', async () => {
-    await api.ExportMembers();
-  });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { XLSX_CONTENT_TYPE } from '@fastgpt/global/common/file/constants';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import { DevApiTagsMap } from '@fastgpt/global/openapi/tag';
 import {
@@ -111,9 +112,12 @@ describe('support user OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/support/user/team/member/delete']?.delete?.tags
     ).toEqual([DevApiTagsMap.teamMember]);
-    expect(openAPIDocument.paths?.['/proApi/support/user/team/member/export']?.get?.tags).toEqual([
-      DevApiTagsMap.teamMember
-    ]);
+    const memberExport = openAPIDocument.paths?.['/proApi/support/user/team/member/export']?.get;
+    expect(memberExport?.tags).toEqual([DevApiTagsMap.teamMember]);
+    expect(memberExport?.responses?.[200]?.content?.[XLSX_CONTENT_TYPE]?.schema).toMatchObject({
+      type: 'string',
+      format: 'binary'
+    });
     expect(openAPIDocument.paths?.['/proApi/support/user/team/member/leave']?.delete?.tags).toEqual(
       [DevApiTagsMap.teamMember]
     );
