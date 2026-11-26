@@ -222,9 +222,7 @@ export const createOceanBaseRuntimeDeps = ({
 
   let closed = false;
   let closePromise: Promise<void> | undefined;
-  let mainDb: Kysely<any> | undefined;
-  let mainReadDb: Kysely<any> | undefined;
-  let logDb: Kysely<any> | undefined;
+  const pools = new Map<'main' | 'mainRead' | 'log', Kysely<any>>();
 
   const assertOpen = (): void => {
     if (closed) {
@@ -232,42 +230,9 @@ export const createOceanBaseRuntimeDeps = ({
     }
   };
 
-  const getMainDb = (): Kysely<any> => {
-    mainDb ??= createOceanBaseKysely({
-      url: topology.mainWriteUrl,
-      connectionLimit: maxConnections,
-      datasource: 'main',
-      assertOpen
-    });
-    return mainDb;
-  };
-
-  const getMainReadDb = (): Kysely<any> | undefined => {
-    if (topology.mainReadUrl === undefined) {
-      return undefined;
-    }
-    mainReadDb ??= createOceanBaseKysely({
-      url: topology.mainReadUrl,
-      connectionLimit: maxConnections,
-      datasource: 'main',
-      assertOpen
-    });
-    return mainReadDb;
-  };
-
-  const getLogDb = (): Kysely<any> | undefined => {
-    if (topology.logWriteUrl === undefined) {
-      return undefined;
-    }
-    logDb ??= createOceanBaseKysely({
-      url: topology.logWriteUrl,
-      connectionLimit: maxConnections,
-      datasource: 'log',
-      assertOpen
-    });
-    return logDb;
-  };
-
+  /**
+   * 按数据源与读副本意图选择目标池并懒创建：独立日志库优先，其次非事务只读副本，否则统一回退主写池。
+   */
   const resolvePoolDb = ({
     datasource,
     useReadReplica = false
@@ -275,21 +240,24 @@ export const createOceanBaseRuntimeDeps = ({
     datasource: DbDatasource;
     useReadReplica?: boolean;
   }): Kysely<any> => {
-    if (datasource === 'log') {
-      const dedicatedLogDb = getLogDb();
-      if (dedicatedLogDb !== undefined) {
-        return dedicatedLogDb;
-      }
-    }
+    const target =
+      datasource === 'log' && topology.logWriteUrl !== undefined
+        ? { key: 'log' as const, url: topology.logWriteUrl, datasource: 'log' as const }
+        : useReadReplica && topology.mainReadUrl !== undefined
+          ? { key: 'mainRead' as const, url: topology.mainReadUrl, datasource: 'main' as const }
+          : { key: 'main' as const, url: topology.mainWriteUrl, datasource: 'main' as const };
 
-    if (useReadReplica) {
-      const readReplicaDb = getMainReadDb();
-      if (readReplicaDb !== undefined) {
-        return readReplicaDb;
-      }
+    let db = pools.get(target.key);
+    if (db === undefined) {
+      db = createOceanBaseKysely({
+        url: target.url,
+        connectionLimit: maxConnections,
+        datasource: target.datasource,
+        assertOpen
+      });
+      pools.set(target.key, db);
     }
-
-    return getMainDb();
+    return db;
   };
 
   return {
@@ -314,13 +282,11 @@ export const createOceanBaseRuntimeDeps = ({
         return closePromise;
       }
 
-      const pools = [mainDb, mainReadDb, logDb].filter((db): db is Kysely<any> => db !== undefined);
-      mainDb = undefined;
-      mainReadDb = undefined;
-      logDb = undefined;
+      const createdPools = [...pools.values()];
+      pools.clear();
 
       closePromise = (async () => {
-        const results = await Promise.allSettled(pools.map((db) => db.destroy()));
+        const results = await Promise.allSettled(createdPools.map((db) => db.destroy()));
         const firstRejected = results.find(
           (result): result is PromiseRejectedResult => result.status === 'rejected'
         );

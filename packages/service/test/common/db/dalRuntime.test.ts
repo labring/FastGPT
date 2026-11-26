@@ -38,6 +38,34 @@ const loadDalRuntime = async () => {
   return { ...dalRuntimeMod, ...errorsMod, ...runtimeMod };
 };
 
+type SignalListener = (signal: NodeJS.Signals) => void;
+
+/** 最小进程替身：记录信号监听器并以 `vi.fn` 捕获 `exit`，供退出编排单测复用。 */
+const createProcessMock = () => {
+  const listeners = new Map<NodeJS.Signals, Set<SignalListener>>();
+  const processRef = {
+    on: vi.fn((signal: NodeJS.Signals, listener: SignalListener) => {
+      const set = listeners.get(signal) ?? new Set<SignalListener>();
+      set.add(listener);
+      listeners.set(signal, set);
+    }),
+    removeListener: vi.fn((signal: NodeJS.Signals, listener: SignalListener) => {
+      listeners.get(signal)?.delete(listener);
+    }),
+    listeners: vi.fn((signal: NodeJS.Signals) => [...(listeners.get(signal) ?? [])]),
+    exit: vi.fn()
+  };
+  return {
+    processRef,
+    emit: (signal: NodeJS.Signals) => {
+      for (const listener of [...(listeners.get(signal) ?? [])]) listener(signal);
+    },
+    listenerCount: (signal: NodeJS.Signals) => listeners.get(signal)?.size ?? 0
+  };
+};
+
+const flushAsync = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 describe('@fastgpt/service/common/db/dalRuntime', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -155,158 +183,27 @@ describe('@fastgpt/service/common/db/dalRuntime', () => {
     expect(dbRuntime.getState()).toBe('open');
 
     const redisClose = vi.fn(async () => undefined);
-    const listeners = new Map<NodeJS.Signals, Set<(signal: NodeJS.Signals) => void>>();
-    const realExit = vi.fn();
-    const processRef = {
-      on: vi.fn((signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-        const set = listeners.get(signal) ?? new Set<(signal: NodeJS.Signals) => void>();
-        set.add(listener);
-        listeners.set(signal, set);
-      }),
-      removeListener: vi.fn(
-        (signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-          listeners.get(signal)?.delete(listener);
-        }
-      ),
-      listeners: vi.fn((signal: NodeJS.Signals) => [...(listeners.get(signal) ?? [])]),
-      exit: realExit
-    };
+    const { processRef, emit, listenerCount } = createProcessMock();
 
     registerDalRuntimeShutdown({
       closeResources: [redisClose, closeDbRuntime],
       processRef,
-      exitProcess: true,
       signals: ['SIGTERM']
     });
 
-    for (const listener of [...(listeners.get('SIGTERM') ?? [])]) {
-      listener('SIGTERM');
-    }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    emit('SIGTERM');
+    await flushAsync();
 
     expect(redisClose).toHaveBeenCalledTimes(1);
     expect(dbRuntime.getState()).toBe('closed');
     expect(getConfiguredDbRuntime()).toBeUndefined();
-    expect(realExit).toHaveBeenCalledWith(0);
-    expect(listeners.get('SIGTERM')?.size ?? 0).toBe(0);
+    expect(processRef.exit).toHaveBeenCalledWith(0);
+    expect(listenerCount('SIGTERM')).toBe(0);
   });
 
-  it('keeps SIGTERM listener attached across HTTP drain and slow DB close to absorb duplicate signals and preserve 143 exit code', async () => {
+  it('restores host listeners on unregister and exits with code 1 after all resources settle on close failure', async () => {
     const { registerDalRuntimeShutdown } = await loadDalRuntime();
-    const timeline: string[] = [];
-
-    let finishHttpDrain!: () => void;
-    const httpDrainGate = new Promise<void>((resolve) => {
-      finishHttpDrain = resolve;
-    });
-    let finishDbClose!: () => void;
-    const dbCloseGate = new Promise<void>((resolve) => {
-      finishDbClose = resolve;
-    });
-
-    const listeners = new Map<NodeJS.Signals, Set<(signal: NodeJS.Signals) => void>>();
-    const realExit = vi.fn();
-    const processRef = {
-      on: vi.fn((signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-        const set = listeners.get(signal) ?? new Set<(signal: NodeJS.Signals) => void>();
-        set.add(listener);
-        listeners.set(signal, set);
-      }),
-      removeListener: vi.fn(
-        (signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-          listeners.get(signal)?.delete(listener);
-        }
-      ),
-      listeners: vi.fn((signal: NodeJS.Signals) => [...(listeners.get(signal) ?? [])]),
-      exit: realExit
-    };
-    const emit = (signal: NodeJS.Signals) => {
-      for (const listener of [...(listeners.get(signal) ?? [])]) {
-        listener(signal);
-      }
-    };
-
-    // 先注册 Next.js start-server 风格的 SIGTERM 清理函数
-    const nextCleanup = (signal: NodeJS.Signals) => {
-      timeline.push(`http-drain-start:${signal}`);
-      void httpDrainGate.then(() => {
-        timeline.push('http-drain-done');
-        processRef.exit(signal === 'SIGINT' ? 130 : 143);
-      });
-    };
-    processRef.on('SIGTERM', nextCleanup);
-
-    const closeRedis = vi.fn(async () => {
-      timeline.push('redis-closed');
-    });
-    const closeDb = vi.fn(async () => {
-      timeline.push('db-close-start');
-      await dbCloseGate;
-      timeline.push('db-close-done');
-    });
-
-    registerDalRuntimeShutdown({
-      processRef,
-      closeResources: [closeRedis, closeDb],
-      signals: ['SIGTERM'],
-      exitProcess: true
-    });
-
-    emit('SIGTERM');
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    // 排空期间信号监听器保持挂载，重复 SIGTERM 被安全吸收（不触发 OS 默认终止、不重入清理）
-    expect(listeners.get('SIGTERM')?.size).toBe(1);
-    emit('SIGTERM');
-    expect(timeline).toEqual(['http-drain-start:SIGTERM']);
-    expect(closeDb).not.toHaveBeenCalled();
-
-    finishHttpDrain();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(timeline).toEqual([
-      'http-drain-start:SIGTERM',
-      'http-drain-done',
-      'redis-closed',
-      'db-close-start'
-    ]);
-    // DB 关闭期间监听器仍保持挂载，再次收到 SIGTERM 不会终止进程
-    expect(listeners.get('SIGTERM')?.size).toBe(1);
-    emit('SIGTERM');
-    expect(realExit).not.toHaveBeenCalled();
-
-    finishDbClose();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(timeline).toEqual([
-      'http-drain-start:SIGTERM',
-      'http-drain-done',
-      'redis-closed',
-      'db-close-start',
-      'db-close-done'
-    ]);
-    expect(realExit).toHaveBeenCalledTimes(1);
-    expect(realExit).toHaveBeenCalledWith(143);
-    expect(processRef.exit).toBe(realExit);
-    expect(listeners.get('SIGTERM')?.size ?? 0).toBe(0);
-  });
-
-  it('exits with code 1 when any resource close or logger fails and restores prior listeners on unregister', async () => {
-    const { registerDalRuntimeShutdown } = await loadDalRuntime();
-
-    const listeners = new Map<NodeJS.Signals, Set<(signal: NodeJS.Signals) => void>>();
-    const realExit = vi.fn();
-    const processRef = {
-      on: vi.fn((signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-        const set = listeners.get(signal) ?? new Set<(signal: NodeJS.Signals) => void>();
-        set.add(listener);
-        listeners.set(signal, set);
-      }),
-      removeListener: vi.fn(
-        (signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void) => {
-          listeners.get(signal)?.delete(listener);
-        }
-      ),
-      listeners: vi.fn((signal: NodeJS.Signals) => [...(listeners.get(signal) ?? [])]),
-      exit: realExit
-    };
+    const { processRef, emit, listenerCount } = createProcessMock();
 
     const prior = vi.fn();
     processRef.on('SIGTERM', prior);
@@ -316,34 +213,30 @@ describe('@fastgpt/service/common/db/dalRuntime', () => {
       signals: ['SIGTERM']
     });
     unregister();
-    expect(listeners.get('SIGTERM')?.size).toBe(1);
-    for (const listener of [...(listeners.get('SIGTERM') ?? [])]) {
-      listener('SIGTERM');
-    }
+    expect(listenerCount('SIGTERM')).toBe(1);
+    emit('SIGTERM');
     expect(prior).toHaveBeenCalledWith('SIGTERM');
 
     // 资源关闭失败时仍等待全部资源 settle 并以 1 退出
+    processRef.removeListener('SIGTERM', prior);
     const secondClose = vi.fn(async () => undefined);
     const failError = new Error('db close failed');
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-    processRef.removeListener('SIGTERM', prior);
+    const logger = { info: vi.fn(), error: vi.fn() };
     registerDalRuntimeShutdown({
       processRef,
       logger,
       closeResources: [vi.fn(async () => Promise.reject(failError)), secondClose],
-      signals: ['SIGTERM'],
-      exitProcess: true
+      signals: ['SIGTERM']
     });
-    for (const listener of [...(listeners.get('SIGTERM') ?? [])]) {
-      listener('SIGTERM');
-    }
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    emit('SIGTERM');
+    await flushAsync();
+
     expect(secondClose).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
       'DAL runtime close failed after process shutdown signal',
-      { error: failError }
+      { errors: [failError] }
     );
-    expect(realExit).toHaveBeenCalledWith(1);
+    expect(processRef.exit).toHaveBeenCalledWith(1);
   });
 
   it('drains an in-flight HTTP request and survives duplicate OS SIGTERM signals in a real child process', async () => {
