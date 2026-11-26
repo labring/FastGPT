@@ -190,11 +190,7 @@ const prepareSafeRequestConfig = async (
       parsedProxyUrl.hostname.replace(/^\[|\]$/g, '')
     );
     // 节点代理也遵循共享入口的凭据隔离：认证头只交给代理，不能转发到目标。
-    const proxyAuthorization = config.headers.get(PROXY_AUTHORIZATION_HEADER);
-    config.headers.delete(PROXY_AUTHORIZATION_HEADER);
-    if (typeof proxyAuthorization === 'string') {
-      http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyAuthorization);
-    }
+    const proxyAuthorization = getRequestProxyAuthorization(config, parsedProxyUrl);
     const connectionAbortController = new AbortController();
     const agent = createProxyAgent({
       getProxyForUrl: () => proxyUrl,
@@ -295,16 +291,7 @@ const attachRequestAgent = async (
   const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
 
   // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定到对应代理 origin，每跳都从目标请求移除。
-  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION_HEADER);
-  config.headers.delete(PROXY_AUTHORIZATION_HEADER);
-  const redirectState = config.__safeRedirect;
-  if (redirectState?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
-    http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyHeader);
-    const proxyOrigin = proxyUrl.origin;
-    // 凭据保存在闭包里，避免出现在 Axios 可序列化的请求配置中。
-    redirectState.getProxyAuthorization = (origin) =>
-      origin === proxyOrigin ? proxyHeader : undefined;
-  }
+  const proxyAuthorization = getRequestProxyAuthorization(config, proxyUrl);
 
   const isHttps = parsedUrl.protocol === 'https:';
   const agent = await (async () => {
@@ -312,7 +299,7 @@ const attachRequestAgent = async (
       return createNodeOutboundProxyAgent({
         proxyUrl,
         rejectUnauthorized,
-        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin)
+        proxyAuthorization
       });
     }
 
@@ -327,6 +314,19 @@ const attachRequestAgent = async (
     httpAgent: isHttps ? undefined : agent,
     httpsAgent: isHttps ? agent : undefined
   };
+};
+
+/** 每跳剥离目标请求的代理认证，仅在首跳按代理 origin 保存，供后续同代理跳转复用。 */
+const getRequestProxyAuthorization = (config: SafeRedirectInternalConfig, proxyUrl?: URL) => {
+  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION_HEADER);
+  config.headers.delete(PROXY_AUTHORIZATION_HEADER);
+  const state = config.__safeRedirect;
+  if (state?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
+    http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyHeader);
+    const origin = proxyUrl.origin;
+    state.getProxyAuthorization = (nextOrigin) => (nextOrigin === origin ? proxyHeader : undefined);
+  }
+  return proxyUrl ? state?.getProxyAuthorization?.(proxyUrl.origin) : undefined;
 };
 
 const resolveSafeConnectAddress = async (hostname: string): Promise<ResolvedAddress> => {

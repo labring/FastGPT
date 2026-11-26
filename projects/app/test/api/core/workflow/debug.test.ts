@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HTTP_PROXY_CONFIGURED } from '@fastgpt/service/core/app/httpProxySecret';
+import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const mocks = vi.hoisted(() => ({
   authApp: vi.fn(),
@@ -78,6 +82,49 @@ const app = {
 const savedChatConfig = { variables: [] };
 
 describe('workflow debug API chatId', () => {
+  it('restores a masked proxy only after app authentication and masks resumed debug state', async () => {
+    const stored = {
+      nodeId: 'http',
+      name: 'HTTP',
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.httpProxy,
+          value: encryptSecretValue({ value: 'http://user:private@proxy.example.com' })
+        }
+      ],
+      outputs: []
+    };
+    const requestNode = structuredClone(stored);
+    requestNode.inputs[0].value = { secret: HTTP_PROXY_CONFIGURED };
+    mocks.getAppDraftWorkflow.mockResolvedValue({ nodes: [stored], chatConfig: savedChatConfig });
+    mocks.dispatchWorkFlow.mockImplementationOnce(async ({ runtimeNodes }) => {
+      expect(runtimeNodes[0].inputs[0].value).toEqual(stored.inputs[0].value);
+      return {
+        debugResponse: {
+          memoryEdges: [],
+          memoryNodes: runtimeNodes,
+          entryNodeIds: [],
+          nodeResponses: {}
+        },
+        newVariables: {},
+        flatNodeResponses: []
+      };
+    });
+    const result = await handler(
+      {
+        body: { appId, nodes: [requestNode], usageId: 'usage', chatConfig: savedChatConfig },
+        headers: {}
+      } as any,
+      {} as any
+    );
+    expect(result.memoryNodes[0].inputs[0].value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+    expect(JSON.stringify(result)).not.toContain(JSON.stringify(stored.inputs[0].value));
+    expect(mocks.authApp.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getAppDraftWorkflow.mock.invocationCallOrder[0]
+    );
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({ tmbId: 'member-id' });

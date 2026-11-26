@@ -1,4 +1,7 @@
 import handler from '@/pages/api/core/app/version/publish';
+import appDetailHandler from '@/pages/api/core/app/detail';
+import { HTTP_PROXY_CONFIGURED } from '@fastgpt/service/core/app/httpProxySecret';
+import { decryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import versionDetailHandler from '@/pages/api/core/app/version/detail';
 import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
 import type { TFunction } from 'i18next';
@@ -1539,4 +1542,70 @@ describe('publish optional model defaults', () => {
       })
     ).resolves.toBeUndefined();
   });
+});
+
+describe('HTTP node proxy credential save and detail boundaries', () => {
+  it.each([false, true])(
+    'keeps credentials write-only across publish, detail, unchanged save, replace and clear (autoSave=%s)',
+    async (autoSave) => {
+      const auth = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Proxy credentials',
+        type: AppTypeEnum.workflow,
+        teamId: auth.teamId,
+        tmbId: auth.tmbId
+      });
+      const proxyUrl = 'http://user:private@proxy.example.com:8080';
+      const node = {
+        nodeId: 'http',
+        name: 'HTTP',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.httpProxy,
+            label: 'Proxy',
+            renderTypeList: [],
+            value: proxyUrl,
+            defaultValue: { value: proxyUrl }
+          }
+        ],
+        outputs: []
+      };
+      const save = (nodes: any[]) =>
+        Call<PublishAppBodyType>(handler, {
+          auth,
+          query: { appId: String(app._id) },
+          body: { nodes, edges: [], isPublish: !autoSave, autoSave, returnWorkflow: true }
+        });
+      const first = await save([node]);
+      expect(first.code, JSON.stringify(first)).toBe(200);
+      expect(JSON.stringify(first.data)).not.toContain('private');
+      const readStored = () =>
+        MongoAppVersion.findOne({ appId: app._id }).sort({ time: -1, _id: -1 }).lean();
+      const stored = await readStored();
+      expect(decryptSecretValue(stored!.nodes[0].inputs[0].value)).toBe(proxyUrl);
+      const detail = await Call(appDetailHandler, { auth, query: { appId: String(app._id) } });
+      expect(detail.code, JSON.stringify(detail)).toBe(200);
+      const input = detail.data.nodes[0].inputs.find(
+        (item: any) => item.key === NodeInputKeyEnum.httpProxy
+      );
+      expect(input.value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+      expect(input.defaultValue).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+      expect(JSON.stringify(detail.data)).not.toContain('private');
+      const unchanged = await save(detail.data.nodes);
+      expect(unchanged.code, JSON.stringify(unchanged)).toBe(200);
+      expect((await readStored())!.nodes[0].inputs[0].value).toEqual(
+        stored!.nodes[0].inputs[0].value
+      );
+      input.value = { value: 'http://replacement:new@proxy.example.com' };
+      expect((await save(detail.data.nodes)).code).toBe(200);
+      expect(decryptSecretValue((await readStored())!.nodes[0].inputs[0].value)).toBe(
+        'http://replacement:new@proxy.example.com'
+      );
+      input.value = { value: '' };
+      input.defaultValue = undefined;
+      expect((await save(detail.data.nodes)).code).toBe(200);
+      expect(decryptSecretValue((await readStored())!.nodes[0].inputs[0].value)).toBe('');
+    }
+  );
 });

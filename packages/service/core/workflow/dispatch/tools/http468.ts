@@ -1,3 +1,4 @@
+import { createHttpProxyRequestError } from './httpProxyError';
 import { getWorkflowContext } from '../context';
 import {
   contentTypeMap,
@@ -19,7 +20,6 @@ import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runti
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue, resolveSecretValue } from '../../../../common/secret/utils';
-import { isAxiosError } from 'axios';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError, getNodeErrResponse } from '../utils';
@@ -31,7 +31,12 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
-import { getErrText, isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import {
+  getErrText,
+  isUserConfigError,
+  isServerConfigError,
+  UserConfigError
+} from '@fastgpt/global/common/error/utils';
 import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
@@ -289,6 +294,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       timeout: httpTimeout,
       proxyValue: httpProxy
     }).catch((error: unknown) => {
+      if (isServerConfigError(error)) throw error;
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
 
@@ -640,24 +646,7 @@ async function fetchData({
     ...(proxyUrl ? { __safeAxios: { ...tlsConfig.__safeAxios, proxyUrl } } : {})
   }).catch((error: unknown) => {
     if (!proxyUrl) throw error;
-    // Axios/agent 错误可能持有含代理密码的 config；对外保留响应摘要，不传播该配置。
-    const safeMessage =
-      error instanceof Error && error.message === PRIVATE_URL_TEXT
-        ? PRIVATE_URL_TEXT
-        : 'HTTP request through the configured proxy failed';
-    throw Object.assign(new Error(safeMessage), {
-      name: 'HttpProxyRequestError',
-      ...(isAxiosError(error)
-        ? {
-            code: error.code,
-            status: error.response?.status,
-            config: { method },
-            response: error.response
-              ? { status: error.response.status, data: error.response.data }
-              : undefined
-          }
-        : {})
-    });
+    throw createHttpProxyRequestError(error, method);
   });
 
   return {

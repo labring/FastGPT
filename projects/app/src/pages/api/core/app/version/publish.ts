@@ -1,3 +1,4 @@
+import { restoreHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -106,7 +107,8 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
   });
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,
-    teamId
+    teamId,
+    allowConfiguredHttpProxy: true
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
@@ -134,7 +136,14 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
       session,
       draftVersion
     });
-    return { referenceSnapshots: compactedSnapshots, resources };
+    return {
+      referenceSnapshots: compactedSnapshots,
+      resources,
+      nodes: restoreHttpProxySecrets({
+        nodes: normalizedWorkflow.nodes,
+        baseline: draftVersion?.nodes
+      })
+    };
   };
 
   /** 从本次写入的快照构造回执，避免重读最新草稿时将其他成员的并发保存纳入同步基线。 */
@@ -158,7 +167,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
 
   if (autoSave) {
     const savedVersion = await mongoSessionRun(async (session) => {
-      const metadata = await resolveSaveMetadata(session);
+      const { nodes: storageNodes, ...metadata } = await resolveSaveMetadata(session);
       const version = await MongoAppVersion.findOneAndUpdate(
         {
           appId,
@@ -168,7 +177,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
           tmbId,
           appId,
           isAutoSave: true,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -208,7 +217,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
   }
 
   const savedVersion = await mongoSessionRun(async (session) => {
-    const metadata = await resolveSaveMetadata(session);
+    const { nodes: storageNodes, ...metadata } = await resolveSaveMetadata(session);
     if (isPublish) {
       await assertAppDatasetIndexModelsAvailable({
         resources: metadata.resources,
@@ -224,7 +233,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
       [
         {
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,

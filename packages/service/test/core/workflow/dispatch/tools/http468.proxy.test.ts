@@ -20,7 +20,12 @@ import {
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import { serviceEnv } from '@fastgpt/service/env';
-import { createProxyAxios, type SafeAxiosRequestConfig } from '@fastgpt/service/common/api/axios';
+import {
+  axios as workflowAxios,
+  createProxyAxios,
+  type SafeAxiosRequestConfig
+} from '@fastgpt/service/common/api/axios';
+import { isServerConfigError } from '@fastgpt/global/common/error/utils';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { formatToolInputSecrets } from '@fastgpt/service/core/app/tool/secretConfig';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
@@ -558,15 +563,16 @@ describe('HTTP node proxy over real sockets', () => {
   });
 
   it('keeps a custom proxy authorization header out of the HTTPS target tunnel', async () => {
-    let proxyAuth: string | undefined;
+    const proxyAuth: (string | undefined)[] = [];
     let targetAuth: string | undefined;
     const target = await listen((req, res) => {
       targetAuth = req.headers['proxy-authorization'];
-      res.end('ok');
+      if (req.url === '/start') res.writeHead(302, { Location: '/final' });
+      res.end(req.url === '/start' ? '' : 'ok');
     }, true);
     const proxy = await listen((_req, res) => res.end());
     servers[servers.length - 1].on('connect', (req, client, head) => {
-      proxyAuth = req.headers['proxy-authorization'];
+      proxyAuth.push(req.headers['proxy-authorization']);
       const targetUrl = new URL(`https://${req.url}`);
       const upstream = net.connect(Number(targetUrl.port), targetUrl.hostname, () => {
         client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
@@ -582,10 +588,32 @@ describe('HTTP node proxy over real sockets', () => {
       headers: { 'Proxy-Authorization': 'Basic custom-proxy-token' },
       __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
     };
-    const response = await createProxyAxios().get(target, requestConfig);
+    const response = await createProxyAxios().get(`${target}/start`, requestConfig);
     expect(response.data).toBe('ok');
-    expect(proxyAuth).toBe('Basic custom-proxy-token');
+    expect(proxyAuth).toEqual(['Basic custom-proxy-token', 'Basic custom-proxy-token']);
     expect(targetAuth).toBeUndefined();
+  });
+
+  it('retains local resource failures as system errors while sanitizing the node result', async () => {
+    const adapter = workflowAxios.defaults.adapter;
+    try {
+      workflowAxios.defaults.adapter = async () => {
+        throw Object.assign(new Error('user:private@proxy.example.com'), {
+          code: 'ECONNRESET',
+          cause: { code: 'EMFILE', password: 'private' }
+        });
+      };
+      const result = await dispatchHttp468Request(
+        props('http://public.example.test/', {
+          value: `http://user:private@${host}:8080`
+        })
+      );
+      expect(isServerConfigError(result.rawError)).toBe(true);
+      expect(JSON.stringify(result)).not.toContain('private');
+      expect(result.error).toBeDefined();
+    } finally {
+      workflowAxios.defaults.adapter = adapter;
+    }
   });
 
   it('uses TLS to an HTTPS proxy for an HTTP target', async () => {

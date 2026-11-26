@@ -1,3 +1,4 @@
+import { formatHttpProxySecrets } from './httpProxySecret';
 import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -72,6 +73,7 @@ export async function rewriteAppWorkflowToDetail({
   lang?: localeType;
   resources?: AppResourcesType;
 }) {
+  formatHttpProxySecrets({ nodes, project: true });
   // 快照内资源属于已确认的历史基线，不使用当前操作者或应用 owner 重新鉴权。
   const snapshotResourceKeys = new Set(resources.map(getAppResourceKey));
   const hasSnapshotResource = (type: 'agent' | 'tool' | 'dataset' | 'skill', id: string) =>
