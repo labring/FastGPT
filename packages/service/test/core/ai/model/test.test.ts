@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReadStream } from 'node:fs';
+import type { Readable } from 'node:stream';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -28,15 +28,12 @@ vi.mock('@fastgpt/service/core/ai/audio/transcriptions', () => ({
   aiTranscriptions: mocks.aiTranscriptions
 }));
 vi.mock('@fastgpt/service/core/ai/rerank', () => ({ reRankRecall: mocks.reRankRecall }));
-vi.mock('fs', async (importOriginal) => {
-  const fs = await importOriginal<typeof import('fs')>();
-  return {
-    ...fs,
-    createReadStream: vi.fn(() => ({ destroy: vi.fn() }))
-  };
-});
 
-import { MODEL_TEST_TIMEOUT_MS, testModelConnection } from '../../../../core/ai/model/test';
+import {
+  getSampleTestAudioBuffer,
+  MODEL_TEST_TIMEOUT_MS,
+  testModelConnection
+} from '../../../../core/ai/model/test';
 
 const ttsModel = {
   modelId: 'tts-timeout-test',
@@ -126,7 +123,7 @@ describe('testModelConnection request timeout', () => {
         );
       } else if (type === ModelTypeEnum.stt) {
         mocks.aiTranscriptions.mockImplementation(
-          ({ fileStream, signal }: { fileStream: ReadStream; signal: AbortSignal }) =>
+          ({ fileStream, signal }: { fileStream: Readable; signal: AbortSignal }) =>
             waitForAbort(signal, () => fileStream.destroy())
         );
       } else {
@@ -158,4 +155,27 @@ describe('testModelConnection request timeout', () => {
       expect(requestOptions.signal.aborted).toBe(true);
     }
   );
+
+  it('streams the built-in MPEG-1 Layer 3 sample audio for STT without filesystem access', async () => {
+    const sampleBuffer = getSampleTestAudioBuffer();
+    expect(sampleBuffer.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xfb]));
+    expect(sampleBuffer.length).toBeLessThan(8192);
+
+    const receivedChunks: Buffer[] = [];
+    mocks.aiTranscriptions.mockImplementation(async ({ fileStream }: { fileStream: Readable }) => {
+      for await (const chunk of fileStream) {
+        receivedChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return { text: 'ok' };
+    });
+
+    await testModelConnection({ model: createModel(ModelTypeEnum.stt) });
+
+    expect(mocks.aiTranscriptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: 'test.mp3'
+      })
+    );
+    expect(Buffer.concat(receivedChunks)).toEqual(sampleBuffer);
+  });
 });
