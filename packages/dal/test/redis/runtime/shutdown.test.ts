@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerRedisRuntimeShutdown, type RedisRuntime } from '@fastgpt/dal/redis/runtime';
+import { registerRedisRuntimeShutdown } from '@fastgpt/dal/redis/runtime';
 
 type Signal = NodeJS.Signals;
 
@@ -28,7 +28,7 @@ const createProcessMock = () => {
   };
 };
 
-const createRuntime = (close: () => Promise<void>) => ({ close }) as unknown as RedisRuntime;
+const createRuntime = (close: () => Promise<void>) => ({ close });
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -108,5 +108,53 @@ describe('registerRedisRuntimeShutdown', () => {
         processRef: processMock.processRef
       })
     ).toThrow('Redis runtime has not been configured');
+  });
+
+  it('waits for coordinated onShutdown hook before exiting and reports hook failures', async () => {
+    const processMock = createProcessMock();
+    let releaseHook!: () => void;
+    const hookGate = new Promise<void>((resolve) => {
+      releaseHook = resolve;
+    });
+    const onShutdown = vi.fn(() => hookGate);
+    const runtime = createRuntime(vi.fn(async () => undefined));
+
+    registerRedisRuntimeShutdown({
+      runtime,
+      processRef: processMock.processRef,
+      onShutdown,
+      exitProcess: true
+    });
+
+    processMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(runtime.close).toHaveBeenCalledTimes(1);
+    expect(onShutdown).toHaveBeenCalledTimes(1);
+    expect(processMock.processRef.exit).not.toHaveBeenCalled();
+
+    releaseHook();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(processMock.processRef.exit).toHaveBeenCalledWith(0);
+
+    const failMock = createProcessMock();
+    const hookError = new Error('db close failed');
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const runtime2 = createRuntime(vi.fn(async () => undefined));
+    registerRedisRuntimeShutdown({
+      runtime: runtime2,
+      processRef: failMock.processRef,
+      logger,
+      onShutdown: vi.fn(async () => Promise.reject(hookError)),
+      exitProcess: true
+    });
+
+    failMock.emit('SIGTERM');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(runtime2.close).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Redis runtime close failed after process shutdown signal',
+      { error: hookError }
+    );
+    expect(failMock.processRef.exit).toHaveBeenCalledWith(1);
   });
 });

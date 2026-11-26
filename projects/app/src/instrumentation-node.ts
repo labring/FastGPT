@@ -14,7 +14,7 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
-      { configureDalRuntime },
+      { configureDalRuntime, registerDalRuntimeShutdown },
       { connectionMongo, connectionLogMongo, hasSeparateMongoLogUri, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
@@ -35,7 +35,7 @@ export async function registerNodeInstrumentation() {
       { configureLogger, getLogger, LogCategories },
       { configureMetrics, createRedisRuntimeMetrics },
       { configureTracing },
-      { configureRedisRuntime, registerRedisRuntimeShutdown },
+      { configureRedisRuntime },
       { serviceEnv },
       { InitialErrorEnum },
       { getReadableSystemResourceInfo },
@@ -111,8 +111,8 @@ export async function registerNodeInstrumentation() {
         getErrText
       }),
       runInitializationStep({
-        step: 'register-redis-shutdown',
-        action: () => registerRedisRuntimeShutdown({ logger }),
+        step: 'register-dal-shutdown',
+        action: () => registerDalRuntimeShutdown({ logger }),
         logger,
         getErrText
       }),

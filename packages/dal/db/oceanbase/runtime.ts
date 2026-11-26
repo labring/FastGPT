@@ -1,7 +1,17 @@
-import { Kysely, MysqlDialect, type CompiledQuery, type LogEvent, type MysqlPool } from 'kysely';
+import {
+  AliasNode,
+  Kysely,
+  MysqlDialect,
+  TableNode,
+  type CompiledQuery,
+  type LogEvent,
+  type MysqlPool,
+  type OperationNode,
+  type RootOperationNode
+} from 'kysely';
 import { createPool } from 'mysql2';
 import { DbConfigurationError } from '../errors';
-import { getConfiguredDbRuntime, type DbRuntime } from '../runtime';
+import { getConfiguredDbRuntime, normalizeDbTopologyUrls, type DbRuntime } from '../runtime';
 import type { DbDatasource, DbTransactionRunner, OceanBaseExecutorResolver } from '../types';
 
 export type OceanBaseRuntimeDeps = {
@@ -12,7 +22,7 @@ export type OceanBaseRuntimeDeps = {
 
 const DEFAULT_OCEANBASE_POOL_LIMIT = 10;
 
-const KYSELY_KIND_TO_OPERATION: Record<string, string> = {
+const KYSELY_KIND_TO_OPERATION: Partial<Record<RootOperationNode['kind'], string>> = {
   SelectQueryNode: 'select',
   InsertQueryNode: 'insert',
   UpdateQueryNode: 'update',
@@ -23,43 +33,28 @@ const KYSELY_KIND_TO_OPERATION: Record<string, string> = {
   MergeQueryNode: 'merge'
 };
 
-const extractTableNameFromNode = (node: unknown): string | undefined => {
-  if (node === null || node === undefined || typeof node !== 'object') {
+const extractTableNameFromNode = (node: OperationNode | undefined): string | undefined => {
+  if (node === undefined) {
     return undefined;
   }
-  const record = node as Record<string, unknown>;
-  if (record.kind === 'AliasNode') {
-    return extractTableNameFromNode(record.node);
+  if (AliasNode.is(node)) {
+    return extractTableNameFromNode(node.node);
   }
-  if (record.kind === 'TableNode') {
-    const table = record.table as Record<string, unknown> | undefined;
-    const identifier = table?.identifier as Record<string, unknown> | undefined;
-    return typeof identifier?.name === 'string' ? identifier.name : undefined;
+  if (TableNode.is(node)) {
+    return node.table.identifier.name;
   }
   return undefined;
 };
 
-const extractTableFromQueryNode = (node: unknown): string | undefined => {
-  if (node === null || node === undefined || typeof node !== 'object') {
-    return undefined;
-  }
-  const record = node as Record<string, unknown>;
-  switch (record.kind) {
+const extractTableFromQueryNode = (node: RootOperationNode): string | undefined => {
+  switch (node.kind) {
     case 'SelectQueryNode':
-    case 'DeleteQueryNode': {
-      const from = record.from as { froms?: unknown[] } | undefined;
-      return extractTableNameFromNode(from?.froms?.[0]);
-    }
+    case 'DeleteQueryNode':
+      return extractTableNameFromNode(node.from?.froms[0]);
     case 'InsertQueryNode':
-      return extractTableNameFromNode(record.into);
-    case 'UpdateQueryNode': {
-      const directTable = extractTableNameFromNode(record.table);
-      if (directTable !== undefined) {
-        return directTable;
-      }
-      const from = record.from as { froms?: unknown[] } | undefined;
-      return extractTableNameFromNode(from?.froms?.[0]);
-    }
+      return extractTableNameFromNode(node.into);
+    case 'UpdateQueryNode':
+      return extractTableNameFromNode(node.table) ?? extractTableNameFromNode(node.from?.froms[0]);
     default:
       return undefined;
   }
@@ -74,16 +69,15 @@ const SQL_TABLE_FALLBACK_RE =
 export const extractOceanBaseQueryMeta = (
   query: CompiledQuery
 ): { table?: string; operation: string } => {
-  const queryNode = query.query as unknown as Record<string, unknown> | undefined;
-  const kind = typeof queryNode?.kind === 'string' ? queryNode.kind : undefined;
+  const queryNode: RootOperationNode | undefined = query.query;
   const sanitizedSql = query.sql.replace(/^\s*(?:\/\*[\s\S]*?\*\/\s*)*/, '');
   const sqlOpMatch = sanitizedSql.match(SQL_OPERATION_PREFIX_RE);
   const operation =
-    (kind !== undefined ? KYSELY_KIND_TO_OPERATION[kind] : undefined) ??
+    (queryNode !== undefined ? KYSELY_KIND_TO_OPERATION[queryNode.kind] : undefined) ??
     sqlOpMatch?.[1]?.toLowerCase() ??
     'query';
 
-  const astTable = extractTableFromQueryNode(queryNode);
+  const astTable = queryNode !== undefined ? extractTableFromQueryNode(queryNode) : undefined;
   const sqlTableMatch = sanitizedSql.match(SQL_TABLE_FALLBACK_RE);
   const table = astTable ?? sqlTableMatch?.[2];
 
@@ -127,14 +121,6 @@ export const createOceanBaseKyselyLogger = ({
       // 观测打点异常不得中断数据库执行路径
     }
   };
-};
-
-const normalizeOptionalDistinctUrl = (mainUrl: string, rawUrl?: string): string | undefined => {
-  if (rawUrl === undefined) {
-    return undefined;
-  }
-  const trimmed = rawUrl.trim();
-  return trimmed.length > 0 && trimmed !== mainUrl ? trimmed : undefined;
 };
 
 const createOceanBaseKysely = ({
@@ -185,13 +171,11 @@ export const createOceanBaseRuntimeDeps = ({
   logWriteUrl?: string;
   maxConnections?: number;
 }): OceanBaseRuntimeDeps => {
-  const normalizedMainWriteUrl = mainWriteUrl.trim();
-  if (normalizedMainWriteUrl.length === 0) {
-    throw new DbConfigurationError('OceanBase mainWriteUrl must be a non-empty string');
-  }
-
-  const effectiveMainReadUrl = normalizeOptionalDistinctUrl(normalizedMainWriteUrl, mainReadUrl);
-  const effectiveLogWriteUrl = normalizeOptionalDistinctUrl(normalizedMainWriteUrl, logWriteUrl);
+  const topology = normalizeDbTopologyUrls({
+    mainWriteUrl,
+    mainReadUrl,
+    logWriteUrl
+  });
 
   let closed = false;
   let closePromise: Promise<void> | undefined;
@@ -206,9 +190,8 @@ export const createOceanBaseRuntimeDeps = ({
   };
 
   const getMainDb = (): Kysely<any> => {
-    assertOpen();
     mainDb ??= createOceanBaseKysely({
-      url: normalizedMainWriteUrl,
+      url: topology.mainWriteUrl,
       connectionLimit: maxConnections,
       datasource: 'main',
       assertOpen
@@ -217,12 +200,11 @@ export const createOceanBaseRuntimeDeps = ({
   };
 
   const getMainReadDb = (): Kysely<any> | undefined => {
-    assertOpen();
-    if (effectiveMainReadUrl === undefined) {
+    if (topology.mainReadUrl === undefined) {
       return undefined;
     }
     mainReadDb ??= createOceanBaseKysely({
-      url: effectiveMainReadUrl,
+      url: topology.mainReadUrl,
       connectionLimit: maxConnections,
       datasource: 'main',
       assertOpen
@@ -231,12 +213,11 @@ export const createOceanBaseRuntimeDeps = ({
   };
 
   const getLogDb = (): Kysely<any> | undefined => {
-    assertOpen();
-    if (effectiveLogWriteUrl === undefined) {
+    if (topology.logWriteUrl === undefined) {
       return undefined;
     }
     logDb ??= createOceanBaseKysely({
-      url: effectiveLogWriteUrl,
+      url: topology.logWriteUrl,
       connectionLimit: maxConnections,
       datasource: 'log',
       assertOpen
@@ -251,7 +232,6 @@ export const createOceanBaseRuntimeDeps = ({
     datasource: DbDatasource;
     useReadReplica?: boolean;
   }): Kysely<any> => {
-    assertOpen();
     if (datasource === 'log') {
       const dedicatedLogDb = getLogDb();
       if (dedicatedLogDb !== undefined) {

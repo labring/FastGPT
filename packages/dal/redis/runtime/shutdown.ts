@@ -16,9 +16,12 @@ type RedisProcessLike = {
   exit: (code?: number) => void;
 };
 
+type ClosableRedisRuntime = Pick<RedisRuntime, 'close'>;
+
 type RedisShutdownRegistration = {
-  runtime: RedisRuntime;
+  runtime: ClosableRedisRuntime;
   processRef: RedisProcessLike;
+  onShutdown?: () => Promise<void> | void;
   unregister: () => void;
 };
 
@@ -27,11 +30,13 @@ type RedisShutdownContext = {
 };
 
 export type RedisRuntimeShutdownOptions = {
-  runtime?: RedisRuntime;
+  runtime?: ClosableRedisRuntime;
   logger?: RedisRuntimeLogger;
   processRef?: RedisProcessLike;
   signals?: readonly NodeJS.Signals[];
   exitProcess?: boolean;
+  /** 可选协同关闭回调（如 `closeDbRuntime()`），在同一次退出信号中与 Redis 并发关闭后再统一决定退出码。 */
+  onShutdown?: () => Promise<void> | void;
 };
 
 const getRedisShutdownContext = (): RedisShutdownContext => {
@@ -56,7 +61,8 @@ export const registerRedisRuntimeShutdown = ({
   logger = silentLogger,
   processRef = process,
   signals = DEFAULT_SHUTDOWN_SIGNALS,
-  exitProcess = true
+  exitProcess = true,
+  onShutdown
 }: RedisRuntimeShutdownOptions = {}) => {
   if (!runtime) {
     throw new Error('Redis runtime has not been configured');
@@ -64,7 +70,11 @@ export const registerRedisRuntimeShutdown = ({
 
   const context = getRedisShutdownContext();
   const existing = context.registration;
-  if (existing?.runtime === runtime && existing.processRef === processRef) {
+  if (
+    existing?.runtime === runtime &&
+    existing.processRef === processRef &&
+    existing.onShutdown === onShutdown
+  ) {
     return existing.unregister;
   }
   existing?.unregister();
@@ -88,19 +98,30 @@ export const registerRedisRuntimeShutdown = ({
   const handleSignal = () => {
     if (closePromise) return;
     unregister();
-    // 通过 Promise 链统一接住 Runtime.close 的同步异常和异步拒绝，避免信号 listener
-    // 把异常抛回 Node 的 EventEmitter 调用栈。
-    closePromise = Promise.resolve().then(() => runtime.close());
-    void closePromise.then(
-      () => {
+    // 通过 allSettled 统一等待 Redis 与协同资源（如 DbRuntime）完成关闭后再决定退出码，
+    // 避免单边异常中断另一侧资源释放，或把异常抛回 Node 的 EventEmitter 调用栈。
+    const tasks: Array<Promise<void>> = [Promise.resolve().then(() => runtime.close())];
+    if (onShutdown !== undefined) {
+      tasks.push(Promise.resolve().then(() => onShutdown()));
+    }
+
+    closePromise = Promise.allSettled(tasks).then((results) => {
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      );
+      if (failures.length === 0) {
         logger.info('Redis runtime closed after process shutdown signal');
         if (exitProcess) processRef.exit(0);
-      },
-      (error) => {
-        logger.error('Redis runtime close failed after process shutdown signal', { error });
-        if (exitProcess) processRef.exit(1);
+        return;
       }
-    );
+
+      logger.error('Redis runtime close failed after process shutdown signal', {
+        error: failures[0].reason,
+        ...(failures.length > 1 ? { errors: failures.map((failure) => failure.reason) } : {})
+      });
+      if (exitProcess) processRef.exit(1);
+    });
+    void closePromise;
   };
 
   for (const signal of signals) {
@@ -109,7 +130,12 @@ export const registerRedisRuntimeShutdown = ({
     processRef.on(signal, handler);
   }
 
-  const registration = { runtime, processRef, unregister } satisfies RedisShutdownRegistration;
+  const registration = {
+    runtime,
+    processRef,
+    onShutdown,
+    unregister
+  } satisfies RedisShutdownRegistration;
   context.registration = registration;
   return unregister;
 };

@@ -136,4 +136,44 @@ describe('@fastgpt/service/common/db/dalRuntime', () => {
     const { configureDalRuntime, DbConfigurationError } = await loadDalRuntime();
     expect(() => configureDalRuntime({ dialect: 'oceanbase' })).toThrow(DbConfigurationError);
   });
+
+  it('closes both RedisRuntime and DbRuntime before exiting on SIGTERM via registerDalRuntimeShutdown', async () => {
+    vi.stubEnv('DB_DIALECT', 'oceanbase');
+    vi.stubEnv('OCEANBASE_DB_URI', 'mysql://root@127.0.0.1:2881/fastgpt');
+
+    const { configureDalRuntime, registerDalRuntimeShutdown, getConfiguredDbRuntime } =
+      await loadDalRuntime();
+    const dbRuntime = configureDalRuntime();
+    expect(dbRuntime.getState()).toBe('open');
+
+    const redisClose = vi.fn(async () => undefined);
+    const listeners = new Map<NodeJS.Signals, Set<() => void>>();
+    const processRef = {
+      on: vi.fn((signal: NodeJS.Signals, listener: () => void) => {
+        const set = listeners.get(signal) ?? new Set<() => void>();
+        set.add(listener);
+        listeners.set(signal, set);
+      }),
+      removeListener: vi.fn((signal: NodeJS.Signals, listener: () => void) => {
+        listeners.get(signal)?.delete(listener);
+      }),
+      exit: vi.fn()
+    };
+
+    registerDalRuntimeShutdown({
+      runtime: { close: redisClose },
+      processRef,
+      exitProcess: true
+    });
+
+    for (const listener of listeners.get('SIGTERM') ?? []) {
+      listener();
+    }
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(redisClose).toHaveBeenCalledTimes(1);
+    expect(dbRuntime.getState()).toBe('closed');
+    expect(getConfiguredDbRuntime()).toBeUndefined();
+    expect(processRef.exit).toHaveBeenCalledWith(0);
+  });
 });

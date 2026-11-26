@@ -48,6 +48,17 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(separate.logMode).toBe('separate');
     expect(separate.hasSeparateLogDatabase()).toBe(true);
     expect(separate.resolveEffectiveDatasource('log')).toBe('log');
+
+    await closeDbRuntime();
+
+    const sameLogUrl = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      logWriteUrl: '  mysql://root@127.0.0.1:2881/fastgpt  '
+    });
+    expect(sameLogUrl.logMode).toBe('shared');
+    expect(sameLogUrl.hasSeparateLogDatabase()).toBe(false);
+    expect(sameLogUrl.resolveEffectiveDatasource('log')).toBe('main');
   });
 
   it('is idempotent for identical topology and rejects live topology mismatch until closed', async () => {
@@ -179,12 +190,22 @@ describe('@fastgpt/dal/db runtime & errors', () => {
       releaseClose = resolve;
     });
 
+    const transactionRunner = vi.fn(async () => {
+      throw new Error('transactionRunner should not be called while closing or closed');
+    });
+    const oceanBaseExecutorResolver = vi.fn(() => {
+      throw new Error('oceanBaseExecutorResolver should not be called while closing or closed');
+    });
+    const mongoModelBinder = vi.fn(() => {
+      throw new Error('mongoModelBinder should not be called while closing or closed');
+    });
+
     const runtime = configureDbRuntime({
       dialect: 'mongo',
       mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
-      transactionRunner: async ({ execute }) => execute({} as never),
-      oceanBaseExecutorResolver: () => ({}) as never,
-      mongoModelBinder: () => ({}) as never,
+      transactionRunner,
+      oceanBaseExecutorResolver,
+      mongoModelBinder,
       closeHandler: () => closeGate
     });
 
@@ -195,9 +216,7 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(() =>
       runtime.bindMongoModel({
         name: 'demo',
-        datasource: 'main',
-        schema: {} as never,
-        indexes: []
+        datasource: 'main'
       })
     ).toThrow(DbConfigurationError);
 
@@ -206,5 +225,14 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(runtime.getState()).toBe('closed');
     expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
     expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() =>
+      runtime.bindMongoModel({
+        name: 'demo',
+        datasource: 'main'
+      })
+    ).toThrow(DbConfigurationError);
+    expect(transactionRunner).not.toHaveBeenCalled();
+    expect(oceanBaseExecutorResolver).not.toHaveBeenCalled();
+    expect(mongoModelBinder).not.toHaveBeenCalled();
   });
 });
