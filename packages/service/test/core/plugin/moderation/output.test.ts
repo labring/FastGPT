@@ -559,7 +559,7 @@ describe('Output / Stream Guard (Anchor 3)', () => {
 
       expect(onToolCall).not.toHaveBeenCalled();
       expect(result.error).toBeUndefined();
-      expect(result.moderatedToolCallIds).toEqual(['call_1']);
+      expect(result.blockedToolCalls).toEqual({ call_1: 'moderation' });
       expect(result.toolCalls).toEqual([
         {
           id: 'call_1',
