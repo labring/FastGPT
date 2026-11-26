@@ -9,6 +9,8 @@ This guide is for Docker Compose deployments that use FastGPT's bundled MongoDB 
 
 > MongoDB 8.x requires AVX on x86_64. If you are already running 5.x, your CPU supports AVX. If you are still on 4.4.x, do not use this guide directly; verify the CPU first or move MongoDB to a host that supports AVX.
 
+> The official [MongoDB `mongorestore` documentation](https://www.mongodb.com/docs/database-tools/mongorestore/mongorestore-behavior-access-usage/) notes that restoring dumps across different major MongoDB versions is not officially supported (and the tool emits a cross-version warning when `--quiet` is omitted). Before migrating production, rehearse the full procedure on a real backup in a staging environment and verify document counts, indexes, and core queries.
+
 ## Prepare variables
 
 The commands below assume the old container is named `fastgpt-mongo`. Replace `OLD` if your deployment uses a different name.

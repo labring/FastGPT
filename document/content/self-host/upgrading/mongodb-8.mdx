@@ -9,6 +9,8 @@ description: 将 FastGPT 自带的 MongoDB 5.x 数据导出，并恢复到新的
 
 > MongoDB 8.x 要求 x86_64 CPU 支持 AVX。如果当前已经运行 5.x，说明 CPU 已支持 AVX；如果仍在 4.4.x，请不要直接套用本文，先确认 CPU 或改用外部 MongoDB。
 
+> [MongoDB 官方 `mongorestore` 文档](https://www.mongodb.com/docs/database-tools/mongorestore/mongorestore-behavior-access-usage/)明确说明不保证跨版本归档恢复兼容性（去掉 `--quiet` 时工具也会输出跨版本恢复警告）。正式迁移前请务必先使用真实生产备份在测试环境演练，并完整核对集合文档数、索引及核心业务查询。
+
 ## 准备变量
 
 以下命令假设旧容器名为 `fastgpt-mongo`。如果你的部署使用了其他容器名，请替换 `OLD`。
