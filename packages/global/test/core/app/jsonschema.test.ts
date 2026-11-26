@@ -18,7 +18,11 @@ import {
   JsonSchemaPropertiesItemSchema,
   JSONSchemaInputTypeSchema
 } from '@fastgpt/global/core/app/jsonschema';
-import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
+import {
+  bundleOpenAPISchema,
+  parseOpenAPISchemaString
+} from '@fastgpt/global/common/string/swagger';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import {
@@ -925,6 +929,57 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
 });
 
 describe('jsonSchema2NodeOutput', () => {
+  it('does not expose defaults for multimodal outputs', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: {
+          result: {
+            type: 'object',
+            'x-fastgpt-output-kind': 'model-content',
+            default: { value: [{ id: '1' }], images: ['secret'] },
+            'x-fastgpt-node-output': { defaultValue: { value: ['other'], images: ['secret'] } },
+            properties: { value: { type: 'array', items: { type: 'object' } } }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayObject);
+    expect(output[0]).not.toHaveProperty('defaultValue');
+  });
+
+  it('does not follow references when checking the output marker', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: { result: { type: 'object', $ref: '#/$defs/content' } },
+        $defs: {
+          content: {
+            'x-fastgpt-output-kind': 'model-content',
+            properties: { value: { type: 'string' } }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.object);
+  });
+
+  it('uses the value schema of a marked multimodal output', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: {
+          result: {
+            type: 'object',
+            'x-fastgpt-output-kind': 'model-content',
+            properties: {
+              value: { type: 'array', items: { type: 'object' } },
+              images: { type: 'array' }
+            }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayObject);
+  });
+
   it('should return empty array when properties is undefined', () => {
     const jsonSchema: JSONSchemaOutputType = {
       type: 'object'
@@ -2327,6 +2382,80 @@ paths:
 
     expect(result.pathData[0].params).toHaveLength(2);
   });
+
+  it('ignores x-* extensions under paths and resolves URI-encoded local refs', async () => {
+    const openApiJson = JSON.stringify({
+      openapi: '3.0.3',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {
+        'x-tag': 'internal',
+        'x-meta': null,
+        'x-custom': { get: { operationId: 'fake' } },
+        '/users': { $ref: '#/components/pathItems/User%20Path' }
+      },
+      components: {
+        parameters: {
+          'My Param': { name: 'q', in: 'query', schema: { type: 'string' } },
+          'Slash/Tilde~Param': { name: 's', in: 'query', schema: { type: 'string' } }
+        },
+        pathItems: {
+          'User Path': {
+            parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/Slash~1Tilde~0Param' }],
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      }
+    });
+
+    const result = await str2OpenApiSchema(openApiJson);
+
+    expect(result.pathData).toHaveLength(1);
+    expect(result.pathData[0]).toMatchObject({
+      path: '/users',
+      method: 'get',
+      name: 'getUsers',
+      params: [
+        { name: 'q', in: 'query', schema: { type: 'string' } },
+        { name: 's', in: 'query', schema: { type: 'string' } }
+      ]
+    });
+  });
+});
+
+describe('parseOpenAPISchemaString', () => {
+  it('parses valid JSON and YAML OpenAPI objects', () => {
+    expect(
+      parseOpenAPISchemaString('{"openapi":"3.0.0","info":{"title":"Test"},"paths":{}}')
+    ).toEqual({
+      openapi: '3.0.0',
+      info: { title: 'Test' },
+      paths: {}
+    });
+    expect(
+      parseOpenAPISchemaString('openapi: 3.0.0\ninfo:\n  title: Test\n  version: 1.0.0\npaths: {}')
+    ).toEqual({
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: {}
+    });
+  });
+
+  it.each([
+    '',
+    '   ',
+    '<html><body>Not Found</body></html>',
+    'just plain text',
+    '[1, 2, 3]',
+    'null',
+    '123',
+    'a: [1, 2'
+  ])('throws UserConfigError for invalid or non-object schema text: %j', (input) => {
+    expect(() => parseOpenAPISchemaString(input)).toThrow(UserConfigError);
+  });
 });
 
 describe('bundleOpenAPISchema', () => {
@@ -2347,21 +2476,178 @@ describe('bundleOpenAPISchema', () => {
   });
 
   it('should reject remote refs when bundling an already loaded schema object', async () => {
-    await expect(
-      bundleOpenAPISchema({
-        openapi: '3.0.0',
-        info: { title: 'Test API', version: '1.0.0' },
-        paths: {},
-        components: {
-          schemas: {
-            Leak: {
-              $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+    const promise = bundleOpenAPISchema({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {},
+      components: {
+        schemas: {
+          Leak: {
+            $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+          }
+        }
+      }
+    });
+
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow('Unable to resolve $ref pointer');
+  });
+
+  it.each(['./secret.yaml', '../etc/passwd', 'other.yaml#/defs/X', 'file:///etc/passwd'])(
+    'rejects external or relative file ref %s without leaking process.cwd or file path',
+    async (refValue) => {
+      let caughtError: unknown;
+      try {
+        await bundleOpenAPISchema({
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {},
+          components: {
+            schemas: {
+              Leak: {
+                $ref: refValue
+              }
+            }
+          }
+        });
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      const message = (caughtError as UserConfigError).message;
+      expect(message).toContain('Unable to resolve $ref pointer');
+      expect(message).toContain('#/components/schemas/Leak');
+      expect(message).not.toContain(process.cwd());
+      expect(message).not.toContain('secret.yaml');
+      expect(message).not.toContain('/etc/passwd');
+    }
+  );
+
+  it('accepts paths x-* extensions, URI-encoded local refs, chained local refs, and deprecated ops', async () => {
+    const bundled = await bundleOpenAPISchema({
+      openapi: '3.0.3',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {
+        'x-internal': true,
+        'x-tag': 'internal',
+        'x-meta': null,
+        '/users': { $ref: '#/components/pathItems/User%20Alias' }
+      },
+      components: {
+        parameters: {
+          'My Param': { name: 'q', in: 'query', schema: { type: 'string' } },
+          'Slash/Tilde~Param': { name: 's', in: 'query', schema: { type: 'string' } }
+        },
+        pathItems: {
+          'User Alias': { $ref: '#/components/pathItems/User%20Path' },
+          'User Path': {
+            parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/Slash~1Tilde~0Param' }],
+              responses: { '200': { description: 'OK' } }
+            },
+            post: {
+              deprecated: true,
+              parameters: 'ignored-because-deprecated',
+              responses: { '200': { description: 'OK' } }
             }
           }
         }
-      })
-    ).rejects.toThrow('Unable to resolve $ref pointer');
+      }
+    });
+
+    const converted = await str2OpenApiSchema(JSON.stringify(bundled));
+    expect(converted.pathData).toHaveLength(1);
+    expect(converted.pathData[0]).toMatchObject({
+      path: '/users',
+      method: 'get',
+      name: 'getUsers'
+    });
+    expect(converted.pathData[0].params).toHaveLength(2);
   });
+
+  it.each([
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: null },
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: [] },
+    { openapi: '3.1.0', info: { title: 'Test', version: '1.0.0' }, webhooks: {} },
+    { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: { '/users': null } },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/users': { get: null } }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/users': { $ref: '#/components/bad' } },
+      components: { bad: null }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/bad': { $ref: '#/components/bad' } },
+      components: { bad: 'not-an-object' }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/loop': { $ref: '#/paths/~1loop' } }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      servers: [null],
+      paths: {}
+    }
+  ])('rejects OpenAPI documents unusable by tool conversion: %j', async (doc) => {
+    await expect(bundleOpenAPISchema(doc)).rejects.toBeInstanceOf(UserConfigError);
+  });
+
+  it('classifies plain non-OpenAPI JSON objects as UserConfigError without [object Object]', async () => {
+    let caughtError: unknown;
+    try {
+      await bundleOpenAPISchema({ code: 200, data: {} });
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(UserConfigError);
+    expect((caughtError as UserConfigError).message).toBe(
+      'Schema is not a valid Openapi API definition'
+    );
+    expect((caughtError as UserConfigError).message).not.toContain('[object Object]');
+    expect((caughtError as UserConfigError).cause).toBeInstanceOf(SyntaxError);
+  });
+
+  it.each([
+    { swagger: '2.0', info: { title: 'Test', version: '1.0.0' } },
+    { openapi: '3.2.0', info: { title: 'Test', version: '1.0.0' }, paths: {} },
+    { openapi: '3.0.0', info: null, paths: {} },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: {},
+      components: { schemas: { Broken: { $ref: '#/components/schemas/Missing' } } }
+    },
+    '<html><body>404</body></html>',
+    [1, 2, 3],
+    null
+  ])(
+    'classifies malformed OpenAPI input %j as UserConfigError without leaking local paths',
+    async (input) => {
+      let caughtError: unknown;
+      try {
+        await bundleOpenAPISchema(input);
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      expect((caughtError as UserConfigError).message).not.toContain(process.cwd());
+    }
+  );
 });
 
 describe('JSONSchema property required support', () => {

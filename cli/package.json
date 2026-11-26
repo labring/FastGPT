@@ -13,7 +13,8 @@
     },
     "./run": {
       "import": "./dist/run.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -45,9 +46,11 @@
   "devDependencies": {
     "@clack/prompts": "catalog:",
     "@fastgpt/global": "workspace:*",
+    "@fastgpt/workflow-core": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "commander": "catalog:",
+    "crypto-js": "4.2.0",
     "ky": "catalog:",
     "picocolors": "catalog:",
     "tsdown": "catalog:",

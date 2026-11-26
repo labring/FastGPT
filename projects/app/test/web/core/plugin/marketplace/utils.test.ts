@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
+  comparePluginVersion,
   getBatchUpdateFailures,
+  getInstallErrorReason,
+  getInstallFailureMessage,
   getMarketplaceToolStateAfterInstall,
+  hasMarketplaceToolUpdate,
+  parseTeamInstallFailure,
   shouldReinstallOfflineMarketplaceTool,
+  summarizeBatchUpdateResult,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
 import { isToolVersionInstalled } from '@fastgpt/web/components/core/plugin/tool/utils';
@@ -178,5 +184,197 @@ describe('marketplace installed plugin cache', () => {
     expect(result?.ids).toEqual(new Set(['weather']));
     expect(result?.map.get('weather')?.status).toBe(PluginStatusEnum.Normal);
     expect(result?.list).toHaveLength(1);
+  });
+});
+
+describe('comparePluginVersion', () => {
+  it('compares semver versions including prereleases and v-prefixes', () => {
+    expect(comparePluginVersion('1.2.0', '1.1.9')).toBeGreaterThan(0);
+    expect(comparePluginVersion('v1.0.10', '1.0.2')).toBeGreaterThan(0);
+    expect(comparePluginVersion('1.0.0', '1.0.0-beta.1')).toBeGreaterThan(0);
+    expect(comparePluginVersion('1.0.0-beta.2', '1.0.0-beta.10')).toBeLessThan(0);
+    expect(comparePluginVersion('1.0.0', '1.0.0')).toBe(0);
+    expect(comparePluginVersion('latest', '1.0.0')).toBeUndefined();
+  });
+});
+
+describe('hasMarketplaceToolUpdate', () => {
+  it('detects updates when marketplace semver is newer', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-1',
+        marketplaceVersion: '1.0.1',
+        marketplaceEtag: 'etag-2'
+      })
+    ).toBe(true);
+  });
+
+  it('does not prompt downgrade when installed semver is newer than marketplace', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.1.0',
+        installedEtag: 'etag-2',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-1'
+      })
+    ).toBe(false);
+  });
+
+  it('detects same-version package replacements when both etags exist and differ', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-old',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-new'
+      })
+    ).toBe(true);
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-same',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-same'
+      })
+    ).toBe(false);
+  });
+
+  it('requires non-empty installed etag to treat same-version packages as updatable', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: '',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-new'
+      })
+    ).toBe(false);
+  });
+
+  it('falls back to string inequality for non-semver versions', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '2026.01',
+        marketplaceVersion: '2026.02'
+      })
+    ).toBe(true);
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '',
+        marketplaceVersion: '1.0.0'
+      })
+    ).toBe(true);
+  });
+});
+
+describe('marketplace install failure helpers', () => {
+  it('parses team install failure arrays from plain strings, responseError objects, and structured data', () => {
+    const failed = [{ url: 'url-1', reason: { en: 'Install failed', 'zh-CN': '安装失败' } }];
+
+    expect(parseTeamInstallFailure(JSON.stringify(failed))).toEqual(failed);
+    expect(
+      parseTeamInstallFailure({
+        code: 500,
+        statusText: 'error',
+        message: JSON.stringify(failed),
+        data: null
+      })
+    ).toEqual(failed);
+    expect(parseTeamInstallFailure({ data: { failed } })).toEqual(failed);
+    expect(parseTeamInstallFailure({ code: 500, message: 'plain error' })).toBeUndefined();
+    expect(parseTeamInstallFailure('[invalid json')).toBeUndefined();
+  });
+
+  it('formats deduplicated localized install failure messages and returns undefined when empty', () => {
+    expect(
+      getInstallFailureMessage({
+        installResult: { failed: [] },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBeUndefined();
+
+    expect(
+      getInstallFailureMessage({
+        installResult: {
+          failed: [
+            { url: 'url-1', reason: { en: 'Timeout', 'zh-CN': '下载超时' } },
+            { url: 'url-2', reason: { en: 'Timeout', 'zh-CN': '下载超时' } },
+            { url: 'url-3', reason: { en: 'Invalid pkg', 'zh-CN': '插件包无效' } }
+          ]
+        },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBe('下载超时; 插件包无效');
+
+    expect(
+      getInstallFailureMessage({
+        installResult: {
+          failed: [{ url: 'url-1', reason: { en: '   ' } }]
+        },
+        language: 'en',
+        fallback: 'Error'
+      })
+    ).toBe('Error');
+  });
+
+  it('extracts readable install error reason from JSON failure payloads and plain errors', () => {
+    expect(
+      getInstallErrorReason({
+        error: {
+          code: 500,
+          message: JSON.stringify([
+            { url: 'url-1', reason: { en: 'Bad pkg', 'zh-CN': '包格式错误' } }
+          ])
+        },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBe('包格式错误');
+
+    expect(
+      getInstallErrorReason({
+        error: { code: 500, message: 'Download failed: network error' },
+        language: 'en',
+        fallback: 'Error'
+      })
+    ).toBe('Download failed: network error');
+  });
+
+  it('summarizes batch update outcomes across full success, partial success, and full failure', () => {
+    expect(summarizeBatchUpdateResult({ totalCount: 2, failures: [] })).toEqual({
+      status: 'success',
+      successCount: 2,
+      failedCount: 0,
+      firstReason: undefined
+    });
+
+    expect(
+      summarizeBatchUpdateResult({
+        totalCount: 2,
+        failures: [{ toolId: 'tool-2', reason: '安装失败' }]
+      })
+    ).toEqual({
+      status: 'partial',
+      successCount: 1,
+      failedCount: 1,
+      firstReason: '安装失败'
+    });
+
+    expect(
+      summarizeBatchUpdateResult({
+        totalCount: 2,
+        failures: [
+          { toolId: 'tool-1', reason: '下载超时' },
+          { toolId: 'tool-2', reason: '校验失败' }
+        ]
+      })
+    ).toEqual({
+      status: 'error',
+      successCount: 0,
+      failedCount: 2,
+      firstReason: '下载超时'
+    });
   });
 });

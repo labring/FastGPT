@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -24,10 +25,7 @@ describe('plugin debug channel enable handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     originalIsPlus = global.feConfigs?.isPlus;
-    global.feConfigs = {
-      ...global.feConfigs,
-      isPlus: true
-    } as any;
+    setTestLicenseActive(true);
     mocks.authCert.mockResolvedValue({
       tmbId: 'tmb_test'
     });
@@ -84,5 +82,12 @@ describe('plugin debug channel enable handler', () => {
       createdAt: 1_781_500_000_000,
       updatedAt: 1_781_500_000_000
     });
+  });
+
+  it('keeps commercial authorization mandatory', async () => {
+    setTestLicenseActive(false);
+    const result = await Call(handler, { body: {} });
+    expect(result.error).toBe('commercialFeature');
+    expect(mocks.pluginClient.createDebugSession).not.toHaveBeenCalled();
   });
 });

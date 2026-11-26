@@ -4,6 +4,8 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
+import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -30,7 +32,7 @@ import {
 } from '@fastgpt/service/core/app/controller';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/service';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
@@ -41,6 +43,7 @@ import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
@@ -62,6 +65,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     templateId,
     utmParams,
     inheritPermission
@@ -99,6 +103,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -136,6 +141,7 @@ const formatAppWorkflowForSave = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   isRoot,
@@ -145,6 +151,7 @@ const formatAppWorkflowForSave = async ({
   nodes?: unknown[];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   teamId: string;
   tmbId: string;
   isRoot?: boolean;
@@ -153,10 +160,12 @@ const formatAppWorkflowForSave = async ({
     {
       nodes: nodes ?? [],
       edges: edges ?? [],
-      chatConfig
+      chatConfig,
+      referenceSnapshots
     },
     appType
   );
+  assertWorkflowDocumentStructure(workflow);
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
@@ -170,6 +179,7 @@ const formatAppWorkflowForSave = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  workflow.referenceSnapshots = compactWorkflowReferenceSnapshots(workflow);
 
   return { workflow, modelHandle };
 };
@@ -189,6 +199,7 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -207,6 +218,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -251,6 +263,7 @@ export const onCreateApp = async ({
           nodes,
           edges,
           chatConfig,
+          referenceSnapshots,
           teamId,
           tmbId,
           isRoot
@@ -331,6 +344,7 @@ export const onCreateApp = async ({
             nodes: storageNodes ?? preparedVersion.workflow.nodes,
             edges: preparedVersion.workflow.edges,
             chatConfig: preparedVersion.workflow.chatConfig,
+            referenceSnapshots: preparedVersion.workflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
@@ -370,6 +384,7 @@ export const onCreateApp = async ({
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_APP,
+        resources: [buildAppAuditResource({ _id: appId, name, avatar: _avatar, type: app.type })],
         params: {
           appName: name!,
           appType: getI18nAppType(type!)
@@ -399,6 +414,7 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
@@ -409,6 +425,7 @@ export const onUpdateAppWorkflow = async ({
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
@@ -419,6 +436,7 @@ export const onUpdateAppWorkflow = async ({
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     isRoot
@@ -433,6 +451,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

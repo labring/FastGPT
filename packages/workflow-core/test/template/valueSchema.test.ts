@@ -82,6 +82,46 @@ describe('getNodeInputValueSchema', () => {
 });
 
 describe('valueMatchesSchema', () => {
+  it('matches object constants and enum entries regardless of key order', () => {
+    const expected = { name: 'tool', options: { enabled: true, limit: 1 } };
+    const reordered = { options: { limit: 1, enabled: true }, name: 'tool' };
+
+    expect(valueMatchesSchema(reordered, { const: expected })).toBe(true);
+    expect(valueMatchesSchema(reordered, { enum: [expected] })).toBe(true);
+    expect(valueMatchesSchema({ ...reordered, extra: true }, { const: expected })).toBe(false);
+  });
+
+  it('treats reordered objects as duplicates but preserves array order', () => {
+    const schema = { type: 'array', uniqueItems: true };
+    expect(
+      valueMatchesSchema(
+        [
+          { a: 1, b: 2 },
+          { b: 2, a: 1 }
+        ],
+        schema
+      )
+    ).toBe(false);
+    expect(
+      valueMatchesSchema(
+        [
+          { a: 1, b: 2 },
+          { b: 3, a: 1 }
+        ],
+        schema
+      )
+    ).toBe(true);
+    expect(
+      valueMatchesSchema(
+        [
+          [1, 2],
+          [2, 1]
+        ],
+        schema
+      )
+    ).toBe(true);
+  });
+
   it('honors boolean schema branches and properties in tool input contracts', () => {
     expect(valueMatchesSchema('anything', true)).toBe(true);
     expect(valueMatchesSchema('anything', false)).toBe(false);

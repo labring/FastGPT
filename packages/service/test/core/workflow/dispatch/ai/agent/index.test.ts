@@ -1,3 +1,8 @@
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
@@ -8,24 +13,46 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
+import { getSandboxStaticRuntimePaths } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createTestWorkflowFileContext,
+  runTestWorkflowDispatch,
+  runWithTestWorkflowContext as runWithWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
+import { dispatchRunAgent as dispatchRunAgentWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
+let testFileContext: Awaited<ReturnType<typeof createTestWorkflowFileContext>>;
+
+/** 单独运行 Agent 时从测试历史建立根记忆，依赖由夹具注入而不是夹带进节点 Props。 */
+const dispatchRunAgent = (
+  props: Parameters<typeof dispatchRunAgentWithoutContext>[0] & {
+    memoryContext?: WorkflowMemoryContext;
+  }
+) =>
+  runTestWorkflowDispatch(
+    { ...props, memoryContext: WorkflowMemoryContext.fromWorkflow(props) },
+    { dispatch: dispatchRunAgentWithoutContext }
+  );
+
+const runWithContext = <T>(
+  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext' | 'checkIsStopping'> &
+    Partial<Pick<Parameters<typeof runWithWorkflowContext>[0], 'fileContext' | 'checkIsStopping'>>,
+  fn: (ctx: Parameters<typeof runWithWorkflowContext>[0]) => T
+): T =>
   runWithWorkflowContext(
     {
+      checkIsStopping: () => false,
       ...value,
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-        resolve: () => undefined,
-        resolveChatFile: () => undefined,
-        getIdentity: () => undefined
-      } as any
+      fileContext: value.fileContext ?? testFileContext
     },
     fn
   );
@@ -43,7 +70,6 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  ensureAppSandboxRuntimeReadyMock,
   markChatSandboxEnabledMock,
   authSkillByTmbIdMock,
   getLLMModelDataMock
@@ -51,11 +77,9 @@ const {
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
     AGENT_ENGINE: 'fastAgent',
-    AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
     STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: 30,
     STREAM_RESUME_REDIS_MAXMEMORY_RATIO: 0.5,
@@ -71,7 +95,6 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
   markChatSandboxEnabledMock: vi.fn(),
   authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
@@ -121,15 +144,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
   getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/runtime')>();
-  return {
-    ...original,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
-  };
-});
-
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/runtime')>();
@@ -138,18 +152,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOri
     ...original,
     prepareAgentSandboxRuntime: vi.fn(async (params) => ({
       sandboxClient: await getSandboxClientMock(params),
-      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
-      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+      workspaceRoot: getSandboxStaticRuntimePaths().workDirectory,
+      workDirectory: getSandboxStaticRuntimePaths().workDirectory
     }))
   };
-});
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
-    >();
-
-  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
 });
 vi.mock(
   '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
@@ -217,7 +223,6 @@ const getMessageTextForTest = (content: unknown) => {
 
 const createProps = () =>
   ({
-    checkIsStopping: vi.fn(() => false),
     node: {
       nodeId: 'agent_node',
       flowNodeType: FlowNodeTypeEnum.agent,
@@ -298,7 +303,7 @@ const createProps = () =>
     maxRunTimes: 10,
     workflowDispatchDeep: 0,
     workflowStreamResponse: vi.fn(),
-    variableState: {
+    variableContext: {
       get: vi.fn(),
       set: vi.fn(),
       getStoreValue: vi.fn(),
@@ -330,10 +335,17 @@ const createProps = () =>
     }
   }) as any;
 
-const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const getSandboxWorkDirectory = () => getSandboxStaticRuntimePaths().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { enabled: true });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
+      runtime: 'docker',
+      image: 'fastgpt-agent-sandbox:latest'
+    });
+    testFileContext = await createTestWorkflowFileContext();
     vi.clearAllMocks();
     getLLMModelDataMock.mockImplementation(({ modelId, model }) => ({
       modelId: modelId ?? '68ad85a7463006c963799a41',
@@ -350,19 +362,15 @@ describe('dispatchRunAgent user context', () => {
       }
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
-    serviceEnvMock.AGENT_ENGINE = 'fastAgent';
-    (global as any).feConfigs = {
-      ...(global as any).feConfigs,
-      show_agent_sandbox: true
-    };
+    getTestInstanceConfig().feature.agentEngine = 'fastAgent';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     sandboxCreateDirectoriesMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue([]);
     sandboxGetFileInfoMock.mockResolvedValue(new Map());
     sandboxClientExecMock.mockResolvedValue({
       exitCode: 0,
-      stdout: '/workspace\n',
+      stdout: `${getSandboxWorkDirectory()}\n`,
       stderr: ''
     });
     axiosGetMock.mockResolvedValue({
@@ -371,7 +379,7 @@ describe('dispatchRunAgent user context', () => {
     });
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
-      provider: {
+      opensandbox: {
         createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
         getFileInfo: sandboxGetFileInfoMock,
@@ -379,6 +387,7 @@ describe('dispatchRunAgent user context', () => {
         execute: sandboxClientExecMock
       },
       exec: sandboxClientExecMock,
+      runWithRecovery: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
       getSandboxId: () => 'sandbox_prepared'
     });
     getAgentSkillInfosMock.mockResolvedValue([
@@ -413,8 +422,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('passes rewritten history and current system-reminder into agent loop', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-
     let result: any;
     runWithContext(
       {
@@ -447,7 +454,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('removes history files when the node file input is not bound', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.node.inputs = [
       {
@@ -485,8 +491,13 @@ describe('dispatchRunAgent user context', () => {
         avatar: 'search.svg',
         params: {},
         promptReference: {
-          id: 'mcp-app_1/search',
-          name: 'Search documentation'
+          name: 'Search documentation',
+          legacyExactKeys: ['mcp-app_1/LegacyToolset/search'],
+          ref: {
+            type: 'app',
+            source: 'team',
+            id: 'app_1/search'
+          }
         },
         requestSchema: {
           type: 'function',
@@ -501,10 +512,10 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
     const props = createProps();
-    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}';
+    props.params.systemPrompt =
+      '优先使用 {{@mcp-app_1/search@}} 与旧三段 {{@mcp-app_1/LegacyToolset/search@}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}';
     props.params.agent_selectedTools = [{ id: 'mcp-app_1/search', config: {} }];
 
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
     runWithContext(
       {
@@ -517,15 +528,299 @@ describe('dispatchRunAgent user context', () => {
     await resultPromise!;
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
-    expect(systemPrompt).toContain('{{Search documentation}}');
-    expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
+    expect(systemPrompt).toContain(
+      '优先使用 {{Search documentation}} 与旧三段 {{Search documentation}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}'
+    );
+  });
+
+  it('resolves V2 and legacy tool/skill/builtin prompt refs while keeping deleted or errored skills unresolved', async () => {
+    const skillId = '68b2000000000000000000aa';
+    const unavailableSkillId = '68b2000000000000000000bb';
+    authSkillByTmbIdMock
+      .mockResolvedValueOnce({
+        skill: { _id: skillId, name: 'PDF深度分析技能', source: 'personal' }
+      })
+      .mockRejectedValueOnce(SkillErrEnum.unAuthSkill);
+    getAgentSkillInfosMock.mockResolvedValueOnce([
+      {
+        id: './skills/pdf/SKILL.md',
+        name: 'pdf-analyzer',
+        description: 'Analyze PDF',
+        directory: './skills/pdf',
+        skillMdPath: './skills/pdf/SKILL.md',
+        appId: skillId,
+        appName: 'PDF深度分析技能',
+        appSource: 'personal'
+      }
+    ]);
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'sys_metaso',
+        name: '秘塔官方',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: '秘塔官方',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'metaso'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'sys_metaso',
+            description: '秘塔官方',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId,
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      },
+      {
+        skillId: unavailableSkillId,
+        source: 'personal',
+        name: '未部署技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，未部署 {{@skill:team:68b2000000000000000000bb@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+    props.params.agent_selectedTools = [{ id: 'systemTool-metaso', source: 'system', config: {} }];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('工具 {{秘塔官方}}');
+    expect(systemPrompt).toContain('技能 {{PDF深度分析技能}}');
+    expect(systemPrompt).toContain('未部署 {{@skill:team:68b2000000000000000000bb@}}');
+    expect(systemPrompt).toContain('越权 {{@skill:team:68b2000000000000000000ee@}}');
+    expect(systemPrompt).toContain('知识库 {{');
+    expect(systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
+  });
+
+  it('disambiguates same-name plugins from different sources using model function names', async () => {
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'getTime',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'getTime',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'team_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'team',
+            teamId: '67a100000000000000000001',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'team_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'debug_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'debug',
+            tmbId: '67d300000000000000000002',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'debug_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.systemPrompt =
+      '系统 {{@plugin:system:getTime@}}，团队 {{@plugin:team:67a100000000000000000001:getTime@}}，调试 {{@plugin:debug:67d300000000000000000002:getTime@}}';
+    props.params.agent_selectedTools = [
+      { id: 'systemTool-getTime', source: 'system', config: {} },
+      { id: 'systemTool-getTime', source: 'teamId:67a100000000000000000001', config: {} },
+      { id: 'systemTool-getTime', source: 'debug:tmbId:67d300000000000000000002', config: {} }
+    ];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('系统 {{Get Time (getTime)}}');
+    expect(loopInput.systemPrompt).toContain('团队 {{Get Time (team_fn_get_time)}}');
+    expect(loopInput.systemPrompt).toContain('调试 {{Get Time (debug_fn_get_time)}}');
+  });
+
+  it('does not resolve builtin:agent_sandbox or skills when sandbox is disabled', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId: '68b2000000000000000000aa',
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '虚拟机 {{@builtin:agent_sandbox@}}，技能 {{@skill:team:68b2000000000000000000aa@}}';
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+    expect(systemPrompt).toContain('技能 {{@skill:team:68b2000000000000000000aa@}}');
+  });
+
+  it('derives builtin prompt refs directly from runtime.systemTools so tool catalog and systemPrompt stay in sync', async () => {
+    // 1. ChatAgent 关闭上传控件但聊天 API 直接传入 file_url，且清空知识库与沙盒：
+    //    runtime.systemTools.readFile 仍启用，datasetSearch 与 sandbox 未启用；提示词引用必须与实际工具目录严格一致。
+    const chatAgentProps = createProps();
+    chatAgentProps.chatConfig = {
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectVideo: false,
+        canSelectAudio: false,
+        canSelectCustomFileExtension: false
+      }
+    };
+    chatAgentProps.query = runtimePrompt2ChatsValue({
+      text: '读取附件',
+      files: [
+        {
+          type: ChatFileTypeEnum.file,
+          name: 'api-upload.pdf',
+          url: 'https://files.example.com/api-upload.pdf'
+        }
+      ]
+    });
+    chatAgentProps.params.agent_datasetParams = {
+      ...chatAgentProps.params.agent_datasetParams,
+      datasets: []
+    };
+    chatAgentProps.params.useAgentSandbox = false;
+    chatAgentProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+
+    let chatAgentPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      chatAgentPromise = dispatchRunAgent(chatAgentProps);
+    });
+    await chatAgentPromise!;
+
+    const chatAgentCall = runAgentLoopMock.mock.calls[0][0];
+    expect(chatAgentCall.runtime.systemTools?.readFile?.enabled).toBe(true);
+    expect(chatAgentCall.runtime.systemTools?.datasetSearch).toBeUndefined();
+    expect(chatAgentCall.runtime.systemTools?.sandbox).toBeUndefined();
+    expect(
+      chatAgentCall.input.messages
+        .map((message: ChatCompletionMessageParam) => getMessageTextForTest(message.content))
+        .join('\n')
+    ).toContain('api-upload.pdf');
+    expect(chatAgentCall.input.systemPrompt).not.toContain('{{@builtin:read_files@}}');
+    expect(chatAgentCall.input.systemPrompt).toContain('知识库 {{@builtin:dataset_search@}}');
+    expect(chatAgentCall.input.systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+
+    // 2. Workflow NodeAgent：开启知识库与沙盒后，runtime.systemTools 与提示词三项内置引用全部对齐。
+    const enabledWorkflowProps = createProps();
+    delete (enabledWorkflowProps.params as any).agent_datasetParams;
+    enabledWorkflowProps.params[NodeInputKeyEnum.datasetSelectList] = [
+      { datasetId: 'dataset_1', name: 'KB 1', avatar: '', vectorModel: { model: 'embed' } }
+    ] as any;
+    enabledWorkflowProps.params.useAgentSandbox = true;
+    enabledWorkflowProps.node.inputs = [{ key: NodeInputKeyEnum.fileUrlList, value: [] } as any];
+    enabledWorkflowProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+
+    let enabledWorkflowPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      enabledWorkflowPromise = dispatchRunAgent(enabledWorkflowProps);
+    });
+    await enabledWorkflowPromise!;
+
+    const enabledWorkflowCall = runAgentLoopMock.mock.calls[1][0];
+    expect(enabledWorkflowCall.runtime.systemTools?.datasetSearch?.enabled).toBe(true);
+    expect(enabledWorkflowCall.runtime.systemTools?.readFile?.enabled).toBe(true);
+    expect(enabledWorkflowCall.runtime.systemTools?.sandbox?.enabled).toBe(true);
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:read_files@}}');
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
   });
 
   it('uses the default agent system prompt when the user prompt is omitted', async () => {
     const props = createProps();
     delete props.params.systemPrompt;
 
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
     runWithContext(
       {
@@ -544,7 +839,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('injects sandbox input files before starting the agent loop', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
     let sandboxReadyBeforeLoop = false;
@@ -584,17 +878,20 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
-    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
+    const workDir = getSandboxWorkDirectory();
+    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith([`${workDir}/user_files`]);
     const inputFilesWriteCallIndex = sandboxWriteFilesMock.mock.calls.findIndex(([files]) =>
-      files.some((file: { path: string }) => file.path === '/workspace/user_files/current.pdf')
+      files.some((file: { path: string }) => file.path === `${workDir}/user_files/current.pdf`)
     );
     expect(inputFilesWriteCallIndex).toBeGreaterThanOrEqual(0);
     const inputFilesWrite = sandboxWriteFilesMock.mock.calls[inputFilesWriteCallIndex][0];
     expect(inputFilesWrite.map((file: { path: string }) => file.path)).toEqual([
-      '/workspace/user_files/current.pdf'
+      `${workDir}/user_files/current.pdf`
     ]);
     expect(sandboxCreateDirectoriesMock.mock.invocationCallOrder[0]).toBeLessThan(
       sandboxWriteFilesMock.mock.invocationCallOrder[inputFilesWriteCallIndex]
@@ -602,9 +899,9 @@ describe('dispatchRunAgent user context', () => {
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).toContain('<sandbox_capability>');
     expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
-    expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
+    expect(loopInput.systemPrompt).not.toContain(`pwd: ${workDir}`);
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
-      '当前沙盒的工作目录: /workspace'
+      `当前沙盒的工作目录: ${workDir}`
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
     expect(runAgentLoopMock.mock.calls[0][0].provider).toBe('fastAgent');
@@ -621,13 +918,14 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
   it('authorizes skills as the runtime member before sandbox injection without an App resource context', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const skillId = '507f1f77bcf86cd799439011';
     const skill = { _id: skillId, name: 'Report' };
     authSkillByTmbIdMock.mockResolvedValueOnce({ skill });
@@ -658,22 +956,19 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+  it('streams upgrading and continues the same workflow after silent App sandbox image upgrade', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      onUpgrade?.();
-      return true;
+    const defaultClient = getSandboxClientMock.getMockImplementation();
+    getSandboxClientMock.mockImplementationOnce(async (params) => {
+      params.onUpgrade?.();
+      params.onUpgradeComplete?.();
+      return defaultClient!(params);
     });
 
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {
@@ -682,7 +977,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
@@ -704,16 +998,14 @@ describe('dispatchRunAgent user context', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('returns the concrete silent migration failure reason', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+  it('returns the concrete sandbox runtime initialization failure reason', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    getSandboxClientMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -722,7 +1014,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
     expect(
       props.workflowStreamResponse.mock.calls
@@ -734,7 +1025,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('scans edit skill infos without requiring selected skills', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = false;
     props.params.skills = [];
@@ -757,7 +1047,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -773,7 +1065,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('returns the full process text across tool-calling turns without duplicating answer_delta', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
       runtime.emitEvent({
         type: 'answer_delta',
@@ -842,7 +1133,6 @@ describe('dispatchRunAgent user context', () => {
   it.each([new UserConfigError('Invalid API key'), new Error(''), undefined])(
     'returns error output together with the original core exception: %j',
     async (error) => {
-      const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
       runAgentLoopMock.mockResolvedValueOnce({
         status: 'error',
         error,
@@ -871,7 +1161,6 @@ describe('dispatchRunAgent user context', () => {
   );
 
   it('suppresses stream output and visible assistantResponses when isResponseAnswerText is false while preserving ask and answerText', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.isResponseAnswerText = false;
     const runAgent = async () => {
@@ -978,13 +1267,12 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('does not append errorText to assistantResponses and marks master_agent_call errorCaptured when catchError is enabled on the node', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const publishedResponses: any[] = [];
     const props = createProps();
     delete props.params.agent_datasetParams;
     props.node.catchError = true;
     props.nodeResponseParentId = 'workflow_agent_resp_id';
-    props.nodeResponseSink = {
+    const nodeResponseSink = {
       publish: vi.fn(async (inputs: Array<{ response: any; parentId?: string }>) => {
         publishedResponses.push(
           ...inputs.map((input) => ({
@@ -1016,7 +1304,7 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ mcpClientMemory: {} }, () => {
+    runWithContext({ mcpClientMemory: {}, nodeResponseSink }, () => {
       resultPromise = dispatchRunAgent(props);
     });
     const result = await resultPromise!;
@@ -1045,10 +1333,9 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('publishes Agent internal responses as current-layer top-level rows', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const publishedResponses: any[] = [];
     const props = createProps();
-    props.nodeResponseSink = {
+    const nodeResponseSink = {
       publish: vi.fn(async (inputs: Array<{ response: any }>) => {
         publishedResponses.push(...inputs.map((input) => input.response));
         return inputs.map((input) => input.response);
@@ -1076,7 +1363,8 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        mcpClientMemory: {}
+        mcpClientMemory: {},
+        nodeResponseSink
       },
       () => {
         resultPromise = dispatchRunAgent(props);
@@ -1085,12 +1373,12 @@ describe('dispatchRunAgent user context', () => {
     await resultPromise!;
 
     expect(publishedResponses).toHaveLength(1);
+    expect(props).not.toHaveProperty('nodeResponseSink');
     expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
   it('routes pi engine through the unified runAgentLoop provider entry', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
@@ -1136,7 +1424,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('restores the latest unfinished plan from full histories without memory', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.histories[props.histories.length - 1].value.push({
       plan: {
@@ -1190,7 +1477,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('resumes a multi-question agentAsk with answers in form order', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
@@ -1276,9 +1562,9 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('saves and restores child fastAgent transcript via scoped memoryState across ask_user pause and resume', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+  it('saves and restores child fastAgent transcript via scoped memoryContext across ask_user pause and resume', async () => {
+    const { WorkflowMemoryContext } =
+      await import('@fastgpt/service/core/workflow/dispatch/context/memory');
 
     const askArguments = JSON.stringify({
       reason: '需要确认侧重点',
@@ -1310,8 +1596,8 @@ describe('dispatchRunAgent user context', () => {
     const turn1Props = createProps();
     turn1Props.histories = [];
     turn1Props.params.userChatInput = '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT';
-    turn1Props.memoryState =
-      WorkflowMemoryState.fromWorkflow(turn1Props).fork('node:parent_toolcall');
+    turn1Props.memoryContext =
+      WorkflowMemoryContext.fromWorkflow(turn1Props).fork('node:parent_toolcall');
 
     runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
       runtime.emitEvent({
@@ -1354,8 +1640,10 @@ describe('dispatchRunAgent user context', () => {
     const scopedMemoryKey = 'node:parent_toolcall/app:app_1:agent_node';
     expect(turn1Result[DispatchNodeResponseKeyEnum.interactive]).toEqual(askInteractive);
     expect(turn1Result[DispatchNodeResponseKeyEnum.memories]).toHaveProperty(scopedMemoryKey);
+    const turn1AssistantResponses = turn1Result[DispatchNodeResponseKeyEnum.assistantResponses];
+    if (!turn1AssistantResponses) throw new Error('Expected first-turn assistant responses');
 
-    // Turn 2: 父流程落库后将子 Agent 输出标为 displayOnly，通过 memoryState 恢复子 Agent 自身 transcript
+    // Turn 2: 父流程落库后将子 Agent 输出标为 displayOnly，通过 memoryContext 恢复子 Agent 自身 transcript
     const turn2Props = createProps();
     turn2Props.params.userChatInput = '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT';
     turn2Props.lastInteractive = askInteractive;
@@ -1386,7 +1674,7 @@ describe('dispatchRunAgent user context', () => {
               }
             ]
           },
-          ...turn1Result[DispatchNodeResponseKeyEnum.assistantResponses].map((item: any) => ({
+          ...turn1AssistantResponses.map((item: any) => ({
             ...item,
             displayOnly: true
           }))
@@ -1394,7 +1682,7 @@ describe('dispatchRunAgent user context', () => {
         memories: turn1Result[DispatchNodeResponseKeyEnum.memories]
       }
     ];
-    turn2Props.memoryState = WorkflowMemoryState.fromWorkflow(turn2Props).fork(
+    turn2Props.memoryContext = WorkflowMemoryContext.fromWorkflow(turn2Props).fork(
       'node:parent_toolcall',
       {
         history: 0,
@@ -1438,12 +1726,12 @@ describe('dispatchRunAgent user context', () => {
         })
       ])
     );
-    expect(turn2Result.data.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
+    expect(turn2Result.data?.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
     expect(turn2Result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
       '先确认一下方向。子任务完成：技术架构介绍'
     );
     expect(
-      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses].filter((item: any) => item.text)
+      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses]?.filter((item: any) => item.text)
     ).toEqual([
       {
         text: {
@@ -1457,8 +1745,7 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
@@ -1641,8 +1928,68 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
+  it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
+    const { WorkflowMemoryContext } =
+      await import('@fastgpt/service/core/workflow/dispatch/context/memory');
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
+    const props = createProps();
+    props.params.history = 0;
+    props.histories = [];
+    props.lastInteractive = {
+      type: 'agentAsk',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'nested_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Continue?', options: [] }]
+        })
+      }
+    };
+    const providerState = {
+      pendingMainContext: {
+        askToolCallId: 'nested_ask',
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'nested_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: '{}' }
+              }
+            ]
+          }
+        ]
+      }
+    };
+    props.memoryContext = WorkflowMemoryContext.fromRecord(
+      {
+        'node:outer_agent/app:app_1:agent_node': { providerState }
+      },
+      { rootSource: { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' } }
+    )
+      .fork('node:outer_agent')
+      .fork('app:app_1');
+
+    await runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => dispatchRunAgent(props)
+    );
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'piAgent',
+        input: expect.objectContaining({ providerState, userAnswer: '前端原始问题' })
+      })
+    );
+  });
   it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.aiChatReasoning = false;
     runAgentLoopMock.mockResolvedValueOnce({
@@ -1699,11 +2046,10 @@ describe('dispatchRunAgent user context', () => {
       configure: (props: ReturnType<typeof createProps>) => {
         props.params.useAgentSandbox = true;
         props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
-        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+        getTestInstanceConfig().subservice.agentSandbox.enabled = false;
       }
     }
   ])('continues without sandbox or skills when $name', async ({ configure }) => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     configure(props);
 
@@ -1733,17 +2079,15 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('keeps Skill Edit sandbox dependency blocking when the system disables sandbox', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
     props.runningAppInfo.sourceId = 'skill_1';
     props.params.editSkillId = 'skill_1';
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     let promise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -1760,8 +2104,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('keeps internal steps flattened in Simple Mode (ChatAgent) while wrapping them under the Agent node in Workflow Mode', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-
     const emitStepAndFinish = async ({ runtime }: any) => {
       runtime.emitEvent({
         type: 'llm_request_end',
@@ -1785,19 +2127,20 @@ describe('dispatchRunAgent user context', () => {
     const simplePublished: Array<{ response: any; parentId?: string }> = [];
     const simpleProps = createProps();
     simpleProps.nodeResponseParentId = 'simple_agent_resp_id';
-    simpleProps.nodeResponseSink = {
-      publish: vi.fn(async (entries) => {
+    const simpleSink = {
+      publish: vi.fn(async (entries: Array<{ response: any; parentId?: string }>) => {
         simplePublished.push(...entries);
         return entries.map((entry: any) => entry.response);
       })
     };
     runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
 
-    const simpleResult = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchRunAgent(simpleProps)
+    const simpleResult = await runWithContext(
+      { mcpClientMemory: {}, nodeResponseSink: simpleSink },
+      () => dispatchRunAgent(simpleProps)
     );
     expect(simplePublished).toHaveLength(1);
-    expect(simplePublished[0].parentId).toBeUndefined();
+    expect(simplePublished[0].response.parentId).toBeUndefined();
     expect(simpleResult[DispatchNodeResponseKeyEnum.nodeResponse]).toBeUndefined();
 
     // 2. Workflow Mode (no agent_datasetParams, even when agent_datasetSelectList is configured): steps attach to nodeResponseParentId, returns outer nodeResponse
@@ -1815,19 +2158,20 @@ describe('dispatchRunAgent user context', () => {
       }
     ];
     workflowProps.nodeResponseParentId = 'workflow_agent_resp_id';
-    workflowProps.nodeResponseSink = {
-      publish: vi.fn(async (entries) => {
+    const workflowSink = {
+      publish: vi.fn(async (entries: Array<{ response: any; parentId?: string }>) => {
         workflowPublished.push(...entries);
         return entries.map((entry: any) => entry.response);
       })
     };
     runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
 
-    const workflowResult = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchRunAgent(workflowProps)
+    const workflowResult = await runWithContext(
+      { mcpClientMemory: {}, nodeResponseSink: workflowSink },
+      () => dispatchRunAgent(workflowProps)
     );
     expect(workflowPublished).toHaveLength(1);
-    expect(workflowPublished[0].parentId).toBe('workflow_agent_resp_id');
+    expect(workflowPublished[0].response.parentId).toBe('workflow_agent_resp_id');
     expect(workflowResult[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({
       model: 'gpt-5',
       query: '当前问题',
@@ -1837,7 +2181,6 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('reuses the parent conversation sandbox when running as a nested child agent', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
     props.runningAppInfo = {
@@ -1872,7 +2215,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'parent_app_id',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(props.nodeSummary.hasAgentSandbox).toBe(true);
     expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({
@@ -1881,5 +2226,45 @@ describe('dispatchRunAgent user context', () => {
       chatId: 'chat_1',
       teamId: 'team_1'
     });
+  });
+
+  it('filters inherited tools against the Agent runtime', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'weather_tool',
+        name: 'Weather',
+        avatar: '',
+        params: {},
+        requestSchema: { type: 'function', function: { name: 'weather_tool' } }
+      }
+    ]);
+    const allowed = ['update_plan', 'dataset_search', 'weather_tool', 'read_files'];
+    const props = createProps();
+    props.histories.push({
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          tools: [...allowed, 'other_tool', 'sandbox_shell'].map((name) => ({
+            id: name,
+            functionName: name,
+            params: '{}',
+            response: name
+          }))
+        }
+      ]
+    });
+
+    await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+
+    const messages: ChatCompletionMessageParam[] = runAgentLoopMock.mock.calls[0][0].input.messages;
+    const toolNames = messages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap((msg) => msg.tool_calls?.map((call) => call.function.name) ?? []);
+    expect(toolNames).toEqual(allowed);
+    expect(messages.filter((msg) => msg.role === 'tool').map((msg) => msg.tool_call_id)).toEqual(
+      allowed
+    );
   });
 });

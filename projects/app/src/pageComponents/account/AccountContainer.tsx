@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
+import SecondaryNavigationContainer, {
+  type SecondaryNavigationTab
+} from '@/pageComponents/common/SecondaryNavigationContainer';
 
 export enum TabEnum {
   'info' = 'info',
@@ -31,7 +32,7 @@ const AccountContainer = ({
 }) => {
   const { t } = useSafeTranslation();
   const { userInfo, setUserInfo } = useUserStore();
-  const { feConfigs, systemVersion } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const router = useRouter();
 
   const showThirdPartyTab =
@@ -43,7 +44,7 @@ const AccountContainer = ({
     return router.pathname.split('/').pop() as TabEnum;
   }, [router.pathname]);
 
-  const tabList = [
+  const primaryTabs: SecondaryNavigationTab<TabEnum>[] = [
     {
       icon: 'support/user/userLight',
       label: t('account:personal_information'),
@@ -107,8 +108,10 @@ const AccountContainer = ({
             value: TabEnum.apikey
           }
         ]
-      : []),
+      : [])
+  ];
 
+  const secondaryTabs: SecondaryNavigationTab<TabEnum>[] = [
     ...(feConfigs.isPlus
       ? [
           {
@@ -128,6 +131,13 @@ const AccountContainer = ({
       label: t('account:logout'),
       value: TabEnum.loginout
     }
+  ];
+
+  const tabList: SecondaryNavigationTab<TabEnum>[] = [
+    ...primaryTabs.map((item, index) =>
+      index === primaryTabs.length - 1 ? { ...item, dividerAfter: true } : item
+    ),
+    ...secondaryTabs
   ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -157,14 +167,6 @@ const AccountContainer = ({
       value={currentTab}
       onChange={setCurrentTab}
       mobileScrollPositionKey={'account-mobile-navigation'}
-      footer={
-        <Flex alignItems={'center'} px={'11px'} pb={5} pt={3}>
-          <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-          <Box fontSize={'md'} ml={2}>
-            V{systemVersion}
-          </Box>
-        </Flex>
-      }
     >
       {children}
       <ConfirmModal />

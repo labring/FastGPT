@@ -11,6 +11,7 @@ import { createS3ProxyAbortContext } from '@/service/common/s3/proxy';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ReadCommonFileRequestQuerySchema } from '@fastgpt/global/openapi/common/file/api';
 import { NextAPI } from '@/service/middleware/entry';
+import { getFilePreviewSecurityHeaders } from '@fastgpt/service/common/s3/preview';
 
 const previewableExtensions = [
   'jpg',
@@ -50,6 +51,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       res.setHeader('Content-Type', file.contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.setHeader('Content-Disposition', getContentDisposition({ filename, type: disposition }));
+      for (const [name, value] of Object.entries(
+        getFilePreviewSecurityHeaders({ contentType: file.contentType, filename: file.filename })
+      )) {
+        res.setHeader(name, value);
+      }
       if (file.contentLength) res.setHeader('Content-Length', file.contentLength);
       res.status(200).end();
       return;
@@ -75,6 +81,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
     res.setHeader('Content-Disposition', getContentDisposition({ filename, type: disposition }));
+    for (const [name, value] of Object.entries(
+      getFilePreviewSecurityHeaders({ contentType: file.contentType, filename: file.filename })
+    )) {
+      res.setHeader(name, value);
+    }
     if (file.contentLength) {
       res.setHeader('Content-Length', file.contentLength);
     }

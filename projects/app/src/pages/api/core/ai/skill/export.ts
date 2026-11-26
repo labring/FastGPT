@@ -1,3 +1,4 @@
+import archiver from 'archiver';
 import { NextAPI } from '@/service/middleware/entry';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -6,15 +7,15 @@ import { ExportSkillQuerySchema } from '@fastgpt/global/openapi/core/ai/skill/ap
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { packageSkillEditWorkspace } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
-import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
+import { streamSkillEditWorkspaceZip } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
 
 export const config = {
   api: {
-    responseLimit: '200mb'
+    responseLimit: false
   }
 };
 
@@ -41,42 +42,53 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
 
   logger.debug('Exporting skill edit workspace', { skillId, skillName: skill.name });
 
-  let zipBuffer: Buffer;
+  const filename = `${skill.name}.zip`;
+  const abortController = new AbortController();
+  const onResponseClose = () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  };
+  res.once('close', onResponseClose);
+
   try {
-    zipBuffer = await packageSkillEditWorkspace({
+    await streamSkillEditWorkspaceZip({
       skillId,
       teamId,
-      validationMode: 'basicZip'
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR) {
-      return jsonRes(res, { code: 404, error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR });
-    }
-
-    throw error;
-  }
-
-  const filename = `${skill.name}.zip`;
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
-  );
-  res.setHeader('Content-Length', zipBuffer.length);
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(200).end(zipBuffer);
-
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.EXPORT_SKILL,
-      params: {
-        skillName: skill.name,
-        skillType: getI18nSkillType(skill.type)
+      signal: abortController.signal,
+      outputStream: res as unknown as NodeJS.WritableStream,
+      createArchive: () => archiver('zip', { zlib: { level: 6 } }),
+      onHeadersReady: () => {
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
+        );
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200);
       }
     });
-  })();
+  } finally {
+    res.off('close', onResponseClose);
+  }
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.EXPORT_SKILL,
+    resources: [
+      buildSkillAuditResource({
+        _id: skillId,
+        name: skill.name,
+        avatar: skill.avatar,
+        type: skill.type
+      })
+    ],
+    params: {
+      skillName: skill.name,
+      skillType: getI18nSkillType(skill.type)
+    }
+  });
 }
 
 export default NextAPI(handler);

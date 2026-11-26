@@ -8,10 +8,9 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
-import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowFileContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getNodeErrResponse } from '../../utils';
-import { getWorkflowNodeMemoryKey } from '../../../memory/state';
 import { getDispatchModerationContext } from '../../utils/runtime';
 import { selectChatHistories } from './historyWindow';
 import { getChatMessages } from './chatMessages';
@@ -25,8 +24,9 @@ import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/mo
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
  */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
+  const { fileContext, checkIsStopping, workflowStreamResponse, memoryContext } =
+    getWorkflowContext();
   const {
-    checkIsStopping,
     requestOrigin,
     stream = false,
     retainDatasetCite = true,
@@ -35,7 +35,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     node: { nodeId, name, version, inputs },
     runningAppInfo,
     runningUserInfo,
-    workflowStreamResponse,
     chatConfig,
     usageId,
     params: {
@@ -88,8 +87,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     fileLinks = fileContextConfig.fileLinks;
 
     const memoryNodeId = `${nodeId}:historyWindow`;
-    const memoryKey = getWorkflowNodeMemoryKey({
-      memoryState: props.memoryState,
+    const memoryKey = memoryContext.getNodeMemoryKey({
       runningAppInfo,
       nodeId: memoryNodeId
     });
@@ -99,14 +97,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       window: aiChatHistoryWindow,
       memoryKey,
       // 只读取本节点，沿用旧键兼容及调用路径保护；周期窗口独立于固定 history=0。
-      memories: props.memoryState
-        ? {
-            [memoryKey]: props.memoryState.readNodeMemory<unknown>({
-              runningAppInfo,
-              nodeId: memoryNodeId
-            })
-          }
-        : undefined,
+      memories: {
+        [memoryKey]: memoryContext.readNodeMemory<unknown>({
+          runningAppInfo,
+          nodeId: memoryNodeId
+        })
+      },
       responseChatItemId: props.responseChatItemId
     });
     const chatHistories = historySelection.histories;
@@ -148,7 +144,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       userFiles,
       parseHistoryFiles: fileContextConfig.parseHistoryFiles,
-      maxFileAmount: getWorkflowFileMaxAmount(),
+      maxFileAmount: fileContext.limits.maxFileAmount,
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       usageId,
       runningUserInfo
@@ -219,7 +215,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         error: responseEmptyTip,
         responseData: {
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }
       });
     }
@@ -232,7 +230,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const { totalPoints } = formatModelChars2Points({
       model: modelConstantsData,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens
     });
     const points = usage.usedUserOpenAIKey ? 0 : totalPoints;
     props.usagePush([
@@ -241,7 +241,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         totalPoints: points,
         modelId: modelConstantsData.modelId,
         inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens
       }
     ]);
 
@@ -255,6 +257,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           model: modelConstantsData.name,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens,
           query: `${userChatInput}`,
           maxToken: max_tokens,
           reasoningText,
@@ -284,6 +288,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         model: modelConstantsData.name,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         query: `${userChatInput}`,
         maxToken: max_tokens,
         reasoningText,

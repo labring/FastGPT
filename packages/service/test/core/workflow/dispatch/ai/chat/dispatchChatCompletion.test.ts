@@ -1,5 +1,8 @@
+import { getWorkflowMemoryKey } from '@fastgpt/service/core/workflow/memory/utils';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchChatCompletion } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
+import { dispatchChatCompletion as dispatchChatCompletionWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -18,16 +21,14 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import { serviceEnv } from '@fastgpt/service/env';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { axios } from '@fastgpt/service/common/api/axios';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import * as modelInputModeration from '@fastgpt/service/core/plugin/moderation/modelInput';
-import {
-  getWorkflowNodeMemoryKey,
-  WorkflowMemoryState
-} from '@fastgpt/service/core/workflow/memory/state';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
+
+const dispatchChatCompletion = createTestWorkflowDispatch(dispatchChatCompletionWithoutContext);
 
 const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
@@ -102,10 +103,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (im
       fixture.useRealFileFlow ? mod.getInputFiles(props) : []
   };
 });
-vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/context')>()),
-  getWorkflowFileMaxAmount: () => 20
-}));
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: () => ({ totalPoints: 7 })
 }));
@@ -176,14 +173,13 @@ describe('dispatchChatCompletion token summary', () => {
 });
 
 describe('dispatchChatCompletion media file inputs', () => {
-  const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-  const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
+  const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
   afterEach(() => {
     fixture.useRealFileFlow = false;
     fixture.modelSupportsAudio = false;
     fixture.modelSupportsVideo = false;
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     vi.restoreAllMocks();
   });
 
@@ -212,7 +208,7 @@ describe('dispatchChatCompletion media file inputs', () => {
       fixture.useRealFileFlow = true;
       fixture.modelSupportsAudio = media === 'audio' && modelMedia;
       fixture.modelSupportsVideo = media === 'video' && modelMedia;
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const head = vi.spyOn(axios, 'head').mockResolvedValue({
         headers: { 'content-type': 'video/mp4' }
       });
@@ -233,7 +229,7 @@ describe('dispatchChatCompletion media file inputs', () => {
         };
       });
 
-      const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      const { fileContext } = await prepareWorkflowFileContext({
         query: [],
         histories: [],
         scope: {
@@ -267,36 +263,38 @@ describe('dispatchChatCompletion media file inputs', () => {
         ],
         inputVariables: { file: [{ url, type: ChatFileTypeEnum.file }] },
         resolveInputFile: async (file) =>
-          (await fileRegistrar.registerInputFile({ file, source: 'variable' }))?.modelUrl
+          (await fileContext.register({ file, source: 'variable' }))?.modelUrl
       });
       expect(variableState.get('file')).toEqual([url]);
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchChatCompletion({
-          node: {
-            name: 'Chat',
-            inputs: [{ key: NodeInputKeyEnum.fileUrlList, value: ['global', 'file'] }]
-          },
-          histories: [],
-          runningUserInfo: { teamId: 'team', tmbId: 'member' },
-          runningAppInfo: { teamId: 'team' },
-          externalProvider: {},
-          chatConfig: {
-            fileSelectConfig: {
-              canSelectAudio: uploadMedia,
-              canSelectVideo: uploadMedia,
-              maxFiles: 0
-            }
-          },
-          params: {
-            model: 'gemini-3.8-flash',
-            userChatInput: '识别一下文件内容',
-            fileUrlList: variableState.get('file'),
-            aiChatAudio: media === 'audio' && nodeMedia,
-            aiChatVideo: media === 'video' && nodeMedia
-          },
-          nodeSummary: createNodeSummary(),
-          usagePush: vi.fn()
-        } as any)
+      const result = await runWithContext(
+        { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+        () =>
+          dispatchChatCompletion({
+            node: {
+              name: 'Chat',
+              inputs: [{ key: NodeInputKeyEnum.fileUrlList, value: ['global', 'file'] }]
+            },
+            histories: [],
+            runningUserInfo: { teamId: 'team', tmbId: 'member' },
+            runningAppInfo: { teamId: 'team' },
+            externalProvider: {},
+            chatConfig: {
+              fileSelectConfig: {
+                canSelectAudio: uploadMedia,
+                canSelectVideo: uploadMedia,
+                maxFiles: 0
+              }
+            },
+            params: {
+              model: 'gemini-3.8-flash',
+              userChatInput: '识别一下文件内容',
+              fileUrlList: variableState.get('file'),
+              aiChatAudio: media === 'audio' && nodeMedia,
+              aiChatVideo: media === 'video' && nodeMedia
+            },
+            nodeSummary: createNodeSummary(),
+            usagePush: vi.fn()
+          } as any)
       );
 
       expect(result.error).toBeUndefined();
@@ -337,7 +335,7 @@ describe('periodic chat history across persisted rounds', () => {
         sourceId: 'source',
         teamId: 'team'
       };
-      const memoryKey = getWorkflowNodeMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
+      const memoryKey = getWorkflowMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
       const histories = Array.from({ length: 3 }, (_, index) => [
         {
           dataId: `r${index}`,
@@ -430,11 +428,10 @@ describe('periodic chat history across persisted rounds', () => {
       sourceId: 'source',
       teamId: 'team'
     };
-    const base = WorkflowMemoryState.fromRecord({}, { rootSource: runningAppInfo });
+    const base = WorkflowMemoryContext.fromRecord({}, { rootSource: runningAppInfo });
     const scopes = [base, base.fork('node:left'), base.fork('node:right')];
-    const keys = scopes.map((memoryState) =>
-      getWorkflowNodeMemoryKey({
-        memoryState,
+    const keys = scopes.map((memoryContext) =>
+      memoryContext.getNodeMemoryKey({
         runningAppInfo,
         nodeId: 'chat:historyWindow'
       })
@@ -449,7 +446,7 @@ describe('periodic chat history across persisted rounds', () => {
         }
       ])
     );
-    const root = WorkflowMemoryState.fromRecord(memories, { rootSource: runningAppInfo });
+    const root = WorkflowMemoryContext.fromRecord(memories, { rootSource: runningAppInfo });
     const states = [root, root.fork('node:left'), root.fork('node:right')];
     const histories = Array.from({ length: 4 }, (_, index) => [
       { dataId: `r${index}`, obj: ChatRoleEnum.Human, value: [{ text: { content: `q${index}` } }] },
@@ -460,7 +457,7 @@ describe('periodic chat history across persisted rounds', () => {
         memories
       }
     ]).flat();
-    for (const [index, memoryState] of states.entries()) {
+    for (const [index, memoryContext] of states.entries()) {
       requestMock.mockImplementationOnce(async ({ body }) => ({
         completeMessages: body.messages,
         answerText: 'answer',
@@ -471,7 +468,7 @@ describe('periodic chat history across persisted rounds', () => {
       const result = await dispatchChatCompletion({
         node: { ...AiChatModule, nodeId: 'chat' },
         histories,
-        memoryState,
+        memoryContext,
         responseChatItemId: 'current',
         runningAppInfo,
         runningUserInfo: { teamId: 'team', tmbId: 'member' },
@@ -499,7 +496,7 @@ describe('periodic chat history across persisted rounds', () => {
         ...Array.from({ length: 4 - index }, (_, offset) => `q${index + offset}`),
         'current'
       ]);
-      expect(memoryState.getDelta()).toEqual({});
+      expect(memoryContext.getDelta()).toEqual({});
     }
     expect(root.toRecord()).toEqual(memories);
   });
@@ -530,26 +527,25 @@ describe('periodic chat history across persisted rounds', () => {
       sourceId: 'child',
       teamId: 'team'
     };
-    const legacyKey = getWorkflowNodeMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
+    const legacyKey = getWorkflowMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
     const anchor = { min: 2, max: 4, startDataId: 'r0' };
     const baseline = {
       [legacyKey]: anchor,
       ...(scenario.sibling ? { [`node:sibling/${legacyKey}`]: anchor } : {})
     };
-    const root = WorkflowMemoryState.fromRecord(baseline, {
+    const root = WorkflowMemoryContext.fromRecord(baseline, {
       rootSource: {
         sourceType: ChatSourceTypeEnum.app,
         sourceId: scenario.rootIsChild ? 'child' : 'root'
       }
     });
-    const memoryState = root.fork('node:child-call');
-    const scopedKey = getWorkflowNodeMemoryKey({
-      memoryState,
+    const memoryContext = root.fork('node:child-call');
+    const scopedKey = memoryContext.getNodeMemoryKey({
       runningAppInfo,
       nodeId: 'chat:historyWindow'
     });
-    if ('marker' in scenario) memoryState.merge({ [scopedKey]: scenario.marker });
-    const before = memoryState.toRecord();
+    if ('marker' in scenario) memoryContext.merge({ [scopedKey]: scenario.marker });
+    const before = memoryContext.toRecord();
     const histories = Array.from({ length: 4 }, (_, index) => [
       { dataId: `r${index}`, obj: ChatRoleEnum.Human, value: [{ text: { content: `q${index}` } }] },
       {
@@ -569,7 +565,7 @@ describe('periodic chat history across persisted rounds', () => {
     const result = await dispatchChatCompletion({
       node: { ...AiChatModule, nodeId: 'chat' },
       histories,
-      memoryState,
+      memoryContext,
       responseChatItemId: 'current',
       runningAppInfo,
       runningUserInfo: { teamId: 'team', tmbId: 'member' },
@@ -600,7 +596,7 @@ describe('periodic chat history across persisted rounds', () => {
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
       [scopedKey]: { min: 2, max: 4, startDataId: `r${scenario.expectedStart}` }
     });
-    expect(memoryState.toRecord()).toEqual(before);
+    expect(memoryContext.toRecord()).toEqual(before);
   });
 
   it('周期窗口仍受最终 token 上限约束，模型失败时不推进窗口状态', async () => {
@@ -695,7 +691,7 @@ describe('periodic chat history across persisted rounds', () => {
         const result = await dispatchChatCompletion({
           node,
           histories,
-          memoryState: WorkflowMemoryState.fromHistories(histories),
+          memoryContext: WorkflowMemoryContext.fromHistories(histories),
           stream,
           responseChatItemId: `round-${round}`,
           runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId, teamId },

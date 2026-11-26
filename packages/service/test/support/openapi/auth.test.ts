@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../utils/instanceConfig';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -44,16 +45,16 @@ const legacyAppApiKey = {
   name: 'legacy app key'
 };
 
-const originalFeConfigs = global.feConfigs;
+const originalInstanceConfig = global.systemInstanceConfig;
 
 describe('assertOpenApiLimit', () => {
   it.each([
     { maxUsagePoints: undefined, usagePoints: 100, overLimit: false },
     { maxUsagePoints: -1, usagePoints: 100, overLimit: false },
-    { maxUsagePoints: 0, usagePoints: 0, overLimit: false },
+    { maxUsagePoints: 0, usagePoints: 0, overLimit: true },
     { maxUsagePoints: 0, usagePoints: 0.001, overLimit: true },
     { maxUsagePoints: 1, usagePoints: 0.5, overLimit: false },
-    { maxUsagePoints: 1, usagePoints: 1, overLimit: false },
+    { maxUsagePoints: 1, usagePoints: 1, overLimit: true },
     { maxUsagePoints: 1, usagePoints: 1.001, overLimit: true }
   ])('enforces quota boundaries: %j', ({ maxUsagePoints, usagePoints, overLimit }) => {
     const openApi: OpenApiSchema = {
@@ -78,12 +79,12 @@ describe('openapi auth', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     updateApiKeyUsedTimeSpy = vi.spyOn(MongoOpenApi, 'findByIdAndUpdate');
-    global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
+    setTestProLicense(true);
     await MongoOpenApi.deleteMany({});
   });
 
   afterAll(() => {
-    global.feConfigs = originalFeConfigs;
+    global.systemInstanceConfig = originalInstanceConfig;
   });
 
   it('解析 APIKey 兼容凭证时只把 ObjectId 后缀识别为 appId', () => {
@@ -333,7 +334,7 @@ describe('openapi auth', () => {
   });
 
   it('社区版保持历史行为，不执行商业版 API Key 限额校验', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: false } as any;
+    setTestProLicense(false);
     await MongoOpenApi.create({
       ...teamApiKey,
       apiKey: 'fastgpt-community-expired',

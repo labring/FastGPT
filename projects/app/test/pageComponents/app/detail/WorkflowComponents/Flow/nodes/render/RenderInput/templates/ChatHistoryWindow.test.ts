@@ -1,23 +1,17 @@
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { isValidElement, type ReactElement } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
-import {
-  storeNodes2RuntimeNodes,
-  getMaxHistoryLimitFromNodes
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getMaxHistoryLimitFromNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeTemplate2FlowNode, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 
 const mocks = vi.hoisted(() => ({ change: vi.fn() }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('use-context-selector', () => ({
-  useContextSelector: (_: unknown, select: (value: unknown) => unknown) =>
-    select({ onChangeNode: mocks.change })
-}));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
-  WorkflowActionsContext: {}
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNodeActions: () => ({ updateNode: mocks.change })
 }));
 import ChatHistoryWindow from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/ChatHistoryWindow';
 
@@ -40,10 +34,8 @@ describe('periodic history editor persistence', () => {
       })
     );
   const apply = (inputs: FlowNodeInputItemType[]) => {
-    const change = mocks.change.mock.lastCall![0];
-    return change.type === 'addInput'
-      ? [...inputs, change.value]
-      : inputs.map((input) => (input.key === change.key ? change.value : input));
+    const update = mocks.change.mock.lastCall![0];
+    return update({ inputs }).inputs;
   };
   const saveAndReload = (inputs: FlowNodeInputItemType[]) => {
     const node = nodeTemplate2FlowNode({

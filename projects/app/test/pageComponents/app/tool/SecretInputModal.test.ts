@@ -1,6 +1,8 @@
 import React, { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Simulate } from 'react-dom/test-utils';
 import { JSDOM } from 'jsdom';
+import { createInstance } from 'i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   filterReferenceListByInputType,
@@ -24,9 +26,21 @@ import {
 import { createWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import { validateNodeIO } from '@fastgpt/workflow-core/validation/io';
 import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
+import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
+import appZh from '@fastgpt/web/i18n/zh-CN/app.json';
+import workflowZh from '@fastgpt/web/i18n/zh-CN/workflow.json';
+
+const translation = createInstance();
+await translation.init({
+  lng: 'zh-CN',
+  fallbackLng: false,
+  defaultNS: 'common',
+  keySeparator: false,
+  resources: { 'zh-CN': { common: commonZh, app: appZh, workflow: workflowZh } }
+});
 
 vi.mock('next-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+  useTranslation: () => ({ t: translation.t, i18n: translation })
 }));
 vi.mock('@chakra-ui/react', async () => {
   const { createElement, forwardRef } = await import('react');
@@ -36,6 +50,8 @@ vi.mock('@chakra-ui/react', async () => {
     Box: box,
     Flex: box,
     HStack: box,
+    IconButton: ({ onClick, 'aria-label': label }: any) =>
+      createElement('button', { type: 'button', onClick, 'aria-label': label }),
     Button: ({ children, onClick }: any) =>
       createElement('button', { type: 'button', onClick }, children),
     Input: forwardRef<HTMLInputElement, any>(
@@ -92,7 +108,9 @@ vi.mock('@fastgpt/web/components/common/MyBox/FormLabel', () => ({
   default: ({ children }: any) => children
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
+  default: ({ label }: { label: string }) => React.createElement('span', null, label)
+}));
 vi.mock('@/pageComponents/account/team/OrgManage/IconButton', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({ default: () => null }));
 vi.mock('@/components/core/app/formRender', () => ({ default: () => null }));
@@ -124,11 +142,19 @@ describe('SecretInputForm authorization output', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
-  const render = async (value?: ToolParamsFormType, hasSystemSecret = true) => {
+  const render = async ({
+    value,
+    hasSystemSecret = true,
+    inputConfig = input
+  }: {
+    value?: ToolParamsFormType;
+    hasSystemSecret?: boolean;
+    inputConfig?: typeof input;
+  } = {}) => {
     await act(async () =>
       root.render(
         React.createElement(SecretInputForm, {
-          inputConfig: { ...input, value },
+          inputConfig: { ...inputConfig, value },
           hasSystemSecret,
           onChange,
           onSubmit,
@@ -167,7 +193,7 @@ describe('SecretInputForm authorization output', () => {
       value: { apiKey: { secret: 'stale-ciphertext', value: 'stale-text' } }
     }
   ])('emits only type for default or legacy platform authorization: %j', async (value) => {
-    await render(value);
+    await render({ value });
     expect(onChange).toHaveBeenLastCalledWith({ type: 'system' });
     expect(await submit()).toEqual({ type: 'system' });
   });
@@ -177,7 +203,7 @@ describe('SecretInputForm authorization output', () => {
       type: SystemToolSecretInputTypeEnum.manual,
       value: { apiKey: { secret: 'existing-ciphertext', value: '' } }
     };
-    await render(value);
+    await render({ value });
     const expected = { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext' } } };
     expect(onChange).toHaveBeenLastCalledWith(expected);
     expect(await submit()).toEqual(expected);
@@ -188,11 +214,68 @@ describe('SecretInputForm authorization output', () => {
     expect(await submit()).toEqual({ type: 'system' });
   });
 
+  it('submits the original secret until the replacement is explicitly confirmed', async () => {
+    const original = { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext' } } };
+    await render({ value: original as ToolParamsFormType, hasSystemSecret: false });
+    const actionLabels = {
+      Edit: translation.t('common:Edit'),
+      Close: translation.t('common:Close'),
+      Save: translation.t('common:Save')
+    };
+    const click = async (action: keyof typeof actionLabels) => {
+      await act(async () =>
+        dom.window.document
+          .querySelector<HTMLButtonElement>(`[aria-label="${actionLabels[action]}"]`)!
+          .click()
+      );
+    };
+    await click('Edit');
+    const input = dom.window.document.querySelector('input')!;
+    expect(input.value).toBe('');
+    await act(async () => Simulate.change(input, { target: { value: 'replacement' } } as any));
+    await act(async () => Simulate.blur(input));
+    expect(await submit()).toEqual(original);
+    await click('Close');
+    expect(await submit()).toEqual(original);
+
+    await click('Edit');
+    const replacement = dom.window.document.querySelector('input')!;
+    expect(replacement.value).toBe('');
+    await act(async () => Simulate.change(replacement, { target: { value: 'confirmed' } } as any));
+    await click('Save');
+    expect(await submit()).toEqual({ type: 'manual', value: { apiKey: { value: 'confirmed' } } });
+    await click('Edit');
+    expect(dom.window.document.querySelector('input')!.value).toBe('');
+  });
+
   it('keeps default manual input wrappers when no platform credential exists', async () => {
-    await render(undefined, false);
+    await render({ value: undefined, hasSystemSecret: false });
     const expected = { type: 'manual', value: { apiKey: { value: '' } } };
     expect(onChange).toHaveBeenLastCalledWith(expected);
     expect(await submit()).toEqual(expected);
+  });
+
+  it('preserves literal plugin labels, descriptions and URL placeholders', async () => {
+    const placeholder = 'https://api.example.com/v1';
+    const description = 'common:$t(common:Manual)';
+    await render({
+      hasSystemSecret: false,
+      inputConfig: {
+        ...input,
+        inputList: [
+          {
+            key: 'apiKey',
+            inputType: 'secret',
+            label: 'common:System',
+            description,
+            placeholder
+          }
+        ]
+      }
+    });
+    expect(dom.window.document.body.textContent).toContain('common:System');
+    expect(dom.window.document.body.textContent).toContain(description);
+    expect(dom.window.document.querySelector('input')?.placeholder).toBe(placeholder);
   });
 
   it.each([{ value: 'draft' }, { secret: 'existing-ciphertext' }])(

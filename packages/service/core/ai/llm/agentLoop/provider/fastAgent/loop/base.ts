@@ -4,9 +4,15 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
+} from '@fastgpt/global/core/ai/constants';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -15,6 +21,7 @@ import { countGptMessagesTokens } from '../../../../../../../common/string/tikto
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
+import { buildToolMessageContent } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopCompletionPolicy,
@@ -35,6 +42,7 @@ import {
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  lang?: localeType;
   completionPolicy?: AgentLoopCompletionPolicy;
   getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
@@ -88,6 +96,8 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     usage?: {
       inputTokens: number;
       outputTokens: number;
+      cacheReadTokens?: number;
+      cacheCreationTokens?: number;
       totalPoints: number;
     };
     firstTokenTime?: number;
@@ -99,6 +109,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     hideInUI?: boolean;
     call: ChatCompletionMessageToolCall;
     response: string;
+    content?: string | ChatCompletionToolMessageContentPart[];
     assistantMessages?: ChatCompletionMessageParam[];
     assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
@@ -133,6 +144,8 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   llmTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   contextCheckpoint?: string;
 
@@ -209,6 +222,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  lang,
   completionPolicy,
   getCheckpointContext,
   batchToolSize = 1,
@@ -289,6 +303,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
+  let cacheReadTokens = 0;
+  let cacheCreationTokens = 0;
   let llmTotalPoints: number = 0; // 每次 LLM 调用单独计价后累加，避免梯度计费错误
   let finish_reason: CompletionFinishReason | undefined;
   let requestError: any;
@@ -323,7 +339,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       interactive,
       stop,
       errorMessage,
-      metadata
+      metadata,
+      content: toolContentParts
     } = await (async () => {
       try {
         return await onRunInteractiveTool({
@@ -342,10 +359,15 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     })();
 
+    const toolContent = buildToolMessageContent({
+      content: toolContentParts,
+      text: normalizeToolResponseContent(response)
+    });
     onToolRunEnd?.({
       resumed: true,
       call: resumedToolCall,
       response: normalizeToolResponseContent(response),
+      content: toolContent,
       assistantMessages: toolAssistantMessages,
       assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
@@ -356,11 +378,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     });
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
+    // 与普通工具执行路径保持一致：结构化 parts 与最终文本统一通过 buildToolMessageContent 组装。
     requestMessages = requestMessages.map((item) =>
       item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolCallId
         ? {
             ...item,
-            content: normalizeToolResponseContent(response)
+            content: toolContent
           }
         : item
     );
@@ -370,7 +393,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     assistantMessages.push({
       role: ChatCompletionRequestMessageRoleEnum.Tool,
       tool_call_id: childrenInteractiveParams.toolCallId,
-      content: response
+      content: toolContent
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
@@ -492,7 +515,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       : formatModelChars2Points({
           model: modelData,
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }).totalPoints;
     onLLMRequestEnd?.({
       responseId,
@@ -507,6 +532,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       usage: {
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         totalPoints
       },
       seconds: +((Date.now() - requestStartTime) / 1000).toFixed(2),
@@ -525,6 +552,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。
       inputTokens += usage.inputTokens;
       outputTokens += usage.outputTokens;
+      cacheReadTokens += usage.cacheReadTokens ?? 0;
+      cacheCreationTokens += usage.cacheCreationTokens ?? 0;
       llmTotalPoints += totalPoints;
 
       if (requestError) {
@@ -576,10 +605,17 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
-        if (moderatedToolCallIdSet.has(tool.id)) {
+        // length 无法保证同轮任何工具参数完整，不能交给 JSON 修复后执行。
+        // 按请求语言补齐工具结果后继续模型循环，不把截断升级为请求失败。
+        if (finishReason === 'length' || moderatedToolCallIdSet.has(tool.id)) {
+          const response =
+            finishReason === 'length'
+              ? parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang)
+              : MODERATION_BLOCKED_REPLACE_TEXT;
           onToolRunEnd?.({
             call: tool,
-            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            response,
+            ...(finishReason === 'length' ? { errorMessage: response } : {}),
             assistantMessages: [],
             seconds: 0,
             usages: []
@@ -589,7 +625,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             toolMessage: {
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: MODERATION_BLOCKED_REPLACE_TEXT
+              content: response
             } as ChatCompletionMessageParam,
             toolAssistantMessages: []
           };
@@ -611,7 +647,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           errorMessage,
           hideInUI,
           continuationMessage,
-          metadata
+          metadata,
+          content: toolContent
         } = await (async () => {
           try {
             return await onRunTool({
@@ -630,10 +667,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
         })();
         // Compress tool response
-        const { toolFinalResponse, toolResponseCompress } = await (async () => {
+        const { toolFinalResponse, toolResponseCompress, isCompressed } = await (async () => {
           if (skipResponseCompress) {
             return {
-              toolFinalResponse: normalizeToolResponseContent(response)
+              toolFinalResponse: normalizeToolResponseContent(response),
+              isCompressed: false
             };
           }
 
@@ -650,6 +688,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           if (compressionUsage) {
             return {
               toolFinalResponse: normalizedCompressedContext,
+              isCompressed: true,
               toolResponseCompress: {
                 response: normalizedCompressedContext,
                 modelName: modelData.name,
@@ -661,13 +700,21 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
 
           return {
-            toolFinalResponse: normalizedCompressedContext
+            toolFinalResponse: normalizedCompressedContext,
+            isCompressed: normalizedCompressedContext !== normalizeToolResponseContent(response)
           };
         })();
+
+        // 工具返回结构化 content 时，保留最终展示/计费文本作为 text part，
+        // 事件、聊天记录和下一轮模型请求必须使用同一份内容。
+        const toolMessageContent = isCompressed
+          ? toolFinalResponse
+          : buildToolMessageContent({ content: toolContent, text: toolFinalResponse });
 
         onToolRunEnd?.({
           call: tool,
           response: toolFinalResponse,
+          content: toolMessageContent,
           assistantMessages: toolAssistantMessages,
           assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
@@ -689,7 +736,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolMessage: {
             tool_call_id: tool.id,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
-            content: toolFinalResponse
+            content: toolMessageContent
           } as ChatCompletionMessageParam,
           toolAssistantMessages: filterEmptyAssistantMessages(toolAssistantMessages)
         };
@@ -826,6 +873,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     model: modelData.model,
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     llmTotalPoints,
     contextCheckpoint,
     completeMessages: requestMessages,

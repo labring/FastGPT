@@ -1,4 +1,3 @@
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeInputTypeEnum,
@@ -17,16 +16,11 @@ import {
 } from '@fastgpt/global/common/secret/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
+import {
+  getWorkflowSecretInputKind,
+  inputTypeValueTypeMap
+} from '@fastgpt/global/common/workflow/input';
 import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
-
-const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
-  input: WorkflowIOValueTypeEnum.string,
-  numberInput: WorkflowIOValueTypeEnum.number,
-  secret: WorkflowIOValueTypeEnum.string,
-  switch: WorkflowIOValueTypeEnum.boolean,
-  select: WorkflowIOValueTypeEnum.string
-};
 
 /**
  * 保护工具专用配置中的鉴权头，包括工具集与历史子工具的配置。

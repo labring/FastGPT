@@ -581,7 +581,7 @@ export const GetRecentlyUsedAppsResponseSchema = z.array(
   z.object({
     appId: ObjectIdSchema.describe('应用ID'),
     name: z.string().min(1).describe('应用名称'),
-    avatar: z.string().min(1).describe('应用头像')
+    avatar: z.string().optional().describe('应用头像')
   })
 );
 export type GetRecentlyUsedAppsResponseType = z.infer<typeof GetRecentlyUsedAppsResponseSchema>;

@@ -8,6 +8,7 @@ export type ColorSchemaType =
   | 'green'
   | 'red'
   | 'lightRed'
+  | 'pink'
   | 'yellow'
   | 'gray'
   | 'lightGray'
@@ -69,6 +70,11 @@ const colorMap: Record<
     borderColor: 'red.200',
     bg: 'red.50',
     color: 'red.500'
+  },
+  pink: {
+    borderColor: '#FBCFE8',
+    bg: '#FDF2F8',
+    color: '#DB2777'
   },
   lightGray: {
     borderColor: 'myGray.200',

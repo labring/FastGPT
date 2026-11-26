@@ -1,12 +1,22 @@
 import type { I18nConfig } from 'fumadocs-core/i18n';
+import {
+  getPublishedDocsLocales,
+  isPreviewDocsSite,
+  stripDocsLocalePrefix
+} from './fastgpt-home-url';
 
 export const i18n: I18nConfig = {
   defaultLanguage: 'zh-CN',
   languages: ['zh-CN', 'en'],
-  hideLocale: 'never'
+  hideLocale: isPreviewDocsSite() ? 'never' : 'always'
 };
 
 export const defaultHomePath = '/guide/getting-started';
+
+/** Return the documentation locales enabled for static search and route indexing in this build. */
+export function getSearchableLanguages(): string[] {
+  return getPublishedDocsLocales();
+}
 
 export async function getTranslations(locale: string) {
   const translations = await import(`@/i18n/${locale}/common.json`);
@@ -52,27 +62,21 @@ export function t(key: string, locale?: string) {
  * @returns Localized path with language prefix if needed
  */
 export function getLocalizedPath(path: string, lang: string): string {
-  // If hideLocale is 'never', always add language prefix
+  const { pathname, path: cleanPath } = stripDocsLocalePrefix(path);
+  const suffix = cleanPath.slice(pathname.length);
+  const prefixed = pathname === '/' ? `/${lang}${suffix}` : `/${lang}${pathname}${suffix}`;
+
   if (i18n.hideLocale === 'never') {
-    return `/${lang}${path}`;
+    return prefixed;
   }
 
-  // If hideLocale is 'always', never add language prefix
   if (i18n.hideLocale === 'always') {
-    return path;
+    return cleanPath;
   }
 
-  // If hideLocale is 'default-locale', only add prefix for non-default languages
   if (i18n.hideLocale === 'default-locale') {
-    return lang === i18n.defaultLanguage ? path : `/${lang}${path}`;
+    return lang === i18n.defaultLanguage ? cleanPath : prefixed;
   }
 
-  // Fallback: no prefix
-  return path;
+  return cleanPath;
 }
-
-/**
- * Server-side redirect with automatic language prefix
- * Import from next/navigation and use this wrapper
- */
-export { redirect } from 'next/navigation';

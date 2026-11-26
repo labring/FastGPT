@@ -143,11 +143,12 @@ export const search = async ({
     model,
     inputTokens,
     outputTokens = 0,
-    usedUserOpenAIKey = false
+    usedUserOpenAIKey = false,
+    ...cacheUsage
   }: Omit<DatasetSearchUsage['items'][number], 'outputTokens' | 'usedUserOpenAIKey'> &
     Partial<Pick<DatasetSearchUsage['items'][number], 'outputTokens' | 'usedUserOpenAIKey'>>) => {
     if (inputTokens > 0 || outputTokens > 0) {
-      items.push({ phase, model, inputTokens, outputTokens, usedUserOpenAIKey });
+      items.push({ phase, model, inputTokens, outputTokens, usedUserOpenAIKey, ...cacheUsage });
     }
   };
   recordUsage({ phase: 'embedding', model: vectorModel, inputTokens: result.embeddingTokens });
@@ -160,6 +161,8 @@ export const search = async ({
       model: extensionModel,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
       usedUserOpenAIKey: usage.usedUserOpenAIKey
     });
     recordUsage({
@@ -175,6 +178,8 @@ export const search = async ({
       model: vlmModel,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
       usedUserOpenAIKey: usage.usedUserOpenAIKey
     });
   }

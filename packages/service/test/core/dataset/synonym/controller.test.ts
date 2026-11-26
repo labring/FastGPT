@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
 import {
@@ -15,6 +16,7 @@ const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 describe('dataset synonym controller', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
     vi.clearAllMocks();
   });
 
@@ -29,6 +31,7 @@ describe('dataset synonym controller', () => {
   });
 
   it('searches the requested offset, including zero, and falls back to page numbers', async () => {
+    (global as any).systemInstanceConfig.feature.datasetSynonymEnabled = true;
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const teamId = new Types.ObjectId().toString();
     const datasetId = new Types.ObjectId().toString();

@@ -16,13 +16,18 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
+.env
 .env*.local
+.env.*
+!.env.example
+!.env.template
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
+**/.tsc-out
 next-env.d.ts
 platform.json
 testApi/
@@ -49,5 +54,7 @@ pro/admin/worker/
 
 .pi
 .claude/
+.zcodeignore
 projects/code-sandbox/src/isolated/fastgpt_js_launcher
 /tasks/
+AGENTS.override.md

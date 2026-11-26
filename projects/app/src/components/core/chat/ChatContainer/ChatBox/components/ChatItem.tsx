@@ -308,6 +308,7 @@ const ChatItem = (props: Props) => {
               isLastChild={isLastChild && i === displayGroups.length - 1}
               isLastValueGroup={i === lastAiGroupIndex}
               isChatting={isChatting}
+              hasError={Boolean(inlineErrorInfo)}
               hasValidContent={hasValidAiContent}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}

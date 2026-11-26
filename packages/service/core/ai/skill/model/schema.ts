@@ -137,11 +137,6 @@ defineIndex(AgentSkillsSchema, {
   key: { teamId: 1, parentId: 1, deleteTime: 1 }
 });
 
-defineIndex(AgentSkillsSchema, {
-  key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 },
-  deprecated: true
-});
-
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,
   AgentSkillsSchema

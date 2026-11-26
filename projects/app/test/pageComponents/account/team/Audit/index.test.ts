@@ -43,6 +43,7 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => ({
 }));
 vi.mock('@fastgpt/web/components/common/MyMenu', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/UserBox', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/EmptyTip', () => ({
   default: ({ text }: { text: React.ReactNode }) => text
@@ -85,6 +86,7 @@ vi.mock('@chakra-ui/react', () => {
   return {
     Box: container('div'),
     Flex: container('div'),
+    Link: container('a'),
     Table: container('table'),
     Tbody: container('tbody'),
     Td: container('td'),
@@ -168,7 +170,7 @@ describe('audit filters and export interactions', () => {
     expect(downloadBody).not.toHaveProperty('timezone');
   });
 
-  it('resets to seven calendar days across year boundaries while retaining member and event filters', async () => {
+  it('resets date range, member filter, and event filter to defaults', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 0, 3, 12, 30));
     mocks.total = 0;
@@ -180,12 +182,14 @@ describe('audit filters and export interactions', () => {
     );
     expect(exportButton().disabled).toBe(true);
     const reset = Array.from(host.querySelectorAll('button')).find(
-      (button) => button.textContent === 'account_team:audit_reset_time'
+      (button) => button.textContent === 'account_team:audit_reset_filters'
     )!;
     await act(async () => reset.click());
     expect(mocks.getLogs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ tmbIds: ['old-member'], events: ['LOGIN'] })
+      expect.objectContaining({ tmbIds: undefined, events: undefined })
     );
+    expect(mocks.member.value).toEqual({ mode: 'all', values: [] });
+    expect(mocks.event.value).toEqual({ mode: 'all', values: [] });
     expect(mocks.date.dateRange).toEqual({
       from: new Date(2025, 11, 28, 0, 0, 0, 0),
       to: new Date(2026, 0, 3, 23, 59, 59, 999)

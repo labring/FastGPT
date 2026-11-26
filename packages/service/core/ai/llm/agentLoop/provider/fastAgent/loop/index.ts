@@ -174,6 +174,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       isModerationBlockErrorMessage(toolResult.errorMessage);
     if (hitModeration) {
       toolResult.response = MODERATION_BLOCKED_REPLACE_TEXT;
+      toolResult.content = undefined;
       toolResult.errorMessage = undefined;
       toolResult.assistantMessages = [];
       toolResult.assistantResponses = undefined;
@@ -185,6 +186,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
 
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    lang: runtime.lang,
     completionPolicy: runtime.completionPolicy,
     getCheckpointContext: runtime.getCheckpointContext,
     batchToolSize: runtime.batchToolSize ?? 5,
@@ -257,7 +259,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             modelId: runtime.model.modelId,
             totalPoints: usage.totalPoints,
             inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
+            outputTokens: usage.outputTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheCreationTokens: usage.cacheCreationTokens
           }
         : undefined;
       pushAgentLoopUsages(runtime, [agentCallUsage]);
@@ -310,6 +314,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     onToolRunEnd: ({
       call,
       response,
+      content,
       assistantMessages,
       assistantResponses,
       seconds,
@@ -329,6 +334,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         hideInUI: hideInUI || controlToolNames.has(call.function.name),
         call,
         response,
+        content,
         assistantMessages,
         assistantResponses,
         seconds,
@@ -410,15 +416,36 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             return createToolResponse(response, { skipResponseCompress: true });
           }
 
+          const { checkIsStopping, sandboxToolContext } = runtime;
+          const stopController = checkIsStopping ? new AbortController() : undefined;
+          let stopTimer: ReturnType<typeof setInterval> | undefined;
+          if (stopController && checkIsStopping) {
+            if (checkIsStopping()) {
+              stopController.abort();
+            } else {
+              stopTimer = setInterval(() => {
+                if (checkIsStopping()) {
+                  clearInterval(stopTimer);
+                  stopController.abort();
+                }
+              }, 100);
+              stopTimer.unref?.();
+            }
+          }
+
           const sandboxResult = await runSandboxTools({
             toolName: sandboxToolName,
             args: call.function.arguments ?? '',
-            sandboxClient: runtime.sandboxToolContext.client,
-            validate: runtime.sandboxToolContext.validate
+            sandboxClient: sandboxToolContext.client,
+            validate: sandboxToolContext.validate,
+            signal: stopController?.signal
+          }).finally(() => {
+            if (stopTimer !== undefined) clearInterval(stopTimer);
           });
           return createToolResponse(sandboxResult.response, {
             skipResponseCompress: true,
-            errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+            errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+            content: sandboxResult.content
           });
         }
 
@@ -505,6 +532,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -521,6 +550,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -537,6 +568,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -551,6 +584,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     assistantMessages: result.assistantMessages,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
+    cacheReadTokens: result.cacheReadTokens,
+    cacheCreationTokens: result.cacheCreationTokens,
     llmTotalPoints: result.llmTotalPoints,
     finishReason: result.finish_reason,
     requestIds: result.requestIds,

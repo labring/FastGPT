@@ -53,6 +53,7 @@
     "test:integration": "vitest run --config vitest.config.ts test/integration",
     "test:integration:common": "vitest run --config vitest.config.ts test/integration/common",
     "test:integration:minio": "vitest run --config vitest.config.ts test/integration/minio",
+    "typecheck": "tsc --noEmit --pretty",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "prepublishOnly": "pnpm build"
   },
@@ -68,7 +69,7 @@
   "devDependencies": {
     "@types/ali-oss": "^6.23.3",
     "@types/node": "^20",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "^6.4.4",

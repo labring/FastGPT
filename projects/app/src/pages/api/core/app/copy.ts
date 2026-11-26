@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -7,6 +8,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -43,8 +45,10 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  // Copy avatar
   const { appId } = await mongoSessionRun(async (session) => {
+    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
+    assertWorkflowDocumentStructure(draftWorkflow);
+
     const avatar = await copyAvatarImage({
       teamId,
       imageUrl: app.avatar,
@@ -52,7 +56,6 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
     const storageNodes = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
         return encodeMcpToolSetNodesForStorage(draftWorkflow.nodes);
@@ -73,6 +76,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       storageNodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      referenceSnapshots: draftWorkflow.referenceSnapshots,
       teamId,
       tmbId,
       isRoot,
@@ -90,6 +94,15 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_COPY,
+      resources: [
+        buildAppAuditResource(app),
+        buildAppAuditResource({
+          _id: appId,
+          name: app.name + ' Copy',
+          avatar: app.avatar,
+          type: app.type
+        })
+      ],
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

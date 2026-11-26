@@ -1,0 +1,78 @@
+---
+title: '上传本地文件创建集合'
+seoTitle: '上传本地文件创建集合 - POST /api/core/dataset/collection/create/localFile | FastGPT OpenAPI'
+description: '通过 multipart/form-data 上传本地文档文件并配置分块、训练模式与标签参数，自动存储至对象存储并触发异步向量化训练。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/collection/create/localFile`
+- **所属模块**：知识库 / 集合创建
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E5%88%9B%E5%BB%BA/POST/core/dataset/collection/create/localFile)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E5%88%9B%E5%BB%BA/POST/core/dataset/collection/create/localFile`）
+
+## 接口说明与注意事项
+
+通过 multipart/form-data 上传文件，自动存储至 S3 后创建集合并触发训练。`file` 字段为二进制文件，`data` 字段为 JSON 序列化的集合参数对象
+
+## 请求参数
+
+### Request Body 请求体（`multipart/form-data`）
+
+| 字段                             | 类型                 | 必填 | 默认值 | 约束与说明                                                                                                                           |
+| -------------------------------- | -------------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `file`                           | `binary`（文件）     | 是   | -      | 上传的文件（二进制）                                                                                                                 |
+| `data`                           | `object`             | 是   | -      | 集合参数（JSON 序列化后传入）                                                                                                        |
+| `data.trainingType`              | `string` (enum)      | 否   | -      | 训练类型。可选值：`chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                     |
+| `data.chunkTriggerType`          | `string` (enum)      | 否   | -      | 分块触发时机。可选值：`minSize` , `forceChunk` , `maxSize`                                                                           |
+| `data.chunkTriggerMinSize`       | `number`             | 否   | -      | 分块触发最小大小                                                                                                                     |
+| `data.dataEnhanceCollectionName` | `boolean`            | 否   | -      | 增加集合名到分块里                                                                                                                   |
+| `data.imageIndex`                | `boolean`            | 否   | -      | 图片索引                                                                                                                             |
+| `data.autoIndexes`               | `boolean`            | 否   | -      | 自动生成索引                                                                                                                         |
+| `data.indexPrefixTitle`          | `boolean`            | 否   | -      | 索引前缀标题                                                                                                                         |
+| `data.chunkSettingMode`          | `string` (enum)      | 否   | -      | 系统参数/自定义参数。可选值：`auto` , `custom` , `intelligent`                                                                       |
+| `data.chunkSplitMode`            | `string` (enum)      | 否   | -      | 分块拆分模式。可选值：`paragraph` , `size` , `char`                                                                                  |
+| `data.paragraphChunkAIMode`      | `string` (enum)      | 否   | -      | 段落分块 AI 模式。可选值：`auto` , `force` , `forbid`                                                                                |
+| `data.paragraphChunkDeep`        | `number`             | 否   | -      | 段落分块深度                                                                                                                         |
+| `data.paragraphChunkMinSize`     | `number`             | 否   | -      | 段落分块最小大小                                                                                                                     |
+| `data.chunkSize`                 | `number`             | 否   | -      | 分块大小                                                                                                                             |
+| `data.chunkSplitter`             | `string`             | 否   | -      | 自定义最高优先分割符号                                                                                                               |
+| `data.indexSize`                 | `number`             | 否   | -      | 索引大小                                                                                                                             |
+| `data.qaPrompt`                  | `string`             | 否   | -      | QA 拆分提示词                                                                                                                        |
+| `data.parentId`                  | `string \| null`     | 否   | -      | 父级目录 ID                                                                                                                          |
+| `data.metadata`                  | `object`             | 否   | -      | 元数据                                                                                                                               |
+| `data.customPdfParse`            | `boolean`            | 否   | -      | 自定义 PDF 解析                                                                                                                      |
+| `data.datasetId`                 | `string`             | 是   | -      | 数据集 ID                                                                                                                            |
+| `data.tags`                      | `string \| object[]` | 否   | -      | 标签列表。字符串元素为旧格式标签名（按名称归并到 default_tag array 标签）；对象元素为 \{ tag: 标签名, value: 标签值 \}，按标签名解析 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/collection/create/localFile" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@/path/to/document.pdf" \
+  -F 'data={"datasetId":"string"};type=application/json'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "datasetId": "string"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回集合 ID 及数据插入结果
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

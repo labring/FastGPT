@@ -3,8 +3,6 @@ import {
   createAgentLoopCoreEventDispatcher,
   createAgentLoopCoreEventStream
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream';
-import { createAgentLoopCoreToolRunResponseCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const createCall = ({
@@ -64,18 +62,13 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     }
   );
 
-  it('streams internal tool activity once without collecting tool run details', () => {
+  it('streams internal tool activity once', () => {
     const workflowStreamResponse = vi.fn();
-    const appendToolNodeResponse = vi.fn();
     const dispatcher = createAgentLoopCoreEventDispatcher({
       eventStream: createAgentLoopCoreEventStream({
         workflowStreamResponse,
         getToolInfo: () => ({ name: 'Read file', avatar: 'file-avatar' })
-      }),
-      toolRunCollector: {
-        appendToolNodeResponse,
-        appendContextCompressNodeResponse: vi.fn()
-      }
+      })
     });
 
     for (const status of ['running', 'running', 'done', 'done'] as const) {
@@ -116,10 +109,9 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         }
       }
     ]);
-    expect(appendToolNodeResponse).not.toHaveBeenCalled();
   });
 
-  it('routes model, tool and compression events to stream and tool run collector', () => {
+  it('routes model and tool events to the stream without streaming compression events', () => {
     const workflowStreamResponse = vi.fn();
     const eventStream = createAgentLoopCoreEventStream({
       workflowStreamResponse,
@@ -130,17 +122,7 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         avatar: 'tool-avatar'
       })
     });
-    const toolRunCollector = createAgentLoopCoreToolRunResponseCollector({
-      moduleType: FlowNodeTypeEnum.toolCall,
-      getToolInfo: () => ({
-        name: 'Search',
-        avatar: 'tool-avatar'
-      })
-    });
-    const dispatcher = createAgentLoopCoreEventDispatcher({
-      eventStream,
-      toolRunCollector
-    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
     const call = createCall();
 
     dispatcher.emitEvent({
@@ -250,28 +232,10 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         }
       }
     });
-    expect(toolRunCollector.toolRunResponses).toEqual([
-      expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            moduleName: 'chat:compress_llm_messages',
-            totalPoints: 0.2
-          })
-        ]
-      }),
-      expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            id: call.id,
-            moduleName: 'Search',
-            toolRes: 'tool response'
-          })
-        ]
-      })
-    ]);
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(6);
   });
 
-  it('can hide selected tool stream events while keeping tool run records', () => {
+  it('can hide selected tool stream events', () => {
     const workflowStreamResponse = vi.fn();
     const eventStream = createAgentLoopCoreEventStream({
       workflowStreamResponse,
@@ -279,15 +243,8 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         name: 'Search'
       })
     });
-    const toolRunCollector = createAgentLoopCoreToolRunResponseCollector({
-      moduleType: FlowNodeTypeEnum.toolCall,
-      getToolInfo: () => ({
-        name: 'Search'
-      })
-    });
     const dispatcher = createAgentLoopCoreEventDispatcher({
       eventStream,
-      toolRunCollector,
       shouldStreamTool: (name) => name !== 'hidden_tool'
     });
     const call = createCall({
@@ -311,16 +268,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     });
 
     expect(workflowStreamResponse).not.toHaveBeenCalled();
-    expect(toolRunCollector.toolRunResponses).toEqual([
-      expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            id: call.id,
-            toolRes: 'hidden response'
-          })
-        ]
-      })
-    ]);
   });
 
   it('streams failed tool responses so the client can render them immediately', () => {
@@ -426,39 +373,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     expect(answerEvents).toHaveLength(2);
     expect(answerEvents[0]).not.toHaveProperty('id');
     expect(answerEvents[1]).not.toHaveProperty('id');
-  });
-
-  it('passes context checkpoints to compression records when request ids are absent', () => {
-    const eventStream = createAgentLoopCoreEventStream({
-      workflowStreamResponse: vi.fn(),
-      getToolInfo: () => ({ name: 'Search' })
-    });
-    const toolRunCollector = createAgentLoopCoreToolRunResponseCollector({
-      moduleType: FlowNodeTypeEnum.toolCall,
-      getToolInfo: () => ({ name: 'Search' })
-    });
-    const dispatcher = createAgentLoopCoreEventDispatcher({
-      eventStream,
-      toolRunCollector
-    });
-    const event = {
-      type: 'after_message_compress' as const,
-      modelName: 'GPT-4',
-      usages: [
-        {
-          moduleName: 'account_usage:compress_llm_messages',
-          totalPoints: 0.2
-        }
-      ],
-      requestIds: [],
-      seconds: 0.1,
-      contextCheckpoint: '<context_checkpoint>same</context_checkpoint>'
-    };
-
-    dispatcher.emitEvent(event);
-    dispatcher.emitEvent({ ...event, seconds: 0.2 });
-
-    expect(toolRunCollector.toolRunResponses).toHaveLength(1);
   });
 
   it('streams a complete plan only for successful plan operations', () => {

@@ -1,0 +1,8 @@
+{
+  "title": "Chat Completions & Control",
+  "pages": [
+    "v2-chat-completions",
+    "v2-chat-stop",
+    "v1-chat-completions"
+  ]
+}

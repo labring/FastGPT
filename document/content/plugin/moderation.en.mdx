@@ -1,0 +1,88 @@
+---
+title: Content moderation guide
+description: Overview of FastGPT content moderation architecture, admin policy settings, runtime checkpoints, handling strategies, and custom plugin extension.
+---
+
+> This guide applies to FastGPT v4.18.0 and later. If you are upgrading from the legacy commercial built-in censor, also see the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation).
+
+FastGPT implements content moderation as a dedicated `moderation` Plugin type managed by the `fastgpt-plugin` service. Platform administrators can configure moderation providers, active checkpoints, suspected-risk handling, and exception fallback policies in one console, while developers can build adapter Plugins with `@fastgpt-plugin/sdk-factory` to integrate internal safety gateways or third-party moderation APIs.
+
+## Architecture and Responsibilities
+
+Content moderation separates platform policy orchestration from provider-specific API adaptation:
+
+| Component                  | Responsibilities                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **FastGPT Main Service**   | Admin policy UI, AES-256-GCM secret encryption, three runtime moderation checkpoints, streaming buffer truncation, moderation records (`system_moderation_records`), and admin audit logging |
+| **FastGPT Plugin Service** | Package installation and versioning for `moderation` Plugins, isolated worker pools (`local-pool`), and synchronous text checks via `GET /moderation` and `POST /moderation/check`           |
+| **Moderation Plugin**      | Adapter implemented with `defineModeration()` that calls upstream or local rules and normalizes responses into four-tier `verdict` values and `hits`                                         |
+
+Key design boundaries:
+
+- **Single active Plugin**: You can install and keep saved credentials for multiple moderation Plugins, but only one **Active Service** can be enabled at a time to avoid conflicting provider criteria.
+- **Synchronous text moderation**: The current release focuses on synchronous text moderation (`input.content`) with optional streaming session tracking; asynchronous image, audio, or video callbacks are not included.
+- **Console access**: **Admin Console > Content Moderation > Moderation Policy** (`/admin/moderation/policy`) is available to `root` administrators on deployments with an activated Commercial Edition license.
+
+## 1. Usage and Admin Configuration
+
+### 1.1 Install and Configure a Moderation Plugin
+
+Sign in as a `root` administrator and open **Admin Console > Content Moderation > Moderation Policy** (`/admin/moderation/policy`):
+
+1. Turn on **Enable Content Moderation** (disabled by default).
+2. Add a moderation Plugin from the service panel:
+   - **Add from Marketplace**: Opens the Marketplace filtered by moderation Plugins (`/config/tool/marketplace?type=moderation`), where you can install official Plugins including **Baidu** (`baidu`), **Alibaba Cloud** (`aliyun`), **Tencent Cloud** (`tencent`), **Keyword** (`keyword`), and **Legacy Custom Moderation** (`legacy-custom-censor`; see the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation) for legacy protocol adaptation).
+   - **Install from Local**: Upload a `.pkg` archive or `.zip` bundle built locally or delivered offline.
+3. Click **Configure Parameters** next to a Plugin and fill in the fields declared by its `secretSchema`:
+   - Fields marked `isSecret: true` are encrypted with AES-256-GCM on the server and masked in API responses and UI forms.
+   - Before persisting, FastGPT sends a fixed non-sensitive test string through the Plugin to verify connectivity. If the probe returns `verdict: 'error'` or fails, the save is rejected so invalid credentials do not overwrite working settings.
+4. Activation and uninstallation rules:
+   - When no Plugin is enabled yet, **the first configured Plugin is activated automatically**.
+   - Click **Enable** on any other configured Plugin to switch the active service mutually exclusively.
+   - Uninstalling a Plugin is a soft delete that preserves saved credentials so reinstalling the Plugin restores your configuration. If other moderation Plugins are installed, switch away from the active Plugin before uninstalling it. Uninstalling the last moderation Plugin automatically disables content moderation.
+
+### 1.2 Moderation Stages (Hooks)
+
+Once content moderation is enabled, all three checkpoints are enabled by default and can be toggled independently:
+
+| Stage                            | Trigger Timing                                                            | Scope                                                                                                                                                                                                    | Behavior on Block                                                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **User Input** (`userInput`)     | Before workflow scheduling or any node executes                           | Current user query (`query` / `userChatInput`), custom global Variables, and dynamic form inputs                                                                                                         | Throws an error immediately and stops execution with zero model token usage; client apps can roll back optimistic chat bubbles |
+| **Model Input** (`modelInput`)   | Before LLM invocation in AI Chat, Tool Call (`toolCall`), and Agent nodes | Assembled current-turn context sent to the LLM: system prompts, current user message, Dataset citations, and parsed file text from the current turn (**chat history and earlier-turn files are exempt**) | Fails the model node directly without calling the LLM or incurring model billing                                               |
+| **Final Output** (`finalOutput`) | Before delivering text responses or tool call arguments                   | AI text replies, Specified Reply nodes, User Select prompts, Form Input prompts, and model-generated tool call arguments                                                                                 | Blocks non-streaming replies outright; buffers streaming output by interval and aborts generation on violation                 |
+
+Additional runtime notes:
+
+- **In-loop tool response masking**: Inside Agent and ToolCall loops, tool execution responses (including tools, child workflows, built-in Dataset search, and file reading) are moderated whenever either `modelInput` or `finalOutput` is enabled. Violations replace the tool output with a standardized masked message (`该信息因内容审核不通过，无法返回`) so the Agent can continue reasoning without aborting the entire loop.
+- **Streaming buffer window**: Instead of checking isolated tokens (which can split sensitive phrases across chunks), FastGPT accumulates streamed text and checks the cumulative text every **Streaming Check Interval** characters. On a block, FastGPT immediately stops emitting chunks, aborts the upstream model stream, and discards unrendered text.
+
+### 1.3 Handling Strategy
+
+Under **Handling Strategy**, configure three global behaviors:
+
+| Setting                      | Default                    | Options and Impact                                                                                                                                                                                                                                           |
+| ---------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Streaming Check Interval** | `100` chars/check          | Positive integer (`>= 1`). Smaller values reduce client buffering latency at higher request volume and cost; larger values reduce moderation calls with slightly longer buffering                                                                            |
+| **Suspected Risk**           | `Block and Log`            | Action when a Plugin returns `verdict: 'suspected'`: **Block and Log** (`blockAndLog`) or **Pass and Log** (`passAndLog`)                                                                                                                                    |
+| **Service Exception**        | `Pass Unmoderated Content` | Fallback when a Plugin returns `verdict: 'error'`, is unavailable, or times out: **Pass Unmoderated Content** (`pass`, fail-open) or **Block Unmoderated Content** (`block`, fail-closed — apps become unavailable if moderation fails, so choose carefully) |
+
+Click **Save** at the top right to apply policy changes. Navigating to Marketplace or clicking **Enable** preserves unsaved draft changes on the policy page.
+
+### 1.4 Online Testing and Compliance Records
+
+- **Moderation Test**: When moderation is enabled with an active Plugin, the test card at the bottom of the policy page lets you submit sample text and inspect the raw four-tier verdict, normalized hit labels with scores, highlighted keywords, and error messages directly from the Plugin.
+- **Chat Log Details**: Team members with write permission on an App can inspect per-node `moderationRecords` inside Chat Log execution details (showing stage, verdict, hit labels, keywords, and moderated content).
+- **Platform Audit and Persistent Records**: Admin lifecycle actions (install, save config, enable/switch, uninstall, and policy updates) are written to the team audit log. Every runtime moderation call is persisted asynchronously to `system_moderation_records` and can be queried via `/api/core/plugin/admin/moderation/records` or inspected at `/admin/moderation/records` by stage and verdict.
+
+## 2. Custom Moderation Plugin Development
+
+To integrate an internal safety gateway or another third-party moderation service, you can build a custom `moderation` Plugin with the FastGPT Plugin toolchain:
+
+- **Setup, debugging, and publishing**: Prerequisites, project layout, local debugging, and `.pkg` packaging/publishing follow the same workflow as tool Plugins—see the [System Tool Development Guide](/en/plugin/system-tool-development) and [Debugging, packing, and publishing](/en/plugin/debugging-and-publishing).
+- **Scaffolding and contract**: Initialize a project with `npx @fastgpt-plugin/cli create my-moderation --type moderation`. Export `defineModeration()` with `defineModerationManifest()`, declare credentials and provider policy IDs via `secretSchema`, inspect synchronous text `input.content`, and return standardized `verdict` (`pass` / `block` / `suspected` / `error`) and `hits`. Catch upstream or network failures and return `ctx.moderationError('...')` instead of throwing.
+
+When building with Claude Code, Codex, or another coding agent, copy this prompt:
+
+```plaintext
+Follow the official FastGPT plugin development Skill (https://raw.githubusercontent.com/labring/fastgpt-official-plugins/refs/heads/main/.agents/skills/develop-fastgpt-plugin/SKILL.md) and plugin docs to build a FastGPT `moderation` plugin for <your moderation service and API docs> using `npx @fastgpt-plugin/cli create <plugin-name> --type moderation`, including `defineModeration()`, `secretSchema`, unit tests, local debug verification, and `.pkg` packaging.
+```

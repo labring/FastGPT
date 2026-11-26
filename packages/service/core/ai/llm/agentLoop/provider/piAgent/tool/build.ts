@@ -5,7 +5,8 @@ import { AgentAskPayloadSchema, type AgentAskPayload } from '@fastgpt/global/cor
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
+  ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -32,6 +33,7 @@ import {
   createDatasetSearchTool,
   patchDatasetSearchParams
 } from '../../../domain/systemTool/datasetSearch';
+import { buildToolMessageContent } from '../../../domain/tool';
 import {
   normalizeAgentLoopUsages,
   type AgentLoopAssistantResponse,
@@ -40,7 +42,12 @@ import {
   type AgentLoopUsage
 } from '../../../domain';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
-import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
+import {
+  convertToolResponseContentToPiContent,
+  createToolCall,
+  normalizeToolArgs,
+  stringifyJson
+} from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 
@@ -104,6 +111,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
     continuationMessage?: string;
+    content?: string | ChatCompletionToolMessageContentPart[];
   }) => void;
   isToolCallParamsAllowed?: (call: ChatCompletionMessageToolCall) => Promise<boolean>;
 }): Promise<AgentTool[]> => {
@@ -120,6 +128,10 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     return paramCheck.isPass;
   };
 
+  // 与 loadRequestMessages 对齐：模型不支持视觉时，工具图片 part 降级为占位文本。
+  // 显式转布尔，避免 useVision 缺省时被转换器默认值当成 true。
+  const useVision = !!(runtime.llmParams.useVision && runtime.llmParams.model.config.vision);
+
   /** 保证每个普通工具 start 都对应 end，并将异常变成可回填模型的工具结果。 */
   const executeOrdinaryTool = async ({
     call,
@@ -128,6 +140,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     call: ChatCompletionMessageToolCall;
     execute: () => Promise<{
       response: string;
+      content?: ChatCompletionToolMessageContentPart[];
       assistantMessages?: ChatCompletionMessageParam[];
       assistantResponses?: AgentLoopAssistantResponse[];
       usages?: AgentLoopUsage[];
@@ -166,7 +179,10 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       return {
         response: MODERATION_BLOCKED_REPLACE_TEXT,
         assistantMessages: [],
-        usages: []
+        usages: [],
+        content: undefined,
+        interactive: undefined,
+        stop: false
       };
     }
 
@@ -204,6 +220,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         isModerationBlockErrorMessage(result.errorMessage);
       if (hitModeration) {
         result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.content = undefined;
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;
@@ -217,10 +234,15 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     pushAgentLoopUsages(runtime, usages);
     if (result.interactive)
       runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
+    const toolContent = buildToolMessageContent({
+      content: result.content,
+      text: normalizedResponse
+    });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
       response: normalizedResponse,
+      content: toolContent,
       assistantMessages,
       assistantResponses: result.assistantResponses,
       usages,
@@ -233,10 +255,17 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       call,
       response: normalizedResponse,
       assistantMessages,
+      content: toolContent,
       ...(!result.interactive &&
         !result.stop && { continuationMessage: result.continuationMessage })
     });
-    return { ...result, response: normalizedResponse, assistantMessages, usages };
+    return {
+      ...result,
+      response: normalizedResponse,
+      assistantMessages,
+      usages,
+      content: toolContent
+    };
   };
 
   for (const tool of getPiAgentRuntimeTools(runtime)) {
@@ -259,7 +288,13 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         } else if (result.stop) {
           onToolStop?.();
         }
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content?.length ? result.content : normalizeToolResponseContent(result.response),
+            { useVision }
+          ),
+          details: {}
+        };
       }
     });
   }
@@ -414,7 +449,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
         parameters: toPiToolParameters(sandboxTool.function.parameters),
-        execute: async (callId: string, args: unknown) => {
+        execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
           const call = createToolCall({
             id: callId,
             name: agentLoopToolName,
@@ -427,17 +462,25 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
                 sandboxClient: sandbox.client,
-                validate: sandbox.validate
+                validate: sandbox.validate,
+                signal
               });
               return {
                 response: sandboxResult.response,
                 assistantMessages: [],
                 usages: [],
-                errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+                errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+                content: sandboxResult.content
               };
             }
           });
-          return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+          return {
+            content: await convertToolResponseContentToPiContent(
+              result.content ?? normalizeToolResponseContent(result.response),
+              { useVision }
+            ),
+            details: {}
+          };
         }
       });
     }
@@ -474,7 +517,13 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             };
           }
         });
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content?.length ? result.content : normalizeToolResponseContent(result.response),
+            { useVision }
+          ),
+          details: {}
+        };
       }
     });
   }
@@ -517,7 +566,13 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             };
           }
         });
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content?.length ? result.content : normalizeToolResponseContent(result.response),
+            { useVision }
+          ),
+          details: {}
+        };
       }
     });
   }

@@ -16,6 +16,9 @@ import { STT_PRICE_UNITS } from '../audio/constants';
 export const resolveSTTPricing = (pricing?: ModelPricingType) =>
   STTModelPricingSchema.parse(pricing ?? { type: 'duration' });
 
+/** 阶梯输入区间上限以 K Tokens（1000）配置和匹配，单价仍以 M Tokens（1000000）计费。 */
+export const MODEL_PRICE_TIER_TOKEN_UNIT = 1000;
+
 export const MAX_MODEL_PRICE_TIERS = 5;
 
 /** 模型单价最多两位小数，undefined 按 0 处理；不舍入每次调用的最终费用。 */
@@ -28,24 +31,38 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
     if (result.length >= MAX_MODEL_PRICE_TIERS) break;
     const hasInput = typeof tier.inputPrice === 'number' && Number.isFinite(tier.inputPrice);
     const hasOutput = typeof tier.outputPrice === 'number' && Number.isFinite(tier.outputPrice);
+    const cachePrices = {
+      ...(typeof tier.cacheReadPrice === 'number' &&
+      Number.isFinite(tier.cacheReadPrice) &&
+      tier.cacheReadPrice >= 0
+        ? { cacheReadPrice: tier.cacheReadPrice }
+        : {}),
+      ...(typeof tier.cacheCreationPrice === 'number' &&
+      Number.isFinite(tier.cacheCreationPrice) &&
+      tier.cacheCreationPrice >= 0
+        ? { cacheCreationPrice: tier.cacheCreationPrice }
+        : {})
+    };
     const max =
-      typeof tier.maxInputTokens === 'number' && Number.isFinite(tier.maxInputTokens)
-        ? Math.max(0, tier.maxInputTokens)
+      typeof tier.maxInputTokensK === 'number' && Number.isFinite(tier.maxInputTokensK)
+        ? Math.max(0, tier.maxInputTokensK)
         : undefined;
-    if (!hasInput && !hasOutput && max === undefined) break;
-    const previous = result.at(-1)?.maxInputTokens;
+    if (!hasInput && !hasOutput && Object.keys(cachePrices).length === 0 && max === undefined)
+      break;
+    const previous = result.at(-1)?.maxInputTokensK;
     if (max !== undefined && previous !== undefined && max <= previous) continue;
     result.push({
-      ...(max === undefined ? {} : { maxInputTokens: max }),
+      ...(max === undefined ? {} : { maxInputTokensK: max }),
       inputPrice: hasInput ? tier.inputPrice : 0,
-      outputPrice: hasOutput ? tier.outputPrice : 0
+      outputPrice: hasOutput ? tier.outputPrice : 0,
+      ...cachePrices
     });
     if (max === undefined) break;
   }
   return result;
 };
 
-/** 只解析新计价字段，绝不回退根级历史价格。 */
+/** 只按 K 字段解析阶梯。旧记录尚未回填时，首档没有 K 上限，视为无限档。 */
 export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] =>
   sanitizeModelPriceTiers(config?.pricing?.tiers);
 
@@ -60,19 +77,34 @@ export const normalizeModelPricingForSave = (
   model: AIModelDocumentDataType
 ): AIModelDocumentDataType => {
   /** 统一单价精度，不改变阶梯边界或未配置状态。 */
-  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
-    ...(pricing.type === undefined ? {} : { type: pricing.type }),
-    ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
-    ...(pricing.tiers === undefined
-      ? {}
-      : {
-          tiers: sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
+  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => {
+    const tiers =
+      pricing.tiers === undefined
+        ? undefined
+        : sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
             ...tier,
             inputPrice: roundModelPrice(tier.inputPrice),
-            outputPrice: roundModelPrice(tier.outputPrice)
-          }))
-        })
-  });
+            outputPrice: roundModelPrice(tier.outputPrice),
+            ...(tier.cacheReadPrice === undefined
+              ? {}
+              : { cacheReadPrice: roundModelPrice(tier.cacheReadPrice) }),
+            ...(tier.cacheCreationPrice === undefined
+              ? {}
+              : { cacheCreationPrice: roundModelPrice(tier.cacheCreationPrice) })
+          }));
+
+    return {
+      ...(pricing.type === undefined ? {} : { type: pricing.type }),
+      ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
+      ...(pricing.inputPrice === undefined
+        ? {}
+        : { inputPrice: roundModelPrice(pricing.inputPrice) }),
+      ...(pricing.outputPrice === undefined
+        ? {}
+        : { outputPrice: roundModelPrice(pricing.outputPrice) }),
+      ...(tiers === undefined ? {} : { tiers })
+    };
+  };
 
   // 清空价格仍保留已编辑状态；STT 同时保留所选计价口径，不恢复历史根字段。
   const pricing = roundModelPricing(model.pricing ?? {});
@@ -92,44 +124,75 @@ export const normalizeModelPricingForSave = (
   };
 };
 
-/** 仅系统模型计费；STT 必须传入带口径的用量，秒数不再复用 inputTokens。 */
+/**
+ * 系统 LLM 按总输入匹配档位。总输入包含普通输入、缓存读取和缓存创建。
+ * 读取和创建独立计量。普通输入 = 总输入 - 缓存读取 - 缓存创建，每个输入 Token 只计费一次。
+ * 各缓存单价缺省时沿用该档输入价，显式 0 表示该项免费。输出独立计费。
+ * STT 使用独立计量口径，团队模型免费。
+ *
+ * @see https://developers.openai.com/api/docs/guides/prompt-caching
+ */
 export const calculateModelPrice = ({
   config,
   inputTokens = 0,
   outputTokens = 0,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0,
   sttUsage
 }: {
   config?: PriceType & { type?: ModelTypeEnum; scope?: ModelScopeEnum };
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   sttUsage?: STTBillableUsageType;
 }) => {
+  const safeCount = (value: number) => (Number.isFinite(value) ? Math.max(0, value) : 0);
+  inputTokens = safeCount(inputTokens);
+  outputTokens = safeCount(outputTokens);
+  cacheReadTokens = Math.min(inputTokens, safeCount(cacheReadTokens));
+  cacheCreationTokens = Math.min(inputTokens - cacheReadTokens, safeCount(cacheCreationTokens));
   const tiers = getRuntimeResolvedPriceTiers(config);
   const multiple = 1000000;
   if (config?.type === ModelTypeEnum.stt) {
     const pricing = resolveSTTPricing(config.pricing);
-    const quantity =
-      sttUsage?.type === pricing.type
-        ? sttUsage.type === 'duration'
-          ? sttUsage.seconds
-          : sttUsage.totalTokens
-        : 0;
-    const unitSize = STT_PRICE_UNITS[pricing.type];
-    const totalPoints =
-      config.scope === ModelScopeEnum.system && Number.isFinite(quantity) && quantity >= 0
-        ? (quantity / unitSize) * (pricing.unitPrice ?? 0)
-        : 0;
+    const totalPoints = (() => {
+      if (config.scope !== ModelScopeEnum.system || sttUsage?.type !== pricing.type) return 0;
+      if (pricing.type === 'duration' && sttUsage.type === 'duration')
+        return Number.isFinite(sttUsage.seconds) && sttUsage.seconds >= 0
+          ? (sttUsage.seconds / STT_PRICE_UNITS.duration) * (pricing.unitPrice ?? 0)
+          : 0;
+      if (pricing.type !== 'tokens' || sttUsage.type !== 'tokens') return 0;
+      // 两个计量项分别校验和定价；缺少的一侧不能从 totalTokens 或另一侧推导。
+      const input =
+        Number.isSafeInteger(sttUsage.inputTokens) && sttUsage.inputTokens >= 0
+          ? sttUsage.inputTokens
+          : 0;
+      const output =
+        Number.isSafeInteger(sttUsage.outputTokens) && sttUsage.outputTokens >= 0
+          ? sttUsage.outputTokens
+          : 0;
+      return (
+        (input * (pricing.inputPrice ?? 0) + output * (pricing.outputPrice ?? 0)) /
+        STT_PRICE_UNITS.tokens
+      );
+    })();
     return { totalPoints, tiers, matchedTier: undefined };
   }
   const matchedTier =
     tiers.find(
-      (tier) => tier.maxInputTokens === undefined || inputTokens / multiple <= tier.maxInputTokens
+      (tier) =>
+        tier.maxInputTokensK === undefined ||
+        inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokensK
     ) ?? tiers.at(-1);
   const totalPoints =
     config?.scope !== ModelScopeEnum.system
       ? 0
       : config.type === ModelTypeEnum.llm
-        ? ((matchedTier?.inputPrice ?? 0) * inputTokens +
+        ? ((matchedTier?.inputPrice ?? 0) * (inputTokens - cacheReadTokens - cacheCreationTokens) +
+            (matchedTier?.cacheReadPrice ?? matchedTier?.inputPrice ?? 0) * cacheReadTokens +
+            (matchedTier?.cacheCreationPrice ?? matchedTier?.inputPrice ?? 0) *
+              cacheCreationTokens +
             (matchedTier?.outputPrice ?? 0) * outputTokens) /
           multiple
         : ((inputTokens + outputTokens) / multiple) * (config.pricing?.unitPrice ?? 0);

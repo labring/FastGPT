@@ -1,0 +1,115 @@
+import z from 'zod';
+import { positiveInteger, textWithDefault, urlWithDefault } from './primitives';
+
+/** 短信模板仅保存中文模板 ID。 */
+const SmsTemplateConfigSchema = z.strictObject({
+  zh: z.string().max(2000).default('')
+});
+
+const LoginSmsConfigSchema = z.strictObject({
+  login: SmsTemplateConfigSchema.prefault({}),
+  register: SmsTemplateConfigSchema.prefault({}),
+  resetPassword: SmsTemplateConfigSchema.prefault({}),
+  changePassword: SmsTemplateConfigSchema.prefault({}),
+  bindNotification: SmsTemplateConfigSchema.prefault({}),
+  modelDeprecation: SmsTemplateConfigSchema.prefault({})
+});
+
+const EmailLoginConfigSchema = z.strictObject({
+  smtp: textWithDefault(),
+  user: textWithDefault(),
+  pass: textWithDefault(),
+  port: z.number().int().min(1).max(65535).default(465),
+  secure: z.boolean().default(true),
+  register: z.boolean().default(false)
+});
+
+/** 阿里云短信通道凭据。 */
+const PhoneSmsChannelConfigSchema = z.strictObject({
+  accessKeyId: textWithDefault(),
+  accessKeySecret: textWithDefault(),
+  signName: textWithDefault()
+});
+
+const OAuthConfigSchema = z.strictObject({
+  clientId: textWithDefault(),
+  secret: textWithDefault()
+});
+
+const MicrosoftOAuthConfigSchema = z.strictObject({
+  clientId: textWithDefault(),
+  secret: textWithDefault(),
+  tenantId: textWithDefault()
+});
+
+const WechatLoginConfigSchema = z.strictObject({
+  appId: textWithDefault(),
+  appSecret: textWithDefault()
+});
+
+/** 企业微信第三方应用（服务商）接入配置。 */
+const WecomLoginConfigSchema = z.strictObject({
+  suiteId: textWithDefault(),
+  secret: textWithDefault(),
+  token: textWithDefault(),
+  encodingAESKey: textWithDefault(),
+  corpId: textWithDefault(),
+  providerSecret: textWithDefault(),
+  buyerUserId: textWithDefault(),
+  basicVersionId: textWithDefault(),
+  advancedVersionId: textWithDefault(),
+  paySecret: textWithDefault()
+});
+
+const AccountCancellationConfigSchema = z.strictObject({
+  cancellationSm: SmsTemplateConfigSchema.prefault({}),
+  reminderSm: SmsTemplateConfigSchema.prefault({}),
+  todaySm: SmsTemplateConfigSchema.prefault({}),
+  enabled: z.boolean().default(false)
+});
+
+export const AuthConfigSchema = z.strictObject({
+  openApiKeyMaxCount: positiveInteger(100),
+  passwordExpiredMonth: z.number().int().positive().nullable().default(null),
+  // 仅兼容历史实例文档和已发布迁移；运行时由 Pro TEAM_MODE 决定，不再开放配置写入。
+  teamMode: z
+    .enum(['multi', 'single', 'sync'])
+    .default('single')
+    .meta({ deprecated: true, description: '历史团队模式，现由 Pro TEAM_MODE 环境变量控制' }),
+  loginProviders: z
+    .strictObject({
+      email: EmailLoginConfigSchema.prefault({}),
+      sms: LoginSmsConfigSchema.prefault({}),
+      phone: PhoneSmsChannelConfigSchema.prefault({}),
+      wechat: WechatLoginConfigSchema.prefault({}),
+      wecom: WecomLoginConfigSchema.prefault({}),
+      github: OAuthConfigSchema.prefault({}),
+      google: OAuthConfigSchema.prefault({}),
+      microsoft: MicrosoftOAuthConfigSchema.prefault({})
+    })
+    .prefault({}),
+  // 已弃用的免登入口列表：兼容旧实例，清空后不再开放配置入口。
+  fastLogin: z
+    .array(
+      z.strictObject({
+        key: z.string().min(1).max(100),
+        authUrl: urlWithDefault()
+      })
+    )
+    .max(50)
+    .default([])
+    .meta({
+      deprecated: true,
+      description: '已弃用；仅保留已有快速登录入口，清空后不允许重新配置'
+    }),
+  accountCancellation: AccountCancellationConfigSchema.prefault({}),
+  // SSO 展示配置；服务端地址仍由 ENV/旧 systemEnv 提供
+  sso: z
+    .strictObject({
+      title: textWithDefault(),
+      icon: textWithDefault(),
+      autoLogin: z.boolean().default(false),
+      disablePasswordForSsoUsers: z.boolean().default(false)
+    })
+    .prefault({})
+});

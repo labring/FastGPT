@@ -1,6 +1,8 @@
+import { isProVersion } from '../../../../common/system/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getChatItemTextContent } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -86,6 +88,7 @@ export const dispatchDatasetSearch = async (
     runningUserInfo,
     externalProvider,
     histories,
+    query: originQuery,
     node,
     params: {
       datasets = [],
@@ -210,6 +213,16 @@ export const dispatchDatasetSearch = async (
       tmbId,
       textQueries,
       imageQueries,
+      // 用户原始问题只参与同义词映射装饰（不参与召回/重排）：Agent 工具链路可能把检索词
+      // 改写成标准词（例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），别名不在
+      // textQueries 里；装饰层需要原始问题才能把「问题原词 → 标准词」对齐到命中分块。
+      rawQueries: [
+        ...(userChatInput ? [userChatInput] : []),
+        ...(() => {
+          const text = getChatItemTextContent(originQuery);
+          return text ? [text] : [];
+        })()
+      ],
       model: vectorModel,
       vlmModel,
       similarity,
@@ -222,7 +235,7 @@ export const dispatchDatasetSearch = async (
       rerankWeight,
       rerankCandidateNum,
       collectionFilterMatch,
-      metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
+      metadataFilterEnabled: isProVersion(),
       readableCollectionIdList
     };
     const {
@@ -276,7 +289,9 @@ export const dispatchDatasetSearch = async (
         const { totalPoints } = formatModelChars2Points({
           model: extensionModelData!,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         });
         const llmPoints = queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints;
         const queryExtensionUsage: ChatNodeUsageType = {
@@ -284,7 +299,9 @@ export const dispatchDatasetSearch = async (
           moduleName: i18nT('common:core.module.template.Query extension'),
           modelId: extensionModelData?.modelId,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         };
         nodeUsages.push(queryExtensionUsage);
         childrenResponsePoints += queryExtensionUsage.totalPoints;
@@ -316,7 +333,9 @@ export const dispatchDatasetSearch = async (
         const { totalPoints } = formatModelChars2Points({
           model: vlmModel!,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         });
         const imageCaptionPoints = imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints;
         const imageCaptionUsage: ChatNodeUsageType = {
@@ -324,7 +343,9 @@ export const dispatchDatasetSearch = async (
           moduleName: i18nT('account_usage:image_parse'),
           modelId: vlmModel?.modelId,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         };
         nodeUsages.push(imageCaptionUsage);
         childrenResponsePoints += imageCaptionUsage.totalPoints;

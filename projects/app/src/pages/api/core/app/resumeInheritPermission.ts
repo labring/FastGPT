@@ -10,6 +10,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   ResumeInheritPermissionQuerySchema,
@@ -58,7 +59,7 @@ async function handler(
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
-    resources: [{ appId: String(app._id) }],
+    resources: [buildAppAuditResource(app)],
     params: {
       targetResource: app.name,
       ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})

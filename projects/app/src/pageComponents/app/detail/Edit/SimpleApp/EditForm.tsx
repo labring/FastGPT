@@ -30,7 +30,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { removeSelectedTool, upsertSelectedTool } from '../ChatAgent/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -298,19 +298,14 @@ const EditForm = ({
             onAddTool={(e) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
+                selectedTools: upsertSelectedTool(state.selectedTools || [], e)
               }));
             }}
             onConfigTool={setConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools:
-                  state.selectedTools?.filter(
-                    (item) =>
-                      getToolIdentityKey(item.pluginId, item.source) !==
-                      getToolIdentityKey(id, source)
-                  ) || []
+                selectedTools: removeSelectedTool(state.selectedTools || [], { id, source })
               }));
             }}
           />
@@ -531,7 +526,7 @@ const EditForm = ({
           onAddTool={(tool) => {
             setAppForm((state) => ({
               ...state,
-              selectedTools: state.selectedTools.map((item) => (item.id === tool.id ? tool : item))
+              selectedTools: upsertSelectedTool(state.selectedTools || [], tool)
             }));
           }}
         />

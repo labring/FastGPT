@@ -1,8 +1,9 @@
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
@@ -18,10 +19,11 @@ import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
-import { serviceEnv } from '@fastgpt/service/env';
-import { addDays } from 'date-fns';
+import { getStorageFileUrlExpiredTime } from '@fastgpt/service/common/s3/config/constants';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionExportAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -32,7 +34,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     collection,
     teamId: userTeamId,
     tmbId,
-    chatTime
+    chatTime,
+    authType
   } = await (async () => {
     if (!('chatItemDataId' in parseBody)) {
       const result = await authDatasetCollection({
@@ -89,6 +92,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     };
   })();
 
+  const shouldAuditExport =
+    !('chatItemDataId' in parseBody) &&
+    (authType === AuthUserTypeEnum.token || authType === AuthUserTypeEnum.root);
+
   await assertMemberRateLimit({
     policy: MemberRateLimitPolicy.ExportDataset,
     memberId: String(tmbId)
@@ -123,6 +130,22 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res,
     readStream: cursor
   });
+  // 流式导出没有统一完成点，用一次性开关保证成功/失败只落一条审计
+  let auditFinished = false;
+  const recordExportAudit = () => {
+    if (auditFinished) return;
+
+    auditFinished = true;
+    if (!shouldAuditExport) return;
+
+    void addAuditLog(
+      buildCollectionExportAuditLog({
+        tmbId,
+        collection,
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT
+      })
+    );
+  };
 
   write(`\uFEFFq,a`);
 
@@ -132,7 +155,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     try {
       const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
         [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
-        addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS),
+        getStorageFileUrlExpiredTime(),
         {
           filter: createDatasetFileS3KeyFilter(collection.datasetId)
         }
@@ -141,6 +164,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       write(`\n${sanitizedQ},${sanitizedA}`);
     } catch (error) {
       logger.error(`export usage error`, { error });
+      recordExportAudit();
       cursor.destroy();
       return;
     }
@@ -150,11 +174,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   cursor.on('end', () => {
     cursor.close();
+    recordExportAudit();
     res.end();
   });
 
   cursor.on('error', (err) => {
     logger.error(`export usage error`, { error: err });
+    recordExportAudit();
     res.status(500);
     res.end();
   });

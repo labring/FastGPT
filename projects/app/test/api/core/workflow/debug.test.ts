@@ -135,6 +135,8 @@ describe('workflow debug API chatId', () => {
         usageId: 'usage-id'
       })
     );
+    // 执行预算由 dispatchWorkFlow 从当前实例读取，HTTP 入口不得覆盖。
+    expect(mocks.dispatchWorkFlow.mock.lastCall?.[0]).not.toHaveProperty('maxRunTimes');
     expect(mocks.createChatUsageRecord).not.toHaveBeenCalled();
     expect(mocks.getNanoid).toHaveBeenCalledTimes(1);
     expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId, app);

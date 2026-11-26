@@ -1,6 +1,7 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, expect, it } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import {
   getFolderAncestorIdsFromParentId,
   getFolderParentPathItems,
@@ -11,7 +12,7 @@ describe('getFolderAncestorIdsFromParentId', () => {
   it('uses the configured write depth while display paths can read deeper history', async () => {
     const folders = new Map(
       Array.from(
-        { length: serviceEnv.MAX_FOLDER_DEPTH + 1 },
+        { length: getTestInstanceConfig().resource.maxFolderDepth + 1 },
         (_, i) =>
           [
             `level-${i + 1}`,
@@ -20,21 +21,21 @@ describe('getFolderAncestorIdsFromParentId', () => {
       )
     );
     const findFolder = async (id: string) => folders.get(id) ?? null;
-    const parentId = `level-${serviceEnv.MAX_FOLDER_DEPTH - 1}`;
+    const parentId = `level-${getTestInstanceConfig().resource.maxFolderDepth - 1}`;
     await expect(getFolderAncestorIdsFromParentId({ parentId, findFolder })).resolves.toHaveLength(
-      serviceEnv.MAX_FOLDER_DEPTH - 1
+      getTestInstanceConfig().resource.maxFolderDepth - 1
     );
     await expect(
       getFolderAncestorIdsFromParentId({
-        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH}`,
+        parentId: `level-${getTestInstanceConfig().resource.maxFolderDepth}`,
         findFolder
       })
     ).rejects.toBe(CommonErrEnum.invalidParams);
     const paths = await getFolderParentPathItems({
-      folderId: `level-${serviceEnv.MAX_FOLDER_DEPTH + 1}`,
+      folderId: `level-${getTestInstanceConfig().resource.maxFolderDepth + 1}`,
       findFolder
     });
-    expect(paths).toHaveLength(serviceEnv.MAX_FOLDER_DEPTH + 1);
+    expect(paths).toHaveLength(getTestInstanceConfig().resource.maxFolderDepth + 1);
   });
 
   it('rebuilds the path in root-to-parent order and handles root nodes', async () => {
@@ -128,7 +129,10 @@ describe('rewriteFolderSubtreeAncestorIds', () => {
     await expect(
       rewriteFolderSubtreeAncestorIds({
         rootId: 'moving',
-        rootAncestorIds: Array.from({ length: serviceEnv.MAX_FOLDER_DEPTH }, (_, i) => String(i)),
+        rootAncestorIds: Array.from(
+          { length: getTestInstanceConfig().resource.maxFolderDepth },
+          (_, i) => String(i)
+        ),
         findChildFolders: async () => {
           reads++;
           return [];

@@ -10,7 +10,7 @@ import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetNodeConfigSchema,
   McpToolSetRuntimeConfigSchema,
-  StoreNodeItemTypeSchema,
+  StoreNodeItemBaseSchema,
   ToolSetPreviewReferenceSchema
 } from '../../type/node';
 
@@ -63,7 +63,7 @@ export const LegacyFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema.omit({
 export type LegacyFlowNodeInputItem = z.infer<typeof LegacyFlowNodeInputItemSchema>;
 
 /** 历史工作流节点，输入允许携带 selectedTypeIndex。 */
-const LegacyStoreNodeItemBaseSchema = StoreNodeItemTypeSchema.omit({
+const LegacyStoreNodeItemBaseSchema = StoreNodeItemBaseSchema.omit({
   flowNodeType: true,
   inputs: true
 }).safeExtend({
@@ -167,8 +167,13 @@ export const LegacyWorkflowDataSchema = z.object({
   chatConfig: LegacyAppChatConfigSchema.optional()
 });
 export type LegacyWorkflowData = z.infer<typeof LegacyWorkflowDataSchema>;
-export type LegacyWorkflowDataInput = {
-  nodes: unknown[];
-  edges?: unknown;
-  chatConfig?: unknown;
-};
+/** StoreWorkflow 的外部输入边界；未知字段在 canonical schema 中继续被移除。 */
+export const StoreWorkflowInputSchema = z.object({
+  nodes: z.array(z.unknown()),
+  edges: z.unknown().optional(),
+  chatConfig: z.unknown().optional(),
+  // 外部输入边界只声明过的字段才不会被剥掉；具体校验交给 canonical schema。
+  referenceSnapshots: z.unknown().optional()
+});
+export type StoreWorkflowInput = z.input<typeof StoreWorkflowInputSchema>;
+export type LegacyWorkflowDataInput = StoreWorkflowInput;

@@ -49,11 +49,11 @@ baseline: '0b810741cc4b7c1259f26e402bde50053cd97a01'
 | C1     | D0 按时长价格                   | 上传 5 秒语音，客户端 duration=77；真实转发 Qwen3-ASR-Flash。         |
 | C2     | D0 按时长价格                   | 上传 60 秒语音，客户端 duration 传极大值；真实转发相同模型。          |
 | C3     | 显式按时长每 60 秒 0.3 积分   | 模型配置确认无单位输入框，保存后上传 5 秒语音；检查固定按 60 秒分母计算，不分段进位。               |
-| C4     | 切换每百万总 Tokens 10 积分 | 上传 5 秒语音，省略客户端时长；真实上游同时返回秒数与 Tokens。        |
+| C4     | 切换输入 0.8、输出 2.7 积分/百万 Tokens | 省略客户端时长，分别上传 5 秒及 60 秒音频；真实上游同时返回秒数、输入和输出 Tokens。        |
 | C5     | 按时长计费                  | 受控转发响应保留真实 total_tokens、删除 seconds；客户端提供伪造时长。 |
-| C6     | 按 Tokens 计费              | 受控转发响应保留 seconds、删除 total_tokens。                         |
+| C6     | 按 Tokens 计费              | 分别删除 input_tokens、output_tokens（同时保留 total_tokens 和 seconds），各执行一次。                         |
 | C7     | 两种模式各执行一次          | 受控转发响应删除整个 usage，识别文本保持正常。                        |
-| C8     | 按 Tokens 计费              | 受控响应 usage.type=duration，total_tokens 兼容填成秒数。             |
+| C8     | 按 Tokens 计费              | 受控响应 usage.type=duration，兼容 Tokens 字段填成秒数。             |
 | C9     | 承接上述历史账单            | 再次改变模型价格，调用使用详情接口并读取历史明细。                    |
 
 ## 预期结果
@@ -65,9 +65,9 @@ baseline: '0b810741cc4b7c1259f26e402bde50053cd97a01'
 | C1     | HTTP、数据库、余额     | 按上游 seconds/60\*0.2，Tokens 和客户端 77 不进入秒数；按明确的 duration 配置计费。 | 上游响应、账单、套餐余额前后值       |
 | C2     | HTTP、数据库、余额     | 上游时长约 60 秒，费用为对应秒数/60\*0.2，不以 Tokens 或客户端值计算。        | 输入时长探测及上游 usage、账单、余额 |
 | C3     | HTTP、数据库、余额     | 表单单位固定为 60 秒，费用为上游 seconds/60\*0.3，账单仅保存 duration 和 amount。                                | 模型更新响应及账单数量、金额               |
-| C4     | HTTP、数据库、余额     | 按实际 total_tokens/1e6\*10 扣费，保存 totalTokens，不写伪造时长。            | 实际上游 usage 与总 Tokens 账单      |
+| C4     | HTTP、数据库、余额     | 按 (input_tokens\*0.8+output_tokens\*2.7)/1e6 扣费，分别保存 inputTokens/outputTokens，不写合计或伪造时长。            | 实际上游 usage 与总 Tokens 账单      |
 | C5     | 故障注入、数据库、余额 | duration=0、积分=0；不从 total_tokens 或客户端 duration 兜底。                | 原始及注入后响应、零账单、稳定余额   |
-| C6     | 故障注入、数据库、余额 | totalTokens=0、积分=0，不从 seconds 兜底。                                    | 原始及注入后响应、零账单、稳定余额   |
+| C6     | 故障注入、数据库、余额 | 缺少的一侧为 0，另一侧按对应单价收费；不从合计差值或 seconds 反推。                                    | 原始及注入后响应、分项金额与余额变化   |
 | C7     | 故障注入、数据库、余额 | 两种模式均正常返回文字、对应计费用量 0、积分不变。                            | 两个变体各自响应与账单               |
 | C8     | 故障注入、数据库、余额 | 不把 duration 兼容字段视为真实 Tokens，费用为 0。                             | 注入响应与零扣费证据                 |
-| C9     | 查询接口、数据库       | 历史数量和金额不随当前配置改变；使用详情保留 totalTokens 或 duration，不新增价格快照或计费类型列。   | 查询 JSON 与原账单数量、金额对比           |
+| C9     | 查询接口、数据库       | 历史数量和金额不随当前配置改变；使用详情保留 inputTokens/outputTokens 或 duration，不新增价格快照或计费类型列。   | 查询 JSON 与原账单数量、金额对比           |

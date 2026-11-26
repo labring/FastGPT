@@ -10,6 +10,7 @@ import {
   getStartTime,
   useDashboardFilters
 } from '@/pageComponents/admin/dashboard/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ChartsBoxStyles = {
   px: 5,
@@ -23,6 +24,7 @@ const ChartsBoxStyles = {
 
 export default function TrafficPage(): JSX.Element {
   const theme = useTheme();
+  const { t } = useSafeTranslation();
 
   const { dateRange, granularity } = useDashboardFilters();
 
@@ -68,7 +70,7 @@ export default function TrafficPage(): JSX.Element {
                 }
               ]}
               tooltipItems={[
-                { label: '总用户数', dataKey: 'count', color: theme.colors.blue['500'] }
+                { label: t('admin:total_users'), dataKey: 'count', color: theme.colors.blue['500'] }
               ]}
             />
           </Box>
@@ -85,7 +87,7 @@ export default function TrafficPage(): JSX.Element {
               ]}
               tooltipItems={[
                 {
-                  label: '注册用户数',
+                  label: t('admin:registered_users'),
                   dataKey: 'count',
                   color: theme.colors.adora['500']
                 }

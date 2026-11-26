@@ -1,13 +1,22 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { isInternalAddress } from '@fastgpt/service/common/system/utils';
-import { serviceEnv } from '@fastgpt/service/env';
+
+// checkInternalIp 已接管实例配置：真实快照由 schema 默认值填满（checkInternalIp=false），
+// `?? serviceEnv` 兜底只在快照字段缺省时生效。本文件通过改写 serviceEnv 驱动行为，
+// 因此预置一个"security 字段缺省"的种子快照：getSystemInstanceConfig 首次调用时
+// 优先采纳 global.systemInstanceConfig 并缓存，从而走 ?? serviceEnv 兜底分支。
+(global as any).systemInstanceConfig = { security: {} };
+
+import { checkUrlSafety, isInternalAddress } from '@fastgpt/service/common/system/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
+
 import dns from 'dns/promises';
 
 describe('SSRF Protection - isInternalAddress', () => {
-  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
 
   beforeEach(() => {
-    serviceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     // 重建 DNS spy，避免真实 DNS 解析和用例之间的 mock 实现串味
     vi.restoreAllMocks();
     vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('No A records'));
@@ -15,7 +24,7 @@ describe('SSRF Protection - isInternalAddress', () => {
   });
 
   afterEach(() => {
-    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
   });
 
   describe('Localhost 检查（始终阻止）', () => {
@@ -70,7 +79,7 @@ describe('SSRF Protection - isInternalAddress', () => {
 
   describe('CHECK_INTERNAL_IP 未设置时（默认行为 - 安全优先）', () => {
     beforeEach(() => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
     });
 
     test('应该允许公共 IP 地址', async () => {
@@ -108,7 +117,7 @@ describe('SSRF Protection - isInternalAddress', () => {
 
   describe('CHECK_INTERNAL_IP=false 时（向后兼容模式）', () => {
     beforeEach(() => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
     });
 
     test('应该允许公共 IP 地址', async () => {
@@ -442,7 +451,7 @@ describe('SSRF Protection - isInternalAddress', () => {
   // GHSA-jhqw-944x-xh94: 云元数据端点 SSRF 保护绕过
   describe('GHSA-jhqw-944x-xh94 元数据端点绕过防护', () => {
     beforeEach(() => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
     });
 
     test('应该阻止显式端口绕过 http://169.254.169.254:80/', async () => {
@@ -516,5 +525,36 @@ describe('SSRF Protection - isInternalAddress', () => {
 
       expect(await isInternalAddress('http://metadata-proxy.example.com/')).toBe(true);
     });
+  });
+});
+
+describe('checkUrlSafety', () => {
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
+
+  beforeEach(() => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.restoreAllMocks();
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['93.184.216.34']);
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+  });
+
+  afterEach(() => {
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
+  });
+
+  test('allows valid public https URLs', async () => {
+    await expect(
+      checkUrlSafety('https://example.com/openapi.json', 'OpenAPI Schema URL')
+    ).resolves.toBeUndefined();
+  });
+
+  test.each([
+    ['not-a-url', 'OpenAPI Schema URL must be a valid URL'],
+    ['ftp://example.com/openapi.json', 'OpenAPI Schema URL must use http or https protocol'],
+    ['http://127.0.0.1/openapi.json', 'OpenAPI Schema URL:']
+  ])('throws UserConfigError for rejected URL %s', async (url, expectedMessage) => {
+    const promise = checkUrlSafety(url, 'OpenAPI Schema URL');
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow(expectedMessage);
   });
 });

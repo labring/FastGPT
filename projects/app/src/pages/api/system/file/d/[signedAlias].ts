@@ -12,7 +12,7 @@ import {
   handleS3RedirectDownload
 } from '@/service/common/s3/proxy';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { storageDownloadUrlMode } from '@fastgpt/service/common/s3/config/constants';
+import { getStorageDownloadUrlMode } from '@fastgpt/service/common/s3/config/constants';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   if (!['GET', 'HEAD'].includes(req.method || '')) {
@@ -27,15 +27,22 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
     const payload = await verifyS3DownloadAccess(signedAlias);
 
-    if (storageDownloadUrlMode === 'short-redirect') {
+    const isShortRedirect = getStorageDownloadUrlMode() === 'short-redirect';
+    if (isShortRedirect && req.method !== 'HEAD') {
       return await handleS3RedirectDownload({
+        req,
         res,
         payload,
         expiresAt: payload.expiresAt
       });
     }
 
-    return await handleS3ProxyDownload({ req, res, payload });
+    return await handleS3ProxyDownload({
+      req,
+      res,
+      payload,
+      ...(isShortRedirect ? { cacheControl: 'no-store' } : {})
+    });
   } catch (error) {
     return handleS3ProxyRouteError({ res, error });
   }

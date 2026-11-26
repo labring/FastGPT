@@ -1,5 +1,4 @@
-import React, { type Dispatch, useCallback } from 'react';
-import { useViewport } from 'reactflow';
+import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { Box } from '@chakra-ui/react';
 
 import QGConfig from '@/components/core/app/QGConfig';
@@ -9,24 +8,35 @@ import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
-import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigTypeSchema, type AppDetailType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import { normalizeAndParseVariableList } from '@fastgpt/global/core/app/variable/utils';
+import {
+  defaultAutoExecuteConfig,
+  defaultChatInputGuideConfig,
+  defaultQGConfig,
+  defaultTTSConfig,
+  defaultWhisperConfig
+} from '@fastgpt/global/core/app/constants';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import {
-  collectWorkflowStartInputAutoFillPatches,
-  collectWorkflowStartOutputAutoFillRevertPatches
-} from '@/web/core/workflow/workflowStartAutoFill';
+  useWorkflowRuntime,
+  useWorkflowSnapshot
+} from '@/web/core/workflow/editor/session/workflowSession';
+import type { WorkflowCommand } from '@fastgpt/global/core/workflow/editor/types';
+import { FlowNodeOutputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import WelcomeQuestionsConfig from '@/components/core/app/WelcomeQuestionsConfig';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import { countNewReferenceIssues } from './utils';
 
 type ComponentProps = {
-  chatConfig: AppChatConfigType;
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
   mode?: 'node' | 'drawer';
   isWelcomeTextFolded?: boolean;
@@ -142,7 +152,6 @@ function ConfigSection({
 }
 
 function WelcomeText({
-  chatConfig: { welcomeConfig, welcomeText },
   setAppDetail,
   mode,
   isFolded,
@@ -151,7 +160,10 @@ function WelcomeText({
   isFolded?: boolean;
   onToggleFold?: () => void;
 }) {
-  const resolvedWelcomeText = welcomeConfig?.welcomeText ?? welcomeText;
+  const resolvedWelcomeText = useContextSelector(AppContext, (v) => {
+    const chatConfig = v.appDetail.chatConfig;
+    return chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText;
+  });
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
@@ -184,9 +196,11 @@ function WelcomeText({
   );
 }
 
-function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }: ComponentProps) {
-  const { zoom } = useViewport();
-
+function WelcomeQuestions({ setAppDetail, mode }: ComponentProps) {
+  const welcomeQuestions = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.welcomeConfig?.welcomeQuestions
+  );
   const updateWelcomeQuestions = useCallback(
     (value: string[]) => {
       setAppDetail((state) => ({
@@ -205,18 +219,50 @@ function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }:
 
   return (
     <Box className="nodrag" w={'100%'} mt={mode === 'drawer' ? 0 : 2}>
-      <WelcomeQuestionsConfig
-        value={welcomeConfig?.welcomeQuestions}
-        zoom={zoom}
-        onChange={updateWelcomeQuestions}
-      />
+      <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
     </Box>
   );
 }
 
-function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
+const emptyVariables: VariableItemType[] = [];
+
+function ChatStartVariable({ setAppDetail }: ComponentProps) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const runtime = useWorkflowRuntime();
+  const variables = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.variables ?? emptyVariables
+  );
+  const normalizedVariables = useMemo(() => normalizeAndParseVariableList(variables), [variables]);
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
+      if (runtime && !runtime.isDisposed()) {
+        const currentIssues = runtime.getWorkflowIssues();
+        const before = [...currentIssues.issues, ...currentIssues.chatConfigIssues];
+        const result = runtime.dispatch({
+          type: 'updateChatConfig',
+          chatConfig: AppChatConfigTypeSchema.parse({
+            ...runtime.getWorkflow().chatConfig,
+            variables: value
+          })
+        });
+
+        if (result.ok) {
+          const nextIssues = runtime.getWorkflowIssues();
+          const affected = countNewReferenceIssues(before, [
+            ...nextIssues.issues,
+            ...nextIssues.chatConfigIssues
+          ]);
+          if (affected > 0) {
+            toast({
+              status: 'warning',
+              title: t('workflow:variable_change_affects_references', { count: affected })
+            });
+          }
+        }
+      }
+
       setAppDetail((state) => ({
         ...state,
         chatConfig: {
@@ -225,14 +271,17 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
         }
       }));
     },
-    [setAppDetail]
+    [runtime, setAppDetail, t, toast]
   );
-  const { zoom } = useViewport();
 
-  return <VariableEdit variables={variables} onChange={updateVariables} zoom={zoom} />;
+  return <VariableEdit variables={normalizedVariables} onChange={updateVariables} />;
 }
 
-function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {
+function AutoExecute({ setAppDetail }: ComponentProps) {
+  const autoExecute = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.autoExecute ?? defaultAutoExecuteConfig
+  );
   return (
     <AutoExecConfig
       value={autoExecute}
@@ -249,7 +298,11 @@ function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentPro
   );
 }
 
-function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: ComponentProps) {
+function QuestionGuide({ setAppDetail }: ComponentProps) {
+  const questionGuide = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.questionGuide ?? defaultQGConfig
+  );
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   return (
     <QGConfig
@@ -268,7 +321,11 @@ function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: Componen
   );
 }
 
-function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
+function TTSGuide({ setAppDetail }: ComponentProps) {
+  const ttsConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.ttsConfig ?? defaultTTSConfig
+  );
   return (
     <TTSSelect
       value={ttsConfig}
@@ -285,7 +342,15 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
   );
 }
 
-function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
+function WhisperGuide({ setAppDetail }: ComponentProps) {
+  const whisperConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.whisperConfig ?? defaultWhisperConfig
+  );
+  const ttsConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.ttsConfig ?? defaultTTSConfig
+  );
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
@@ -303,10 +368,11 @@ function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }
   );
 }
 
-function ScheduledTrigger({
-  chatConfig: { scheduledTriggerConfig },
-  setAppDetail
-}: ComponentProps) {
+function ScheduledTrigger({ setAppDetail }: ComponentProps) {
+  const scheduledTriggerConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.scheduledTriggerConfig
+  );
   return (
     <ScheduledTriggerConfig
       value={scheduledTriggerConfig}
@@ -323,8 +389,12 @@ function ScheduledTrigger({
   );
 }
 
-function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
+function QuestionInputGuide({ setAppDetail }: ComponentProps) {
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const chatInputGuide = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.chatInputGuide ?? defaultChatInputGuideConfig
+  );
   return appId ? (
     <InputGuideConfig
       appId={appId}
@@ -342,78 +412,64 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
   ) : null;
 }
 
-function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const workflowStartNode = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v.workflowStartNode
+function FileSelectConfig({ setAppDetail }: ComponentProps) {
+  const fileSelectConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.fileSelectConfig
   );
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const runtime = useWorkflowRuntime();
+  const startNodeId = useWorkflowSnapshot()?.nodes.find(
+    (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
+  )?.nodeId;
 
-  if (!workflowStartNode) return null;
+  // 工具（Plugin host）没有流程开始节点，不提供工作流文件上传配置。
+  if (startNodeId === undefined) return null;
 
   return (
     <FileSelect
       value={fileSelectConfig}
-      onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            fileSelectConfig: e
-          }
-        }));
-
-        // Dynamic add or delete userFilesInput
-        const canUploadFiles =
-          e.canSelectFile ||
-          e.canSelectImg ||
-          e.canSelectVideo ||
-          e.canSelectAudio ||
-          e.canSelectCustomFileExtension;
-        const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
-        if (canUploadFiles) {
-          const patches = collectWorkflowStartInputAutoFillPatches({
-            nodes,
-            edges,
-            workflowStartNode: {
-              ...workflowStartNode,
-              outputs: repeatKey
-                ? workflowStartNode.outputs
-                : [...workflowStartNode.outputs, userFilesInput]
-            }
-          });
-
-          onChangeNode([
-            ...(!repeatKey
-              ? [
-                  {
-                    nodeId: workflowStartNode.nodeId,
-                    type: 'addOutput' as const,
-                    value: userFilesInput
-                  }
-                ]
-              : []),
-            ...patches.map((patch) => ({ ...patch, type: 'updateInput' as const }))
-          ]);
-        } else if (repeatKey) {
-          const patches = collectWorkflowStartOutputAutoFillRevertPatches({
-            nodes,
-            edges,
-            workflowStartNode,
-            outputKey: userFilesInput.key
-          });
-
-          onChangeNode([
-            ...patches.map((patch) => ({ ...patch, type: 'updateInput' as const })),
-            {
-              nodeId: workflowStartNode.nodeId,
-              type: 'delOutput',
-              key: userFilesInput.key
-            }
-          ]);
+      onChange={(fileSelectConfig) => {
+        if (!runtime || runtime.isDisposed()) {
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: { ...state.chatConfig, fileSelectConfig }
+          }));
+          return;
         }
+
+        const commands: WorkflowCommand[] = [
+          {
+            type: 'updateChatConfig',
+            chatConfig: AppChatConfigTypeSchema.parse({
+              ...runtime.getWorkflow().chatConfig,
+              fileSelectConfig
+            })
+          }
+        ];
+        const canUploadFiles =
+          fileSelectConfig.canSelectFile ||
+          fileSelectConfig.canSelectImg ||
+          fileSelectConfig.canSelectVideo ||
+          fileSelectConfig.canSelectAudio ||
+          fileSelectConfig.canSelectCustomFileExtension;
+        const startNode = runtime.getNode(startNodeId);
+        if (startNode?.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+          const hasFileOutput = startNode.outputs.some(
+            (output) => output.key === userFilesInput.key
+          );
+          if (canUploadFiles || hasFileOutput) {
+            // 输出已存在时也提交，让 Runtime 为旧流程补填空白引用。
+            const outputs = canUploadFiles
+              ? [...startNode.outputs, ...(hasFileOutput ? [] : [userFilesInput])]
+              : startNode.outputs.filter((output) => output.key !== userFilesInput.key);
+            commands.push({
+              type: 'updateNode',
+              nodeId: startNodeId,
+              patch: { outputs: FlowNodeOutputItemTypeSchema.array().parse(outputs) }
+            });
+          }
+        }
+        runtime.dispatch(commands);
       }}
     />
   );

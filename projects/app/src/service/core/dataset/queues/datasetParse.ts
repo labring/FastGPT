@@ -1,3 +1,5 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
@@ -24,6 +26,7 @@ import type {
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
@@ -59,14 +62,16 @@ const requestLLMPargraph = async ({
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
   if (
-    !global.feConfigs?.isPlus ||
+    !isProVersion() ||
     !paragraphChunkAIMode ||
     paragraphChunkAIMode === ParagraphChunkAIModeEnum.forbid
   ) {
     return {
       resultText: rawText,
       totalInputTokens: 0,
-      totalOutputTokens: 0
+      totalOutputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0
     };
   }
 
@@ -81,7 +86,9 @@ const requestLLMPargraph = async ({
       return {
         resultText: rawText,
         totalInputTokens: 0,
-        totalOutputTokens: 0
+        totalOutputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0
       };
     }
   }
@@ -95,7 +102,9 @@ const requestLLMPargraph = async ({
     return {
       resultText: rawText,
       totalInputTokens: 0,
-      totalOutputTokens: 0
+      totalOutputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0
     };
   }
 };
@@ -124,13 +133,22 @@ const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
 
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
-  const max = global.systemEnv?.datasetParseMaxProcess || 10;
+  const max = getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.dataset.queue.datasetParse',
+    source: 'bridged-system-env',
+    fields: [{ path: 'performance.dataset.parseMaxProcess', value: max }]
+  });
   logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (
+      global.datasetParseQueueLen <=
+      (getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10)
+    ) {
       const startTime = Date.now();
 
       let claimed;
@@ -275,7 +293,13 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
 
           // 3. LLM Pargraph
-          const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
+          const {
+            resultText,
+            totalInputTokens,
+            totalOutputTokens,
+            cacheReadTokens,
+            cacheCreationTokens
+          } = await requestLLMPargraph({
             rawText,
             modelId: agentModelData?.modelId ?? dataset.agentModelId,
             teamId: String(data.teamId),
@@ -291,6 +315,8 @@ export const datasetParseQueue = async (): Promise<any> => {
               model: agentModelData,
               inputTokens: totalInputTokens,
               outputTokens: totalOutputTokens,
+              cacheReadTokens,
+              cacheCreationTokens,
               usageId: data.billId,
               type: UsageItemTypeEnum.training_paragraph
             });

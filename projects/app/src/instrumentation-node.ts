@@ -14,17 +14,19 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
-      { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
+      { configureMongoDalRuntime },
+      { connectionMongo, connectionLogMongo, hasSeparateMongoLogUri, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
       { initSystemUser },
-      { startMongoWatch },
+      { startSystemSync },
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
       { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
+      { opsPerfTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
       { initGeo },
@@ -36,24 +38,25 @@ export async function registerNodeInstrumentation() {
       { configureRedisRuntime, registerRedisRuntimeShutdown },
       { serviceEnv },
       { InitialErrorEnum },
-      { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
       { startBusinessAfterSystemMigrations },
       { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
+      import('@fastgpt/service/common/mongo/dalRuntime'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@fastgpt/service/support/user/systemUser'),
-      import('@/service/common/system/volumnMongoWatch'),
+      import('@/service/common/system/sync'),
       import('@/service/common/system/cron'),
       import('@/service/core/dataset/training/utils'),
       import('@fastgpt/service/worker/preload'),
       import('@fastgpt/service/core/ai/model/catalog/service'),
       import('@fastgpt/service/common/middle/tracks/processor'),
+      import('@fastgpt/service/common/opsPerf/collector'),
       import('@/service/common/bullmq'),
       import('@fastgpt/service/common/s3'),
       import('@fastgpt/service/common/geo'),
@@ -65,7 +68,6 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/dal/redis/runtime'),
       import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
-      import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
       import('@/migration/startup'),
@@ -94,11 +96,6 @@ export async function registerNodeInstrumentation() {
       action: () => initGlobalVariables(),
       logger
     });
-    await runInitializationStep({
-      step: 'validate-agent-sandbox-proxy-env',
-      action: () => validateAgentSandboxProxyEnv(),
-      logger
-    });
 
     // 初始化 REDIS/DB/S3
     await Promise.all([
@@ -120,9 +117,9 @@ export async function registerNodeInstrumentation() {
         getErrText
       }),
       runInitializationStep({
-        step: 'init-s3-buckets',
-        stage: InitialErrorEnum.S3_ERROR,
-        action: () => initS3Buckets(),
+        step: 'configure-db-runtime',
+        stage: InitialErrorEnum.MONGO_ERROR,
+        action: () => configureMongoDalRuntime(),
         logger,
         getErrText
       }),
@@ -140,20 +137,24 @@ export async function registerNodeInstrumentation() {
           mongoUrl: MONGO_URL
         }
       }),
-      runInitializationStep({
-        step: 'connect-log-mongo',
-        stage: InitialErrorEnum.MONGO_ERROR,
-        action: () =>
-          connectMongo({
-            db: connectionLogMongo,
-            url: MONGO_LOG_URL
-          }),
-        logger,
-        getErrText,
-        meta: {
-          mongoLogUrl: MONGO_LOG_URL
-        }
-      }),
+      ...(hasSeparateMongoLogUri && connectionLogMongo !== connectionMongo
+        ? [
+            runInitializationStep({
+              step: 'connect-log-mongo',
+              stage: InitialErrorEnum.MONGO_ERROR,
+              action: () =>
+                connectMongo({
+                  db: connectionLogMongo,
+                  url: MONGO_LOG_URL
+                }),
+              logger,
+              getErrText,
+              meta: {
+                mongoLogUrl: MONGO_LOG_URL
+              }
+            })
+          ]
+        : []),
       runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,
@@ -166,15 +167,16 @@ export async function registerNodeInstrumentation() {
     // 加载初始化配置
     await runInitializationStep({
       step: 'get-init-config',
-      action: () => getInitConfig(),
+      action: () => getInitConfig({ refreshLLMRequestRecordTTL: false }),
       logger,
       getErrText
     });
 
-    // 系统可用性验证
+    // S3 bucket 的下载模式与公开地址依赖实例配置，必须在 get-init-config 之后构造。
     await runInitializationStep({
-      step: 'instrumentation-check',
-      action: () => instrumentationCheck(),
+      step: 'init-s3-buckets',
+      stage: InitialErrorEnum.S3_ERROR,
+      action: () => initS3Buckets(),
       logger,
       getErrText
     });
@@ -223,15 +225,6 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    // 升级脚本可以依赖完整的模型 Provider、模板和运行时缓存。
-    await runInitializationStep({
-      step: 'load-system-models',
-      stage: InitialErrorEnum.PLUGIN_ERROR,
-      action: () => loadSystemModels(),
-      logger,
-      getErrText
-    });
-
     const migrationRunner = await runInitializationStep({
       step: 'start-system-migration-runner',
       action: () => startSystemMigrationRunner(),
@@ -244,10 +237,28 @@ export async function registerNodeInstrumentation() {
      * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
+      // Pro 健康检查必须放在阻塞迁移之后：App 先写入实例配置，Pro 才能完成自身初始化，
+      // 避免两个新进程冷启动时互相等待对方先就绪。
+      await runInitializationStep({
+        step: 'instrumentation-check',
+        action: () => instrumentationCheck(),
+        logger,
+        getErrText
+      });
+
+      const { startAppConfigPolling } = await import('@/service/common/system/configPolling');
+      runBackgroundInitializationStep({
+        step: 'system-config-polling',
+        action: () => startAppConfigPolling(),
+        logger,
+        getErrText
+      });
+
       await Promise.all([
         runInitializationStep({
-          step: 'start-mongo-watch',
-          action: () => startMongoWatch(),
+          step: 'start-system-sync',
+          stage: InitialErrorEnum.REDIS_ERROR,
+          action: () => startSystemSync(),
           logger,
           getErrText
         }),
@@ -277,19 +288,53 @@ export async function registerNodeInstrumentation() {
         logger,
         getErrText
       });
+      runBackgroundInitializationStep({
+        step: 'ops-perf-timer-process',
+        action: () => opsPerfTimerProcess(),
+        logger,
+        getErrText
+      });
       logger.info('System business services are ready');
     };
 
     await startBusinessAfterSystemMigrations({
       runner: migrationRunner,
-      reloadModels: () =>
-        runInitializationStep({
+      reloadModels: async () => {
+        // 实例配置迁移可能改变存储策略；每个节点都需在业务启动前重新应用，不能只依赖 lease owner。
+        await runInitializationStep({
+          step: 'reload-system-config-after-startup-migrations',
+          action: async () => {
+            await getInitConfig();
+            initS3Buckets();
+          },
+          logger,
+          getErrText
+        });
+
+        /**
+         * 系统模型必须在配置迁移之后加载：旧部署的插件地址/凭据要等迁移写入实例配置后才是权威值，
+         * 提前加载会拿 Schema 默认的 localhost:3004 请求 Provider，鉴权失败会让初始化直接终止，
+         * 迁移永远没有机会执行。
+         */
+        await runInitializationStep({
+          step: 'load-system-models-after-startup-migrations',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => loadSystemModels(),
+          logger,
+          getErrText
+        });
+
+        await runInitializationStep({
           step: 'reload-system-models-after-startup-migrations',
           stage: InitialErrorEnum.PLUGIN_ERROR,
           action: () => loadInstalledModels(),
           logger,
           getErrText
-        }),
+        });
+      },
+      onMigrationsSettled: async () => {
+        await getInitConfig();
+      },
       startBusinessServices
     });
 

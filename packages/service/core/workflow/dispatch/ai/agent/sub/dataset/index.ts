@@ -1,3 +1,4 @@
+import { isProVersion } from '../../../../../../../common/system/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -46,6 +47,12 @@ type DatasetSearchParams = {
   llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
+  /**
+   * 用户原始问题（未经 LLM 改写）。Agent 生成的检索词往往已把别名换成标准词
+   * （例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），同义词映射装饰需要
+   * 原始问题才能把「问题原词 → 标准词」对齐到命中分块。
+   */
+  userQuery?: string;
 };
 
 /**
@@ -145,7 +152,9 @@ ${chunkSummaries}
     const { totalPoints } = formatModelChars2Points({
       model,
       inputTokens: response.usage.inputTokens,
-      outputTokens: response.usage.outputTokens
+      outputTokens: response.usage.outputTokens,
+      cacheReadTokens: response.usage.cacheReadTokens,
+      cacheCreationTokens: response.usage.cacheCreationTokens
     });
 
     const usage: ChatNodeUsageType = {
@@ -153,7 +162,9 @@ ${chunkSummaries}
       moduleName: i18nT('account_usage:dataset_chunk_selection'),
       modelId: model.modelId,
       inputTokens: response.usage.inputTokens,
-      outputTokens: response.usage.outputTokens
+      outputTokens: response.usage.outputTokens,
+      cacheReadTokens: response.usage.cacheReadTokens,
+      cacheCreationTokens: response.usage.cacheCreationTokens
     };
     const seconds = +((Date.now() - llmStartTime) / 1000).toFixed(2);
 
@@ -173,7 +184,8 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey
+  userKey,
+  userQuery
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -276,6 +288,8 @@ export const dispatchAgentDatasetSearch = async ({
       teamId,
       textQueries,
       imageQueries,
+      // 原始问题只参与同义词映射装饰（不参与召回/重排），理由见 userQuery 注释。
+      rawQueries: userQuery ? [userQuery] : undefined,
       model: vectorModel,
       vlmModel: vlmModelData,
       similarity: datasetParams.similarity ?? 0.4,
@@ -294,7 +308,7 @@ export const dispatchAgentDatasetSearch = async ({
         value: datasetParams.collectionFilterMatch
       }),
       readableCollectionIdList,
-      metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
+      metadataFilterEnabled: isProVersion(),
       userKey
     };
     // retrievalResults：重排前的候选快照，由检索层在 usingReRank 成立且
@@ -324,14 +338,18 @@ export const dispatchAgentDatasetSearch = async ({
         const { totalPoints } = formatModelChars2Points({
           model: extensionModelData!,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         });
         const queryExtensionUsage: ChatNodeUsageType = {
           totalPoints: queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
           modelId: extensionModelData!.modelId,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         };
         usages.push(queryExtensionUsage);
         childrenResponsePoints += queryExtensionUsage.totalPoints;
@@ -363,14 +381,18 @@ export const dispatchAgentDatasetSearch = async ({
         const { totalPoints } = formatModelChars2Points({
           model: vlmModelData!,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         });
         const imageCaptionUsage: ChatNodeUsageType = {
           totalPoints: imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('account_usage:image_parse'),
           modelId: vlmModelData!.modelId,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         };
         usages.push(imageCaptionUsage);
         childrenResponsePoints += imageCaptionUsage.totalPoints;

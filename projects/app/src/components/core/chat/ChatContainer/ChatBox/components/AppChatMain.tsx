@@ -80,6 +80,7 @@ const AppChatMain = ({
       minH={0}
       w={'100%'}
     >
+      {/* 内容宽度由内层控制，滚动条保留在视口右侧。 */}
       <ScrollData
         ScrollContainerRef={ScrollContainerRef}
         paginationLoading={paginationLoading}
@@ -88,6 +89,7 @@ const AppChatMain = ({
         px={[4, 6]}
         pb={6}
         {...boxBodyProps}
+        maxW={'100%'}
       >
         <Box
           maxW={boxBodyProps?.maxW ?? maxW}

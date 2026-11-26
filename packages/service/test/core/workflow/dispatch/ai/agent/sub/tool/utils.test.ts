@@ -1,3 +1,4 @@
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -12,7 +13,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
 const {
@@ -725,8 +726,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
-      id: 'mcp_app',
-      name: 'mcp_app name'
+      name: 'mcp_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'mcp_app name/search',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search'
+      }
     });
   });
 
@@ -818,6 +831,26 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('mcp_slash_apptest');
     expect(tools[0].name).toBe('/test');
     expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
+  });
+
+  it('keeps legacy 3-segment MCP tool id compatibility when loading a persisted single child tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/catalog/search', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
+    expect(tools[0].promptReference).toEqual({
+      name: 'search',
+      legacyExactKeys: ['mcp-mcp_app/catalog/search'],
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search'
+      }
+    });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -959,8 +992,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
-      id: 'http_app',
-      name: 'http_app name'
+      name: 'http_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'http_app name/create',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app/create'
+      }
     });
   });
 
@@ -979,6 +1024,9 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
       const tools = await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,
@@ -1021,6 +1069,9 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+
         mcpClientMemory: {},
         resourceContext: {
           isRoot: false,
@@ -1110,6 +1161,8 @@ describe('getAgentRuntimeTools schema loading', () => {
   it('falls back to member permissions when an MCP tool is not in the resource snapshot', async () => {
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
@@ -1135,6 +1188,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     const resource = { type: 'tool' as const, id: 'workflow_app' };
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
@@ -1218,8 +1273,20 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
-      id: 'systemTool-metaso',
-      name: '秘塔搜索'
+      name: '秘塔搜索',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: '搜索网页',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso/search'
+      }
     });
   });
 

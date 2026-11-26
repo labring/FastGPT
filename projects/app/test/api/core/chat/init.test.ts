@@ -266,6 +266,7 @@ describe('chat init API', () => {
         chatConfig: { fileSelectConfig: { canSelectFile: false } }
       }
     });
+    expect(result.app.avatar).toBeUndefined();
     expect(result.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
     expect(result.hasBeenRead).toBeUndefined();
     expect(mocks.authApp).not.toHaveBeenCalled();

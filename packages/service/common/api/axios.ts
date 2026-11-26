@@ -11,8 +11,14 @@ import { isIP } from 'net';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
+import {
+  createNodeOutboundProxyAgent,
+  createOutboundProxyConfigError,
+  parseSupportedOutboundProxyUrl,
+  PROXY_AUTHORIZATION_HEADER
+} from '../proxy/utils';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
-import { serviceAxiosMaxContentLength } from '../system/constants';
+import { getServiceAxiosMaxContentLength } from '../system/constants';
 
 /**
  * 给 shared axios 实例添加 SSRF 防护。
@@ -25,24 +31,28 @@ import { serviceAxiosMaxContentLength } from '../system/constants';
 const addSSRFInterceptor = (instance: AxiosInstance) => {
   instance.interceptors.request.use(async (config): Promise<InternalAxiosRequestConfig> => {
     const safeConfig = config as SafeRedirectInternalConfig;
-    const preparedConfig = await prepareSafeRequestConfig(safeConfig);
-
-    const maxRedirects =
-      preparedConfig.__safeRedirect?.maxRedirects ??
-      (typeof preparedConfig.maxRedirects === 'number'
-        ? preparedConfig.maxRedirects
-        : SAFE_AXIOS_MAX_REDIRECTS);
+    const redirectState = safeConfig.__safeRedirect ?? {
+      count: 0,
+      maxRedirects:
+        typeof safeConfig.maxRedirects === 'number'
+          ? safeConfig.maxRedirects
+          : SAFE_AXIOS_MAX_REDIRECTS,
+      proxy: safeConfig.proxy,
+      validateStatus: safeConfig.validateStatus
+    };
+    const preparedConfig = await prepareSafeRequestConfig({
+      ...safeConfig,
+      __safeRedirect: redirectState
+    });
 
     const nextConfigWithRedirect: SafeRedirectInternalConfig = {
       ...preparedConfig,
       // 禁用底层自动跳转,保留调用方 maxRedirects 语义给手动跳转状态使用。
       maxRedirects: 0,
-      validateStatus: getRedirectValidateStatus(preparedConfig.validateStatus, maxRedirects),
-      __safeRedirect: preparedConfig.__safeRedirect ?? {
-        count: 0,
-        maxRedirects,
-        validateStatus: preparedConfig.validateStatus
-      }
+      validateStatus: getRedirectValidateStatus(
+        redirectState.validateStatus,
+        redirectState.maxRedirects
+      )
     };
 
     return nextConfigWithRedirect;
@@ -70,6 +80,7 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
 
     const nextConfig: SafeRedirectConfig = {
       ...redirectConfig,
+      proxy: redirectState.proxy,
       validateStatus: redirectState.validateStatus,
       __safeRedirect: {
         ...redirectState,
@@ -102,12 +113,15 @@ export type SafeAxiosRequestConfig = AxiosRequestConfig & {
  * 手动重定向状态。
  *
  * count/maxRedirects 用于替代 axios/follow-redirects 的跳转次数控制。
+ * proxy 保存显式代理设置，避免下一跳继承为关闭 axios 自动代理设置的 false。
  * validateStatus 保存调用方原始成功状态判定,因为 request interceptor 会临时允许
  * 3xx 进入 response interceptor,最终非重定向响应仍需按调用方语义判断成功/失败。
  */
 type SafeRedirectState = {
   count: number;
   maxRedirects: number;
+  proxy?: AxiosRequestConfig['proxy'];
+  getProxyAuthorization?: (origin: string) => string | undefined;
   validateStatus?: AxiosRequestConfig['validateStatus'];
 };
 
@@ -117,11 +131,7 @@ type SafeRedirectConfig = AxiosRequestConfig & {
 };
 
 type SafeRedirectInternalConfig = InternalAxiosRequestConfig & {
-  __safeRedirect?: {
-    count: number;
-    maxRedirects: number;
-    validateStatus?: AxiosRequestConfig['validateStatus'];
-  };
+  __safeRedirect?: SafeRedirectState;
   __safeAxios?: SafeAxiosRequestOptions;
 };
 
@@ -137,10 +147,10 @@ type LookupCallback = (
 ) => void;
 
 /**
- * 对 safe axios 的请求做统一 SSRF 预检，并在直连路径固定 DNS 解析结果。
+ * 对 safe axios 的请求做统一 SSRF 预检，并按本跳路由统一选择直连或代理 transport。
  *
- * 代理路径只做本机 isInternalAddress() best-effort 检查；最终 DNS 解析由代理侧负责。
- * 直连路径必须覆盖调用方 agent，避免自定义 lookup 在建连阶段重新指向内部地址。
+ * 代理路径保留本机 isInternalAddress() best-effort 预检，域名解析与出站 ACL 交由代理层处理；
+ * 直连路径（含命中 NO_PROXY）在建连前固定校验后的 IP，避免 DNS rebinding。
  */
 const prepareSafeRequestConfig = async (
   config: SafeRedirectInternalConfig
@@ -156,33 +166,38 @@ const prepareSafeRequestConfig = async (
     return Promise.reject(new Error(PRIVATE_URL_TEXT));
   }
 
-  if (isRequestUsingProxy(requestUrl, config)) {
-    return config;
-  }
-
-  return attachPinnedAgent(config, requestUrl);
+  return attachRequestAgent(config, requestUrl);
 };
 
 /**
- * 判断当前请求是否应保留代理链路。
+ * 根据原始请求 URL 选择显式代理或命中的环境代理（显式代理优先于环境代理）。
  *
- * 显式 axios proxy 和 proxy-from-env 命中的环境代理都视为代理路径；其它自定义
- * httpAgent/httpsAgent 不再被 safe axios 信任，直连路径会统一覆盖。
+ * 工厂默认的 proxy: false 仅用于关闭 axios 自动代理，环境变量由本入口统一处理。
  */
-const isRequestUsingProxy = (requestUrl: string, config: AxiosRequestConfig): boolean => {
-  if (config.proxy) {
-    return true;
+const resolveProxyUrl = (
+  requestUrl: string,
+  explicitProxy: AxiosRequestConfig['proxy']
+): string | URL | undefined => {
+  if (!explicitProxy) {
+    return getProxyForUrl(requestUrl) || undefined;
   }
 
   try {
-    return getProxyForUrl(requestUrl).length > 0;
-  } catch {
-    // 代理判断失败时按可能走代理处理，避免误覆盖代理配置。
-    return true;
+    const { host, port, auth, protocol = 'http' } = explicitProxy;
+    const proxyHost = isIP(host) === 6 ? `[${host}]` : host;
+    const proxyUrl = new URL(`${protocol.replace(/:$/, '')}://${proxyHost}`);
+    if (port) proxyUrl.port = String(port);
+    if (auth) {
+      proxyUrl.username = encodeURIComponent(auth.username ?? '');
+      proxyUrl.password = encodeURIComponent(auth.password ?? '');
+    }
+    return proxyUrl;
+  } catch (error) {
+    throw createOutboundProxyConfigError('Invalid outbound proxy configuration', error);
   }
 };
 
-const attachPinnedAgent = async (
+const attachRequestAgent = async (
   config: SafeRedirectInternalConfig,
   requestUrl: string
 ): Promise<SafeRedirectInternalConfig> => {
@@ -197,17 +212,36 @@ const attachPinnedAgent = async (
     return config;
   }
 
-  const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
-  const lookup = createPinnedLookup(resolved);
+  const rawProxyUrl = resolveProxyUrl(requestUrl, config.proxy);
+  const proxyUrl = rawProxyUrl ? parseSupportedOutboundProxyUrl(rawProxyUrl) : undefined;
+  const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
+
+  // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定到对应代理 origin，每跳都从目标请求移除。
+  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION_HEADER);
+  config.headers.delete(PROXY_AUTHORIZATION_HEADER);
+  const redirectState = config.__safeRedirect;
+  if (redirectState?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
+    http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyHeader);
+    const proxyOrigin = proxyUrl.origin;
+    // 凭据保存在闭包里，避免出现在 Axios 可序列化的请求配置中。
+    redirectState.getProxyAuthorization = (origin) =>
+      origin === proxyOrigin ? proxyHeader : undefined;
+  }
+
   const isHttps = parsedUrl.protocol === 'https:';
-  const agent = isHttps
-    ? new https.Agent({
-        lookup,
-        rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
-      })
-    : new http.Agent({
-        lookup
+  const agent = await (async () => {
+    if (proxyUrl) {
+      return createNodeOutboundProxyAgent({
+        proxyUrl,
+        rejectUnauthorized,
+        proxyAuthorization: redirectState?.getProxyAuthorization?.(proxyUrl.origin)
       });
+    }
+
+    const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
+    const lookup = createPinnedLookup(resolved);
+    return isHttps ? new https.Agent({ lookup, rejectUnauthorized }) : new http.Agent({ lookup });
+  })();
 
   return {
     ...config,
@@ -218,15 +252,16 @@ const attachPinnedAgent = async (
 };
 
 const resolveSafeConnectAddress = async (hostname: string): Promise<ResolvedAddress> => {
-  const ipFamily = isIP(hostname);
+  const normalizedHostname = hostname.replace(/^\[|\]$/g, '');
+  const ipFamily = isIP(normalizedHostname);
   if (ipFamily) {
     return {
-      address: hostname,
+      address: normalizedHostname,
       family: ipFamily as 4 | 6
     };
   }
 
-  const resolved = await dns.lookup(hostname, { all: true, verbatim: true });
+  const resolved = await dns.lookup(normalizedHostname, { all: true, verbatim: true });
   if (resolved.length === 0) {
     return Promise.reject(new Error('DNS lookup returned no address'));
   }
@@ -414,7 +449,7 @@ const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
     // 以便与调用方显式传入 -1 取消限制的语义区分开。
     if (config.maxContentLength === undefined) {
       config.maxContentLength =
-        config.responseType === 'stream' ? -1 : serviceAxiosMaxContentLength;
+        config.responseType === 'stream' ? -1 : getServiceAxiosMaxContentLength();
     }
     return config;
   });

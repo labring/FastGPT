@@ -1,11 +1,11 @@
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useCallback, useMemo } from 'react';
-import { Box, CloseButton, Flex } from '@chakra-ui/react';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, CloseButton, Flex, usePrefersReducedMotion } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useWorkflowSnapshotGetter } from './nodes/render/useWorkflowDocument';
 import { useChatTest } from '../../useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -21,6 +21,8 @@ import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/Sandbo
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
+import FullscreenButton from '@/components/common/FullscreenButton';
+import { getDebugPanelWidth } from './utils/debugPanelWidth';
 
 type Props = {
   isOpen: boolean;
@@ -28,10 +30,28 @@ type Props = {
   edges?: StoreEdgeItemType[];
   onClose: () => void;
   chatId: string;
+  leftBoundary: number;
 };
 
-const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
+const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId, leftBoundary }: Props) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(460);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [isResizing, setIsResizing] = useState(false);
+  const dragStart = useRef({ x: 0, width: 0 });
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) setIsFullscreen(false);
+  }
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.workflowTool;
   const { copyData } = useCopyData();
@@ -45,29 +65,37 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     [appDetail.chatConfig]
   );
 
-  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const getWorkflow = useWorkflowSnapshotGetter();
   // 详情与运行请求使用同一次打开预览的快照，后台编辑不替换本次请求的资源诊断。
   const resourceNodes = useMemo(() => {
     const nodeIds = new Set(nodes.map((node) => node.nodeId));
-    return getNodes()
-      .filter(({ data }) => nodeIds.has(data.nodeId))
-      .map(({ data }) => data);
-  }, [getNodes, nodes]);
+    return (getWorkflow()?.nodes ?? [])
+      .filter((node) => nodeIds.has(node.nodeId))
+      .map((node) => node as unknown as FlowNodeItemType);
+  }, [getWorkflow, nodes]);
   const { restartChat, ChatContainer } = useChatTest({
     getResourceNodes: () => resourceNodes,
     nodes,
     edges,
     chatConfig: chatConfigForDebug,
     isReady: isOpen,
-    boxBodyProps: { maxW: '100%' }
+    boxBodyProps: { maxW: '700px', mx: 'auto' }
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const minWidth = datasetCiteData ? 960 : 460;
+  const maxWidth = Math.max(0, viewportWidth - leftBoundary - 16);
+  const getWidth = (width: number) =>
+    getDebugPanelWidth({ width, minWidth, viewportWidth, leftBoundary });
+  const currentWidth = getWidth(panelWidth);
+  const resize = (width: number) => setPanelWidth(getWidth(width));
 
   const handleClose = useCallback(() => {
     setCiteModalData(undefined);
+    setIsFullscreen(false);
+    setIsResizing(false);
     onClose();
   }, [onClose, setCiteModalData]);
 
@@ -88,8 +116,37 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
       <AppDetailPanelModal
         isOpen={isOpen}
         onClose={handleClose}
-        width={datasetCiteData ? ['100%', '960px'] : ['100%', '460px']}
-        height={'100vh'}
+        onEscape={isFullscreen ? () => setIsFullscreen(false) : undefined}
+        width={isFullscreen ? 'calc(100vw - 2.5rem)' : `${currentWidth}px`}
+        height={isFullscreen ? 'calc(100vh - 2.5rem)' : '100vh'}
+        position={'fixed'}
+        top={isFullscreen ? '1.25rem' : 0}
+        contentProps={
+          isFullscreen
+            ? {
+                right: '1.25rem',
+                zIndex: 1300,
+                borderRadius: '1rem',
+                border: '1px solid',
+                borderColor: 'myGray.250',
+                bg: 'myGray.25',
+                boxShadow: '1.5',
+                role: 'dialog',
+                'aria-modal': true,
+                'aria-label': t('common:core.chat.Run test'),
+                'data-debug-fullscreen': true
+              }
+            : { right: 0, ...(isResizing ? { transition: 'none' } : {}) }
+        }
+        maskProps={{
+          zIndex: isFullscreen ? 1299 : 300,
+          bg: 'myGray.100',
+          opacity: isOpen && isFullscreen ? 1 : 0,
+          pointerEvents: isFullscreen ? 'auto' : 'none',
+          onClick: isFullscreen ? () => setIsFullscreen(false) : undefined
+        }}
+        trapFocus={isFullscreen && isOpen}
+        headerProps={isFullscreen ? { bg: 'myGray.25' } : undefined}
         header={
           isPlugin ? (
             <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
@@ -110,7 +167,13 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
                 py={0}
                 fontSize={'sm'}
               />
-              <CloseButton flexShrink={0} size={'sm'} onClick={handleClose} />
+              <Flex alignItems={'center'} gap={1}>
+                <FullscreenButton
+                  isFullscreen={isFullscreen}
+                  onClick={() => setIsFullscreen((value) => !value)}
+                />
+                <CloseButton flexShrink={0} size={'sm'} onClick={handleClose} />
+              </Flex>
             </Flex>
           ) : (
             <RunPreviewHeader
@@ -123,6 +186,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
               onCopyChatId={() => copyData(chatId)}
               onOpenSandboxModal={onOpenSandboxModal}
               onRestart={restartChat}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen((value) => !value)}
               onClose={handleClose}
             />
           )
@@ -137,7 +202,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             overflowY={isPlugin ? 'hidden' : 'auto'}
             overflowX={'hidden'}
           >
-            <ChatContainer />
+            <Box w={'100%'} maxW={isPlugin ? '700px' : undefined} h={'100%'} mx={'auto'}>
+              <ChatContainer />
+            </Box>
           </Box>
 
           {datasetCiteData && (
@@ -164,6 +231,65 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         </Flex>
       </AppDetailPanelModal>
 
+      <Flex
+        position={'fixed'}
+        right={`${currentWidth}px`}
+        top={0}
+        h={'100vh'}
+        w={'16px'}
+        zIndex={301}
+        alignItems={'center'}
+        justifyContent={'center'}
+        cursor={currentWidth >= maxWidth ? 'e-resize' : 'col-resize'}
+        _hover={{ '.debug-resize-indicator': { h: 'calc(100vh - 2rem)', bg: 'primary.600' } }}
+        opacity={isOpen && !isFullscreen ? 1 : 0}
+        visibility={isOpen && !isFullscreen ? 'visible' : 'hidden'}
+        pointerEvents={isOpen && !isFullscreen ? 'auto' : 'none'}
+        transition={
+          prefersReducedMotion
+            ? 'none'
+            : `opacity 200ms ease, visibility 0s linear ${isOpen && !isFullscreen ? '0ms' : '200ms'}`
+        }
+        sx={{ touchAction: 'none' }}
+        role={'separator'}
+        aria-orientation={'vertical'}
+        aria-label={t('common:resize_debug_panel')}
+        aria-valuemin={Math.min(minWidth, maxWidth)}
+        aria-valuemax={maxWidth}
+        aria-valuenow={currentWidth}
+        tabIndex={isOpen && !isFullscreen ? 0 : -1}
+        aria-hidden={!isOpen || isFullscreen}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragStart.current = { x: event.clientX, width: currentWidth };
+          setIsResizing(true);
+        }}
+        onPointerMove={(event) => {
+          if (isResizing) resize(dragStart.current.width + dragStart.current.x - event.clientX);
+        }}
+        onPointerUp={() => setIsResizing(false)}
+        onPointerCancel={() => setIsResizing(false)}
+        onLostPointerCapture={() => setIsResizing(false)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            resize(currentWidth + (event.key === 'ArrowLeft' ? 16 : -16));
+          }
+        }}
+      >
+        <Box
+          className={'debug-resize-indicator'}
+          w={'4px'}
+          h={isResizing ? 'calc(100vh - 2rem)' : '2.5rem'}
+          bg={isResizing ? 'primary.600' : 'myGray.300'}
+          borderRadius={'full'}
+          transition={
+            prefersReducedMotion ? 'none' : 'height 200ms ease, background-color 200ms ease'
+          }
+        />
+      </Flex>
+
       <SandboxEditorModal />
     </Flex>
   );
@@ -171,7 +297,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
 
 const Render = (Props: Props) => {
   const { chatId } = useChatStore();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const chatRecordProviderParams = useMemo(
     () => ({

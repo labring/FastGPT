@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
@@ -7,11 +8,7 @@ import {
   getUserFileAmountLimit
 } from '@fastgpt/global/core/workflow/fileLimit';
 import { getTeamPlanStatus } from '../../../support/wallet/sub/utils';
-
-export type WorkflowFileLimits = {
-  maxFileAmount: number;
-  maxBytesPerFile: number;
-};
+import type { WorkflowFileLimits } from '../dispatch/context/file';
 
 /** 分别计算用户可用的 Workflow 文件额度与应用 query 上传额度。 */
 export const getWorkflowFileAmountLimits = ({
@@ -46,11 +43,11 @@ export const getWorkflowFileLimits = async ({
   return {
     maxFileAmount: getUserFileAmountLimit({
       teamMaxFileAmount: planStatus.standard?.maxUploadFileCount,
-      systemMaxFileAmount: global.feConfigs.limit.uploadFileMaxAmount
+      systemMaxFileAmount: getSystemInstanceConfig().resource.uploadFileMaxAmount
     }),
     maxBytesPerFile: getFileSizeLimitBytes({
       teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
-      systemMaxFileSize: global.feConfigs.limit.uploadFileMaxSize
+      systemMaxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize
     })
   };
 };

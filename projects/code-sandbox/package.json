@@ -31,14 +31,14 @@
     "dayjs": "catalog:",
     "dotenv": "^17.3.1",
     "hono": "catalog:",
-    "moment": "^2.30.1",
+    "moment": "^2.31.0",
     "qs": "catalog:",
     "uuid": "^9.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "lodash": "4.17.23",
+    "lodash": "4.18.1",
     "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

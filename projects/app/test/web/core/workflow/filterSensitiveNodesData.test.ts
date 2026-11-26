@@ -1,13 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { isToolInputValueConfigured } from '@fastgpt/global/core/app/formEdit/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import { filterSensitiveChatConfig, filterSensitiveNodesData } from '@/web/core/workflow/utils';
 
 const headerSecret = { Authorization: { value: 'token', secret: 'encrypted-token' } };
+
+describe('filterSensitiveChatConfig', () => {
+  it('keeps password declarations and explicit references without exporting static defaults', () => {
+    const makePassword = (key: string, defaultValue: unknown) =>
+      VariableItemTypeSchema.parse({
+        key,
+        label: key,
+        description: '',
+        type: VariableInputEnum.password,
+        defaultValue
+      });
+    const ref = { ref: ['source-node', 'field'] };
+    const ordinary = { ...makePassword('text', 'ordinary default'), type: VariableInputEnum.input };
+    const staticDefaults = [
+      makePassword('plain', 'synthetic password'),
+      makePassword('encrypted', { secret: 'synthetic encrypted password' }),
+      makePassword('ambiguous', { ...ref, value: 'synthetic mixed password' }),
+      makePassword('array', ['synthetic login', 'synthetic array password'])
+    ];
+    const referenced = makePassword('reference', ref);
+    const legacyReferenced = makePassword('legacy-reference', JSON.stringify(ref));
+    const chatConfig = {
+      variables: [...staticDefaults, referenced, legacyReferenced, ordinary]
+    };
+    const original = structuredClone(chatConfig);
+
+    expect(JSON.parse(JSON.stringify(filterSensitiveChatConfig(chatConfig)))).toEqual({
+      variables: [
+        ...staticDefaults.map(({ defaultValue: _defaultValue, ...definition }) => definition),
+        referenced,
+        { ...legacyReferenced, defaultValue: ref },
+        ordinary
+      ]
+    });
+    expect(chatConfig).toEqual(original);
+  });
+});
 
 describe('filterSensitiveNodesData', () => {
   it('filters known tool credentials without changing URLs or ordinary values', () => {
@@ -339,5 +377,49 @@ describe('filterSensitiveNodesData', () => {
     ] as any;
 
     expect(filterSensitiveNodesData(nodes)[0].inputs[0].value).toEqual(value);
+  });
+
+  it('clears agent bindings and strips V2 and legacy prompt references on export', () => {
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id: 'tool-1', name: 'Tool 1', source: 'team:t1' }]
+          },
+          {
+            key: NodeInputKeyEnum.skills,
+            value: [{ skillId: 'skill-1', name: 'Skill 1', source: 'team' }]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            value: [{ datasetId: 'ds-1' }]
+          },
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: { datasets: [{ datasetId: 'ds-1' }], limit: 500 }
+          },
+          {
+            key: NodeInputKeyEnum.aiSystemPrompt,
+            value:
+              '先用 {{@plugin:team:t1:calc@}} 与 {{@legacy-skill@}}，保留 {{$start.q$}} 和 {{{{@literal@}}}}'
+          }
+        ],
+        outputs: []
+      }
+    ] as any;
+
+    const filtered = filterSensitiveNodesData(nodes);
+    const inputMap = new Map(filtered[0].inputs.map((item: any) => [item.key, item.value]));
+
+    expect(inputMap.get(NodeInputKeyEnum.selectedTools)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.skills)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.datasetSelectList)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.datasetParams)).toEqual({ datasets: [], limit: 500 });
+    expect(inputMap.get(NodeInputKeyEnum.aiSystemPrompt)).toBe(
+      '先用  与 ，保留 {{$start.q$}} 和 {{{{@literal@}}}}'
+    );
   });
 });

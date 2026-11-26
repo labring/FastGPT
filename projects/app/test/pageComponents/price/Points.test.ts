@@ -16,7 +16,7 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
         type: ModelTypeEnum.stt,
         name: 'token-stt',
         provider: 'openai',
-        pricing: { type: 'tokens', unitPrice: 10 }
+        pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 }
       },
       {
         type: ModelTypeEnum.stt,
@@ -50,7 +50,10 @@ describe('public model prices', () => {
       '125common:support.wallet.subscription.point / 1M common:unit.character'
     );
     expect(text).toContain('0.13common:support.wallet.subscription.point / 60common:unit.seconds');
-    expect(text).toContain('10common:support.wallet.subscription.point / 1M Tokens');
+    expect(text).toContain('common:Input: 10 common:support.wallet.subscription.point / 1M Tokens');
+    expect(text).toContain(
+      'common:Output: 20 common:support.wallet.subscription.point / 1M Tokens'
+    );
     expect(text).toContain('0.2common:support.wallet.subscription.point / 60common:unit.seconds');
     expect(text).not.toContain('1000');
     dom.window.close();

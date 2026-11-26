@@ -211,7 +211,14 @@ export async function authDatasetCollection({
     collection: CollectionWithDatasetType;
   }
 > {
-  const { teamId, tmbId, userId, isRoot: isRootFromHeader } = await parseHeaderCert(props);
+  // 保留认证来源，调用方可区分站内登录操作与 API Key 请求。
+  const {
+    teamId,
+    tmbId,
+    userId,
+    authType,
+    isRoot: isRootFromHeader
+  } = await parseHeaderCert(props);
   const collection = await getCollectionWithDataset(collectionId);
 
   if (!collection) {
@@ -240,6 +247,7 @@ export async function authDatasetCollection({
       userId,
       teamId,
       tmbId,
+      authType,
       collection,
       permission: new CollectionPermission({ isOwner: true }),
       isRoot: isRootFromHeader
@@ -299,6 +307,7 @@ export async function authDatasetCollection({
     userId,
     teamId,
     tmbId,
+    authType,
     collection,
     permission,
     isRoot: isRootFromHeader

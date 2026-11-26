@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
@@ -24,20 +28,22 @@ import {
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 describe('assertTeamPluginInstallEnabled', () => {
-  const originalFeConfigs = global.feConfigs;
+  const originalConfig = global.systemInstanceConfig;
 
   afterEach(() => {
-    global.feConfigs = originalFeConfigs;
+    global.systemInstanceConfig = originalConfig;
   });
 
   it('allows installation only when the feature is explicitly enabled', () => {
-    global.feConfigs = { ...global.feConfigs, enable_team_plugin_upload: true } as any;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().feature.enableTeamPluginUpload = true;
 
     expect(() => assertTeamPluginInstallEnabled()).not.toThrow();
   });
 
   it.each([false, undefined])('rejects when the feature flag is %s', (enabled) => {
-    global.feConfigs = { ...global.feConfigs, enable_team_plugin_upload: enabled } as any;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    if (enabled !== undefined) getTestInstanceConfig().feature.enableTeamPluginUpload = enabled;
 
     expect(() => assertTeamPluginInstallEnabled()).toThrow(TeamErrEnum.teamPluginInstallDisabled);
   });

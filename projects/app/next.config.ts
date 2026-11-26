@@ -2,7 +2,6 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 import { webEnv } from '@fastgpt/web/env';
-import { appEnv } from './src/env';
 
 const securityHeaders = [
   {
@@ -27,6 +26,13 @@ const securityHeaders = [
   }
 ];
 
+const noIndexHeaders = [
+  {
+    key: 'X-Robots-Tag',
+    value: 'noindex, nofollow'
+  }
+];
+
 const optimizedPackageImports = [
   '@chakra-ui/react',
   '@chakra-ui/icons',
@@ -38,10 +44,8 @@ const optimizedPackageImports = [
 const nextConfig: NextConfig = {
   agentRules: false,
   basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
-  env: {
-    SYSTEM_NAME: appEnv.SYSTEM_NAME,
-    SYSTEM_DESCRIPTION: appEnv.SYSTEM_DESCRIPTION,
-    SYSTEM_FAVICON: appEnv.SYSTEM_FAVICON
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true'
   },
   i18n: {
     defaultLocale: 'en',
@@ -59,6 +63,14 @@ const nextConfig: NextConfig = {
       {
         source: '/((?!chat/share$).*)',
         headers: securityHeaders
+      },
+      {
+        source: '/apidoc/:path*',
+        headers: noIndexHeaders
+      },
+      {
+        source: '/api/apidoc/:path*',
+        headers: noIndexHeaders
       }
     ];
   },
@@ -71,7 +83,8 @@ const nextConfig: NextConfig = {
       }
     }
   },
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
+  // i18next v26 的浏览器产物含 Safari 13.0 不支持的语法，交给 Next.js 按 browserslist 降级。
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', 'i18next'],
   serverExternalPackages: [
     '@node-rs/jieba',
     'bullmq',

@@ -2,7 +2,7 @@ import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '..
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
-import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../common/zod';
 import { JsonValueOpenApiMeta } from '../../../common/zod/openapi';
 
 /* Dataset node */
@@ -10,7 +10,7 @@ export const SelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '可选知识库 ID'
   }),
-  avatar: z.string().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '可选知识库头像'
   }),
   name: z.string().meta({
@@ -33,7 +33,7 @@ export const StoredSelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '知识库 ID'
   }),
-  avatar: z.string().optional().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '知识库头像快照'
   }),
   name: z.string().optional().meta({
@@ -49,8 +49,6 @@ export const StoredSelectedDatasetSchema = z.object({
       description: '知识库向量模型快照'
     })
 });
-export type StoredSelectedDatasetType = z.infer<typeof StoredSelectedDatasetSchema>;
-
 // Dynamic input field configuration
 export const CustomFieldConfigTypeSchema = z.object({
   // reference
@@ -68,6 +66,30 @@ export const CustomFieldConfigTypeSchema = z.object({
   })
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
+
+const InputEnumOptionSchema = z.object({
+  value: z.string().meta({
+    description: '枚举项实际值'
+  }),
+  label: z.string().optional().meta({
+    description: '枚举项展示名称'
+  })
+});
+
+const InputSelectOptionSchema = z.object({
+  label: z.string().optional().meta({
+    description: '变量选项展示名称'
+  }),
+  value: z.string().meta({
+    description: '变量选项实际值'
+  }),
+  icon: z.string().optional().meta({
+    description: '变量选项图标'
+  }),
+  description: z.string().optional().meta({
+    description: '变量选项说明'
+  })
+});
 
 export const InputComponentPropsTypeSchema = z.object({
   key: z.enum(NodeInputKeyEnum).or(z.string()).meta({
@@ -109,25 +131,10 @@ export const InputComponentPropsTypeSchema = z.object({
   }), // password
   list: z
     .array(
-      z
-        .object({
-          label: z.string().optional().meta({
-            description: '变量选项展示名称'
-          }),
-          value: z.string().meta({
-            description: '变量选项实际值'
-          }),
-          icon: z.string().optional().meta({
-            description: '变量选项图标'
-          }),
-          description: z.string().optional().meta({
-            description: '变量选项说明'
-          })
-        })
-        .transform((item) => ({
-          ...item,
-          label: item.label ?? item.value
-        }))
+      InputSelectOptionSchema.transform((item) => ({
+        ...item,
+        label: item.label ?? item.value
+      })).pipe(InputSelectOptionSchema.required({ label: true }))
     )
     .optional()
     .meta({
@@ -212,19 +219,10 @@ export const InputComponentPropsTypeSchema = z.object({
 
   enums: z
     .array(
-      z
-        .object({
-          value: z.string().meta({
-            description: '枚举项实际值'
-          }),
-          label: z.string().optional().meta({
-            description: '枚举项展示名称'
-          })
-        })
-        .transform((item) => ({
-          ...item,
-          label: item.label ?? item.value
-        }))
+      InputEnumOptionSchema.transform((item) => ({
+        ...item,
+        label: item.label ?? item.value
+      })).pipe(InputEnumOptionSchema.required({ label: true }))
     )
     .optional()
     .meta({
@@ -232,8 +230,6 @@ export const InputComponentPropsTypeSchema = z.object({
       deprecated: true
     })
 });
-export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;
-
 export const InputConfigInputTypeSchema = z.enum([
   'input',
   'numberInput',
@@ -243,8 +239,6 @@ export const InputConfigInputTypeSchema = z.enum([
 ]);
 
 export const InputConfigInputTypeEnum = InputConfigInputTypeSchema.enum;
-
-export type InputConfigInputTypeType = z.infer<typeof InputConfigInputTypeSchema>;
 
 /** 系统密钥输入配置 */
 export const InputConfigTypeSchema = z.object({
@@ -435,6 +429,35 @@ export const HttpParamAndHeaderItemTypeSchema = z.object({
   value: z.string()
 });
 export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;
+
+/**
+ * 已删除引用来源的历史展示元数据（根级稀疏数组）。
+ * 只在来源消失时捕获，导出前按「来源仍缺失且仍有 consumer」压缩，因此不是全量引用表。
+ */
+export const WorkflowReferenceSnapshotSchema = z.object({
+  reference: z.tuple([z.string().min(1), z.string().min(1)]).meta({
+    description: '[来源节点 ID, 输出 ID]，指向已消失的引用来源',
+    example: ['removed-node', 'result']
+  }),
+  sourceLabel: z.string().optional().meta({
+    description: '来源节点被删除时的展示名'
+  }),
+  outputLabel: z.string().optional().meta({
+    description: '来源输出被删除时的展示名'
+  }),
+  localizeOutputLabel: z.literal(true).optional().meta({
+    description: '输出名称为内置模板翻译键时设置，省略则保留原文'
+  }),
+  icon: z.string().optional().meta({
+    description: '来源节点被删除时的图标'
+  })
+});
+export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
+export const WorkflowReferenceSnapshotsSchema = z.array(WorkflowReferenceSnapshotSchema).meta({
+  example: [
+    { reference: ['removed-node', 'result'], sourceLabel: '历史代码节点', outputLabel: '结果' }
+  ]
+});
 
 export type EditorVariablePickerType = {
   key: string;

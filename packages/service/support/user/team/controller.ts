@@ -92,6 +92,7 @@ async function getTeamMember(
     openaiAccount: tmb.team.openaiAccount,
     externalWorkflowVariables: tmb.team.externalWorkflowVariables,
     isWecomTeam: !!tmb.team.meta?.wecom,
+    ...(tmb.lastSwitchTime ? { lastSwitchTime: tmb.lastSwitchTime } : {}),
     ...(cancellation
       ? {
           accountCancellation: formatTeamAccountCancellationSummary(cancellation.record)
@@ -196,10 +197,8 @@ export async function createUserLoginTeam({
     { session, ordered: true }
   );
 
-  await MongoMemberGroupModel.create(
-    [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
-    { session, ordered: true }
-  );
+  // 兜底建队也按环境配置初始化全员组权限，并与登录事务一起提交或回滚。
+  await createTeamDefaultGroup({ teamId: String(team._id), avatar: LOGO_ICON, session });
   await initTeamFreePlan({ teamId: String(team._id), session });
   await createRootOrg({ teamId: String(team._id), session });
 
@@ -407,6 +406,7 @@ export async function ensureRootTeamMember({
   };
   const updateSet = {
     status: TeamMemberStatusEnum.active,
+    lastSwitchTime: new Date(),
     ...(isOwnTeam ? { role: TeamMemberRoleEnum.owner } : {})
   };
 

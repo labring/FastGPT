@@ -1,0 +1,10 @@
+{
+  "title": "数据管理",
+  "pages": [
+    "v2-list",
+    "detail",
+    "update",
+    "delete",
+    "push-data"
+  ]
+}

@@ -1,27 +1,29 @@
 import type { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
-import type { Edge, Node } from 'reactflow';
-import { uiWorkflow2StoreWorkflow } from '../utils';
+import { serializeRuntime } from '@/web/core/workflow/editor/codec';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
-/**
- * 将 ReactFlow 编辑状态投影为唯一的 WorkflowDocument 领域状态。
- * ReactFlow 外层状态和模板函数在 Store 投影阶段被移除，后续 Web 命令统一复用该入口。
- */
-export const reactFlowStateToWorkflowDocument = ({
-  nodes,
-  edges,
-  chatConfig = {},
+/** 生成 Builder 的基线文档。空引用快照沿用历史文档的缺省形态，保持旧任务校验和。 */
+export const workflowRuntimeToWorkflowDocument = ({
+  runtime,
+  chatConfig,
   app
 }: {
-  nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge<any>[];
+  runtime: WorkflowRuntimePort;
   chatConfig?: AppChatConfigType;
   app?: WorkflowDocument['app'];
 }): WorkflowDocument => {
-  const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges, chatConfig });
-  const document = decompileStoreWorkflow({ workflow: { ...storeWorkflow, chatConfig } });
+  const workflow = serializeRuntime(runtime);
+  const document = decompileStoreWorkflow({
+    workflow: {
+      ...workflow,
+      chatConfig: chatConfig ?? workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots?.length
+        ? workflow.referenceSnapshots
+        : undefined
+    }
+  });
   return app ? { ...document, app: structuredClone(app) } : document;
 };
 

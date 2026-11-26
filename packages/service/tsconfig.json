@@ -11,9 +11,11 @@
     "**/*.test.ts",
     "**/*.benchmark.ts",
     "**/*.spec.ts",
+    "vitest*.config.ts",
     "dist",
     "**/dist/**",
     "coverage",
-    "**/coverage/**"
+    "**/coverage/**",
+    ".tsc-out"
   ]
 }

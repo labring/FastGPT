@@ -6,15 +6,15 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isToolInputValueConfigured } from '@fastgpt/global/core/app/formEdit/utils';
 import {
-  getAgentToolRuntimeStatus,
-  isToolInputValueConfigured
-} from '@fastgpt/global/core/app/formEdit/utils';
-import {
-  HttpToolSetNodeConfigSchema,
-  McpToolSetNodeConfigSchema,
-  type FlowNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+  getAbnormalWorkflowAgentTools,
+  getAgentDatasetResourceSource,
+  getWorkflowResourceIssues,
+  getWorkflowSandboxIssue,
+  isWorkflowToolSetUnconfigured
+} from '@fastgpt/global/common/workflow/resourceRules';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowRuleIssue } from '../type';
 import { type SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -35,7 +35,13 @@ export const checkAgentSandboxIssues = ({
   useAgentSandbox: boolean;
   hasSkills: boolean;
 }): WorkflowRuleIssue[] => {
-  if (hasSkills && (!useAgentSandbox || !showSandbox || !enableSandbox)) {
+  const sandboxIssue = getWorkflowSandboxIssue({
+    useSandbox: useAgentSandbox,
+    hasSkills,
+    configured: Boolean(showSandbox),
+    planSupported: Boolean(enableSandbox)
+  });
+  if (sandboxIssue === 'skills_unavailable') {
     return [
       {
         code: WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable,
@@ -43,8 +49,7 @@ export const checkAgentSandboxIssues = ({
       }
     ];
   }
-  if (!useAgentSandbox) return [];
-  if (!showSandbox) {
+  if (sandboxIssue === 'not_configured') {
     return [
       {
         code: WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable,
@@ -52,7 +57,7 @@ export const checkAgentSandboxIssues = ({
       }
     ];
   }
-  if (!enableSandbox) {
+  if (sandboxIssue === 'plan_not_supported') {
     return [
       {
         code: WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable,
@@ -76,37 +81,39 @@ export const checkAgentResourceIssues = ({
   datasetInputKey?: string;
 }): (WorkflowRuleIssue & { tool?: SelectedToolItemType })[] => {
   const issues: (WorkflowRuleIssue & { tool?: SelectedToolItemType })[] = [];
-  for (const tool of selectedTools) {
-    const status = getAgentToolRuntimeStatus(tool);
-    if (status !== 'invalid' && status !== 'offline' && status !== 'waitingForConfig') continue;
+  for (const tool of getAbnormalWorkflowAgentTools(selectedTools)) {
     issues.push({
       code: WorkflowCheckIssueCodeEnum.agentToolAbnormal,
       inputKey: NodeInputKeyEnum.selectedTools,
       tool
     });
   }
-  for (const { items, inputKey, messageCode } of [
+  for (const { items, inputKey, resourceKind, messageCode } of [
     {
       items: datasets,
       inputKey: datasetInputKey,
+      resourceKind: 'dataset',
       messageCode: WorkflowCheckIssueCodeEnum.agentDatasetAbnormal
     },
     {
       items: skills,
       inputKey: NodeInputKeyEnum.skills,
+      resourceKind: 'skill',
       messageCode: WorkflowCheckIssueCodeEnum.agentSkillAbnormal
     }
   ]) {
     for (const item of items) {
-      if (!item.error) continue;
-      issues.push({
-        code:
-          item.error === WorkflowCheckIssueCodeEnum.resourceNoPermission
-            ? WorkflowCheckIssueCodeEnum.resourceNoPermission
-            : WorkflowCheckIssueCodeEnum.resourceMissing,
-        inputKey,
-        messageCode
-      });
+      for (const issue of getWorkflowResourceIssues([item])) {
+        issues.push({
+          code:
+            issue === 'no_permission'
+              ? WorkflowCheckIssueCodeEnum.resourceNoPermission
+              : WorkflowCheckIssueCodeEnum.resourceMissing,
+          inputKey,
+          params: { resourceKind },
+          messageCode
+        });
+      }
     }
   }
   return issues;
@@ -126,15 +133,12 @@ export const checkWorkflowNodeResourceRules = ({
 }): WorkflowRuleIssue[] => {
   const issues: WorkflowRuleIssue[] = [];
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
-  if (data.flowNodeType === FlowNodeTypeEnum.toolSet && !data.pluginId) {
-    const mcpToolSet = McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
-    const httpToolSet = HttpToolSetNodeConfigSchema.safeParse(data.toolConfig?.httpToolSet).data;
-    if (
-      (mcpToolSet && (!mcpToolSet.url.trim() || !mcpToolSet.toolList.length)) ||
-      (httpToolSet && (!httpToolSet.apiSchemaUrl?.trim() || !httpToolSet.toolList.length))
-    ) {
-      issues.push({ code: WorkflowCheckIssueCodeEnum.toolSetNotConfigured });
-    }
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !data.pluginId &&
+    isWorkflowToolSetUnconfigured(data.toolConfig)
+  ) {
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolSetNotConfigured });
   }
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
     issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
@@ -153,31 +157,23 @@ export const checkWorkflowNodeResourceRules = ({
 
   /** 资源删除/权限标记来自服务端快照，不根据客户端身份重新鉴权。 */
   const addResourceIssues = (value: unknown, inputKey: string) => {
-    if (!Array.isArray(value)) return;
-    if (value.some((item) => item?.error === WorkflowCheckIssueCodeEnum.resourceNoPermission)) {
+    getWorkflowResourceIssues(value).forEach((issue) =>
       issues.push({
-        code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
+        code:
+          issue === 'no_permission'
+            ? WorkflowCheckIssueCodeEnum.resourceNoPermission
+            : WorkflowCheckIssueCodeEnum.resourceMissing,
         inputKey
-      });
-    }
-    if (
-      value.some(
-        (item) => item?.error && item.error !== WorkflowCheckIssueCodeEnum.resourceNoPermission
-      )
-    ) {
-      issues.push({
-        code: WorkflowCheckIssueCodeEnum.resourceMissing,
-        inputKey
-      });
-    }
+      })
+    );
   };
   const isAgentNode = data.flowNodeType === FlowNodeTypeEnum.agent;
   if (isAgentNode && checkAgentResources) {
     // 与 getAgentDatasetParams 一致：存在聚合配置时，资源检查只使用其中的知识库。
-    const datasetParams = inputs.get(NodeInputKeyEnum.datasetParams)?.value;
-    const datasets = datasetParams
-      ? datasetParams.datasets
-      : inputs.get(NodeInputKeyEnum.datasetSelectList)?.value;
+    const datasetSource = getAgentDatasetResourceSource({
+      datasetParams: inputs.get(NodeInputKeyEnum.datasetParams)?.value,
+      datasetSelectList: inputs.get(NodeInputKeyEnum.datasetSelectList)?.value
+    });
     const skills = inputs.get(NodeInputKeyEnum.skills)?.value;
     const tools = inputs.get(NodeInputKeyEnum.selectedTools)?.value;
     issues.push(
@@ -186,10 +182,8 @@ export const checkWorkflowNodeResourceRules = ({
           ? tools.filter((tool) => tool && typeof tool === 'object')
           : [],
         skills: Array.isArray(skills) ? skills : [],
-        datasets: Array.isArray(datasets) ? datasets : [],
-        datasetInputKey: datasetParams
-          ? NodeInputKeyEnum.datasetParams
-          : NodeInputKeyEnum.datasetSelectList
+        datasets: Array.isArray(datasetSource.value) ? datasetSource.value : [],
+        datasetInputKey: datasetSource.inputKey
       })
     );
   } else if (!isAgentNode) {

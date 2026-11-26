@@ -1,5 +1,6 @@
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { MongoDeleteResult } from '../../common/mongo';
 import type {
   CollaboratorIdType,
   CollaboratorItemType
@@ -98,7 +99,7 @@ export const deleteCollaboratorPermissions = async ({
   collaborator: CollaboratorIdType;
   resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
   session?: ClientSession;
-}) => {
+}): Promise<MongoDeleteResult> => {
   const fn = (activeSession: ClientSession) =>
     resourcePermissionRepo.deleteCollaborator({
       teamId,

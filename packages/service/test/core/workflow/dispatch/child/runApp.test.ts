@@ -1,9 +1,19 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { Types } from 'mongoose';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
 import { createNodeSummary } from '../../../../../core/workflow/dispatch/utils/summary';
 
 const mocks = vi.hoisted(() => ({
@@ -13,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../../../core/workflow/dispatch/index', () => ({
-  runWorkflow: (args: any) => mocks.runWorkflow(args)
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestWorkflowContext(args))
 }));
 
 vi.mock('../../../../../core/workflow/resource/service', () => ({
@@ -24,7 +34,9 @@ vi.mock('../../../../../support/user/team/utils', () => ({
   getUserChatInfo: (args: any) => mocks.getUserChatInfo(args)
 }));
 
-import { dispatchRunAppNode } from '../../../../../core/workflow/dispatch/child/runApp';
+import { dispatchRunAppNode as dispatchRunAppNodeWithoutContext } from '../../../../../core/workflow/dispatch/child/runApp';
+
+const dispatchRunAppNode = createTestWorkflowDispatch(dispatchRunAppNodeWithoutContext);
 
 const createParentVariableState = () =>
   WorkflowVariableState.create({
@@ -106,7 +118,7 @@ describe('dispatchRunAppNode', () => {
       params: {
         userChatInput: 'hello to child'
       },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -166,8 +178,14 @@ describe('dispatchRunAppNode', () => {
     ];
     mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
       expect(args.stream).toBe(true);
-      expect(args.workflowStreamResponse).toBe(workflowStreamResponse);
-      args.workflowStreamResponse?.({ event: 'toolResponse', data: 'nested tool delta' });
+      expect(args).not.toHaveProperty('workflowStreamResponse');
+      expect(getCapturedTestWorkflowContext(args).workflowStreamResponse).toBe(
+        workflowStreamResponse
+      );
+      getCapturedTestWorkflowContext(args).workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolResponse,
+        data: 'nested tool delta'
+      });
       return {
         flowUsages: [{ moduleName: 'Child App', totalPoints: 10 }],
         assistantResponses: childAssistantResponses,
@@ -203,7 +221,7 @@ describe('dispatchRunAppNode', () => {
       query: [{ type: 'text', text: { content: 'hello' } }],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: 'hello to child' },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -222,7 +240,6 @@ describe('dispatchRunAppNode', () => {
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         stream: true,
-        workflowStreamResponse,
         runningAppInfo: expect.objectContaining({ isChildApp: true })
       })
     );
@@ -244,7 +261,7 @@ describe('dispatchRunAppNode', () => {
       query: [{ type: 'text', text: { content: 'hello' } }],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: 'hello to child', system_forbid_stream: true },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -257,11 +274,13 @@ describe('dispatchRunAppNode', () => {
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        stream: false,
-        workflowStreamResponse: undefined
+        stream: false
       })
     );
     expect(workflowStreamResponse).not.toHaveBeenCalled();
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).workflowStreamResponse
+    ).toBeUndefined();
   });
 
   it('should return error when input is empty', async () => {
@@ -273,7 +292,7 @@ describe('dispatchRunAppNode', () => {
       query: [],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: '' },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       usagePush: vi.fn()
     };
 
@@ -300,7 +319,7 @@ describe('dispatchRunAppNode', () => {
           }
         }
       },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary()
     };
@@ -322,6 +341,115 @@ describe('dispatchRunAppNode', () => {
         value: [{ type: 'text', text: { content: 'child output' } }]
       }
     ]);
+  });
+
+  it('Mongo 暂停恢复保留普通变量与显式清空值，不复用原始子应用入参', async ({ onTestFinished }) => {
+    const parent = await createParentVariableState();
+    await parent.set('a', 'parent');
+    const resource = await mocks.loadChildWorkflowWithResource();
+    resource.childVersion.chatConfig.variables = [
+      { key: 'a', label: 'displayed', type: 'input', valueType: 'string', defaultValue: 'A0' },
+      {
+        key: 'clearMe',
+        label: 'originalLabel',
+        type: 'input',
+        valueType: 'string',
+        defaultValue: 'fallback'
+      }
+    ];
+    mocks.loadChildWorkflowWithResource.mockResolvedValue(resource);
+    const completed = await mocks.runWorkflow();
+    mocks.runWorkflow.mockClear();
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const child = getCapturedTestWorkflowContext(args).variableContext;
+      expect(child.get('a')).toBe('original');
+      await child.set('a', 'checkpoint');
+      expect(child.get('clearMe')).toBe('before-clear');
+      await child.set('clearMe', undefined);
+      expect(child.get('clearMe')).toBeUndefined();
+      return {
+        ...completed,
+        workflowInteractiveResponse: {
+          type: 'userInput',
+          params: { description: '', inputForm: [] },
+          entryNodeIds: ['Form'],
+          memoryEdges: [],
+          nodeOutputs: []
+        }
+      };
+    });
+    const props: any = {
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'owner',
+        name: 'Parent'
+      },
+      runningUserInfo: { teamId: 'team', tmbId: 'caller' },
+      node: { nodeId: 'child-node', pluginId: 'child-app-id' },
+      params: {
+        userChatInput: 'original question',
+        displayed: 'original',
+        originalLabel: 'before-clear'
+      },
+      query: [{ text: { content: 'original question' } }],
+      histories: [],
+      variableContext: parent,
+      timezone: 'Asia/Shanghai',
+      uid: 'caller',
+      chatId: 'checkpoint-chat',
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    };
+    const paused = await dispatchRunAppNode(props);
+    expect(paused.error).toBeUndefined();
+    // 持久化后重新读取；不约束 checkpoint 如何编码“已清空”，只验收恢复结果。
+    const appId = new Types.ObjectId();
+    const saved = await MongoChatItem.create({
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      teamId: new Types.ObjectId(),
+      tmbId: new Types.ObjectId(),
+      chatId: props.chatId,
+      obj: ChatRoleEnum.AI,
+      value: [],
+      memories: paused.system_memories
+    });
+    onTestFinished(async () => {
+      await MongoChatItem.deleteOne({ _id: saved._id });
+    });
+    const history = await MongoChatItem.findById(saved._id).lean().orFail();
+    if (history.obj !== ChatRoleEnum.AI) throw new Error('Expected persisted AI checkpoint');
+    expect(parent.get('a')).toBe('parent');
+
+    const resumedVariables = vi.fn();
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const variables = getCapturedTestWorkflowContext(args).variableContext;
+      resumedVariables(variables.get('a'), variables.get('clearMe'));
+      expect(args.query).toEqual([{ text: { content: '{"value":"RESUME"}' } }]);
+      return completed;
+    });
+    const resumed = await dispatchRunAppNode({
+      ...props,
+      histories: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: [],
+          memories: history.memories
+        }
+      ],
+      query: [{ text: { content: '{"value":"RESUME"}' } }],
+      lastInteractive: paused[DispatchNodeResponseKeyEnum.interactive]
+    });
+    expect(resumed.error).toBeUndefined();
+    expect(resumed.system_memories).toHaveProperty(
+      'workflow-variable-checkpoint/node:child-node/app:child-app-id:',
+      undefined
+    );
+    expect(mocks.runWorkflow).toHaveBeenCalledTimes(2);
+    expect(parent.get('a')).toBe('parent');
+    expect(resumedVariables).toHaveBeenCalledExactlyOnceWith('checkpoint', undefined);
   });
 
   it('propagates full histories, toolResponse text, and sandbox usage for nested chatAgent', async () => {

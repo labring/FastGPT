@@ -9,17 +9,22 @@ type FormType = {
   versionName: string;
 };
 
+type SaveAndPublishModalProps = {
+  title?: string;
+  tip?: string;
+  onClose: () => void;
+  isLoading: boolean;
+  /** 由调用方处理业务错误提示；弹窗会捕获提交期 rejection 并保持开启，便于用户修正后重试。 */
+  onConfirm: (versionName: string) => Promise<void>;
+};
+
 const SaveAndPublishModal = ({
   title,
+  tip,
   onClose,
   isLoading,
   onConfirm
-}: {
-  title?: string;
-  onClose: () => void;
-  isLoading: boolean;
-  onConfirm: (versionName: string) => Promise<void>;
-}) => {
+}: SaveAndPublishModalProps) => {
   const { t } = useTranslation();
   const { register, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -41,7 +46,11 @@ const SaveAndPublishModal = ({
           <Button
             isLoading={isLoading}
             onClick={handleSubmit(async (data) => {
-              await onConfirm(data.versionName);
+              try {
+                await onConfirm(data.versionName);
+              } catch {
+                // 调用方已处理错误提示；此处捕获避免 react-hook-form handleSubmit 抛出未处理的 Promise Rejection，同时保持弹窗开启便于修正重试。
+              }
             })}
           >
             {t('common:Confirm')}
@@ -62,7 +71,7 @@ const SaveAndPublishModal = ({
           />
         </Box>
         <Box fontSize={'12px'} color={'myGray.500'} mt={-2}>
-          {t('app:app.version_publish_tips')}
+          {tip ?? t('app:app.version_publish_tips')}
         </Box>
       </Flex>
     </MyModal>

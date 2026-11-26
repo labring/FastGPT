@@ -1,11 +1,13 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { blockPrivateDalRepoImports } from '../dal/vitestBoundary';
 
 const localEnvPath = resolve(import.meta.dirname, '../../test/.env.test.local');
 if (existsSync(localEnvPath)) process.loadEnvFile(localEnvPath);
 
 export default defineConfig({
+  plugins: [blockPrivateDalRepoImports()],
   resolve: {
     alias: {
       '@': resolve('../../projects/app/src'),

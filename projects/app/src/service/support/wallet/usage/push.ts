@@ -94,18 +94,24 @@ export const pushQuestionGuideUsage = ({
   model,
   inputTokens,
   outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   teamId,
   tmbId
 }: {
   model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   teamId: string;
   tmbId: string;
 }) => {
   const { totalPoints, modelId } = formatModelChars2Points({
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     model
   });
 
@@ -121,7 +127,9 @@ export const pushQuestionGuideUsage = ({
         amount: totalPoints,
         modelId,
         inputTokens,
-        outputTokens
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens
       }
     ]
   });

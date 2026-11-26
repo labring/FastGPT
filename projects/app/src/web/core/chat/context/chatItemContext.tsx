@@ -58,7 +58,7 @@ type ChatBoxDataType = {
   app: {
     chatConfig?: AppChatConfigType;
     name: string;
-    avatar: string;
+    avatar?: string;
     intro?: string;
     canUse?: boolean;
     type: AppTypeEnum;

@@ -183,5 +183,6 @@ defineIndex(AppSchema, { key: { type: 1 } });
 defineIndex(AppSchema, { key: { deleteTime: 1 } });
 // Admin search
 defineIndex(AppSchema, { key: { name: 1 } });
+defineIndex(AppSchema, { key: { tmbId: 1 } });
 
 export const MongoApp = getMongoModel<AppMongoSchemaType>(AppCollectionName, AppSchema);

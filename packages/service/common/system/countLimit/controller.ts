@@ -3,6 +3,7 @@ import type { CountLimitTypeEnum } from './type';
 import { CountLimitConfig } from './const';
 import { MongoCountLimit } from './schema';
 import { mongoSessionRun } from '../../mongo/sessionRun';
+import type { MongoDeleteResult } from '../../mongo';
 
 /**
  * Update the count limit for a specific type and key.
@@ -75,7 +76,7 @@ export const updateCountLimit = async ({
   });
 
 /** Clean the Count limit, if no key provided, clean all the type */
-export const cleanCountLimit = async ({ teamId }: { teamId: string }) =>
+export const cleanCountLimit = async ({ teamId }: { teamId: string }): Promise<MongoDeleteResult> =>
   MongoCountLimit.deleteMany({
     key: teamId
   });

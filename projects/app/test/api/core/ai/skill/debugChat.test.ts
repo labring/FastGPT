@@ -1,4 +1,5 @@
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -50,23 +51,6 @@ const debugChatMocks = vi.hoisted(() => ({
   createWorkflowStreamResponseContext: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-
-  return {
-    ...actual,
-    serviceEnv: {
-      ...actual.serviceEnv,
-      AGENT_SANDBOX_PROVIDER: 'opensandbox',
-      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
-      AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
-      AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
-      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
-    }
-  };
-});
-
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: debugChatMocks.dispatchWorkFlow
 }));
@@ -85,7 +69,7 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
 }));
 
@@ -135,16 +119,19 @@ describe('buildDebugRuntimeNodes', () => {
       expect(input.value).toBe('');
     });
 
-    it('should have exactly one userChatInput output with static type', () => {
+    it('should declare userChatInput and userFiles outputs', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const startNode = runtimeNodes[0];
 
-      expect(startNode.outputs).toHaveLength(1);
-      const output = startNode.outputs[0];
+      expect(startNode.outputs).toHaveLength(2);
+      const output = startNode.outputs.find((o) => o.key === NodeOutputKeyEnum.userChatInput)!;
       expect(output.key).toBe(NodeOutputKeyEnum.userChatInput);
       expect(output.id).toBe(NodeOutputKeyEnum.userChatInput);
       expect(output.type).toBe(FlowNodeOutputTypeEnum.static);
       expect(output.valueType).toBe(WorkflowIOValueTypeEnum.string);
+      expect(startNode.outputs.find((o) => o.key === NodeOutputKeyEnum.userFiles)?.valueType).toBe(
+        WorkflowIOValueTypeEnum.arrayString
+      );
     });
   });
 
@@ -169,6 +156,15 @@ describe('buildDebugRuntimeNodes', () => {
       // Reference format: [nodeId, outputKey]
       expect(userInput!.value).toEqual([START_NODE_ID, NodeOutputKeyEnum.userChatInput]);
       expect(userInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
+    });
+
+    it('fileUrlList input should reference start node userFiles output', () => {
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
+      const fileInput = runtimeNodes[1].inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+      expect(fileInput).toMatchObject({
+        value: [START_NODE_ID, NodeOutputKeyEnum.userFiles],
+        renderTypeList: expect.arrayContaining([FlowNodeInputTypeEnum.reference])
+      });
     });
 
     it('aiModelId input should carry the provided model ID', () => {
@@ -298,6 +294,16 @@ describe('debugChat handler — parameter validation', () => {
   const getSseErrResMock = () => vi.mocked(responseModule.sseErrRes);
 
   beforeEach(async () => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    const sandbox = global.systemInstanceConfig.subservice.agentSandbox;
+    sandbox.provider = 'opensandbox';
+    Object.assign(sandbox.opensandbox, {
+      baseUrl: 'http://mock-opensandbox.local',
+      apiKey: 'mock-opensandbox-api-key',
+      runtime: 'docker',
+      image: 'runtime-image:test',
+      useServerProxy: false
+    });
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
     const modelData: LLMModelDataType = {

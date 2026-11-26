@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSearchProps } from '@fastgpt/service/core/dataset/search/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -15,6 +16,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
@@ -40,7 +42,7 @@ export const searchDatasetForApi = ({
     params,
     context: {
       actor: { teamId: auth.teamId, tmbId: auth.tmbId, isRoot: auth.isRoot },
-      capabilities: { metadataFilter: Boolean(global.feConfigs.isPlus) }
+      capabilities: { metadataFilter: Boolean(isProVersion()) }
     },
     deps: {
       ...createDatasetSearchRuntime({ modelHandle }),
@@ -66,6 +68,8 @@ export const searchDatasetForApi = ({
           modelId: item.model.modelId,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
+          cacheReadTokens: item.cacheReadTokens,
+          cacheCreationTokens: item.cacheCreationTokens,
           amount: item.usedUserOpenAIKey ? 0 : formatModelChars2Points(item).totalPoints
         }));
         const totalPoints = list.reduce((sum, item) => sum + item.amount, 0);
@@ -98,6 +102,7 @@ export const searchDatasetForApi = ({
               teamId: auth.teamId,
               tmbId: auth.tmbId,
               event: AuditEventEnum.SEARCH_TEST,
+              resources: [buildDatasetAuditResource(dataset)],
               params: { datasetName: dataset.name, datasetType: getI18nDatasetType(dataset.type) }
             });
           }

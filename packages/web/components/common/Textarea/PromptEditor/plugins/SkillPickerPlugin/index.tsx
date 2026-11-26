@@ -26,6 +26,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 import type { SkillLabelItemType } from '../SkillLabelPlugin';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { formatPromptRefToken } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 
 const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
 const MENU_HEIGHT = '337px';
@@ -788,7 +789,7 @@ export default function SkillPickerPlugin({
           }
         }
 
-        selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+        selection.insertNodes([$createTextNode(formatPromptRefToken(skillId))]);
         inserted = true;
       });
 

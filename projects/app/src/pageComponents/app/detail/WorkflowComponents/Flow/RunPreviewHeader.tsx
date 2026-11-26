@@ -4,6 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
+import FullscreenButton from '@/components/common/FullscreenButton';
 
 const RunPreviewHeader = ({
   title,
@@ -15,6 +16,8 @@ const RunPreviewHeader = ({
   onCopyChatId,
   onOpenSandboxModal,
   onRestart,
+  isFullscreen,
+  onToggleFullscreen,
   onClose
 }: {
   title: string;
@@ -28,6 +31,8 @@ const RunPreviewHeader = ({
   onCopyChatId: () => void;
   onOpenSandboxModal: () => void;
   onRestart: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
   onClose: () => void;
 }) => {
   return (
@@ -52,6 +57,7 @@ const RunPreviewHeader = ({
             onClick={onRestart}
           />
         </MyTooltip>
+        <FullscreenButton isFullscreen={isFullscreen} onClick={onToggleFullscreen} />
         <MyTooltip label={closeLabel}>
           <IconButton
             size="smSquare"

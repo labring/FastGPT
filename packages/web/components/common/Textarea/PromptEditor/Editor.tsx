@@ -46,6 +46,7 @@ import type { SkillLabelItemType } from './plugins/SkillLabelPlugin';
 import SkillLabelPlugin from './plugins/SkillLabelPlugin';
 import { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type { SkillOptionItemType } from './plugins/SkillPickerPlugin';
+import type { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -91,7 +92,7 @@ export type EditorProps = {
 
   skillOption?: SkillOptionItemType;
   onClickSkill?: (id: string) => void;
-  selectedSkills?: SkillLabelItemType[];
+  promptRefRegistry?: AgentPromptRefRegistry<SkillLabelItemType>;
 
   showOpenModal?: boolean;
   minH?: number;
@@ -123,7 +124,7 @@ export default function Editor({
   variableLabels = [],
   // @选择技能
   skillOption,
-  selectedSkills,
+  promptRefRegistry,
   onClickSkill,
 
   onChange,
@@ -169,9 +170,10 @@ export default function Editor({
     }
   };
 
-  // 变量插件会同步 props；仅在外部文本值变化时重建编辑器。
+  // 变量标签由展示上下文更新；仅在外部文本值变化时重建编辑器。
   useEffect(() => {
     if (value === editorOutputRef.current) return;
+    editorOutputRef.current = value;
     setKey(getNanoid(6));
   }, [value]);
 
@@ -285,15 +287,15 @@ export default function Editor({
 
           {variableLabels.length > 0 && (
             <>
-              <VariableLabelPlugin variables={variableLabels} />
+              <VariableLabelPlugin />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
 
-          {skillOption && onClickSkill && selectedSkills && (
+          {skillOption && onClickSkill && promptRefRegistry && (
             <>
               <SkillLabelPlugin
-                selectedSkills={selectedSkills}
+                promptRefRegistry={promptRefRegistry}
                 onClickSkill={onClickSkill}
                 pendingSkillsRef={pendingSkillsRef}
               />

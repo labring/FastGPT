@@ -1,8 +1,8 @@
 import React from 'react';
 import { Box, Flex, NumberInput, NumberInputField, Stack, Switch } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -24,7 +24,7 @@ const ChatHistoryWindow = ({
   history: number;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (value) => value.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
   const input = inputs.find((item) => item.key === NodeInputKeyEnum.aiChatHistoryWindow);
   const enabled = input?.value !== undefined && input?.value !== null;
   const parsed = ChatHistoryWindowSchema.safeParse(input?.value);
@@ -40,11 +40,11 @@ const ChatHistoryWindow = ({
       ...input,
       value
     };
-    onChangeNode(
-      input
-        ? { nodeId, type: 'updateInput', key: nextInput.key, value: nextInput }
-        : { nodeId, type: 'addInput', value: nextInput }
-    );
+    nodeActions?.updateNode((current) => ({
+      inputs: current.inputs.some((item) => item.key === nextInput.key)
+        ? current.inputs.map((item) => (item.key === nextInput.key ? nextInput : item))
+        : [...current.inputs, nextInput]
+    }));
   };
 
   return (

@@ -9,13 +9,15 @@ import {
   getLastInteractiveValue,
   storeEdges2RuntimeEdges,
   getWorkflowEntryNodeIds,
-  storeNodes2RuntimeNodes,
   filterWorkflowEdges,
-  getReferenceVariableValue as baseGetReferenceVariableValue,
   formatVariableValByType,
   textAdaptGptResponse,
   rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getReferenceVariableValue as baseGetReferenceVariableValue,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/common/workflow/runtime';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -36,6 +38,7 @@ import type {
   RuntimeEdgeItemType,
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
@@ -1378,6 +1381,7 @@ describe('storeNodes2RuntimeNodes', () => {
     const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1401,6 +1405,7 @@ describe('storeNodes2RuntimeNodes', () => {
     expect(result).toEqual([
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1433,6 +1438,7 @@ describe('storeNodes2RuntimeNodes', () => {
     ];
     const result = storeNodes2RuntimeNodes(nodes, ['other']);
     expect(result[0].isEntry).toBe(false);
+    expect(result[0]).not.toHaveProperty('parentNodeId');
   });
 });
 
@@ -1536,22 +1542,14 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should return original value when node not found', () => {
-    const result = getReferenceVariableValue({
-      value: ['nonexistent', 'out1'],
-      nodesMap: {},
-      variables: {}
-    });
-    expect(result).toEqual(['nonexistent', 'out1']);
-  });
-
-  it('should return non-reference value as-is', () => {
-    const result = getReferenceVariableValue({
-      value: 'plain string' as any,
-      nodesMap: {},
-      variables: {}
-    });
-    expect(result).toBe('plain string');
+  it.each([
+    { name: 'a two-string tuple with a missing source', value: ['nonexistent', 'out1'] },
+    { name: 'a plain string', value: 'plain string' },
+    { name: 'an ordinary array', value: ['plain value', 1] }
+  ])('preserves $name as a literal', ({ value }) => {
+    expect(
+      getReferenceVariableValue({ value: value as ReferenceValueType, nodesMap: {}, variables: {} })
+    ).toBe(value);
   });
 
   it('should keep two-column table data as a two-dimensional array', () => {
@@ -1560,13 +1558,12 @@ describe('getReferenceVariableValue', () => {
       ['资产总额（期末余额）', '22,701,764,055.63'],
       ['负债总额（期末余额）', '4,809,415,705.17']
     ];
-
     const result = getReferenceVariableValue({
       value: tableData,
       nodesMap: {},
-      variables: {}
+      variables: {},
+      isReferenceVal: false
     });
-
     expect(result).toEqual(tableData);
   });
 
@@ -1653,6 +1650,34 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toEqual(['value1']);
+  });
+
+  it('should preserve a mixed reference array when one source is missing', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
+        ]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [
+        ['node1', 'out1'],
+        ['missingNode', 'out1'],
+        [VARIABLE_NODE_ID, 'var1']
+      ],
+      nodesMap,
+      variables: { var1: 'hello' }
+    });
+    expect(result).toEqual([
+      ['node1', 'out1'],
+      ['missingNode', 'out1'],
+      [VARIABLE_NODE_ID, 'var1']
+    ]);
   });
 
   it('should flatten array output values in reference array', () => {

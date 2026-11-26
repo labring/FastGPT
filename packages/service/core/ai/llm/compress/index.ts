@@ -661,14 +661,18 @@ export const compressRequestMessages = async ({
       : formatModelChars2Points({
           model,
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }).totalPoints;
     const compressedUsage = {
       moduleName: i18nT('account_usage:compress_llm_messages'),
       modelId: model.modelId,
       totalPoints,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens
     };
 
     if (!answerText) {
@@ -721,6 +725,8 @@ export const compressRequestMessages = async ({
     if (usage.outputTokens >= checkpointCompletionTokenLimit) {
       logger.warn('Message compression completion exceeds soft limit, keeping LLM checkpoint', {
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         completionTokenLimit: checkpointCompletionTokenLimit,
         originalTokens: messageTokens,
         compressedTokens
@@ -735,7 +741,9 @@ export const compressRequestMessages = async ({
         compressedTokenLimit: checkpointWarnTokenLimit,
         maxContext: model.config.maxContext,
         requestId,
-        outputTokens: usage.outputTokens
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens
       });
     }
 
@@ -809,6 +817,8 @@ export const compressLargeContent = async ({
   type CompressUsageType = {
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalPoints: number;
     requestIds: string[];
   };
@@ -874,10 +884,14 @@ export const compressLargeContent = async ({
         : formatModelChars2Points({
             model,
             inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
+            outputTokens: usage.outputTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheCreationTokens: usage.cacheCreationTokens
           }).totalPoints;
       const chunkUsage = {
         ...usage,
+        cacheReadTokens: usage.cacheReadTokens ?? 0,
+        cacheCreationTokens: usage.cacheCreationTokens ?? 0,
         totalPoints,
         requestIds: [requestId]
       };
@@ -927,6 +941,8 @@ export const compressLargeContent = async ({
     const usage: CompressUsageType = {
       inputTokens: 0,
       outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
       totalPoints: 0,
       requestIds: []
     };
@@ -940,6 +956,8 @@ export const compressLargeContent = async ({
       });
       usage.inputTokens += result.usage.inputTokens;
       usage.outputTokens += result.usage.outputTokens;
+      usage.cacheReadTokens += result.usage.cacheReadTokens;
+      usage.cacheCreationTokens += result.usage.cacheCreationTokens;
       usage.totalPoints += result.usage.totalPoints;
       usage.requestIds.push(...result.usage.requestIds);
 
@@ -980,6 +998,8 @@ export const compressLargeContent = async ({
         });
         usage.inputTokens += result.usage.inputTokens;
         usage.outputTokens += result.usage.outputTokens;
+        usage.cacheReadTokens += result.usage.cacheReadTokens;
+        usage.cacheCreationTokens += result.usage.cacheCreationTokens;
         usage.totalPoints += result.usage.totalPoints;
         usage.requestIds.push(...result.usage.requestIds);
 
@@ -1108,7 +1128,9 @@ export const compressLargeContent = async ({
         modelId: model.modelId,
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens
+        outputTokens: result.usage.outputTokens,
+        cacheReadTokens: result.usage.cacheReadTokens,
+        cacheCreationTokens: result.usage.cacheCreationTokens
       },
       requestIds: result.usage.requestIds
     };

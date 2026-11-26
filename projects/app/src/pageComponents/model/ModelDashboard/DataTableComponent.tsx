@@ -143,7 +143,9 @@ const DataTableComponent = ({
             const { totalPoints } = calculateModelPrice({
               config: modelPricing,
               inputTokens,
-              outputTokens
+              outputTokens,
+              cacheReadTokens: item.cached_tokens,
+              cacheCreationTokens: item.cache_creation_tokens
             });
 
             existing.totalCost += totalPoints;
@@ -215,7 +217,9 @@ const DataTableComponent = ({
             const { totalPoints } = calculateModelPrice({
               config: modelPricing,
               inputTokens,
-              outputTokens
+              outputTokens,
+              cacheReadTokens: item.cached_tokens,
+              cacheCreationTokens: item.cache_creation_tokens
             });
 
             existing.totalCost += totalPoints;

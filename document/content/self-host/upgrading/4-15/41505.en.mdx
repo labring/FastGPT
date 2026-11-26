@@ -1,6 +1,6 @@
 ---
 title: 'V4.15.0-beta5'
-description: "FastGPT V4.15.0-beta5 release notes covering container image updates, upgrade steps, and feature changes."
+description: 'FastGPT V4.15.0-beta5 release notes covering container image updates, upgrade steps, and feature changes.'
 releaseTime: '2026-06-24'
 upgradeTags:
   - CONFIG
@@ -44,7 +44,7 @@ Also add the `fastgpt-agent-sandbox-proxy` service to `docker-compose.yml`. The 
 
 ```yml
 fastgpt-agent-sandbox-proxy:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
+  image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
   container_name: fastgpt-agent-sandbox-proxy
   restart: always
   ports:

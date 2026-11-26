@@ -1,92 +1,77 @@
-import JSZip from 'jszip';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
-import { parseSkillMarkdown } from '../utils';
-import { validateZipSafety } from './zipBuilder';
+import { getLogger } from '../../../../common/logger/client';
+import { LogCategories } from '../../../../common/logger/categories';
+import { extractSkillMetadataFromMarkdown, findSkillMdEntries } from '../utils';
 
-export type ExtractRuntimeSkillsFromPackageOptions = {
-  allowEmpty?: boolean;
+const logger = getLogger(LogCategories.MODULE.AI.AGENT);
+
+export type SkillMdFileInput = {
+  path: string;
+  content: string;
+  error?: string;
 };
 
-/**
- * 从 Skill 包中解析运行态子 Skill 元数据。
- *
- * 标准 workspace 读取 `skills/<skillDir>/SKILL.md`；历史单 skill 包允许从根目录或
- * 一级目录 `SKILL.md` 兜底解析，并把 path 规范化为运行态可识别的
- * `skills/<name>/SKILL.md`。初始空白 workspace 可通过 `allowEmpty` 跳过空包校验。
- */
-export async function extractRuntimeSkillsFromPackage(
-  zipBuffer: Buffer,
-  options: ExtractRuntimeSkillsFromPackageOptions = {}
-): Promise<RuntimeSkillMetadataType[]> {
-  const zip = await JSZip.loadAsync(zipBuffer);
-  const safety = validateZipSafety(zip);
-  if (!safety.valid) {
-    throw new Error(safety.error || 'Invalid skill package');
-  }
+export const MAX_SKILL_MD_ENTRY_BYTES = 2 * 1024 * 1024;
 
-  const allSkillMdEntries = Object.entries(zip.files)
-    .filter(([, file]) => !file.dir)
-    .map(([path, file]) => ({
-      path: normalizeRuntimeSkillPath(path),
-      file
+/**
+ * 从流式提取的 `SKILL.md` 文件集合中解析运行态子 Skill 元数据。
+ *
+ * 扫描与解析口径与运行态 `getAgentSkillInfos` 保持一致：
+ * - 递归扫描任意深度的 `SKILL.md` 文件（大小写不敏感、跳过 `node_modules/.venv/venv`）；
+ * - `path` 保留包内真实相对路径，允许子 Skill 间 `name` 重复；
+ * - 解析失败、缺少有效 `name` 或超出元数据上限的 `SKILL.md` 跳过并记警告；全部无效抛 `noValidSkillMd`，零匹配抛 `missingSkillMd`。
+ */
+export function extractRuntimeSkillsFromSkillMdFiles(
+  files: SkillMdFileInput[]
+): RuntimeSkillMetadataType[] {
+  const skillMdEntries = findSkillMdEntries(
+    files.map((entry) => ({
+      ...entry,
+      isDir: false
     }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-  const workspaceEntries = allSkillMdEntries.filter((entry) =>
-    isWorkspaceRuntimeSkillMdPath(entry.path)
   );
-  const skillMdEntries =
-    workspaceEntries.length > 0
-      ? workspaceEntries
-      : allSkillMdEntries.filter((entry) => isLegacySkillMdPath(entry.path));
 
   if (skillMdEntries.length === 0) {
-    if (options.allowEmpty) return [];
-    throw new Error('Skill package must contain at least one skills/<name>/SKILL.md');
+    throw new UserError(SkillErrEnum.missingSkillMd);
   }
 
-  const nameSet = new Set<string>();
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
+  const invalidReasons: string[] = [];
 
   for (const entry of skillMdEntries) {
-    const content = await entry.file.async('string');
-    const { frontmatter, error } = parseSkillMarkdown(content);
-    if (error) {
-      throw new Error(`${entry.path}: ${error}`);
+    if (entry.error) {
+      invalidReasons.push(`${entry.path}: ${entry.error}`);
+      logger.warn('[Agent Skills] Skip invalid SKILL.md while extracting runtime metadata', {
+        path: entry.path,
+        error: entry.error
+      });
+      continue;
     }
 
-    const name = typeof frontmatter.name === 'string' ? frontmatter.name.trim() : '';
-    if (!name) {
-      throw new Error(`${entry.path}: frontmatter name is required`);
+    const parsed = extractSkillMetadataFromMarkdown(entry.content);
+    if (!parsed.valid) {
+      invalidReasons.push(`${entry.path}: ${parsed.error}`);
+      logger.warn('[Agent Skills] Skip invalid SKILL.md while extracting runtime metadata', {
+        path: entry.path,
+        error: parsed.error
+      });
+      continue;
     }
-
-    if (nameSet.has(name)) {
-      throw new Error(`Duplicate runtime skill name: ${name}`);
-    }
-    nameSet.add(name);
 
     runtimeSkills.push({
-      name,
-      description:
-        typeof frontmatter.description === 'string' ? frontmatter.description.trim() : '',
-      path: getRuntimeSkillMetadataPath(entry.path, name)
+      name: parsed.name,
+      description: parsed.description,
+      path: entry.path
+    });
+  }
+
+  if (runtimeSkills.length === 0) {
+    throw new UserError(SkillErrEnum.noValidSkillMd, undefined, {
+      cause: new Error(invalidReasons.join('; '))
     });
   }
 
   return runtimeSkills;
-}
-
-function normalizeRuntimeSkillPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
-}
-
-function isWorkspaceRuntimeSkillMdPath(path: string): boolean {
-  return /^skills\/[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function isLegacySkillMdPath(path: string): boolean {
-  return /^SKILL\.md$/i.test(path) || /^[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function getRuntimeSkillMetadataPath(path: string, name: string): string {
-  return isWorkspaceRuntimeSkillMdPath(path) ? path : `skills/${name}/SKILL.md`;
 }

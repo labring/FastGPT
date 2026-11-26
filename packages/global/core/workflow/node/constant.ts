@@ -1,5 +1,5 @@
 import { i18nT } from '../../../common/i18n/utils';
-import { WorkflowIOValueTypeEnum } from '../constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import type { EditorVariablePickerType } from '../type/io';
 export enum FlowNodeInputTypeEnum {
   // render ui
@@ -187,11 +187,27 @@ export enum FlowNodeTypeEnum {
   runApp = 'app'
 }
 
+/** 动态分支节点用于声明出口的输入字段。 */
+export const workflowBranchInputKeys: ReadonlyMap<FlowNodeTypeEnum, NodeInputKeyEnum> = new Map([
+  [FlowNodeTypeEnum.ifElseNode, NodeInputKeyEnum.ifElseList],
+  [FlowNodeTypeEnum.userSelect, NodeInputKeyEnum.userSelectOptions],
+  [FlowNodeTypeEnum.classifyQuestion, NodeInputKeyEnum.agents]
+]);
+
+type FlowValueTypeLabel = (translate: (key: string) => string) => string;
+
+/** 静态声明可翻译类型名，同时保留配置和导出的原始标签。 */
+const translatedFlowValueTypeLabel = (label: string) => {
+  const translateLabel: FlowValueTypeLabel = (translate) => translate(label);
+  return { label, translateLabel };
+};
+
 // node IO value type
 export const FlowValueTypeMap: Record<
   WorkflowIOValueTypeEnum,
   {
     label: string;
+    translateLabel?: FlowValueTypeLabel;
     value: WorkflowIOValueTypeEnum;
     abandon?: boolean;
   }
@@ -237,19 +253,19 @@ export const FlowValueTypeMap: Record<
     value: WorkflowIOValueTypeEnum.any
   },
   [WorkflowIOValueTypeEnum.chatHistory]: {
-    label: i18nT('common:core.chat.History'),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.chat.History')),
     value: WorkflowIOValueTypeEnum.chatHistory
   },
   [WorkflowIOValueTypeEnum.datasetQuote]: {
-    label: i18nT('common:core.workflow.Dataset quote'),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.workflow.Dataset quote')),
     value: WorkflowIOValueTypeEnum.datasetQuote
   },
   [WorkflowIOValueTypeEnum.selectDataset]: {
-    label: i18nT('common:core.chat.Select dataset'),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.chat.Select dataset')),
     value: WorkflowIOValueTypeEnum.selectDataset
   },
   [WorkflowIOValueTypeEnum.dynamic]: {
-    label: i18nT('common:core.workflow.dynamic_input'),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.workflow.dynamic_input')),
     value: WorkflowIOValueTypeEnum.dynamic
   },
   [WorkflowIOValueTypeEnum.selectApp]: {
@@ -262,7 +278,7 @@ export const FlowValueTypeMap: Record<
 export const getFlowValueTypeMeta = (
   valueType?: WorkflowIOValueTypeEnum | string | null
 ): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
-  if (valueType == null || valueType === '') {
+  if (valueType === null || valueType === undefined || valueType === '') {
     return FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
   }
   const meta = FlowValueTypeMap[valueType as WorkflowIOValueTypeEnum];
@@ -325,6 +341,21 @@ export const datasetQuoteValueDesc = `{
   sourceId?: string;
   q: string;
   a: string
+}[]`;
+
+/**
+ * 同义词能力开启（feConfigs.datasetSynonymEnabled）时展示的类型说明。
+ * 关闭时使用上面的基础说明，避免向未启用该能力的部署暴露同义词字段。
+ */
+export const datasetQuoteValueDescWithSynonym = `{
+  id: string;
+  datasetId: string;
+  collectionId: string;
+  sourceName: string;
+  sourceId?: string;
+  q: string;
+  a: string;
+  synonymMappings?: Record<string, string>
 }[]`;
 export const datasetSelectValueDesc = `[
   {

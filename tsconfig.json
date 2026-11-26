@@ -24,7 +24,8 @@
     "pro/admin/worker/**",
     "**/.next/**",
     "**/dist/**",
-    "**/coverage/**"
+    "**/coverage/**",
+    "**/.tsc-out/**"
   ],
   "include": [
     "*.ts",
@@ -51,7 +52,6 @@
     "projects/marketplace/*.ts",
     "projects/marketplace/*.js",
     "projects/marketplace/*.mjs",
-    "projects/app/*.js",
-    "sdk/sandbox-adapter/*.ts"
+    "projects/app/*.js"
   ]
 }

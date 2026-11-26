@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import m from 'multer';
@@ -9,6 +10,7 @@ import { decodeMultipartFilename } from '../s3/filename';
 
 type MulterFileFilterOptions = {
   allowedExtensions?: string[];
+  defParamCharset?: string;
 };
 
 type MultipartRequest = NodeHttpRequest & {
@@ -35,6 +37,8 @@ const buildFileFilter = (allowedExtensions: string[]) => {
   return fileFilter;
 };
 
+type MulterRequestHandler = (req: unknown, res: unknown, next: (error?: unknown) => void) => void;
+
 export const multer = {
   _storage: m.diskStorage({
     filename: (_, file, cb) => {
@@ -47,7 +51,7 @@ export const multer = {
     }
   }),
 
-  singleStore(maxFileSize: number = 500, options?: MulterFileFilterOptions) {
+  singleStore(maxFileSize: number = 500, options?: MulterFileFilterOptions): MulterRequestHandler {
     const fileSize = maxFileSize * 1024 * 1024;
     const fileFilter = options?.allowedExtensions?.length
       ? buildFileFilter(options.allowedExtensions)
@@ -59,11 +63,15 @@ export const multer = {
       },
       preservePath: true,
       storage: this._storage,
+      ...(options?.defParamCharset ? { defParamCharset: options.defParamCharset } : {}),
       ...(fileFilter ? { fileFilter } : {})
-    }).single('file');
+    }).single('file') as unknown as MulterRequestHandler;
   },
 
-  multipleStore(maxFileSize: number = 500, options?: MulterFileFilterOptions) {
+  multipleStore(
+    maxFileSize: number = 500,
+    options?: MulterFileFilterOptions
+  ): MulterRequestHandler {
     const fileSize = maxFileSize * 1024 * 1024;
     const fileFilter = options?.allowedExtensions?.length
       ? buildFileFilter(options.allowedExtensions)
@@ -76,17 +84,22 @@ export const multer = {
       preservePath: true,
       storage: this._storage,
       ...(fileFilter ? { fileFilter } : {})
-    }).array('file', global.feConfigs.limit.uploadFileMaxAmount);
+    }).array(
+      'file',
+      getSystemInstanceConfig().resource.uploadFileMaxAmount
+    ) as unknown as MulterRequestHandler;
   },
 
   resolveFormData<T extends Record<string, any>>({
     request,
     maxFileSize,
-    allowedExtensions
+    allowedExtensions,
+    defParamCharset
   }: {
     request: MultipartRequest;
     maxFileSize?: number;
     allowedExtensions?: string[];
+    defParamCharset?: string;
   }) {
     return new Promise<{
       data: T;
@@ -94,9 +107,8 @@ export const multer = {
       getBuffer: () => Buffer;
       getReadStream: () => fs.ReadStream;
     }>((resolve, reject) => {
-      const handler = this.singleStore(maxFileSize, { allowedExtensions });
+      const handler = this.singleStore(maxFileSize, { allowedExtensions, defParamCharset });
 
-      // @ts-expect-error Multer 声明要求完整 Express Request，运行时兼容 IncomingMessage。
       handler(request, null, (error) => {
         if (error) {
           return reject(error);
@@ -156,7 +168,6 @@ export const multer = {
     }>((resolve, reject) => {
       const handler = this.multipleStore(maxFileSize, { allowedExtensions });
 
-      // @ts-expect-error Multer 声明要求完整 Express Request，运行时兼容 IncomingMessage。
       handler(request, null, (error) => {
         if (error) {
           return reject(error);

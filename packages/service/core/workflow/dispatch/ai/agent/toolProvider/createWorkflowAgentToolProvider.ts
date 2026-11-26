@@ -1,6 +1,7 @@
 import { createWorkflowToolInteractive } from '../../agentLoopCore/adapter/interactive/child';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { getChatItemTextContent } from '@fastgpt/global/core/chat/utils';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 import {
@@ -12,7 +13,7 @@ import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { getWorkflowFileMaxAmount } from '../../../../utils/context';
+import { getWorkflowContext, runWithContext } from '../../../context';
 
 /**
  * 创建 Workflow Agent 节点的工具 provider。
@@ -31,7 +32,19 @@ export const createWorkflowAgentToolProvider = ({
   onToolResult?: (result: AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>) => void;
 }): WorkflowAgentToolProvider => {
   const executeTool = executeToolFactory(context);
+  // 工具可能在创建 provider 的 ALS 回调结束后才执行，显式绑定当时的完整作用域。
+  const workflowContext = getWorkflowContext();
   const datasetParams = getAgentDatasetParams(context.params);
+  // 用户原始问题（文本部分）。Agent 生成的检索词往往已把别名改写成标准词
+  // （例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），同义词映射装饰需要
+  // 原始问题才能把「问题原词 → 标准词」对齐到命中分块。
+  // 来源取节点输入 userChatInput（ask 恢复时它仍是原始问题，context.query 则是
+  // 用户对交互的回答），并并入当前 query 文本覆盖聊天入口的整条消息；两者相同则去重。
+  const userRawQuery = [context.params.userChatInput, getChatItemTextContent(context.query)]
+    .map((text) => text?.trim())
+    .filter((text): text is string => !!text)
+    .filter((text, index, list) => list.indexOf(text) === index)
+    .join('\n');
   const datasetSearchExecutor: AgentLoopDatasetSearchExecutor | undefined = datasetParams?.datasets
     ?.length
     ? async ({ call }) => {
@@ -43,7 +56,8 @@ export const createWorkflowAgentToolProvider = ({
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.modelData,
-          userKey: context.externalProvider.openaiAccount
+          userKey: context.externalProvider.openaiAccount,
+          userQuery: userRawQuery
         });
         onToolResult?.({ response: result.response, nodeSummary: result.nodeSummary });
         const usages = result.usages ?? [];
@@ -63,7 +77,7 @@ export const createWorkflowAgentToolProvider = ({
         });
       }
     : undefined;
-  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
+  const readFileMaxFileAmount = workflowContext.fileContext.limits.maxFileAmount;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>
@@ -93,11 +107,13 @@ export const createWorkflowAgentToolProvider = ({
     executeTool: async ({
       call
     }): Promise<AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>> => {
-      const result = await executeTool({
-        callId: call.id,
-        toolId: call.function.name,
-        args: call.function.arguments ?? ''
-      });
+      const result = await runWithContext(workflowContext, () =>
+        executeTool({
+          callId: call.id,
+          toolId: call.function.name,
+          args: call.function.arguments ?? ''
+        })
+      );
       return {
         ...result,
         interactive: createWorkflowToolInteractive({
@@ -110,12 +126,14 @@ export const createWorkflowAgentToolProvider = ({
       call,
       childrenResponse
     }): Promise<AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>> => {
-      const result = await executeTool({
-        callId: call.id,
-        toolId: call.function.name,
-        args: call.function.arguments ?? '',
-        lastInteractive: childrenResponse
-      });
+      const result = await runWithContext(workflowContext, () =>
+        executeTool({
+          callId: call.id,
+          toolId: call.function.name,
+          args: call.function.arguments ?? '',
+          lastInteractive: childrenResponse
+        })
+      );
       return {
         ...result,
         interactive: createWorkflowToolInteractive({

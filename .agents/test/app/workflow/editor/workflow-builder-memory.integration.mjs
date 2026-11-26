@@ -567,7 +567,6 @@ export async function taskIsolation(context) {
 async function writableTaskFile({ context, h, app, files }) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
   const serviceRequire = createRequire(path.join(root, 'packages/service/package.json'));
-  const sdkRequire = createRequire(path.join(root, 'sdk/sandbox-adapter/package.json'));
   const { ObjectId } = serviceRequire('mongoose').mongo;
   const query = {
     _id: new ObjectId(app.appId),
@@ -580,7 +579,7 @@ async function writableTaskFile({ context, h, app, files }) {
   );
   const owner = { sourceType, sourceId: app.appId, userId: h.c.actor('owner').tmbId };
   const instance = await (await h.c.database())
-    .collection('agent_sandbox_instances_v2')
+    .collection('agent_sandbox_instances_v3')
     .findOne(owner);
   assert.ok(instance && instance.provider === 'opensandbox');
   if (instance.teamId) assert.equal(instance.teamId, context.fixture.teamId);
@@ -588,7 +587,7 @@ async function writableTaskFile({ context, h, app, files }) {
     '/workspace/sessions/' + encodeURIComponent(app.chatId) + '/' + files.entry.path + '/task.json';
   assert.equal(files.state.filename, filename, '故障目标必须是本轮索引定位的 task.json');
   const { ConnectionConfig, SandboxManager, Sandbox } = await import(
-    pathToFileURL(sdkRequire.resolve('@alibaba-group/opensandbox')).href
+    pathToFileURL(serviceRequire.resolve('@alibaba-group/opensandbox')).href
   );
   const apiKey = process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY;
   assert.ok(apiKey);

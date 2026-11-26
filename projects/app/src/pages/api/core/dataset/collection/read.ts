@@ -3,7 +3,8 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   authChatTargetCrud,
@@ -16,6 +17,8 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionExportAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 import {
   ReadCollectionSourceBodySchema,
   ReadCollectionSourceResponseSchema,
@@ -46,8 +49,10 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
     throw ChatErrEnum.unAuthChat;
   if (chatId && chatItemDataId && !sourceType) throw ChatErrEnum.unAuthChat;
 
-  const { collection } = await (async () => {
-    if (!sourceType || !chatId || !chatItemDataId) {
+  // 聊天上下文不完整时回退到集合鉴权，审计必须复用同一分支判断。
+  const isCollectionPageRequest = !sourceType || !chatId || !chatItemDataId;
+  const { collection, tmbId, authType } = await (async () => {
+    if (isCollectionPageRequest) {
       return authDatasetCollection({
         req,
         authToken: true,
@@ -131,6 +136,20 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
 
     return '';
   })();
+
+  if (
+    sourceUrl &&
+    isCollectionPageRequest &&
+    (authType === AuthUserTypeEnum.token || authType === AuthUserTypeEnum.root)
+  ) {
+    void addAuditLog(
+      buildCollectionExportAuditLog({
+        tmbId,
+        collection,
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_SOURCE_READ
+      })
+    );
+  }
 
   return ReadCollectionSourceResponseSchema.parse({ type: 'url', value: sourceUrl });
 }

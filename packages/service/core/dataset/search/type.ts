@@ -62,6 +62,8 @@ export type DatasetSearchUsage = {
     model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     usedUserOpenAIKey: boolean;
   }>;
 };
@@ -99,6 +101,13 @@ export type SearchDatasetDataProps = {
   reRankQuery: string;
   // 工作流入口归一化后的文本 query。
   textQueries: string[];
+  /**
+   * 用户原始问题（未经 LLM 改写/同义词标准化），可选。
+   * 仅用于同义词映射装饰：Agent 链路的检索词是 LLM 生成的，往往已把「枕瓜」改写成
+   * 标准词「冬瓜」，别名不在检索查询里；装饰层需要原始问题才能把「问题里的原词 →
+   * 标准词」对齐到命中分块。不参与召回与重排。
+   */
+  rawQueries?: string[];
   // 工作流入口归一化后的图片 query。
   imageQueries?: string[];
   // 外部 OpenAI 账号。默认召回里的辅助 LLM 请求需要沿用它来保持计费一致。
@@ -161,6 +170,8 @@ export type SearchDatasetDataResponse = {
     seconds: number;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     usedUserOpenAIKey: boolean;
     embeddingTokens: number;
     query: string;
@@ -169,6 +180,8 @@ export type SearchDatasetDataResponse = {
     model: string;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     requestIds: string[];
     seconds: number;
     usedUserOpenAIKey: boolean;

@@ -1,0 +1,925 @@
+import { vi, describe, expect, it } from 'vitest';
+import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
+import {
+  getDomainDefaultConfig,
+  parseDomainOverrides,
+  resolveDomainEffectiveConfig,
+  resolveSystemInstanceConfig,
+  parseSystemInstanceConfig,
+  parseSystemInstanceDomainDocument
+} from '@fastgpt/global/common/system/config/schema';
+import { deepMergeConfig, pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
+import {
+  getSystemInstanceConfigRegistry,
+  systemInstanceConfigRegistry
+} from '@fastgpt/global/common/system/config/registry';
+
+describe('Domain default config and overrides validation', () => {
+  it('defaults independent sandbox overcommit factors to 1 and validates finite values >= 1', () => {
+    const defaults = getDomainDefaultConfig('subservice').agentSandbox.opensandbox;
+    expect(defaults.cpuOvercommitFactor).toBe(1);
+    expect(defaults.memoryOvercommitFactor).toBe(1);
+    for (const key of ['cpuOvercommitFactor', 'memoryOvercommitFactor'] as const) {
+      for (const value of [1, 1.5, 10]) {
+        expect(
+          resolveDomainEffectiveConfig({
+            domain: 'subservice',
+            overrides: { agentSandbox: { opensandbox: { [key]: value } } }
+          }).agentSandbox.opensandbox[key]
+        ).toBe(value);
+      }
+      for (const value of [0, 0.5, -1, NaN, Infinity]) {
+        expect(() =>
+          parseDomainOverrides({
+            domain: 'subservice',
+            overrides: { agentSandbox: { opensandbox: { [key]: value } } }
+          })
+        ).toThrow();
+      }
+    }
+  });
+  it('defaults evaluation rows to 1000 and preserves explicit limits including zero', () => {
+    expect(getDomainDefaultConfig('resource').evaluationMaxRows).toBe(1000);
+    for (const evaluationMaxRows of [0, 1, 2000]) {
+      expect(
+        resolveDomainEffectiveConfig({ domain: 'resource', overrides: { evaluationMaxRows } })
+          .evaluationMaxRows
+      ).toBe(evaluationMaxRows);
+    }
+    for (const evaluationMaxRows of [-1, 1.5, NaN, Infinity]) {
+      expect(() =>
+        parseDomainOverrides({ domain: 'resource', overrides: { evaluationMaxRows } })
+      ).toThrow();
+    }
+  });
+  it('defaults the model deprecation SMS template to empty and accepts a Chinese template ID', () => {
+    expect(getDomainDefaultConfig('auth').loginProviders.sms.modelDeprecation.zh).toBe('');
+    const overrides = { loginProviders: { sms: { modelDeprecation: { zh: 'SMS_MODEL_ID' } } } };
+    expect(parseDomainOverrides({ domain: 'auth', overrides })).toEqual(overrides);
+    expect(
+      resolveDomainEffectiveConfig({ domain: 'auth', overrides }).loginProviders.sms
+        .modelDeprecation.zh
+    ).toBe('SMS_MODEL_ID');
+  });
+  it('validates only the sandbox and MCP connection base URLs', () => {
+    for (const key of ['codeSandbox', 'mcp'] as const) {
+      const field = key === 'codeSandbox' ? 'url' : 'sseProxyUrl';
+      for (const url of [
+        'ftp://example.com',
+        'https://u:p@example.com',
+        'https://example.com?x=1',
+        'https://example.com#x'
+      ]) {
+        expect(() =>
+          parseDomainOverrides({ domain: 'subservice', overrides: { [key]: { [field]: url } } })
+        ).toThrow();
+      }
+      const config = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: { [key]: { [field]: '  https://example.com/base/  ' } }
+      });
+      expect(key === 'codeSandbox' ? config.codeSandbox.url : config.mcp.sseProxyUrl).toBe(
+        'https://example.com/base/'
+      );
+    }
+    expect(resolveDomainEffectiveConfig({ domain: 'subservice' }).codeSandbox.url).toBe('');
+    expect(resolveDomainEffectiveConfig({ domain: 'subservice' }).mcp.sseProxyUrl).toBe('');
+  });
+  it('returns complete default config for any domain', () => {
+    const siteConfig = getDomainDefaultConfig('site');
+    expect(siteConfig.name).toBe('AI');
+    expect(siteConfig.docUrl).toBe('https://doc.fastgpt.io');
+
+    const performanceConfig = getDomainDefaultConfig('performance');
+    expect(performanceConfig.workflow.parallelMaxConcurrency).toBe(10);
+    expect(performanceConfig.dataset).not.toHaveProperty('retrievalResultsLimit');
+
+    expect(getDomainDefaultConfig('resource').datasetArchive).toEqual({
+      maxFiles: 2000,
+      maxSourceSizeMiB: 2048,
+      maxConcurrency: 4,
+      prepareTimeoutSeconds: 300
+    });
+
+    const vectorConfig = getDomainDefaultConfig('vector');
+    expect(vectorConfig.hnswEfSearch).toBe(200);
+    expect(vectorConfig).not.toHaveProperty('hnswMaxScanTuples');
+  });
+
+  it('validates sparse overrides and rejects unknown fields in root and nested objects', () => {
+    // Valid sparse override
+    const parsed = parseDomainOverrides({ domain: 'site', overrides: { name: 'Custom Site' } });
+    expect(parsed.name).toBe('Custom Site');
+    expect(parsed.description).toBeUndefined();
+
+    // Rejects unknown field on top level of domain
+    expect(() =>
+      parseDomainOverrides({ domain: 'site', overrides: { unknownKey: true } })
+    ).toThrow();
+
+    // Rejects unknown field in deep nested object
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'performance',
+        overrides: {
+          workflow: {
+            unknownWorkflowKey: 123
+          }
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            customPdf: {
+              unknownPdfKey: 'foo'
+            }
+          }
+        }
+      })
+    ).toThrow();
+  });
+
+  it('ignores retired feature overrides on read and rejects configuring them again', () => {
+    const overrides = {
+      showWorkflowBuilder: false,
+      disableCache: true,
+      enableTeamModel: true
+    };
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'feature',
+      overrides,
+      options: { strict: false }
+    });
+    expect(effective.enableTeamModel).toBe(true);
+    for (const key of ['showWorkflowBuilder', 'disableCache']) {
+      expect(effective).not.toHaveProperty(key);
+      expect(systemInstanceConfigRegistry.some((item) => item.key === `feature.${key}`)).toBe(
+        false
+      );
+      expect(() =>
+        parseDomainOverrides({ domain: 'feature', overrides: { [key]: false } })
+      ).toThrow();
+    }
+  });
+
+  it('ignores the retired new-team permission override and rejects writing it again', () => {
+    const overrides = { defaultTeamBasicPermissionsEnabled: true };
+    expect(parseDomainOverrides({ domain: 'auth', overrides, options: { strict: false } })).toEqual(
+      {}
+    );
+    expect(() => parseDomainOverrides({ domain: 'auth', overrides })).toThrow();
+  });
+
+  it('ignores the retired IP rate-limit switch on read and rejects configuring it again', () => {
+    const overrides = { useIpLimit: false, checkInternalIp: true };
+    expect(
+      parseDomainOverrides({ domain: 'security', overrides, options: { strict: false } })
+    ).toEqual({
+      checkInternalIp: true
+    });
+    expect(() => parseDomainOverrides({ domain: 'security', overrides })).toThrow();
+  });
+
+  it('ignores the retired tracking interval while preserving retention settings', () => {
+    const overrides = { tracking: { batchUpdateTime: 1, retentionHours: 12 } };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({
+      tracking: { retentionHours: 12 }
+    });
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('ignores the retired retrieval log limit while preserving dataset concurrency', () => {
+    const overrides = { dataset: { retrievalResultsLimit: 20, vectorMaxProcess: 3 } };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({
+      dataset: { vectorMaxProcess: 3 }
+    });
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('ignores retired stream resume settings and rejects configuring them again', () => {
+    const overrides = {
+      streamResume: {
+        ttlSeconds: 1,
+        postCompleteTtlSeconds: 1,
+        redisMaxmemoryRatio: 1,
+        redisMemoryCheckIntervalMs: 1
+      }
+    };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({});
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('strips unknown fields in lenient mode (strict: false) to prevent startup deadlocks', () => {
+    // 模拟数据库中包含废弃字段时（清理迁移前），lenient 模式剥离未知字段并安全解析
+    const parsed = parseDomainOverrides({
+      domain: 'site',
+      overrides: { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      options: { strict: false }
+    });
+    expect(parsed.name).toBe('Custom Site');
+    expect((parsed as any).legacyDeprecatedField).toBeUndefined();
+
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      options: { strict: false }
+    });
+    expect(effective.name).toBe('Custom Site');
+
+    // 递归支持：数组元素内的废弃字段同样在 lenient 模式下被安全剥离（如 navbarItems）
+    const parsedArray = parseDomainOverrides({
+      domain: 'site',
+      overrides: {
+        navbarItems: [
+          { id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', legacyKey: 'drop_me' }
+        ]
+      },
+      options: { strict: false }
+    });
+    expect(parsedArray.navbarItems?.[0]).toEqual({
+      id: 'nav1',
+      name: 'Nav',
+      avatar: '',
+      url: 'https://nav.com'
+    });
+
+    // 默认 strict 模式下，数组元素内的未知字段依然被严格拒绝
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'site',
+        overrides: {
+          navbarItems: [{ id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', badKey: 1 }]
+        }
+      })
+    ).toThrow();
+  });
+});
+
+describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
+  it.each(['maxFiles', 'maxSourceSizeMiB', 'maxConcurrency', 'prepareTimeoutSeconds'])(
+    '归档参数 %s 允许稀疏保存且必须为正整数',
+    (field) => {
+      const config = resolveDomainEffectiveConfig({
+        domain: 'resource',
+        overrides: { datasetArchive: { [field]: 1 } }
+      });
+      expect(config.datasetArchive).toEqual({
+        ...getDomainDefaultConfig('resource').datasetArchive,
+        [field]: 1
+      });
+      for (const value of [0, 1.5]) {
+        expect(() =>
+          parseDomainOverrides({
+            domain: 'resource',
+            overrides: { datasetArchive: { [field]: value } }
+          })
+        ).toThrow();
+      }
+    }
+  );
+
+  it('merges overrides with defaults while preserving untouched default fields', () => {
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: {
+        name: 'Custom FastGPT',
+        description: 'Modified description'
+      }
+    });
+
+    expect(effective.name).toBe('Custom FastGPT');
+    expect(effective.description).toBe('Modified description');
+    // untouched fields retain code defaults
+    expect(effective.docUrl).toBe('https://doc.fastgpt.io');
+    expect(effective.name).toBe('Custom FastGPT');
+  });
+
+  it('enforces cross-field superRefine constraints on merged result', () => {
+    // parallelMaxConcurrency (default 10) > maxLoopTimes (override to 5) -> must fail!
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: {
+          workflow: {
+            maxLoopTimes: 5
+          }
+        }
+      })
+    ).toThrowError(/parallelMaxConcurrency cannot exceed maxLoopTimes/);
+
+    // Both updated compatibly -> must succeed
+    const valid = resolveDomainEffectiveConfig({
+      domain: 'performance',
+      overrides: {
+        workflow: {
+          maxLoopTimes: 5,
+          parallelMaxConcurrency: 5
+        }
+      }
+    });
+    expect(valid.workflow.maxLoopTimes).toBe(5);
+    expect(valid.workflow.parallelMaxConcurrency).toBe(5);
+  });
+
+  it('requires evaluation concurrency to be an integer of at least one', () => {
+    for (const evalConcurrency of [0, -1, 1.5]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'performance',
+          overrides: { task: { evalConcurrency } }
+        })
+      ).toThrow();
+    }
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { task: { evalConcurrency: 1 } }
+      }).task.evalConcurrency
+    ).toBe(1);
+  });
+
+  it('accepts legacy zero values that mean disable/unlimited at the consumer', () => {
+    // 旧 env IntSchema 允许 0，且这些字段的消费点对 0 有明确"禁用/不限"语义
+    // （maxRunTimes<=0 停止工作流、maxLoopTimes=0 拒绝循环输入、!qpm 放行限流），
+    // 迁移必须原样保留 0，否则会把客户的禁用配置静默改回默认启用值。
+    const zeroed = resolveDomainEffectiveConfig({
+      domain: 'performance',
+      overrides: {
+        workflow: { maxRunTimes: 0, maxLoopTimes: 0 },
+        chat: { maxQpm: 0 },
+        parse: { maxHtmlTransformChars: 0 }
+      }
+    });
+    expect(zeroed.workflow.maxRunTimes).toBe(0);
+    expect(zeroed.workflow.maxLoopTimes).toBe(0);
+    expect(zeroed.chat.maxQpm).toBe(0);
+    expect(zeroed.parse.maxHtmlTransformChars).toBe(0);
+
+    // maxLoopTimes=0 表示禁用循环，并行约束此时无意义，不得连带拒绝整个 performance 域
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: {
+          workflow: { maxLoopTimes: 0 }
+        }
+      })
+    ).not.toThrow();
+  });
+
+  it('still rejects negative values for zero-tolerant fields', () => {
+    expect(() =>
+      parseDomainOverrides({ domain: 'performance', overrides: { workflow: { maxRunTimes: -1 } } })
+    ).toThrowError();
+    expect(() =>
+      parseDomainOverrides({ domain: 'performance', overrides: { chat: { maxQpm: -5 } } })
+    ).toThrowError();
+  });
+
+  it('validates documentParse providers and constraints', () => {
+    // somark does not require customPdf.url
+    const somarkConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'somark',
+          customPdf: {
+            somarkApiKey: 'sk-somark-xxx'
+          }
+        }
+      }
+    });
+    expect(somarkConfig.documentParse.provider).toBe('somark');
+    expect(somarkConfig.documentParse.customPdf.somarkApiKey).toBe('sk-somark-xxx');
+
+    // doc2x does not require customPdf.url
+    const doc2xConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'doc2x',
+          customPdf: {
+            doc2xKey: 'doc2x-xxx'
+          }
+        }
+      }
+    });
+    expect(doc2xConfig.documentParse.provider).toBe('doc2x');
+
+    // textln & textin are supported
+    const textlnConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'textln',
+          customPdf: {
+            textinAppId: 'app-id',
+            textinSecretCode: 'secret-code'
+          }
+        }
+      }
+    });
+    expect(textlnConfig.documentParse.provider).toBe('textln');
+
+    // customPdf requires url
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            provider: 'customPdf',
+            customPdf: {
+              url: ''
+            }
+          }
+        }
+      })
+    ).toThrow();
+
+    // custom requires url
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            provider: 'custom',
+            customPdf: {
+              url: ''
+            }
+          }
+        }
+      })
+    ).toThrow();
+
+    // valid customPdf
+    const customConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'customPdf',
+          customPdf: {
+            url: 'https://pdf.example.com',
+            key: 'key-123'
+          }
+        }
+      }
+    });
+    expect(customConfig.documentParse.provider).toBe('customPdf');
+    expect(customConfig.documentParse.customPdf.url).toBe('https://pdf.example.com');
+  });
+});
+
+describe('deepMergeConfig and pruneDefaultOverrides', () => {
+  it('deep merges nested objects without altering unmodified fields or concatenating arrays', () => {
+    const defaults = {
+      nested: { a: 1, b: 2 },
+      list: ['orig1', 'orig2'],
+      flag: false
+    };
+
+    const overrides = {
+      nested: { b: 20 },
+      list: ['new1'],
+      flag: true
+    };
+
+    const merged = deepMergeConfig(defaults, overrides);
+    expect(merged).toEqual({
+      nested: { a: 1, b: 20 },
+      list: ['new1'],
+      flag: true
+    });
+  });
+
+  it('prunes redundant overrides that equal defaults', () => {
+    const defaults = {
+      a: 1,
+      nested: { b: 2, c: 3 }
+    };
+
+    const overrides = {
+      a: 1, // redundant
+      nested: {
+        b: 2, // redundant
+        c: 30 // kept
+      }
+    };
+
+    const pruned = pruneDefaultOverrides(overrides, defaults);
+    expect(pruned).toEqual({
+      nested: { c: 30 }
+    });
+  });
+});
+
+describe('resolveSystemInstanceConfig', () => {
+  it('aggregates all 11 domains into a complete instance configuration', () => {
+    const fullConfig = resolveSystemInstanceConfig({
+      site: { name: 'My AI' },
+      performance: { workflow: { maxRunTimes: 800 } }
+    });
+
+    expect(fullConfig.site.name).toBe('My AI');
+    expect(fullConfig.site.openApiPrefix).toBe('fastgpt');
+    expect(fullConfig.performance.workflow.maxRunTimes).toBe(800);
+    expect(fullConfig.subservice.agentSandbox.enabled).toBe(false);
+    expect(fullConfig.security.csrfEnabled).toBe(true);
+  });
+});
+
+describe('SystemInstanceDomainDocumentSchema', () => {
+  it('validates a domain document structure', () => {
+    const doc = parseSystemInstanceDomainDocument({
+      domain: 'site',
+      overrides: { name: 'Custom Name' }
+    });
+
+    expect(doc.domain).toBe('site');
+    expect(doc.schemaVersion).toBe(1);
+    expect(doc.revision).toBe(0);
+    expect(doc.overrides).toEqual({ name: 'Custom Name' });
+    expect(doc.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects an invalid domain key', () => {
+    expect(() =>
+      parseSystemInstanceDomainDocument({
+        domain: 'non-existing-domain',
+        overrides: {}
+      })
+    ).toThrow();
+  });
+
+  it('rejects a document missing the domain field', () => {
+    // _id 由 MongoDB 自动生成，domain 是唯一寻址键，缺失必须拒绝
+    expect(() =>
+      parseSystemInstanceDomainDocument({
+        overrides: {}
+      })
+    ).toThrow();
+  });
+});
+
+describe('systemInstanceConfigRegistry', () => {
+  it('keeps keys unique and marks secret fields', () => {
+    const keys = systemInstanceConfigRegistry.map((item) => item.key);
+
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(systemInstanceConfigRegistry).toContainEqual(
+      expect.objectContaining({
+        key: 'subservice.agentSandbox.opensandbox.apiKey',
+        secret: true
+      })
+    );
+  });
+
+  it('covers all leaf configuration fields in the registry', () => {
+    // 可选开关没有默认值，显式提供后才能纳入叶子字段覆盖检查。
+    const config = parseSystemInstanceConfig({
+      security: { allowedOriginsEnabled: false }
+    }) as unknown as Record<string, unknown>;
+
+    const getLeafPaths = (obj: Record<string, unknown>, prefix = ''): string[] => {
+      const paths: string[] = [];
+      for (const [key, value] of Object.entries(obj)) {
+        const currentPath = prefix ? `${prefix}.${key}` : key;
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          paths.push(...getLeafPaths(value as Record<string, unknown>, currentPath));
+        } else {
+          paths.push(currentPath);
+        }
+      }
+      return paths;
+    };
+
+    // 旧团队模式仅兼容解析；套餐使用专用输入，两者都不属于通用配置字段注册表。
+    expect(AuthConfigSchema.shape.teamMode.meta()?.deprecated).toBe(true);
+    const editableConfig = Object.fromEntries(
+      Object.entries(config).filter(([key]) =>
+        systemInstanceConfigRegistry.some((item) => item.section === key)
+      )
+    );
+    const leafPaths = getLeafPaths(editableConfig).filter(
+      (path) => path !== 'auth.teamMode' && path !== 'commercial.subPlans'
+    );
+    const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
+
+    expect(registryKeys.has('auth.teamMode')).toBe(false);
+    for (const leafPath of leafPaths) {
+      expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
+    }
+    expect(registryKeys.size).toBe(leafPaths.length);
+    expect(() =>
+      parseDomainOverrides({ domain: 'feature', overrides: { datasetSynonymEnabled: true } })
+    ).toThrow();
+  });
+
+  it('filters commercial fields by edition and SaaS boundary', () => {
+    const communityKeys = getSystemInstanceConfigRegistry('community').map((item) => item.key);
+    // 私有化 Pro 不展示 SaaS 运营专用字段，需 ENABLE_SAAS_ADMIN_CONFIG 才进入表单
+    const proKeys = getSystemInstanceConfigRegistry('pro').map((item) => item.key);
+    const saasProKeys = getSystemInstanceConfigRegistry('pro', {
+      enableSaasAdminConfig: true
+    }).map((item) => item.key);
+
+    expect(communityKeys).toContain('site.publicUrl');
+    expect(communityKeys).not.toContain('site.name');
+    expect(communityKeys).not.toContain('site.favicon');
+    expect(proKeys).toContain('site.name');
+    expect(proKeys).toContain('site.favicon');
+    expect(communityKeys).not.toContain('commercial.showCoupon');
+    expect(proKeys).not.toContain('commercial.showCoupon');
+    expect(saasProKeys).toContain('commercial.showCoupon');
+    const wecomKeys = saasProKeys.filter((key) => key.startsWith('auth.loginProviders.wecom.'));
+    expect(wecomKeys.length).toBeGreaterThan(0);
+    for (const key of wecomKeys) {
+      expect(proKeys).not.toContain(key);
+      expect(communityKeys).not.toContain(key);
+    }
+  });
+  it('checks subservice resolveDomainEffectiveConfig errors and rejects retired provider field', () => {
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox'
+          } as any
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            enabled: true,
+            opensandbox: {
+              baseUrl: '',
+              apiKey: '',
+              image: '',
+              volumeManagerToken: '',
+              volumeManagerUrl: ''
+            }
+          }
+        }
+      })
+    ).toThrow();
+
+    const baseEnabled = {
+      enabled: true,
+      proxy: {
+        wsUrl: 'wss://proxy.example.test',
+        previewUrl: 'https://preview.example.test',
+        secret: 'proxy_secret_32_characters_minimum'
+      },
+      opensandbox: {
+        baseUrl: 'https://opensandbox.example.test',
+        apiKey: 'osb-key',
+        image: 'fastgpt/agent-sandbox:v0.5.0',
+        volumeManagerUrl: 'http://volume-manager:8081',
+        volumeManagerToken: 'vm-token'
+      }
+    };
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: { agentSandbox: baseEnabled }
+      })
+    ).not.toThrow();
+
+    for (const missingField of [
+      'baseUrl',
+      'apiKey',
+      'image',
+      'volumeManagerUrl',
+      'volumeManagerToken'
+    ] as const) {
+      expect(() =>
+        resolveDomainEffectiveConfig({
+          domain: 'subservice',
+          overrides: {
+            agentSandbox: {
+              ...baseEnabled,
+              opensandbox: { ...baseEnabled.opensandbox, [missingField]: '' }
+            }
+          }
+        })
+      ).toThrow();
+    }
+    for (const invalidUrl of ['ftp://opensandbox.test', 'https://u:p@opensandbox.test']) {
+      expect(() =>
+        resolveDomainEffectiveConfig({
+          domain: 'subservice',
+          overrides: {
+            agentSandbox: {
+              ...baseEnabled,
+              opensandbox: { ...baseEnabled.opensandbox, volumeManagerUrl: invalidUrl }
+            }
+          }
+        })
+      ).toThrow();
+    }
+  });
+});
+
+describe('agentSandbox.opensandbox.volumeNamePrefix validation', () => {
+  const withPrefix = (volumeNamePrefix: string) => ({
+    agentSandbox: { opensandbox: { volumeNamePrefix } }
+  });
+
+  it('accepts a DNS-label-safe prefix', () => {
+    const config = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: withPrefix('fastgpt-session')
+    });
+    expect(config.agentSandbox.opensandbox.volumeNamePrefix).toBe('fastgpt-session');
+  });
+
+  it('rejects prefixes with uppercase, underscore, or dot (must match runtime volume name rules)', () => {
+    // 运行时 createSessionVolumeName 会对 `${prefix}-${id}` 做 DNS label 校验，
+    // 管理端必须提前拒绝非法前缀，否则保存成功但沙箱启动才报错。
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('FastGPT') })
+    ).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fast_gpt') })
+    ).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fast.gpt') })
+    ).toThrow();
+  });
+
+  it('rejects a prefix that does not end with an alphanumeric character', () => {
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fastgpt-') })
+    ).toThrow();
+  });
+});
+
+describe('agentSandbox.common.storageSizeGi validation', () => {
+  const withStorageSize = (storageSizeGi: number) => ({
+    agentSandbox: { common: { storageSizeGi } }
+  });
+
+  it('rejects less than 1 Gi and keeps valid fractional sizes', () => {
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(0.1) })
+    ).toThrow();
+    for (const size of [1, 1.5]) {
+      expect(
+        resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(size) })
+          .agentSandbox.common.storageSizeGi
+      ).toBe(size);
+    }
+  });
+});
+
+describe('unvalidated instance config reads and strict saves', () => {
+  it('retains invalid known fields and incomplete opensandbox config on reads without warning while rejecting saves', () => {
+    const raw = {
+      agentSandbox: {
+        enabled: true,
+        common: { memoryMiB: -1 },
+        opensandbox: { baseUrl: 'not-a-url' }
+      }
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const read = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: raw,
+        options: { strict: false }
+      });
+      expect(read.agentSandbox.enabled).toBe(true);
+      expect(read.agentSandbox.opensandbox.baseUrl).toBe('not-a-url');
+      expect(read.agentSandbox.common.memoryMiB).toBe(-1);
+      expect(read.agentSandbox.proxy.wsUrl).toBe('');
+      expect(warn).not.toHaveBeenCalled();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain: 'subservice', overrides: raw })
+      ).toThrow();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('strips retired unknown fields even when sibling known fields are invalid', () => {
+    const parsed = parseDomainOverrides({
+      domain: 'performance',
+      overrides: {
+        legacyTopLevelKey: true,
+        tracking: { batchUpdateTime: 5, retentionHours: -1 }
+      },
+      options: { strict: false }
+    });
+    expect(parsed).toEqual({
+      tracking: { retentionHours: -1 }
+    });
+  });
+
+  it('distinguishes unset domain overrides from corrupted non-object root values', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: undefined,
+        options: { strict: false }
+      }).checkExternalFile
+    ).toBe(false);
+
+    for (const corrupted of ['invalid-domain', ['unexpected-array'], null, 42]) {
+      expect(
+        parseDomainOverrides({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+    }
+  });
+
+  it('fills missing element defaults for sparse array items while retaining invalid fields', () => {
+    const site = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: {
+        navbarItems: [
+          { id: 'nav-1', name: 'Docs', url: 'https://docs.example.test' },
+          { id: 'nav-2', name: 'Broken', isActive: 'invalid-flag' }
+        ]
+      },
+      options: { strict: false }
+    });
+    expect(site.navbarItems).toEqual([
+      {
+        id: 'nav-1',
+        name: 'Docs',
+        avatar: '',
+        url: 'https://docs.example.test',
+        isActive: true
+      },
+      {
+        id: 'nav-2',
+        name: 'Broken',
+        avatar: '',
+        url: '',
+        isActive: 'invalid-flag'
+      }
+    ]);
+
+    const providers = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        externalProviderWorkflowVariables: [{ key: 'EXT_KEY', name: 'External Key' }]
+      },
+      options: { strict: false }
+    });
+    expect(providers.externalProviderWorkflowVariables).toEqual([
+      {
+        key: 'EXT_KEY',
+        name: 'External Key',
+        intro: '',
+        url: '',
+        isOpen: true
+      }
+    ]);
+  });
+
+  it('keeps valid sibling domains when a read contains wrong types without logging warnings', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const snapshot = resolveSystemInstanceConfig(
+        {
+          site: { name: 'Existing' },
+          providers: {
+            documentParse: { provider: 'custom', customPdf: { key: 'private-synthetic-secret' } }
+          },
+          performance: { dataset: { qaMaxProcess: 'invalid-number' } }
+        },
+        { strict: false }
+      );
+      expect(snapshot.site.name).toBe('Existing');
+      expect(snapshot.providers.documentParse.customPdf.key).toBe('private-synthetic-secret');
+      expect(snapshot.performance.dataset.qaMaxProcess).toBe('invalid-number');
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});

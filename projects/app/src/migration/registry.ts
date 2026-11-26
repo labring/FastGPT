@@ -1,5 +1,5 @@
-import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
-import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
+import { sandboxMigrationId, systemConfigMigrationId } from '@fastgpt/global/migration/constants';
+import { migrateSystemConfigs } from './tasks/4180/20261116_migrate_system_configs';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput,
@@ -9,7 +9,12 @@ import type {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
-import { backfillSTTPricingType } from './tasks/4180/20261112_backfill_stt_pricing_type';
+import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
+import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
+import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes';
+import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
+import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -76,6 +81,15 @@ export type SystemMigration = {
   delay?: boolean;
   /** 管理员确认执行条件后才入队；等待期间跳过该任务继续后续自动任务。 */
   manual?: boolean;
+  /**
+   * succeeded 之后仍在每轮启动重新执行，用于「声明集合会增长」的任务：Runner 默认永久跳过
+   * succeeded，注册表后来新增的成员（例如实例配置的 domain 列表）在老库里永远不会补建，
+   * 而 Pro 启动要求成员齐全，表现为升级后商业版后台无法启动。
+   * 前提：run 必须自带幂等跳过路径（成员齐全时只做只读校验、不写库），否则每轮都会重写；
+   * 重新领取 succeeded 文档不会重置 checkpoint，resumable 任务不应依赖跨轮续跑游标。
+   * 不能与 manual 组合：那会把「等管理员确认后才执行」变成每轮自动重跑。
+   */
+  resumable?: boolean;
   /** 必须先成功的前置任务 ID；只能引用注册表中更早的任务，避免乱序执行和循环依赖。 */
   dependsOn?: readonly string[];
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
@@ -87,6 +101,64 @@ export type SystemMigration = {
  * 已发布任务只能从尾部追加，禁止修改 ID、顺序、调度模式、依赖或既有函数语义。
  */
 export const systemMigrations = [
+  {
+    id: systemConfigMigrationId,
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261116_migrate_system_configs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.result'),
+    progressSteps: [
+      {
+        key: 'inspect',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.inspect')
+      },
+      {
+        key: 'migrate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.migrate')
+      },
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.cleanup')
+      },
+      {
+        key: 'backfill',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.backfill')
+      },
+      {
+        key: 'validate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
+      }
+    ],
+    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
+    blockStartup: true,
+    run: migrateSystemConfigs
+  },
+  {
+    id: '20261120_migrate_model_pricing',
+    version: '4.18.0',
+    // 启动配置迁移完成后在后台独立执行，不阻塞业务启动或等待其他长任务。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.description'),
+    resultKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.result'),
+    progressSteps: [
+      {
+        key: 'stt',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.stt')
+      },
+      {
+        key: 'llmTiers',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.llmTiers')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.validation')
+      }
+    ],
+    run: migrateModelPricing
+  },
   {
     id: '20261022_initialize_dataset_vector_indexes',
     version: '4.18.0',
@@ -166,26 +238,109 @@ export const systemMigrations = [
     run: backfillOpenApiKeyType
   },
   {
-    id: '20261112_backfill_stt_pricing_type',
+    id: '20261123_cleanup_mongo_indexes',
     version: '4.18.0',
-    // 价格类型在后台回填，升级期间不为 STT 计费准确性阻塞业务启动。
-    blockStartup: false,
-    nameKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261112_backfill_stt_pricing_type.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.result'),
+    // 独立后台清理历史废弃 Mongo 索引，不阻塞业务启动或等待其他长任务；遵循 MONGO_DEPRECATE_INDEX 开关。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.description'),
+    resultKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.result'),
     progressSteps: [
       {
-        key: 'models',
-        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.models')
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.cleanup')
       },
       {
         key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.validation')
+        labelKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.validation')
       }
     ],
-    run: backfillSTTPricingType
+    run: cleanupMongoIndexes
+  },
+  {
+    id: sandboxMigrationId,
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    nameKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.result'),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.preflight'
+        )
+      },
+      {
+        key: 'runningDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox'
+        )
+      },
+      {
+        key: 'stoppedDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox'
+        )
+      },
+      {
+        key: 'legacyArchives',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.validation'
+        )
+      }
+    ],
+    run: migrateSandboxToOpenSandbox
+  },
+  {
+    id: '20261117_cleanup_legacy_sandbox_resources',
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    dependsOn: [sandboxMigrationId],
+    nameKey: i18nT('system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.result'
+    ),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.preflight'
+        )
+      },
+      {
+        key: 'cleanupDevboxes',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes'
+        )
+      },
+      {
+        key: 'cleanupLegacyZips',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.validation'
+        )
+      }
+    ],
+    run: cleanupLegacySandboxResources
   }
 ] as const satisfies readonly SystemMigration[];
 
@@ -213,6 +368,11 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
 
     if (migration.manual && migration.delay) {
       throw new Error(`Manual system migration ${migration.id} cannot be delayed`);
+    }
+
+    // manual 的语义是「等管理员入队才执行」，resumable 会把它变成每轮自动重跑
+    if (migration.manual && migration.resumable) {
+      throw new Error(`Manual system migration ${migration.id} cannot be resumable`);
     }
 
     if (migration.blockStartup && migration.independent) {

@@ -64,6 +64,10 @@
       "types": "./dist/node/removal.d.ts",
       "import": "./dist/node/removal.js"
     },
+    "./reference/codec": {
+      "types": "./dist/reference/codec.d.ts",
+      "import": "./dist/reference/codec.js"
+    },
     "./reference/query": {
       "types": "./dist/reference/query.d.ts",
       "import": "./dist/reference/query.js"
@@ -99,6 +103,14 @@
     "./store/decompile": {
       "types": "./dist/store/decompile.d.ts",
       "import": "./dist/store/decompile.js"
+    },
+    "./template/bundle": {
+      "types": "./dist/template/bundle.d.ts",
+      "import": "./dist/template/bundle.js"
+    },
+    "./template/i18n": {
+      "types": "./dist/template/i18n.d.ts",
+      "import": "./dist/template/i18n.js"
     },
     "./template/descriptor": {
       "types": "./dist/template/descriptor.d.ts",

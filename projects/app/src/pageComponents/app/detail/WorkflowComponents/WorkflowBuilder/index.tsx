@@ -12,14 +12,16 @@ import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/util
 import { getModelList } from '@/web/core/ai/model/modelData';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { AppContext } from '../../context';
-import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
+import { materializeWorkflow, serializeRuntime } from '@/web/core/workflow/editor/codec';
+import {
+  useWorkflowRuntime,
+  useWorkflowSessionActions
+} from '@/web/core/workflow/editor/session/workflowSession';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
 import { mergeWorkflowBuilderAppliedAppDetail, prepareWorkflowBuilderToolSecrets } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
-import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { isWorkflowBuilderVersionExpiredError } from '@fastgpt/global/core/workflow/builder/utils';
@@ -35,6 +37,8 @@ const WorkflowBuilder = () => {
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
+  const runtime = useWorkflowRuntime();
+  const { loadDocument, rollbackDocument, confirmDocument } = useWorkflowSessionActions();
   const {
     entryAccess,
     workflowCanvasRef,
@@ -48,24 +52,12 @@ const WorkflowBuilder = () => {
     dismissBanner
   } = useWorkflowBuilderUI();
   const workflowBuilderEnabled = entryAccess === 'enabled';
-  const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
-  const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
-  const pushPastSnapshot = useContextSelector(
-    WorkflowSnapshotContext,
-    (value) => value.pushPastSnapshot
-  );
-  const initData = useContextSelector(WorkflowUtilsContext, (value) => value.initData);
-  const flowData2StoreData = useContextSelector(
-    WorkflowUtilsContext,
-    (value) => value.flowData2StoreData
-  );
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
   const [builderChatId, setBuilderChatId] = useState('');
   const applyingVersionRef = useRef(false);
   const [isApplyingVersion, setIsApplyingVersion] = useState(false);
   const getCurrentWorkflow = useMemoizedFn(() => {
-    const workflow = flowData2StoreData();
-    return workflow ? { ...workflow, chatConfig: appDetail.chatConfig } : undefined;
+    return runtime && !runtime.isDisposed() ? serializeRuntime(runtime) : undefined;
   });
   const notifyVersionExpired = useCallback(
     () =>
@@ -84,9 +76,10 @@ const WorkflowBuilder = () => {
       if (applyingVersionRef.current) throw new Error('Workflow Builder version is being applied');
       applyingVersionRef.current = true;
       setIsApplyingVersion(true);
-      let previousWorkflow: ReturnType<typeof getCurrentWorkflow> | undefined;
       let hasAppliedWorkflow = false;
       let hasCommittedVersion = false;
+      let appliedRuntime: NonNullable<typeof runtime> | undefined;
+      let appliedContentRevision: number | undefined;
       try {
         const loaded = await loadWorkflowBuilderVersion({
           appId,
@@ -113,11 +106,21 @@ const WorkflowBuilder = () => {
           nodes: await prepareWorkflowBuilderToolSecrets({ nodes: importedWorkflowConfig.nodes })
         };
         // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
-        previousWorkflow = getCurrentWorkflow();
+        if (!runtime || runtime.isDisposed())
+          throw new Error('Workflow Builder canvas is unavailable');
+        appliedRuntime = runtime;
+        const previousWorkflow = getCurrentWorkflow();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
-        const workflowDataRevision = await initData(workflowConfig);
-        hasAppliedWorkflow = true;
+        const previousContentRevision = runtime.getSavepoint().contentRevision;
         const appliedChatConfig = workflowConfig.chatConfig ?? previousWorkflow.chatConfig;
+        const loadResult = loadDocument(
+          materializeWorkflow({ input: workflowConfig, chatConfig: appliedChatConfig, t }),
+          { rollbackable: true }
+        );
+        if (!loadResult.ok)
+          throw new Error(loadResult.error?.message ?? 'Failed to load workflow document');
+        hasAppliedWorkflow = runtime.getSavepoint().contentRevision !== previousContentRevision;
+        appliedContentRevision = runtime.getSavepoint().contentRevision;
         setAppDetail((current) =>
           mergeWorkflowBuilderAppliedAppDetail({
             current,
@@ -125,14 +128,6 @@ const WorkflowBuilder = () => {
             chatConfig: appliedChatConfig
           })
         );
-        const autoLayoutResult = await requestAutoLayout({
-          nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
-          workflowDataRevision
-        });
-        if (autoLayoutResult === 'failed') {
-          // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
-          console.warn('Auto layout failed, keeping applied workflow');
-        }
         const archivedVersion = await commitWorkflowBuilderVersion({
           appId,
           chatId: builderChatId,
@@ -142,13 +137,31 @@ const WorkflowBuilder = () => {
         });
         // 服务端提交才是“应用成功”的事务边界；此前的本地画布写入仍需在失败时回滚。
         hasCommittedVersion = true;
-        pushPastSnapshot({
-          pastNodes: getNodes(),
-          pastEdges: getEdges(),
-          chatConfig: appliedChatConfig,
-          customTitle: version.name
+        if (
+          appliedRuntime &&
+          !appliedRuntime.isDisposed() &&
+          appliedContentRevision !== undefined &&
+          appliedRuntime.getSavepoint().contentRevision === appliedContentRevision
+        ) {
+          const autoLayoutResult = await requestAutoLayout({
+            nodeIds: appliedRuntime.getWorkflow().nodes.map((node) => node.nodeId),
+            contentRevision: appliedContentRevision
+          });
+          if (autoLayoutResult === 'failed') {
+            // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
+            console.warn('Auto layout failed, keeping applied workflow');
+          }
+        }
+        setActivity((current) => {
+          if (current.latestVersion?.version.checksum !== archivedVersion.checksum) return current;
+          return {
+            ...current,
+            latestVersion: {
+              ...current.latestVersion,
+              version: archivedVersion
+            }
+          };
         });
-        // 横幅和卡片共用记录状态，活动摘要再由记录派生，避免两个入口展示不一致。
         chatPanelRef.current?.updateAppliedVersion({
           appId,
           chatId: builderChatId,
@@ -180,10 +193,14 @@ const WorkflowBuilder = () => {
           });
         }
         try {
-          if (previousWorkflow && hasAppliedWorkflow && !hasCommittedVersion) {
-            const previousChatConfig = previousWorkflow.chatConfig;
-            await initData(previousWorkflow);
-            setAppDetail((current) => ({ ...current, chatConfig: previousChatConfig }));
+          if (
+            appliedRuntime &&
+            hasAppliedWorkflow &&
+            !hasCommittedVersion &&
+            !appliedRuntime.isDisposed() &&
+            appliedContentRevision !== undefined
+          ) {
+            rollbackDocument({ runtime: appliedRuntime, contentRevision: appliedContentRevision });
           }
         } catch {
           // 恢复失败不覆盖原始应用错误。
@@ -192,18 +209,22 @@ const WorkflowBuilder = () => {
       } finally {
         applyingVersionRef.current = false;
         setIsApplyingVersion(false);
+        if (hasAppliedWorkflow && appliedRuntime && appliedContentRevision !== undefined) {
+          confirmDocument({ runtime: appliedRuntime, contentRevision: appliedContentRevision });
+        }
       }
     },
     [
       appDetail,
       appId,
       builderChatId,
-      getEdges,
-      getNodes,
       getCurrentWorkflow,
-      initData,
-      pushPastSnapshot,
+      loadDocument,
+      rollbackDocument,
+      confirmDocument,
+      runtime,
       requestAutoLayout,
+      setActivity,
       setAppDetail,
       notifyVersionExpired,
       myToast,

@@ -5,6 +5,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import FullscreenButton from '@/components/common/FullscreenButton';
+import { useDebugFullscreen } from '../hooks/useDebugFullscreen';
+import DebugFullscreenContainer from '../components/DebugFullscreenContainer';
 
 import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
 import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
@@ -19,11 +22,16 @@ import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { AgentChatTestTabEnum, useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '../../hooks/useAgentSandboxCapability';
 import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getAgentToolSource,
+  getToolIdentityKey,
+  isSystemOrCommercialToolId
+} from '@fastgpt/global/core/app/tool/utils';
+import { isBuiltinPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -46,12 +54,12 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const fullscreen = useDebugFullscreen();
+  const { isFullscreen, toggle } = fullscreen;
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
+  const { showSandbox, enableSandbox, canUseSandbox } = useAgentSandboxCapability();
   const isAgentSkillSandboxUnavailable =
     checkAgentSandboxIssues({
       hasSkills: Boolean(appForm.selectedAgentSkills?.length),
@@ -184,22 +192,28 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const chatAgentHelperMetadata = useMemo(
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
-      selectedTools: appForm.selectedTools.map((tool) =>
-        tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id
-      ),
+      // 发送兼容键：同时兼容旧版固定 Pro 目录与新版 Pro V2 规范化解析，避免跨仓升级期拒收。
+      selectedTools: appForm.selectedTools.map((tool) => {
+        const source = getAgentToolSource(tool);
+        if (source) return getToolIdentityKey(tool.id, source);
+        return isSystemOrCommercialToolId(tool.id)
+          ? getToolIdentityKey(tool.id, 'system')
+          : tool.id;
+      }),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
-      selectedAgentSkills: appForm.selectedAgentSkills || [],
+      selectedAgentSkills: canUseSandbox ? appForm.selectedAgentSkills || [] : [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
-      enableSandbox: appForm.aiSettings.useAgentSandbox || false,
+      ...(canUseSandbox ? { enableSandbox: appForm.aiSettings.useAgentSandbox || false } : {}),
+      promptRefVersion: 'v2' as const,
       modelConfig: {
         modelId: helperSelectedModel
       }
     }),
-    [appForm, helperSelectedModel]
+    [appForm, canUseSandbox, helperSelectedModel]
   );
 
   return (
-    <Flex h={'full'} gap={2}>
+    <DebugFullscreenContainer fullscreen={fullscreen}>
       <MyBox
         flex={'1 0 0'}
         w={0}
@@ -210,7 +224,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         pt={4}
         pb={0}
         {...cardStyles}
-        boxShadow={'3'}
+        bg={isFullscreen ? 'myGray.25' : cardStyles.bg}
+        boxShadow={isFullscreen ? 'none' : '3'}
       >
         <Flex px={[2, 5]} pb={2} alignItems={'center'}>
           <FillRowTabs<AgentChatTestTabEnum>
@@ -255,6 +270,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 }}
               />
             </MyTooltip>
+            <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
           </Flex>
         </Flex>
         <Box flex={1} minH={0}>
@@ -268,9 +284,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 InputLeftComponent={HelperModelSelectorInput}
                 onApply={async (formData) => {
                   // Filter internal tools
-                  const filteredTools = (formData.tools || []).filter(
-                    (tool) => !((typeof tool === 'string' ? tool : tool.id) in systemSubInfo)
-                  );
+                  const filteredTools = (formData.tools || []).filter((tool) => {
+                    const key = typeof tool === 'string' ? tool : tool.id;
+                    return !(key in systemSubInfo) && !isBuiltinPromptRefKey(key);
+                  });
 
                   const newTools = await loadGeneratedTools({
                     newToolIds: filteredTools,
@@ -278,45 +295,46 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     fileSelectConfig: appForm.chatConfig.fileSelectConfig
                   });
 
-                  setAppForm((prev) => {
-                    const fileUploadEnabled = !!formData.fileUploadEnabled;
-                    const enableSandboxEnabled = !!formData.enableSandboxEnabled;
+                  const fileUploadEnabled = !!formData.fileUploadEnabled;
+                  const nextSelectedAgentSkills = canUseSandbox
+                    ? formData.selectedAgentSkills || []
+                    : [];
+                  const nextUseAgentSandbox =
+                    canUseSandbox &&
+                    (!!formData.enableSandboxEnabled || nextSelectedAgentSkills.length > 0);
 
-                    const newForm: AppFormEditFormType = {
-                      ...prev,
-                      selectedTools: [...newTools],
-                      selectedAgentSkills: formData.selectedAgentSkills || [],
-                      dataset: {
-                        ...prev.dataset,
-                        datasets: formData.datasets ?? []
-                      },
-                      aiSettings: {
-                        ...prev.aiSettings,
-                        systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                        useAgentSandbox:
-                          enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
-                      },
-                      chatConfig: {
-                        ...prev.chatConfig,
-                        fileSelectConfig: fileUploadEnabled
-                          ? {
-                              ...prev.chatConfig.fileSelectConfig,
-                              canSelectFile: true
-                            }
-                          : {
-                              maxFiles: undefined,
-                              canSelectFile: false,
-                              customPdfParse: false,
-                              canSelectImg: false,
-                              canSelectVideo: false,
-                              canSelectAudio: false,
-                              canSelectCustomFileExtension: false,
-                              customFileExtensionList: []
-                            }
-                      }
-                    };
-                    return newForm;
-                  });
+                  setAppForm((prev) => ({
+                    ...prev,
+                    selectedTools: [...newTools],
+                    selectedAgentSkills: nextSelectedAgentSkills,
+                    dataset: {
+                      ...prev.dataset,
+                      datasets: formData.datasets ?? []
+                    },
+                    aiSettings: {
+                      ...prev.aiSettings,
+                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
+                      useAgentSandbox: nextUseAgentSandbox
+                    },
+                    chatConfig: {
+                      ...prev.chatConfig,
+                      fileSelectConfig: fileUploadEnabled
+                        ? {
+                            ...prev.chatConfig.fileSelectConfig,
+                            canSelectFile: true
+                          }
+                        : {
+                            maxFiles: undefined,
+                            canSelectFile: false,
+                            customPdfParse: false,
+                            canSelectImg: false,
+                            canSelectVideo: false,
+                            canSelectAudio: false,
+                            canSelectCustomFileExtension: false,
+                            customFileExtensionList: []
+                          }
+                    }
+                  }));
                 }}
               />
             </Box>
@@ -339,7 +357,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       {!feConfigs?.isPlus && (
         <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       )}
-    </Flex>
+    </DebugFullscreenContainer>
   );
 };
 

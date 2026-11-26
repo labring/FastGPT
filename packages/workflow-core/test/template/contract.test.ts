@@ -93,12 +93,12 @@ describe('getNodeRuntimeContract', () => {
             isSidebar: true,
             sourceNodeId: null,
             sourceType: null,
-            sourceIsTool: false,
             isConnectedTool: false,
             handleId: null,
             parentType,
             hasToolNode: true,
-            hasLoopRunNode: true
+            hasLoopRunNode: true,
+            takenUniqueTypes: []
           }
         });
         expect(

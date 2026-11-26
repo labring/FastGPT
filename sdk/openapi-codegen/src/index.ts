@@ -1,0 +1,141 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import prettier from 'prettier';
+import { buildSdkIrDocument } from './buildIr';
+import { emitGoModelsFile, emitGoResourcesFile } from './goEmitter';
+import type { SdkIrDocument } from './irTypes';
+import { emitPythonModelsFile, emitPythonResourcesFile } from './pythonEmitter';
+import { emitTypeScriptResourcesFile, emitTypeScriptTypesFile } from './tsEmitter';
+
+export type GeneratedArtifacts = {
+  irPath: string;
+  irContent: string;
+  typesPath: string;
+  typesContent: string;
+  resourcesPath: string;
+  resourcesContent: string;
+  pythonModelsPath: string;
+  pythonModelsContent: string;
+  pythonResourcesPath: string;
+  pythonResourcesContent: string;
+  goModelsPath: string;
+  goModelsContent: string;
+  goResourcesPath: string;
+  goResourcesContent: string;
+};
+
+const resolveRepoPaths = () => {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const codegenRoot = path.resolve(currentDir, '..');
+  const sdkRoot = path.resolve(codegenRoot, '..');
+  const repoRoot = path.resolve(sdkRoot, '..');
+
+  return {
+    repoRoot,
+    irPath: path.join(codegenRoot, 'spec/sdk-ir.json'),
+    typesPath: path.join(sdkRoot, 'client/src/generated/types.ts'),
+    resourcesPath: path.join(sdkRoot, 'client/src/generated/resources.ts'),
+    pythonModelsPath: path.join(sdkRoot, 'python/src/fastgpt_sdk/generated/models.py'),
+    pythonResourcesPath: path.join(sdkRoot, 'python/src/fastgpt_sdk/generated/resources.py'),
+    goModelsPath: path.join(sdkRoot, 'go/models_gen.go'),
+    goResourcesPath: path.join(sdkRoot, 'go/resources_gen.go')
+  };
+};
+
+/**
+ * 在内存中执行完整的 IR 编译与多语言（TypeScript / Python / Go）代码生成，并使用主仓 Prettier 配置统一格式化 TS/JSON 产物。
+ */
+export const compileSdkArtifacts = async (
+  precomputedIr?: SdkIrDocument
+): Promise<GeneratedArtifacts> => {
+  const paths = resolveRepoPaths();
+  const ir = precomputedIr ?? buildSdkIrDocument();
+
+  const prettierConfig =
+    (await prettier.resolveConfig(paths.typesPath)) ??
+    (await prettier.resolveConfig(path.join(paths.repoRoot, 'package.json'))) ??
+    {};
+
+  const rawIrJson = `${JSON.stringify(ir, null, 2)}\n`;
+  const rawTypesTs = emitTypeScriptTypesFile(ir);
+  const rawResourcesTs = emitTypeScriptResourcesFile(ir);
+  const pythonModelsContent = emitPythonModelsFile(ir);
+  const pythonResourcesContent = emitPythonResourcesFile(ir);
+  const goModelsContent = emitGoModelsFile(ir);
+  const goResourcesContent = emitGoResourcesFile(ir);
+
+  const [irContent, typesContent, resourcesContent] = await Promise.all([
+    prettier.format(rawIrJson, { ...prettierConfig, filepath: paths.irPath }),
+    prettier.format(rawTypesTs, { ...prettierConfig, filepath: paths.typesPath }),
+    prettier.format(rawResourcesTs, { ...prettierConfig, filepath: paths.resourcesPath })
+  ]);
+
+  return {
+    irPath: paths.irPath,
+    irContent,
+    typesPath: paths.typesPath,
+    typesContent,
+    resourcesPath: paths.resourcesPath,
+    resourcesContent,
+    pythonModelsPath: paths.pythonModelsPath,
+    pythonModelsContent,
+    pythonResourcesPath: paths.pythonResourcesPath,
+    pythonResourcesContent,
+    goModelsPath: paths.goModelsPath,
+    goModelsContent,
+    goResourcesPath: paths.goResourcesPath,
+    goResourcesContent
+  };
+};
+
+/**
+ * 将最新生成的 SDK IR、TypeScript、Python 与 Go 生成代码写入磁盘。
+ */
+export const writeSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
+  const artifacts = await compileSdkArtifacts();
+  await Promise.all([
+    fs.mkdir(path.dirname(artifacts.irPath), { recursive: true }),
+    fs.mkdir(path.dirname(artifacts.typesPath), { recursive: true }),
+    fs.mkdir(path.dirname(artifacts.pythonModelsPath), { recursive: true }),
+    fs.mkdir(path.dirname(artifacts.goModelsPath), { recursive: true })
+  ]);
+  await Promise.all([
+    fs.writeFile(artifacts.irPath, artifacts.irContent, 'utf8'),
+    fs.writeFile(artifacts.typesPath, artifacts.typesContent, 'utf8'),
+    fs.writeFile(artifacts.resourcesPath, artifacts.resourcesContent, 'utf8'),
+    fs.writeFile(artifacts.pythonModelsPath, artifacts.pythonModelsContent, 'utf8'),
+    fs.writeFile(artifacts.pythonResourcesPath, artifacts.pythonResourcesContent, 'utf8'),
+    fs.writeFile(artifacts.goModelsPath, artifacts.goModelsContent, 'utf8'),
+    fs.writeFile(artifacts.goResourcesPath, artifacts.goResourcesContent, 'utf8')
+  ]);
+  return artifacts;
+};
+
+/**
+ * 校验磁盘已提交的 IR 与多语言生成代码是否与最新 OpenAPI 契约零漂移一致。
+ */
+export const checkSdkArtifactsDrift = async (
+  precomputedIr?: SdkIrDocument
+): Promise<{ driftedFiles: string[] }> => {
+  const artifacts = await compileSdkArtifacts(precomputedIr);
+  const pairs: Array<[string, string]> = [
+    [artifacts.irPath, artifacts.irContent],
+    [artifacts.typesPath, artifacts.typesContent],
+    [artifacts.resourcesPath, artifacts.resourcesContent],
+    [artifacts.pythonModelsPath, artifacts.pythonModelsContent],
+    [artifacts.pythonResourcesPath, artifacts.pythonResourcesContent],
+    [artifacts.goModelsPath, artifacts.goModelsContent],
+    [artifacts.goResourcesPath, artifacts.goResourcesContent]
+  ];
+
+  const driftedFiles: string[] = [];
+  for (const [filePath, expectedContent] of pairs) {
+    const existing = await fs.readFile(filePath, 'utf8').catch(() => null);
+    if (existing !== expectedContent) {
+      driftedFiles.push(filePath);
+    }
+  }
+
+  return { driftedFiles };
+};

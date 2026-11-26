@@ -13,14 +13,12 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import * as mcp from '@fastgpt/service/core/app/mcp';
-import {
-  internalRuntimeNodeRunnerKey,
-  internalRuntimeNodeType
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
+import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import {
   graphNode,
@@ -39,13 +37,6 @@ vi.mock('@fastgpt/service/support/user/team/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/support/user/team/utils')>()),
   getUserChatInfo: vi.fn(async () => ({ externalProvider: undefined }))
 }));
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-  return {
-    ...actual,
-    serviceEnv: { ...actual.serviceEnv, CODE_SANDBOX_URL: 'http://sandbox.test' }
-  };
-});
 
 /** 资源加载边界返回固定工作流，内部实际执行 runWorkflow 和所有节点。 */
 const childResource = ({
@@ -68,6 +59,11 @@ const childResource = ({
 
 beforeEach(() => {
   loadChild.mockReset();
+  getTestInstanceConfig().subservice.codeSandbox = {
+    enabled: true,
+    url: 'http://sandbox.test',
+    token: 'test-token'
+  };
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -619,80 +615,83 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
     }
   );
 
-  it('propagates a failed grandchild through an app and plugin to the outer catch branch', async () => {
-    const failure = new Error('grandchild sandbox failed');
-    vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(failure);
-    const start = graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart });
-    const plugin = graphNode({
-      id: 'childplugin',
-      type: FlowNodeTypeEnum.pluginModule,
-      pluginId: 'grandchild',
-      outputs: [NodeOutputKeyEnum.errorText]
-    });
-    const input = graphNode({ id: 'plugininput', type: FlowNodeTypeEnum.pluginInput });
-    const code = graphNode({
-      id: 'grandchildcode',
-      type: FlowNodeTypeEnum.code,
-      params: { codeType: 'javascript', code: 'fixture' },
-      outputs: [NodeOutputKeyEnum.errorText]
-    });
-    loadChild.mockImplementation(async ({ appId }) =>
-      childResource(
-        appId === 'childapp'
-          ? {
-              nodes: [start, plugin],
-              edges: [graphEdge({ source: 'childstart', target: 'childplugin' })]
-            }
-          : {
-              nodes: [input, code],
-              edges: [graphEdge({ source: 'plugininput', target: 'grandchildcode' })]
-            }
-      )
-    );
-    const source = graphNode({
-      id: 'source',
-      type: FlowNodeTypeEnum.appModule,
-      pluginId: 'childapp',
-      params: { userChatInput: 'hello' },
-      outputs: [NodeOutputKeyEnum.errorText],
-      isEntry: true,
-      catchError: true
-    });
-    const caught = graphNode({
-      id: 'caught',
-      type: FlowNodeTypeEnum.toolParams,
-      inputs: [graphReference({ key: 'message', from: ['source', NodeOutputKeyEnum.errorText] })],
-      outputs: ['message']
-    });
-    const { result, responses } = await runGraph({
-      nodes: [source, caught],
-      edges: [graphEdge({ source: 'source', target: 'caught', error: true })]
-    });
+  it.each([false, true])(
+    'propagates a failed grandchild through an app and plugin with outer catchError=%s',
+    async (catchError) => {
+      const failure = new Error('grandchild sandbox failed');
+      vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(failure);
+      const start = graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart });
+      const plugin = graphNode({
+        id: 'childplugin',
+        type: FlowNodeTypeEnum.pluginModule,
+        pluginId: 'grandchild',
+        outputs: [NodeOutputKeyEnum.errorText]
+      });
+      const input = graphNode({ id: 'plugininput', type: FlowNodeTypeEnum.pluginInput });
+      const code = graphNode({
+        id: 'grandchildcode',
+        type: FlowNodeTypeEnum.code,
+        params: { codeType: 'javascript', code: 'fixture' },
+        outputs: [NodeOutputKeyEnum.errorText]
+      });
+      loadChild.mockImplementation(async ({ appId }) =>
+        childResource(
+          appId === 'childapp'
+            ? {
+                nodes: [start, plugin],
+                edges: [graphEdge({ source: 'childstart', target: 'childplugin' })]
+              }
+            : {
+                nodes: [input, code],
+                edges: [graphEdge({ source: 'plugininput', target: 'grandchildcode' })]
+              }
+        )
+      );
+      const source = graphNode({
+        id: 'source',
+        type: FlowNodeTypeEnum.appModule,
+        pluginId: 'childapp',
+        params: { userChatInput: 'hello' },
+        outputs: [NodeOutputKeyEnum.errorText],
+        isEntry: true,
+        catchError
+      });
+      const caught = graphNode({
+        id: 'caught',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: [graphReference({ key: 'message', from: ['source', NodeOutputKeyEnum.errorText] })],
+        outputs: ['message']
+      });
+      const { result, responses } = await runGraph({
+        nodes: [source, caught],
+        edges: [graphEdge({ source: 'source', target: 'caught', error: true })]
+      });
 
-    expect(graphValues(caught).message).toBe(failure.message);
-    expect(responses.find((response) => response.nodeId === 'childplugin')?.errorText).toBe(
-      failure.message
-    );
-    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(result, 'rawError')).toBe(false);
-  });
+      expect(graphValues(caught).message).toBe(catchError ? failure.message : undefined);
+      expect(responses.find((response) => response.nodeId === 'childplugin')?.errorText).toBe(
+        failure.message
+      );
+      expect(result.workflowRuntimeSummary.errorCount).toBe(catchError ? 0 : 1);
+      expect(findFailedResponseNode(responses)?.nodeId).toBe(catchError ? undefined : 'source');
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    }
+  );
 
   it.each(['loopRun', 'parallelRun', 'loop'] as const)(
     'propagates hasAgentSandbox from a nested child app through %s container',
     async (containerKind) => {
+      // 只控制沙箱节点返回的摘要；子应用、容器和 Queue 仍执行真实逻辑。
+      vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockImplementation(async (props) => {
+        props.nodeSummary.mergeNodeSummary({ hasAgentSandbox: true });
+        return { data: { [NodeOutputKeyEnum.answerText]: 'sandbox-ok' } };
+      });
       loadChild.mockResolvedValue(
         childResource({
           nodes: [
             graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart }),
             graphNode({
               id: 'childagent',
-              type: internalRuntimeNodeType as FlowNodeTypeEnum,
-              params: {
-                [internalRuntimeNodeRunnerKey]: (props: any) => {
-                  props.nodeSummary.mergeNodeSummary({ hasAgentSandbox: true });
-                  return { data: { [NodeOutputKeyEnum.answerText]: 'sandbox-ok' } };
-                }
-              },
+              type: FlowNodeTypeEnum.code,
               outputs: [NodeOutputKeyEnum.answerText]
             })
           ],

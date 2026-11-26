@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { rewriteRuntimeWorkFlow } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchRunTool } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
@@ -25,8 +25,12 @@ vi.mock('@fastgpt/service/core/app/mcp', async (importOriginal) => ({
     return { toolCall: mocks.call };
   })
 }));
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: () => ({ mcpClientMemory: {} }),
+vi.mock('@fastgpt/service/core/workflow/dispatch/context', () => ({
+  getWorkflowContext: () => ({
+    checkIsStopping: () => false,
+    mcpClientMemory: {},
+    variableContext: new Map()
+  }),
   getWorkflowResourceContext: () => undefined
 }));
 const Call: typeof callAPI = (handler, props) => callAPI(handler, { headers: {}, ...props });
@@ -177,7 +181,6 @@ describe('legacy MCP resource compatibility after Version migration', () => {
         params: { query: 'allowed' },
         runningAppInfo,
         runningUserInfo,
-        variableState: new Map(),
         uid: auth.tmbId,
         chatId: 'debug',
         responseChatItemId: 'reply',
@@ -189,7 +192,6 @@ describe('legacy MCP resource compatibility after Version migration', () => {
         params: { query: 'allowed' },
         runningAppInfo,
         runningUserInfo,
-        variableState: new Map(),
         uid: auth.tmbId,
         chatId: 'debug'
       } as any);

@@ -338,7 +338,10 @@ export const ReferencedAppSchema = z
   .object({
     _id: ObjectIdSchema.meta({ example: referencedAppExample._id, description: '应用 ID' }),
     name: z.string().meta({ example: referencedAppExample.name, description: '应用名称' }),
-    avatar: z.string().meta({ example: referencedAppExample.avatar, description: '应用头像' }),
+    avatar: z
+      .string()
+      .optional()
+      .meta({ example: referencedAppExample.avatar, description: '应用头像' }),
     intro: z.string().meta({ example: referencedAppExample.intro, description: '应用简介' }),
     tmbId: ObjectIdSchema.meta({
       example: referencedAppExample.tmbId,
@@ -388,6 +391,7 @@ export type AppDetailType = AppSchemaType & {
   nodes: AppVersionSchemaType['nodes'];
   edges: AppVersionSchemaType['edges'];
   chatConfig: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   permission: AppPermission;
 };
 

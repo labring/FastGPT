@@ -3,6 +3,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
+import { LEGACY_DEPRECATED_MONGO_INDEXES } from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 
 const hasIndex = (
   indexes: ReturnType<typeof MongoChat.schema.indexes>,
@@ -38,18 +39,37 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
-  it('keeps deprecated share data and its index, only cleaning the obsolete generation status index', () => {
+  it('declares cursor search index and deprecates the redundant prefix index', () => {
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1, _id: -1 })).toBe(true);
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1 })).toBe(false);
+  });
+
+  it('keeps deprecated share data and its index while moving obsolete chat indexes to explicit cleanup registry', () => {
     expect(MongoChat.schema.path('shareId')).toBeDefined();
     expect(
       hasIndex(MongoChat.schema.indexes(), { shareId: 1, outLinkUid: 1, updateTime: -1 })
     ).toBe(true);
-    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toMatchObject([
-      {
-        indexName: 'chatGenerateStatus_1_updateTime_1',
-        key: { chatGenerateStatus: 1, updateTime: 1 },
-        options: { partialFilterExpression: { chatGenerateStatus: 0 } }
-      }
-    ]);
+    // 零墓碑原则：业务 Schema 不再保留 deprecated: true，历史废弃索引统一收口至显式清理清单。
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
+    const legacyChatIndexes = LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+      (entry) => entry.collectionName === 'chats'
+    );
+    expect(legacyChatIndexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          datasource: 'main',
+          indexName: 'appId_1_updateTime_-1',
+          key: { appId: 1, updateTime: -1 },
+          options: {}
+        }),
+        expect.objectContaining({
+          datasource: 'main',
+          indexName: 'chatGenerateStatus_1_updateTime_1',
+          key: { chatGenerateStatus: 1, updateTime: 1 },
+          options: { partialFilterExpression: { chatGenerateStatus: 0 } }
+        })
+      ])
+    );
   });
 
   it('keeps legacy chat item read and pagination indexes', () => {

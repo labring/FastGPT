@@ -165,11 +165,18 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {roundModelPrice(item.pricing?.unitPrice) +
+                {item.sttPricing.type === 'tokens' ? (
+                  <>
+                    <Box>{`${t('common:Input')}: ${roundModelPrice(item.sttPricing.inputPrice)} ${t('common:support.wallet.subscription.point')} / 1M Tokens`}</Box>
+                    <Box>{`${t('common:Output')}: ${roundModelPrice(item.sttPricing.outputPrice)} ${t('common:support.wallet.subscription.point')} / 1M Tokens`}</Box>
+                  </>
+                ) : (
+                  roundModelPrice(item.sttPricing.unitPrice) +
                   t('common:support.wallet.subscription.point') +
-                  (item.sttPricing.type === 'tokens'
-                    ? ' / 1M Tokens'
-                    : ' / ' + STT_PRICE_UNITS.duration + t('common:unit.seconds'))}
+                  ' / ' +
+                  STT_PRICE_UNITS.duration +
+                  t('common:unit.seconds')
+                )}
               </Box>
             </Flex>
           ))}

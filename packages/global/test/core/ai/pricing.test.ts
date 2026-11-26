@@ -1,6 +1,7 @@
 import { STTModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { LLMModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   calculateModelPrice,
@@ -42,25 +43,25 @@ describe('sanitizeModelPriceTiers', () => {
     expect(sanitizeModelPriceTiers()).toEqual([]);
     expect(
       sanitizeModelPriceTiers([
-        { maxInputTokens: -1, inputPrice: NaN, outputPrice: Infinity },
-        { maxInputTokens: 0.0041, inputPrice: 1, outputPrice: 2 },
-        { maxInputTokens: 0.0041, inputPrice: 5, outputPrice: 5 },
+        { maxInputTokensK: -1, inputPrice: NaN, outputPrice: Infinity },
+        { maxInputTokensK: 4, inputPrice: 1, outputPrice: 2 },
+        { maxInputTokensK: 4, inputPrice: 5, outputPrice: 5 },
         { inputPrice: undefined, outputPrice: undefined } as never
       ])
     ).toEqual([
-      { maxInputTokens: 0, inputPrice: 0, outputPrice: 0 },
-      { maxInputTokens: 0.0041, inputPrice: 1, outputPrice: 2 }
+      { maxInputTokensK: 0, inputPrice: 0, outputPrice: 0 },
+      { maxInputTokensK: 4, inputPrice: 1, outputPrice: 2 }
     ]);
     expect(
       sanitizeModelPriceTiers([
         { inputPrice: 0, outputPrice: 2 },
-        { maxInputTokens: 4, inputPrice: 8, outputPrice: 8 }
+        { maxInputTokensK: 4, inputPrice: 8, outputPrice: 8 }
       ])
     ).toEqual([{ inputPrice: 0, outputPrice: 2 }]);
     expect(
       sanitizeModelPriceTiers(
         Array.from({ length: 6 }, (_, i) => ({
-          maxInputTokens: i + 1,
+          maxInputTokensK: i + 1,
           inputPrice: 1,
           outputPrice: 2
         }))
@@ -68,9 +69,9 @@ describe('sanitizeModelPriceTiers', () => {
     ).toHaveLength(MAX_MODEL_PRICE_TIERS);
     expect(
       sanitizeModelPriceTiers([
-        { maxInputTokens: 1, inputPrice: undefined, outputPrice: 2 } as never
+        { maxInputTokensK: 1, inputPrice: undefined, outputPrice: 2 } as never
       ])
-    ).toEqual([{ maxInputTokens: 1, inputPrice: 0, outputPrice: 2 }]);
+    ).toEqual([{ maxInputTokensK: 1, inputPrice: 0, outputPrice: 2 }]);
   });
 });
 
@@ -83,34 +84,120 @@ describe('getRuntimeResolvedPriceTiers', () => {
 });
 
 describe('calculateModelPrice', () => {
+  it.each([
+    { cache: {}, expected: 28 },
+    { cache: { cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }, expected: 17.7 },
+    { cache: { cacheReadPrice: 0 }, expected: 16 },
+    { cache: { cacheCreationPrice: 0 }, expected: 26 },
+    { cache: { cacheReadPrice: 0, cacheCreationPrice: 0 }, expected: 14 }
+  ])('splits total input into ordinary and cached tokens: $cache', ({ cache, expected }) => {
+    const config = {
+      ...model,
+      pricing: { tiers: [{ inputPrice: 2, outputPrice: 4, ...cache }] }
+    };
+    expect(
+      calculateModelPrice({
+        config,
+        inputTokens: 10000000,
+        outputTokens: 2000000,
+        cacheReadTokens: 6000000,
+        cacheCreationTokens: 1000000
+      }).totalPoints
+    ).toBeCloseTo(expected);
+  });
+
+  it.each([
+    { read: 200, write: 200, expected: 0.00002 },
+    { read: -5, write: -5, expected: 0.0002 },
+    { read: NaN, write: Infinity, expected: 0.0002 },
+    { read: 60, write: 100, expected: 0.000112 }
+  ])('bounds cache counts by total input: $read / $write', ({ read, write, expected }) => {
+    const config = {
+      ...model,
+      pricing: {
+        tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }]
+      }
+    };
+    expect(
+      calculateModelPrice({
+        config,
+        inputTokens: 100,
+        cacheReadTokens: read,
+        cacheCreationTokens: write
+      }).totalPoints
+    ).toBeCloseTo(expected, 10);
+  });
+
+  it('selects a tier by total input, including caches, and keeps team models free', () => {
+    const config = {
+      ...model,
+      pricing: {
+        tiers: [
+          { maxInputTokensK: 5, inputPrice: 1000, outputPrice: 1000, cacheReadPrice: 0 },
+          { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
+        ]
+      }
+    };
+    const usage = {
+      inputTokens: 10000,
+      outputTokens: 2000,
+      cacheReadTokens: 6000,
+      cacheCreationTokens: 1000
+    };
+    expect(calculateModelPrice({ config, ...usage }).totalPoints).toBeCloseTo(17.7);
+    expect(
+      calculateModelPrice({ config: { ...config, scope: ModelScopeEnum.team }, ...usage })
+        .totalPoints
+    ).toBe(0);
+    expect(calculateModelPrice({ config, inputTokens: NaN, outputTokens: -1 }).totalPoints).toBe(0);
+  });
   it('uses right-closed input tiers, deriving lower bounds and falling back to the last finite tier', () => {
     const config = {
       ...model,
       pricing: {
         tiers: [
-          { maxInputTokens: 0.0041, inputPrice: 1000, outputPrice: 2000 },
-          { maxInputTokens: 0.01, inputPrice: 3000, outputPrice: 4000 }
+          { maxInputTokensK: 4, inputPrice: 1000, outputPrice: 2000 },
+          { maxInputTokensK: 10, inputPrice: 3000, outputPrice: 4000 }
         ]
       }
     };
     for (const [inputTokens, totalPoints, tierIndex] of [
       [0, 0.002, 0],
-      [4099, 4.101, 0],
-      [4100, 4.102, 0],
-      [4101, 12.307, 1],
+      [3999, 4.001, 0],
+      [4000, 4.002, 0],
+      [4001, 12.007, 1],
       [10001, 30.007, 1]
     ]) {
       const result = calculateModelPrice({ config, inputTokens, outputTokens: 1 });
       expect(result.matchedTier).toEqual(config.pricing.tiers[tierIndex]);
       expect(result.totalPoints).toBe(totalPoints);
     }
+    // 常见 K Tokens 边界（如 272K = 272000）精确匹配首档，同时单价按 M Tokens 结算。
     expect(
       calculateModelPrice({
         config: {
           ...model,
           pricing: {
             tiers: [
-              { maxInputTokens: 0, inputPrice: 1, outputPrice: 1 },
+              { maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 },
+              { inputPrice: 3360, outputPrice: 12600 }
+            ]
+          }
+        },
+        inputTokens: 272000,
+        outputTokens: 1000
+      })
+    ).toMatchObject({
+      matchedTier: { maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 },
+      totalPoints: 465.36
+    });
+    expect(
+      calculateModelPrice({
+        config: {
+          ...model,
+          pricing: {
+            tiers: [
+              { maxInputTokensK: 0, inputPrice: 1, outputPrice: 1 },
               { inputPrice: 2, outputPrice: 3 }
             ]
           }
@@ -118,6 +205,26 @@ describe('calculateModelPrice', () => {
         inputTokens: 1
       }).totalPoints
     ).toBe(0.000002);
+  });
+  it('uses the first tier for all inputs when it has no K limit', () => {
+    const pricing = LLMModelPricingSchema.parse({
+      tiers: [
+        { inputPrice: 1000, outputPrice: 2000 },
+        { inputPrice: 3000, outputPrice: 4000 }
+      ]
+    });
+    const firstTier = { inputPrice: 1000, outputPrice: 2000 };
+    expect(
+      calculateModelPrice({
+        config: { ...model, pricing },
+        inputTokens: 200_000,
+        outputTokens: 1000
+      })
+    ).toEqual({
+      tiers: [firstTier],
+      matchedTier: firstTier,
+      totalPoints: 202
+    });
   });
   it.each([ModelTypeEnum.embedding, ModelTypeEnum.rerank, ModelTypeEnum.tts, ModelTypeEnum.stt])(
     'fixes %s denominator by type and preserves per-call precision',
@@ -179,9 +286,9 @@ describe('calculateModelPrice', () => {
 
 const tieredModel = {
   ...model,
-  pricing: { tiers: [{ maxInputTokens: 0.0041, inputPrice: 1.005, outputPrice: 2.675 }] }
+  pricing: { tiers: [{ maxInputTokensK: 4, inputPrice: 1.005, outputPrice: 2.675 }] }
 };
-const roundedTiers = [{ maxInputTokens: 0.0041, inputPrice: 1.01, outputPrice: 2.68 }];
+const roundedTiers = [{ maxInputTokensK: 4, inputPrice: 1.01, outputPrice: 2.68 }];
 const sttModel = {
   ...model,
   type: ModelTypeEnum.stt as const,
@@ -192,7 +299,9 @@ const sttModel = {
 describe('normalizeModelPricingForRead', () => {
   it('rounds editing values without changing missing pricing, source rates or precise bounds', () => {
     expect(normalizeModelPricingForRead(model)).toBe(model);
-    expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({ tiers: roundedTiers });
+    expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({
+      tiers: roundedTiers
+    });
     expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({
       type: 'duration',
       unitPrice: 0.13
@@ -207,6 +316,28 @@ describe('normalizeModelPricingForRead', () => {
 });
 
 describe('normalizeModelPricingForSave', () => {
+  it('rounds optional cache rates without turning omissions into free prices', () => {
+    const pricing = normalizeModelPricingForSave({
+      ...model,
+      pricing: {
+        tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0, cacheCreationPrice: 1.005 }]
+      }
+    }).pricing;
+    expect(LLMModelPricingSchema.parse(pricing).tiers?.[0]).toEqual({
+      inputPrice: 2,
+      outputPrice: 4,
+      cacheReadPrice: 0,
+      cacheCreationPrice: 1.01
+    });
+    expect(
+      LLMModelPricingSchema.parse(normalizeModelPricingForSave(tieredModel).pricing).tiers?.[0]
+    ).not.toHaveProperty('cacheReadPrice');
+    expect(
+      sanitizeModelPriceTiers([
+        { inputPrice: 2, outputPrice: 4, cacheReadPrice: NaN, cacheCreationPrice: -1 }
+      ])
+    ).toEqual([{ inputPrice: 2, outputPrice: 4 }]);
+  });
   it('marks missing prices as configured and preserves empty or explicit free prices', () => {
     expect(normalizeModelPricingForSave(model).pricing).toEqual({});
     for (const pricing of [{}, { tiers: [] }, { tiers: [{ inputPrice: 0, outputPrice: 0 }] }]) {
@@ -224,7 +355,9 @@ describe('normalizeModelPricingForSave', () => {
       type: 'duration',
       unitPrice: 0
     });
-    expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({ tiers: roundedTiers });
+    expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({
+      tiers: roundedTiers
+    });
     expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({
       type: 'duration',
       unitPrice: 0.13
@@ -243,13 +376,17 @@ describe('STT pricing', () => {
     for (const pricing of [
       { type: 'unknown' },
       { type: 'duration', unitPrice: -1 },
-      { type: 'tokens', unitPrice: -1 }
+      { type: 'tokens', inputPrice: -1 },
+      { type: 'tokens', outputPrice: -1 }
     ]) {
       expect(STTModelPricingSchema.safeParse(pricing).success).toBe(false);
     }
-    expect(STTModelPricingSchema.parse({ type: 'tokens', unitPrice: 10 })).toEqual({
+    expect(
+      STTModelPricingSchema.parse({ type: 'tokens', inputPrice: 10, outputPrice: 20 })
+    ).toEqual({
       type: 'tokens',
-      unitPrice: 10
+      inputPrice: 10,
+      outputPrice: 20
     });
   });
   it('calculates fractional seconds per 60 seconds without rounding up', () => {
@@ -277,13 +414,44 @@ describe('STT pricing', () => {
       ).toBeCloseTo(0.1, 12);
     }
   );
-  it('uses total tokens with the million-token denominator', () => {
+  it('prices input and output independently with the million-token denominator', () => {
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { type: 'tokens', unitPrice: 10 } },
-        sttUsage: { type: 'tokens', totalTokens: 77 }
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 } },
+        sttUsage: { type: 'tokens', inputTokens: 60, outputTokens: 17 }
       }).totalPoints
-    ).toBeCloseTo(0.00077, 12);
+    ).toBeCloseTo(0.00094, 12);
+  });
+  it.each([
+    { inputTokens: 125, outputTokens: 17, expected: 0.0001459 },
+    { inputTokens: 125, outputTokens: 0, expected: 0.0001 },
+    { inputTokens: 0, outputTokens: 17, expected: 0.0000459 },
+    { inputTokens: NaN, outputTokens: 17, expected: 0.0000459 },
+    { inputTokens: 125, outputTokens: -1, expected: 0.0001 }
+  ])(
+    'uses distinct STT prices for $inputTokens/$outputTokens',
+    ({ inputTokens, outputTokens, expected }) => {
+      expect(
+        calculateModelPrice({
+          config: { ...config, pricing: { type: 'tokens', inputPrice: 0.8, outputPrice: 2.7 } },
+          sttUsage: { type: 'tokens', inputTokens, outputTokens }
+        }).totalPoints
+      ).toBeCloseTo(expected, 12);
+    }
+  );
+  it('rounds each configured price while leaving call amounts precise', () => {
+    expect(
+      normalizeModelPricingForSave({
+        ...sttModel,
+        pricing: { type: 'tokens', inputPrice: 1.005, outputPrice: 2.675 }
+      }).pricing
+    ).toEqual({ type: 'tokens', inputPrice: 1.01, outputPrice: 2.68 });
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 0, outputPrice: 2 } },
+        sttUsage: { type: 'tokens', inputTokens: 10, outputTokens: 3 }
+      }).totalPoints
+    ).toBe(0.000006);
   });
   it('does not use inputTokens or a mismatching meter to bill STT', () => {
     expect(
@@ -294,7 +462,7 @@ describe('STT pricing', () => {
     ).toBe(0);
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { type: 'tokens', unitPrice: 2 } },
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 2, outputPrice: 3 } },
         sttUsage: { type: 'duration', seconds: 77 }
       }).totalPoints
     ).toBe(0);
@@ -311,9 +479,9 @@ describe('STT pricing', () => {
         config: {
           ...config,
           scope: ModelScopeEnum.team,
-          pricing: { type: 'tokens', unitPrice: 2 }
+          pricing: { type: 'tokens', inputPrice: 2, outputPrice: 3 }
         },
-        sttUsage: { type: 'tokens', totalTokens: 77 }
+        sttUsage: { type: 'tokens', inputTokens: 60, outputTokens: 17 }
       }).totalPoints
     ).toBe(0);
     expect(

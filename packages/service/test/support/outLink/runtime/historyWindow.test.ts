@@ -1,3 +1,4 @@
+import { getWorkflowMemoryKey } from '@fastgpt/service/core/workflow/memory/utils';
 import { describe, expect, it, vi } from 'vitest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -10,7 +11,7 @@ import { runOutlinkRuntime } from '@fastgpt/service/support/outLink/runtime/serv
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { selectChatHistories } from '@fastgpt/service/core/workflow/dispatch/ai/chat/historyWindow';
-import { getWorkflowNodeMemoryKey } from '@fastgpt/service/core/workflow/memory/state';
+
 import type { OutlinkResponseEvent } from '@fastgpt/service/support/outLink/runtime/type';
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({ getAppLatestVersion: vi.fn() }));
@@ -69,7 +70,7 @@ describe('external channel periodic history persistence', () => {
       resources: [],
       chatConfig: { variables: [], fileSelectConfig: { maxFiles: 0 } }
     } as any);
-    const memoryKey = getWorkflowNodeMemoryKey({
+    const memoryKey = getWorkflowMemoryKey({
       runningAppInfo: {
         sourceType: ChatSourceTypeEnum.app,
         sourceId: String(app._id)

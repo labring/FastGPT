@@ -1,8 +1,4 @@
-import {
-  S3_MULTIPART_MAX_PART_COUNT,
-  S3_SIGNED_DOWNLOAD_ALIAS_PATTERN,
-  S3_UPLOAD_TOKEN_PATTERN
-} from './constants';
+import { S3_MULTIPART_MAX_PART_COUNT, S3_UPLOAD_TOKEN_PATTERN } from './constants';
 import { S3AccessLinkErrCode, S3AccessLinkError, type S3AccessLinkErrorCode } from './errors';
 import type {
   CreateS3DownloadAccessUrlParams,
@@ -251,14 +247,16 @@ export const assertCreateDownloadParams = (
             S3AccessLinkErrCode.invalidSignedAlias
           )
         }
+      : {}),
+    ...(params.fallbackExtension !== undefined
+      ? {
+          fallbackExtension: assertNonEmptyString(
+            params.fallbackExtension,
+            S3AccessLinkErrCode.invalidSignedAlias
+          )
+        }
       : {})
   };
-};
-
-export const assertSignedAliasFormat = (value: string) => {
-  if (!S3_SIGNED_DOWNLOAD_ALIAS_PATTERN.test(value)) {
-    throw new S3AccessLinkError(S3AccessLinkErrCode.invalidSignedAlias);
-  }
 };
 
 export const assertDownloadPayload = (

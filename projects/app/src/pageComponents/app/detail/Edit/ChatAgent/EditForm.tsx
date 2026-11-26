@@ -23,10 +23,10 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '../../hooks/useAgentSandboxCapability';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -41,6 +41,7 @@ import { useAppDatasetTagFilter } from '../FormComponent/useAppDatasetTagFilter'
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
+import { removeSelectedTool, upsertSelectedTool } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -70,9 +71,7 @@ const EditForm = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
+  const { showSandbox, enableSandbox, canUseSandbox } = useAgentSandboxCapability();
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
@@ -116,38 +115,15 @@ const EditForm = ({
     selectedTools: appForm.selectedTools,
     selectedAgentSkills,
     onUpdateOrAddTool: (tool) => {
-      setAppForm((state) => {
-        const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
-        const index = state.selectedTools.findIndex(
-          (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
-        );
-
-        if (index === -1) {
-          return {
-            ...state,
-            selectedTools: [tool, ...(state.selectedTools || [])]
-          };
-        } else {
-          return {
-            ...state,
-            selectedTools:
-              state.selectedTools?.map((item) =>
-                getToolIdentityKey(item.pluginId, item.source) === toolKey ? tool : item
-              ) || []
-          };
-        }
-      });
+      setAppForm((state) => ({
+        ...state,
+        selectedTools: upsertSelectedTool(state.selectedTools || [], tool)
+      }));
     },
     onAddAgentSkill,
     onEnableSandbox: () => onChangeAgentSandbox(true),
     currentAppId: appId,
-    canUploadFile: !!(
-      appForm.chatConfig.fileSelectConfig?.canSelectFile ||
-      appForm.chatConfig.fileSelectConfig?.canSelectImg ||
-      appForm.chatConfig.fileSelectConfig?.canSelectVideo ||
-      appForm.chatConfig.fileSelectConfig?.canSelectAudio ||
-      appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
-    ),
+    canUploadFile: hasEnabledFileSelect(appForm.chatConfig.fileSelectConfig),
     hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0,
     useAgentSandbox: !!appForm.aiSettings.useAgentSandbox,
     onClickDatasetSearch: () => {
@@ -159,7 +135,7 @@ const EditForm = ({
       onOpenKbSelect();
     }
   });
-  const { skillOption, selectedSkills, onClickSkill } = skillManager;
+  const { skillOption, promptRefRegistry, onClickSkill } = skillManager;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -283,7 +259,7 @@ const EditForm = ({
                 placeholder={t('workflow:agent.prompt_placeholder')}
                 variableLabels={formatVariables}
                 skillOption={skillOption}
-                selectedSkills={selectedSkills}
+                promptRefRegistry={promptRefRegistry}
                 onClickSkill={onClickSkill}
                 value={appForm.aiSettings.systemPrompt}
                 onChange={(e) => {
@@ -329,52 +305,56 @@ const EditForm = ({
         </Box>
 
         {/* skill choice */}
-        <Box {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={1}>
-              <MyIcon name={'common/skill'} w={'20px'} color={'#487FFF'} />
-              <FormLabel ml={2}>{t('skill:associated_skills')}</FormLabel>
+        {(canUseSandbox || selectedAgentSkills.length > 0) && (
+          <Box {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <Flex alignItems={'center'} flex={1}>
+                <MyIcon name={'common/skill'} w={'20px'} color={'#487FFF'} />
+                <FormLabel ml={2}>{t('skill:associated_skills')}</FormLabel>
+              </Flex>
+              {isAgentSkillSandboxUnavailable && (
+                <MyTag
+                  mr={2}
+                  colorSchema={'red'}
+                  type={'borderFill'}
+                  cursor={'pointer'}
+                  onClick={openSkillSelect}
+                >
+                  {t('skill:sandbox_unavailable_tag')}
+                </MyTag>
+              )}
+              {canUseSandbox && (
+                <Button
+                  variant={'transparentBase'}
+                  leftIcon={<SmallAddIcon />}
+                  iconSpacing={1}
+                  mr={'-5px'}
+                  size={'sm'}
+                  fontSize={'sm'}
+                  onClick={openSkillSelect}
+                >
+                  {t('common:Choose')}
+                </Button>
+              )}
             </Flex>
-            {isAgentSkillSandboxUnavailable && (
-              <MyTag
-                mr={2}
-                colorSchema={'red'}
-                type={'borderFill'}
-                cursor={'pointer'}
-                onClick={openSkillSelect}
-              >
-                {t('skill:sandbox_unavailable_tag')}
-              </MyTag>
-            )}
-            <Button
-              variant={'transparentBase'}
-              leftIcon={<SmallAddIcon />}
-              iconSpacing={1}
-              mr={'-5px'}
-              size={'sm'}
-              fontSize={'sm'}
-              onClick={openSkillSelect}
+            <Grid
+              mt={selectedAgentSkills.length > 0 ? 2 : 0}
+              gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
+              gridGap={[2, 4]}
             >
-              {t('common:Choose')}
-            </Button>
-          </Flex>
-          <Grid
-            mt={selectedAgentSkills.length > 0 ? 2 : 0}
-            gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-            gridGap={[2, 4]}
-          >
-            <AgentSkillCardList skills={selectedAgentSkills} onDelete={onRemoveAgentSkill} />
-          </Grid>
+              <AgentSkillCardList skills={selectedAgentSkills} onDelete={onRemoveAgentSkill} />
+            </Grid>
 
-          {isOpenSkillSelect && (
-            <SkillSelectModal
-              selectedSkills={selectedAgentSkills}
-              onAddSkill={onAddAgentSkill}
-              onRemoveSkill={onRemoveAgentSkill}
-              onClose={onCloseSkillSelect}
-            />
-          )}
-        </Box>
+            {isOpenSkillSelect && (
+              <SkillSelectModal
+                selectedSkills={selectedAgentSkills}
+                onAddSkill={onAddAgentSkill}
+                onRemoveSkill={onRemoveAgentSkill}
+                onClose={onCloseSkillSelect}
+              />
+            )}
+          </Box>
+        )}
 
         {/* tool choice */}
         <Box {...BoxStyles}>
@@ -385,19 +365,14 @@ const EditForm = ({
             onAddTool={(e) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
+                selectedTools: upsertSelectedTool(state.selectedTools || [], e)
               }));
             }}
             onConfigTool={skillManager.onOpenConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools:
-                  state.selectedTools?.filter(
-                    (item) =>
-                      getToolIdentityKey(item.pluginId, item.source) !==
-                      getToolIdentityKey(id, source)
-                  ) || []
+                selectedTools: removeSelectedTool(state.selectedTools || [], { id, source })
               }));
             }}
           />

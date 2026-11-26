@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AIModelDocumentDataSchema } from '../../../../core/ai/model/schema';
 import {
   ModelReferenceSchema,
+  ImportFromChannelBodySchema,
+  ImportFromChannelResponseSchema,
   CreateModelBodySchema,
   CreateModelsFromTemplatesBodySchema,
   DeleteModelsBodySchema,
@@ -10,7 +12,8 @@ import {
   UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
   ImportedSystemModelSchema,
-  MyLLMModelItemSchema
+  MyLLMModelItemSchema,
+  PreviewImportFromChannelResponseSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
 import { GetModelSummariesResponseSchema } from '../../../../openapi/core/ai/model/summary';
@@ -98,6 +101,47 @@ describe('admin system model API schemas', () => {
     expect(() =>
       DeleteModelsBodySchema.parse({ modelIds: [modelIds[0], modelIds[0]], channelType: 'system' })
     ).toThrow('modelIds must be unique');
+  });
+
+  it('parses channel imports with the shared model creation contract', () => {
+    const modelData = {
+      type: 'llm',
+      provider: 'openai',
+      model: 'openai/gpt-5.4',
+      name: 'GPT-5.4',
+      scope: 'system',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    };
+
+    const body = ImportFromChannelBodySchema.parse({
+      channelId: 1,
+      models: [{ ...modelData, isActive: false, sortOrder: 10 }, modelData]
+    });
+
+    expect(body.models).toEqual([
+      CreateModelBodySchema.parse({
+        modelData: { ...modelData, isActive: false, sortOrder: 10 },
+        channelType: 'system'
+      }).modelData,
+      modelData
+    ]);
+    expect(body.models[0]).not.toHaveProperty('sortOrder');
+  });
+
+  it('rejects associating an existing model through channel import', () => {
+    expect(() =>
+      ImportFromChannelBodySchema.parse({
+        channelId: 1,
+        channelType: 'system',
+        operations: [
+          {
+            action: 'associate',
+            providerModelSlug: 'openai/gpt-5.4',
+            modelId: '68ad85a7463006c963799a05'
+          }
+        ]
+      })
+    ).toThrow();
   });
 
   it('enforces the batch model ID boundaries', () => {
@@ -317,6 +361,114 @@ describe('admin system model API schemas', () => {
       for (const operation of Object.values(operations ?? {})) {
         expect(operation?.tags).toContain(DevApiTagsMap.model);
       }
+    }
+  });
+
+  it('preserves the created model ID when the channel binding fails', () => {
+    const results = [
+      {
+        status: 'failed',
+        modelId: '68ad85a7463006c963799a05',
+        model: 'provider/model',
+        error: 'binding failed'
+      },
+      { status: 'failed', model: 'provider/other-model', error: 'modelAlreadyExists' }
+    ];
+    expect(ImportFromChannelResponseSchema.parse({ results }).results).toEqual(results);
+  });
+
+  it('accepts template and blank channel import drafts', () => {
+    const blankModelData = {
+      type: 'llm' as const,
+      model: 'openai/gpt-4o',
+      name: 'GPT-4o',
+      config: { maxContext: 32000 }
+    };
+    const result = PreviewImportFromChannelResponseSchema.parse({
+      items: [
+        {
+          providerModelSlug: 'openai/gpt-4o',
+          contextLength: 64000,
+          maxCompletionTokens: 8000,
+          candidate: {
+            category: 'template',
+            template: { type: 'llm', model: 'gpt-4o' },
+            modelData: {
+              type: 'llm',
+              provider: 'openai',
+              model: 'gpt-4o',
+              name: 'GPT-4o',
+              scope: 'system',
+              config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 12000 }
+            },
+            blankModelData
+          }
+        },
+        {
+          providerModelSlug: 'unknown/embedding',
+          contextLength: 32000,
+          candidate: {
+            category: 'blank',
+            modelData: { model: 'unknown/embedding', name: 'Unknown embedding model' }
+          }
+        }
+      ]
+    });
+
+    expect(result.items[0]).toMatchObject({ contextLength: 64000, maxCompletionTokens: 8000 });
+    expect(result.items[0].candidate).toMatchObject({
+      category: 'template',
+      template: { type: 'llm', model: 'gpt-4o' },
+      blankModelData
+    });
+    expect(result.items[1]).toMatchObject({
+      contextLength: 32000,
+      candidate: { category: 'blank' }
+    });
+    expect(result.items[1].candidate).not.toHaveProperty('contextLength');
+  });
+
+  it('requires a candidate for each upstream model', () => {
+    expect(() =>
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [{ providerModelSlug: 'unknown/model', candidates: [] }]
+      })
+    ).toThrow();
+  });
+
+  it('rejects existing local-model candidates from channel preview', () => {
+    expect(() =>
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [
+          {
+            providerModelSlug: 'vendor/model',
+            candidate: { category: 'existing', modelId: '68ad85a7463006c963799a05' }
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
+  it('accepts zero and rejects negative or fractional context lengths', () => {
+    const baseItem = { category: 'blank' };
+    expect(
+      PreviewImportFromChannelResponseSchema.parse({
+        items: [{ providerModelSlug: 'unknown/model', contextLength: 0, candidate: baseItem }]
+      }).items[0]
+    ).toMatchObject({ contextLength: 0 });
+
+    for (const contextLength of [-1, 32000.5]) {
+      expect(() =>
+        PreviewImportFromChannelResponseSchema.parse({
+          items: [
+            {
+              providerModelSlug: 'unknown/model',
+              contextLength,
+              candidate: baseItem
+            }
+          ]
+        })
+      ).toThrow();
     }
   });
 

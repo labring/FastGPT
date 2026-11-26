@@ -46,10 +46,23 @@ const AIModelSchema = new Schema(
       type: new Schema(
         {
           tiers: {
-            type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
+            type: [
+              {
+                _id: false,
+                /** @deprecated 保留历史阶梯上限，供 4.17.5 回退读取。新版计费用 maxInputTokensK。 */
+                maxInputTokens: Number,
+                maxInputTokensK: Number,
+                inputPrice: Number,
+                outputPrice: Number,
+                cacheReadPrice: Number,
+                cacheCreationPrice: Number
+              }
+            ],
             default: undefined
           },
           unitPrice: Number,
+          inputPrice: Number,
+          outputPrice: Number,
           type: { type: String, enum: ['duration', 'tokens'] }
         },
         { _id: false, minimize: false }

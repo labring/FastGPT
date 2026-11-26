@@ -25,7 +25,7 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
-import { MongoAppRegistration } from '../../support/appRegistration/schema';
+import { appRegistrationService } from '../../support/appRegistration/service';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -242,7 +242,7 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   return apps.map((item) => ({
     id: item._id,
     name: item.name,
-    avatar: item.avatar ?? ''
+    avatar: item.avatar ?? undefined
   }));
 };
 
@@ -273,10 +273,14 @@ export const deleteAppDataProcessor = async ({
 
   // 2. 删除聊天记录、S3 文件和 sandbox 资源。App logs 属于应用统计域，单独清理。
   await deleteAppSandboxes(appId);
-  await deleteChatResourcesBySource({
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: appId
-  });
+  // 三类会话都属于应用，但按 sourceType 清理，避免误删独立 Skill 的同 ID 记录。
+  for (const sourceType of [
+    ChatSourceTypeEnum.app,
+    ChatSourceTypeEnum.workflowBuilder,
+    ChatSourceTypeEnum.chatAgentHelper
+  ] as const) {
+    await deleteChatResourcesBySource({ sourceType, sourceId: appId });
+  }
   await MongoAppChatLog.deleteMany({ teamId, appId });
 
   // 3. 清理外部引用与快捷入口（分享链接、精选应用、快捷应用、MCP Key 关联，兼容旧 MQ 或补偿执行）
@@ -296,7 +300,7 @@ export const deleteAppDataProcessor = async ({
     // 删除日志密钥
     await MongoAppLogKeys.deleteMany({ appId });
     // 删除应用注册记录
-    await MongoAppRegistration.deleteMany({ appId });
+    await appRegistrationService.deleteAppRegistrations({ teamId, appId });
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });

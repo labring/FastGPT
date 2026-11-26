@@ -2,11 +2,13 @@ import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getAuthenticatedIdeAgentEndpoint } from '@fastgpt/service/core/ai/sandbox/application/ideAgent';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import {
-  getSandboxClient,
-  type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
@@ -18,77 +20,66 @@ import {
   type SandboxVerifyTicketQuery,
   type SandboxVerifyTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { serviceEnv } from '@fastgpt/service/env';
+import {
+  SANDBOX_WS_MAX_MESSAGE_BYTES,
+  SANDBOX_WS_MAX_FRAME_BYTES
+} from '@fastgpt/service/core/ai/sandbox/constants';
+import {
+  SANDBOX_IDE_AGENT_HTTP_PORT,
+  SANDBOX_IDE_AGENT_WS_PORT
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
-const IDE_AGENT_PORT = 1318;
-const IDE_AGENT_PREVIEW_PORT = 1319;
-const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
-
 const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
 
-const BaseSandboxTicketClaimsSchema = z.object({
+const SandboxPreviewSessionHeaderSchema = z.string().trim().min(1);
+const SandboxRequiredTicketQuerySchema = SandboxVerifyTicketQuerySchema.extend({
+  ticket: z.string().min(1)
+});
+
+const SandboxTicketClaimsSchema = z.object({
   userId: z.string(),
   chatId: ChatIdSchema,
   teamId: z.string(),
   channel: SandboxChannelSchema,
-  permission: SandboxTicketPermissionSchema
-});
-const SandboxTicketClaimsSchema = BaseSandboxTicketClaimsSchema.extend({
+  permission: SandboxTicketPermissionSchema,
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string()
 });
 
-async function readIdeAgentPassword(sandbox: SandboxClient) {
-  const maxRetries = 3;
-  const delayMs = 1000;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await sandbox.exec(IDE_AGENT_PASSWORD_READ_COMMAND, 2);
-      const password = result.stdout.trim();
-
-      if (result.exitCode === 0 && password) {
-        return password;
-      }
-
-      throw new Error(result.stderr || result.stdout || 'empty password file');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (attempt === maxRetries) {
-        throw new Error(
-          `Failed to read IDE Agent password after ${maxRetries} attempts: ${message}`
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-
-  throw new Error('Failed to read IDE Agent password: unknown error');
-}
-
 /**
- * 校验 WebSocket ticket 或 Preview session，并返回 IDE Agent 的代理连接地址和 agent 口令。
+ * 校验 WebSocket ticket 或 Preview session，并返回 IDE Agent 的代理连接地址及上游数据面鉴权头。
  */
 async function handler(
   req: ApiRequestProps<Record<string, never>, SandboxVerifyTicketQuery>
 ): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
-  const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
+  const resolveVerifyTicketTarget = async () => {
+    const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
+    if (headerPreviewSession !== undefined) {
+      const { forceRefresh } = parseApiInput({
+        req,
+        querySchema: SandboxVerifyTicketQuerySchema
+      }).query;
+      // 显式传入空值或多值 preview session 请求头时按 header 入参错误处理（400）
+      const parsedPreviewSession =
+        SandboxPreviewSessionHeaderSchema.safeParse(headerPreviewSession);
+      if (!parsedPreviewSession.success) {
+        throw new ApiRequestInputParseError(parsedPreviewSession.error, { inputSource: 'header' });
+      }
 
-  const authContext = await (async () => {
-    if (typeof headerPreviewSession === 'string') {
       return {
-        sandboxQuery: await resolveSandboxPreviewSession(headerPreviewSession),
-        ideAgentPort: IDE_AGENT_PREVIEW_PORT
+        sandboxQuery: await resolveSandboxPreviewSession(parsedPreviewSession.data),
+        ideAgentPort: SANDBOX_IDE_AGENT_HTTP_PORT,
+        forceRefresh
       };
     }
 
-    const { ticket } = parseApiInput({
+    const { ticket, forceRefresh } = parseApiInput({
       req,
-      querySchema: SandboxVerifyTicketQuerySchema
+      querySchema: SandboxRequiredTicketQuerySchema
     }).query;
 
     try {
@@ -102,24 +93,32 @@ async function handler(
           userId,
           chatId
         }),
-        ideAgentPort: IDE_AGENT_PORT
+        ideAgentPort: SANDBOX_IDE_AGENT_WS_PORT,
+        forceRefresh
       };
     } catch {
-      throw new Error('Invalid ticket signature');
+      throw new ApiHttpError(401, 'Invalid ticket signature');
     }
-  })();
+  };
+
+  const authContext = await resolveVerifyTicketTarget();
 
   const sandbox = await getSandboxClient(authContext.sandboxQuery);
-  const agentPassword = await readIdeAgentPassword(sandbox);
 
-  const endpoint = await sandbox.provider.getEndpoint(authContext.ideAgentPort);
+  const endpoint = await sandbox.runWithRecovery(() =>
+    getAuthenticatedIdeAgentEndpoint({
+      sandbox: sandbox.opensandbox,
+      port: authContext.ideAgentPort,
+      forceRefreshPassword: authContext.forceRefresh === 'true'
+    })
+  );
 
   return SandboxVerifyTicketResponseSchema.parse({
     sandbox_url: endpoint.url,
-    agent_token: agentPassword,
+    upstream_headers: endpoint.headers,
     ws_limits: {
-      max_message_bytes: serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
-      max_frame_bytes: serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
+      max_message_bytes: SANDBOX_WS_MAX_MESSAGE_BYTES,
+      max_frame_bytes: SANDBOX_WS_MAX_FRAME_BYTES
     }
   });
 }

@@ -1,34 +1,19 @@
-import {
-  normalizeAgentLoopUsages,
-  type AgentLoopEvent
-} from '../../../../../../ai/llm/agentLoop/interface';
+import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreEventStream } from './type';
-import type { createAgentLoopCoreToolRunResponseCollector } from '../nodeResponse';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-
-type ToolRunCollector = ReturnType<typeof createAgentLoopCoreToolRunResponseCollector>;
-
-const readToolNodeResponse = (metadata: unknown): ChatHistoryItemResType | undefined =>
-  metadata && typeof metadata === 'object' ? (metadata as ChatHistoryItemResType) : undefined;
 
 export type CreateAgentLoopCoreEventDispatcherParams = {
   eventStream: AgentLoopCoreEventStream;
-  toolRunCollector?: Pick<
-    ToolRunCollector,
-    'appendContextCompressNodeResponse' | 'appendToolNodeResponse'
-  >;
   shouldStreamTool?: (name: string) => boolean;
 };
 
 /**
  * 创建 agent-loop event 的 workflow 侧共享分发器。
  *
- * 这里只做通用事件路由：SSE 由 eventStream 处理，工具运行详情由 toolRunCollector 处理。
+ * 这里只做 SSE 事件路由，由 eventStream 处理实时推送。
  * assistantResponses/nodeResponses 等持久化 collector 仍由调用方按需要单独挂载。
  */
 export const createAgentLoopCoreEventDispatcher = ({
   eventStream,
-  toolRunCollector,
   shouldStreamTool = () => true
 }: CreateAgentLoopCoreEventDispatcherParams) => {
   const pendingToolCallMap = new Map<
@@ -40,18 +25,6 @@ export const createAgentLoopCoreEventDispatcher = ({
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
-      case 'after_message_compress': {
-        const [usage] = normalizeAgentLoopUsages(event.usages);
-        if (!usage) return;
-        toolRunCollector?.appendContextCompressNodeResponse({
-          modelName: event.modelName,
-          usage,
-          requestIds: event.requestIds,
-          contextCheckpoint: event.contextCheckpoint,
-          seconds: event.seconds
-        });
-        return;
-      }
       case 'reasoning_delta':
         eventStream.streamReasoning(event.text);
         return;
@@ -122,15 +95,6 @@ export const createAgentLoopCoreEventDispatcher = ({
         if (event.assistantResponses?.length) {
           eventStream.startNewAnswerBlock();
         }
-        toolRunCollector?.appendToolNodeResponse({
-          call: event.call,
-          response: event.response,
-          errorMessage: event.errorMessage,
-          seconds: event.seconds,
-          usages: event.usages,
-          nodeResponse: readToolNodeResponse(event.metadata),
-          toolResponseCompress: event.toolResponseCompress
-        });
         return;
       }
       case 'plan_status':
@@ -142,6 +106,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         }
         return;
       case 'llm_request_end':
+      case 'after_message_compress':
       case 'tool_interactive':
       case 'ask':
       case 'ask_resume':
