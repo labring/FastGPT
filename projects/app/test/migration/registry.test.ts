@@ -27,7 +27,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261125_backfill_model_reasoning_effort_list',
       '20261120_clean_api_dataset_system_root',
       '20261127_cleanup_agent_engine_config',
-      '20261127_backfill_name_sort_key'
+      '20261127_backfill_name_sort_key',
+      '20261125_migrate_dataset_document_training'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -38,7 +39,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
       '20261125_backfill_model_reasoning_effort_list',
-      '20261120_clean_api_dataset_system_root'
+      '20261120_clean_api_dataset_system_root',
+      '20261125_migrate_dataset_document_training'
     ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
@@ -69,7 +71,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261125_backfill_model_reasoning_effort_list',
       '20261120_clean_api_dataset_system_root',
       '20261127_cleanup_agent_engine_config',
-      '20261127_backfill_name_sort_key'
+      '20261127_backfill_name_sort_key',
+      '20261125_migrate_dataset_document_training'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -207,8 +210,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
   });
 
-  it('registers v4.18.0 name sort key backfill at tail as an independent multi-step task', () => {
-    const task = systemMigrations.at(-1);
+  it('registers v4.18.0 name sort key backfill as an independent multi-step task', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261127_backfill_name_sort_key');
     expect(task).toMatchObject({
       id: '20261127_backfill_name_sort_key',
       version: '4.18.0',
@@ -219,6 +222,23 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('delay');
+  });
+
+  it('appends document training migration as a manual task with its four progress stages', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261125_migrate_dataset_document_training',
+      version: '4.18.0',
+      manual: true,
+      progressSteps: [
+        { key: 'preflight' },
+        { key: 'legacyTasks' },
+        { key: 'remainingData' },
+        { key: 'validation' }
+      ]
+    });
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('resumable');
   });
 
   it('runs only the selected production tasks independently', () => {
