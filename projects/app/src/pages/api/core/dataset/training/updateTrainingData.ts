@@ -1,5 +1,4 @@
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   authDataset,
   authDatasetCollection
@@ -7,26 +6,12 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
-  getDatasetIndexTrainingMode,
-  retryFailedTrainingTasks
-} from '@fastgpt/service/core/dataset/training/service';
-import {
   UpdateTrainingDataBodySchema,
   UpdateTrainingDataResponseSchema,
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  getTrainingDataIndexStatuses,
-  getTrainingTaskReadyUpdate
-} from '@fastgpt/service/core/dataset/training/utils';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import {
-  bridgeClientSessionToDbSession,
-  mongoSessionRun
-} from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import {
@@ -34,7 +19,12 @@ import {
   buildDatasetAuditResource
 } from '@fastgpt/global/support/user/audit/type';
 import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
-import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
+import {
+  findDocumentTrainingTask,
+  retryDatasetDocumentTrainingWork,
+  retryDocumentTrainingWork
+} from '@/service/core/dataset/training/documentActions';
+import { getDatasetTrainingWriteScope } from '@/service/core/dataset/training/errorScope';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -67,18 +57,21 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
           };
         }
 
-        const { teamId, tmbId, dataset } = await authDataset({
+        const auth = await authDataset({
           req,
           authToken: true,
           authApiKey: true,
           datasetId: body.datasetId!,
           per: WritePermissionVal
         });
+        const { teamId, tmbId, dataset } = auth;
+        const writeScope = await getDatasetTrainingWriteScope(auth);
 
         return {
           retryMatch: {
-            teamId,
-            datasetId: dataset._id
+            teamId: writeScope.teamId,
+            datasetId: writeScope.datasetId,
+            collectionIds: writeScope.collectionIds
           },
           retryTeamId: String(teamId),
           tmbId,
@@ -88,7 +81,21 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         };
       })();
 
-    await retryFailedTrainingTasks(retryMatch);
+    if (retryMatch.collectionId) {
+      await retryDocumentTrainingWork({
+        scope: {
+          teamId: String(retryMatch.teamId),
+          datasetId: String(retryMatch.datasetId),
+          collectionId: String(retryMatch.collectionId)
+        }
+      });
+    } else {
+      await retryDatasetDocumentTrainingWork({
+        teamId: String(retryMatch.teamId),
+        datasetId: String(retryMatch.datasetId),
+        collectionIds: retryMatch.collectionIds
+      });
+    }
 
     // 审计只记录已发起的重试操作，不统计实际命中条数（需改造重试函数返回值，超出审计范围）。
     // 重试粒度由请求参数决定：带 collectionId 是集合级，否则是知识库级。
@@ -120,7 +127,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
   const { q, a, chunkIndex } = body;
   // 单条重试只信任 dataId 找到的训练记录，再用记录所属 collection 做权限校验。
-  const data = await MongoDatasetTraining.findById(body.dataId);
+  const data = await findDocumentTrainingTask(body.dataId);
 
   if (!data) {
     return Promise.reject('data not found');
@@ -149,20 +156,6 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('重建任务不支持编辑正文');
   }
 
-  const trainingMatch = {
-    teamId: collection.teamId,
-    datasetId: collection.datasetId,
-    collectionId: collection._id,
-    _id: data._id
-  };
-
-  // 只有补充图片解析结果才跳过当前阶段；重试 index 必须保留其原阶段。
-  const nextMode =
-    data.mode === TrainingModeEnum.imageParse && data.imageId && q
-      ? await getDatasetIndexTrainingMode(data)
-      : undefined;
-
-  const readyUpdate = getTrainingTaskReadyUpdate();
   // 只转存本次提交字段；未提交的已有字段通过 existingContent 仅参与受管内联图计数，避免误上传或拒绝历史 Base64。
   const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
     q !== undefined || a !== undefined
@@ -177,54 +170,19 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         })
       : { data: [{}], imageUploadKeys: [] };
   const submittedFields = normalized.data[0];
-  await mongoSessionRun(async (session) => {
-    // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属与 3 张数量上限校验。
-    const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();
-    if (!current) throw new Error('Training data no longer exists');
-    await persistChunkImageReferences({
-      teamId: String(collection.teamId),
-      datasetId: String(collection.datasetId),
-      collectionId: String(collection._id),
-      data: [{ ...current, ...submittedFields }],
-      imageUploadKeys: normalized.imageUploadKeys,
-      tx: bridgeClientSessionToDbSession(session)
-    });
-    if (data.dataId) {
-      await MongoDatasetData.updateOne(
-        {
-          _id: data.dataId,
-          teamId: data.teamId,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          indexStatus: getTrainingDataIndexStatuses(data.mode).failed
-        },
-        {
-          $set: {
-            indexStatus: getTrainingDataIndexStatuses(data.mode).running
-          },
-          $unset: { indexErrorMsg: '' }
-        },
-        { session }
-      );
-    }
 
-    await MongoDatasetTraining.updateOne(
-      trainingMatch,
-      {
-        ...readyUpdate,
-        $set: {
-          ...readyUpdate.$set,
-          ...(nextMode && { mode: nextMode }),
-          ...submittedFields,
-          ...(chunkIndex !== undefined && { chunkIndex })
-        }
-      },
-      { session }
-    );
-    await publishTrainingWakeup({
-      modes: [nextMode ?? data.mode],
-      tx: bridgeClientSessionToDbSession(session)
-    });
+  await retryDocumentTrainingWork({
+    scope: {
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      collectionId: collection._id
+    },
+    taskId: String(data._id),
+    edit: {
+      ...submittedFields,
+      ...(chunkIndex !== undefined && { chunkIndex })
+    },
+    imageUploadKeys: normalized.imageUploadKeys
   });
 
   // 单条重试写入独立事件：它只影响一个分块，与批量重试分开统计。

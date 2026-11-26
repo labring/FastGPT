@@ -1,5 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getPublicDatasetDataIndexStatus } from '@fastgpt/global/core/dataset/data/utils';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getTmbPermission } from '../controller';
 import {
@@ -352,10 +353,6 @@ export async function authDatasetData({
     return Promise.reject(i18nT('common:core.dataset.error.Data not found'));
   }
 
-  if (assertWritable) {
-    await assertDatasetDataWritable(datasetData.indexStatus);
-  }
-
   const result = await authDatasetCollection({
     ...props,
     collectionId: datasetData.collectionId
@@ -366,6 +363,10 @@ export async function authDatasetData({
   // 数据块记录中的 datasetId 若与已鉴权的 collection.datasetId 不一致，说明数据存在脏数据或越权关联，拒绝访问
   if (datasetData.datasetId && String(datasetData.datasetId) !== authorizedDatasetId) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetData);
+  }
+
+  if (assertWritable) {
+    await assertDatasetDataWritable(datasetData);
   }
 
   const data: DatasetDataItemType = {
@@ -394,7 +395,8 @@ export async function authDatasetData({
         : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
-    indexStatus: datasetData.indexStatus,
+    indexStatus: getPublicDatasetDataIndexStatus(datasetData),
+    indexErrorMsg: datasetData.indexErrorMsg,
     datasetId: authorizedDatasetId,
     collectionId: String(datasetData.collectionId),
     metadata: datasetData.metadata,
