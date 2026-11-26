@@ -74,7 +74,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
     volumes:
-      - fastgpt-pg:/var/lib/postgresql/data
+      - fastgpt-pg:${{pg.dataDir}}
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
       interval: 5s
@@ -83,7 +83,7 @@ services:
 
   # DB
   fastgpt-mongo:
-    image: ${{mongo.image}}:${{mongo.tag}} # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: ${{mongo.image}}:${{mongo.tag}} # x86_64 CPU 需满足 MongoDB 8.x 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     ports:
@@ -438,7 +438,7 @@ services:
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
-      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:${{aiproxy-pg.dataDir}}
     networks:
       - aiproxy
     environment:

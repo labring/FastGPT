@@ -165,6 +165,8 @@
   "model.reasoning": "模型支援思考",
   "model.reasoning_tip": "例如 Deepseek-reasoner，可以輸出思考過程。",
   "model.reasoning_effort": "支援思考配置",
+  "model.reasoning_effort_list": "可用思考等級",
+  "model.reasoning_effort_list_placeholder": "請選擇可用思考等級",
   "model.request_auth": "自訂請求 Key（即將棄用，請直接使用渠道）",
   "model.request_auth_tip": "向自訂請求地址發起請求時候，攜帶請求頭：Authorization: Bearer xxx 進行請求",
   "model.request_url": "自訂請求地址（即將棄用，請直接使用渠道）",

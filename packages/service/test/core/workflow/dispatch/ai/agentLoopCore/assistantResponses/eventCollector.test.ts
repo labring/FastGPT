@@ -368,4 +368,62 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       { text: { content: 'After' } }
     ]);
   });
+
+  it.each(['close', 'error', 'content_filter', 'abnormal_close'] as const)(
+    'drops unexecuted streaming partial tool cards when llm_request_end confirms empty toolCalls (%s)',
+    (finishReason) => {
+      const collector = createAgentLoopCoreAssistantEventCollector();
+      collector.emitEvent({
+        type: 'llm_request_start',
+        responseId: finishReason,
+        requestIndex: 1,
+        modelName: 'Model'
+      });
+      collector.emitEvent({ type: 'answer_delta', text: 'partial answer' });
+      collector.emitEvent({
+        type: 'tool_call',
+        call: call('partial', 'ask_user', '{"reason":"收集表单数据')
+      });
+      collector.emitEvent({
+        type: 'tool_params',
+        callId: 'partial',
+        argsDelta: '","blockerType":"missing_required_input"'
+      });
+      collector.emitEvent({
+        ...end(finishReason, []),
+        responseId: finishReason,
+        finishReason
+      });
+
+      expect(collector.assistantResponses).toHaveLength(1);
+      expect(collector.assistantResponses[0]).toMatchObject({
+        text: { content: 'partial answer' }
+      });
+      expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
+      expect(collector.assistantResponses[0]).not.toHaveProperty('toolCallIds');
+      expect(AIChatItemValueSchema.safeParse(collector.assistantResponses[0]).success).toBe(true);
+    }
+  );
+
+  it('trims dropped partial sibling tools on abnormal_close while keeping confirmed valid tools', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({
+      type: 'llm_request_start',
+      responseId: 'abn',
+      requestIndex: 1,
+      modelName: 'Model'
+    });
+    collector.emitEvent({ type: 'tool_call', call: call('good', 'search', '{"q":"ok"}') });
+    collector.emitEvent({ type: 'tool_call', call: call('bad', 'search', '{"q":') });
+    collector.emitEvent({
+      ...end('abn', [call('good', 'search', '{"q":"ok"}')]),
+      responseId: 'abn',
+      finishReason: 'abnormal_close'
+    });
+
+    expect(collector.assistantResponses[0]).toMatchObject({
+      toolCallIds: ['good'],
+      tools: [expect.objectContaining({ id: 'good', params: '{"q":"ok"}' })]
+    });
+  });
 });

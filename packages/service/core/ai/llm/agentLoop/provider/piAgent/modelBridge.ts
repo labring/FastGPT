@@ -1,4 +1,8 @@
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import {
+  getSupportedReasoningEfforts,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import {
@@ -9,36 +13,36 @@ import {
 } from '../../../../config';
 import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
 import { computedMaxToken } from '../../../../utils';
-import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType, ReasoningEffortLevel } from '@fastgpt/global/core/ai/model/schema';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
 const normalizeBaseUrl = (url?: string) => (url ? url.replace(/\/chat\/completions$/, '') : '');
-const supportedThinkingLevels = new Set<ThinkingLevel>([
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh'
-]);
+
+/**
+ * 解析 Pi Agent 出站应发送的思考等级（与普通出站 requestBody.ts 及前端配置弹窗保持同一契约）：
+ * - 仅当请求档位在模型支持列表内时原样保留（含显式 `'none'`）；
+ * - 未指定（默认）、不支持思考或不在模型支持列表内时返回 undefined（出站移除思考等级参数，走模型默认行为）。
+ */
+export function resolvePiReasoningEffort(
+  modelData: LLMModelDataType,
+  reasoningEffort?: ReasoningEffort
+): ReasoningEffortLevel | undefined {
+  return (
+    normalizeModelReasoningEffort(reasoningEffort, getSupportedReasoningEfforts(modelData)) ??
+    undefined
+  );
+}
 
 export function getPiThinkingLevel(
   modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ThinkingLevel {
-  if (
-    !modelData.config.reasoning ||
-    !modelData.config.reasoningEffort ||
-    reasoningEffort === 'none'
-  ) {
+  const resolvedEffort = resolvePiReasoningEffort(modelData, reasoningEffort);
+  if (!resolvedEffort || resolvedEffort === 'none') {
     return 'off';
   }
-
-  if (reasoningEffort && supportedThinkingLevels.has(reasoningEffort as ThinkingLevel)) {
-    return reasoningEffort as ThinkingLevel;
-  }
-
-  return 'medium';
+  return resolvedEffort;
 }
 
 /** 无鉴权自定义端点的占位 Key；仅用于阻止 pi-ai 回退宿主环境变量，实际请求头会被置空。 */
@@ -103,7 +107,7 @@ export function buildPiModel(
     compat: {
       supportsDeveloperRole: false,
       supportsStore: false,
-      supportsReasoningEffort: modelData.config.reasoningEffort ?? false,
+      supportsReasoningEffort: getSupportedReasoningEfforts(modelData).length > 0,
       maxTokensField: 'max_tokens'
     }
   };

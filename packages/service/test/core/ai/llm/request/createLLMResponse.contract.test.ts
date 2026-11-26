@@ -2,9 +2,19 @@ import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { setImmediate } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE,
+  ModelScopeEnum,
+  ModelTypeEnum
+} from '@fastgpt/global/core/ai/constants';
 import { chats2GPTMessages, filterToolMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { isValidToolArguments } from '@fastgpt/service/core/ai/llm/request/response/normalize';
+import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ChatCompletionMessageParam,
@@ -31,6 +41,7 @@ import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
 import * as recordController from '@fastgpt/service/core/ai/record/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import * as outputModeration from '@fastgpt/service/core/plugin/moderation/output';
 
 const teamId = '507f1f77bcf86cd799439011';
 const message = 'Run the contract test search.';
@@ -84,10 +95,11 @@ const chunk = (delta: Delta = {}, finish_reason: CompletionFinishReason = null):
 const usageChunk: Chunk = { choices: [], usage };
 type Round = {
   requireReasoning?: boolean;
+  requireValidToolArguments?: boolean;
   toolCalls?: ChatCompletionMessageToolCall[] | null;
   text?: string;
   reasoning?: string;
-  finish?: 'tool_calls' | 'length' | 'stop';
+  finish?: 'tool_calls' | 'length' | 'stop' | 'content_filter';
   upstreamError?: boolean;
   chunks?: Chunk[];
   wireMode?: 'fragmented' | 'bytewise' | 'coalesced';
@@ -144,6 +156,99 @@ beforeEach(async () => {
         })
       );
       return;
+    }
+    if (round.requireValidToolArguments) {
+      const msgs = request.messages ?? [];
+      const hasInvalidArgs = msgs.some(
+        (message) =>
+          message.role === 'assistant' &&
+          'tool_calls' in message &&
+          Array.isArray(message.tool_calls) &&
+          message.tool_calls.some(
+            (toolCall) =>
+              toolCall.type === 'function' && !isValidToolArguments(toolCall.function?.arguments)
+          )
+      );
+      if (hasInvalidArgs) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error: {
+              message:
+                'The "function.arguments" parameter of the code model must be in JSON format.',
+              code: 'invalid_parameter_error'
+            }
+          })
+        );
+        return;
+      }
+
+      // 模拟 DashScope / OpenAI 严格工具回执校验：assistant.tool_calls 后必须紧跟所有对应 role:'tool'。
+      let pendingToolIds = new Set<string>();
+      for (const message of msgs) {
+        if (message.role === 'tool' && 'tool_call_id' in message && message.tool_call_id) {
+          pendingToolIds.delete(message.tool_call_id);
+          continue;
+        }
+        if (pendingToolIds.size > 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              error: {
+                message:
+                  'An assistant message with "tool_calls" must be followed by tool messages responding to each "tool_call_id".',
+                code: 'invalid_parameter_error'
+              }
+            })
+          );
+          return;
+        }
+        if (
+          message.role === 'assistant' &&
+          'tool_calls' in message &&
+          Array.isArray(message.tool_calls)
+        ) {
+          pendingToolIds = new Set(message.tool_calls.map((c) => c.id));
+        }
+      }
+      if (pendingToolIds.size > 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error: {
+              message:
+                'An assistant message with "tool_calls" must be followed by tool messages responding to each "tool_call_id".',
+              code: 'invalid_parameter_error'
+            }
+          })
+        );
+        return;
+      }
+
+      // 模拟 DashScope / OpenAI 严格 assistant 契约：无 tool_calls 的 assistant 必须包含非空 content。
+      const hasAssistantWithoutContentOrTools = msgs.some(
+        (message) =>
+          message.role === 'assistant' &&
+          !(
+            'tool_calls' in message &&
+            Array.isArray(message.tool_calls) &&
+            message.tool_calls.length > 0
+          ) &&
+          (typeof message.content !== 'string' || message.content.length === 0)
+      );
+      if (hasAssistantWithoutContentOrTools) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error: {
+              message:
+                'An assistant message without "tool_calls" must include non-empty "content".',
+              code: 'invalid_parameter_error'
+            }
+          })
+        );
+        return;
+      }
     }
     const error = { message: 'upstream simulated failure', code: 'UPSTREAM_SIMULATED' };
     const finish = round.finish ?? 'tool_calls';
@@ -646,7 +751,8 @@ describe('createLLMResponse HTTP/SSE contract', () => {
     type StreamCase = {
       label: string;
       chunks: Chunk[];
-      expectedTools: { id?: string; name?: string; args: string }[];
+      expectedTools: { id?: string; name?: string; args: string; streamedArgs?: string }[];
+      expectedBlockedReasons?: ('length' | 'invalid_args' | 'moderation')[];
       text?: string;
       reasoning?: string;
       finishReason?: CompletionFinishReason;
@@ -734,10 +840,19 @@ describe('createLLMResponse HTTP/SSE contract', () => {
         expect(result.error).toBeUndefined();
         expect(missingLogs).toEqual([]);
         expect(onToolCall).toHaveBeenCalledTimes(scenario.expectedTools.length);
-        for (const tool of result.toolCalls ?? []) {
+        (result.toolCalls ?? []).forEach((tool, idx) => {
           const args = replay.get(tool.id)!;
-          expect(args.trim() ? args : '{}').toBe(tool.function.arguments);
-        }
+          const expectedStreamed = scenario.expectedTools[idx]?.streamedArgs;
+          if (expectedStreamed !== undefined) {
+            expect(args).toBe(expectedStreamed);
+          } else {
+            expect(args.trim() ? args : '{}').toBe(tool.function.arguments);
+          }
+          const expectedReason = scenario.expectedBlockedReasons?.[idx];
+          if (expectedReason) {
+            expect(result.blockedToolCalls?.[tool.id]).toBe(expectedReason);
+          }
+        });
       }
       const record = await readRecord(result.requestId);
       expect(record.response.finish_reason).toBe(result.finish_reason);
@@ -991,23 +1106,25 @@ describe('createLLMResponse HTTP/SSE contract', () => {
         upstreamError: true
       },
       {
-        label: 'anonymous fragments are not guessed into one call',
+        label: 'anonymous fragments are not guessed into one call and invalid args are sanitized',
         chunks: [
           toolChunk({ name: 'search', args: '{"q":' }),
           toolChunk({ args: '1}' }),
           end,
           usageChunk
         ],
-        expectedTools: [{ args: '{"q":' }]
+        expectedTools: [{ args: '{}', streamedArgs: '{"q":' }],
+        expectedBlockedReasons: ['invalid_args']
       },
       {
-        label: 'length preserves incomplete arguments without synthetic braces',
+        label: 'length rewrites incomplete arguments to {} and marks length blocked',
         chunks: [
           toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
           chunk({}, 'length'),
           usageChunk
         ],
-        expectedTools: [{ id: 'a', args: '{"q":' }],
+        expectedTools: [{ id: 'a', args: '{}', streamedArgs: '{"q":' }],
+        expectedBlockedReasons: ['length'],
         finishReason: 'length'
       }
     ];
@@ -1174,14 +1291,45 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       });
       expect(result.error).toBeUndefined();
       expect(result.finish_reason).toBe('close');
-      expect(result.toolCalls?.[0].function.arguments).toBe('{"q":');
+      // 用户主动中断时丢弃未完成的工具调用，防止后续被误执行或落库。
+      expect(result.toolCalls ?? []).toEqual([]);
       expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
       expect(onToolCall).toHaveBeenCalledTimes(1);
       expect(onToolParam).not.toHaveBeenCalled();
       const record = await readRecord(result.requestId);
       expect(record.response.finish_reason).toBe('close');
-      expect(record.response.toolCalls).toEqual(result.toolCalls);
+      expect(record.response.toolCalls ?? []).toEqual([]);
       expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+    });
+
+    it('drops unfinished tool calls when abort lands right before EOF without a further chunk', async () => {
+      rounds.push({
+        chunks: [usageChunk, toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' })],
+        omitDone: true,
+        wireMode: 'coalesced'
+      });
+      let aborted = false;
+      const onToolCall = vi.fn(() => {
+        aborted = true;
+      });
+      const onToolParam = vi.fn();
+      const result = await createLLMResponse({
+        teamId,
+        throwError: false,
+        body: body(true),
+        isAborted: () => aborted,
+        onToolCall,
+        onToolParam
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(result.finish_reason).toBe('close');
+      expect(result.toolCalls ?? []).toEqual([]);
+      expect(result.assistantMessage).not.toHaveProperty('tool_calls');
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      const record = await readRecord(result.requestId);
+      expect(record.response.finish_reason).toBe('close');
+      expect(record.response.toolCalls ?? []).toEqual([]);
     });
 
     describe('disconnect while tool arguments are streaming', () => {
@@ -1217,10 +1365,9 @@ describe('createLLMResponse HTTP/SSE contract', () => {
           expect(result.error).toBeInstanceOf(Error);
           expect(result.error.message).not.toBe(fixedError);
           expect(result.finish_reason).toBe('error');
-          // 已开始的工具保留残缺参数用于排查；是否执行由调用方依据 error 决定。
-          expect(result.toolCalls).toEqual([
-            { id: 'a', type: 'function', function: { name: 'search', arguments: '{"q":' } }
-          ]);
+          // error 场景丢弃对外 toolCalls，避免被误执行或污染上下文；请求日志保留上游原始残缺数据用于排障。
+          expect(result.toolCalls ?? []).toEqual([]);
+          expect(result.assistantMessage).not.toHaveProperty('tool_calls');
           expect(onToolParam).not.toHaveBeenCalled();
           expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
           expect(
@@ -1229,7 +1376,9 @@ describe('createLLMResponse HTTP/SSE contract', () => {
           const record = await readRecord(result.requestId);
           expect(record.response.finish_reason).toBe('error');
           expect(record.response.error).toBeDefined();
-          expect(record.response.toolCalls).toEqual(result.toolCalls);
+          expect(record.response.toolCalls).toEqual([
+            { id: 'a', type: 'function', function: { name: 'search', arguments: '{"q":' } }
+          ]);
         }
       );
 
@@ -1358,6 +1507,507 @@ describe('createLLMResponse HTTP/SSE contract', () => {
         ran.map((tool) => `result of ${tool.id}`)
       );
       for (const id of result.requestIds) await readRecord(id);
+    });
+
+    describe('tool call arguments end-to-end integration with strict upstream validation', () => {
+      const runIntegratedLoop = async ({
+        messages = [{ role: 'user' as const, content: message }],
+        lang = LangEnum.zh_CN,
+        isAborted = () => false,
+        onRunTool,
+        onToolCallHook
+      }: {
+        messages?: ChatCompletionMessageParam[];
+        lang?: `${LangEnum}`;
+        isAborted?: () => boolean;
+        onRunTool?: (args: { call: ChatCompletionMessageToolCall }) => Promise<{
+          response: string;
+          assistantMessages: ChatCompletionMessageParam[];
+          usages: [];
+        }>;
+        onToolCallHook?: (call: ChatCompletionMessageToolCall) => void;
+      }) => {
+        const collector = createAgentLoopCoreAssistantEventCollector();
+        const runToolSpy = vi.fn(
+          onRunTool ??
+            (async ({ call }: { call: ChatCompletionMessageToolCall }) => ({
+              response: `ok:${call.id}:${call.function.arguments}`,
+              assistantMessages: [],
+              usages: []
+            }))
+        );
+        const loopResult = await runAgentLoop({
+          teamId,
+          lang,
+          maxRunAgentTimes: 5,
+          body: { ...body(true), messages, tools: streamTools },
+          isAborted,
+          onRunTool: runToolSpy,
+          onRunInteractiveTool: vi.fn(),
+          onLLMRequestStart: (event) =>
+            collector.emitEvent({ type: 'llm_request_start', ...event }),
+          onReasoning: ({ text }) => collector.emitEvent({ type: 'reasoning_delta', text }),
+          onStreaming: ({ text }) => collector.emitEvent({ type: 'answer_delta', text }),
+          onToolCall: ({ call }) => {
+            collector.emitEvent({ type: 'tool_call', call });
+            onToolCallHook?.(call);
+          },
+          onToolParam: ({ call, argsDelta }) =>
+            collector.emitEvent({ type: 'tool_params', callId: call.id, argsDelta }),
+          onLLMRequestEnd: (event) =>
+            collector.emitEvent({
+              type: 'llm_request_end',
+              ...event,
+              toolCalls: event.toolCalls
+            }),
+          onToolRunEnd: (event) =>
+            collector.emitEvent({
+              type: 'tool_run_end',
+              call: event.call,
+              response: event.response,
+              seconds: event.seconds
+            })
+        });
+        for (const id of loopResult.requestIds) await readRecord(id);
+        return { loopResult, collector, runToolSpy };
+      };
+
+      it.each([
+        ['tool_calls', '{"q":'],
+        ['stop', '[1,2]'],
+        ['tool_calls', '"plain-string"']
+      ] as const)(
+        'skips invalid/non-object tool call (%s, %s), executes valid and empty siblings, and recovers under strict 400 validation',
+        async (finish, brokenArgs) => {
+          rounds.push(
+            {
+              chunks: [
+                chunk({
+                  tool_calls: [
+                    toolDelta({ index: 0, id: 'valid_call', name: 'search', args: '{"q":"ok"}' }),
+                    toolDelta({ index: 1, id: 'empty_call', name: 'search', args: '' }),
+                    toolDelta({
+                      index: 2,
+                      id: 'bad_call',
+                      name: 'search_content',
+                      args: brokenArgs
+                    })
+                  ]
+                }),
+                chunk({}, finish),
+                usageChunk
+              ],
+              wireMode: 'coalesced'
+            },
+            {
+              requireValidToolArguments: true,
+              text: 'Recovered after invalid args.',
+              finish: 'stop'
+            }
+          );
+
+          const { loopResult, collector, runToolSpy } = await runIntegratedLoop({});
+
+          expect(loopResult.error).toBeUndefined();
+          expect(collector.assistantResponses.at(-1)?.text?.content).toBe(
+            'Recovered after invalid args.'
+          );
+          expect(received).toHaveLength(2);
+          expect(
+            runToolSpy.mock.calls.map(([{ call }]) => [call.id, call.function.arguments])
+          ).toEqual([
+            ['valid_call', '{"q":"ok"}'],
+            ['empty_call', '{}']
+          ]);
+
+          const secondReqMessages = received[1].messages as any[];
+          const assistantMsg = secondReqMessages.find(
+            (item) => item.role === 'assistant' && item.tool_calls?.length
+          );
+          expect(
+            assistantMsg.tool_calls.map((c: ChatCompletionMessageToolCall) => [
+              c.id,
+              c.function.arguments
+            ])
+          ).toEqual([
+            ['valid_call', '{"q":"ok"}'],
+            ['empty_call', '{}'],
+            ['bad_call', '{}']
+          ]);
+          const badToolResp = secondReqMessages.find(
+            (item) => item.role === 'tool' && item.tool_call_id === 'bad_call'
+          );
+          expect(badToolResp?.content).toBe(
+            parseI18nString(LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE, LangEnum.zh_CN)
+          );
+          expect(
+            collector.assistantResponses[0].tools?.find((t) => t.id === 'bad_call')
+          ).toMatchObject({
+            params: '{}',
+            response: parseI18nString(LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE, LangEnum.zh_CN)
+          });
+        }
+      );
+
+      it('rewrites length-truncated tool calls to {}, skips execution, and passes strict 400 validation on retry', async () => {
+        rounds.push(
+          {
+            chunks: [
+              toolChunk({
+                index: 0,
+                id: 'len_call',
+                name: 'search',
+                args: '{"reason":"收集表单数据以生成专属HTML文件'
+              }),
+              chunk({}, 'length'),
+              usageChunk
+            ],
+            wireMode: 'coalesced'
+          },
+          {
+            requireValidToolArguments: true,
+            text: 'Recovered after length truncation.',
+            finish: 'stop'
+          }
+        );
+
+        const { loopResult, collector, runToolSpy } = await runIntegratedLoop({});
+
+        expect(loopResult.error).toBeUndefined();
+        expect(collector.assistantResponses.at(-1)?.text?.content).toBe(
+          'Recovered after length truncation.'
+        );
+        expect(runToolSpy).not.toHaveBeenCalled();
+        expect(received).toHaveLength(2);
+
+        const secondReqMessages = received[1].messages as any[];
+        const assistantMsg = secondReqMessages.find(
+          (item) => item.role === 'assistant' && item.tool_calls?.length
+        );
+        expect(assistantMsg.tool_calls).toEqual([
+          { id: 'len_call', type: 'function', function: { name: 'search', arguments: '{}' } }
+        ]);
+        const toolMsg = secondReqMessages.find((item) => item.role === 'tool');
+        expect(toolMsg?.content).toBe(
+          parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, LangEnum.zh_CN)
+        );
+        expect(collector.assistantResponses[0].tools?.[0]).toMatchObject({
+          id: 'len_call',
+          params: '{}',
+          response: parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, LangEnum.zh_CN)
+        });
+      });
+
+      it('keeps valid tool and drops truncated sibling on abnormal_close across loop, collector, and strict next round', async () => {
+        rounds.push(
+          {
+            chunks: [
+              chunk({
+                tool_calls: [
+                  toolDelta({ index: 0, id: 'good_abn', name: 'search', args: '{"q":"kept"}' }),
+                  toolDelta({ index: 1, id: 'bad_abn', name: 'search_content', args: '{"q":' })
+                ]
+              }),
+              usageChunk
+            ],
+            omitDone: true,
+            wireMode: 'coalesced'
+          },
+          {
+            requireValidToolArguments: true,
+            text: 'Continued after abnormal_close.',
+            finish: 'stop'
+          }
+        );
+
+        const { loopResult, collector, runToolSpy } = await runIntegratedLoop({});
+
+        expect(loopResult.error).toBeUndefined();
+        expect(collector.assistantResponses.at(-1)?.text?.content).toBe(
+          'Continued after abnormal_close.'
+        );
+        expect(runToolSpy).toHaveBeenCalledTimes(1);
+        expect(runToolSpy.mock.calls[0][0].call.id).toBe('good_abn');
+        expect(collector.assistantResponses[0].toolCallIds).toEqual(['good_abn']);
+        expect(collector.assistantResponses[0].tools?.map((t) => t.id)).toEqual(['good_abn']);
+      });
+
+      it.each([
+        ['partial args', '{"reason":"收集表单数据'],
+        ['already valid args', '{"q":"already-valid"}']
+      ] as const)(
+        'drops all tool calls on user close (%s), cleans collector cards, and replays next chat turn under strict 400 validation',
+        async (_label, args) => {
+          rounds.push(
+            {
+              chunks: [
+                chunk({ content: '正在准备回答您的请求，先查询资料' }),
+                toolChunk({ index: 0, id: 'stop_call', name: 'search', args }),
+                usageChunk
+              ],
+              omitDone: true,
+              wireMode: 'coalesced'
+            },
+            {
+              requireValidToolArguments: true,
+              text: 'Follow-up succeeded.',
+              finish: 'stop'
+            }
+          );
+
+          let aborted = false;
+          const firstTurn = await runIntegratedLoop({
+            isAborted: () => aborted,
+            onToolCallHook: () => {
+              aborted = true;
+            }
+          });
+
+          expect(firstTurn.loopResult.error).toBeUndefined();
+          expect(firstTurn.loopResult.finish_reason).toBe('close');
+          expect(firstTurn.runToolSpy).not.toHaveBeenCalled();
+          expect(firstTurn.collector.assistantResponses).toHaveLength(1);
+          expect(firstTurn.collector.assistantResponses[0]).toMatchObject({
+            text: { content: '正在准备回答您的请求，先查询资料' }
+          });
+          expect(firstTurn.collector.assistantResponses[0]).not.toHaveProperty('tools');
+
+          // 模拟页面刷新后基于落库 ChatItem 继续下一轮对话，严格校验上游不会 400。
+          const persistedHistory: ChatItemMiniType[] = [
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: message } }] },
+            { obj: ChatRoleEnum.AI, value: firstTurn.collector.assistantResponses },
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: '继续' } }] }
+          ];
+          const replayed = chats2GPTMessages({
+            messages: persistedHistory,
+            reserveId: false,
+            reserveTool: true
+          });
+          const secondTurn = await runIntegratedLoop({ messages: replayed });
+          expect(secondTurn.loopResult.error).toBeUndefined();
+          expect(secondTurn.collector.assistantResponses.at(-1)?.text?.content).toBe(
+            'Follow-up succeeded.'
+          );
+        }
+      );
+
+      it('drops all tool calls and cleans collector cards on content_filter', async () => {
+        rounds.push({
+          chunks: [
+            chunk({ content: 'partial' }),
+            toolChunk({ index: 0, id: 'cf_call', name: 'search', args: '{"q":"ok"}' }),
+            chunk({}, 'content_filter'),
+            usageChunk
+          ],
+          wireMode: 'coalesced'
+        });
+
+        const { loopResult, collector, runToolSpy } = await runIntegratedLoop({});
+
+        expect(loopResult.error).toBeUndefined();
+        expect(loopResult.finish_reason).toBe('content_filter');
+        expect(runToolSpy).not.toHaveBeenCalled();
+        expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
+        expect(collector.assistantResponses[0]).toMatchObject({ text: { content: 'partial' } });
+      });
+
+      it.each([
+        ['tool-only first round omits empty assistant', undefined, undefined],
+        [
+          'reasoning + tool without text omits assistant without content',
+          undefined,
+          '先思考再调工具'
+        ],
+        [
+          'text + reasoning + tool first round keeps only replayable text and reasoning',
+          '先梳理一下需要查询的内容，稍等',
+          '先思考一下'
+        ]
+      ] as const)(
+        'continuation omits unexecuted length tool_calls and contentless assistant (%s), passes strict 400 check, and keeps tools blocked',
+        async (_label, partialText, partialReasoning) => {
+          rounds.push(
+            {
+              chunks: [
+                ...(partialReasoning ? [chunk({ reasoning_content: partialReasoning })] : []),
+                ...(partialText ? [chunk({ content: partialText })] : []),
+                toolChunk({
+                  index: 0,
+                  id: 'cont_len_call',
+                  name: 'search',
+                  args: '{"reason":"截断在续写首轮的半截参数'
+                }),
+                chunk({}, 'length'),
+                usageChunk
+              ],
+              wireMode: 'coalesced'
+            },
+            {
+              requireValidToolArguments: true,
+              text: 'Continuation finished.',
+              finish: 'stop'
+            }
+          );
+
+          const result = await createLLMResponse({
+            teamId,
+            throwError: false,
+            maxContinuations: 2,
+            body: { ...body(true), tools: streamTools }
+          });
+
+          expect(result.error).toBeUndefined();
+          expect(received).toHaveLength(2);
+          // 续写请求不得携带无回执的 tool_calls；无正文（即使有 reasoning_content）也必须省略该 assistant。
+          expect(received[1].messages).toEqual([
+            { role: 'user', content: message },
+            ...(partialText
+              ? [
+                  {
+                    role: 'assistant',
+                    content: partialText,
+                    reasoning_content: partialReasoning ?? ''
+                  }
+                ]
+              : []),
+            { role: 'user', content: '[继续输出]' }
+          ]);
+          expect(result.reasoningText).toBe(partialReasoning ?? '');
+          expect(result.finish_reason).toBe('stop');
+          expect(result.toolCalls).toEqual([
+            { id: 'cont_len_call', type: 'function', function: { name: 'search', arguments: '{}' } }
+          ]);
+          // 中间 length 轮产生的调用即使续写后以 stop 结束，也必须保持 length 阻断，不可执行。
+          expect(result.blockedToolCalls).toEqual({ cont_len_call: 'length' });
+          await readRecord(result.requestId);
+        }
+      );
+
+      it('preserves moderation redaction in error request record when continuation reuses tool call id before failing', async () => {
+        const moderationSpy = vi
+          .spyOn(outputModeration, 'checkToolParamsModeration')
+          .mockResolvedValueOnce({
+            isPass: false,
+            blockedToolCallIds: ['dup_len_call']
+          })
+          .mockResolvedValueOnce({
+            isPass: true
+          });
+
+        rounds.push(
+          {
+            chunks: [
+              toolChunk({
+                index: 0,
+                id: 'dup_len_call',
+                name: 'search',
+                args: '{"query":"toxic-secret-param"}'
+              }),
+              chunk({}, 'length'),
+              usageChunk
+            ],
+            wireMode: 'coalesced'
+          },
+          {
+            chunks: [
+              toolChunk({
+                index: 0,
+                id: 'dup_len_call',
+                name: 'search',
+                args: '{"query":"clean-reused-id'
+              }),
+              chunk({}, 'length'),
+              usageChunk
+            ],
+            wireMode: 'coalesced'
+          },
+          {
+            chunks: [
+              toolChunk({
+                index: 0,
+                id: 'err_trunc_call',
+                name: 'search_content',
+                args: '{"q":'
+              }),
+              usageChunk
+            ],
+            upstreamError: true,
+            wireMode: 'coalesced'
+          }
+        );
+
+        const result = await createLLMResponse({
+          teamId,
+          throwError: false,
+          maxContinuations: 3,
+          body: { ...body(true), tools: streamTools }
+        });
+
+        expect(moderationSpy).toHaveBeenCalledTimes(2);
+        expect(result.finish_reason).toBe('error');
+        expect(result.toolCalls ?? []).toEqual([]);
+        const record = await readRecord(result.requestId);
+        // 即使次轮复用了同 ID 且未被拦截，首轮审核拦截的参数仍必须脱敏为 '{}'，其余未拦截轮次保留排障现场。
+        expect(record.response.toolCalls).toEqual([
+          { id: 'dup_len_call', type: 'function', function: { name: 'search', arguments: '{}' } },
+          {
+            id: 'dup_len_call',
+            type: 'function',
+            function: { name: 'search', arguments: '{"query":"clean-reused-id' }
+          },
+          {
+            id: 'err_trunc_call',
+            type: 'function',
+            function: { name: 'search_content', arguments: '{"q":' }
+          }
+        ]);
+        expect(JSON.stringify(record.response)).not.toContain('toxic-secret-param');
+      });
+
+      it('estimates fallback outputTokens from raw model tool arguments when upstream omits usage', async () => {
+        const { countGptMessagesTokens } =
+          await import('@fastgpt/service/common/string/tiktoken/index');
+        const countSpy = vi.mocked(countGptMessagesTokens);
+        countSpy.mockClear();
+
+        const rawLongArgs = `{"payload":"${'长参数内容'.repeat(40)}`;
+        rounds.push({
+          chunks: [
+            toolChunk({ index: 0, id: 'bill_call', name: 'search', args: rawLongArgs }),
+            chunk({}, 'length')
+          ],
+          wireMode: 'coalesced'
+        });
+
+        const result = await createLLMResponse({
+          teamId,
+          throwError: false,
+          body: { ...body(true), tools: streamTools }
+        });
+
+        expect(result.error).toBeUndefined();
+        expect(result.toolCalls).toEqual([
+          { id: 'bill_call', type: 'function', function: { name: 'search', arguments: '{}' } }
+        ]);
+        expect(result.blockedToolCalls).toEqual({ bill_call: 'length' });
+        // 兜底 outputTokens 估算必须使用未清洗的原始参数，不能按 '{}' 低估计费。
+        const outputTokenCountCall = countSpy.mock.calls.find(([arg]) =>
+          arg.messages?.some((m: any) => m.role === 'assistant')
+        );
+        expect(outputTokenCountCall?.[0].messages).toEqual([
+          expect.objectContaining({
+            role: 'assistant',
+            tool_calls: [
+              {
+                id: 'bill_call',
+                type: 'function',
+                function: { name: 'search', arguments: rawLongArgs }
+              }
+            ]
+          })
+        ]);
+        await readRecord(result.requestId);
+      });
     });
   });
 });

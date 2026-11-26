@@ -165,6 +165,8 @@
   "model.reasoning": "모델이 사고 과정을 지원함",
   "model.reasoning_tip": "예를 들어 Deepseek-reasoner는 사고 과정을 출력할 수 있습니다.",
   "model.reasoning_effort": "사고 과정 설정 지원",
+  "model.reasoning_effort_list": "사용 가능한 사고 강도",
+  "model.reasoning_effort_list_placeholder": "사용 가능한 사고 강도를 선택하세요",
   "model.request_auth": "커스텀 키(지원 중단 예정, 채널을 직접 사용하세요)",
   "model.request_auth_tip": "커스텀 요청 주소로 요청할 때 요청 헤더 Authorization: Bearer xxx를 포함하여 요청합니다.",
   "model.request_url": "커스텀 URL(지원 중단 예정, 채널을 직접 사용하세요)",

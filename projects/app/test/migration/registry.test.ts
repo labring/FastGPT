@@ -23,7 +23,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261125_backfill_model_reasoning_effort_list'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -32,7 +33,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
     expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261125_backfill_model_reasoning_effort_list'
     ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
@@ -59,7 +61,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261125_backfill_model_reasoning_effort_list'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -133,11 +136,13 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
-  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tail tasks', () => {
+  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tasks', () => {
     const migrateTask = systemMigrations.find(
       ({ id }) => id === '20261117_migrate_sandbox_to_opensandbox'
     );
-    const cleanupTask = systemMigrations.at(-1);
+    const cleanupTask = systemMigrations.find(
+      ({ id }) => id === '20261117_cleanup_legacy_sandbox_resources'
+    );
 
     expect(migrateTask).toMatchObject({
       id: '20261117_migrate_sandbox_to_opensandbox',
@@ -154,6 +159,21 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: false,
       dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
     });
+  });
+
+  it('registers model reasoningEffortList backfill at tail as a manual background task', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261125_backfill_model_reasoning_effort_list',
+      version: '4.18.0',
+      manual: true,
+      blockStartup: false,
+      progressSteps: [{ key: 'loadPresets' }, { key: 'backfill' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('delay');
+    expect(task).not.toHaveProperty('resumable');
+    expect(task).not.toHaveProperty('dependsOn');
   });
 
   it('runs only the selected production tasks independently', () => {

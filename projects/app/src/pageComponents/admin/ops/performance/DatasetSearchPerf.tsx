@@ -27,6 +27,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
 import type {
@@ -304,11 +305,13 @@ export default function DatasetSearchPerf(): JSX.Element {
     [reasonLabelMap, t]
   );
 
-  // 摘要看板分两行（每行 3 项）：第一行总量/数据库均值/失败率，第二行检索/重排/问题优化平均耗时
-  const kpiCards = useMemo(() => {
+  // 摘要看板分两行（每行 3 项）：第一行总量/失败率/端到端检索平均耗时，第二行数据库/重排/问题优化拆解耗时
+  const kpiCards = useMemo<
+    Array<{ label: string; tip?: string; value: string; sub: string; color: string }>
+  >(() => {
     const s = overview?.summary;
     return [
-      // Row 1: 检索总次数、数据库平均耗时、失败率
+      // Row 1: 检索总次数、失败率、检索平均耗时
       {
         label: t('admin:ops_perf_kpi_total_count'),
         value: s ? s.totalCount.toLocaleString() : '0',
@@ -316,23 +319,24 @@ export default function DatasetSearchPerf(): JSX.Element {
         color: 'myGray.900'
       },
       {
-        label: t('admin:ops_perf_kpi_db_avg'),
-        value: s ? formatMs(s.dbAvgMs) : '-',
-        sub: t('admin:ops_perf_kpi_db_avg_sub'),
-        color: 'blue.600'
-      },
-      {
         label: t('admin:ops_perf_error_rate'),
         value: s ? formatPct(s.errorRate) : '-',
         sub: s ? `${t('admin:ops_perf_reason_error')} ${s.errorCount.toLocaleString()}` : '-',
         color: (s?.errorRate ?? 0) > 0.01 ? 'red.600' : 'myGray.900'
       },
-      // Row 2: 检索平均耗时、搜索结果重排平均耗时、问题优化平均耗时
       {
         label: t('admin:ops_perf_kpi_search_avg'),
+        tip: t('admin:ops_perf_kpi_search_avg_tip'),
         value: s ? formatMs(s.avgMs) : '-',
         sub: s ? `P99 ${formatMs(s.p99Ms)} · P95 ${formatMs(s.p95Ms)}` : '-',
         color: 'primary.600'
+      },
+      // Row 2: 数据库平均耗时、搜索结果重排平均耗时、问题优化平均耗时
+      {
+        label: t('admin:ops_perf_kpi_db_avg'),
+        value: s ? formatMs(s.dbAvgMs) : '-',
+        sub: t('admin:ops_perf_kpi_db_avg_sub'),
+        color: 'blue.600'
       },
       {
         label: t('admin:ops_perf_kpi_rerank_avg'),
@@ -478,9 +482,12 @@ export default function DatasetSearchPerf(): JSX.Element {
                 h={'100%'}
               >
                 <Box {...CardBoxStyle} p={4} h={'100%'} minW={0}>
-                  <Text fontSize={'xs'} color={'myGray.500'} fontWeight={'medium'} noOfLines={1}>
-                    {card.label}
-                  </Text>
+                  <Flex align={'center'} gap={1} minW={0}>
+                    <Text fontSize={'xs'} color={'myGray.500'} fontWeight={'medium'} noOfLines={1}>
+                      {card.label}
+                    </Text>
+                    {card.tip && <QuestionTip label={card.tip} w={'14px'} flexShrink={0} />}
+                  </Flex>
                   <Text
                     fontSize={'xl'}
                     fontWeight={'bold'}

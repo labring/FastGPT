@@ -165,6 +165,8 @@
   "model.reasoning": "Model supports thinking",
   "model.reasoning_tip": "For example, Deepseek-reasoner can output the thinking process.",
   "model.reasoning_effort": "Support thinking config",
+  "model.reasoning_effort_list": "Available reasoning levels",
+  "model.reasoning_effort_list_placeholder": "Select available reasoning levels",
   "model.request_auth": "Custom key (To be deprecated; use channels instead)",
   "model.request_auth_tip": "When making a request to a custom request address, carry the request header: Authorization: Bearer xxx to make the request.",
   "model.request_url": "Custom URL (To be deprecated; use channels instead)",
