@@ -1,4 +1,5 @@
 import { getErrorMessage } from '@fastgpt/global/common/error/utils';
+import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
 import type {
@@ -49,17 +50,45 @@ export const buildSampleTestPdfBuffer = (): Buffer => {
   return Buffer.from(parts.join(''), 'utf8');
 };
 
+const extractErrorCode = (rawError: unknown): string | undefined => {
+  const recordOf = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const original = recordOf(rawError);
+  const response = recordOf(original.response);
+  const body = recordOf(response.data);
+  const bodyError = recordOf(body.error);
+  const nestedError = recordOf(original.error);
+
+  const candidates = [
+    bodyError.code,
+    body.code,
+    nestedError.code,
+    original.code,
+    bodyError.errno,
+    body.errno,
+    original.errno,
+    response.status
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return String(candidate);
+    }
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed && trimmed.length <= 32 && /^[A-Za-z0-9._-]+$/.test(trimmed)) {
+        return trimmed;
+      }
+    }
+  }
+  return undefined;
+};
+
 const extractTestErrorMessage = (rawError: unknown): string => {
   const extracted = getErrorMessage(rawError, '').trim();
   if (extracted) return extracted;
-  if (rawError && typeof rawError === 'object') {
-    try {
-      const serialized = JSON.stringify(rawError);
-      if (serialized && serialized !== '{}') return serialized;
-    } catch {
-      // 忽略循环引用等不可序列化对象，统一回退默认错误文案
-    }
-  }
+  const code = extractErrorCode(rawError);
+  if (code) return `Error code: ${code}`;
   return 'Document parse test failed';
 };
 
@@ -71,6 +100,8 @@ const sanitizeTestError = (rawError: unknown, secrets: Array<string | undefined>
       message = message.split(trimmed).join('***');
     }
   }
+  message = message.replace(/\bBearer\s+\S+/gi, 'Bearer ***');
+  message = replaceSensitiveText(message);
   return message.slice(0, 300);
 };
 

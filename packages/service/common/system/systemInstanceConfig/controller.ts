@@ -1,5 +1,6 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import { resolveSomarkBaseUrl } from '@fastgpt/global/common/system/config/schemas/providers';
 import {
   SYSTEM_INSTANCE_CONFIG_SCOPES,
   type SystemInstanceConfigDomainKey,
@@ -514,9 +515,98 @@ export const batchUpdateDomainConfigs = async (
       );
     }
 
+    const existingDecryptedOverrides = decryptDomainSecrets(domain, existing?.overrides ?? {});
+
+    // 文档增强解析的可配置地址与对应密钥属于同一凭据组：
+    // 若库中已有密钥且本次实质变更了目标服务地址，必须显式替换或清空该密钥，
+    // 避免保存后把旧服务凭据发往新目标，并与测试接口的凭据组规则保持一致。
+    if (domain === 'providers') {
+      const existingDocParse = (
+        existingDecryptedOverrides as DeepPartial<SystemInstanceConfigDomainMap['providers']>
+      )?.documentParse;
+      const submittedDocParse = (
+        submittedOverrides as DeepPartial<SystemInstanceConfigDomainMap['providers']>
+      )?.documentParse;
+      const existingCustomPdf = existingDocParse?.customPdf;
+      const submittedCustomPdf = submittedDocParse?.customPdf;
+      const existingSangfor = existingDocParse?.sangfor;
+      const submittedSangfor = submittedDocParse?.sangfor;
+
+      const existingSomarkKey =
+        typeof existingCustomPdf?.somarkApiKey === 'string'
+          ? existingCustomPdf.somarkApiKey.trim()
+          : '';
+      if (
+        existingSomarkKey &&
+        submittedCustomPdf?.somarkBaseUrl !== undefined &&
+        resolveSomarkBaseUrl(submittedCustomPdf.somarkBaseUrl) !==
+          resolveSomarkBaseUrl(existingCustomPdf?.somarkBaseUrl) &&
+        submittedCustomPdf?.somarkApiKey === undefined
+      ) {
+        throw configInputError(
+          new ZodError([
+            {
+              code: 'custom',
+              path: ['documentParse', 'customPdf', 'somarkApiKey'],
+              message:
+                'Changing SoMark base URL requires explicitly replacing or clearing Somark API Key'
+            }
+          ])
+        );
+      }
+
+      const existingCustomKey =
+        typeof existingCustomPdf?.key === 'string' ? existingCustomPdf.key.trim() : '';
+      const existingCustomUrl =
+        typeof existingCustomPdf?.url === 'string' ? existingCustomPdf.url.trim() : '';
+      const submittedCustomUrl =
+        typeof submittedCustomPdf?.url === 'string' ? submittedCustomPdf.url.trim() : undefined;
+      if (
+        existingCustomKey &&
+        submittedCustomUrl &&
+        submittedCustomUrl !== existingCustomUrl &&
+        submittedCustomPdf?.key === undefined
+      ) {
+        throw configInputError(
+          new ZodError([
+            {
+              code: 'custom',
+              path: ['documentParse', 'customPdf', 'key'],
+              message:
+                'Changing custom PDF parser URL requires explicitly replacing or clearing Custom PDF parser key'
+            }
+          ])
+        );
+      }
+
+      const existingSangforKey =
+        typeof existingSangfor?.key === 'string' ? existingSangfor.key.trim() : '';
+      const existingSangforUrl =
+        typeof existingSangfor?.url === 'string' ? existingSangfor.url.trim() : '';
+      const submittedSangforUrl =
+        typeof submittedSangfor?.url === 'string' ? submittedSangfor.url.trim() : undefined;
+      if (
+        existingSangforKey &&
+        submittedSangforUrl &&
+        submittedSangforUrl !== existingSangforUrl &&
+        submittedSangfor?.key === undefined
+      ) {
+        throw configInputError(
+          new ZodError([
+            {
+              code: 'custom',
+              path: ['documentParse', 'sangfor', 'key'],
+              message:
+                'Changing Sangfor parser URL requires explicitly replacing or clearing Sangfor key'
+            }
+          ])
+        );
+      }
+    }
+
     const mergedOverrides = mergeSubmittedOverrides({
       domain,
-      existingOverrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
+      existingOverrides: existingDecryptedOverrides,
       submittedOverrides
     });
     if (domain === 'commercial' && normalizedSubPlans !== undefined) {
