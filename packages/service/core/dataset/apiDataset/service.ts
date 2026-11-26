@@ -11,15 +11,19 @@ import {
   type BulkMoveCollectionParentItem,
   type DatasetModelAuthContext
 } from '../collection/controller';
+import { injectRepo } from '@fastgpt/dal/db/container';
+import { DatasetApiSyncRepoToken } from '@fastgpt/dal/db/repos/dataset/repo';
+import { DatasetCollectionApiSyncRepoToken } from '@fastgpt/dal/db/repos/datasetCollection/repo';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
-import { datasetRepo } from '../repository/datasetRepo';
-import { datasetCollectionRepo } from '../collection/repository/datasetCollectionRepo';
 import { resourcePermissionRepo } from '../../../support/permission/repository/resourcePermissionRepo';
 import { getApiDatasetRequest } from './index';
+
+const datasetRepo = injectRepo(DatasetApiSyncRepoToken);
+const datasetCollectionRepo = injectRepo(DatasetCollectionApiSyncRepoToken);
 import {
   buildApiFileRecords,
   buildApiFileTree,

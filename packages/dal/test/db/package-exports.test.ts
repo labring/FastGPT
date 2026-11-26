@@ -8,7 +8,19 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..');
 const PUBLIC_DAL_REPO_SPECIFIERS = [
   '@fastgpt/dal/db/repos/registry',
   '@fastgpt/dal/db/repos/appRegistration/repo',
-  '@fastgpt/dal/db/repos/appRegistration/repo.type'
+  '@fastgpt/dal/db/repos/appRegistration/repo.type',
+  '@fastgpt/dal/db/repos/dataset/repo',
+  '@fastgpt/dal/db/repos/dataset/repo.type',
+  '@fastgpt/dal/db/repos/datasetCollection/repo',
+  '@fastgpt/dal/db/repos/datasetCollection/repo.type',
+  '@fastgpt/dal/db/repos/user/repo',
+  '@fastgpt/dal/db/repos/user/repo.type',
+  '@fastgpt/dal/db/repos/teamMember/repo',
+  '@fastgpt/dal/db/repos/teamMember/repo.type',
+  '@fastgpt/dal/db/repos/memberGroup/repo',
+  '@fastgpt/dal/db/repos/memberGroup/repo.type',
+  '@fastgpt/dal/db/repos/org/repo',
+  '@fastgpt/dal/db/repos/org/repo.type'
 ] as const;
 
 const PRIVATE_DAL_REPO_SPECIFIERS = [
@@ -19,7 +31,14 @@ const PRIVATE_DAL_REPO_SPECIFIERS = [
   '@fastgpt/dal/db/repos/appRegistration/oceanbase/repo',
   '@fastgpt/dal/db/repos/appRegistration/oceanbase/repo.ts',
   '@fastgpt/dal/db/repos/appRegistration/oceanbase/table',
-  '@fastgpt/dal/db/repos/appRegistration/oceanbase'
+  '@fastgpt/dal/db/repos/appRegistration/oceanbase',
+  '@fastgpt/dal/db/repos/dataset/mongo/repo',
+  '@fastgpt/dal/db/repos/dataset/mongo/schema',
+  '@fastgpt/dal/db/repos/datasetCollection/mongo/repo',
+  '@fastgpt/dal/db/repos/user/mongo/repo',
+  '@fastgpt/dal/db/repos/teamMember/mongo/repo',
+  '@fastgpt/dal/db/repos/memberGroup/mongo/repo',
+  '@fastgpt/dal/db/repos/org/mongo/repo'
 ] as const;
 
 const getErrorCode = (error: unknown): string | undefined => {

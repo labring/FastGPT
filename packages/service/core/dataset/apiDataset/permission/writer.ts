@@ -1,9 +1,10 @@
+import { injectRepo } from '@fastgpt/dal/db/container';
+import { DatasetApiSyncRepoToken } from '@fastgpt/dal/db/repos/dataset/repo';
 import type { DatasetPermissionLockDTO } from '@fastgpt/dal/db/repos/dataset/repo.type';
+import { DatasetCollectionApiSyncRepoToken } from '@fastgpt/dal/db/repos/datasetCollection/repo';
 import type { DatasetCollectionTreeNodeDTO } from '@fastgpt/dal/db/repos/datasetCollection/repo.type';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
-import { datasetCollectionRepo } from '../../collection/repository/datasetCollectionRepo';
-import { datasetRepo } from '../../repository/datasetRepo';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { syncResourceTreePermissions } from '../../../../support/permission/resourcePermissionService';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -17,6 +18,9 @@ import { getPermissionSubjectKey } from './resolver';
 import { assertPermissionSyncActive, PermissionSyncStaleRoundError } from './utils';
 import type { CollectionPermissionTargetState } from './types';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+
+const datasetRepo = injectRepo(DatasetApiSyncRepoToken);
+const datasetCollectionRepo = injectRepo(DatasetCollectionApiSyncRepoToken);
 
 /** 协作者集合比较键：subject + role。ACL 行里存的就是这两项。 */
 const collaboratorKey = (collaborator: CollaboratorItemType) =>
@@ -139,13 +143,15 @@ export const applyCollectionPermissionStates = async ({
   deps?: ApplyCollectionPermissionStatesDeps;
 }): Promise<{ updated: number }> => {
   const bumpCollectionPermissionVersion =
-    deps?.bumpCollectionPermissionVersion ?? datasetRepo.bumpCollectionPermissionVersion;
+    deps?.bumpCollectionPermissionVersion ??
+    ((params) => datasetRepo.bumpCollectionPermissionVersion(params));
   const replaceResources = deps?.replaceResources ?? resourcePermissionRepo.replaceResources;
   const markCollectionsIndependent =
-    deps?.markCollectionsIndependent ?? datasetCollectionRepo.markIndependent;
+    deps?.markCollectionsIndependent ?? ((params) => datasetCollectionRepo.markIndependent(params));
   const findCollectionDatasetId =
-    deps?.findCollectionDatasetId ?? datasetCollectionRepo.findDatasetIdById;
-  const findDirectChildren = deps?.findDirectChildren ?? datasetCollectionRepo.findDirectChildren;
+    deps?.findCollectionDatasetId ?? ((params) => datasetCollectionRepo.findDatasetIdById(params));
+  const findDirectChildren =
+    deps?.findDirectChildren ?? ((params) => datasetCollectionRepo.findDirectChildren(params));
   const syncTreePermissions = deps?.syncTreePermissions ?? syncResourceTreePermissions;
 
   const changedStates = states.filter((state) => state.changed);

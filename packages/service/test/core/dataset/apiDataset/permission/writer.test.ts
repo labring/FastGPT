@@ -16,16 +16,25 @@ const runInTransaction = vi.fn(async (cb: (tx: unknown) => Promise<void>) => cb(
 const bumpCollectionPermissionVersion = vi.fn();
 
 vi.mock('@fastgpt/dal/db/transaction', () => ({ runInTransaction }));
-vi.mock('@fastgpt/service/core/dataset/collection/repository/datasetCollectionRepo', () => ({
-  datasetCollectionRepo: {
-    markIndependent,
-    findDatasetIdById,
-    findDirectChildren
-  }
-}));
-vi.mock('@fastgpt/service/core/dataset/repository/datasetRepo', () => ({
-  datasetRepo: { bumpCollectionPermissionVersion }
-}));
+vi.mock('@fastgpt/dal/db/container', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/db/container')>();
+  return {
+    ...actual,
+    injectRepo: (token: { name: string }) => {
+      if (token.name === 'DatasetApiSyncRepository') {
+        return { bumpCollectionPermissionVersion };
+      }
+      if (token.name === 'DatasetCollectionApiSyncRepository') {
+        return {
+          markIndependent,
+          findDatasetIdById,
+          findDirectChildren
+        };
+      }
+      throw new Error(`Unexpected repo token in writer.test.ts: ${token.name}`);
+    }
+  };
+});
 vi.mock('@fastgpt/service/support/permission/repository/resourcePermissionRepo', () => ({
   resourcePermissionRepo: { replaceResources }
 }));
@@ -150,8 +159,8 @@ describe('applyCollectionPermissionStates', () => {
         inheritPermission: true
       },
       resourceType: expect.anything(),
-      findCollectionDatasetId: findDatasetIdById,
-      findDirectChildren,
+      findCollectionDatasetId: expect.any(Function),
+      findDirectChildren: expect.any(Function),
       oldParentCollaborators: folder.currentCollaborators,
       newParentCollaborators: folder.collaborators,
       stopResourceIds: new Set([
@@ -160,6 +169,30 @@ describe('applyCollectionPermissionStates', () => {
         unchanged.collectionId,
         failedInheritingChildId
       ]),
+      tx: fakeTx
+    });
+
+    const syncCallArg = syncResourceTreePermissions.mock.calls[0][0];
+    await syncCallArg.findCollectionDatasetId({
+      teamId,
+      collectionId: folder.collectionId,
+      tx: fakeTx
+    });
+    await syncCallArg.findDirectChildren({
+      teamId,
+      datasetId,
+      parentIds: [folder.collectionId],
+      tx: fakeTx
+    });
+    expect(findDatasetIdById).toHaveBeenCalledWith({
+      teamId,
+      collectionId: folder.collectionId,
+      tx: fakeTx
+    });
+    expect(findDirectChildren).toHaveBeenCalledWith({
+      teamId,
+      datasetId,
+      parentIds: [folder.collectionId],
       tx: fakeTx
     });
   });

@@ -7,12 +7,13 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { buildLegacyApiFileDirSourceMap } from '../utils';
+import { injectRepo } from '@fastgpt/dal/db/container';
+import { MemberGroupLookupRepoToken } from '@fastgpt/dal/db/repos/memberGroup/repo';
+import { OrgLookupRepoToken } from '@fastgpt/dal/db/repos/org/repo';
+import { TeamMemberLookupRepoToken } from '@fastgpt/dal/db/repos/teamMember/repo';
+import { UserLookupRepoToken } from '@fastgpt/dal/db/repos/user/repo';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { pickCollaboratorIdFields } from '../../../../support/permission/utils';
-import { userRepo } from '../../../../support/user/repository/userRepo';
-import { teamMemberRepo } from '../../../../support/user/team/repository/teamMemberRepo';
-import { memberGroupRepo } from '../../../../support/permission/memberGroup/repository/memberGroupRepo';
-import { orgRepo } from '../../../../support/permission/org/repository/orgRepo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { Types } from '../../../../common/mongo';
 import { fetchApiFilePermissions } from './adapters';
@@ -24,6 +25,10 @@ import type { ApiDatasetPermissionItemType } from '@fastgpt/global/core/dataset/
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
+const userRepo = injectRepo(UserLookupRepoToken);
+const teamMemberRepo = injectRepo(TeamMemberLookupRepoToken);
+const memberGroupRepo = injectRepo(MemberGroupLookupRepoToken);
+const orgRepo = injectRepo(OrgLookupRepoToken);
 
 type PermissionSyncCollectionRow = {
   _id: unknown;
@@ -236,11 +241,12 @@ export const syncCollectionPermissions = async ({
     teamId,
     itemsByFileId: okPermissionsByFileId,
     deps: {
-      findUsernamesByUserIds: userRepo.findUsernamesByUserIds,
-      findActiveTeamMemberIdsByUserIds: teamMemberRepo.findActiveTeamMemberIdsByUserIds,
-      findActiveTeamMemberIds: teamMemberRepo.findActiveTeamMemberIds,
-      findTeamMemberGroupIds: memberGroupRepo.findTeamMemberGroupIds,
-      findTeamOrgIds: orgRepo.findTeamOrgIds
+      findUsernamesByUserIds: (params) => userRepo.findUsernamesByUserIds(params),
+      findActiveTeamMemberIdsByUserIds: (params) =>
+        teamMemberRepo.findActiveTeamMemberIdsByUserIds(params),
+      findActiveTeamMemberIds: (params) => teamMemberRepo.findActiveTeamMemberIds(params),
+      findTeamMemberGroupIds: (params) => memberGroupRepo.findTeamMemberGroupIds(params),
+      findTeamOrgIds: (params) => orgRepo.findTeamOrgIds(params)
     }
   });
 

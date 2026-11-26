@@ -66,6 +66,8 @@ export type OceanBaseExecutorResolver<TExecutor = unknown> = (params: {
 /** 驱动无关的 Mongo 集合描述符最小结构（避免 `types.ts` 直接耦合 `mongoose`）。 */
 export type MongoCollectionDescriptor<TDoc = Record<string, unknown>> = {
   readonly name: string;
+  /** 可选 Mongoose Model 注册名；缺省等同物理集合名 `name`。用于渐进迁移期避免与存量旧 Schema 抢占同名 Model。 */
+  readonly modelName?: string;
   readonly datasource: DbDatasource;
   readonly _docType?: TDoc;
 };

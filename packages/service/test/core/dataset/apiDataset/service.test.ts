@@ -7,11 +7,11 @@ const {
   mockBulkInsertFolderCollections,
   mockBulkMoveCollectionsParent,
   mockCollectionFind,
-  mockCollectionUpdateMany,
-  mockDatasetUpdateOne,
+  mockUpdateSyncScope,
+  mockReEnableSyncFolders,
+  mockReEnableAllPausedApiFolders,
   mockMongoSessionRun,
   mockRunInTransaction,
-  mockUnwrapMongoSession,
   mockEnqueueDatasetPermissionSync,
   mockLoggerWarn,
   mockLoggerError
@@ -21,13 +21,13 @@ const {
   mockBulkInsertFolderCollections: vi.fn(),
   mockBulkMoveCollectionsParent: vi.fn(),
   mockCollectionFind: vi.fn(),
-  mockCollectionUpdateMany: vi.fn(),
-  mockDatasetUpdateOne: vi.fn(),
+  mockUpdateSyncScope: vi.fn(),
+  mockReEnableSyncFolders: vi.fn(),
+  mockReEnableAllPausedApiFolders: vi.fn(),
   mockMongoSessionRun: vi.fn(),
   mockRunInTransaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
     cb({ id: 'mock-tx', dialect: 'mongo', datasource: 'main', afterCommit: vi.fn() })
   ),
-  mockUnwrapMongoSession: vi.fn((tx: unknown) => (tx ? 'session' : undefined)),
   mockEnqueueDatasetPermissionSync: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockLoggerError: vi.fn()
@@ -37,9 +37,26 @@ vi.mock('@fastgpt/dal/db/transaction', () => ({
   runInTransaction: mockRunInTransaction
 }));
 
-vi.mock('@fastgpt/dal/db/mongo/base', () => ({
-  unwrapMongoSession: mockUnwrapMongoSession
-}));
+vi.mock('@fastgpt/dal/db/container', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/db/container')>();
+  return {
+    ...actual,
+    injectRepo: (token: { name: string }) => {
+      if (token.name === 'DatasetApiSyncRepository') {
+        return {
+          updateSyncScope: mockUpdateSyncScope
+        };
+      }
+      if (token.name === 'DatasetCollectionApiSyncRepository') {
+        return {
+          reEnableSyncFolders: mockReEnableSyncFolders,
+          reEnableAllPausedApiFolders: mockReEnableAllPausedApiFolders
+        };
+      }
+      return actual.injectRepo(token as any);
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: vi.fn()
@@ -50,16 +67,8 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: mockLoggerError })
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  MongoDataset: { updateOne: mockDatasetUpdateOne }
-}));
-
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  MongoDataset: { updateOne: mockDatasetUpdateOne }
-}));
-
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
-  MongoDatasetCollection: { find: mockCollectionFind, updateMany: mockCollectionUpdateMany }
+  MongoDatasetCollection: { find: mockCollectionFind }
 }));
 
 vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
@@ -161,8 +170,9 @@ beforeEach(() => {
   }));
   mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
   mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
-  mockCollectionUpdateMany.mockResolvedValue({ modifiedCount: 0 });
-  mockDatasetUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+  mockUpdateSyncScope.mockResolvedValue(undefined);
+  mockReEnableSyncFolders.mockResolvedValue(undefined);
+  mockReEnableAllPausedApiFolders.mockResolvedValue(undefined);
   mockEnqueueDatasetPermissionSync.mockResolvedValue(undefined);
 });
 
@@ -180,11 +190,12 @@ describe('createApiDatasetCollection', () => {
     });
 
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
-    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-      { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
-      { session: 'session' }
-    );
+    expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      syncAll: true,
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
   });
 
   it.each([
@@ -669,20 +680,17 @@ describe('createApiDatasetCollection', () => {
       expect(authorizeChanges).toHaveBeenCalledWith(
         expect.objectContaining({ enableDatasetSyncAll: true })
       );
-      expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-        { _id: 'dataset-id', teamId: 'team-id' },
-        { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
-        { session: 'session' }
-      );
-      expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          teamId: 'team-id',
-          datasetId: 'dataset-id',
-          syncChildren: false
-        }),
-        { $set: { syncChildren: true } },
-        { session: 'session' }
-      );
+      expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        syncAll: true,
+        tx: expect.objectContaining({ id: 'mock-tx' })
+      });
+      expect(mockReEnableAllPausedApiFolders).toHaveBeenCalledWith({
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        tx: expect.objectContaining({ id: 'mock-tx' })
+      });
 
       // 不创建任何哨兵节点，仅真实远端目录落库且直接挂在知识库根
       expect(folderDocs().map((doc: any) => doc.apiFileId)).toEqual(['root-folder']);
@@ -757,11 +765,12 @@ describe('createApiDatasetCollection', () => {
     );
     expect(folderDocs().map((doc: any) => doc.apiFileId)).not.toContain('SYSTEM_ROOT');
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['root-file']);
-    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-      { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
-      { session: 'session' }
-    );
+    expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      syncAll: true,
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
   });
 
   it('dataset.syncAll 已为 true 但存在暂停目录时，整库导入仍校验 enableDatasetSyncAll 并在同一事务恢复', async () => {
@@ -788,20 +797,17 @@ describe('createApiDatasetCollection', () => {
     expect(authorizeChanges).toHaveBeenCalledWith(
       expect.objectContaining({ enableDatasetSyncAll: true })
     );
-    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-      { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
-      { session: 'session' }
-    );
-    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-id',
-        datasetId: 'dataset-id',
-        syncChildren: false
-      }),
-      { $set: { syncChildren: true } },
-      { session: 'session' }
-    );
+    expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      syncAll: true,
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
+    expect(mockReEnableAllPausedApiFolders).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
   });
 
   it('局部导入带 ancestorPaths 时，服务端自顶向下核验并补建 syncChildren=false 祖先目录', async () => {
@@ -877,21 +883,17 @@ describe('createApiDatasetCollection', () => {
       })
     );
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['missing-file']);
-    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-      { _id: 'dataset-id', teamId: 'team-id' },
-      { $inc: { syncScopeVersion: 1 } },
-      { session: 'session' }
-    );
-    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
-      {
-        _id: { $in: [localId('PAUSED')] },
-        teamId: 'team-id',
-        datasetId: 'dataset-id',
-        type: 'folder'
-      },
-      { $set: { syncChildren: true } },
-      { session: 'session' }
-    );
+    expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
+    expect(mockReEnableSyncFolders).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      folderIds: [localId('PAUSED')],
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
   });
 
   it('重新勾选已有正文的暂停派生目录时触发 reEnableSyncFolderIds 鉴权、恢复 syncChildren=true 并补齐缺失子项', async () => {
@@ -929,21 +931,17 @@ describe('createApiDatasetCollection', () => {
       })
     );
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['child-1']);
-    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-      { _id: 'dataset-id', teamId: 'team-id' },
-      { $inc: { syncScopeVersion: 1 } },
-      { session: 'session' }
-    );
-    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
-      {
-        _id: { $in: [localId('DOC_DIR')] },
-        teamId: 'team-id',
-        datasetId: 'dataset-id',
-        type: 'folder'
-      },
-      { $set: { syncChildren: true } },
-      { session: 'session' }
-    );
+    expect(mockUpdateSyncScope).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
+    expect(mockReEnableSyncFolders).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      datasetId: 'dataset-id',
+      folderIds: [localId('DOC_DIR')],
+      tx: expect.objectContaining({ id: 'mock-tx' })
+    });
   });
 
   /**
