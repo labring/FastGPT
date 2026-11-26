@@ -38,8 +38,7 @@ const mocks = vi.hoisted(() => ({
     },
     getNode: () => undefined
   },
-  overlaysRef: { current: {} },
-  issueFocusRef: { current: undefined }
+  overlaysRef: { current: {} }
 }));
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
@@ -56,8 +55,7 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
 vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
   useWorkflowRuntime: () => mocks.runtime,
   useWorkflowViewTick: () => 0,
-  useWorkflowOverlayRef: () => mocks.overlaysRef,
-  useWorkflowIssueFocusRef: () => mocks.issueFocusRef
+  useWorkflowOverlayRef: () => mocks.overlaysRef
 }));
 vi.mock('@/web/core/workflow/editor/canvas/projectWorkflowCanvas', () => ({
   createProjectionCache: () => ({ nodes: new Map<string, { structureKey: string }>() }),
@@ -215,18 +213,17 @@ describe('workflow canvas measurements', () => {
     vi.unstubAllGlobals();
   });
 
-  it('records an explicit selection even when an issue already selected that node', async () => {
-    const first = mocks.nodes[0];
-    mocks.nodes[0] = { ...first, selected: true, selectedByIssue: true };
+  it('sets and clears React Flow selection by node ID', async () => {
+    const id = mocks.nodes[0].id;
     await render();
 
-    await act(async () => selectNodes([first.id]));
+    await act(async () => selectNodes([id]));
     await flushFrame();
+    expect(renderedNodes.filter((node) => node.selected).map((node) => node.id)).toEqual([id]);
 
-    expect(renderedNodes.find((node) => node.id === first.id)).toMatchObject({
-      selected: true,
-      selectedByIssue: undefined
-    });
+    await act(async () => selectNodes([]));
+    await flushFrame();
+    expect(renderedNodes.some((node) => node.selected)).toBe(false);
   });
 
   it('skips unrelated containers on a root drag and recalculates only the moved child’s parent', async () => {

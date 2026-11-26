@@ -133,9 +133,8 @@ type WorkflowSessionValue = {
 
   isSaved: boolean;
 
-  /** 问题焦点节点 id：投影据此标红并选中该节点；undefined 表示无焦点。 */
+  /** 当前标红的节点 id，供节点卡片读取。 */
   issueFocusNodeId?: string;
-  issueFocusRef: MutableRefObject<string | undefined>;
   /** 标红指定节点，传 undefined 清除标红。 */
   focusIssueNode: (nodeId?: string) => void;
 
@@ -189,7 +188,6 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   patchViewData: notImplemented,
   isSaved: true,
   issueFocusNodeId: undefined,
-  issueFocusRef: { current: undefined },
   focusIssueNode: notImplemented,
   sessionActions: {
     initRuntime: notImplemented,
@@ -285,9 +283,6 @@ export const useWorkflowHistory = (): WorkflowHistoryState => {
 
 export const useWorkflowViewTick = () =>
   useContextSelector(WorkflowViewTickContext, (value) => value);
-
-export const useWorkflowIssueFocusRef = () =>
-  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusRef);
 
 export const useWorkflowOverlayRef = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.overlaysRef);
@@ -428,19 +423,13 @@ export const WorkflowSessionProvider = ({
   const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
   const issueFocusRef = useRef<string | undefined>(undefined);
   const environmentModelsRef = useRef<Pick<WorkflowEnvironment, 'models' | 'defaultModelIds'>>();
-  const updateIssueFocusNode = useMemoizedFn((nodeId?: string) => {
-    if (issueFocusRef.current === nodeId) return false;
+  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
+    if (issueFocusRef.current === nodeId) return;
     issueFocusRef.current = nodeId;
     setIssueFocusNodeId(nodeId);
-    return true;
   });
   const bumpView = useMemoizedFn(() => {
     setViewTick((tick) => tick + 1);
-  });
-  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
-    if (updateIssueFocusNode(nodeId)) {
-      bumpView();
-    }
   });
   /** 首屏延后标红第一个有 error 的节点。 */
   const focusInitialIssue = useMemoizedFn((current: WorkflowRuntimePort) => {
@@ -511,7 +500,7 @@ export const WorkflowSessionProvider = ({
 
   const resetSessionState = useMemoizedFn((nextVersions: WorkflowVersionEntry[]) => {
     clearOverlays();
-    updateIssueFocusNode(undefined);
+    focusIssueNode(undefined);
     pendingSaveRevision.current = undefined;
     pendingReplacementRef.current = undefined;
     saveCoordinator.invalidate();
@@ -584,7 +573,7 @@ export const WorkflowSessionProvider = ({
     resetSessionState,
     setVersions,
     teardownRuntime,
-    updateIssueFocusNode
+    focusIssueNode
   ]);
 
   // 只同步挂载后的 SystemConfigDrawer 修改；首屏配置由载入的云端版本或本地草稿提供。
@@ -761,7 +750,7 @@ export const WorkflowSessionProvider = ({
         };
       }
       clearOverlays();
-      updateIssueFocusNode(undefined);
+      focusIssueNode(undefined);
       pendingSaveRevision.current = undefined;
       bumpView();
       return res;
@@ -865,9 +854,9 @@ export const WorkflowSessionProvider = ({
       if (!res.change) return true;
 
       clearOverlays();
-      updateIssueFocusNode(undefined);
+      focusIssueNode(undefined);
       pendingSaveRevision.current = undefined;
-      // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay 与标红焦点，
+      // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay，
       // 这里再 bump 一次让画布按清理后的视图数据重投影。
       bumpView();
       return true;
@@ -1070,7 +1059,6 @@ export const WorkflowSessionProvider = ({
       patchViewData,
       isSaved,
       issueFocusNodeId,
-      issueFocusRef,
       focusIssueNode,
       sessionActions,
       persistence,

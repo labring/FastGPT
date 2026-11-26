@@ -38,10 +38,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useWorkflowUIValue } from './canvasState';
 import { WorkflowSelectionProvider } from '../context/workflowSelectionContext';
 import { useTranslation } from 'next-i18next';
-import {
-  useWorkflowIssueFocusRef,
-  useWorkflowRuntime
-} from '@/web/core/workflow/editor/session/workflowSession';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import {
   getLayoutDimension,
   shouldRenderWorkflowNodesFully,
@@ -565,7 +562,6 @@ const WorkflowCanvas = () => {
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
   const renderedEdges = useWorkflowCanvasRendererValue((v) => v.renderedEdges);
   const runtime = useWorkflowRuntime();
-  const issueFocusRef = useWorkflowIssueFocusRef();
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，
   // 而这里只需要一个稳定 callback ref、一个原始值和一个菜单坐标。
@@ -610,15 +606,10 @@ const WorkflowCanvas = () => {
 
   useEffect(() => {
     if (!runtime || nodes.length === 0 || fittedRuntimeRef.current === runtime) return;
-    // 切回编辑页时恢复保留的单选，标红自动产生的选中态只用于提示。
+    // 切回编辑页时按 React Flow 保留的单选恢复视口。
     const selectedNodes = nodes.filter((node) => node.selected);
-    const selectedNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined;
-    if (
-      selectedNode &&
-      !selectedNode.selectedByIssue &&
-      selectedNode.id !== issueFocusRef.current
-    ) {
-      focusNodes([selectedNode.id], WORKFLOW_NODE_FOCUS_OPTIONS);
+    if (selectedNodes.length === 1) {
+      focusNodes([selectedNodes[0].id], WORKFLOW_NODE_FOCUS_OPTIONS);
     } else if (shouldRenderWorkflowNodesFully(nodes.length)) {
       fitNodes(undefined, { padding: viewportPadding, minZoom: 0 });
     } else {
@@ -634,7 +625,7 @@ const WorkflowCanvas = () => {
       });
     }
     fittedRuntimeRef.current = runtime;
-  }, [fitNodes, focusNodes, issueFocusRef, nodes, runtime]);
+  }, [fitNodes, focusNodes, nodes, runtime]);
 
   return (
     <>

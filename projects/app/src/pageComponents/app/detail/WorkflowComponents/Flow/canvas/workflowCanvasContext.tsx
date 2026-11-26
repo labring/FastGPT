@@ -20,7 +20,6 @@ import {
   useStoreApi
 } from '@xyflow/react';
 import {
-  useWorkflowIssueFocusRef,
   useWorkflowOverlayRef,
   useWorkflowRuntime,
   useWorkflowViewTick
@@ -217,8 +216,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const runtime = useWorkflowRuntime();
   const viewTick = useWorkflowViewTick();
   const overlaysRef = useWorkflowOverlayRef();
-  // 标红焦点归 host：投影时合并，画布数组不再是问题状态的写入方。
-  const issueFocusRef = useWorkflowIssueFocusRef();
 
   // 交互状态层：reactflow 本地数组，语义值以 Runtime 投影为准。
   const [nodes, setNodesRaw] = useState<CanvasNode[]>([]);
@@ -808,7 +805,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const projected = projectRuntimeCanvas({
       runtime: runtime!,
       overlays: overlaysRef.current,
-      errorNodeId: issueFocusRef.current,
       localNodes: nodesRef.current,
       localEdges: edgesRef.current,
       cache: projectionCache.current
@@ -818,10 +814,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   /**
-   * 重投影的四条触发源，缺一条画布就会与数据不一致：
+   * 画布重投影的触发源：
    * - 语义（节点/边/chatConfig 变更）与几何（位置、折叠）：直接订阅 runtime 事件。
    *   这两条只有画布需要，不再绕 host 的通用计数器，语义派生因此不会被几何提交带动。
-   * - overlay 写入与标红焦点：host 的 renderer view 通道，数据存在 ref 里，靠 viewTick 失效。
+   * - overlay 写入：host 的 renderer view 通道，数据存在 ref 里，靠 viewTick 失效。
    *   viewTick 变化时重挂订阅并顺带补一次投影，覆盖「文档事件先于视图数据清理」的顺序。
    */
   useEffect(() => {
@@ -881,30 +877,14 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const next = applyReactFlowNodeChanges(effectiveChanges, prev);
-    if (next === prev) return;
-
-    const selectionIds = new Set(
-      effectiveChanges.flatMap((change) => (change.type === 'select' ? [change.id] : []))
-    );
-    setCanvasNodes(
-      selectionIds.size === 0
-        ? next
-        : next.map((node) =>
-            node.selectedByIssue && selectionIds.has(node.id)
-              ? { ...node, selectedByIssue: undefined }
-              : node
-          )
-    );
+    if (next !== prev) setCanvasNodes(next);
   });
 
   /** 按高层 node id intent 更新选中态，调用方不需要理解 ReactFlow NodeChange。 */
   const selectNodes = useMemoizedFn((nodeIds: readonly string[]) => {
     const selectedNodeIds = new Set(nodeIds);
     const changes = nodesRef.current
-      .filter((node) => {
-        const selected = selectedNodeIds.has(node.id);
-        return node.selected !== selected || (selected && node.selectedByIssue);
-      })
+      .filter((node) => Boolean(node.selected) !== selectedNodeIds.has(node.id))
       .map((node) => ({
         id: node.id,
         type: 'select' as const,
