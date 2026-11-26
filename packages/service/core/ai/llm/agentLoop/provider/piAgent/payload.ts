@@ -2,6 +2,7 @@ import json5 from 'json5';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { computedMaxToken, computedTemperature } from '../../../../utils';
 import type { AgentLoopRuntime } from '../../domain';
+import { resolvePiReasoningEffort } from './modelBridge';
 
 const normalizeResponseFormat = (
   responseFormat?: AgentLoopRuntime['llmParams']['responseFormat']
@@ -64,7 +65,13 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
         )
       : undefined;
 
-  return {
+  // pi-ai 会按内置白名单将 xhigh 降级为 high，并在 thinkingLevel='off' 时省略 reasoning_effort；
+  // 按 pi-ai 已生成的端点协议字段原地同步最终思考档位，避免 OpenRouter 等协议出现双字段冲突。
+  const resolvedReasoningEffort = resolvePiReasoningEffort(
+    modelData,
+    runtime.llmParams.reasoningEffort
+  );
+  const nextPayload: Record<string, unknown> = {
     ...payload,
     ...(messages ? { messages } : {}),
     ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
@@ -75,4 +82,30 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
     ...(stop?.length ? { stop } : {}),
     ...(responseFormat ? { response_format: responseFormat } : {})
   };
+  if (
+    'reasoning' in nextPayload &&
+    nextPayload.reasoning &&
+    typeof nextPayload.reasoning === 'object' &&
+    !Array.isArray(nextPayload.reasoning)
+  ) {
+    if (resolvedReasoningEffort) {
+      nextPayload.reasoning = { ...nextPayload.reasoning, effort: resolvedReasoningEffort };
+    } else {
+      delete nextPayload.reasoning;
+    }
+    delete nextPayload.reasoning_effort;
+  } else if ('enable_thinking' in nextPayload) {
+    if (resolvedReasoningEffort) {
+      nextPayload.enable_thinking = resolvedReasoningEffort !== 'none';
+    } else {
+      delete nextPayload.enable_thinking;
+    }
+    delete nextPayload.reasoning_effort;
+  } else if (resolvedReasoningEffort) {
+    nextPayload.reasoning_effort = resolvedReasoningEffort;
+  } else {
+    delete nextPayload.reasoning_effort;
+  }
+
+  return nextPayload;
 };

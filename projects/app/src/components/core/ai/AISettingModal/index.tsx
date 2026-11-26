@@ -20,7 +20,10 @@ import {
 } from '@chakra-ui/react';
 import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getLLMSupportParams,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -31,9 +34,10 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import PriceTiersLabel from '../PriceTiersLabel';
 import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
@@ -122,8 +126,10 @@ const AIChatSettingsModal = ({
   defaultData: SettingAIDataType;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [refresh, setRefresh] = useState(false);
   const { feConfigs } = useSystemStore();
+  const closedOnMissingModelRef = useRef(false);
 
   const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
     defaultValues: defaultData
@@ -143,12 +149,22 @@ const AIChatSettingsModal = ({
   const useVideo = watch(NodeInputKeyEnum.aiChatVideo);
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
-  const {
-    model: modelData,
-    loading: modelLoading,
-    error: modelError,
-    refresh: retryModel
-  } = useModelDetail({ modelId, modelType: ModelTypeEnum.llm });
+  const { model: modelData, loading: modelLoading } = useModelDetail({
+    modelId,
+    modelType: ModelTypeEnum.llm
+  });
+
+  // 未读取到模型详情（加载失败、模型不存在或当前成员无权访问）时直接报错并关闭弹窗，禁止继续编辑。
+  useEffect(() => {
+    if (modelLoading || modelData || closedOnMissingModelRef.current) return;
+    closedOnMissingModelRef.current = true;
+    toast({
+      status: 'error',
+      title: t('common:model_detail_load_failed')
+    });
+    onClose();
+  }, [modelData, modelLoading, onClose, t, toast]);
+
   const data = useMemo(() => {
     const support = getLLMSupportParams(modelData);
 
@@ -159,6 +175,19 @@ const AIChatSettingsModal = ({
   }, [modelData]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
+  const availableReasoningEffortOptions = useMemo(() => {
+    const allowed = new Set<ReasoningEffort>(supportParams.reasoningEffortList);
+    return reasoningEffortList
+      .filter((item) => item.value === null || allowed.has(item.value))
+      .map((item) => ({
+        label: t(item.label),
+        value: item.value
+      }));
+  }, [supportParams.reasoningEffortList, t]);
+  const effectiveReasoningEffort = normalizeModelReasoningEffort(
+    reasoningEffort,
+    supportParams.reasoningEffortList
+  );
   const multimodalOptions = useMemo(
     () =>
       [
@@ -216,17 +245,25 @@ const AIChatSettingsModal = ({
   const onChangeModel = async (e: string) => {
     setValue('modelId', e);
 
-    // 同一 ID 的 hook 会展示加载失败和重试入口，事件处理不再抛出未捕获异常。
+    // 同一 ID 的 useModelDetail 会统一处理未取到详情时的报错与关闭，这里不再重复抛出。
     const modelData = await getModelDetail({ modelId: e, modelType: ModelTypeEnum.llm }).catch(
       () => undefined
     );
     if (getValues('modelId') !== e) return;
     if (modelData) {
+      const nextSupport = getLLMSupportParams(modelData);
       setValue('maxToken', modelData.config.maxResponse / 2);
+      const currentReasoningEffort = getValues(NodeInputKeyEnum.aiChatReasoningEffort);
+      if (currentReasoningEffort !== undefined) {
+        setValue(
+          NodeInputKeyEnum.aiChatReasoningEffort,
+          normalizeModelReasoningEffort(currentReasoningEffort, nextSupport.reasoningEffortList)
+        );
+      }
       if (showMultimodalSetting) {
         const settings = filterModelMultimodalSettings({
           settings: getValues(),
-          support: getLLMSupportParams(modelData)
+          support: nextSupport
         });
         setValue(NodeInputKeyEnum.aiChatVision, settings.aiChatVision);
         setValue(NodeInputKeyEnum.aiChatAudio, settings.aiChatAudio);
@@ -238,6 +275,10 @@ const AIChatSettingsModal = ({
   };
 
   const showReasoningSection = supportParams.reasoning && showReasoning;
+
+  if (!modelLoading && !selectedModel) {
+    return null;
+  }
 
   return (
     <MyModal
@@ -268,8 +309,20 @@ const AIChatSettingsModal = ({
           </Button>
           <Button
             isLoading={modelLoading}
-            isDisabled={!!modelError}
-            onClick={handleSubmit(onSuccess)}
+            isDisabled={!selectedModel}
+            onClick={handleSubmit((formData) => {
+              if (!selectedModel) return;
+              const submittedEffort = formData[NodeInputKeyEnum.aiChatReasoningEffort];
+              onSuccess({
+                ...formData,
+                ...(submittedEffort !== undefined && {
+                  [NodeInputKeyEnum.aiChatReasoningEffort]: normalizeModelReasoningEffort(
+                    submittedEffort,
+                    supportParams.reasoningEffortList
+                  )
+                })
+              });
+            })}
           >
             {t('common:Confirm')}
           </Button>
@@ -278,9 +331,6 @@ const AIChatSettingsModal = ({
     >
       <VStack spacing={4} align="stretch">
         {modelLoading && <Box color="myGray.500">{t('common:model_loading')}</Box>}
-        {!!modelError && (
-          <Button onClick={retryModel}>{t('common:model_detail_load_failed')}</Button>
-        )}
         {/* 基础配置 */}
         <SectionCard title={t('app:ai_setting_basic_config')}>
           <SettingRow label={t('common:core.ai.Model')}>
@@ -490,11 +540,8 @@ const AIChatSettingsModal = ({
               {supportParams.reasoningEffort ? (
                 <MySelect<ReasoningEffort>
                   h={'36px'}
-                  list={reasoningEffortList.map((item) => ({
-                    label: t(item.label),
-                    value: item.value
-                  }))}
-                  value={reasoningEffort ?? null}
+                  list={availableReasoningEffortOptions}
+                  value={effectiveReasoningEffort}
                   onChange={(e) => {
                     setValue(NodeInputKeyEnum.aiChatReasoningEffort, e);
                   }}
@@ -505,7 +552,7 @@ const AIChatSettingsModal = ({
                 </Box>
               )}
             </SettingRow>
-            {reasoningEffort !== 'none' && (
+            {effectiveReasoningEffort !== 'none' && (
               <SettingRow
                 label={t('app:reasoning_response')}
                 switchControl={

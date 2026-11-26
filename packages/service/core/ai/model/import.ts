@@ -2,6 +2,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelReasoningEffortForSave } from '@fastgpt/global/core/ai/model/utils';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import { Types } from '../../../common/mongo';
 import { runModelTransaction } from './catalog/transaction';
@@ -70,7 +71,9 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
 
     const resolvedModels = importedModels.map(
       ({ data: { modelId: importedModelId, ...importedData }, existingModel }) => {
-        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(importedData);
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelReasoningEffortForSave(
+          normalizeModelPricingForSave(importedData)
+        );
         if (!existingModel) {
           return {
             modelId: importedModelId,

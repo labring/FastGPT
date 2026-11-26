@@ -103,5 +103,11 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "遷移狀態安全門禁",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理舊 Devbox、舊容器與舊持久卷",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核驗並刪除舊 zip 歸檔",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果"
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果",
+  "migrations.20261125_backfill_model_reasoning_effort_list.name": "回填模型可用思考等級預設",
+  "migrations.20261125_backfill_model_reasoning_effort_list.description": "請在確認所有 App 實例與 fastgpt-plugin 均已升級完成後手動執行：依外掛模型預設為存量開啟思考配置的 LLM 回填缺少的可用思考等級列表，已手動配置的模型與未命中預設的自訂模型保持不變。",
+  "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "載入外掛思考等級預設",
+  "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "回填模型可用思考等級",
+  "migrations.20261125_backfill_model_reasoning_effort_list.validation": "驗證回填結果",
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "共載入 {{presetCount}} 條外掛預設，已完成回填並驗證通過 {{verifiedCount}} 個命中預設的 LLM 模型。"
 }

@@ -165,6 +165,8 @@
   "model.reasoning": "模型支持思考",
   "model.reasoning_tip": "例如 Deepseek-reasoner，可以输出思考过程。",
   "model.reasoning_effort": "支持思考配置",
+  "model.reasoning_effort_list": "可用思考等级",
+  "model.reasoning_effort_list_placeholder": "请选择可用思考等级",
   "model.request_auth": "自定义请求 Key（即将弃用，请直接使用渠道）",
   "model.request_auth_tip": "向自定义请求地址发起请求时候，携带请求头：Authorization: Bearer xxx 进行请求",
   "model.request_url": "自定义请求地址（即将弃用，请直接使用渠道）",
