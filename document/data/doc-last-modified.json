@@ -429,6 +429,8 @@
   "content/self-host/migration/docker_mongo.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/milvus-bm25.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/milvus-bm25.mdx": "2026-11-12T14:01:38+08:00",
+  "content/self-host/pdf-parse.en.mdx": "2026-11-26T13:17:04+08:00",
+  "content/self-host/pdf-parse.mdx": "2026-11-26T13:17:04+08:00",
   "content/self-host/troubleshooting/attention.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/troubleshooting/attention.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/troubleshooting/faq.en.mdx": "2026-11-16T10:47:17+08:00",
@@ -723,6 +725,6 @@
   "content/self-host/upgrading/upgrade-instruction.mdx": "2026-11-23T18:03:16+08:00",
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-08-16T23:16:43+08:00",
-  "content/toc.en.mdx": "2026-11-23T17:06:06+08:00",
-  "content/toc.mdx": "2026-11-23T17:06:06+08:00"
+  "content/toc.en.mdx": "2026-11-26T13:17:04+08:00",
+  "content/toc.mdx": "2026-11-26T13:17:04+08:00"
 }

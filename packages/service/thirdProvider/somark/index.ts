@@ -28,10 +28,16 @@ type SomarkResponse = {
  */
 export const useSomarkServer = ({ apiKey, baseUrl }: { apiKey: string; baseUrl?: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
-  const instance = createProxyAxios({
-    baseURL: resolveSomarkBaseUrl(baseUrl),
-    timeout: getPdfEnhancedParseTimeoutMs()
-  });
+  // somarkBaseUrl 由 root 管理员在系统配置中维护，可指向私有化部署或内网反代 SoMark 服务；
+  // 与 codeSandbox / sangfor 保持一致，对管理员端点关闭用户侧 SSRF 拦截，同时保留代理路由与响应体上限保护。
+  // 解析结果 Markdown 中的图片 URL 仍由上层 parseMarkdownImages 走带 SSRF 校验的下载链路。
+  const instance = createProxyAxios(
+    {
+      baseURL: resolveSomarkBaseUrl(baseUrl),
+      timeout: getPdfEnhancedParseTimeoutMs()
+    },
+    false
+  );
 
   const parsePDF = async (fileBuffer: Buffer) => {
     const startTime = Date.now();

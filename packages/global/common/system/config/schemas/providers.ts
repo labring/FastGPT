@@ -71,10 +71,11 @@ const DocumentParseProviderConfigSchema = z.strictObject({
       url: urlWithDefault(),
       key: textWithDefault(),
       extensions: z.string().default('pdf'),
+      // 保留 v4.17.5 已发布的 SANGFOR_PARSE_TIMEOUT_SECONDS >= 1 下限，避免老配置（如 45s）升级后阻断核心页保存。
       timeoutSeconds: z
         .number()
         .int()
-        .min(PDF_PARSE_TIMEOUT_MIN_SECONDS)
+        .min(1)
         .max(PDF_PARSE_TIMEOUT_MAX_SECONDS)
         .default(PDF_PARSE_TIMEOUT_DEFAULT_SECONDS)
     })

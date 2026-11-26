@@ -607,7 +607,11 @@ describe('configuration form edition boundary', () => {
       mocks.providersOverrides = {
         documentParse: {
           provider: 'sangfor',
-          sangfor: { url: 'https://sangfor.internal.test', extensions: 'pdf,docx' }
+          sangfor: {
+            url: 'https://sangfor.internal.test',
+            extensions: 'pdf,docx',
+            timeoutSeconds: 45
+          }
         }
       };
       renderToStaticMarkup(React.createElement(CoreSettings));
@@ -621,7 +625,7 @@ describe('configuration form edition boundary', () => {
       expect(providerOptions.some((item) => item.value === 'sangfor')).toBe(enableSangfor);
       expect(mocks.formLabels.includes('admin:sangfor_parsing_api_endpoint')).toBe(enableSangfor);
 
-      // 关闭深信服展示开关时保存核心页，数据库中已有深信服配置应原样保留，不能被清空。
+      // 关闭深信服展示开关时保存核心页，数据库中已有深信服配置（含 v4.17.5 的 45 秒超时）应原样保留且通过严格校验。
       if (!enableSangfor) {
         const config = resolveSystemInstanceConfig({
           providers: mocks.providersOverrides as any
@@ -645,8 +649,12 @@ describe('configuration form edition boundary', () => {
         );
         expect(providersItem.overrides.documentParse.sangfor).toEqual({
           url: 'https://sangfor.internal.test',
-          extensions: 'pdf,docx'
+          extensions: 'pdf,docx',
+          timeoutSeconds: 45
         });
+        expect(() =>
+          parseDomainOverrides({ domain: 'providers', overrides: providersItem.overrides })
+        ).not.toThrow();
       }
     }
   );

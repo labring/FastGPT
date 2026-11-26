@@ -278,4 +278,32 @@ describe.sequential('document provider instance configuration HTTP protocol', ()
     expect(boundary.systemParse).not.toHaveBeenCalled();
     expect(events).toHaveLength(1);
   });
+
+  it('allows an admin-configured loopback SoMark baseUrl in production mode with checkInternalIp enabled', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    try {
+      const instanceConfig = getSystemInstanceConfig();
+      instanceConfig.security.checkInternalIp = true;
+      instanceConfig.providers.documentParse.provider = 'somark';
+      Object.assign(instanceConfig.providers.documentParse.customPdf, {
+        somarkBaseUrl: `${origin}/somark-selfhost/api/v1`,
+        somarkApiKey: 'synthetic-selfhost-key',
+        timeoutSeconds: 60
+      });
+      phase = 'selfhost';
+      const result = await readFileContentByBuffer({
+        teamId: 'owned-team',
+        tmbId: 'owned-member',
+        extension: 'pdf',
+        encoding: 'utf-8',
+        buffer: Buffer.from('%PDF selfhost fixture'),
+        customPdfParse: true
+      });
+      expect(result.rawText).toBe('# somark-selfhost');
+      expect(events).toHaveLength(1);
+      expect(events[0]?.path).toBe('/somark-selfhost/api/v1/parse/sync');
+    } finally {
+      vi.stubEnv('NODE_ENV', 'development');
+    }
+  });
 });

@@ -426,6 +426,14 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
       ).toThrow();
     }
 
+    // 保留 v4.17.5 已发布的深信服超时范围（>= 1），确保 45 秒等旧配置升级后仍可通过严格保存校验。
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } }
+      }).documentParse.sangfor.timeoutSeconds
+    ).toBe(45);
+
     // somarkBaseUrl supports global, CN, custom HTTP(S) base URLs, and legacy empty string
     for (const somarkBaseUrl of [
       '',

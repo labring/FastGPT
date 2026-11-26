@@ -29,7 +29,7 @@ FastGPT 内置的 PDF 解析器基于文本流提取，适合纯文字 PDF；遇
 
 <Alert context="info">
 
-未勾选「PDF 增强解析」的 PDF 以及非 PDF 格式文件，仍由系统内置解析器处理。
+对于本文介绍的四类 PDF 增强解析服务，未勾选「PDF 增强解析」的 PDF 以及非 PDF 格式文件仍由系统内置解析器处理（若启用了深信服定制解析，命中其配置后缀的文件将直接交由深信服处理）。
 
 </Alert>
 
@@ -61,7 +61,7 @@ SoMark 的国际站与国内站账号及 API Key **互不通用**，请根据申
 
 - **国际站 ( `somark.ai` )**：默认兜底区域，请求地址 `https://somark.ai/api/v1`。
 - **国内站 ( `somark.cn` )**：中国大陆账号使用，请求地址 `https://somark.cn/api/v1`。
-- **自定义**：适用于私有化部署或自建反向代理，需填写包含 `/api/v1` 的完整基础地址（例如 `https://somark.example.com/api/v1`），FastGPT 会在该地址后追加 `/parse/sync` 发起请求。
+- **自定义**：适用于兼容 SoMark `/parse/sync` 协议的私有化部署或内网反向代理，填写不含 `/parse/sync` 的基础地址（例如 `https://somark.example.com/api/v1` 或内网地址 `http://10.0.0.10:8080/api/v1`），FastGPT 会追加 `/parse/sync` 发起请求；该地址由管理员配置，不受用户侧内网 IP 拦截限制。若使用 FastGPT 官方适配的 OXR Docker 镜像（暴露 `/v2/parse/file`），请通过下方「自建服务」接入。
 
 ### 自建服务推荐方案
 

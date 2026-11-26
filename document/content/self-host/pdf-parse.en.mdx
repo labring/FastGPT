@@ -29,7 +29,7 @@ Once configured, enhanced parsing takes effect wherever you opt in:
 
 <Alert context="info">
 
-PDF files uploaded without the option enabled, as well as non-PDF file formats, continue to use the built-in system parser.
+With the four PDF parsing providers covered in this guide, PDF files uploaded without the option enabled—as well as non-PDF formats—continue to use the built-in system parser. (If the optional Sangfor parser is enabled, files matching its configured extensions are routed directly to Sangfor.)
 
 </Alert>
 
@@ -61,7 +61,7 @@ SoMark International and China Mainland accounts use separate API keys that are 
 
 - **International (`somark.ai`)**: Default fallback region using `https://somark.ai/api/v1`.
 - **China Mainland (`somark.cn`)**: For China Mainland accounts, using `https://somark.cn/api/v1`.
-- **Custom**: For self-hosted deployments or reverse proxies. Enter the full base URL including `/api/v1` (for example, `https://somark.example.com/api/v1`); FastGPT appends `/parse/sync` to this base URL.
+- **Custom**: For self-hosted deployments or internal reverse proxies implementing the SoMark `/parse/sync` endpoint. Enter the base URL without `/parse/sync` (for example, `https://somark.example.com/api/v1` or an internal address such as `http://10.0.0.10:8080/api/v1`); FastGPT appends `/parse/sync` automatically. Because this endpoint is administrator-configured, it is not blocked by end-user internal-IP SSRF checks. If you deploy FastGPT's official OXR Docker image (which exposes `/v2/parse/file`), use the **Custom (Self-hosted)** provider instead.
 
 ### Recommended Self-Hosted Options
 

@@ -70,7 +70,8 @@ describe('useSomarkServer', () => {
       expect.objectContaining({
         baseURL: 'https://somark.ai/api/v1',
         timeout: 600000
-      })
+      }),
+      false
     );
 
     const form = postMock.mock.calls[0][1] as FormData;
@@ -147,7 +148,8 @@ describe('useSomarkServer', () => {
       Buffer.from('pdf-content')
     );
     expect(createProxyAxiosMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ baseURL: 'https://somark.cn/api/v1' })
+      expect.objectContaining({ baseURL: 'https://somark.cn/api/v1' }),
+      false
     );
 
     mockSomarkSuccess();
@@ -156,7 +158,8 @@ describe('useSomarkServer', () => {
       baseUrl: '  https://oxr.internal.example/api/v1/  '
     }).parsePDF(Buffer.from('pdf-content'));
     expect(createProxyAxiosMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ baseURL: 'https://oxr.internal.example/api/v1' })
+      expect.objectContaining({ baseURL: 'https://oxr.internal.example/api/v1' }),
+      false
     );
 
     mockSomarkSuccess();
@@ -164,7 +167,8 @@ describe('useSomarkServer', () => {
       Buffer.from('pdf-content')
     );
     expect(createProxyAxiosMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ baseURL: 'https://somark.ai/api/v1' })
+      expect.objectContaining({ baseURL: 'https://somark.ai/api/v1' }),
+      false
     );
   });
 

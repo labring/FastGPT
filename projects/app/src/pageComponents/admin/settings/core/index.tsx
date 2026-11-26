@@ -1098,7 +1098,7 @@ const CoreSettingComponent = () => {
                     isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     variant={'whiteOutline'}
                     maxW={'400px'}
-                    min={PDF_PARSE_TIMEOUT_MIN_SECONDS}
+                    min={1}
                     max={PDF_PARSE_TIMEOUT_MAX_SECONDS}
                     value={field.value ?? PDF_PARSE_TIMEOUT_DEFAULT_SECONDS}
                     onChange={(_, val) => field.onChange(val || PDF_PARSE_TIMEOUT_DEFAULT_SECONDS)}
