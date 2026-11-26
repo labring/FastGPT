@@ -716,11 +716,49 @@ describe('instance config update API', () => {
     expect(updated.results[0].revision).toBe(3);
   });
 
+  it('preserves existing non-default retentionHours and revision when invalid retentionHours values are submitted', async () => {
+    const initial = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 0,
+            overrides: { tracking: { retentionHours: 48 } }
+          }
+        ]
+      }
+    } as any);
+    expect(initial.results[0].revision).toBe(1);
+
+    for (const invalid of ['48', null, 0, 1440, 1.5]) {
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 1,
+                overrides: { tracking: { retentionHours: invalid } }
+              }
+            ]
+          }
+        } as any)
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    }
+
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
+      {
+        revision: 1,
+        overrides: { tracking: { retentionHours: 48 } }
+      }
+    );
+  });
+
   it.each([
     { legacyHours: 0, clampedHours: 1 },
     { legacyHours: 1440, clampedHours: 1000 }
   ])(
-    'clamps legacy and explicit out-of-range retentionHours=$legacyHours to $clampedHours via schema catch',
+    'clamps untouched legacy retentionHours=$legacyHours to $clampedHours on partial performance save while rejecting explicit out-of-range submits',
     async ({ legacyHours, clampedHours }) => {
       // 模拟升级前库中可能残留的越界旧值（如 0 或 1440）。
       await MongoSystemInstanceConfig.collection.insertOne({
@@ -731,7 +769,7 @@ describe('instance config update API', () => {
         updatedAt: new Date()
       });
 
-      // 未显式提交 retentionHours 时保存同域其他字段不被历史越界值阻断，经 Zod catch 自动就近收口。
+      // 未显式提交 retentionHours 时保存同域其他字段不被历史越界值阻断，合并前自动就近收口。
       const saved = await callUpdate({
         body: {
           items: [
@@ -750,21 +788,25 @@ describe('instance config update API', () => {
         tracking: { retentionHours: clampedHours }
       });
 
-      // 显式提交越界值同样由 Zod catch 就近收口到 [1, 1000]。
-      const explicit = await callUpdate({
-        body: {
-          items: [
-            {
-              domain: 'performance',
-              expectedRevision: 4,
-              overrides: { tracking: { retentionHours: legacyHours } }
-            }
-          ]
-        }
-      } as any);
-      expect(explicit.results[0].revision).toBe(5);
-      expect(explicit.results[0].effectiveConfig).toMatchObject({
-        tracking: { retentionHours: clampedHours }
+      // 显式提交越界值仍由严格 Schema 拒绝，且不改动已提交的 revision 与保留时长。
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 4,
+                overrides: { tracking: { retentionHours: legacyHours } }
+              }
+            ]
+          }
+        } as any)
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+      expect(
+        await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()
+      ).toMatchObject({
+        revision: 4,
+        overrides: { chat: { maxQpm: 2500 }, tracking: { retentionHours: clampedHours } }
       });
     }
   );

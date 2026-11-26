@@ -956,14 +956,7 @@ describe('unvalidated instance config reads and strict saves', () => {
     });
   });
 
-  it('clamps out-of-range performance.tracking.retentionHours to 1..1000 via Zod catch while keeping omitted overrides unset', () => {
-    expect(
-      parseDomainOverrides({
-        domain: 'performance',
-        overrides: { chat: { maxQpm: 2000 } }
-      })
-    ).toEqual({ chat: { maxQpm: 2000 } });
-
+  it('constrains performance.tracking.retentionHours strictly to 1..1000', () => {
     expect(
       resolveDomainEffectiveConfig({
         domain: 'performance',
@@ -977,20 +970,14 @@ describe('unvalidated instance config reads and strict saves', () => {
       }).tracking.retentionHours
     ).toBe(1000);
 
-    for (const [input, expected] of [
-      [0, 1],
-      [-1, 1],
-      [1001, 1000],
-      [1440, 1000],
-      [24.8, 24],
-      ['invalid', 6]
-    ] as const) {
-      expect(
+    const invalidInputs: unknown[] = [0, -1, 1001, 1.5, '48', null];
+    for (const invalid of invalidInputs) {
+      expect(() =>
         parseDomainOverrides({
           domain: 'performance',
-          overrides: { tracking: { retentionHours: input as any } }
+          overrides: { tracking: { retentionHours: invalid } }
         })
-      ).toEqual({ tracking: { retentionHours: expected } });
+      ).toThrow();
     }
 
     expect(clampLlmTraceRetentionHours(0)).toBe(1);

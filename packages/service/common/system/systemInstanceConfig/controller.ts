@@ -1,5 +1,6 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   normalizeDocumentParseUrl,
   resolveSomarkBaseUrl
@@ -603,6 +604,21 @@ export const batchUpdateDomainConfigs = async (
     }
 
     const existingDecryptedOverrides = decryptDomainSecrets(domain, existing?.overrides ?? {});
+    // 合并前仅归一化库中可能残留的历史越界 retentionHours（如旧版 0 或 1440），
+    // 避免同域局部保存被旧值阻断；显式提交非法值已在上方提交边界严格拒绝。
+    if (domain === 'performance') {
+      const existingTracking = (
+        existingDecryptedOverrides as { tracking?: { retentionHours?: unknown } }
+      ).tracking;
+      if (
+        typeof existingTracking?.retentionHours === 'number' &&
+        Number.isFinite(existingTracking.retentionHours)
+      ) {
+        existingTracking.retentionHours = clampLlmTraceRetentionHours(
+          existingTracking.retentionHours
+        );
+      }
+    }
 
     if (domain === 'providers') {
       try {

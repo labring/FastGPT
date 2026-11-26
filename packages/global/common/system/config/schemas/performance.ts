@@ -42,17 +42,12 @@ export const clampLlmTraceRetentionHours = (hours: number): number =>
     Math.max(LLM_TRACE_RETENTION_MIN_HOURS, Math.trunc(hours))
   );
 
-const TrackingPerformanceConfigSchema = z.strictObject({
+const TrackingPerformanceConfigSchema = z.object({
   retentionHours: z
     .number()
     .int()
     .min(LLM_TRACE_RETENTION_MIN_HOURS)
     .max(LLM_TRACE_RETENTION_MAX_HOURS)
-    .catch((ctx) =>
-      typeof ctx.input === 'number' && Number.isFinite(ctx.input)
-        ? clampLlmTraceRetentionHours(ctx.input)
-        : LLM_TRACE_RETENTION_DEFAULT_HOURS
-    )
     .default(LLM_TRACE_RETENTION_DEFAULT_HOURS)
 });
 
