@@ -632,7 +632,7 @@ describe('system configuration secret forms', () => {
     );
     expect(sentOverrides('providers').documentParse.customPdf.timeoutSeconds).toBe(900);
 
-    // 切换到国内站直接写入国内地址；且未填新 Key 时「测试」按钮联动置灰，避免跨目标发送旧密钥
+    // 切换到国内站直接写入国内地址；已配置密钥时不阻塞「测试」按钮
     const getDocParseTestButton = () =>
       [...container.querySelectorAll<HTMLButtonElement>('#documentParse button')].find((button) =>
         button.textContent?.includes('admin:test_document_parse_file')
@@ -640,7 +640,7 @@ describe('system configuration secret forms', () => {
     expect(getDocParseTestButton()?.disabled).toBe(false);
     await act(async () => Simulate.change(getSomarkSelect(), { target: { value: 'cn' } } as any));
     expect(getCustomUrlInput()).toBeNull();
-    expect(getDocParseTestButton()?.disabled).toBe(true);
+    expect(getDocParseTestButton()?.disabled).toBe(false);
     await save();
     expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
       'https://somark.cn/api/v1'

@@ -37,7 +37,6 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
 import {
   getSomarkRegionPreset,
-  isSameSomarkBaseUrl,
   PDF_PARSE_TIMEOUT_DEFAULT_SECONDS,
   PDF_PARSE_TIMEOUT_MAX_SECONDS,
   PDF_PARSE_TIMEOUT_MIN_SECONDS,
@@ -172,14 +171,6 @@ const CoreSettingComponent = () => {
       : somarkRegion === 'cn'
         ? SOMARK_BASE_URL_CN
         : SOMARK_BASE_URL_GLOBAL;
-  const isSomarkTargetSameAsStored = isSameSomarkBaseUrl(
-    somarkTargetBaseUrl,
-    providers.effectiveConfig.documentParse?.customPdf?.somarkBaseUrl
-  );
-  const hasSomarkTestKey =
-    documentParseDraft?.customPdf?.somarkApiKey !== undefined
-      ? Boolean(documentParseDraft.customPdf.somarkApiKey.trim())
-      : isSomarkTargetSameAsStored && isSecretConfigured('documentParse.customPdf.somarkApiKey');
   const downloadMode = useWatch({ control, name: 'downloadMode' });
   const emailSmtp = useWatch({ control, name: 'email.smtp' });
   const emailUser = useWatch({ control, name: 'email.user' });
@@ -876,7 +867,10 @@ const CoreSettingComponent = () => {
                   : {})
               }}
               isDisabled={
-                !hasSomarkTestKey ||
+                !hasSecretValue(
+                  documentParseDraft?.customPdf?.somarkApiKey,
+                  'documentParse.customPdf.somarkApiKey'
+                ) ||
                 (somarkRegion === 'custom' &&
                   !isValidServiceBaseUrl(
                     documentParseDraft?.customPdf?.somarkBaseUrl?.trim() ?? ''
