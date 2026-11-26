@@ -1,20 +1,19 @@
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { IntSchema } from '@fastgpt/global/common/zod';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
-import { Types } from '@fastgpt/service/common/mongo';
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { z } from 'zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import {
-  LLM_BACKFILL_PROJECTION,
+  findLastLlmModelId,
+  findLlmModelsByIds,
+  findNextLlmModelBatch,
+  getMaxFailedRecords,
   loadPluginReasoningEffortPresets,
   precheckModelReasoningEffortBatch,
   processBackfillModelBatch,
-  validateBackfilledModelReasoningEffortList,
-  type RawLlmModelRecord
+  validateBackfilledModelReasoningEffortList
 } from './service';
 
 const CheckpointSchema = z.object({
@@ -43,7 +42,7 @@ const CheckpointSchema = z.object({
 export const createBackfillModelReasoningEffortListMigration =
   (batchSize: number = systemMigrationBatchSize) =>
   async (context: SystemMigrationContext) => {
-    const maxFailedRecords = batchSize * 10;
+    const maxFailedRecords = getMaxFailedRecords(batchSize);
 
     // ==================== 阶段 1：加载插件思考等级预设 ====================
     await context.reportProgress({ key: 'loadPresets', status: SystemMigrationStatusEnum.running });
@@ -78,14 +77,27 @@ export const createBackfillModelReasoningEffortListMigration =
       }
     }
 
+    const mergeBatchFailures = ({
+      resolvedIds,
+      failures
+    }: {
+      resolvedIds: readonly string[];
+      failures: readonly SystemMigrationFailedRecord[];
+    }): boolean => {
+      let changed = false;
+      for (const id of resolvedIds) {
+        if (unresolvedFailures.delete(id)) changed = true;
+      }
+      for (const failure of failures) {
+        unresolvedFailures.set(String(failure.data.id), failure);
+        changed = true;
+      }
+      return changed;
+    };
+
     // 首次写入前分批预检源数据：发现非法 scope 或非法 reasoningEffortList 时立即中止，保证零局部写入。
     if (!checkpoint?.precheckPassed) {
-      const lastDoc = await MongoAIModel.collection.findOne(
-        { type: ModelTypeEnum.llm },
-        { projection: { _id: 1 }, sort: { _id: -1 } }
-      );
-      const endId = lastDoc ? String(lastDoc._id) : null;
-
+      const endId = await findLastLlmModelId();
       const precheckFailures = await precheckModelReasoningEffortBatch({
         presetMap,
         endId,
@@ -119,28 +131,16 @@ export const createBackfillModelReasoningEffortListMigration =
     // 若断点恢复时仍存在历史失败记录（含写入中途并发产生的坏数据或校验失败项），先按批重试修复。
     if (unresolvedFailures.size > 0) {
       const retryIds = [...unresolvedFailures.keys()];
-      let failuresChanged = false;
 
       for (let i = 0; i < retryIds.length; i += batchSize) {
         context.signal.throwIfAborted();
         await context.assertActive();
 
         const chunkIds = retryIds.slice(i, i + batchSize);
-        const validObjectIds = chunkIds
-          .filter((id) => Types.ObjectId.isValid(id))
-          .map((id) => new Types.ObjectId(id));
-
-        const docs = validObjectIds.length
-          ? ((await MongoAIModel.collection
-              .find(
-                { _id: { $in: validObjectIds }, type: ModelTypeEnum.llm },
-                { projection: LLM_BACKFILL_PROJECTION }
-              )
-              .sort({ _id: 1 })
-              .toArray()) as RawLlmModelRecord[])
-          : [];
-
+        const docs = await findLlmModelsByIds(chunkIds);
         const foundIdSet = new Set(docs.map((doc) => String(doc._id)));
+        let failuresChanged = false;
+
         for (const id of chunkIds) {
           if (!foundIdSet.has(id) && unresolvedFailures.delete(id)) {
             failuresChanged = true;
@@ -154,19 +154,13 @@ export const createBackfillModelReasoningEffortListMigration =
             signal: context.signal,
             assertActive: context.assertActive
           });
-
-          for (const id of retryResult.resolvedIds) {
-            if (unresolvedFailures.delete(id)) failuresChanged = true;
-          }
-          for (const failure of retryResult.failures) {
-            unresolvedFailures.set(String(failure.data.id), failure);
+          if (mergeBatchFailures(retryResult)) {
             failuresChanged = true;
           }
         }
 
         if (failuresChanged) {
           await context.reportFailedRecords([...unresolvedFailures.values()]);
-          failuresChanged = false;
         }
       }
     }
@@ -176,21 +170,11 @@ export const createBackfillModelReasoningEffortListMigration =
         context.signal.throwIfAborted();
         await context.assertActive();
 
-        const records = (await MongoAIModel.collection
-          .find(
-            {
-              type: ModelTypeEnum.llm,
-              _id: {
-                $lte: new Types.ObjectId(checkpoint.endId),
-                ...(checkpoint.lastId ? { $gt: new Types.ObjectId(checkpoint.lastId) } : {})
-              }
-            },
-            { projection: LLM_BACKFILL_PROJECTION }
-          )
-          .sort({ _id: 1 })
-          .limit(batchSize)
-          .toArray()) as RawLlmModelRecord[];
-
+        const records = await findNextLlmModelBatch({
+          endId: checkpoint.endId,
+          lastId: checkpoint.lastId,
+          batchSize
+        });
         if (records.length === 0) break;
 
         const batchResult = await processBackfillModelBatch({
@@ -200,17 +184,8 @@ export const createBackfillModelReasoningEffortListMigration =
           assertActive: context.assertActive
         });
 
-        let failuresChanged = false;
-        for (const id of batchResult.resolvedIds) {
-          if (unresolvedFailures.delete(id)) failuresChanged = true;
-        }
-        for (const failure of batchResult.failures) {
-          unresolvedFailures.set(String(failure.data.id), failure);
-          failuresChanged = true;
-        }
-
         // 先持久化完整未解决错误快照，再推进断点，防止两者之间进程退出导致坏数据被永久跳过。
-        if (failuresChanged) {
+        if (mergeBatchFailures(batchResult)) {
           await context.reportFailedRecords([...unresolvedFailures.values()]);
         }
 
@@ -234,25 +209,21 @@ export const createBackfillModelReasoningEffortListMigration =
           });
         }
       }
+    }
 
-      if (unresolvedFailures.size > 0) {
-        await context.fail({
-          message:
-            'Some LLM models could not be backfilled; repair invalid records before retrying',
-          failedRecords: [...unresolvedFailures.values()]
-        });
-      }
+    if (unresolvedFailures.size > 0) {
+      await context.fail({
+        message: 'Some LLM models could not be backfilled; repair invalid records before retrying',
+        failedRecords: [...unresolvedFailures.values()]
+      });
+    }
 
+    if (!checkpoint.backfillCompleted) {
       checkpoint = {
         ...checkpoint,
         backfillCompleted: true
       };
       await context.saveCheckpoint(checkpoint);
-    } else if (unresolvedFailures.size > 0) {
-      await context.fail({
-        message: 'Some LLM models could not be backfilled; repair invalid records before retrying',
-        failedRecords: [...unresolvedFailures.values()]
-      });
     }
 
     await context.assertActive();

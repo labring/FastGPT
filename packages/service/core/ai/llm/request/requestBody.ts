@@ -129,7 +129,6 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   if (
     !supportParams.reasoningEffort ||
     (requestBody.reasoning_effort &&
-      supportParams.reasoningEffortList &&
       !supportParams.reasoningEffortList.includes(requestBody.reasoning_effort))
   ) {
     delete requestBody.reasoning_effort;

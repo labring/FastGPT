@@ -20,7 +20,10 @@ import {
 } from '@chakra-ui/react';
 import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getLLMSupportParams,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -37,10 +40,7 @@ import dynamic from 'next/dynamic';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import PriceTiersLabel from '../PriceTiersLabel';
-import {
-  filterModelMultimodalSettings,
-  normalizeModelReasoningEffort
-} from '../SettingLLMModel/utils';
+import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 
 type MultimodalValue =
   | NodeInputKeyEnum.aiChatVision

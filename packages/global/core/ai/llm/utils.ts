@@ -1,3 +1,4 @@
+import type { ReasoningEffort } from './type';
 import type { LLMModelDataType, ReasoningEffortLevel } from '../model/schema';
 import { ChatCompletionRequestMessageRoleEnum, REASONING_EFFORT_LEVELS } from '../constants';
 
@@ -62,6 +63,15 @@ export const normalizeReasoningEffortList = (
   const allowed = new Set(levels);
   return REASONING_EFFORT_LEVELS.filter((level) => allowed.has(level));
 };
+
+/**
+ * 按模型支持的思考等级列表归一化当前配置；不在支持列表内时回退为默认（null）。
+ */
+export const normalizeModelReasoningEffort = (
+  effort: ReasoningEffort | undefined,
+  supportedLevels: readonly ReasoningEffortLevel[]
+): ReasoningEffort =>
+  effort && supportedLevels.includes(effort as ReasoningEffortLevel) ? effort : null;
 
 /**
  * 解析模型实际可用的思考等级列表（按 AI Proxy 标准顺序去重）。

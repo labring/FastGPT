@@ -388,7 +388,8 @@ describe('system model management integration: MongoDB transactions and runtime 
           maxResponse: 16000,
           quoteMaxToken: 24000,
           reasoning: true,
-          reasoningEffort: false
+          reasoningEffort: false,
+          reasoningEffortList: ['high']
         }
       }
     });
@@ -397,6 +398,9 @@ describe('system model management integration: MongoDB transactions and runtime 
         { model: 'template-reasoning' },
         { type: ModelTypeEnum.llm }
       )?.config.reasoningEffortList
+    ).toBeUndefined();
+    expect(
+      ((await MongoAIModel.findById(templateModelId).lean())?.config as any)?.reasoningEffortList
     ).toBeUndefined();
 
     // 3. JSON 导入保留合法等级，且导入 Schema 严格拒绝非法思考等级（共用真实序列化请求体与 modelId）
@@ -430,7 +434,7 @@ describe('system model management integration: MongoDB transactions and runtime 
     }
 
     const validImportParse = UpdateSystemModelsWithJsonBodySchema.safeParse(
-      buildJsonImportPayload(['minimal', 'high'])
+      buildJsonImportPayload(['high', 'minimal', 'high'])
     );
     expect(validImportParse.success).toBe(true);
     if (!validImportParse.success) throw validImportParse.error;
@@ -441,6 +445,9 @@ describe('system model management integration: MongoDB transactions and runtime 
         { model: 'imported-reasoning' },
         { type: ModelTypeEnum.llm }
       )?.config.reasoningEffortList
+    ).toEqual(['minimal', 'high']);
+    expect(
+      ((await MongoAIModel.findById(templateModelId).lean())?.config as any)?.reasoningEffortList
     ).toEqual(['minimal', 'high']);
 
     // 4. 数据库中同时存在历史未配列表记录与含未知未来枚举记录时，loadInstalledModels 均能正常加载

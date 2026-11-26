@@ -3,14 +3,17 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getModelDetail } from '@/web/core/ai/model/modelData';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getLLMSupportParams,
+  normalizeModelReasoningEffort
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { filterModelMultimodalSettings, normalizeModelReasoningEffort } from './utils';
+import { filterModelMultimodalSettings } from './utils';
 
 type Props = {
   defaultData: SettingAIDataType;

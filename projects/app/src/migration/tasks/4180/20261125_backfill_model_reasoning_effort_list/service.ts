@@ -1,5 +1,4 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { normalizeReasoningEffortList } from '@fastgpt/global/core/ai/llm/utils';
 import {
   ReasoningEffortLevelSchema,
   type ReasoningEffortLevel
@@ -14,13 +13,15 @@ import {
 } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { getPluginModelDocuments } from '@fastgpt/service/core/ai/model/template';
 import { z } from 'zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 
 export const ValidReasoningEffortListSchema = z.array(ReasoningEffortLevelSchema).min(1);
 
-export const LLM_BACKFILL_PROJECTION = {
+export const getMaxFailedRecords = (batchSize: number) => batchSize * 10;
+
+const LLM_BACKFILL_PROJECTION = {
   _id: 1,
   scope: 1,
   teamId: 1,
@@ -54,35 +55,130 @@ type RecordInspectionResult =
   | { kind: 'backfill'; scopeKey: string; scope: ModelCatalogScope; candidate: BackfillCandidate }
   | { kind: 'invalid'; message: string };
 
+/** 按 `_id` 升序游标分批遍历匹配的 LLM 文档，单次内存消耗恒定为 `O(batchSize)`。 */
+const iterateLlmModelBatches = async ({
+  filter,
+  projection,
+  endId,
+  batchSize,
+  signal,
+  assertActive,
+  onBatch
+}: {
+  filter: Record<string, unknown>;
+  projection: Record<string, 1>;
+  endId?: string;
+  batchSize: number;
+  signal: AbortSignal;
+  assertActive: () => Promise<void>;
+  onBatch: (records: RawLlmModelRecord[]) => boolean | void;
+}) => {
+  const upperBound = endId ? new Types.ObjectId(endId) : undefined;
+  let lastId: Types.ObjectId | undefined;
+
+  while (true) {
+    signal.throwIfAborted();
+    await assertActive();
+
+    const idFilter =
+      upperBound || lastId
+        ? {
+            ...(upperBound ? { $lte: upperBound } : {}),
+            ...(lastId ? { $gt: lastId } : {})
+          }
+        : undefined;
+
+    const records = (await MongoAIModel.collection
+      .find(
+        {
+          type: ModelTypeEnum.llm,
+          ...filter,
+          ...(idFilter ? { _id: idFilter } : {})
+        },
+        { projection }
+      )
+      .sort({ _id: 1 })
+      .limit(batchSize)
+      .toArray()) as RawLlmModelRecord[];
+
+    if (records.length === 0) break;
+    if (onBatch(records) === false) break;
+
+    lastId = records.at(-1)!._id;
+  }
+};
+
+/** 查询当前 LLM 模型集合的最大 `_id`，用作本次迁移的扫描上界。 */
+export const findLastLlmModelId = async (): Promise<string | null> => {
+  const lastDoc = await MongoAIModel.collection.findOne(
+    { type: ModelTypeEnum.llm },
+    { projection: { _id: 1 }, sort: { _id: -1 } }
+  );
+  return lastDoc ? String(lastDoc._id) : null;
+};
+
+/** 按 ID 列表批量查询待重试的 LLM 文档。 */
+export const findLlmModelsByIds = async (ids: readonly string[]): Promise<RawLlmModelRecord[]> => {
+  const validObjectIds = ids
+    .filter((id) => Types.ObjectId.isValid(id))
+    .map((id) => new Types.ObjectId(id));
+  if (validObjectIds.length === 0) return [];
+
+  return (await MongoAIModel.collection
+    .find(
+      { _id: { $in: validObjectIds }, type: ModelTypeEnum.llm },
+      { projection: LLM_BACKFILL_PROJECTION }
+    )
+    .sort({ _id: 1 })
+    .toArray()) as RawLlmModelRecord[];
+};
+
+/** 读取断点游标之后的下一批待回填 LLM 文档。 */
+export const findNextLlmModelBatch = async ({
+  endId,
+  lastId,
+  batchSize
+}: {
+  endId: string;
+  lastId: string | null;
+  batchSize: number;
+}): Promise<RawLlmModelRecord[]> =>
+  (await MongoAIModel.collection
+    .find(
+      {
+        type: ModelTypeEnum.llm,
+        _id: {
+          $lte: new Types.ObjectId(endId),
+          ...(lastId ? { $gt: new Types.ObjectId(lastId) } : {})
+        }
+      },
+      { projection: LLM_BACKFILL_PROJECTION }
+    )
+    .sort({ _id: 1 })
+    .limit(batchSize)
+    .toArray()) as RawLlmModelRecord[];
+
 /**
- * 直接从 fastgpt-plugin 原始模型清单提取显式声明了思考等级预设的 `model -> reasoningEffortList` 映射。
- * 不经过读取期全档位兜底，避免旧版插件未返回 `reasoningEffortList` 时误将兜底六档写入存量模型。
+ * 复用官方插件模板解析边界提取显式声明了思考等级预设的 `model -> reasoningEffortList` 映射。
+ * 模板文档转换层保留未配置字段为 `undefined`，旧版插件未返回预设时结果为空并由迁移显式失败。
  */
 export const loadPluginReasoningEffortPresets = async (): Promise<
   Map<string, ReasoningEffortLevel[]>
 > => {
-  const templates = await pluginClient.listModels();
+  const documents = await getPluginModelDocuments();
   const presetMap = new Map<string, ReasoningEffortLevel[]>();
 
-  for (const rawTemplate of templates) {
-    const template = rawTemplate as Record<string, unknown>;
-    if (template.type !== ModelTypeEnum.llm || typeof template.model !== 'string') continue;
-
-    const nestedConfig =
-      template.config && typeof template.config === 'object' && !Array.isArray(template.config)
-        ? (template.config as Record<string, unknown>)
-        : undefined;
-    const reasoning = nestedConfig?.reasoning ?? template.reasoning;
-    const reasoningEffort = nestedConfig?.reasoningEffort ?? template.reasoningEffort;
-    const rawList = nestedConfig?.reasoningEffortList ?? template.reasoningEffortList;
-
-    if (reasoning !== true || reasoningEffort !== true || !Array.isArray(rawList)) continue;
-    const normalizedLevels = normalizeReasoningEffortList(
-      rawList.filter((item): item is string => typeof item === 'string')
-    );
-    if (normalizedLevels.length === 0) continue;
-    if (!presetMap.has(template.model)) {
-      presetMap.set(template.model, normalizedLevels);
+  for (const doc of documents) {
+    if (
+      doc.type !== ModelTypeEnum.llm ||
+      !doc.config.reasoning ||
+      !doc.config.reasoningEffort ||
+      !doc.config.reasoningEffortList?.length
+    ) {
+      continue;
+    }
+    if (!presetMap.has(doc.model)) {
+      presetMap.set(doc.model, doc.config.reasoningEffortList);
     }
   }
 
@@ -159,10 +255,7 @@ export const inspectModelReasoningEffortRecord = (
   };
 };
 
-/**
- * 按 `_id` 稳定游标分批预检所有待扫描 LLM 源记录，在首次写入前拦截损坏数据，
- * 内存消耗恒定为 `O(batchSize)`。
- */
+/** 按 `_id` 稳定游标分批预检所有待扫描 LLM 源记录，在首次写入前拦截损坏数据。 */
 export const precheckModelReasoningEffortBatch = async ({
   presetMap,
   endId,
@@ -178,48 +271,32 @@ export const precheckModelReasoningEffortBatch = async ({
 }): Promise<SystemMigrationFailedRecord[]> => {
   if (!endId) return [];
 
-  const maxFailedRecords = batchSize * 10;
+  const maxFailedRecords = getMaxFailedRecords(batchSize);
   const failures: SystemMigrationFailedRecord[] = [];
-  let lastId: Types.ObjectId | undefined;
-  const upperBound = new Types.ObjectId(endId);
 
-  while (true) {
-    signal.throwIfAborted();
-    await assertActive();
-
-    const records = (await MongoAIModel.collection
-      .find(
-        {
-          type: ModelTypeEnum.llm,
-          _id: {
-            $lte: upperBound,
-            ...(lastId ? { $gt: lastId } : {})
+  await iterateLlmModelBatches({
+    filter: {},
+    projection: LLM_BACKFILL_PROJECTION,
+    endId,
+    batchSize,
+    signal,
+    assertActive,
+    onBatch: (records) => {
+      for (const record of records) {
+        const verdict = inspectModelReasoningEffortRecord(record, presetMap);
+        if (verdict.kind === 'invalid') {
+          failures.push({
+            stageKey: 'backfill',
+            data: { id: String(record._id) },
+            reason: { message: verdict.message }
+          });
+          if (failures.length >= maxFailedRecords) {
+            return false;
           }
-        },
-        { projection: LLM_BACKFILL_PROJECTION }
-      )
-      .sort({ _id: 1 })
-      .limit(batchSize)
-      .toArray()) as RawLlmModelRecord[];
-
-    if (records.length === 0) break;
-
-    for (const record of records) {
-      const verdict = inspectModelReasoningEffortRecord(record, presetMap);
-      if (verdict.kind === 'invalid') {
-        failures.push({
-          stageKey: 'backfill',
-          data: { id: String(record._id) },
-          reason: { message: verdict.message }
-        });
-        if (failures.length >= maxFailedRecords) {
-          return failures;
         }
       }
     }
-
-    lastId = records.at(-1)!._id;
-  }
+  });
 
   return failures;
 };
@@ -240,21 +317,17 @@ export const processBackfillModelBatch = async ({
   signal: AbortSignal;
   assertActive: () => Promise<void>;
 }): Promise<{
-  backfilledCount: number;
-  skippedCount: number;
   resolvedIds: string[];
   failures: SystemMigrationFailedRecord[];
 }> => {
   const grouped = new Map<string, ScopedBackfillGroup>();
   const failures: SystemMigrationFailedRecord[] = [];
   const resolvedIds: string[] = [];
-  let skippedCount = 0;
 
   for (const record of records) {
     const id = String(record._id);
     const verdict = inspectModelReasoningEffortRecord(record, presetMap);
     if (verdict.kind === 'skip') {
-      skippedCount += 1;
       resolvedIds.push(id);
       continue;
     }
@@ -275,7 +348,6 @@ export const processBackfillModelBatch = async ({
     grouped.set(verdict.scopeKey, group);
   }
 
-  let backfilledCount = 0;
   const sortedGroups = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   for (const [, group] of sortedGroups) {
@@ -316,8 +388,6 @@ export const processBackfillModelBatch = async ({
       { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } }
     );
 
-    backfilledCount += modifiedCount;
-    skippedCount += group.candidates.length - modifiedCount;
     for (const candidate of group.candidates) {
       resolvedIds.push(String(candidate._id));
     }
@@ -332,8 +402,6 @@ export const processBackfillModelBatch = async ({
   }
 
   return {
-    backfilledCount,
-    skippedCount,
     resolvedIds,
     failures
   };
@@ -360,57 +428,43 @@ export const validateBackfilledModelReasoningEffortList = async ({
   const presetModels = [...presetMap.keys()];
   if (presetModels.length === 0) return { verifiedCount: 0, failures: [] };
 
-  const maxFailedRecords = batchSize * 10;
+  const maxFailedRecords = getMaxFailedRecords(batchSize);
   const failures: SystemMigrationFailedRecord[] = [];
   let verifiedCount = 0;
-  let lastId: Types.ObjectId | undefined;
 
-  while (true) {
-    signal.throwIfAborted();
-    await assertActive();
-
-    const records = await MongoAIModel.collection
-      .find(
-        {
-          type: ModelTypeEnum.llm,
-          'config.reasoning': true,
-          'config.reasoningEffort': true,
-          model: { $in: presetModels },
-          ...(lastId ? { _id: { $gt: lastId } } : {})
-        },
-        {
-          projection: {
-            _id: 1,
-            'config.reasoningEffortList': 1
+  await iterateLlmModelBatches({
+    filter: {
+      'config.reasoning': true,
+      'config.reasoningEffort': true,
+      model: { $in: presetModels }
+    },
+    projection: {
+      _id: 1,
+      'config.reasoningEffortList': 1
+    },
+    batchSize,
+    signal,
+    assertActive,
+    onBatch: (records) => {
+      for (const record of records) {
+        const rawList = record.config?.reasoningEffortList;
+        if (!ValidReasoningEffortListSchema.safeParse(rawList).success) {
+          failures.push({
+            stageKey: 'validation',
+            data: { id: String(record._id) },
+            reason: {
+              message: 'Model reasoningEffortList is missing or invalid; repair before retrying'
+            }
+          });
+          if (failures.length >= maxFailedRecords) {
+            return false;
           }
+        } else {
+          verifiedCount += 1;
         }
-      )
-      .sort({ _id: 1 })
-      .limit(batchSize)
-      .toArray();
-
-    if (records.length === 0) break;
-
-    for (const record of records) {
-      const rawList = (record.config as Record<string, unknown> | undefined)?.reasoningEffortList;
-      if (!ValidReasoningEffortListSchema.safeParse(rawList).success) {
-        failures.push({
-          stageKey: 'validation',
-          data: { id: String(record._id) },
-          reason: {
-            message: 'Model reasoningEffortList is missing or invalid; repair before retrying'
-          }
-        });
-        if (failures.length >= maxFailedRecords) {
-          return { verifiedCount, failures };
-        }
-      } else {
-        verifiedCount += 1;
       }
     }
-
-    lastId = records.at(-1)!._id as Types.ObjectId;
-  }
+  });
 
   return { verifiedCount, failures };
 };

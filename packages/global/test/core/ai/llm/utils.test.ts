@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { REASONING_EFFORT_LEVELS } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelScopeEnum,
+  ModelTypeEnum,
+  REASONING_EFFORT_LEVELS
+} from '@fastgpt/global/core/ai/constants';
 import {
   getLLMSupportParams,
   getLowestReasoningEffort,
   getSupportedReasoningEfforts,
+  normalizeModelReasoningEffort,
   normalizeReasoningEffortList,
   removeDatasetCiteText
 } from '@fastgpt/global/core/ai/llm/utils';
+import { normalizeModelReasoningEffortForSave } from '@fastgpt/global/core/ai/model/utils';
 
 describe('removeDatasetCiteText', () => {
   describe('when retainDatasetCite is true', () => {
@@ -275,5 +281,92 @@ describe('reasoning effort level helpers', () => {
       })
     ).toBe('none');
     expect(getLowestReasoningEffort(undefined)).toBeUndefined();
+  });
+
+  it('normalizes selected reasoning effort against supported levels', () => {
+    expect(normalizeModelReasoningEffort('high', ['low', 'high'])).toBe('high');
+    expect(normalizeModelReasoningEffort('none', ['low', 'high'])).toBeNull();
+    expect(normalizeModelReasoningEffort('high', [])).toBeNull();
+    expect(normalizeModelReasoningEffort(null, ['low', 'high'])).toBeNull();
+    expect(normalizeModelReasoningEffort(undefined, ['low', 'high'])).toBeNull();
+  });
+
+  it('normalizes LLM reasoningEffortList invariants on save while preserving unset defaults', () => {
+    const baseModel = {
+      type: ModelTypeEnum.llm as const,
+      provider: 'OpenAI',
+      model: 'gpt-test',
+      name: 'GPT Test',
+      scope: ModelScopeEnum.system,
+      config: {
+        maxContext: 128000,
+        maxResponse: 16000,
+        quoteMaxToken: 100000
+      }
+    };
+
+    // 1) 关闭深度思考或关闭思考配置时剥离矛盾的列表并收敛开关
+    expect(
+      normalizeModelReasoningEffortForSave({
+        ...baseModel,
+        config: {
+          ...baseModel.config,
+          reasoning: false,
+          reasoningEffort: true,
+          reasoningEffortList: ['low', 'high']
+        }
+      }).config
+    ).toEqual({
+      ...baseModel.config,
+      reasoning: false,
+      reasoningEffort: false
+    });
+    expect(
+      normalizeModelReasoningEffortForSave({
+        ...baseModel,
+        config: {
+          ...baseModel.config,
+          reasoning: true,
+          reasoningEffort: false,
+          reasoningEffortList: ['low']
+        }
+      }).config
+    ).toEqual({
+      ...baseModel.config,
+      reasoning: true,
+      reasoningEffort: false
+    });
+
+    // 2) 非空列表去重、排序并对齐 reasoningEffort: true
+    expect(
+      normalizeModelReasoningEffortForSave({
+        ...baseModel,
+        config: {
+          ...baseModel.config,
+          reasoning: true,
+          reasoningEffortList: ['high', 'low', 'high']
+        }
+      }).config
+    ).toEqual({
+      ...baseModel.config,
+      reasoning: true,
+      reasoningEffort: true,
+      reasoningEffortList: ['low', 'high']
+    });
+
+    // 3) 未配置或空数组时省略 reasoningEffortList，保留缺省语义供运行期兜底与手动迁移回填
+    for (const rawList of [undefined, [] as []]) {
+      const saved = normalizeModelReasoningEffortForSave({
+        ...baseModel,
+        config: {
+          ...baseModel.config,
+          reasoning: true,
+          reasoningEffort: true,
+          ...(rawList !== undefined ? { reasoningEffortList: rawList } : {})
+        }
+      });
+      expect(saved.config.reasoningEffort).toBe(true);
+      expect('reasoningEffortList' in saved.config).toBe(false);
+    }
   });
 });

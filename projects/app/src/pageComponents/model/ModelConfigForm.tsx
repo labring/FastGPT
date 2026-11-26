@@ -27,6 +27,7 @@ import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
 } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelReasoningEffortForSave } from '@fastgpt/global/core/ai/model/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -595,17 +596,13 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
-        if (!data.config.reasoning || !data.config.reasoningEffort) {
+        // 表单初始化已将存量模型展开为可见等级；用户主动清空全部等级等价于关闭思考配置。
+        if (
+          data.config.reasoning &&
+          data.config.reasoningEffort &&
+          normalizeReasoningEffortList(data.config.reasoningEffortList).length === 0
+        ) {
           data.config.reasoningEffort = false;
-          delete data.config.reasoningEffortList;
-        } else {
-          const normalizedLevels = normalizeReasoningEffortList(data.config.reasoningEffortList);
-          if (normalizedLevels.length === 0) {
-            data.config.reasoningEffort = false;
-            delete data.config.reasoningEffortList;
-          } else {
-            data.config.reasoningEffortList = normalizedLevels;
-          }
         }
 
         const tiers = getRuntimeResolvedPriceTiers(data);
@@ -634,7 +631,7 @@ const ModelConfigForm = ({
         delete modelData.isUpcomingDeprecation;
       }
 
-      return onSubmit(normalizeModelPricingForSave(data));
+      return onSubmit(normalizeModelReasoningEffortForSave(normalizeModelPricingForSave(data)));
     },
     {
       onSuccess: () => {
