@@ -9,7 +9,11 @@ import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import zlib from 'node:zlib';
-import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
+import {
+  createProxyAxios,
+  resolveSafeRequestAgents,
+  type SafeAxiosRequestConfig
+} from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { getServiceAxiosMaxContentLength } from '../../../common/system/constants';
 
@@ -1169,6 +1173,203 @@ describe('axios.ts', () => {
       } finally {
         await closeServer(server);
       }
+    });
+  });
+
+  describe('resolveSafeRequestAgents', () => {
+    it('非法 URL、非 HTTP(S) 协议和内网地址在配置代理时仍应直接拒绝', async () => {
+      clearProxyEnv();
+      process.env.HTTP_PROXY = 'http://127.0.0.1:8080';
+      process.env.HTTPS_PROXY = 'http://127.0.0.1:8080';
+
+      await expect(resolveSafeRequestAgents({ url: 'not-a-url' })).rejects.toThrow(
+        'Invalid request URL'
+      );
+      await expect(resolveSafeRequestAgents({ url: 'file:///etc/passwd' })).rejects.toThrow(
+        'Unsupported request protocol: file:'
+      );
+      await expect(resolveSafeRequestAgents({ url: 'http://127.0.0.1/secret' })).rejects.toThrow(
+        PRIVATE_URL_TEXT
+      );
+      await expect(
+        resolveSafeRequestAgents({ url: 'http://169.254.169.254/latest/meta-data/' })
+      ).rejects.toThrow(PRIVATE_URL_TEXT);
+    });
+
+    it('命中环境代理时应跳过本机 pinning lookup 并按协议填充唯一 agent 槽位', async () => {
+      clearProxyEnv();
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const lookupSpy = vi.spyOn(dns, 'lookup');
+
+      const seenUrls: string[] = [];
+      const seenProxyAuth: (string | undefined)[] = [];
+      const proxy = await listen((req, res) => {
+        seenUrls.push(req.url ?? '');
+        seenProxyAuth.push(req.headers['proxy-authorization']);
+        res.end('proxy-forward-ok');
+      });
+
+      try {
+        process.env.HTTP_PROXY = `http://crawl-user:crawl-pass@127.0.0.1:${getServerPort(proxy)}`;
+        const agents = await resolveSafeRequestAgents({
+          url: 'http://proxy-only.example.test/page'
+        });
+
+        expect(agents.http).toBeDefined();
+        expect(agents.https).toBeUndefined();
+        expect(agents.http2).toBeUndefined();
+        expect(lookupSpy).not.toHaveBeenCalled();
+
+        const body = await new Promise<string>((resolve, reject) => {
+          const req = http.get(
+            'http://proxy-only.example.test/page',
+            { agent: agents.http },
+            (res) => {
+              const chunks: Buffer[] = [];
+              res.on('data', (chunk: Buffer) => chunks.push(chunk));
+              res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+              res.on('error', reject);
+            }
+          );
+          req.on('error', reject);
+        });
+
+        expect(body).toBe('proxy-forward-ok');
+        expect(seenUrls).toEqual(['http://proxy-only.example.test/page']);
+        expect(seenProxyAuth).toEqual([
+          `Basic ${Buffer.from('crawl-user:crawl-pass').toString('base64')}`
+        ]);
+      } finally {
+        await closeServer(proxy);
+      }
+    });
+
+    it('HTTPS 请求经代理时应支持 rejectUnauthorized 开关，直连与 NO_PROXY 应返回 IP-pinned agent', async () => {
+      clearProxyEnv();
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      const cert = readFileSync(new URL('./fixtures/connect-test-cert.pem.txt', import.meta.url));
+      const key = readFileSync(new URL('./fixtures/connect-test-key.pem.txt', import.meta.url));
+      const target = await startServer(
+        https.createServer({ cert, key }, (_req, res) => res.end('https-proxy-ok'))
+      );
+      const targetPort = getServerPort(target);
+
+      const connectSockets = new Set<net.Socket>();
+      const connectAuthorities: string[] = [];
+      const proxy = await listen((_req, res) => {
+        res.statusCode = 405;
+        res.end();
+      });
+      proxy.on('connect', (req, clientSocket, head) => {
+        connectAuthorities.push(req.url ?? '');
+        connectSockets.add(clientSocket);
+        const upstream = net.connect(targetPort, '127.0.0.1', () => {
+          connectSockets.add(upstream);
+          clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+          if (head.length > 0) upstream.write(head);
+          upstream.pipe(clientSocket);
+          clientSocket.pipe(upstream);
+        });
+        upstream.on('error', () => clientSocket.destroy());
+        clientSocket.on('close', () => {
+          connectSockets.delete(clientSocket);
+          connectSockets.delete(upstream);
+          upstream.destroy();
+        });
+      });
+
+      const requestHttps = (url: string, agent: https.Agent) =>
+        new Promise<string>((resolve, reject) => {
+          const req = https.get(url, { agent }, (res) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk: Buffer) => chunks.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+            res.on('error', reject);
+          });
+          req.on('error', reject);
+        });
+
+      try {
+        process.env.HTTPS_PROXY = `http://127.0.0.1:${getServerPort(proxy)}`;
+        process.env.NO_PROXY = 'direct.example.test';
+
+        const strictAgents = await resolveSafeRequestAgents({
+          url: `https://target.example.test:${targetPort}/strict`,
+          rejectUnauthorized: true
+        });
+        expect(strictAgents.http).toBeUndefined();
+        expect(strictAgents.https).toBeDefined();
+        expect(strictAgents.http2).toBeUndefined();
+        await expect(
+          requestHttps(`https://target.example.test:${targetPort}/strict`, strictAgents.https!)
+        ).rejects.toThrow();
+
+        const relaxedAgents = await resolveSafeRequestAgents({
+          url: `https://target.example.test:${targetPort}/relaxed`,
+          rejectUnauthorized: false
+        });
+        expect(
+          await requestHttps(
+            `https://target.example.test:${targetPort}/relaxed`,
+            relaxedAgents.https!
+          )
+        ).toBe('https-proxy-ok');
+        expect(connectAuthorities).toEqual([
+          `target.example.test:${targetPort}`,
+          `target.example.test:${targetPort}`
+        ]);
+
+        // 命中 NO_PROXY 时回到直连 IP pinning，并拦截 DNS rebinding 到内网 IP。
+        getTestInstanceConfig().security.checkInternalIp = true;
+        vi.spyOn(dns, 'resolve4').mockResolvedValue(['93.184.216.34']);
+        vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+        vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '10.0.0.9', family: 4 }] as any);
+        await expect(
+          resolveSafeRequestAgents({ url: 'https://direct.example.test/rebind' })
+        ).rejects.toThrow(PRIVATE_URL_TEXT);
+
+        vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as any);
+        const directAgents = await resolveSafeRequestAgents({
+          url: 'https://direct.example.test/ok'
+        });
+        expect(directAgents.http).toBeUndefined();
+        expect(directAgents.https).toBeInstanceOf(https.Agent);
+        expect(directAgents.http2).toBeUndefined();
+      } finally {
+        for (const socket of connectSockets) socket.destroy();
+        await Promise.all([closeServer(proxy), closeServer(target)]);
+      }
+    });
+
+    it('非法或不支持的环境代理应抛出不含凭据的 ServerConfigError', async () => {
+      clearProxyEnv();
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+
+      process.env.HTTP_PROXY = 'http://secret-user:secret-pass@[invalid-host';
+      let invalidError: unknown;
+      try {
+        await resolveSafeRequestAgents({ url: 'http://proxy-only.example.test/invalid' });
+      } catch (error) {
+        invalidError = error;
+      }
+      expect(isServerConfigError(invalidError)).toBe(true);
+      expect(JSON.stringify(invalidError)).not.toContain('secret-pass');
+      expect((invalidError as Error).message).not.toContain('secret-pass');
+
+      process.env.HTTP_PROXY = 'ftp://secret-user:secret-pass@proxy.example.test:21';
+      let unsupportedError: unknown;
+      try {
+        await resolveSafeRequestAgents({ url: 'http://proxy-only.example.test/unsupported' });
+      } catch (error) {
+        unsupportedError = error;
+      }
+      expect(isServerConfigError(unsupportedError)).toBe(true);
+      expect((unsupportedError as Error).message).toContain('Unsupported outbound proxy protocol');
+      expect((unsupportedError as Error).message).not.toContain('secret-pass');
     });
   });
 });
