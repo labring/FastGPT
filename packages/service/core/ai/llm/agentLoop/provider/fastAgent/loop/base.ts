@@ -9,6 +9,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import {
   ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE,
   LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
 } from '@fastgpt/global/core/ai/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
@@ -478,7 +479,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       answerText: answer,
       reasoningText: reasoning,
       toolCalls = [],
-      moderatedToolCallIds = [],
+      blockedToolCalls = {},
       usage,
       responseEmptyTip,
       assistantMessage: llmAssistantMessage,
@@ -588,7 +589,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     if (toolCalls.length) {
-      const moderatedToolCallIdSet = new Set(moderatedToolCallIds);
       // 3. Call tools
       const continuationMessages: string[] = [];
       type ToolRunResult = {
@@ -605,17 +605,23 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
-        // length 无法保证同轮任何工具参数完整，不能交给 JSON 修复后执行。
-        // 按请求语言补齐工具结果后继续模型循环，不把截断升级为请求失败。
-        if (finishReason === 'length' || moderatedToolCallIdSet.has(tool.id)) {
-          const response =
-            finishReason === 'length'
-              ? parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang)
-              : MODERATION_BLOCKED_REPLACE_TEXT;
+        // 统一拦截不可执行的工具调用（超长截断、非法参数、参数审核拦截）：
+        // 不触发真实工具副作用，按原因回填固定文案，让模型在下一轮自主修正或继续。
+        const blockedReason = blockedToolCalls[tool.id];
+        if (blockedReason) {
+          const response = (() => {
+            if (blockedReason === 'length') {
+              return parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang);
+            }
+            if (blockedReason === 'invalid_args') {
+              return parseI18nString(LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE, lang);
+            }
+            return MODERATION_BLOCKED_REPLACE_TEXT;
+          })();
           onToolRunEnd?.({
             call: tool,
             response,
-            ...(finishReason === 'length' ? { errorMessage: response } : {}),
+            ...(blockedReason !== 'moderation' ? { errorMessage: response } : {}),
             assistantMessages: [],
             seconds: 0,
             usages: []

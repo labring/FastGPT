@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   isStreamCompletionResponse,
+  isValidToolArguments,
   normalizeCompletionFinishReason,
   normalizeLLMCacheUsage,
-  normalizeNativeToolCalls
+  normalizeNativeToolCalls,
+  reconcileFinalToolCalls
 } from '@fastgpt/service/core/ai/llm/request/response/normalize';
 
 describe('normalizeNativeToolCalls', () => {
@@ -161,4 +163,125 @@ describe('normalizeLLMCacheUsage', () => {
       })
     ).toEqual({ cacheReadTokens: expected[0], cacheCreationTokens: expected[1] });
   });
+});
+
+describe('isValidToolArguments', () => {
+  it('accepts only JSON object strings and rejects empty, truncated, and non-object JSON', () => {
+    expect(isValidToolArguments('{}')).toBe(true);
+    expect(isValidToolArguments('{"a":1}')).toBe(true);
+    expect(isValidToolArguments(' { "spaced": true } ')).toBe(true);
+
+    expect(isValidToolArguments('')).toBe(false);
+    expect(isValidToolArguments('   ')).toBe(false);
+    expect(isValidToolArguments('{"q":')).toBe(false);
+    expect(isValidToolArguments('{')).toBe(false);
+    expect(isValidToolArguments('[1,2]')).toBe(false);
+    expect(isValidToolArguments('"plain-string"')).toBe(false);
+    expect(isValidToolArguments('123')).toBe(false);
+    expect(isValidToolArguments('true')).toBe(false);
+    expect(isValidToolArguments('null')).toBe(false);
+    expect(isValidToolArguments({})).toBe(false);
+  });
+});
+
+describe('reconcileFinalToolCalls', () => {
+  const mkCall = (id: string, args: string, name = 'search') => ({
+    id,
+    type: 'function' as const,
+    function: { name, arguments: args }
+  });
+
+  it.each(['close', 'error', 'content_filter'] as const)(
+    'drops all tool calls on %s even when arguments are valid JSON objects',
+    (finishReason) => {
+      const result = reconcileFinalToolCalls({
+        toolCalls: [mkCall('valid', '{"q":"ok"}'), mkCall('broken', '{"q":')],
+        finishReason
+      });
+
+      expect(result.toolCalls).toEqual([]);
+      expect(result.blockedToolCalls).toEqual({});
+    }
+  );
+
+  it('rewrites all tool call arguments to {} and marks length (preserving moderation) on length', () => {
+    const result = reconcileFinalToolCalls({
+      toolCalls: [
+        mkCall('trunc', '{"q":"incomplete'),
+        mkCall('valid_looking', '{"q":"ok"}'),
+        mkCall('mod', '{}')
+      ],
+      finishReason: 'length',
+      moderatedToolCallIds: new Set(['mod'])
+    });
+
+    expect(result.toolCalls).toEqual([
+      mkCall('trunc', '{}'),
+      mkCall('valid_looking', '{}'),
+      mkCall('mod', '{}')
+    ]);
+    expect(result.blockedToolCalls).toEqual({
+      trunc: 'length',
+      valid_looking: 'length',
+      mod: 'moderation'
+    });
+  });
+
+  it('keeps valid or empty calls and drops truncated or non-object calls on abnormal_close', () => {
+    const valid = mkCall('ok', '{"q": 1}');
+    const result = reconcileFinalToolCalls({
+      toolCalls: [
+        valid,
+        mkCall('empty', '   '),
+        mkCall('trunc', '{"q":'),
+        mkCall('arr', '[1,2]'),
+        mkCall('str', '"plain"'),
+        mkCall('mod', '{}')
+      ],
+      finishReason: 'abnormal_close',
+      moderatedToolCallIds: new Set(['mod'])
+    });
+
+    expect(result.toolCalls).toEqual([valid, mkCall('empty', '{}'), mkCall('mod', '{}')]);
+    expect(result.toolCalls?.[0]).toBe(valid);
+    expect(result.blockedToolCalls).toEqual({ mod: 'moderation' });
+  });
+
+  it.each(['tool_calls', 'function_call', 'stop'] as const)(
+    'keeps valid/empty calls and rewrites invalid/non-object calls to {} with invalid_args on %s',
+    (finishReason) => {
+      const valid = mkCall('ok', ' { "q": 1 } ');
+      const result = reconcileFinalToolCalls({
+        toolCalls: [
+          valid,
+          mkCall('empty', ''),
+          mkCall('trunc', '{"q":'),
+          mkCall('arr', '[1,2]'),
+          mkCall('num', '123'),
+          mkCall('null_val', 'null'),
+          mkCall('mod', '{}')
+        ],
+        finishReason,
+        moderatedToolCallIds: new Set(['mod'])
+      });
+
+      expect(result.toolCalls).toEqual([
+        valid,
+        mkCall('empty', '{}'),
+        mkCall('trunc', '{}'),
+        mkCall('arr', '{}'),
+        mkCall('num', '{}'),
+        mkCall('null_val', '{}'),
+        mkCall('mod', '{}')
+      ]);
+      expect(result.toolCalls?.[0]).toBe(valid);
+      expect(result.blockedToolCalls).toEqual({
+        trunc: 'invalid_args',
+        arr: 'invalid_args',
+        num: 'invalid_args',
+        null_val: 'invalid_args',
+        mod: 'moderation'
+      });
+    }
+  );
 });
