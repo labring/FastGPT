@@ -139,18 +139,28 @@ export const getLogIdentity = ({
 
 export type AppLogIpDisplayType = 'all' | 'only_ip' | 'only_region';
 
+/**
+ * 归一化日志中的原始 IP。
+ * 历史 v2 对话接口允许客户端自由结构 metadata 覆盖 originIp，读取边界需将非字符串或空白视为缺失。
+ */
+export const normalizeOriginIp = (originIp: unknown): string | undefined => {
+  if (typeof originIp !== 'string') return undefined;
+  const trimmed = originIp.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 /** 统一格式化日志中的 IP 与属地展示文案，保持列表展示与 CSV 导出口径一致。 */
 export const formatAppLogRegion = ({
   originIp,
   region,
   displayType = 'all'
 }: {
-  originIp?: string | null;
-  region?: string | null;
+  originIp?: unknown;
+  region?: unknown;
   displayType?: AppLogIpDisplayType;
 }): string => {
-  const normalizedIp = originIp?.trim() || '';
-  const normalizedRegion = region?.trim() || '';
+  const normalizedIp = normalizeOriginIp(originIp) ?? '';
+  const normalizedRegion = typeof region === 'string' ? region.trim() : '';
 
   if (displayType === 'only_ip') {
     return normalizedIp || '-';

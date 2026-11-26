@@ -12,7 +12,8 @@ import {
   isUnselectedLogUserFilter,
   isUnselectedLogSourceFilter,
   getLogIdentity,
-  normalizeAppLogKeys
+  normalizeAppLogKeys,
+  normalizeOriginIp
 } from '@fastgpt/global/core/app/logs/utils';
 
 describe('formatDateByTimespan', () => {
@@ -352,8 +353,22 @@ describe('getLogIdentity', () => {
   });
 });
 
+describe('normalizeOriginIp', () => {
+  it('returns trimmed non-empty strings and treats non-string legacy values as missing', () => {
+    expect(normalizeOriginIp(' 139.162.20.230 ')).toBe('139.162.20.230');
+    expect(normalizeOriginIp('')).toBeUndefined();
+    expect(normalizeOriginIp('   ')).toBeUndefined();
+    expect(normalizeOriginIp(undefined)).toBeUndefined();
+    expect(normalizeOriginIp(null)).toBeUndefined();
+    expect(normalizeOriginIp(12345)).toBeUndefined();
+    expect(normalizeOriginIp({ ip: '139.162.20.230' })).toBeUndefined();
+    expect(normalizeOriginIp(['139.162.20.230'])).toBeUndefined();
+    expect(normalizeOriginIp(true)).toBeUndefined();
+  });
+});
+
 describe('formatAppLogRegion', () => {
-  it('formats region and IP together by default', () => {
+  it('formats region and IP together by default and ignores non-string values', () => {
     expect(formatAppLogRegion({ originIp: '139.162.20.230', region: '新加坡，新加坡' })).toBe(
       '新加坡，新加坡: 139.162.20.230'
     );
@@ -368,6 +383,8 @@ describe('formatAppLogRegion', () => {
     );
     expect(formatAppLogRegion({ originIp: undefined, region: '其他' })).toBe('-');
     expect(formatAppLogRegion({ originIp: '   ', region: '其他' })).toBe('-');
+    expect(formatAppLogRegion({ originIp: 12345, region: '其他' })).toBe('-');
+    expect(formatAppLogRegion({ originIp: { ip: '1.1.1.1' }, region: 999 })).toBe('-');
   });
 
   it('supports only_ip and only_region display modes', () => {

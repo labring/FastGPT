@@ -255,7 +255,7 @@ export type SearchAppChatLogsResponse = z.infer<typeof SearchAppChatLogsResponse
 
 export const ExportChatLogsResponseSchema = z.string().meta({
   description:
-    '导出的 CSV 文件内容；鉴权者及回落到 tmbId 的使用者以 id:成员名 展示，无成员名时仅展示 ID；outLinkUid 保留原值；IP及属地列在存在原始 IP 时以 属地: IP 展示，缺失 IP 时展示 -'
+    "导出的 CSV 文件内容；鉴权者及回落到 tmbId 的使用者以 id:成员名 展示，无成员名时仅展示 ID；outLinkUid 保留原值；IP及属地列在存在原始 IP 时以 属地: IP 展示，缺失 IP 时按防公式注入规则转义为 '-"
 });
 export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 

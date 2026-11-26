@@ -734,6 +734,68 @@ describe('pushChatRecords', () => {
       });
     });
 
+    it('should prioritize systemMetadata.originIp over client metadata and strip spoofed client originIp', async () => {
+      const props1 = createMockProps(
+        {
+          chatId: 'system-metadata-origin-ip',
+          source: ChatSourceEnum.api,
+          metadata: {
+            custom: 'keep',
+            originIp: 12345
+          },
+          systemMetadata: {
+            originIp: '139.162.20.230'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props1);
+
+      const chat1 = await MongoChat.findOne({ appId: testAppId, chatId: props1.chatId }).lean();
+      expect(chat1?.metadata).toEqual({
+        custom: 'keep',
+        originIp: '139.162.20.230'
+      });
+
+      // 后续轮次未传 systemMetadata 时，客户端 metadata.originIp 不得覆盖已保存的服务端 originIp。
+      const props2 = createMockProps(
+        {
+          chatId: props1.chatId,
+          source: ChatSourceEnum.api,
+          metadata: {
+            originIp: { spoof: true },
+            extra: 'v2'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props2);
+
+      const chat2 = await MongoChat.findOne({ appId: testAppId, chatId: props1.chatId }).lean();
+      expect(chat2?.metadata).toEqual({
+        custom: 'keep',
+        extra: 'v2',
+        originIp: '139.162.20.230'
+      });
+
+      // 无 systemMetadata 且无既有合法 originIp 时，客户端传入的 originIp 应被剥离。
+      const props3 = createMockProps(
+        {
+          chatId: 'client-only-origin-ip',
+          source: ChatSourceEnum.api,
+          metadata: {
+            originIp: '8.8.8.8',
+            custom: 'ok'
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props3);
+
+      const chat3 = await MongoChat.findOne({ appId: testAppId, chatId: props3.chatId }).lean();
+      expect(chat3?.metadata).toEqual({ custom: 'ok' });
+    });
+
     it('should track duration seconds', async () => {
       const props = createMockProps(
         {
