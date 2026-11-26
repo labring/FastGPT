@@ -97,9 +97,9 @@ describe('PiAgent provider model bridge', () => {
         reasoningEffortList: []
       }
     });
-    expect(getPiThinkingLevel(emptyEffortModel as any, 'high')).toBe('off');
-    expect(resolvePiReasoningEffort(emptyEffortModel as any, 'high')).toBeUndefined();
-    expect(buildPiModel(emptyEffortModel as any).compat?.supportsReasoningEffort).toBe(false);
+    expect(getPiThinkingLevel(emptyEffortModel as any, 'high')).toBe('high');
+    expect(resolvePiReasoningEffort(emptyEffortModel as any, 'high')).toBe('high');
+    expect(buildPiModel(emptyEffortModel as any).compat?.supportsReasoningEffort).toBe(true);
   });
 
   it('passes reasoning model metadata into pi-ai model config', () => {

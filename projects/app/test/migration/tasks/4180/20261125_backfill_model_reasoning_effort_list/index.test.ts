@@ -53,9 +53,11 @@ const createContext = (initial?: {
   checkpoint?: unknown;
   failures?: SystemMigrationFailedRecord[];
   assertActive?: () => Promise<void>;
+  onSaveCheckpoint?: (value: unknown, count: number) => Promise<void> | void;
 }) => {
   let checkpoint: unknown = structuredClone(initial?.checkpoint);
   let failures: SystemMigrationFailedRecord[] = structuredClone(initial?.failures ?? []);
+  let saveCheckpointCount = 0;
   const callOrder: string[] = [];
   const progressCalls: Array<{ key: string; status: SystemMigrationStatusEnum }> = [];
 
@@ -68,7 +70,9 @@ const createContext = (initial?: {
       return schema.parse(structuredClone(checkpoint));
     }),
     saveCheckpoint: vi.fn(async (value: unknown) => {
+      saveCheckpointCount += 1;
       callOrder.push('saveCheckpoint');
+      await initial?.onSaveCheckpoint?.(value, saveCheckpointCount);
       checkpoint = structuredClone(value);
     }),
     getFailedRecords: vi.fn(async () => structuredClone(failures)),
@@ -177,7 +181,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     vi.restoreAllMocks();
   });
 
-  it('backfills missing presets in bounded batches across scopes, preserves manual configs, and is idempotent on rerun', async () => {
+  it('backfills missing or empty presets in bounded batches across scopes, preserves non-empty manual configs, and is idempotent on rerun', async () => {
     const teamId = new Types.ObjectId();
     const systemLegacy = await seedModel({ model: 'glm-5' });
     const teamLegacy = await seedModel({
@@ -200,7 +204,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         reasoningEffortList: ['high']
       }
     });
-    const manualEmpty = await seedModel({
+    const emptyListModel = await seedModel({
       model: 'gemini-2.5-pro',
       config: {
         maxContext: 128000,
@@ -233,16 +237,12 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
 
     expect(firstResult).toEqual({
       presetCount: 2,
-      scannedCount: 6,
-      backfilledCount: 2,
-      skippedCount: 4
+      verifiedCount: 4
     });
     expect(checkpoint()).toMatchObject({
       precheckPassed: true,
       backfillCompleted: true,
-      scannedCount: 6,
-      backfilledCount: 2,
-      skippedCount: 4
+      scannedCount: 6
     });
     expect(context.saveCheckpoint).toHaveBeenCalledTimes(5);
     expect(progressCalls.at(0)).toEqual({
@@ -271,8 +271,9 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     expect((await MongoAIModel.findById(manualSubset._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['high']
     });
-    expect((await MongoAIModel.findById(manualEmpty._id).lean())?.config).toMatchObject({
-      reasoningEffortList: []
+    // 空数组视作未配置，同样由插件预设回填
+    expect((await MongoAIModel.findById(emptyListModel._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['low', 'high']
     });
     expect(
       ((await MongoAIModel.findById(disabledEffort._id).lean())?.config as any)?.reasoningEffortList
@@ -281,25 +282,23 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
       ((await MongoAIModel.findById(customModel._id).lean())?.config as any)?.reasoningEffortList
     ).toBeUndefined();
 
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
     expect(
       await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamId) })
     ).toBe(1);
-    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledTimes(1);
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledTimes(2);
     expect(mocks.invalidateTeamModelCatalog).toHaveBeenCalledWith(String(teamId));
 
-    // 二次重跑完全幂等，不重复写入也不再递增目录修订号
+    // 二次重跑完全幂等，不重复写入也不再递增目录修订号，且终态计数保持一致
     vi.clearAllMocks();
     mocks.listModels.mockResolvedValue(pluginPresets);
     const secondRun = createContext();
     const secondResult = await runWithSmallBatch(secondRun.context);
     expect(secondResult).toEqual({
       presetCount: 2,
-      scannedCount: 6,
-      backfilledCount: 0,
-      skippedCount: 6
+      verifiedCount: 4
     });
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
     expect(
       await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamId) })
     ).toBe(1);
@@ -409,9 +408,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     const result = await runWithSmallBatch(retry.context);
     expect(result).toEqual({
       presetCount: 2,
-      scannedCount: 4,
-      backfilledCount: 3,
-      skippedCount: 1
+      verifiedCount: 4
     });
     expect((await MongoAIModel.findById(validSystem._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['none', 'high']
@@ -422,7 +419,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 
-  it('persists failed records before checkpoint, resumes from checkpoint without rescanning, and replays committed batches idempotently', async () => {
+  it('produces identical verifiedCount after crash-before-checkpoint and failed-snapshot replay without double counting', async () => {
     const teamA = new Types.ObjectId();
     const teamB = new Types.ObjectId();
     const m1 = await seedModel({ model: 'glm-5', scope: ModelScopeEnum.team, teamId: teamA });
@@ -448,26 +445,52 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
 
     const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(2);
 
-    // 模拟第一批已提交后（尚未到达第二批）在第二批遇到并发写入的坏记录：
-    // 校验 reportFailedRecords 必须先于 saveCheckpoint 调用。
-    await MongoAIModel.collection.updateMany(
-      { _id: { $in: [m1._id, m2._id] } },
-      { $set: { 'config.reasoningEffortList': ['high'] } }
+    // 场景 1：模拟业务事务已提交 m1/m2，但在保存第一批 checkpoint 前崩溃
+    const crashAfterCommit = createContext({
+      checkpoint: {
+        endId: String(m2._id),
+        lastId: null,
+        scannedCount: 0,
+        precheckPassed: true,
+        backfillCompleted: false
+      },
+      onSaveCheckpoint: (_value, count) => {
+        if (count === 1) throw new Error('Crash before saveCheckpoint');
+      }
+    });
+    await expect(runWithSmallBatch(crashAfterCommit.context)).rejects.toThrow(
+      'Crash before saveCheckpoint'
     );
+    expect((await MongoAIModel.findById(m1._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
+    ).toBe(1);
+
+    // 接管重放同一批次：CAS 不重复递增修订号；遇到第二批坏记录 m4 时先持久化错误快照再保存断点
     const resumedRun = createContext({
       checkpoint: {
         endId: String(m4._id),
-        lastId: String(m2._id),
-        scannedCount: 2,
-        backfilledCount: 2,
-        skippedCount: 0,
+        lastId: null,
+        scannedCount: 0,
         precheckPassed: true,
         backfillCompleted: false
       }
     });
-
     await expect(runWithSmallBatch(resumedRun.context)).rejects.toThrow('could not be backfilled');
-    expect(resumedRun.callOrder).toEqual(['reportFailedRecords', 'saveCheckpoint', 'fail']);
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
+    ).toBe(1);
+    expect(
+      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
+    ).toBe(1);
+    expect(resumedRun.callOrder).toEqual([
+      'saveCheckpoint',
+      'reportFailedRecords',
+      'saveCheckpoint',
+      'fail'
+    ]);
     expect(resumedRun.failures()).toEqual([
       {
         stageKey: 'backfill',
@@ -477,59 +500,37 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         }
       }
     ]);
-    // 第一批所属目录未被重扫，第二批有效记录已回填
-    expect(
-      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
-    ).toBe(0);
-    expect(
-      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
-    ).toBe(1);
-    expect((await MongoAIModel.findById(m3._id).lean())?.config).toMatchObject({
-      reasoningEffortList: ['none', 'high']
-    });
 
-    // 模拟崩溃发生在 reportFailedRecords 之后、saveCheckpoint 之前：从旧断点重放不重复追加错误也不重复递增修订号
-    const crashReplay = createContext({
+    // 场景 2：模拟 reportFailedRecords 已写入但游标尚未越过 m4，修复 m4 后重试不会重复计数
+    await MongoAIModel.collection.updateOne(
+      { _id: m4._id },
+      { $unset: { 'config.reasoningEffortList': '' } }
+    );
+    const replayAfterFailureSnapshot = createContext({
       checkpoint: {
         endId: String(m4._id),
         lastId: String(m2._id),
         scannedCount: 2,
-        backfilledCount: 2,
-        skippedCount: 0,
         precheckPassed: true,
         backfillCompleted: false
       },
       failures: resumedRun.failures()
     });
-    await expect(runWithSmallBatch(crashReplay.context)).rejects.toThrow('could not be backfilled');
-    expect(crashReplay.failures()).toHaveLength(1);
-    expect(
-      await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
-    ).toBe(1);
-
-    // 修复 m4 后从 checkpoint + failedRecords 重试：优先修复 m4 且不再重扫 m1/m2
-    await MongoAIModel.collection.updateOne(
-      { _id: m4._id },
-      { $unset: { 'config.reasoningEffortList': '' } }
-    );
-    const finalRetry = createContext({
-      checkpoint: resumedRun.checkpoint(),
-      failures: resumedRun.failures()
-    });
-    const finalResult = await runWithSmallBatch(finalRetry.context);
+    const finalResult = await runWithSmallBatch(replayAfterFailureSnapshot.context);
     expect(finalResult).toEqual({
       presetCount: 2,
-      scannedCount: 4,
-      backfilledCount: 4,
-      skippedCount: 0
+      verifiedCount: 4
     });
-    expect(finalRetry.failures()).toEqual([]);
+    expect(replayAfterFailureSnapshot.failures()).toEqual([]);
+    expect((await MongoAIModel.findById(m3._id).lean())?.config).toMatchObject({
+      reasoningEffortList: ['none', 'high']
+    });
     expect((await MongoAIModel.findById(m4._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['none', 'high']
     });
     expect(
       await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamA) })
-    ).toBe(0);
+    ).toBe(1);
     expect(
       await readModelCatalogRevision({ scope: ModelScopeEnum.team, teamId: String(teamB) })
     ).toBe(2);
@@ -550,8 +551,6 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         endId: String(m2._id),
         lastId: String(m1._id),
         scannedCount: 1,
-        backfilledCount: 0,
-        skippedCount: 0,
         precheckPassed: true,
         backfillCompleted: false
       },
@@ -579,7 +578,6 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     const lateInserted = await seedModel({ model: 'gemini-2.5-pro' });
 
     const runWithSmallBatch = createBackfillModelReasoningEffortListMigration(1);
-    // 模拟 backfill 已扫描到 initialModel 并标记完成，随后并发写入了缺失列表的 lateInserted
     await MongoAIModel.collection.updateOne(
       { _id: initialModel._id },
       { $set: { 'config.reasoningEffortList': ['none', 'high'] } }
@@ -589,8 +587,6 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         endId: String(initialModel._id),
         lastId: String(initialModel._id),
         scannedCount: 1,
-        backfilledCount: 1,
-        skippedCount: 0,
         precheckPassed: true,
         backfillCompleted: true
       }
@@ -607,7 +603,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
       }
     ]);
 
-    // 重试时优先处理 validation 留下的失败记录并补齐回填
+    // 重试时优先处理 validation 留下的失败记录并补齐回填，最终返回确定的复验总数 2
     const retry = createContext({
       checkpoint: first.checkpoint(),
       failures: first.failures()
@@ -615,9 +611,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
     const retryResult = await runWithSmallBatch(retry.context);
     expect(retryResult).toEqual({
       presetCount: 2,
-      scannedCount: 1,
-      backfilledCount: 2,
-      skippedCount: 0
+      verifiedCount: 2
     });
     expect((await MongoAIModel.findById(lateInserted._id).lean())?.config).toMatchObject({
       reasoningEffortList: ['low', 'high']
@@ -649,7 +643,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
         ((await MongoAIModel.findById(legacy._id).lean())?.config as any)?.reasoningEffortList
       ).toBeUndefined();
 
-      // 管理员手动入队后执行成功并持久化标量结果参数
+      // 管理员手动入队后执行成功并持久化确定性结果参数
       await startManualSystemMigration(registered.id, registry);
       await runner.tick();
 
@@ -662,9 +656,7 @@ describe('20261125_backfill_model_reasoning_effort_list', () => {
           key: 'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.result',
           params: {
             presetCount: 2,
-            scannedCount: 1,
-            backfilledCount: 1,
-            skippedCount: 0
+            verifiedCount: 1
           }
         }
       });

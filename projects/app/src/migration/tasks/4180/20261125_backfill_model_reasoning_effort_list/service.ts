@@ -14,11 +14,11 @@ import {
 } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { getPluginModelDocuments } from '@fastgpt/service/core/ai/model/template';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { z } from 'zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 
-export const ValidReasoningEffortListSchema = z.array(ReasoningEffortLevelSchema);
+export const ValidReasoningEffortListSchema = z.array(ReasoningEffortLevelSchema).min(1);
 
 export const LLM_BACKFILL_PROJECTION = {
   _id: 1,
@@ -55,19 +55,31 @@ type RecordInspectionResult =
   | { kind: 'invalid'; message: string };
 
 /**
- * 从 fastgpt-plugin 实时拉取 LLM 模板，提取配置了思考等级预设的 `model -> reasoningEffortList` 映射。
- * 仅收录开启深度思考且声明了非空合法思考等级列表的 LLM 模板。
+ * 直接从 fastgpt-plugin 原始模型清单提取显式声明了思考等级预设的 `model -> reasoningEffortList` 映射。
+ * 不经过读取期全档位兜底，避免旧版插件未返回 `reasoningEffortList` 时误将兜底六档写入存量模型。
  */
 export const loadPluginReasoningEffortPresets = async (): Promise<
   Map<string, ReasoningEffortLevel[]>
 > => {
-  const templates = await getPluginModelDocuments();
+  const templates = await pluginClient.listModels();
   const presetMap = new Map<string, ReasoningEffortLevel[]>();
 
-  for (const template of templates) {
-    if (template.type !== ModelTypeEnum.llm) continue;
-    if (!template.config.reasoning || template.config.reasoningEffort === false) continue;
-    const normalizedLevels = normalizeReasoningEffortList(template.config.reasoningEffortList);
+  for (const rawTemplate of templates) {
+    const template = rawTemplate as Record<string, unknown>;
+    if (template.type !== ModelTypeEnum.llm || typeof template.model !== 'string') continue;
+
+    const nestedConfig =
+      template.config && typeof template.config === 'object' && !Array.isArray(template.config)
+        ? (template.config as Record<string, unknown>)
+        : undefined;
+    const reasoning = nestedConfig?.reasoning ?? template.reasoning;
+    const reasoningEffort = nestedConfig?.reasoningEffort ?? template.reasoningEffort;
+    const rawList = nestedConfig?.reasoningEffortList ?? template.reasoningEffortList;
+
+    if (reasoning !== true || reasoningEffort !== true || !Array.isArray(rawList)) continue;
+    const normalizedLevels = normalizeReasoningEffortList(
+      rawList.filter((item): item is string => typeof item === 'string')
+    );
     if (normalizedLevels.length === 0) continue;
     if (!presetMap.has(template.model)) {
       presetMap.set(template.model, normalizedLevels);
@@ -97,8 +109,8 @@ const resolveCatalogScope = (
 /**
  * 预检、回填与完成校验共用的单条记录判定逻辑：
  * - 非目标 LLM 或未命中插件预设直接跳过；
- * - 已有 `reasoningEffortList` 必须通过严格等级枚举校验才视为合法人工配置并保留；
- * - 缺失或为 null 的记录校验目录归属后进入回填候选。
+ * - 已有非空 `reasoningEffortList` 必须通过严格等级枚举校验才视为合法人工配置并保留；
+ * - 缺失、null 或空数组均视为未配置，校验目录归属后进入回填候选。
  */
 export const inspectModelReasoningEffortRecord = (
   record: RawLlmModelRecord,
@@ -112,7 +124,12 @@ export const inspectModelReasoningEffortRecord = (
   }
 
   const existingList = config.reasoningEffortList;
-  if (existingList !== undefined && existingList !== null) {
+  const isUnsetOrEmpty =
+    existingList === undefined ||
+    existingList === null ||
+    (Array.isArray(existingList) && existingList.length === 0);
+
+  if (!isUnsetOrEmpty) {
     if (ValidReasoningEffortListSchema.safeParse(existingList).success) {
       return { kind: 'skip' };
     }
@@ -277,7 +294,8 @@ export const processBackfillModelBatch = async ({
               'config.reasoningEffort': true,
               $or: [
                 { 'config.reasoningEffortList': { $exists: false } },
-                { 'config.reasoningEffortList': null }
+                { 'config.reasoningEffortList': null },
+                { 'config.reasoningEffortList': [] }
               ]
             },
             update: {
@@ -322,7 +340,8 @@ export const processBackfillModelBatch = async ({
 };
 
 /**
- * 按 `_id` 稳定游标分批校验所有命中插件预设且开启思考配置的存量 LLM 均具备合法的 `config.reasoningEffortList`。
+ * 按 `_id` 稳定游标分批校验所有命中插件预设且开启思考配置的存量 LLM 均具备合法的非空 `config.reasoningEffortList`，
+ * 并返回本次复验通过的确定性模型总数。
  */
 export const validateBackfilledModelReasoningEffortList = async ({
   presetMap,
@@ -334,12 +353,16 @@ export const validateBackfilledModelReasoningEffortList = async ({
   batchSize?: number;
   signal: AbortSignal;
   assertActive: () => Promise<void>;
-}): Promise<SystemMigrationFailedRecord[]> => {
+}): Promise<{
+  verifiedCount: number;
+  failures: SystemMigrationFailedRecord[];
+}> => {
   const presetModels = [...presetMap.keys()];
-  if (presetModels.length === 0) return [];
+  if (presetModels.length === 0) return { verifiedCount: 0, failures: [] };
 
   const maxFailedRecords = batchSize * 10;
   const failures: SystemMigrationFailedRecord[] = [];
+  let verifiedCount = 0;
   let lastId: Types.ObjectId | undefined;
 
   while (true) {
@@ -379,13 +402,15 @@ export const validateBackfilledModelReasoningEffortList = async ({
           }
         });
         if (failures.length >= maxFailedRecords) {
-          return failures;
+          return { verifiedCount, failures };
         }
+      } else {
+        verifiedCount += 1;
       }
     }
 
     lastId = records.at(-1)!._id as Types.ObjectId;
   }
 
-  return failures;
+  return { verifiedCount, failures };
 };

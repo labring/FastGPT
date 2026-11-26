@@ -138,7 +138,7 @@ describe('reasoning effort level helpers', () => {
       })
     ).toEqual(['low', 'high']);
 
-    // 显式空数组、未开启/关闭 reasoning 或关闭 reasoningEffort 均返回空
+    // reasoningEffort: true 且列表为空数组时统一兜底为全部 6 个等级
     expect(
       getSupportedReasoningEfforts({
         config: {
@@ -148,7 +148,8 @@ describe('reasoning effort level helpers', () => {
           reasoningEffortList: []
         }
       })
-    ).toEqual([]);
+    ).toEqual([...REASONING_EFFORT_LEVELS]);
+    // 未开启/关闭 reasoning 或关闭 reasoningEffort 均返回空
     expect(
       getSupportedReasoningEfforts({
         config: {
@@ -205,8 +206,20 @@ describe('reasoning effort level helpers', () => {
         reasoningEffortList: []
       }
     });
-    expect(withEmptyList.reasoningEffort).toBe(false);
-    expect(withEmptyList.reasoningEffortList).toEqual([]);
+    expect(withEmptyList.reasoningEffort).toBe(true);
+    expect(withEmptyList.reasoningEffortList).toEqual([...REASONING_EFFORT_LEVELS]);
+
+    const withDisabledEffort = getLLMSupportParams({
+      config: {
+        maxContext: 128000,
+        maxResponse: 4096,
+        quoteMaxToken: 64000,
+        reasoning: true,
+        reasoningEffort: false
+      }
+    });
+    expect(withDisabledEffort.reasoningEffort).toBe(false);
+    expect(withDisabledEffort.reasoningEffortList).toEqual([]);
   });
 
   it('picks the lowest supported reasoning effort and returns undefined when unsupported', () => {
@@ -260,7 +273,7 @@ describe('reasoning effort level helpers', () => {
           reasoningEffortList: []
         }
       })
-    ).toBeUndefined();
+    ).toBe('none');
     expect(getLowestReasoningEffort(undefined)).toBeUndefined();
   });
 });

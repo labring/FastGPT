@@ -21,8 +21,6 @@ const CheckpointSchema = z.object({
   endId: ObjectIdSchema.nullable(),
   lastId: ObjectIdSchema.nullable(),
   scannedCount: IntSchema,
-  backfilledCount: IntSchema,
-  skippedCount: IntSchema,
   precheckPassed: z.boolean(),
   backfillCompleted: z.boolean()
 });
@@ -31,6 +29,7 @@ const CheckpointSchema = z.object({
  * 手动触发的模型可用思考等级回填迁移（分批断点续跑）：
  * 团队模型按 `(teamId, tmbId, model)` 去重，总量随团队与成员数增长无固定上界，
  * 因此采用 `_id` 稳定游标 + 固定批次大小 + checkpoint 断点续跑，并在首次写入前完成分批预检拦截坏数据。
+ * 完成结果仅输出与重放无关的确定性指标（`presetCount` 与终态复验通过的 `verifiedCount`），避免至少一次重放导致增量计数漂移。
  *
  * 运行前提：须在所有 App 实例与 `fastgpt-plugin` 均升级完成后由管理员手动触发，
  * 避免旧版本 App 保存模型时按旧 Schema 剥离已回填的 `reasoningEffortList`。
@@ -38,8 +37,8 @@ const CheckpointSchema = z.object({
  * 阶段顺序：
  * 1. `loadPresets`：从 fastgpt-plugin 拉取最新 LLM 模板预设；未拉取到任何思考等级预设时明确失败。
  * 2. `backfill`：首次写入前按 `_id` 分批预检源数据（存在非法值时零写入中止）；随后优先重试历史失败记录，
- *    再按 `_id` 游标分批在目录快照事务内 CAS 回填缺失列表并推进 checkpoint（先持久化错误快照再保存断点）。
- * 3. `validation`：按 `_id` 游标分批复验所有命中预设的存量模型均具备合法的 `reasoningEffortList`。
+ *    再按 `_id` 游标分批在目录快照事务内 CAS 回填缺失或空的列表并推进 checkpoint（先持久化错误快照再保存断点）。
+ * 3. `validation`：按 `_id` 游标分批复验所有命中预设的存量模型均具备合法的非空 `reasoningEffortList`。
  */
 export const createBackfillModelReasoningEffortListMigration =
   (batchSize: number = systemMigrationBatchSize) =>
@@ -111,8 +110,6 @@ export const createBackfillModelReasoningEffortListMigration =
         endId,
         lastId: null,
         scannedCount: 0,
-        backfilledCount: 0,
-        skippedCount: 0,
         precheckPassed: true,
         backfillCompleted: false
       };
@@ -165,20 +162,12 @@ export const createBackfillModelReasoningEffortListMigration =
             unresolvedFailures.set(String(failure.data.id), failure);
             failuresChanged = true;
           }
-
-          if (retryResult.backfilledCount > 0) {
-            checkpoint = {
-              ...checkpoint,
-              backfilledCount: checkpoint.backfilledCount + retryResult.backfilledCount
-            };
-          }
         }
 
         if (failuresChanged) {
           await context.reportFailedRecords([...unresolvedFailures.values()]);
           failuresChanged = false;
         }
-        await context.saveCheckpoint(checkpoint);
       }
     }
 
@@ -228,9 +217,7 @@ export const createBackfillModelReasoningEffortListMigration =
         checkpoint = {
           ...checkpoint,
           lastId: String(records.at(-1)!._id),
-          scannedCount: checkpoint.scannedCount + records.length,
-          backfilledCount: checkpoint.backfilledCount + batchResult.backfilledCount,
-          skippedCount: checkpoint.skippedCount + batchResult.skippedCount
+          scannedCount: checkpoint.scannedCount + records.length
         };
         await context.saveCheckpoint(checkpoint);
 
@@ -280,29 +267,29 @@ export const createBackfillModelReasoningEffortListMigration =
     await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
     await context.assertActive();
 
-    const validationFailures = await validateBackfilledModelReasoningEffortList({
+    const validationResult = await validateBackfilledModelReasoningEffortList({
       presetMap,
       batchSize,
       signal: context.signal,
       assertActive: context.assertActive
     });
-    if (validationFailures.length > 0) {
+    if (validationResult.failures.length > 0) {
       await context.fail({
         message: 'Model reasoningEffortList backfill validation failed',
-        failedRecords: validationFailures
+        failedRecords: validationResult.failures
       });
     }
 
     await context.reportProgress({
       key: 'validation',
-      status: SystemMigrationStatusEnum.succeeded
+      status: SystemMigrationStatusEnum.succeeded,
+      current: validationResult.verifiedCount,
+      total: validationResult.verifiedCount
     });
 
     return {
       presetCount: presetMap.size,
-      scannedCount: checkpoint.scannedCount,
-      backfilledCount: checkpoint.backfilledCount,
-      skippedCount: checkpoint.skippedCount
+      verifiedCount: validationResult.verifiedCount
     };
   };
 

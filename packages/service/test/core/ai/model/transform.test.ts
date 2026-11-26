@@ -1,4 +1,8 @@
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelScopeEnum,
+  ModelTypeEnum,
+  REASONING_EFFORT_LEVELS
+} from '@fastgpt/global/core/ai/constants';
 import { LLMModelConfigSchema } from '@fastgpt/global/core/ai/model/schema';
 import {
   flatModelToDocumentData,
@@ -99,6 +103,30 @@ describe('formatDbModelToDocumentData', () => {
       }).success
     ).toBe(false);
   });
+
+  it.each([undefined, [], ['only_unknown_level']])(
+    'falls back to all reasoning effort levels on load when reasoningEffort is enabled and list is empty: %j',
+    (reasoningEffortList) => {
+      const parsed = formatDbModelToDocumentData({
+        ...document,
+        type: ModelTypeEnum.llm,
+        model: 'legacy-reasoning-llm',
+        config: {
+          maxContext: 64000,
+          maxResponse: 8000,
+          quoteMaxToken: 32000,
+          reasoning: true,
+          reasoningEffort: true,
+          ...(reasoningEffortList !== undefined ? { reasoningEffortList } : {})
+        }
+      });
+
+      expect(parsed.type).toBe(ModelTypeEnum.llm);
+      if (parsed.type === ModelTypeEnum.llm) {
+        expect(parsed.config.reasoningEffortList).toEqual([...REASONING_EFFORT_LEVELS]);
+      }
+    }
+  );
 });
 
 describe('flatModelToDocumentData', () => {

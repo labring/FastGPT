@@ -109,5 +109,5 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "載入外掛思考等級預設",
   "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "回填模型可用思考等級",
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "驗證回填結果",
-  "migrations.20261125_backfill_model_reasoning_effort_list.result": "共載入 {{presetCount}} 條外掛預設，掃描 {{scannedCount}} 個 LLM 模型：已回填 {{backfilledCount}} 個，跳過 {{skippedCount}} 個。"
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "共載入 {{presetCount}} 條外掛預設，已完成回填並驗證通過 {{verifiedCount}} 個命中預設的 LLM 模型。"
 }
