@@ -122,11 +122,15 @@ describe('sandbox cron application', () => {
     const callback = cronMocks.setCron.mock.calls[1]?.[1];
     await callback();
 
-    expect(cronMocks.setCron).toHaveBeenCalledWith('0 */12 * * *', expect.any(Function));
+    expect(cronMocks.setCron).toHaveBeenCalledWith('0 */1 * * *', expect.any(Function));
     expect(cronMocks.checkTimerLock).toHaveBeenCalledWith({
       timerId: 'archiveInactiveSandboxes',
-      lockMinuted: 660
+      lockMinuted: 55
     });
+    expect(cronMocks.archiveInactiveSandboxes).toHaveBeenCalledTimes(1);
+
+    cronMocks.checkTimerLock.mockResolvedValueOnce(false);
+    await callback();
     expect(cronMocks.archiveInactiveSandboxes).toHaveBeenCalledTimes(1);
   });
 
