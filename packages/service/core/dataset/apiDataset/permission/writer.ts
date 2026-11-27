@@ -237,7 +237,7 @@ export const applyCollectionPermissionStates = async ({
   if (tx) {
     await run(tx);
   } else {
-    await runInTransaction(run);
+    await runInTransaction(run, { dialect: 'mongo' });
   }
 
   // 覆盖「提交过程中租约才丢失」的窗口：写入可能已经落库，抛出取消让调用方按失败处理，

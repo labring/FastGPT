@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import z from 'zod';
 import { defineRepoToken, injectRepo } from '@fastgpt/dal/db/container';
+import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import { OceanBaseRepositoryBase } from '@fastgpt/dal/db/oceanbase/base';
-import { closeDbRuntime, configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
+import {
+  closeDbRuntime,
+  configureDbRuntime,
+  getConfiguredDbRuntime,
+  type DbRuntime
+} from '@fastgpt/dal/db/runtime';
 import { createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
-import { createManagedDbSession } from '@fastgpt/dal/db/transaction';
+import { createManagedDbSession, runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 
 type DemoDb = {
@@ -226,5 +232,76 @@ describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
       hasNativeTx: false,
       useReadReplica: true
     });
+  });
+
+  it('routes mongo-only repos and transactions to fallbackMongo in OceanBase mixed mode while keeping dual-engine repos on OceanBase and pure OceanBase fail-closed', async () => {
+    const mongoOnlyFactory = vi.fn((runtime: DbRuntime) => ({
+      dialect: () => runtime.dialect,
+      logMode: () => runtime.logMode
+    }));
+    const dualMongoFactory = vi.fn(() => ({ dialect: () => 'mongo' }));
+    const dualObFactory = vi.fn(() => ({ dialect: () => 'oceanbase' }));
+
+    const mongoOnlyToken = defineRepoToken('MongoOnlyDemoRepo', {
+      mongo: mongoOnlyFactory
+    });
+    const dualToken = defineRepoToken('DualDemoRepo', {
+      mongo: dualMongoFactory,
+      oceanbase: dualObFactory
+    });
+
+    const mongoOnlyProxy = injectRepo(mongoOnlyToken);
+    const dualProxy = injectRepo(dualToken);
+
+    // 1. 纯 OceanBase（未挂载 fallbackMongo）：Mongo 专用仓储与显式 Mongo 事务均 fail-closed
+    configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/app'
+    });
+    expect(dualProxy.dialect()).toBe('oceanbase');
+    expect(() => mongoOnlyProxy.dialect()).toThrow(DbConfigurationError);
+    await expect(runInTransaction(async () => 'x', { dialect: 'mongo' })).rejects.toThrow(
+      DbConfigurationError
+    );
+
+    await closeDbRuntime();
+
+    // 2. 混合模式（OceanBase 主运行时 + fallbackMongo）：
+    //    - 双引擎仓储与默认事务继续走 OceanBase
+    //    - Mongo 专用仓储与 { dialect: 'mongo' } 事务走伴生 Mongo（保留独立 logMode）
+    const obTxRunner = vi.fn(async ({ execute }) => execute({ engine: 'oceanbase' }));
+    const mongoTxRunner = vi.fn(async ({ execute }) => execute({ engine: 'mongo' }));
+    const obClose = vi.fn(async () => undefined);
+    const mongoClose = vi.fn(async () => undefined);
+
+    configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/app',
+      transactionRunner: obTxRunner,
+      closeHandler: obClose,
+      fallbackMongo: {
+        mainWriteUrl: 'mongodb://127.0.0.1:27017/app',
+        logWriteUrl: 'mongodb://127.0.0.1:27017/app_log',
+        transactionRunner: mongoTxRunner,
+        closeHandler: mongoClose
+      }
+    });
+
+    expect(dualProxy.dialect()).toBe('oceanbase');
+    expect(mongoOnlyProxy.dialect()).toBe('mongo');
+    expect(mongoOnlyProxy.logMode()).toBe('separate');
+    expect(dualMongoFactory).not.toHaveBeenCalled();
+
+    const obDialect = await runInTransaction(async (tx) => tx.dialect);
+    const mongoDialect = await runInTransaction(async (tx) => tx.dialect, { dialect: 'mongo' });
+    expect(obDialect).toBe('oceanbase');
+    expect(mongoDialect).toBe('mongo');
+    expect(obTxRunner).toHaveBeenCalledTimes(1);
+    expect(mongoTxRunner).toHaveBeenCalledTimes(1);
+
+    await closeDbRuntime();
+    expect(obClose).toHaveBeenCalledTimes(1);
+    expect(mongoClose).toHaveBeenCalledTimes(1);
+    expect(getConfiguredDbRuntime('mongo')).toBeUndefined();
   });
 });

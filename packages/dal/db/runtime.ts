@@ -37,6 +37,11 @@ const normalizeOptionalReadReplicaUrl = (
   return normalized !== undefined && normalized !== mainWriteUrl ? normalized : undefined;
 };
 
+export type DbFallbackMongoConfig = Omit<
+  DbRuntimeConfig,
+  'dialect' | 'fallbackMongo' | 'oceanBaseExecutorResolver' | 'mainReadUrl'
+>;
+
 export type DbRuntimeConfig = {
   dialect: DbDialect;
   mainWriteUrl: string;
@@ -58,6 +63,12 @@ export type DbRuntimeConfig = {
   oceanBaseExecutorResolver?: OceanBaseExecutorResolver;
   mongoModelBinder?: MongoModelBinder;
   closeHandler?: () => Promise<void>;
+  /**
+   * 渐进迁移混合模式（`dialect === 'oceanbase'`）下可选挂载的伴生 MongoDB Runtime 配置：
+   * 仅供尚未提供 OceanBase 实现的 Mongo 专用仓储及其事务继续解析到 MongoDB；
+   * 已具备双实现的仓储仍严格按主方言路由至 OceanBase。纯 OceanBase 测试缺省不配，保持 fail-closed。
+   */
+  fallbackMongo?: DbFallbackMongoConfig;
 };
 
 /**
@@ -229,6 +240,7 @@ export class DbRuntime {
 type DbRuntimeRegistration = {
   configurationKey: string;
   runtime: DbRuntime;
+  fallbackMongoRuntime?: DbRuntime;
 };
 
 type DbRuntimeContext = {
@@ -260,7 +272,14 @@ const buildConfigurationKey = (config: DbRuntimeConfig): string => {
     dialect: config.dialect,
     mainWriteUrl,
     mainReadUrl,
-    logWriteUrl: normalizeOptionalUrl(config.logWriteUrl)
+    logWriteUrl: normalizeOptionalUrl(config.logWriteUrl),
+    fallbackMongo:
+      config.fallbackMongo !== undefined
+        ? {
+            mainWriteUrl: normalizeOptionalUrl(config.fallbackMongo.mainWriteUrl),
+            logWriteUrl: normalizeOptionalUrl(config.fallbackMongo.logWriteUrl)
+          }
+        : undefined
   });
 };
 
@@ -268,6 +287,10 @@ const buildConfigurationKey = (config: DbRuntimeConfig): string => {
  * 显式配置进程级默认数据库 Runtime（同拓扑调用幂等，支持 Next.js HMR；切换拓扑前需先关闭）。
  */
 export const configureDbRuntime = (config: DbRuntimeConfig): DbRuntime => {
+  if (config.fallbackMongo !== undefined && config.dialect !== 'oceanbase') {
+    throw new DbConfigurationError('fallbackMongo is only supported when dialect is "oceanbase"');
+  }
+
   const context = getDbRuntimeContext();
   const configurationKey = buildConfigurationKey(config);
   const existing = context.registration;
@@ -284,24 +307,50 @@ export const configureDbRuntime = (config: DbRuntimeConfig): DbRuntime => {
   }
 
   const runtime = new DbRuntime(config);
-  context.registration = { configurationKey, runtime };
+  const fallbackMongoRuntime =
+    config.fallbackMongo !== undefined
+      ? new DbRuntime({
+          ...config.fallbackMongo,
+          dialect: 'mongo'
+        })
+      : undefined;
+  context.registration = { configurationKey, runtime, fallbackMongoRuntime };
   return runtime;
 };
 
-export const getConfiguredDbRuntime = (): DbRuntime | undefined => {
+export const getConfiguredDbRuntime = (dialect?: DbDialect): DbRuntime | undefined => {
   const registration = getDbRuntimeContext().registration;
-  if (registration?.runtime.getState() === 'closed') {
+  if (registration === undefined || registration.runtime.getState() === 'closed') {
     return undefined;
   }
-  return registration?.runtime;
+  if (dialect === undefined || dialect === registration.runtime.dialect) {
+    return registration.runtime;
+  }
+  if (dialect === 'mongo') {
+    const fallback = registration.fallbackMongoRuntime;
+    if (fallback === undefined || fallback.getState() === 'closed') {
+      return undefined;
+    }
+    return fallback;
+  }
+  return undefined;
 };
 
-export const getDbRuntime = (): DbRuntime => {
-  const runtime = getConfiguredDbRuntime();
-  if (runtime === undefined) {
+export const getDbRuntime = (dialect?: DbDialect): DbRuntime => {
+  const primary = getConfiguredDbRuntime();
+  if (primary === undefined) {
     throw new DbRuntimeNotConfiguredError();
   }
-  return runtime;
+  if (dialect === undefined) {
+    return primary;
+  }
+  const target = getConfiguredDbRuntime(dialect);
+  if (target === undefined) {
+    throw new DbConfigurationError(
+      `No "${dialect}" DbRuntime is configured (active dialect: "${primary.dialect}")`
+    );
+  }
+  return target;
 };
 
 export const getDbDialect = (): DbDialect => getDbRuntime().dialect;
@@ -314,8 +363,20 @@ export const closeDbRuntime = async (): Promise<void> => {
   if (registration === undefined) {
     return;
   }
-  await registration.runtime.close();
+
+  const runtimes = [
+    registration.runtime,
+    ...(registration.fallbackMongoRuntime !== undefined ? [registration.fallbackMongoRuntime] : [])
+  ];
+  const results = await Promise.allSettled(runtimes.map((runtime) => runtime.close()));
   if (context.registration === registration) {
     context.registration = undefined;
+  }
+
+  const firstRejected = results.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
+  );
+  if (firstRejected !== undefined) {
+    throw firstRejected.reason;
   }
 };

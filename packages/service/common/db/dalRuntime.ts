@@ -257,6 +257,42 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
     }
   };
 
+  const buildMongoRuntimeConfig = ({
+    mainWriteUrl,
+    logWriteUrl,
+    transactionRunner
+  }: {
+    mainWriteUrl?: string;
+    logWriteUrl?: string;
+    transactionRunner?: DbTransactionRunner;
+  }) => {
+    const normalizedMainUrl = (mainWriteUrl ?? process.env.MONGODB_URI ?? MONGO_URL).trim();
+    const trimmedLogUrl = logWriteUrl?.trim() ?? '';
+    // Mongo 环境变量装配下，仅当日志库连接串非空且与主库不同时进入 separate 模式；与主库同串时按 shared 单池处理。
+    const effectiveLogWriteUrl =
+      trimmedLogUrl.length > 0 && trimmedLogUrl !== normalizedMainUrl ? trimmedLogUrl : undefined;
+
+    const mongoDeps = createMongoRuntimeDeps({
+      getMainClient: () => connectionMongo,
+      getLogClient: () =>
+        effectiveLogWriteUrl !== undefined
+          ? hasSeparateMongoLogUri
+            ? connectionLogMongo
+            : getSharedMongoLogConnection()
+          : undefined
+    });
+
+    return {
+      mainWriteUrl: normalizedMainUrl,
+      logWriteUrl: effectiveLogWriteUrl,
+      maxConnections,
+      logger: getLogger(LogCategories.INFRA.MONGO),
+      metrics,
+      mongoModelBinder: mongoDeps.mongoModelBinder,
+      transactionRunner: transactionRunner ?? mongoDeps.transactionRunner
+    };
+  };
+
   if (dialect === 'oceanbase') {
     const rawMainUrl =
       options?.mainWriteUrl ?? process.env.OCEANBASE_DB_URI ?? serviceEnv.OCEANBASE_DB_URI;
@@ -287,6 +323,16 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
     });
 
     const oceanBaseLogger = getLogger(LogCategories.INFRA.OCEANBASE ?? LogCategories.INFRA.MONGO);
+    // 渐进迁移混合模式：已接入 DAL 但尚未实现 OceanBase 的 Mongo 专用仓储及其事务继续通过伴生 Mongo Runtime 执行；
+    // 已具备双实现的仓储仍严格路由到 OceanBase。未配置 MONGODB_URI 时不挂载，保持纯 OceanBase fail-closed。
+    const fallbackMongoMainUrl = (process.env.MONGODB_URI ?? MONGO_URL).trim();
+    const fallbackMongo =
+      fallbackMongoMainUrl.length > 0
+        ? buildMongoRuntimeConfig({
+            mainWriteUrl: fallbackMongoMainUrl,
+            logWriteUrl: process.env.MONGODB_LOG_URI ?? serviceEnv.MONGODB_LOG_URI
+          })
+        : undefined;
 
     return configureDbRuntime({
       dialect: 'oceanbase',
@@ -296,39 +342,22 @@ export const configureDalRuntime = (options?: ConfigureDalRuntimeOptions): DbRun
       metrics,
       oceanBaseExecutorResolver: oceanBaseDeps.oceanBaseExecutorResolver,
       transactionRunner: options?.transactionRunner ?? oceanBaseDeps.transactionRunner,
-      closeHandler: oceanBaseDeps.closeHandler
+      closeHandler: oceanBaseDeps.closeHandler,
+      fallbackMongo
     });
   }
 
-  const mainWriteUrl = options?.mainWriteUrl ?? process.env.MONGODB_URI ?? MONGO_URL;
-  const normalizedMainUrl = mainWriteUrl.trim();
   const rawLogWriteUrl =
     options !== undefined && 'logWriteUrl' in options
       ? options.logWriteUrl
       : (process.env.MONGODB_LOG_URI ?? serviceEnv.MONGODB_LOG_URI);
-  const trimmedLogUrl = rawLogWriteUrl?.trim() ?? '';
-  // Mongo 环境变量装配下，仅当日志库连接串非空且与主库不同时进入 separate 模式；与主库同串时按 shared 单池处理。
-  const effectiveLogWriteUrl =
-    trimmedLogUrl.length > 0 && trimmedLogUrl !== normalizedMainUrl ? trimmedLogUrl : undefined;
-
-  const mongoDeps = createMongoRuntimeDeps({
-    getMainClient: () => connectionMongo,
-    getLogClient: () =>
-      effectiveLogWriteUrl !== undefined
-        ? hasSeparateMongoLogUri
-          ? connectionLogMongo
-          : getSharedMongoLogConnection()
-        : undefined
-  });
 
   return configureDbRuntime({
     dialect: 'mongo',
-    mainWriteUrl: normalizedMainUrl,
-    logWriteUrl: effectiveLogWriteUrl,
-    maxConnections,
-    logger: getLogger(LogCategories.INFRA.MONGO),
-    metrics,
-    mongoModelBinder: mongoDeps.mongoModelBinder,
-    transactionRunner: options?.transactionRunner ?? mongoDeps.transactionRunner
+    ...buildMongoRuntimeConfig({
+      mainWriteUrl: options?.mainWriteUrl,
+      logWriteUrl: rawLogWriteUrl,
+      transactionRunner: options?.transactionRunner
+    })
   });
 };
