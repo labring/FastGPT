@@ -218,7 +218,7 @@ const AreaChartComponent = ({
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          {lines.map((line, index) => (
+          {lines.map((line) => (
             <Area
               key={line.dataKey}
               type="monotone"

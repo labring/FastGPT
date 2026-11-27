@@ -154,165 +154,89 @@ const DataTableComponent = ({
       cacheHitRate: number;
     }[] = [];
 
-    if (showChannelColumn) {
-      // When a specific model is selected, aggregate the data by channel_id
-      const channelMap = new Map<
-        string,
-        {
-          model: string;
-          totalCalls: number;
-          errorCalls: number;
-          totalCost: number;
-          totalResponseTime: number;
-          totalTtfb: number;
-          outputTokens: number;
-          cacheHitCount: number;
-          llmRequestCount: number;
-        }
-      >();
+    // 按渠道（单模型视图）或按模型（全局视图）统一聚合与派生指标，保证两种视图口径一致。
+    const groupMap = new Map<
+      string,
+      {
+        model: string;
+        channelId?: number;
+        totalCalls: number;
+        errorCalls: number;
+        totalCost: number;
+        totalResponseTime: number;
+        totalTtfb: number;
+        outputTokens: number;
+        cacheHitCount: number;
+        llmRequestCount: number;
+      }
+    >();
 
-      data.forEach((dayData) => {
-        const summary = dayData.summary;
-
-        summary.forEach((item: ChannelDashboardSummary) => {
-          const channelId = `${item.channel_id!}`;
-          const existing = channelMap.get(channelId) || {
-            model: item.model || '-',
-            totalCalls: 0,
-            errorCalls: 0,
-            totalCost: 0,
-            totalResponseTime: 0,
-            totalTtfb: 0,
-            outputTokens: 0,
-            cacheHitCount: 0,
-            llmRequestCount: 0
-          };
-
-          existing.totalCalls += item.request_count || 0;
-          existing.errorCalls += item.exception_count || 0;
-          existing.totalResponseTime += item.total_time_milliseconds || 0;
-          existing.totalTtfb += item.total_ttfb_milliseconds || 0;
-          existing.outputTokens += item.output_tokens || 0;
-          existing.cacheHitCount += item.cache_hit_count || 0;
-          if (isLLMModel(item.model)) {
-            existing.llmRequestCount += item.request_count || 0;
-          }
-
-          const modelPricing = modelPriceMap.get(item.model);
-          if (modelPricing) {
-            const inputTokens = item.input_tokens || 0;
-            const outputTokens = item.output_tokens || 0;
-            const { totalPoints } = calculateModelPrice({
-              config: modelPricing,
-              inputTokens,
-              outputTokens,
-              cacheReadTokens: item.cached_tokens,
-              cacheCreationTokens: item.cache_creation_tokens
-            });
-
-            existing.totalCost += totalPoints;
-          }
-
-          channelMap.set(channelId, existing);
-        });
-      });
-
-      channelMap.forEach((item, channelId) => {
-        const successCalls = item.totalCalls - item.errorCalls;
-        const cacheHitRate =
-          item.llmRequestCount === 0 ? 0 : formatNumber(item.cacheHitCount / item.llmRequestCount);
-
-        rows.push({
-          channelName: channelIdToNameMap.get(parseInt(channelId)) || '',
-          model: item.model,
-          totalCalls: item.totalCalls,
-          errorCalls: item.errorCalls,
-          totalCost: item.totalCost,
-          avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
-          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
-          avgTps: isLLMModel(item.model)
-            ? calcAvgTps(item.outputTokens, item.totalResponseTime)
-            : 0,
-          cacheHitRate
-        });
-      });
-    } else {
-      // When no specific model is selected, aggregate the data by the model.
-      const modelMap = new Map<
-        string,
-        {
-          totalCalls: number;
-          errorCalls: number;
-          totalCost: number;
-          totalResponseTime: number;
-          totalTtfb: number;
-          outputTokens: number;
-          cacheHitCount: number;
-          llmRequestCount: number;
-        }
-      >();
-
-      data.forEach((dayData) => {
-        const summary = dayData.summary;
-
-        summary.forEach((item: ChannelDashboardSummary) => {
-          const modelName = item.model || '-';
-          const existing = modelMap.get(modelName) || {
-            totalCalls: 0,
-            errorCalls: 0,
-            totalCost: 0,
-            totalResponseTime: 0,
-            totalTtfb: 0,
-            outputTokens: 0,
-            cacheHitCount: 0,
-            llmRequestCount: 0
-          };
-
-          existing.totalCalls += item.request_count || 0;
-          existing.errorCalls += item.exception_count || 0;
-          existing.totalResponseTime += item.total_time_milliseconds || 0;
-          existing.totalTtfb += item.total_ttfb_milliseconds || 0;
-          existing.outputTokens += item.output_tokens || 0;
-          existing.cacheHitCount += item.cache_hit_count || 0;
-          if (isLLMModel(modelName)) {
-            existing.llmRequestCount += item.request_count || 0;
-          }
-
-          const modelPricing = modelPriceMap.get(item.model);
-          if (modelPricing) {
-            const inputTokens = item.input_tokens || 0;
-            const outputTokens = item.output_tokens || 0;
-            const { totalPoints } = calculateModelPrice({
-              config: modelPricing,
-              inputTokens,
-              outputTokens,
-              cacheReadTokens: item.cached_tokens,
-              cacheCreationTokens: item.cache_creation_tokens
-            });
-
-            existing.totalCost += totalPoints;
-          }
-
-          modelMap.set(modelName, existing);
-        });
-      });
-
-      modelMap.forEach((item, modelName) => {
-        const successCalls = item.totalCalls - item.errorCalls;
-        const cacheHitRate =
-          item.llmRequestCount === 0 ? 0 : formatNumber(item.cacheHitCount / item.llmRequestCount);
-        rows.push({
+    data.forEach((dayData) => {
+      dayData.summary.forEach((item: ChannelDashboardSummary) => {
+        const modelName = item.model || '-';
+        const groupKey = showChannelColumn ? `${item.channel_id ?? ''}` : modelName;
+        const existing = groupMap.get(groupKey) ?? {
           model: modelName,
-          totalCalls: item.totalCalls,
-          errorCalls: item.errorCalls,
-          totalCost: item.totalCost,
-          avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
-          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
-          avgTps: isLLMModel(modelName) ? calcAvgTps(item.outputTokens, item.totalResponseTime) : 0,
-          cacheHitRate
-        });
+          channelId: item.channel_id,
+          totalCalls: 0,
+          errorCalls: 0,
+          totalCost: 0,
+          totalResponseTime: 0,
+          totalTtfb: 0,
+          outputTokens: 0,
+          cacheHitCount: 0,
+          llmRequestCount: 0
+        };
+
+        existing.totalCalls += item.request_count;
+        existing.errorCalls += item.exception_count;
+        existing.totalResponseTime += item.total_time_milliseconds;
+        existing.totalTtfb += item.total_ttfb_milliseconds;
+        existing.outputTokens += item.output_tokens;
+        existing.cacheHitCount += item.cache_hit_count;
+        if (isLLMModel(modelName)) {
+          existing.llmRequestCount += item.request_count;
+        }
+
+        const modelPricing = modelPriceMap.get(item.model);
+        if (modelPricing) {
+          const { totalPoints } = calculateModelPrice({
+            config: modelPricing,
+            inputTokens: item.input_tokens,
+            outputTokens: item.output_tokens,
+            cacheReadTokens: item.cached_tokens,
+            cacheCreationTokens: item.cache_creation_tokens
+          });
+
+          existing.totalCost += totalPoints;
+        }
+
+        groupMap.set(groupKey, existing);
       });
-    }
+    });
+
+    groupMap.forEach((item) => {
+      const successCalls = item.totalCalls - item.errorCalls;
+      const cacheHitRate =
+        item.llmRequestCount === 0 ? 0 : formatNumber(item.cacheHitCount / item.llmRequestCount);
+
+      rows.push({
+        ...(showChannelColumn
+          ? {
+              channelName:
+                item.channelId !== undefined ? (channelIdToNameMap.get(item.channelId) ?? '') : ''
+            }
+          : {}),
+        model: item.model,
+        totalCalls: item.totalCalls,
+        errorCalls: item.errorCalls,
+        totalCost: item.totalCost,
+        avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
+        avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
+        avgTps: isLLMModel(item.model) ? calcAvgTps(item.outputTokens, item.totalResponseTime) : 0,
+        cacheHitRate
+      });
+    });
 
     // sort
     if (sortState.field && sortState.direction) {
@@ -348,18 +272,32 @@ const DataTableComponent = ({
       direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none';
 
     return (
-      <Th
-        cursor="pointer"
-        textTransform={textTransform}
-        aria-sort={ariaSort}
-        color={direction ? 'primary.600' : undefined}
-        onClick={() => handleSort(field)}
-        _hover={{ color: 'primary.600' }}
-      >
-        <HStack spacing={1} alignItems="center">
-          <Box>{label}</Box>
+      <Th aria-sort={ariaSort} textTransform={textTransform}>
+        <Box
+          as="button"
+          type="button"
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+          cursor="pointer"
+          fontSize="inherit"
+          fontFamily="inherit"
+          fontWeight="inherit"
+          letterSpacing="inherit"
+          textTransform="inherit"
+          color={direction ? 'primary.600' : 'inherit'}
+          onClick={() => handleSort(field)}
+          _hover={{ color: 'primary.600' }}
+          _focusVisible={{
+            outline: '2px solid',
+            outlineColor: 'primary.500',
+            outlineOffset: '2px',
+            borderRadius: 'xs'
+          }}
+        >
+          <Box as="span">{label}</Box>
           <SortArrowIcon direction={direction} />
-        </HStack>
+        </Box>
       </Th>
     );
   };

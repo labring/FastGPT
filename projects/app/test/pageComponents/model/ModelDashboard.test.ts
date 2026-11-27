@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChakraProvider } from '@chakra-ui/react';
 import { JSDOM } from 'jsdom';
@@ -66,9 +67,26 @@ vi.mock('@fastgpt/web/components/common/charts/AreaChartComponent', () => ({
 vi.mock('@fastgpt/web/components/common/DateRangePicker', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/TagFilter', () => ({ SingleSelectFilter: () => null }));
 vi.mock('@fastgpt/web/components/common/Tabs/FillRowTabs', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: React.forwardRef(function MockIcon() {
+    return null;
+  })
+}));
 vi.mock('@/components/core/ai/ModelTabHeader', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
-  FixedTableLayout: ({ renderBody }: { renderBody: () => React.ReactNode }) => renderBody()
+  FixedTableLayout: ({
+    renderHeader,
+    renderBody
+  }: {
+    renderHeader?: (props: { headerTableWidth: string }) => React.ReactNode;
+    renderBody: () => React.ReactNode;
+  }) =>
+    React.createElement(
+      React.Fragment,
+      null,
+      renderHeader?.({ headerTableWidth: '1200px' }),
+      renderBody()
+    )
 }));
 
 import ModelDashboard from '@/pageComponents/model/ModelDashboard';
@@ -250,7 +268,7 @@ describe('model dashboard LLM TPS', () => {
             channel_id: 12,
             request_count: 2,
             output_tokens: 300,
-            total_time_milliseconds: 6000
+            total_time_milliseconds: 5000
           },
           {
             model: 'text-embedding-3',
@@ -268,8 +286,8 @@ describe('model dashboard LLM TPS', () => {
             model: 'gpt-4o',
             channel_id: 12,
             request_count: 1,
-            output_tokens: 200,
-            total_time_milliseconds: 4000
+            output_tokens: 450,
+            total_time_milliseconds: 15000
           }
         ]
       }
@@ -283,9 +301,11 @@ describe('model dashboard LLM TPS', () => {
     const cacheChart = chart.window.document.querySelector(
       '[data-chart="config_model:cache_hit_rate"]'
     )!;
-    const points = JSON.parse(tpsChart.textContent!) as { avgTps: number }[];
-    // 仅统计 LLM 耗时：300 / 6s = 50，200 / 4s = 50；embedding 的 10s 不拉低 TPS。
-    expect(points.map(({ avgTps }) => avgTps)).toEqual([50, 50]);
+    // 仅统计 LLM 耗时：300 / 5s = 60，450 / 15s = 30；embedding 的 10s 不拉低 TPS。
+    expect(JSON.parse(tpsChart.textContent ?? '[]')).toEqual([
+      expect.objectContaining({ avgTps: 60 }),
+      expect.objectContaining({ avgTps: 30 })
+    ]);
     expect(tpsChart.getAttribute('data-enable-cumulative')).toBe('false');
     expect(cacheChart.getAttribute('data-enable-cumulative')).toBe('false');
     chart.window.close();
@@ -301,18 +321,20 @@ describe('model dashboard LLM TPS', () => {
         onViewDetail: vi.fn()
       })
     );
-    const getVisibleText = (el: Element) => {
-      const clone = el.cloneNode(true) as Element;
-      clone.querySelectorAll('style').forEach((node) => node.remove());
-      return clone.textContent?.trim();
-    };
     const rows = Array.from(modelTable.window.document.querySelectorAll('tbody tr')).map((tr) =>
-      Array.from(tr.querySelectorAll('td')).map(getVisibleText)
+      Array.from(tr.querySelectorAll('td')).map((td) => {
+        const clone = td.cloneNode(true);
+        if (clone instanceof modelTable.window.Element) {
+          clone.querySelectorAll('style').forEach((node) => node.remove());
+          return clone.textContent?.trim();
+        }
+        return td.textContent?.trim();
+      })
     );
     const llmRow = rows.find((cells) => cells[0] === 'GPT-4o');
     const embeddingRow = rows.find((cells) => cells[0] === 'text-embedding-3');
-    // 列顺序（无渠道列、含计费列）：模型[0]、调用量[1]、失败量[2]、积分[3]、耗时[4]、TTFB[5]、TPS[6]、缓存[7]
-    expect(llmRow?.[6]).toBe('50.00');
+    // 表格汇总使用总输出 token / 总耗时：(300 + 450) / (5 + 15) = 37.50（区别于逐桶均值 45.00）。
+    expect(llmRow?.[6]).toBe('37.50');
     expect(embeddingRow?.[6]).toBe('-');
     modelTable.window.close();
 
@@ -332,8 +354,150 @@ describe('model dashboard LLM TPS', () => {
     const channelCells = Array.from(
       channelTable.window.document.querySelectorAll('tbody tr td')
     ).map((td) => td.textContent?.trim());
-    // 含渠道列时 TPS 在索引 7
-    expect(channelCells[7]).toBe('50.00');
+    // 含渠道列时 TPS 在索引 7，同样验证总输出 token / 总耗时 = 37.50
+    expect(channelCells[7]).toBe('37.50');
     channelTable.window.close();
+  });
+
+  it('cycles tri-state sorting and row order via native sort button in header', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('Image', dom.window.Image);
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const models = [
+      {
+        pricing: { tiers: [] },
+        model: 'slow-llm',
+        name: 'Slow LLM',
+        provider: 'openai',
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.llm
+      },
+      {
+        pricing: { tiers: [] },
+        model: 'fast-llm',
+        name: 'Fast LLM',
+        provider: 'openai',
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.llm
+      },
+      {
+        pricing: { tiers: [] },
+        model: 'mid-llm',
+        name: 'Mid LLM',
+        provider: 'openai',
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.llm
+      }
+    ];
+    // 原始顺序：slow-llm(20 TPS, 10 calls), fast-llm(80 TPS, 5 calls), mid-llm(50 TPS, 20 calls)
+    const data = GetChannelDashboardResponseSchema.parse([
+      {
+        timestamp: 1000,
+        summary: [
+          {
+            model: 'slow-llm',
+            channel_id: 1,
+            request_count: 10,
+            output_tokens: 200,
+            total_time_milliseconds: 10000
+          },
+          {
+            model: 'fast-llm',
+            channel_id: 1,
+            request_count: 5,
+            output_tokens: 800,
+            total_time_milliseconds: 10000
+          },
+          {
+            model: 'mid-llm',
+            channel_id: 1,
+            request_count: 20,
+            output_tokens: 500,
+            total_time_milliseconds: 10000
+          }
+        ]
+      }
+    ]);
+
+    const getRowModels = () =>
+      Array.from(container.querySelectorAll('tbody tr')).map((tr) => {
+        const firstTd = tr.querySelector('td');
+        if (!firstTd) return '';
+        const clone = firstTd.cloneNode(true);
+        if (clone instanceof dom.window.Element) {
+          clone.querySelectorAll('style').forEach((node) => node.remove());
+          return clone.textContent?.trim() ?? '';
+        }
+        return firstTd.textContent?.trim() ?? '';
+      });
+
+    try {
+      await act(async () => {
+        root.render(
+          React.createElement(
+            ChakraProvider,
+            { theme },
+            React.createElement(DataTableComponent, {
+              data,
+              filterProps: {},
+              channelList: [{ label: 'Channel', value: '1' }],
+              modelPriceMap: new Map(models.map((model) => [model.model, model])),
+              isLLMModel: () => true,
+              onViewDetail: vi.fn()
+            })
+          )
+        );
+      });
+
+      const tpsButton = Array.from(container.querySelectorAll('thead th button')).find(
+        (btn): btn is HTMLButtonElement =>
+          btn instanceof dom.window.HTMLButtonElement &&
+          (btn.textContent?.includes('config_model:avg_tps') ?? false)
+      );
+      expect(tpsButton).toBeDefined();
+      expect(tpsButton?.type).toBe('button');
+
+      const tpsTh = tpsButton?.closest('th');
+      expect(tpsTh?.getAttribute('aria-sort')).toBe('none');
+      // 默认按请求次数降序：Mid(20), Slow(10), Fast(5)
+      expect(getRowModels()).toEqual(['Mid LLM', 'Slow LLM', 'Fast LLM']);
+
+      // 第 1 次点击：TPS 降序
+      await act(async () => {
+        tpsButton?.click();
+      });
+      expect(tpsTh?.getAttribute('aria-sort')).toBe('descending');
+      expect(getRowModels()).toEqual(['Fast LLM', 'Mid LLM', 'Slow LLM']);
+
+      // 第 2 次点击：TPS 升序
+      await act(async () => {
+        tpsButton?.click();
+      });
+      expect(tpsTh?.getAttribute('aria-sort')).toBe('ascending');
+      expect(getRowModels()).toEqual(['Slow LLM', 'Mid LLM', 'Fast LLM']);
+
+      // 第 3 次点击：取消排序，恢复聚合原始顺序
+      await act(async () => {
+        tpsButton?.click();
+      });
+      expect(tpsTh?.getAttribute('aria-sort')).toBe('none');
+      expect(getRowModels()).toEqual(['Slow LLM', 'Fast LLM', 'Mid LLM']);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      dom.window.close();
+      vi.unstubAllGlobals();
+    }
   });
 });
