@@ -12,6 +12,7 @@ import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migrat
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
 import {
   createInvalidReferenceReplacer,
@@ -1209,5 +1210,401 @@ describe('replaceInvalidModelReferences', () => {
     ]);
     expect(first?.agentModelId).toBe('new-llm');
     expect(second?.agentModelId).toBe('old-llm');
+  });
+
+  it('replaces invalid selectLLMModel in Agent selectedTools configs across app and version while skipping agentGenerated and unavailable tools', async () => {
+    const getSystemToolDetailMock = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockImplementation(async ({ pluginId }) => {
+        if (pluginId === 'systemTool-modelInvokeTest') {
+          return {
+            id: pluginId,
+            inputSchema: {
+              type: 'object',
+              properties: {
+                model: { type: 'string', format: 'modelId' },
+                autoModel: { type: 'string', format: 'modelId' },
+                prompt: { type: 'string' }
+              }
+            }
+          } as never;
+        }
+        throw new Error('tool not found');
+      });
+
+    const buildAgentNode = () => ({
+      nodeId: 'agent-1',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-modelInvokeTest',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                { key: 'model', mode: 'manual' },
+                { key: 'autoModel', mode: 'agentGenerated' }
+              ],
+              config: {
+                model: 'old-llm',
+                autoModel: 'old-llm',
+                prompt: 'keep-prompt'
+              }
+            },
+            {
+              id: 'systemTool-missingPlugin',
+              source: 'system',
+              inputs: [{ key: 'model', mode: 'manual' }],
+              config: {
+                model: 'old-llm'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    });
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Agent With Model Tool',
+      type: 'workflow',
+      modules: [buildAgentNode()],
+      chatConfig: {}
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: ids.member,
+      nodes: [buildAgentNode()],
+      edges: [],
+      chatConfig: {},
+      resources: [{ type: 'model', id: 'old-llm' }]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(result.counts.app.llm.failedRecords).toBe(1);
+    expect(result.counts.version.llm.failedRecords).toBe(1);
+    expect(result.failedSamples).toEqual(
+      expect.arrayContaining([
+        { resourceType: 'app', resourceId: String(ids.app), reason: 'Tool detail unavailable' },
+        {
+          resourceType: 'version',
+          resourceId: String(ids.version),
+          reason: 'Tool detail unavailable'
+        }
+      ])
+    );
+    // 同一成功插件在 app 与 version 间复用缓存，仅查询一次。
+    expect(
+      getSystemToolDetailMock.mock.calls.filter(
+        ([args]) => args.pluginId === 'systemTool-modelInvokeTest'
+      )
+    ).toHaveLength(1);
+
+    const [savedApp, savedVersion] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+    const appTools = savedApp?.modules[0].inputs[1].value;
+    expect(appTools[0].config).toEqual({
+      model: 'new-llm',
+      autoModel: 'old-llm',
+      prompt: 'keep-prompt'
+    });
+    expect(appTools[1].config.model).toBe('old-llm');
+
+    const versionTools = savedVersion?.nodes[0].inputs[1].value;
+    expect(versionTools[0].config).toEqual({
+      model: 'new-llm',
+      autoModel: 'old-llm',
+      prompt: 'keep-prompt'
+    });
+    expect(savedVersion?.resources).toContainEqual({ type: 'model', id: 'new-llm' });
+  });
+
+  it('does not cache transient tool detail failures and reports failed records for retry while recovering subsequent records', async () => {
+    let attempts = 0;
+    const getSystemToolDetailMock = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockImplementation(async ({ pluginId }) => {
+        attempts++;
+        if (attempts === 1) {
+          throw new Error('temporary plugin service error');
+        }
+        return {
+          id: pluginId,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              model: { type: 'string', format: 'modelId' }
+            }
+          }
+        } as never;
+      });
+
+    const buildAgentNode = () => ({
+      nodeId: 'agent-transient',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-flakyModelTool',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [{ key: 'model', mode: 'manual' }],
+              config: { model: 'old-llm' }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    });
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'App With Transient Tool Lookup',
+      type: 'workflow',
+      modules: [buildAgentNode()],
+      chatConfig: {}
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: ids.member,
+      nodes: [buildAgentNode()],
+      edges: [],
+      chatConfig: {},
+      resources: [{ type: 'model', id: 'old-llm' }]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(getSystemToolDetailMock).toHaveBeenCalledTimes(2);
+    expect(result.counts.app.llm.replacedReferences).toBe(0);
+    expect(result.counts.app.llm.failedRecords).toBe(1);
+    expect(result.failedSamples).toEqual([
+      { resourceType: 'app', resourceId: String(ids.app), reason: 'Tool detail unavailable' }
+    ]);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.failedRecords).toBe(0);
+
+    const [savedApp, savedVersion] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+    expect(savedApp?.modules[0].inputs[1].value[0].config.model).toBe('old-llm');
+    expect(savedVersion?.nodes[0].inputs[1].value[0].config.model).toBe('new-llm');
+    expect(savedVersion?.resources).toContainEqual({ type: 'model', id: 'new-llm' });
+  });
+
+  it('uses current tool schema rather than stale expanded renderTypeList so plain text params are never overwritten', async () => {
+    vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail').mockResolvedValue({
+      id: 'systemTool-schemaChanged',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          model: { type: 'string', format: 'modelId' },
+          prompt: { type: 'string' }
+        }
+      }
+    } as never);
+
+    const legacyExpandedAgentNode = {
+      nodeId: 'agent-legacy-expanded',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-schemaChanged',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                {
+                  key: 'model',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                },
+                {
+                  key: 'prompt',
+                  // 历史元数据残留了 selectLLMModel，但当前工具 Schema 已是普通文本参数。
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'summarize this document'
+                }
+              ],
+              config: {
+                model: 'old-llm',
+                prompt: 'summarize this document'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    };
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Legacy Expanded Tool App',
+      type: 'workflow',
+      modules: [legacyExpandedAgentNode],
+      chatConfig: {}
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.app.llm.failedRecords).toBe(0);
+
+    const savedApp = await MongoApp.collection.findOne({ _id: ids.app });
+    const savedTool = savedApp?.modules[0].inputs[1].value[0];
+    expect(savedTool.config).toEqual({
+      model: 'new-llm',
+      prompt: 'summarize this document'
+    });
+    expect(savedTool.inputs[0].value).toBe('new-llm');
+    expect(savedTool.inputs[1].value).toBe('summarize this document');
+  });
+
+  it('falls back to legacy manual input values when config[key] is null while preserving non-null config precedence', async () => {
+    vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail').mockResolvedValue({
+      id: 'systemTool-nullConfig',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          model: { type: 'string', format: 'modelId' },
+          secondaryModel: { type: 'string', format: 'modelId' },
+          explicitModel: { type: 'string', format: 'modelId' }
+        }
+      }
+    } as never);
+
+    const legacyNullConfigAgentNode = {
+      nodeId: 'agent-null-config',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-nullConfig',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                {
+                  key: 'model',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                },
+                {
+                  key: 'secondaryModel',
+                  defaultValue: 'old-llm'
+                },
+                {
+                  key: 'explicitModel',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                }
+              ],
+              config: {
+                model: null,
+                secondaryModel: null,
+                explicitModel: 'new-llm'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    };
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Legacy Null Config Tool App',
+      type: 'workflow',
+      modules: [legacyNullConfigAgentNode],
+      chatConfig: {}
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(2);
+    expect(result.counts.app.llm.failedRecords).toBe(0);
+
+    const savedApp = await MongoApp.collection.findOne({ _id: ids.app });
+    const savedTool = savedApp?.modules[0].inputs[1].value[0];
+    expect(savedTool.config).toEqual({
+      model: 'new-llm',
+      secondaryModel: 'new-llm',
+      explicitModel: 'new-llm'
+    });
+    expect(savedTool.inputs[0].value).toBe('new-llm');
+    expect(savedTool.inputs[1].defaultValue).toBe('new-llm');
+    // explicitModel 使用了非空 config 中的有效值 'new-llm'，不应误触发替换写回旧 inputs。
+    expect(savedTool.inputs[2].value).toBe('old-llm');
   });
 });

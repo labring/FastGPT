@@ -2,9 +2,11 @@ import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import {
+  collectAgentSelectedToolModelEntries,
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
-  isWorkflowSystemModelInput
+  isWorkflowSystemModelInput,
+  type SelectedToolModelKeysResolver
 } from '@fastgpt/global/common/workflow/model';
 import {
   getSelectedInputRenderType,
@@ -33,6 +35,10 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  createSystemToolModelKeyCache,
+  resolveSelectedToolModelKeysResolver
+} from '@fastgpt/service/core/app/resource/service';
 import { getAppResourceKey } from '@fastgpt/service/core/app/resource/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
@@ -212,10 +218,12 @@ export const createInvalidReferenceReplacer = ({
   const replaceNodes = ({
     nodes,
     referenceNodes,
+    getSelectedToolModelKeys,
     changes
   }: {
     nodes: unknown;
     referenceNodes?: StoreNodeItemType[];
+    getSelectedToolModelKeys?: SelectedToolModelKeysResolver;
     changes: Record<ModelKind, Change>;
   }) => {
     if (!Array.isArray(nodes)) return;
@@ -323,15 +331,65 @@ export const createInvalidReferenceReplacer = ({
 
       if (node.flowNodeType !== FlowNodeTypeEnum.agent) return;
       const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-      if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) return;
-      for (const slot of workflowDatasetParamModelSlots) {
-        replaceConfigReference({
-          config: paramsInput.value,
-          modelIdKey: slot.modelIdKey,
-          legacyKey: slot.legacyKey,
-          type: slot.type,
-          changes
+      if (paramsInput && !isReferenceInput(paramsInput) && isObject(paramsInput.value)) {
+        for (const slot of workflowDatasetParamModelSlots) {
+          replaceConfigReference({
+            config: paramsInput.value,
+            modelIdKey: slot.modelIdKey,
+            legacyKey: slot.legacyKey,
+            type: slot.type,
+            changes
+          });
+        }
+      }
+
+      const selectedToolsInput = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      if (
+        !selectedToolsInput ||
+        isReferenceInput(selectedToolsInput) ||
+        !Array.isArray(selectedToolsInput.value)
+      ) {
+        return;
+      }
+
+      const toolModelEntries = collectAgentSelectedToolModelEntries({
+        selectedTools: selectedToolsInput.value,
+        getSelectedToolModelKeys
+      });
+      for (const entry of toolModelEntries) {
+        const invalid = isInvalid({
+          reference: getLLMSelectorReference(entry.value),
+          type: ModelTypeEnum.llm
         });
+        if (invalid === undefined) {
+          changes.llm.skippedReferences++;
+          continue;
+        }
+        if (!invalid) continue;
+
+        const toolConfig = isObject(entry.tool.config) ? entry.tool.config : undefined;
+        if (entry.valueSource === 'config') {
+          if (toolConfig) {
+            toolConfig[entry.inputKey] = targets.llm.modelId;
+          }
+          if (entry.input && entry.input.value !== undefined && entry.input.value !== null) {
+            entry.input.value = targets.llm.modelId;
+          }
+        } else if (entry.input) {
+          if (entry.input.value !== undefined && entry.input.value !== null) {
+            entry.input.value = targets.llm.modelId;
+          } else if (entry.input.defaultValue !== undefined && entry.input.defaultValue !== null) {
+            entry.input.defaultValue = targets.llm.modelId;
+          } else {
+            entry.input.value = targets.llm.modelId;
+          }
+          if (toolConfig && Object.hasOwn(toolConfig, entry.inputKey)) {
+            toolConfig[entry.inputKey] = targets.llm.modelId;
+          }
+        }
+        changes.llm.replacedReferences++;
       }
     });
   };
@@ -339,16 +397,18 @@ export const createInvalidReferenceReplacer = ({
   const replaceAppContent = ({
     nodes,
     chatConfig,
-    referenceNodes
+    referenceNodes,
+    getSelectedToolModelKeys
   }: {
     nodes?: unknown;
     chatConfig?: unknown;
     referenceNodes?: StoreNodeItemType[];
+    getSelectedToolModelKeys?: SelectedToolModelKeysResolver;
   }) => {
     const nextNodes = cloneDeep(nodes);
     const nextChatConfig = cloneDeep(chatConfig);
     const changes = newChanges();
-    replaceNodes({ nodes: nextNodes, referenceNodes, changes });
+    replaceNodes({ nodes: nextNodes, referenceNodes, getSelectedToolModelKeys, changes });
     if (isObject(nextChatConfig) && isObject(nextChatConfig.questionGuide)) {
       replaceConfigReference({
         config: nextChatConfig.questionGuide,
@@ -390,6 +450,7 @@ export const replaceInvalidModelReferences = async ({
   assertCanContinue: () => Promise<void>;
 }): Promise<ReplaceInvalidModelReferencesResult> => {
   const replacer = createInvalidReferenceReplacer({ handle, replacement });
+  const toolModelKeyCache = createSystemToolModelKeyCache();
   const counts = newCounts();
   const failedSamples: ReplaceInvalidModelReferencesResult['failedSamples'] = [];
   const teamObjectId = new Types.ObjectId(teamId);
@@ -648,15 +709,25 @@ export const replaceInvalidModelReferences = async ({
         let lastChanges: Record<ModelKind, Change> | undefined;
         try {
           let current = app;
+          let unresolvedToolIds: string[] = [];
+          let recordedConflictFailure = false;
           for (let attempt = 0; attempt < 3; attempt++) {
             const normalizedWorkflow = migrateStoredWorkflow({
               nodes: current.modules,
               chatConfig: current.chatConfig
             });
+            const toolModelKeys = await resolveSelectedToolModelKeysResolver({
+              nodes: current.modules,
+              teamId,
+              cache: toolModelKeyCache,
+              onToolDetailError: 'ignore'
+            });
+            unresolvedToolIds = toolModelKeys.unresolvedToolIds;
             const next = replacer.replaceAppContent({
               nodes: current.modules,
               chatConfig: current.chatConfig,
-              referenceNodes: normalizedWorkflow.nodes
+              referenceNodes: normalizedWorkflow.nodes,
+              getSelectedToolModelKeys: toolModelKeys.getSelectedToolModelKeys
             });
             lastChanges = next.changes;
             if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
@@ -689,6 +760,7 @@ export const replaceInvalidModelReferences = async ({
                 counts.app[kind].failedRecords++;
               }
               addFailure('app', String(app._id), 'Concurrent update');
+              recordedConflictFailure = true;
               break;
             }
             const refreshed = await MongoApp.findById(app._id)
@@ -696,6 +768,10 @@ export const replaceInvalidModelReferences = async ({
               .lean<LegacyAppRow>();
             if (!refreshed) break;
             current = refreshed;
+          }
+          if (unresolvedToolIds.length > 0 && !recordedConflictFailure) {
+            counts.app.llm.failedRecords++;
+            addFailure('app', String(app._id), 'Tool detail unavailable');
           }
         } catch (error) {
           if (stopError) throw error;
@@ -738,16 +814,26 @@ export const replaceInvalidModelReferences = async ({
             let lastChanges: Record<ModelKind, Change> | undefined;
             try {
               let current = version;
+              let unresolvedToolIds: string[] = [];
+              let recordedConflictFailure = false;
               for (let attempt = 0; attempt < 3; attempt++) {
                 const normalizedWorkflow = migrateStoredWorkflow({
                   nodes: current.nodes,
                   edges: current.edges,
                   chatConfig: current.chatConfig
                 });
+                const toolModelKeys = await resolveSelectedToolModelKeysResolver({
+                  nodes: current.nodes,
+                  teamId,
+                  cache: toolModelKeyCache,
+                  onToolDetailError: 'ignore'
+                });
+                unresolvedToolIds = toolModelKeys.unresolvedToolIds;
                 const next = replacer.replaceAppContent({
                   nodes: current.nodes,
                   chatConfig: current.chatConfig,
-                  referenceNodes: normalizedWorkflow.nodes
+                  referenceNodes: normalizedWorkflow.nodes,
+                  getSelectedToolModelKeys: toolModelKeys.getSelectedToolModelKeys
                 });
                 lastChanges = next.changes;
                 if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
@@ -802,6 +888,7 @@ export const replaceInvalidModelReferences = async ({
                     counts.version[kind].failedRecords++;
                   }
                   addFailure('version', String(version._id), 'Concurrent update');
+                  recordedConflictFailure = true;
                   break;
                 }
                 const refreshed = await MongoAppVersion.findById(version._id)
@@ -809,6 +896,10 @@ export const replaceInvalidModelReferences = async ({
                   .lean<LegacyAppVersionRow>();
                 if (!refreshed || String(refreshed.appId) !== String(app._id)) break;
                 current = refreshed;
+              }
+              if (unresolvedToolIds.length > 0 && !recordedConflictFailure) {
+                counts.version.llm.failedRecords++;
+                addFailure('version', String(version._id), 'Tool detail unavailable');
               }
             } catch (error) {
               if (stopError) throw error;

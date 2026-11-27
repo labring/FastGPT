@@ -49,6 +49,7 @@ type Props = Pick<
   | 'uid'
   | 'chatId'
   | 'responseChatItemId'
+  | 'usageId'
   | 'runningAppInfo'
   | 'runningUserInfo'
   | 'retainDatasetCite'

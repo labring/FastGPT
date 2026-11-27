@@ -168,7 +168,7 @@ export const pushChatItemUsage = ({
   usageId: string;
   nodeUsages: ChatNodeUsageType[];
 }) => {
-  pushUsageItems({
+  return pushUsageItems({
     teamId,
     usageId,
     list: nodeUsages.map((item) => ({

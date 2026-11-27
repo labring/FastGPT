@@ -14,6 +14,7 @@ export enum UsageSourceEnum {
   official_account = 'official_account',
   pdfParse = 'pdfParse',
   mcp = 'mcp',
+  plugin = 'plugin',
   evaluation = 'evaluation',
   optimize_prompt = 'optimize_prompt',
   code_copilot = 'code_copilot',
@@ -59,6 +60,9 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.mcp]: {
     label: i18nT('account_usage:mcp')
+  },
+  [UsageSourceEnum.plugin]: {
+    label: i18nT('account_usage:plugin')
   },
   [UsageSourceEnum.evaluation]: {
     label: i18nT('account_usage:evaluation')

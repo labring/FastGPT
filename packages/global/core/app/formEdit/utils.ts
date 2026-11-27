@@ -22,6 +22,7 @@ const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.select]: true,
   [FlowNodeInputTypeEnum.multipleSelect]: true,
   [FlowNodeInputTypeEnum.JSONEditor]: true,
+  [FlowNodeInputTypeEnum.selectLLMModel]: true,
   [FlowNodeInputTypeEnum.fileSelect]: true,
   [FlowNodeInputTypeEnum.timePointSelect]: true,
   [FlowNodeInputTypeEnum.timeRangeSelect]: true
@@ -46,13 +47,12 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.off
 ]);
 
-// 工具配置不能处理依赖文件、知识库、模型或外部动态上下文的输入。
+// 工具配置不能处理依赖文件、知识库、带参数弹窗的模型配置或外部动态上下文的输入。
 const unsupportedToolInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
-  FlowNodeInputTypeEnum.selectLLMModel,
   FlowNodeInputTypeEnum.settingLLMModel,
   FlowNodeInputTypeEnum.customVariable,
   FlowNodeInputTypeEnum.addInputParam
@@ -87,6 +87,7 @@ const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.select,
   FlowNodeInputTypeEnum.multipleSelect,
   FlowNodeInputTypeEnum.JSONEditor,
+  FlowNodeInputTypeEnum.selectLLMModel,
   FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.timePointSelect,
   FlowNodeInputTypeEnum.timeRangeSelect,
@@ -621,7 +622,7 @@ export const isToolInputValueConfigured = ({
 
 /**
  * 校验工具是否能够加入应用级工具列表。
- * 应用级工具无法渲染模型、知识库等特殊输入；普通工作流工具节点由画布渲染这些输入。
+ * 应用级工具支持基础表单与 LLM 模型下拉选择，但无法渲染知识库、完整模型参数弹窗等特殊输入。
  */
 export const validateToolConfiguration = ({
   toolTemplate,

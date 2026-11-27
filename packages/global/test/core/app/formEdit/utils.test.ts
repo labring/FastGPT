@@ -182,7 +182,6 @@ describe('validateToolConfiguration', () => {
       FlowNodeInputTypeEnum.selectDatasetParamsModal,
       FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
       FlowNodeInputTypeEnum.addInputParam,
-      FlowNodeInputTypeEnum.selectLLMModel,
       FlowNodeInputTypeEnum.settingLLMModel,
       FlowNodeInputTypeEnum.customVariable
     ])('should return false for unsupported input type %s', (renderType) => {
@@ -193,6 +192,33 @@ describe('validateToolConfiguration', () => {
       expect(
         validateToolConfiguration({ toolTemplate, canUploadFile: true, isAppTool: true })
       ).toBe(false);
+    });
+
+    it('should allow selectLLMModel in app tools while rejecting agent-generated selectLLMModel', () => {
+      const validTemplate = createMockToolTemplate([
+        createMockInput({
+          key: 'model',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          selectedType: FlowNodeInputTypeEnum.selectLLMModel
+        })
+      ]);
+      expect(validateToolConfiguration({ toolTemplate: validTemplate, isAppTool: true })).toBe(
+        true
+      );
+
+      const tamperedTemplate = createMockToolTemplate([
+        createMockInput({
+          key: 'model',
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.selectLLMModel
+          ],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        })
+      ]);
+      expect(validateToolConfiguration({ toolTemplate: tamperedTemplate, isAppTool: true })).toBe(
+        false
+      );
     });
 
     it('should return false when an agent-generated input uses a special render type', () => {
@@ -346,6 +372,7 @@ describe('checkNeedsUserConfiguration', () => {
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
       FlowNodeInputTypeEnum.JSONEditor,
+      FlowNodeInputTypeEnum.selectLLMModel,
       FlowNodeInputTypeEnum.timePointSelect,
       FlowNodeInputTypeEnum.timeRangeSelect
     ])('should return true for %s render type without toolDescription', (renderType) => {
@@ -634,6 +661,12 @@ describe('getToolConfigStatus', () => {
       },
       { renderTypeList: [FlowNodeInputTypeEnum.multipleSelect], value: ['option1', 'option2'] },
       { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor], value: { key: 'value' } },
+      { renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel], value: 'model-id-1' },
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: undefined,
+        defaultValue: 'default-model-id'
+      },
       { renderTypeList: [FlowNodeInputTypeEnum.switch], value: false },
       { renderTypeList: [FlowNodeInputTypeEnum.numberInput], value: 0 }
     ])('should return configured for valid required input %j', (overrides) => {
@@ -681,6 +714,8 @@ describe('getToolConfigStatus', () => {
       { renderTypeList: [FlowNodeInputTypeEnum.input], value: undefined },
       { renderTypeList: [FlowNodeInputTypeEnum.input], value: null },
       { renderTypeList: [FlowNodeInputTypeEnum.input], value: '' },
+      { renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel], value: undefined },
+      { renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel], value: '' },
       { renderTypeList: [FlowNodeInputTypeEnum.multipleSelect], value: [] },
       {
         renderTypeList: [FlowNodeInputTypeEnum.timeRangeSelect],
@@ -762,13 +797,37 @@ describe('agent generated tool input helpers', () => {
   it.each([
     FlowNodeInputTypeEnum.hidden,
     FlowNodeInputTypeEnum.selectDataset,
-    FlowNodeInputTypeEnum.selectLLMModel,
+    FlowNodeInputTypeEnum.settingLLMModel,
     FlowNodeInputTypeEnum.customVariable,
     FlowNodeInputTypeEnum.datasetTagFilter
   ])('should hide unsupported parent tool configuration type %s', (renderType) => {
     expect(canInputBeConfiguredAsToolParam(createMockInput({ renderTypeList: [renderType] }))).toBe(
       false
     );
+  });
+
+  it('allows selectLLMModel as a manual-only tool parameter and never allows agent generation', () => {
+    const modelInput = createMockInput({
+      key: 'model',
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel
+    });
+
+    expect(canInputBeAgentGenerated(modelInput)).toBe(false);
+    expect(canInputBeManuallyConfigured(modelInput)).toBe(true);
+    expect(canInputBeConfiguredAsToolParam(modelInput)).toBe(true);
+    expect(getToolInputManualRenderType(modelInput)).toBe(FlowNodeInputTypeEnum.selectLLMModel);
+
+    expect(
+      initAgentToolInputType({
+        input: modelInput,
+        mode: AgentToolInputModeEnum.agentGenerated,
+        legacyDefaultMode: 'allAgentGenerated'
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel
+    });
   });
 
   it('should retain the canonical selectedType when normalizing an input', () => {
@@ -1511,6 +1570,62 @@ describe('getAgentToolRuntimeStatus & serializeAgentTool', () => {
     expect(serializeWithNodeType(FlowNodeTypeEnum.appModule)).toEqual({});
     expect(serializeWithNodeType(FlowNodeTypeEnum.pluginModule)).toEqual({
       [NodeInputKeyEnum.history]: 'order audit history'
+    });
+  });
+
+  it('persists selectLLMModel values in config while excluding them from agent-generated inputs and preserving across migration', () => {
+    const modelInput = createMockInput({
+      key: 'model',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+      required: true,
+      value: 'model-id-abc'
+    });
+    const queryInput = createMockInput({
+      key: 'query',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      required: true,
+      value: 'stale-query'
+    });
+
+    const serialized = serializeAgentTool({
+      tool: {
+        id: 'plugin-tool',
+        pluginId: 'plugin-tool',
+        name: 'Plugin Tool',
+        avatar: '',
+        version: '1.0.0',
+        templateType: 'tools',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        intro: '',
+        inputs: [modelInput, queryInput],
+        outputs: []
+      }
+    });
+
+    expect(serialized.inputs).toEqual([
+      { key: 'query', mode: AgentToolInputModeEnum.agentGenerated }
+    ]);
+    expect(serialized.config).toEqual({
+      model: 'model-id-abc'
+    });
+
+    const migrated = migrateToolInputConfig({
+      input: createMockInput({
+        key: 'model',
+        label: 'New Label',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        selectedType: FlowNodeInputTypeEnum.selectLLMModel
+      }),
+      sourceInput: modelInput
+    });
+    expect(migrated).toMatchObject({
+      key: 'model',
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+      value: 'model-id-abc'
     });
   });
 });

@@ -1,11 +1,16 @@
 import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
+  extractAppResourcesWithToolModels,
+  extractSelectedToolModelResources,
   getAppDraftResourceBaseline,
+  inspectAppResourcesWithToolModels,
   prepareAppWorkflowResources,
   authTargetModelResource,
   resolveAppResourcesByPermission
 } from '@fastgpt/service/core/app/resource/service';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeTypeEnum,
@@ -671,5 +676,563 @@ describe('prepareAppWorkflowResources', () => {
       value: model.modelId
     });
     expect(mocks.mongoAppFindById).not.toHaveBeenCalled();
+  });
+
+  it('extracts selectLLMModel config values from Agent selectedTools and enforces permission checks', async () => {
+    const getSystemToolDetailSpy = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockResolvedValue({
+        id: 'systemTool-modelInvokeTest',
+        version: '1.0.0',
+        status: 1,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: { en: 'Model Invoke Test' },
+        intro: { en: 'Test tool' },
+        author: 'FastGPT',
+        tags: [],
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false,
+        systemSecretStatus: 'none',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            summaryModel: {
+              type: 'string',
+              format: 'modelId',
+              description: 'Summary LLM model'
+            },
+            ignoredModelField: {
+              type: 'string',
+              description: 'Plain string field that should not be treated as a model selector'
+            },
+            agentGeneratedModel: {
+              type: 'string',
+              format: 'modelId',
+              description: 'Explicitly marked agentGenerated'
+            },
+            defaultOnlyModel: {
+              type: 'string',
+              format: 'modelId',
+              default: 'schema-default-model-id',
+              description: 'Static schema default without explicit config should be ignored'
+            }
+          }
+        }
+      } as any);
+
+    try {
+      const agentNodes = [
+        {
+          nodeId: 'agent-1',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  inputs: [
+                    { key: 'summaryModel', mode: AgentToolInputModeEnum.manual },
+                    { key: 'ignoredModelField', mode: AgentToolInputModeEnum.manual },
+                    { key: 'agentGeneratedModel', mode: AgentToolInputModeEnum.agentGenerated }
+                  ],
+                  config: {
+                    summaryModel: model.modelId,
+                    ignoredModelField: 'not-a-model-selector',
+                    agentGeneratedModel: '65f000000000000000000999'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+
+      const modelHandle = (await mocks.getTeamModelHandle()) as ModelHandle;
+
+      const extractedOnlyToolModels = await extractSelectedToolModelResources({
+        nodes: agentNodes as any,
+        teamId,
+        modelHandle
+      });
+      expect(extractedOnlyToolModels).toEqual([{ type: 'model', id: model.modelId }]);
+
+      const combined = await extractAppResourcesWithToolModels({
+        nodes: agentNodes as any,
+        teamId,
+        modelHandle
+      });
+      expect(combined).toEqual([{ type: 'model', id: model.modelId }]);
+
+      const prepared = await prepareAppWorkflowResources({
+        appId: 'app-with-agent-tool',
+        nodes: agentNodes as any,
+        teamId,
+        tmbId
+      });
+      expect(prepared).toEqual([{ type: 'model', id: model.modelId }]);
+
+      // Without the draft snapshot baseline, a private model in selectedTools[*].config is rejected
+      const privateModel = AIModelDataSchema.parse({
+        scope: 'team',
+        teamId,
+        tmbId: '65f000000000000000000099',
+        isActive: true,
+        modelId: 'private-tool-model-id',
+        model: 'private-tool-llm',
+        name: 'Private Tool LLM',
+        provider: 'OpenAI',
+        type: 'llm',
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+      });
+      const restrictedHandle = createModelHandle({
+        models: [privateModel],
+        defaultModels: {},
+        configuredDefaultModelIds: {},
+        revision: 1,
+        version: 'restricted-tool-model-catalog'
+      });
+      mocks.getAppDraftVersion.mockResolvedValueOnce({ resources: [] });
+      mocks.getTeamModelHandle.mockResolvedValueOnce(restrictedHandle);
+
+      const unauthorizedAgentNodes = [
+        {
+          ...agentNodes[0],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  inputs: [{ key: 'summaryModel', mode: AgentToolInputModeEnum.manual }],
+                  config: {
+                    summaryModel: privateModel.modelId
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ];
+
+      await expect(
+        prepareAppWorkflowResources({
+          appId: 'app-with-agent-tool',
+          nodes: unauthorizedAgentNodes as any,
+          teamId,
+          tmbId
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthModel);
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
+  });
+
+  it('handles plugin tool detail lookup errors by entry policy, skips non-model configs, and queries exact version', async () => {
+    const getSystemToolDetailSpy = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+    try {
+      const staticModelId = '65f000000000000000000777';
+      const nodesWithUnavailableTools = [
+        {
+          nodeId: 'chat-node',
+          name: 'AI Chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: staticModelId
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'agent-fail',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  version: '1.2.3',
+                  config: {
+                    summaryModel: '65f000000000000000000888'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+
+      // 1) Draft auto-save / create-copy (default / onToolDetailError='ignore') keeps static resources and does not block.
+      const draftExtracted = await extractAppResourcesWithToolModels({
+        nodes: nodesWithUnavailableTools as any,
+        teamId
+      });
+      expect(draftExtracted).toEqual([{ type: 'model', id: staticModelId }]);
+      expect(getSystemToolDetailSpy).toHaveBeenCalledWith({
+        pluginId: 'systemTool-modelInvokeTest',
+        source: 'system',
+        version: '1.2.3'
+      });
+
+      // 2) Publish / debug strict mode (onToolDetailError='throw') rejects so publish keeps the previous valid version.
+      await expect(
+        extractSelectedToolModelResources({
+          nodes: nodesWithUnavailableTools as any,
+          teamId,
+          onToolDetailError: 'throw'
+        })
+      ).rejects.toThrow('Plugin service temporarily unavailable');
+
+      await expect(
+        extractAppResourcesWithToolModels({
+          nodes: nodesWithUnavailableTools as any,
+          teamId,
+          onToolDetailError: 'throw'
+        })
+      ).rejects.toThrow('Plugin service temporarily unavailable');
+
+      // 3) Ordinary tools that only hold secrets (systemInputConfig) or non-model values skip plugin detail lookup entirely.
+      getSystemToolDetailSpy.mockClear();
+      const ordinaryToolNodes = [
+        {
+          nodeId: 'agent-ordinary',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-removedOrdinaryTool',
+                  source: 'system',
+                  config: {
+                    [NodeInputKeyEnum.systemInputConfig]: { apiKey: 'secret' },
+                    limit: 10,
+                    enabled: true,
+                    dynamicRef: '{{start.query}}'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+      await expect(
+        extractSelectedToolModelResources({
+          nodes: ordinaryToolNodes as any,
+          teamId,
+          onToolDetailError: 'throw'
+        })
+      ).resolves.toEqual([]);
+      expect(getSystemToolDetailSpy).not.toHaveBeenCalled();
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
+  });
+
+  it('preserves unchanged verified tool model bindings across degraded draft saves and allows publish after recovery', async () => {
+    const privateModel = AIModelDataSchema.parse({
+      scope: 'team',
+      teamId,
+      tmbId: '65f000000000000000000099',
+      isActive: true,
+      modelId: 'private-tool-model-baseline-id',
+      model: 'private-tool-baseline-llm',
+      name: 'Private Tool Baseline LLM',
+      provider: 'OpenAI',
+      type: 'llm',
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+    });
+    const anotherPrivateModel = AIModelDataSchema.parse({
+      scope: 'team',
+      teamId,
+      tmbId: '65f000000000000000000099',
+      isActive: true,
+      modelId: 'private-tool-model-other-id',
+      model: 'private-tool-other-llm',
+      name: 'Private Tool Other LLM',
+      provider: 'OpenAI',
+      type: 'llm',
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+    });
+    const restrictedHandle = createModelHandle({
+      models: [model, privateModel, anotherPrivateModel],
+      defaultModels: {},
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'degraded-draft-recovery-catalog'
+    });
+    mocks.getTeamModelHandle.mockResolvedValue(restrictedHandle);
+
+    const buildAgentNodes = ({
+      toolVersion = '1.2.3',
+      modelId = privateModel.modelId,
+      mode = AgentToolInputModeEnum.manual,
+      includeTool = true
+    }: {
+      toolVersion?: string;
+      modelId?: string;
+      mode?: AgentToolInputModeEnum;
+      includeTool?: boolean;
+    } = {}) => [
+      {
+        nodeId: 'agent-1',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: includeTool
+              ? [
+                  {
+                    id: 'systemTool-modelInvokeTest',
+                    source: 'system',
+                    version: toolVersion,
+                    inputs: [{ key: 'summaryModel', mode }],
+                    config: {
+                      summaryModel: modelId
+                    }
+                  }
+                ]
+              : []
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    const toolDetailPayload = {
+      id: 'systemTool-modelInvokeTest',
+      version: '1.2.3',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      avatar: '',
+      name: { en: 'Model Invoke Test' },
+      intro: { en: 'Test tool' },
+      author: 'FastGPT',
+      tags: [],
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          summaryModel: {
+            type: 'string',
+            format: 'modelId',
+            description: 'Summary LLM model'
+          }
+        }
+      }
+    } as any;
+
+    const appId = 'app-degraded-draft-recovery';
+    const initialNodes = buildAgentNodes();
+    const initialDraftVersion = {
+      appId,
+      nodes: initialNodes as any,
+      resources: [{ type: 'model' as const, id: privateModel.modelId }]
+    };
+
+    const getSystemToolDetailSpy = vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail');
+
+    try {
+      // 1) Tool detail temporarily fails during draft auto-save for a collaborator without model permission.
+      getSystemToolDetailSpy.mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+      const degradedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      expect(degradedExtraction.resources).toEqual([]);
+      expect(degradedExtraction.unresolvedToolCandidates).toHaveLength(1);
+
+      const savedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: degradedExtraction.resources,
+        unresolvedToolCandidates: degradedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(savedDraftResources).toEqual([{ type: 'model', id: privateModel.modelId }]);
+
+      // 2) Once tool detail recovers, publishing from the saved degraded draft still inherits the verified binding.
+      getSystemToolDetailSpy.mockResolvedValue(toolDetailPayload);
+
+      const savedDraftVersion = {
+        appId,
+        nodes: initialNodes as any,
+        resources: savedDraftResources
+      };
+      const recoveredExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'throw'
+      });
+      expect(recoveredExtraction.unresolvedToolCandidates).toEqual([]);
+      const publishedResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: recoveredExtraction.resources,
+        unresolvedToolCandidates: recoveredExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: true,
+        modelHandle: restrictedHandle,
+        draftVersion: savedDraftVersion
+      });
+      expect(publishedResources).toEqual([{ type: 'model', id: privateModel.modelId }]);
+
+      // 3) Removing the tool, changing its model/mode/version during outage must NOT preserve the old baseline.
+      getSystemToolDetailSpy.mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+      // 3a) Tool removed
+      const removedNodes = buildAgentNodes({ includeTool: false });
+      const removedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: removedNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      expect(removedExtraction.unresolvedToolCandidates).toEqual([]);
+      const removedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: removedExtraction.resources,
+        unresolvedToolCandidates: removedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(removedDraftResources).toEqual([]);
+
+      // 3b) Model changed (even to another model in baseline)
+      const draftWithTwoModels = {
+        appId,
+        nodes: initialNodes as any,
+        resources: [
+          { type: 'model' as const, id: privateModel.modelId },
+          { type: 'model' as const, id: anotherPrivateModel.modelId }
+        ]
+      };
+      const changedModelNodes = buildAgentNodes({ modelId: anotherPrivateModel.modelId });
+      const changedModelExtraction = await inspectAppResourcesWithToolModels({
+        nodes: changedModelNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const changedModelDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: changedModelExtraction.resources,
+        unresolvedToolCandidates: changedModelExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: draftWithTwoModels
+      });
+      expect(changedModelDraftResources).toEqual([]);
+
+      // 3c) Input mode switched to agentGenerated
+      const agentGeneratedNodes = buildAgentNodes({ mode: AgentToolInputModeEnum.agentGenerated });
+      const agentGeneratedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: agentGeneratedNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const agentGeneratedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: agentGeneratedExtraction.resources,
+        unresolvedToolCandidates: agentGeneratedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(agentGeneratedDraftResources).toEqual([]);
+
+      // 3d) Tool version changed
+      const changedVersionNodes = buildAgentNodes({ toolVersion: '2.0.0' });
+      const changedVersionExtraction = await inspectAppResourcesWithToolModels({
+        nodes: changedVersionNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const changedVersionDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: changedVersionExtraction.resources,
+        unresolvedToolCandidates: changedVersionExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(changedVersionDraftResources).toEqual([]);
+
+      // 3e) Re-adding the removed tool after recovery is rejected as unauthorized
+      getSystemToolDetailSpy.mockResolvedValue(toolDetailPayload);
+      const readdedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'throw'
+      });
+      await expect(
+        resolveAppResourcesByPermission({
+          appId,
+          extracted: readdedExtraction.resources,
+          unresolvedToolCandidates: readdedExtraction.unresolvedToolCandidates,
+          tmbId,
+          teamId,
+          blockOnUnauthorized: true,
+          modelHandle: restrictedHandle,
+          draftVersion: {
+            appId,
+            nodes: removedNodes as any,
+            resources: removedDraftResources
+          }
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthModel);
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
   });
 });

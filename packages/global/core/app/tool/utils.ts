@@ -143,6 +143,23 @@ export const getAgentToolSource = ({
   toolConfig?: NodeToolConfigType;
 }) => source ?? toolConfig?.systemTool?.source ?? toolConfig?.systemToolSet?.source;
 
+/**
+ * 统一解析系统/商业工具向 SystemToolRepo 请求详情时使用的 source，
+ * 确保资源快照提取与 Agent 运行时加载遵循同一身份规则。
+ */
+export const resolveSystemToolDetailSource = ({
+  idSource,
+  runtimeSource
+}: {
+  idSource: AppToolSourceEnum | string;
+  runtimeSource?: string;
+}): string => {
+  if (isDebugToolSource(runtimeSource) || isTeamPluginSource(runtimeSource)) {
+    return runtimeSource;
+  }
+  return idSource === AppToolSourceEnum.commercial ? idSource : 'system';
+};
+
 /** 归一化系统工具集的子工具 ID，保留子工具名内部的斜线。 */
 export const getSystemToolSetChildId = (toolSetId: string, childId: string) => {
   const prefix = `${toolSetId}/`;

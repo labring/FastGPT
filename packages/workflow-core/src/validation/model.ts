@@ -1,5 +1,6 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
+  collectAgentSelectedToolModelEntries,
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
   isWorkflowSystemModelInput,
@@ -134,6 +135,46 @@ export const checkWorkflowModels = ({
         // 历史工具选择器的默认值可能仍保存模型名称。
         allowLegacyModelFallback: true
       });
+    }
+
+    if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      const selectedToolsInputIndex = node.inputs.findIndex(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      const selectedToolsInput =
+        selectedToolsInputIndex >= 0 ? node.inputs[selectedToolsInputIndex] : undefined;
+      if (
+        selectedToolsInput &&
+        !nodeInputIsReference(selectedToolsInput) &&
+        Array.isArray(selectedToolsInput.value)
+      ) {
+        for (const entry of collectAgentSelectedToolModelEntries({
+          selectedTools: selectedToolsInput.value
+        })) {
+          if (isEmptyModelValue(entry.value)) continue;
+          checkModel({
+            modelId: entry.value,
+            type: ModelTypeEnum.llm,
+            enabled: true,
+            input: entry.input,
+            location: {
+              nodeId: node.nodeId,
+              inputKey: NodeInputKeyEnum.selectedTools,
+              path: [
+                'nodes',
+                nodeIndex,
+                'inputs',
+                selectedToolsInputIndex,
+                'value',
+                entry.toolIndex,
+                entry.valueSource === 'config' ? 'config' : 'inputs',
+                entry.inputKey
+              ]
+            },
+            allowLegacyModelFallback: true
+          });
+        }
+      }
     }
 
     if (

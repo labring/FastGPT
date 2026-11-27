@@ -11,6 +11,10 @@ export const InvokeSessionSchema = z.object({
   tmbId: z.string().nonempty(),
   /** Current chat usage record; injected for backend-side plugin usage push. */
   usageId: z.string().optional(),
+  toolId: z.string().optional(),
+  isRoot: z.boolean().optional(),
+  /** Model IDs pre-authorized by the active workflow's published resource snapshot. */
+  authorizedModelIds: z.array(z.string()).optional(),
   permissions: PluginPermissionListSchema.default([])
 });
 

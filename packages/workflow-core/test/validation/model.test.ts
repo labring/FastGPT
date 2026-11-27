@@ -308,4 +308,72 @@ describe('checkWorkflowModels', () => {
     document.chatConfig.questionGuide = { open: true, modelId: '{{start.model}}' };
     expect(check(document)).toEqual([]);
   });
+
+  it('checks selectLLMModel inside Agent selectedTools and skips agentGenerated or empty values', () => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'agent',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: 'llm-id'
+            },
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Tools',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-model-invoke',
+                  inputs: [
+                    {
+                      key: 'model',
+                      label: 'Tool Model',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      required: true,
+                      value: 'missing-tool-model'
+                    },
+                    {
+                      key: 'validModel',
+                      label: 'Valid Model',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'llm-id'
+                    },
+                    {
+                      key: 'autoModel',
+                      label: 'Auto Model',
+                      mode: 'agentGenerated',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'missing-agent-generated'
+                    },
+                    {
+                      key: 'emptyModel',
+                      label: 'Empty Model',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: ''
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(check(document)).toEqual([
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.modelUnavailable,
+        nodeId: 'agent',
+        inputKey: NodeInputKeyEnum.selectedTools,
+        params: expect.objectContaining({ model: 'missing-tool-model' })
+      })
+    ]);
+  });
 });

@@ -33,4 +33,46 @@ describe('pushChatItemUsage', () => {
       ]
     });
   });
+
+  it('returns the underlying pushUsageItems promise so callers can await settlement dispatch', async () => {
+    let resolved = false;
+    global.pushUsageItemsHandler = vi.fn().mockImplementation(async () => {
+      await Promise.resolve();
+      resolved = true;
+    });
+
+    await pushChatItemUsage({
+      teamId: 'team_1',
+      usageId: 'usage_2',
+      nodeUsages: [
+        {
+          moduleName: 'Plugin model invoke',
+          modelId: 'model_1',
+          totalPoints: 1.5,
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 20,
+          cacheCreationTokens: 10
+        }
+      ]
+    });
+
+    expect(resolved).toBe(true);
+    expect(global.pushUsageItemsHandler).toHaveBeenCalledWith({
+      teamId: 'team_1',
+      usageId: 'usage_2',
+      list: [
+        {
+          moduleName: 'Plugin model invoke',
+          amount: 1.5,
+          modelId: 'model_1',
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 20,
+          cacheCreationTokens: 10,
+          pages: undefined
+        }
+      ]
+    });
+  });
 });

@@ -3,9 +3,10 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   findToolByNameCandidates,
   getAgentToolSource,
-  isSystemOrCommercialToolId,
   isDebugToolSource,
+  isSystemOrCommercialToolId,
   isTeamPluginSource,
+  resolveSystemToolDetailSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -171,19 +172,18 @@ export const getAgentRuntimeTools = async ({
       if (isTeamPluginSource(runtimeSource)) return runtimeSource;
     })();
     const detailSource = await (async () => {
-      if (!isTeamPluginSource(runtimeSource)) {
-        return (
-          toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
-        );
+      const resolvedSource = resolveSystemToolDetailSource({ idSource, runtimeSource });
+      if (!isTeamPluginSource(resolvedSource)) {
+        return resolvedSource;
       }
 
       await assertTeamPluginSourceAccess({
         teamId: await getCurrentTeamId(),
-        source: runtimeSource,
+        source: resolvedSource,
         pluginId: getRawPluginIdFromSystemToolId(toolId)
       });
 
-      return runtimeSource;
+      return resolvedSource;
     })();
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,

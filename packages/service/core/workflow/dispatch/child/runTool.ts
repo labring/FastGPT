@@ -23,7 +23,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
-import { getWorkflowContext } from '../context';
+import { getWorkflowContext, getWorkflowResourceContext } from '../context';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
@@ -39,7 +39,10 @@ import {
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
-import { InvokeProcessor } from '../../../../support/invoke/invoke';
+import {
+  InvokeProcessor,
+  resolveAuthorizedInvokeModelIds
+} from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getWorkflowAppId } from '../utils/source';
 import {
@@ -276,15 +279,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
+      const resourceContext = getWorkflowResourceContext();
+      const teamId = String(runningUserInfo.teamId);
+      const authorizedModelIds = resolveAuthorizedInvokeModelIds({
+        permissions: tool.permissions,
+        resourceContext,
+        teamId,
+        inputSchema: toolDetail.inputSchema,
+        toolInput
+      });
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
             chatId,
             uId,
-            teamId: String(runningUserInfo.teamId),
+            teamId,
             tmbId: String(runningUserInfo.tmbId),
+            permissions: tool.permissions ?? [],
             usageId: props.usageId,
-            permissions: tool.permissions ?? []
+            toolId: toolConfig.systemTool.toolId,
+            ...(resourceContext?.isRoot ? { isRoot: true } : {}),
+            ...(authorizedModelIds.length > 0 ? { authorizedModelIds } : {})
           }).generateToken()
         : undefined;
 

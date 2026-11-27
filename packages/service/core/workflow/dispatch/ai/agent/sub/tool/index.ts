@@ -33,10 +33,13 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
-import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
+import {
+  InvokeProcessor,
+  resolveAuthorizedInvokeModelIds
+} from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
-import { getWorkflowContext } from '../../../../context';
+import { getWorkflowContext, getWorkflowResourceContext } from '../../../../context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -201,15 +204,27 @@ export const dispatchTool = async ({
       const appId = getWorkflowAppId(runningAppInfo);
 
       // 系统工具的用户信息反向调用必须使用实际运行成员，不能使用应用 owner。
+      const resourceContext = getWorkflowResourceContext();
+      const teamId = String(runningUserInfo.teamId);
+      const authorizedModelIds = resolveAuthorizedInvokeModelIds({
+        permissions: tool.permissions,
+        resourceContext,
+        teamId,
+        inputSchema: toolDetail?.inputSchema,
+        toolInput: params
+      });
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
             chatId,
             uId: uid,
             permissions: tool.permissions ?? [],
-            teamId: String(runningUserInfo.teamId),
+            teamId,
             tmbId: String(runningUserInfo.tmbId),
-            usageId
+            usageId,
+            toolId: toolConfig.systemTool.toolId,
+            ...(resourceContext?.isRoot ? { isRoot: true } : {}),
+            ...(authorizedModelIds.length > 0 ? { authorizedModelIds } : {})
           }).generateToken()
         : undefined;
 

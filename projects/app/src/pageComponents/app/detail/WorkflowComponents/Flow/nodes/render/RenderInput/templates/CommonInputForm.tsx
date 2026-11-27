@@ -8,6 +8,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -95,14 +96,19 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
+      const node = getNodeById(nodeId);
+      const isSystemModelInput = !node || isWorkflowSystemModelInput({ node, input: item });
+      if (
+        isSystemModelInput &&
+        (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId)
+      ) {
         setDefaultModel(value);
       }
 
       const modelIdKey = workflowModelKeyMappings.find(
         ([legacyKey]) => legacyKey === item.key
       )?.[1];
-      if (inputType === InputTypeEnum.selectLLMModel && modelIdKey) {
+      if (inputType === InputTypeEnum.selectLLMModel && modelIdKey && isSystemModelInput) {
         // 记录级改名：以派发瞬间的 inputs 为基准整份替换，避免用 props 里的过滤后数组覆盖文档。
         nodeActions?.updateNode((current) => ({
           inputs: current.inputs.map((input) =>
@@ -114,7 +120,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
       fieldActions.setValue(value);
     },
-    [fieldActions, inputType, item.key, nodeActions, setDefaultModel]
+    [fieldActions, getNodeById, inputType, item, nodeActions, nodeId, setDefaultModel]
   );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。

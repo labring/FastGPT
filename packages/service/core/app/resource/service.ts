@@ -7,14 +7,38 @@ import {
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import {
+  getAgentToolSource,
+  getTeamPluginSource,
+  isTeamPluginSource,
+  resolveSystemToolDetailSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { formatModels } from '@fastgpt/global/common/workflow/model';
+import {
+  formatModels,
+  isWorkflowModelExpression,
+  type SelectedToolModelKeysResolver
+} from '@fastgpt/global/common/workflow/model';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import type { ClientSession } from '../../../common/mongo';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
-import { getTeamModelHandle } from '../../ai/model/catalog/service';
+import { getSystemModelHandle, getTeamModelHandle } from '../../ai/model/catalog/service';
 import { assertAuthModels, getAuthorizedModelIds } from '../../../support/permission/model/auth';
 import {
   filterAuthorizedAppResources,
@@ -22,6 +46,7 @@ import {
   getAppResourcesOutsideTeam
 } from '../../../support/permission/app/resource';
 import { getTmbInfoByTmbId } from '../../../support/user/team/controller';
+import { SystemToolRepo } from '../tool/systemTool/systemTool.repo';
 import { MongoApp } from '../schema';
 import { getAppDraftVersion, getAppLatestVersion } from '../version/controller';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
@@ -34,10 +59,702 @@ import {
   resolveStoredAppResources
 } from './utils';
 
+const isPlainObjectRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const extractModelIdValue = (value: unknown): string => {
+  const modelValue =
+    typeof value === 'string'
+      ? value.trim()
+      : isPlainObjectRecord(value) && typeof value.modelId === 'string'
+        ? value.modelId.trim()
+        : '';
+  return modelValue && !isWorkflowModelExpression(modelValue) ? modelValue : '';
+};
+
+/**
+ * 粗筛工具配置中是否可能包含手工模型绑定（排除鉴权容器 `systemInputConfig` 及非模型值），
+ * 避免仅配置密钥或开关/数字参数的普通工具在发布或保存时触发不必要的插件详情查询。
+ */
+const hasPotentialModelConfigValue = (config: Record<string, unknown>): boolean =>
+  Object.entries(config).some(
+    ([key, value]) =>
+      key !== NodeInputKeyEnum.systemInputConfig && Boolean(extractModelIdValue(value))
+  );
+
+export type ToolDetailErrorPolicy = 'ignore' | 'throw';
+
+export type UnresolvedToolModelCandidate = {
+  toolId: string;
+  detailSource: string;
+  version?: string;
+  config: Record<string, unknown>;
+  inputs: unknown;
+};
+
+export type AppResourcesExtractionResult = {
+  resources: AppResourcesType;
+  unresolvedToolCandidates: UnresolvedToolModelCandidate[];
+};
+
+const getToolCandidateIdentityKey = ({
+  toolId,
+  detailSource,
+  version
+}: Pick<UnresolvedToolModelCandidate, 'toolId' | 'detailSource' | 'version'>) =>
+  `${detailSource}:${toolId}:${version ?? ''}`;
+
+const getSavedInputModeMap = (inputs: unknown): Map<string, AgentToolInputModeEnum> => {
+  const savedModeMap = new Map<string, AgentToolInputModeEnum>();
+  if (!Array.isArray(inputs)) return savedModeMap;
+
+  for (const item of inputs) {
+    if (!isPlainObjectRecord(item) || typeof item.key !== 'string') continue;
+    if (
+      item.mode === AgentToolInputModeEnum.manual ||
+      item.mode === AgentToolInputModeEnum.agentGenerated
+    ) {
+      savedModeMap.set(item.key, item.mode);
+    }
+  }
+  return savedModeMap;
+};
+
+type SelectedToolCandidateIdentity = {
+  toolId: string;
+  detailSource: string;
+  version?: string;
+};
+
+type ToolModelKeysLookupResult = { status: 'resolved'; keys: string[] } | { status: 'unavailable' };
+
+export type SystemToolModelKeyCache = Map<string, Promise<ToolModelKeysLookupResult>>;
+
+export const createSystemToolModelKeyCache = (): SystemToolModelKeyCache => new Map();
+
+const extractSelectedToolIdentity = ({
+  tool,
+  teamId
+}: {
+  tool: Record<string, unknown>;
+  teamId?: string;
+}): SelectedToolCandidateIdentity | undefined => {
+  const rawToolId =
+    typeof tool.id === 'string' && tool.id.trim()
+      ? tool.id.trim()
+      : typeof tool.toolId === 'string' && tool.toolId.trim()
+        ? tool.toolId.trim()
+        : '';
+  if (!rawToolId) return undefined;
+
+  let idSource: string;
+  try {
+    idSource = splitCombineToolId(rawToolId).source;
+  } catch {
+    return undefined;
+  }
+
+  if (idSource !== AppToolSourceEnum.systemTool && idSource !== AppToolSourceEnum.commercial) {
+    return undefined;
+  }
+
+  const runtimeSource = getAgentToolSource({
+    source: typeof tool.source === 'string' ? tool.source : undefined,
+    toolConfig: isPlainObjectRecord(tool.toolConfig)
+      ? (tool.toolConfig as Parameters<typeof getAgentToolSource>[0]['toolConfig'])
+      : undefined
+  });
+  if (
+    isTeamPluginSource(runtimeSource) &&
+    teamId &&
+    runtimeSource !== getTeamPluginSource(teamId)
+  ) {
+    return undefined;
+  }
+
+  const detailSource = resolveSystemToolDetailSource({
+    idSource,
+    runtimeSource
+  });
+
+  const version =
+    typeof tool.version === 'string' && tool.version
+      ? tool.version
+      : typeof tool.versionId === 'string' && tool.versionId
+        ? tool.versionId
+        : undefined;
+
+  return {
+    toolId: rawToolId,
+    detailSource,
+    version
+  };
+};
+
+const extractSelectLLMModelKeysFromToolDetail = (
+  toolDetail: Awaited<
+    ReturnType<ReturnType<typeof SystemToolRepo.getInstance>['getSystemToolDetail']>
+  >
+): string[] => {
+  if (!toolDetail) return [];
+
+  const schemas = [
+    toolDetail.inputSchema,
+    ...(toolDetail.isToolSet ? (toolDetail.children ?? []).map((child) => child.inputSchema) : [])
+  ].filter((schema): schema is NonNullable<typeof schema> => Boolean(schema));
+  if (schemas.length === 0) return [];
+
+  const keys = new Set<string>();
+  for (const jsonSchema of schemas) {
+    const schemaInputs = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+    for (const schemaInput of schemaInputs) {
+      if (getSelectedInputRenderType(schemaInput) === FlowNodeInputTypeEnum.selectLLMModel) {
+        keys.add(schemaInput.key);
+      }
+    }
+  }
+  return Array.from(keys);
+};
+
+const lookupSystemToolSelectLLMModelKeys = ({
+  identity,
+  cache,
+  onToolDetailError = 'ignore'
+}: {
+  identity: SelectedToolCandidateIdentity;
+  cache: SystemToolModelKeyCache;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<ToolModelKeysLookupResult> => {
+  const cacheKey = getToolCandidateIdentityKey(identity);
+  let pending = cache.get(cacheKey);
+  if (!pending) {
+    const systemToolRepo = SystemToolRepo.getInstance();
+    // 按指定版本读取，与 Agent 运行时注册（formatSystemToolNode）保持一致，避免回退 latest 产生版本错位。
+    const request = systemToolRepo
+      .getSystemToolDetail({
+        pluginId: identity.toolId,
+        source: identity.detailSource,
+        version: identity.version || undefined
+      })
+      .then(
+        (detail): ToolModelKeysLookupResult => ({
+          status: 'resolved',
+          keys: extractSelectLLMModelKeysFromToolDetail(detail)
+        })
+      );
+    // 仅跨记录复用成功解析的结果；临时故障不钉死在共享缓存中，避免同一批后续记录无法恢复查验。
+    pending =
+      onToolDetailError === 'ignore'
+        ? request.catch((): ToolModelKeysLookupResult => {
+            if (cache.get(cacheKey) === pending) {
+              cache.delete(cacheKey);
+            }
+            return { status: 'unavailable' };
+          })
+        : request.catch((error) => {
+            if (cache.get(cacheKey) === pending) {
+              cache.delete(cacheKey);
+            }
+            throw error;
+          });
+    cache.set(cacheKey, pending);
+  }
+  return pending;
+};
+
+export type SelectedToolModelKeysResolution = {
+  getSelectedToolModelKeys: SelectedToolModelKeysResolver;
+  unresolvedToolIds: string[];
+};
+
+const hasPotentialModelValueInInputs = (inputs: unknown): boolean => {
+  if (!Array.isArray(inputs)) return false;
+  return inputs.some((item) => {
+    if (!isPlainObjectRecord(item) || typeof item.key !== 'string') return false;
+    if (item.key === NodeInputKeyEnum.systemInputConfig) return false;
+    return Boolean(extractModelIdValue(item.value) || extractModelIdValue(item.defaultValue));
+  });
+};
+
+const collectToolIdentitiesForModelKeyResolution = ({
+  nodes,
+  teamId
+}: {
+  nodes: unknown[];
+  teamId?: string;
+}): SelectedToolCandidateIdentity[] => {
+  const identities: SelectedToolCandidateIdentity[] = [];
+
+  for (const node of nodes) {
+    if (!isPlainObjectRecord(node) || node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
+
+    for (const input of Array.isArray(node.inputs) ? node.inputs : []) {
+      if (
+        !isPlainObjectRecord(input) ||
+        input.key !== NodeInputKeyEnum.selectedTools ||
+        nodeInputIsReference(input as FlowNodeInputItemType)
+      ) {
+        continue;
+      }
+      if (!Array.isArray(input.value)) continue;
+
+      for (const tool of input.value) {
+        if (!isPlainObjectRecord(tool)) continue;
+        const hasConfigCandidate =
+          isPlainObjectRecord(tool.config) && hasPotentialModelConfigValue(tool.config);
+        const hasInputCandidate = hasPotentialModelValueInInputs(tool.inputs);
+        if (!hasConfigCandidate && !hasInputCandidate) continue;
+
+        const identity = extractSelectedToolIdentity({ tool, teamId });
+        if (identity) {
+          identities.push(identity);
+        }
+      }
+    }
+  }
+
+  return identities;
+};
+
+/**
+ * 批量预解析工作流内 Agent `selectedTools` 的 `selectLLMModel` 键位，返回供同步遍历复用的只读解析器与未查验工具列表。
+ * 始终返回解析器函数以保证服务端批量写入严格以当前工具 Schema 为准；共享 `cache` 仅复用成功结果。
+ */
+export const resolveSelectedToolModelKeysResolver = async ({
+  nodes,
+  teamId,
+  cache = createSystemToolModelKeyCache(),
+  onToolDetailError = 'ignore'
+}: {
+  nodes?: unknown;
+  teamId?: string;
+  cache?: SystemToolModelKeyCache;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<SelectedToolModelKeysResolution> => {
+  const emptyResolver: SelectedToolModelKeysResolver = () => [];
+  if (!Array.isArray(nodes)) {
+    return {
+      getSelectedToolModelKeys: emptyResolver,
+      unresolvedToolIds: []
+    };
+  }
+
+  const identities = collectToolIdentitiesForModelKeyResolution({ nodes, teamId });
+  if (identities.length === 0) {
+    return {
+      getSelectedToolModelKeys: emptyResolver,
+      unresolvedToolIds: []
+    };
+  }
+
+  const resolvedKeysByIdentity = new Map<string, string[]>();
+  const unresolvedToolIds = new Set<string>();
+  const uniqueIdentities = new Map<string, SelectedToolCandidateIdentity>();
+  for (const identity of identities) {
+    const key = getToolCandidateIdentityKey(identity);
+    if (!uniqueIdentities.has(key)) {
+      uniqueIdentities.set(key, identity);
+    }
+  }
+
+  await Promise.all(
+    Array.from(uniqueIdentities.entries()).map(async ([cacheKey, identity]) => {
+      const result = await lookupSystemToolSelectLLMModelKeys({
+        identity,
+        cache,
+        onToolDetailError
+      });
+      if (result.status === 'unavailable') {
+        unresolvedToolIds.add(identity.toolId);
+        return;
+      }
+      if (result.keys.length > 0) {
+        resolvedKeysByIdentity.set(cacheKey, result.keys);
+      }
+    })
+  );
+
+  return {
+    getSelectedToolModelKeys: (tool: Record<string, unknown>) => {
+      const identity = extractSelectedToolIdentity({ tool, teamId });
+      if (!identity) return [];
+      return resolvedKeysByIdentity.get(getToolCandidateIdentityKey(identity)) ?? [];
+    },
+    unresolvedToolIds: Array.from(unresolvedToolIds)
+  };
+};
+
+const collectSelectedToolModelCandidates = ({
+  nodes = [],
+  teamId
+}: {
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  teamId?: string;
+}): UnresolvedToolModelCandidate[] => {
+  const candidates: UnresolvedToolModelCandidate[] = [];
+
+  for (const node of nodes) {
+    if (!isPlainObjectRecord(node) || node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
+
+    for (const input of Array.isArray(node.inputs) ? node.inputs : []) {
+      if (
+        !isPlainObjectRecord(input) ||
+        input.key !== NodeInputKeyEnum.selectedTools ||
+        nodeInputIsReference(input as FlowNodeInputItemType)
+      ) {
+        continue;
+      }
+      if (!Array.isArray(input.value)) continue;
+
+      for (const tool of input.value) {
+        if (!isPlainObjectRecord(tool) || !isPlainObjectRecord(tool.config)) continue;
+        if (!hasPotentialModelConfigValue(tool.config)) continue;
+
+        const identity = extractSelectedToolIdentity({ tool, teamId });
+        if (!identity) continue;
+
+        candidates.push({
+          ...identity,
+          config: tool.config,
+          inputs: tool.inputs
+        });
+      }
+    }
+  }
+
+  return candidates;
+};
+
+const resolveModelHandleForToolExtraction = async ({
+  teamId,
+  modelHandle
+}: {
+  teamId?: string;
+  modelHandle?: ModelHandle;
+}): Promise<ModelHandle | undefined> =>
+  modelHandle ??
+  (teamId
+    ? await getTeamModelHandle({ teamId }).catch(() => undefined)
+    : typeof getSystemModelHandle === 'function'
+      ? await getSystemModelHandle().catch(() => undefined)
+      : undefined);
+
+const createModelIdResolver =
+  (resolveHandle?: ModelHandle) =>
+  (value: string): string => {
+    if (!resolveHandle || typeof resolveHandle.findModelData !== 'function') return value;
+    return (
+      resolveHandle.findModelData({ modelId: value })?.modelId ??
+      resolveHandle.findModelData({ model: value }, { type: ModelTypeEnum.llm })?.modelId ??
+      value
+    );
+  };
+
+const collectManualModelConfigEntries = ({
+  candidate,
+  resolveModelId
+}: {
+  candidate: UnresolvedToolModelCandidate;
+  resolveModelId: (value: string) => string;
+}): Map<string, string> => {
+  const savedModeMap = getSavedInputModeMap(candidate.inputs);
+  const entries = new Map<string, string>();
+  for (const [key, value] of Object.entries(candidate.config)) {
+    if (key === NodeInputKeyEnum.systemInputConfig) continue;
+    if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) continue;
+    const modelValue = extractModelIdValue(value);
+    if (!modelValue) continue;
+    entries.set(key, resolveModelId(modelValue));
+  }
+  return entries;
+};
+
+/**
+ * 从 Agent 节点的 `selectedTools[*].config` 中提取系统/商业工具声明的 `selectLLMModel` 模型引用，
+ * 并显式区分「已提取模型」与「暂无法读取详情的候选工具」。
+ *
+ * `migrateWorkflowToCurrent()` 会将 `selectedTools[*].inputs` 归一为 `{ key, mode }` 稀疏结构并移除
+ * `renderTypeList`，因此需要通过 `SystemToolRepo` 读取工具真实 schema，识别 `selectLLMModel` 输入键
+ * 并仅提取未设为 `agentGenerated` 的手工模型配置，确保：
+ * 1. 发布/调试时受 `resolveAppResourcesByPermission` 权限校验约束（防止无权限编辑者夹带未授权模型）；
+ * 2. 合法模型写入 `AppVersion.resources`，让已发布应用及 `model:invoke` 反向调用准确继承发布者快照授权；
+ * 3. 草稿保存时若工具详情暂不可用，保留 `unresolvedToolCandidates` 供基线比对，避免覆盖丢失未改动的已授权绑定。
+ *
+ * 错误策略由调用方按入口语义显式选择：
+ * - 创建/复制/草稿自动保存/历史基线回填使用 `'ignore'`，不因已下架普通工具或插件服务抖动阻断编辑；
+ * - 正式发布（`isPublish`）与调试运行使用 `'throw'`，无法验证工具定义时阻断发布并保留原发布版本。
+ */
+const inspectSelectedToolModelResources = async ({
+  nodes = [],
+  teamId,
+  modelHandle,
+  onToolDetailError = 'ignore'
+}: {
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  teamId?: string;
+  modelHandle?: ModelHandle;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<AppResourcesExtractionResult> => {
+  const candidates = collectSelectedToolModelCandidates({ nodes, teamId });
+
+  if (candidates.length === 0) {
+    return {
+      resources: [],
+      unresolvedToolCandidates: []
+    };
+  }
+
+  const modelKeyCache = createSystemToolModelKeyCache();
+  const resolveHandle = await resolveModelHandleForToolExtraction({ teamId, modelHandle });
+  const resolveModelId = createModelIdResolver(resolveHandle);
+  const resources: AppResource[] = [];
+  const unresolvedToolCandidates: UnresolvedToolModelCandidate[] = [];
+
+  await Promise.all(
+    candidates.map(async (candidate) => {
+      const lookupResult = await lookupSystemToolSelectLLMModelKeys({
+        identity: candidate,
+        cache: modelKeyCache,
+        onToolDetailError
+      });
+      if (lookupResult.status === 'unavailable') {
+        unresolvedToolCandidates.push(candidate);
+        return;
+      }
+
+      const savedModeMap = getSavedInputModeMap(candidate.inputs);
+
+      for (const key of lookupResult.keys) {
+        if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) {
+          continue;
+        }
+
+        // 仅提取用户在 config 中显式配置的模型，不回退插件 Schema 静态默认值，保持正常提取与草稿降级规则一致。
+        if (!Object.hasOwn(candidate.config, key)) continue;
+        const modelValue = extractModelIdValue(candidate.config[key]);
+        if (!modelValue) continue;
+
+        resources.push({ type: 'model', id: resolveModelId(modelValue) });
+      }
+    })
+  );
+
+  return {
+    resources: mergeAppResources(resources),
+    unresolvedToolCandidates
+  };
+};
+
+export const extractSelectedToolModelResources = async ({
+  nodes = [],
+  teamId,
+  modelHandle,
+  onToolDetailError = 'ignore'
+}: {
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  teamId?: string;
+  modelHandle?: ModelHandle;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<AppResourcesType> => {
+  const { resources } = await inspectSelectedToolModelResources({
+    nodes,
+    teamId,
+    modelHandle,
+    onToolDetailError
+  });
+  return resources;
+};
+
+/**
+ * 结合同步节点资源提取与 Agent `selectedTools` 的 `selectLLMModel` 异步 schema 提取，
+ * 同时返回暂无法读取详情的候选工具列表，供草稿保存时保守继承未改动的已验证绑定。
+ */
+export const inspectAppResourcesWithToolModels = async ({
+  nodes = [],
+  chatConfig,
+  teamId,
+  modelHandle,
+  onToolDetailError = 'ignore'
+}: {
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  chatConfig?: AppChatConfigType;
+  teamId?: string;
+  modelHandle?: ModelHandle;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<AppResourcesExtractionResult> => {
+  const staticResources = extractAppResources({ nodes, chatConfig });
+  const { resources: selectedToolModelResources, unresolvedToolCandidates } =
+    await inspectSelectedToolModelResources({
+      nodes,
+      teamId,
+      modelHandle,
+      onToolDetailError
+    });
+  return {
+    resources:
+      selectedToolModelResources.length > 0
+        ? mergeAppResources([...staticResources, ...selectedToolModelResources])
+        : staticResources,
+    unresolvedToolCandidates
+  };
+};
+
+/** 结合同步节点资源提取与 Agent `selectedTools` 的 `selectLLMModel` 异步 schema 提取。 */
+export const extractAppResourcesWithToolModels = async ({
+  nodes = [],
+  chatConfig,
+  teamId,
+  modelHandle,
+  onToolDetailError = 'ignore'
+}: {
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  chatConfig?: AppChatConfigType;
+  teamId?: string;
+  modelHandle?: ModelHandle;
+  onToolDetailError?: ToolDetailErrorPolicy;
+}): Promise<AppResourcesType> => {
+  const { resources } = await inspectAppResourcesWithToolModels({
+    nodes,
+    chatConfig,
+    teamId,
+    modelHandle,
+    onToolDetailError
+  });
+  return resources;
+};
+
+/**
+ * 在草稿保存降级场景下，仅保留可以确认与上一版草稿完全未变且已在基线中验证过的模型绑定：
+ * 1. 上一版草稿中存在同一 `(toolId, detailSource, version)` 的工具；
+ * 2. 同一配置键在当前节点与上一版草稿中均非 `agentGenerated`，且规范化后的模型 ID 一致；
+ * 3. 该模型资源已存在于上一版草稿的已验证基线中。
+ */
+const resolvePreservedUnresolvedToolModelResources = async ({
+  unresolvedToolCandidates,
+  draftNodes,
+  baseline,
+  teamId,
+  modelHandle
+}: {
+  unresolvedToolCandidates: UnresolvedToolModelCandidate[];
+  draftNodes: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  baseline: AppResourcesType;
+  teamId?: string;
+  modelHandle?: ModelHandle;
+}): Promise<AppResourcesType> => {
+  if (unresolvedToolCandidates.length === 0 || baseline.length === 0) return [];
+
+  const baselineModelIds = new Set(
+    baseline.filter((resource) => resource.type === 'model').map((resource) => resource.id)
+  );
+  if (baselineModelIds.size === 0) return [];
+
+  const draftCandidates = collectSelectedToolModelCandidates({
+    nodes: draftNodes,
+    teamId
+  });
+  if (draftCandidates.length === 0) return [];
+
+  const resolveHandle = await resolveModelHandleForToolExtraction({ teamId, modelHandle });
+  const resolveModelId = createModelIdResolver(resolveHandle);
+
+  const draftCandidatesByIdentity = new Map<string, Map<string, string>[]>();
+  for (const draftCandidate of draftCandidates) {
+    const identityKey = getToolCandidateIdentityKey(draftCandidate);
+    const manualEntries = collectManualModelConfigEntries({
+      candidate: draftCandidate,
+      resolveModelId
+    });
+    if (manualEntries.size === 0) continue;
+
+    const group = draftCandidatesByIdentity.get(identityKey);
+    if (group) {
+      group.push(manualEntries);
+    } else {
+      draftCandidatesByIdentity.set(identityKey, [manualEntries]);
+    }
+  }
+
+  const preserved: AppResource[] = [];
+  for (const candidate of unresolvedToolCandidates) {
+    const draftGroups = draftCandidatesByIdentity.get(getToolCandidateIdentityKey(candidate));
+    if (!draftGroups?.length) continue;
+
+    const currentEntries = collectManualModelConfigEntries({
+      candidate,
+      resolveModelId
+    });
+    for (const [key, modelId] of currentEntries) {
+      if (!baselineModelIds.has(modelId)) continue;
+      if (draftGroups.some((draftEntries) => draftEntries.get(key) === modelId)) {
+        preserved.push({ type: 'model', id: modelId });
+      }
+    }
+  }
+
+  return mergeAppResources(preserved);
+};
+
 type AppDraftResourceSource = Pick<
   AppVersionSchemaType,
   'appId' | 'nodes' | 'chatConfig' | 'resources'
 > & { resourceRefs?: unknown };
+
+const resolveBaselineFromDraft = async ({
+  appId,
+  draft,
+  teamId,
+  session,
+  isRoot = false,
+  modelHandle
+}: {
+  appId: string;
+  draft: AppDraftResourceSource | null;
+  teamId?: string;
+  session?: ClientSession;
+  isRoot?: boolean;
+  modelHandle?: ModelHandle;
+}): Promise<AppResourcesType> => {
+  if (!draft) return [];
+  if (Array.isArray(draft.resources)) {
+    const parsed = AppResourcesSchema.safeParse(draft.resources);
+    return parsed.success ? mergeAppResources(parsed.data) : [];
+  }
+
+  const decodedNodes = decodeToolSetNodesFromStorage(draft.nodes);
+  const storedResources = resolveStoredAppResources({
+    resources: draft.resources,
+    nodes: decodedNodes,
+    chatConfig: draft.chatConfig,
+    resourceRefs: draft.resourceRefs
+  });
+  const selectedToolModels = await extractSelectedToolModelResources({
+    nodes: decodedNodes,
+    teamId,
+    modelHandle,
+    onToolDetailError: 'ignore'
+  });
+  const resources =
+    selectedToolModels.length > 0
+      ? mergeAppResources([...storedResources, ...selectedToolModels])
+      : storedResources;
+  if (resources.length === 0) return [];
+
+  const app = await MongoApp.findById(appId, 'tmbId')
+    .session(session ?? null)
+    .lean();
+  if (!app?.tmbId) return [];
+  return filterAuthorizedAppResources({
+    resources,
+    tmbId: String(app.tmbId),
+    teamId,
+    isRoot,
+    modelHandle
+  });
+};
 
 /**
  * 读取应用草稿授权基线。合法快照直接沿用；非法数组按空基线处理，避免提升未授权引用。
@@ -64,28 +781,11 @@ export const getAppDraftResourceBaseline = async ({
   }
   const draft: AppDraftResourceSource | null =
     draftVersion === undefined ? await getAppDraftVersion(appId, session) : draftVersion;
-  if (!draft) return [];
-  if (Array.isArray(draft.resources)) {
-    const parsed = AppResourcesSchema.safeParse(draft.resources);
-    return parsed.success ? mergeAppResources(parsed.data) : [];
-  }
-
-  const resources = resolveStoredAppResources({
-    resources: draft.resources,
-    nodes: decodeToolSetNodesFromStorage(draft.nodes),
-    chatConfig: draft.chatConfig,
-    resourceRefs: draft.resourceRefs
-  });
-  if (resources.length === 0) return [];
-
-  const app = await MongoApp.findById(appId, 'tmbId')
-    .session(session ?? null)
-    .lean();
-  if (!app?.tmbId) return [];
-  return filterAuthorizedAppResources({
-    resources,
-    tmbId: String(app.tmbId),
+  return resolveBaselineFromDraft({
+    appId,
+    draft,
     teamId,
+    session,
     isRoot,
     modelHandle
   });
@@ -99,6 +799,7 @@ export const getAppDraftResourceBaseline = async ({
 export const resolveAppResourcesByPermission = async ({
   appId,
   extracted,
+  unresolvedToolCandidates,
   tmbId,
   teamId,
   isRoot = false,
@@ -109,6 +810,8 @@ export const resolveAppResourcesByPermission = async ({
 }: {
   appId: string;
   extracted: AppResource[];
+  /** 提取阶段暂无法读取工具详情的 Agent 工具候选，仅用于草稿降级时保留可确认未变的已验证基线绑定。 */
+  unresolvedToolCandidates?: UnresolvedToolModelCandidate[];
   tmbId: string;
   teamId?: string;
   isRoot?: boolean;
@@ -118,15 +821,35 @@ export const resolveAppResourcesByPermission = async ({
   session?: ClientSession;
   draftVersion?: AppDraftResourceSource | null;
 }) => {
-  const baseline = await getAppDraftResourceBaseline({
+  if (draftVersion && String(draftVersion.appId).toLowerCase() !== appId.toLowerCase()) {
+    throw new Error('Draft version belongs to another app');
+  }
+  const resolvedDraft: AppDraftResourceSource | null =
+    draftVersion === undefined ? await getAppDraftVersion(appId, session) : draftVersion;
+  const baseline = await resolveBaselineFromDraft({
     appId,
+    draft: resolvedDraft,
     teamId,
     session,
-    draftVersion,
     isRoot,
     modelHandle
   });
-  const { kept, added } = splitExtractedAppResources({ extracted, baseline });
+  // 工具详情暂不可用时，仅保守继承与上一版草稿完全未变且已验证的模型绑定，避免降级草稿覆盖丢失基线。
+  const preservedUnresolvedModels =
+    !blockOnUnauthorized && unresolvedToolCandidates?.length && resolvedDraft
+      ? await resolvePreservedUnresolvedToolModelResources({
+          unresolvedToolCandidates,
+          draftNodes: decodeToolSetNodesFromStorage(resolvedDraft.nodes),
+          baseline,
+          teamId,
+          modelHandle
+        })
+      : [];
+  const effectiveExtracted =
+    preservedUnresolvedModels.length > 0
+      ? mergeAppResources([...extracted, ...preservedUnresolvedModels])
+      : extracted;
+  const { kept, added } = splitExtractedAppResources({ extracted: effectiveExtracted, baseline });
   // 快照只继承资源 ACL，不继承跨团队权限；旧快照也必须核对归属。
   const outOfTeam = kept.length
     ? await getAppResourcesOutsideTeam({
@@ -256,9 +979,12 @@ export const prepareAppWorkflowResources = async ({
     defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'preserve'
   });
-  const extractedResources = extractAppResources({
+  const extractedResources = await extractAppResourcesWithToolModels({
     nodes,
-    chatConfig
+    chatConfig,
+    teamId,
+    modelHandle,
+    onToolDetailError: 'throw'
   });
   return resolveAppResourcesByPermission({
     appId,

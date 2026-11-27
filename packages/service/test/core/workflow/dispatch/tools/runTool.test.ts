@@ -3,6 +3,7 @@ import {
   runWithTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -14,6 +15,8 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
@@ -858,10 +861,124 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(runParams.systemVar.chat.usageId).toBe('usage-1');
     expect(runParams.systemVar.usageId).toBe('usage-1');
 
-    const token = runParams.systemVar.invokeToken as string;
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
     const [, payload] = token.split('.');
     const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     expect(tokenPayload.usageId).toBe('usage-1');
+  });
+
+  it('includes usageId, toolId and model:invoke permission in system-tool invokeToken', async () => {
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'systemTool-search',
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0,
+      permissions: [PluginPermissionEnum['model:invoke']]
+    });
+
+    const props = createRunToolProps({
+      systemTool: {
+        toolId: 'systemTool-search'
+      }
+    });
+    props.usageId = 'usage-run-tool-1';
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-run-tool-1'
+    };
+
+    const result = await dispatchRunTool(props);
+    expect(result.error).toBeUndefined();
+
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+
+    expect(tokenPayload).toMatchObject({
+      appId: 'app-run-tool-1',
+      chatId: 'chat',
+      uId: 'uid',
+      teamId: 'attacker-team',
+      tmbId: 'caller-without-toolset-permission',
+      permissions: ['model:invoke'],
+      usageId: 'usage-run-tool-1',
+      toolId: 'systemTool-search'
+    });
+  });
+
+  it('narrows authorizedModelIds to only the model bound to the current tool across two tools in the same workflow', async () => {
+    const modelA = '65f000000000000000000101';
+    const modelB = '65f000000000000000000102';
+    const resourceContext = createWorkflowResourceContext({
+      teamId: 'attacker-team',
+      resources: [
+        { type: 'model', id: modelA },
+        { type: 'model', id: modelB }
+      ]
+    });
+
+    const toolModelSchema = {
+      type: 'object',
+      properties: {
+        model: {
+          type: 'string',
+          format: 'modelId'
+        }
+      }
+    };
+
+    getSystemToolRuntimeMock
+      .mockResolvedValueOnce({
+        id: 'systemTool-toolA',
+        version: '1.0.0',
+        currentCost: 0,
+        systemKeyCost: 0,
+        permissions: [PluginPermissionEnum['model:invoke']]
+      })
+      .mockResolvedValueOnce({
+        id: 'systemTool-toolB',
+        version: '1.0.0',
+        currentCost: 0,
+        systemKeyCost: 0,
+        permissions: [PluginPermissionEnum['model:invoke']]
+      });
+    getSystemToolDetailMock
+      .mockResolvedValueOnce({ inputSchema: toolModelSchema })
+      .mockResolvedValueOnce({ inputSchema: toolModelSchema });
+
+    const propsA = createRunToolProps({ systemTool: { toolId: 'systemTool-toolA' } });
+    propsA.params = { model: modelA };
+    propsA.runningAppInfo = {
+      ...propsA.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-isolated-models'
+    };
+
+    const propsB = createRunToolProps({ systemTool: { toolId: 'systemTool-toolB' } });
+    propsB.params = { model: modelB };
+    propsB.runningAppInfo = {
+      ...propsB.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-isolated-models'
+    };
+
+    const fileContext = await createTestWorkflowFileContext();
+    await runWithTestWorkflowContext(
+      { checkIsStopping: () => false, fileContext, resourceContext },
+      async () => {
+        await dispatchRunToolWithoutContext(propsA);
+        await dispatchRunToolWithoutContext(propsB);
+      }
+    );
+
+    const tokenA = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const tokenB = runToolStreamMock.mock.calls[1][0].systemVar.invokeToken as string;
+    const payloadA = JSON.parse(Buffer.from(tokenA.split('.')[1], 'base64url').toString('utf8'));
+    const payloadB = JSON.parse(Buffer.from(tokenB.split('.')[1], 'base64url').toString('utf8'));
+
+    expect(payloadA.authorizedModelIds).toEqual([modelA]);
+    expect(payloadB.authorizedModelIds).toEqual([modelB]);
   });
 });
 

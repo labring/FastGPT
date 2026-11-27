@@ -147,6 +147,144 @@ describe('walkWorkflowModelReferences', () => {
 
     expect(onReference).toHaveBeenCalledTimes(1);
   });
+
+  it('walks selectLLMModel entries in Agent selectedTools for editor expanded mode and authoritative server schema mode', () => {
+    const editorVisited: Array<{ source: string; modelId: unknown; inputKey?: string }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-expanded',
+                  inputs: [
+                    {
+                      key: 'model',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'expanded-llm-id'
+                    },
+                    {
+                      key: 'autoModel',
+                      mode: 'agentGenerated',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'ignored-agent-generated'
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      onReference: ({ source, reference, agentTool }) => {
+        editorVisited.push({ source, modelId: reference.modelId, inputKey: agentTool?.inputKey });
+      }
+    });
+
+    expect(editorVisited).toEqual([
+      { source: 'agentToolConfig', modelId: 'expanded-llm-id', inputKey: 'model' }
+    ]);
+
+    const serverVisited: Array<{ source: string; modelId: unknown; inputKey?: string }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-stored',
+                  inputs: [
+                    {
+                      key: 'prompt',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'stale-plain-text'
+                    },
+                    { key: 'model', mode: 'manual' },
+                    { key: 'autoModel', mode: 'agentGenerated' }
+                  ],
+                  config: {
+                    model: 'stored-llm-id',
+                    autoModel: 'ignored-stored-agent-generated',
+                    prompt: 'stale-plain-text'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      getSelectedToolModelKeys: (tool) =>
+        tool.id === 'systemTool-stored' ? ['model', 'autoModel'] : [],
+      onReference: ({ source, reference, agentTool }) => {
+        serverVisited.push({ source, modelId: reference.modelId, inputKey: agentTool?.inputKey });
+      }
+    });
+
+    expect(serverVisited).toEqual([
+      { source: 'agentToolConfig', modelId: 'stored-llm-id', inputKey: 'model' }
+    ]);
+  });
+
+  it('falls back to legacy input value when config[key] is null while keeping non-null config priority', () => {
+    const visited: Array<{ modelId: unknown; inputKey?: string; valueSource?: string }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-null-config',
+                  inputs: [
+                    { key: 'model', value: 'legacy-null-fallback-llm' },
+                    { key: 'backupModel', defaultValue: 'legacy-default-fallback-llm' },
+                    { key: 'explicitModel', value: 'stale-input-llm' }
+                  ],
+                  config: {
+                    model: null,
+                    backupModel: undefined,
+                    explicitModel: 'explicit-config-llm'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      getSelectedToolModelKeys: (tool) =>
+        tool.id === 'systemTool-null-config' ? ['model', 'backupModel', 'explicitModel'] : [],
+      onReference: ({ reference, agentTool }) => {
+        visited.push({
+          modelId: reference.modelId,
+          inputKey: agentTool?.inputKey,
+          valueSource: agentTool?.valueSource
+        });
+      }
+    });
+
+    expect(visited).toEqual([
+      { modelId: 'legacy-null-fallback-llm', inputKey: 'model', valueSource: 'input' },
+      { modelId: 'legacy-default-fallback-llm', inputKey: 'backupModel', valueSource: 'input' },
+      { modelId: 'explicit-config-llm', inputKey: 'explicitModel', valueSource: 'config' }
+    ]);
+  });
 });
 
 describe('isWorkflowModelExpression', () => {
@@ -514,6 +652,13 @@ describe('formatModels', () => {
             label: 'Business model parameter',
             value: 'gpt-4',
             renderTypeList: [FlowNodeInputTypeEnum.select]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            label: 'Plugin reverse invoke model',
+            value: models[0].modelId,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
@@ -521,9 +666,15 @@ describe('formatModels', () => {
     ];
 
     formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+    addModelNamesToWorkflow({ nodes, models });
 
     expect(nodes[0].inputs).toEqual([
-      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' }),
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModel,
+        value: models[0].modelId,
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      })
     ]);
   });
 
