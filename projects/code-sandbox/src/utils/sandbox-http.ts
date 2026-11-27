@@ -1,19 +1,17 @@
 import http from 'http';
 import https from 'https';
-import net, { isIP } from 'net';
+import { isIP } from 'net';
 import dns from 'dns/promises';
-import tls, { checkServerIdentity } from 'tls';
-import {
-  PinnedHttpProxyAgent,
-  TwoLayerHttpsProxyAgent
-} from '@fastgpt/global/common/proxy/nodeAgent';
+import { checkServerIdentity } from 'tls';
 import {
   parseSupportedOutboundProxyUrl,
+  resolveValidatedHttpForwardTargetUri,
   SUPPORTED_HTTP_PROXY_PROTOCOLS,
   SUPPORTED_SOCKS5_PROXY_PROTOCOLS
 } from '@fastgpt/global/common/proxy/utils';
+import { HttpProxyAgent, type HttpProxyAgentOptions } from 'http-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
-import { SocksClient, type SocksProxy } from 'socks';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { isInternalAddress, isInternalResolvedIP } from './ipCheck.util';
 
@@ -38,7 +36,7 @@ export type SandboxHttpRequestPayload = {
   timeoutMs?: number;
 };
 
-type SocksProxyConnectArgs = Parameters<SocksProxyAgent['connect']>;
+type HttpProxySetRequestPropsArgs = Parameters<HttpProxyAgent<string>['setRequestProps']>;
 
 const createAbortError = () => {
   const error = new Error('The operation was aborted');
@@ -46,149 +44,44 @@ const createAbortError = () => {
   return error;
 };
 
-const waitForSocketConnect = (socket: net.Socket, onPostConnectError: () => void) =>
-  new Promise<void>((resolve, reject) => {
-    const cleanup = () => {
-      socket.off('connect', onConnect);
-      socket.off('error', onError);
-      socket.off('close', onClose);
-    };
-    const onConnect = () => {
-      cleanup();
-      // 在交接给 SocksClient 前的微任务窗口内吸收并发 abort 触发的 socket error，避免未捕获异常。
-      socket.on('error', onPostConnectError);
-      resolve();
-    };
-    const onError = (error: Error) => {
-      cleanup();
-      reject(error);
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error('Proxy connection closed before connect'));
-    };
-
-    socket.once('connect', onConnect);
-    socket.once('error', onError);
-    socket.once('close', onClose);
-  });
-
 /**
- * 支持 AbortSignal 即时中断的 SOCKS5 代理 Agent：
- * socks 库的 socket_options 仅透传给 socket.connect() 而非 new net.Socket({ signal })，
- * 导致调用方在 SOCKS5 握手阶段取消时无法立即打断连接。这里先使用带 signal 的 net.connect
- * 建立 TCP 连接，再通过 existing_socket 交给 SocksClient 完成握手，使取消与超时均可立即中断。
+ * 面向明文 HTTP 目标的转发代理 Agent：
+ * 仅覆写 setRequestProps，基于已通过 SSRF 预检的 targetUrl 锁定 Host 与绝对转发 URI，
+ * 阻断 `//127.0.0.1`、`/\\...` 路径二次解析绕过；连接 https:// 代理时严格校验证书并发送 SNI。
  */
-class AbortableSocksProxyAgent extends SocksProxyAgent {
-  private readonly signal: AbortSignal;
+class PinnedHttpProxyAgent extends HttpProxyAgent<string> {
+  private readonly targetUrl: URL;
 
-  constructor(proxyUrl: URL, { timeout, signal }: { timeout: number; signal: AbortSignal }) {
-    // socks-proxy-agent 仅对 socks:// 与 socks5h:// 委托代理侧解析目标域名，统一将 socks5:// 归一化为 socks5h://。
-    const normalizedUri =
-      proxyUrl.protocol === 'socks5:'
-        ? proxyUrl.href.replace(/^socks5:/i, 'socks5h:')
-        : proxyUrl.href;
-    super(normalizedUri, {
-      keepAlive: false,
-      timeout
+  constructor(proxyUrl: URL, targetUrl: URL, opts?: HttpProxyAgentOptions<string>) {
+    const proxyHost = proxyUrl.hostname.replace(/^\[|\]$/g, '');
+    super(proxyUrl, {
+      ...opts,
+      rejectUnauthorized: true,
+      ...(proxyUrl.protocol === 'https:' && !isIP(proxyHost) ? { servername: proxyHost } : {})
     });
-    this.signal = signal;
+    this.targetUrl = targetUrl;
   }
 
-  override async connect(req: SocksProxyConnectArgs[0], opts: SocksProxyConnectArgs[1]) {
-    if (this.signal.aborted) {
-      throw this.signal.reason ?? createAbortError();
-    }
-    if (!opts.host) {
-      throw new Error('No `host` defined!');
-    }
-
-    const rawProxyHost = this.proxy.host ?? this.proxy.ipaddress ?? '';
-    const proxyHost = rawProxyHost.replace(/^\[|\]$/g, '');
-    const socksProxy: SocksProxy =
-      proxyHost === rawProxyHost
-        ? this.proxy
-        : (() => {
-            const cloned: SocksProxy = {
-              host: proxyHost,
-              port: this.proxy.port,
-              type: this.proxy.type
-            };
-            // 保持 userId/password 不可枚举，避免 SocksClientError 序列化时泄露凭据。
-            if (this.proxy.userId) {
-              Object.defineProperty(cloned, 'userId', {
-                value: this.proxy.userId,
-                enumerable: false
-              });
-            }
-            if (this.proxy.password !== undefined) {
-              Object.defineProperty(cloned, 'password', {
-                value: this.proxy.password,
-                enumerable: false
-              });
-            }
-            return cloned;
-          })();
-
-    const rawSocket = net.connect({
-      host: proxyHost,
-      port: this.proxy.port,
-      signal: this.signal
+  override setRequestProps(
+    req: HttpProxySetRequestPropsArgs[0],
+    opts: HttpProxySetRequestPropsArgs[1]
+  ): void {
+    const validatedHref = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
     });
-    const ignoreSocketError = () => {};
-
-    try {
-      await waitForSocketConnect(rawSocket, ignoreSocketError);
-      if (this.signal.aborted) {
-        throw this.signal.reason ?? createAbortError();
-      }
-
-      const connectionPromise = SocksClient.createConnection({
-        proxy: socksProxy,
-        destination: {
-          host: opts.host,
-          port: typeof opts.port === 'number' ? opts.port : parseInt(String(opts.port), 10)
-        },
-        command: 'connect',
-        timeout: this.timeout ?? undefined,
-        existing_socket: rawSocket
-      });
-      rawSocket.off('error', ignoreSocketError);
-
-      const { socket } = await connectionPromise;
-      if (this.signal.aborted) {
-        socket.destroy();
-        throw this.signal.reason ?? createAbortError();
-      }
-
-      if (opts.secureEndpoint) {
-        const { host: _host, path: _path, port: _port, ...tlsOpts } = opts;
-        const servername =
-          tlsOpts.servername === undefined && opts.host && !isIP(opts.host)
-            ? opts.host
-            : tlsOpts.servername;
-        const tlsSocket = tls.connect({
-          ...tlsOpts,
-          ...(servername ? { servername } : {}),
-          socket
-        });
-        tlsSocket.once('error', () => {
-          req.destroy();
-          socket.destroy();
-          tlsSocket.destroy();
-        });
-        return tlsSocket;
-      }
-
-      return socket;
-    } catch (error) {
-      rawSocket.on('error', ignoreSocketError);
-      rawSocket.destroy();
-      if (this.signal.aborted) {
-        throw this.signal.reason ?? createAbortError();
-      }
-      throw error;
-    }
+    const targetPort = this.targetUrl.port ? Number(this.targetUrl.port) : 80;
+    req.setHeader('host', this.targetUrl.host);
+    req.path = validatedHref;
+    super.setRequestProps(req, {
+      ...opts,
+      secureEndpoint: false,
+      port: targetPort
+    });
+    req.path = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
   }
 }
 
@@ -209,17 +102,22 @@ const createSandboxProxyAgent = ({
   signal: AbortSignal;
 }): http.Agent => {
   if (SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(proxyUrl.protocol)) {
-    return new AbortableSocksProxyAgent(proxyUrl, {
-      timeout,
-      signal
+    // socks-proxy-agent 仅对 socks:// 与 socks5h:// 委托代理侧解析目标域名，统一将 socks5:// 归一化为 socks5h://。
+    const normalizedUri =
+      proxyUrl.protocol === 'socks5:'
+        ? proxyUrl.href.replace(/^socks5:/i, 'socks5h:')
+        : proxyUrl.href;
+    return new SocksProxyAgent(normalizedUri, {
+      keepAlive: false,
+      timeout
     });
   }
 
   if (isHttpsTarget) {
-    return new TwoLayerHttpsProxyAgent(proxyUrl, {
+    return new HttpsProxyAgent(proxyUrl, {
       keepAlive: false,
       signal,
-      targetRejectUnauthorized: true
+      rejectUnauthorized: true
     });
   }
 
@@ -369,11 +267,15 @@ export async function runSandboxHttpRequest({
   return new Promise((resolve, reject) => {
     let settled = false;
     const onCallerAbort = () => {
-      requestController.abort(signal?.reason ?? createAbortError());
+      const abortError = signal?.reason ?? createAbortError();
+      requestController.abort(abortError);
+      fail(abortError);
     };
     const timeoutTimer = setTimeout(() => {
       timedOut = true;
-      requestController.abort(new Error('Request timeout'));
+      const timeoutError = new Error('Request timeout');
+      requestController.abort(timeoutError);
+      fail(timeoutError);
     }, timeout);
     timeoutTimer.unref();
 
@@ -406,9 +308,9 @@ export async function runSandboxHttpRequest({
     if (signal) {
       if (signal.aborted) {
         onCallerAbort();
-      } else {
-        signal.addEventListener('abort', onCallerAbort, { once: true });
+        return;
       }
+      signal.addEventListener('abort', onCallerAbort, { once: true });
     }
 
     try {

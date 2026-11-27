@@ -772,55 +772,49 @@ describe('sandbox HTTP request lifecycle', () => {
     }
   });
 
-  it.each(['timeout', 'abort'] as const)(
-    'SOCKS5 握手阶段 %s 时立即中止请求并关闭代理连接',
-    async (mode) => {
-      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
-      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+  it.each(['timeout', 'abort'] as const)('SOCKS5 握手阶段 %s 时中止请求', async (mode) => {
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
 
-      let proxySocket: net.Socket | undefined;
-      const socketClosed = Promise.withResolvers<void>();
-      const proxy = await startServer(
-        net.createServer((socket) => {
-          proxySocket = socket;
-          socket.on('error', () => {});
-          socket.once('close', () => socketClosed.resolve());
-          // 刻意不响应 SOCKS5 握手，模拟代理握手卡死。
-          socket.resume();
-        })
-      );
-      process.env.ALL_PROXY = `socks5://127.0.0.1:${getServerPort(proxy)}`;
+    let proxySocket: net.Socket | undefined;
+    const socketClosed = Promise.withResolvers<void>();
+    const proxy = await startServer(
+      net.createServer((socket) => {
+        proxySocket = socket;
+        socket.on('error', () => {});
+        socket.once('close', () => socketClosed.resolve());
+        // 刻意不响应 SOCKS5 握手，模拟代理握手卡死。
+        socket.resume();
+      })
+    );
+    process.env.ALL_PROXY = `socks5://127.0.0.1:${getServerPort(proxy)}`;
 
-      const connected = once(proxy, 'connection', { signal: AbortSignal.timeout(2000) });
-      const controller = new AbortController();
-      const startedAt = Date.now();
+    const connected = once(proxy, 'connection', { signal: AbortSignal.timeout(2000) });
+    const controller = new AbortController();
+    const startedAt = Date.now();
 
-      const pending = runSandboxHttpRequest({
-        payload: {
-          url: 'http://target.example.test/socks-hang',
-          timeoutMs: mode === 'timeout' ? 300 : 5000
-        },
-        limits: defaultLimits,
-        state: { requestCount: 0 },
-        signal: controller.signal
-      }).then(
-        () => ({ ok: true }),
-        (error: unknown) => error
-      );
+    const pending = runSandboxHttpRequest({
+      payload: {
+        url: 'http://target.example.test/socks-hang',
+        timeoutMs: mode === 'timeout' ? 300 : 5000
+      },
+      limits: defaultLimits,
+      state: { requestCount: 0 },
+      signal: controller.signal
+    }).then(
+      () => ({ ok: true }),
+      (error: unknown) => error
+    );
 
-      try {
-        await connected;
-        if (mode === 'abort') controller.abort();
-        const error = await pending;
-        const elapsedMs = Date.now() - startedAt;
+    try {
+      await connected;
+      if (mode === 'abort') controller.abort();
+      const error = await pending;
+      const elapsedMs = Date.now() - startedAt;
 
-        if (mode === 'timeout') {
-          expect(error).toBeInstanceOf(Error);
-          expect((error as Error).message).toBe('Request timeout');
-        } else {
-          expect(error).toMatchObject({ name: 'AbortError' });
-          expect(elapsedMs).toBeLessThan(2000);
-        }
+      if (mode === 'timeout') {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe('Request timeout');
 
         const closeDeadline = AbortSignal.timeout(2000);
         await Promise.race([
@@ -833,12 +827,15 @@ describe('sandbox HTTP request lifecycle', () => {
             )
           )
         ]);
-      } finally {
-        proxySocket?.destroy();
-        await closeServer(proxy);
+      } else {
+        expect(error).toMatchObject({ name: 'AbortError' });
+        expect(elapsedMs).toBeLessThan(2000);
       }
+    } finally {
+      proxySocket?.destroy();
+      await closeServer(proxy);
     }
-  );
+  });
 
   it('域名形式的 https:// 代理转发明文 HTTP 请求时应携带代理域名 SNI', async () => {
     vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));

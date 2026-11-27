@@ -1,17 +1,100 @@
 import type http from 'http';
+import { isIP } from 'net';
+import { HttpProxyAgent, type HttpProxyAgentOptions } from 'http-proxy-agent';
+import { HttpsProxyAgent, type HttpsProxyAgentOptions } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { ProxyAgent as UndiciProxyAgent } from 'undici';
 import {
-  PinnedHttpProxyAgent,
-  TwoLayerHttpsProxyAgent
-} from '@fastgpt/global/common/proxy/nodeAgent';
-import {
   parseSupportedOutboundProxyUrl,
   PROXY_AUTHORIZATION_HEADER,
+  resolveValidatedHttpForwardTargetUri,
   SUPPORTED_SOCKS5_PROXY_PROTOCOLS
 } from '@fastgpt/global/common/proxy/utils';
 
+type HttpProxySetRequestPropsArgs = Parameters<HttpProxyAgent<string>['setRequestProps']>;
+type HttpsProxyConnectArgs = Parameters<HttpsProxyAgent<string>['connect']>;
 type SocksProxyConnectArgs = Parameters<SocksProxyAgent['connect']>;
+
+const buildProxyTlsOptions = (proxyUrl: URL): { rejectUnauthorized: true; servername?: string } => {
+  const proxyHost = proxyUrl.hostname.replace(/^\[|\]$/g, '');
+  return {
+    // 代理层 TLS 证书始终严格校验，并为域名形式的 https:// 代理补齐 SNI。
+    rejectUnauthorized: true,
+    ...(proxyUrl.protocol === 'https:' && !isIP(proxyHost) ? { servername: proxyHost } : {})
+  };
+};
+
+/**
+ * 面向明文 HTTP 目标的转发代理 Agent：
+ * 仅覆写 setRequestProps，基于已通过 SSRF 预检的 targetUrl 锁定 Host 与绝对转发 URI，
+ * 阻断 `//127.0.0.1`、`/\\...` 路径二次解析绕过；不触碰 Node 私有 _header。
+ */
+class PinnedHttpProxyAgent extends HttpProxyAgent<string> {
+  private readonly targetUrl: URL;
+
+  constructor(proxyUrl: URL, targetUrl: URL, opts?: HttpProxyAgentOptions<string>) {
+    super(proxyUrl, {
+      ...opts,
+      ...buildProxyTlsOptions(proxyUrl)
+    });
+    this.targetUrl = targetUrl;
+  }
+
+  override setRequestProps(
+    req: HttpProxySetRequestPropsArgs[0],
+    opts: HttpProxySetRequestPropsArgs[1]
+  ): void {
+    const validatedHref = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+    const targetPort = this.targetUrl.port ? Number(this.targetUrl.port) : 80;
+    req.setHeader('host', this.targetUrl.host);
+    req.path = validatedHref;
+    super.setRequestProps(req, {
+      ...opts,
+      secureEndpoint: false,
+      port: targetPort
+    });
+    req.path = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+  }
+}
+
+/**
+ * 面向 HTTPS 目标的双层 TLS 代理 Agent：
+ * - 外层连接 https:// 代理服务器时始终严格校验证书（HttpsProxyAgent 内置域名 SNI）；
+ * - 内层隧道连接目标站点时再应用调用方传入的 targetRejectUnauthorized。
+ */
+class TwoLayerHttpsProxyAgent extends HttpsProxyAgent<string> {
+  private readonly targetRejectUnauthorized: boolean;
+
+  constructor(
+    proxyUrl: URL,
+    opts: HttpsProxyAgentOptions<string> & { targetRejectUnauthorized: boolean }
+  ) {
+    const { targetRejectUnauthorized, ...rest } = opts;
+    super(proxyUrl, {
+      ...rest,
+      rejectUnauthorized: true
+    });
+    this.targetRejectUnauthorized = targetRejectUnauthorized;
+  }
+
+  override async connect(req: HttpsProxyConnectArgs[0], opts: HttpsProxyConnectArgs[1]) {
+    return super.connect(
+      req,
+      opts.secureEndpoint
+        ? {
+            ...opts,
+            rejectUnauthorized: this.targetRejectUnauthorized
+          }
+        : opts
+    );
+  }
+}
 
 class TwoLayerSocksProxyAgent extends SocksProxyAgent {
   private readonly targetRejectUnauthorized: boolean;
