@@ -74,26 +74,39 @@ const useFixedTableLayout = (externalBodyRef?: RefObject<HTMLDivElement>) => {
       headerPadding.style.paddingRight = `${Math.max(headerRight, scrollbarWidth)}px`;
       bodyPadding.style.paddingRight = `${Math.max(0, bodyRight - scrollbarWidth)}px`;
     };
-    const syncHorizontalScroll = () => {
-      header.scrollLeft = body.scrollLeft;
+    const syncHeaderFromBody = () => {
+      if (header.scrollLeft !== body.scrollLeft) {
+        header.scrollLeft = body.scrollLeft;
+      }
+    };
+    const syncBodyFromHeader = () => {
+      if (body.scrollLeft !== header.scrollLeft) {
+        body.scrollLeft = header.scrollLeft;
+        // 表体可滚动上限更小时会被浏览器夹紧，回写表头避免残留列错位。
+        if (header.scrollLeft !== body.scrollLeft) {
+          header.scrollLeft = body.scrollLeft;
+        }
+      }
     };
 
     updateScrollbarWidth();
-    syncHorizontalScroll();
+    syncHeaderFromBody();
 
     const resizeObserver = new ResizeObserver(updateScrollbarWidth);
     resizeObserver.observe(body);
     resizeObserver.observe(headerPadding);
     resizeObserver.observe(bodyPadding);
     window.addEventListener('resize', updateScrollbarWidth);
-    body.addEventListener('scroll', syncHorizontalScroll, { passive: true });
+    body.addEventListener('scroll', syncHeaderFromBody, { passive: true });
+    header.addEventListener('scroll', syncBodyFromHeader, { passive: true });
 
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener('resize', updateScrollbarWidth);
       headerPadding.style.removeProperty('padding-right');
       bodyPadding.style.removeProperty('padding-right');
-      body.removeEventListener('scroll', syncHorizontalScroll);
+      body.removeEventListener('scroll', syncHeaderFromBody);
+      header.removeEventListener('scroll', syncBodyFromHeader);
     };
   }, [externalBodyRef]);
 

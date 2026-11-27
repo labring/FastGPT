@@ -1,5 +1,4 @@
 import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChakraProvider } from '@chakra-ui/react';
 import { JSDOM } from 'jsdom';
@@ -11,6 +10,34 @@ import {
   GetChannelDashboardResponseSchema,
   type GetChannelDashboardResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+
+vi.mock('@chakra-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@chakra-ui/react')>();
+  // Node 测试环境下 Emotion 处于 SSR 模式不会转发 Box ref，这里透传 ref 使真实 FixedTableLayout 绑定滚动监听。
+  const Box = React.forwardRef<
+    HTMLElement,
+    { as?: string; children?: React.ReactNode; [key: string]: unknown }
+  >(function ForwardRefBox({ as = 'div', children, ...rest }, ref) {
+    const tag = typeof as === 'string' ? as : 'div';
+    const domProps: Record<string, unknown> = { ref };
+    for (const [key, value] of Object.entries(rest)) {
+      if (
+        key.startsWith('data-') ||
+        key.startsWith('aria-') ||
+        key === 'type' ||
+        key === 'onClick' ||
+        key === 'title' ||
+        key === 'viewBox' ||
+        key === 'fill' ||
+        key === 'style'
+      ) {
+        domProps[key] = value;
+      }
+    }
+    return React.createElement(tag, domProps, children);
+  });
+  return { ...actual, Box };
+});
 
 const mocks = vi.hoisted(() => ({
   requestIndex: 0,
@@ -73,21 +100,6 @@ vi.mock('@fastgpt/web/components/common/Icon', () => ({
   })
 }));
 vi.mock('@/components/core/ai/ModelTabHeader', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
-  FixedTableLayout: ({
-    renderHeader,
-    renderBody
-  }: {
-    renderHeader?: (props: { headerTableWidth: string }) => React.ReactNode;
-    renderBody: () => React.ReactNode;
-  }) =>
-    React.createElement(
-      React.Fragment,
-      null,
-      renderHeader?.({ headerTableWidth: '1200px' }),
-      renderBody()
-    )
-}));
 
 import ModelDashboard from '@/pageComponents/model/ModelDashboard';
 import DataTableComponent from '@/pageComponents/model/ModelDashboard/DataTableComponent';
@@ -359,20 +371,40 @@ describe('model dashboard LLM TPS', () => {
     channelTable.window.close();
   });
 
-  it('cycles tri-state sorting and row order via native sort button in header', async () => {
+  it('cycles tri-state sorting and keeps header/body aligned on narrow horizontal scroll', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>');
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
     vi.stubGlobal('Image', dom.window.Image);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
     });
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    // 在 jsdom 全局就绪后重载模块，使 Chakra/Emotion 以浏览器模式正确转发 FixedTableLayout 的 ref。
+    vi.resetModules();
+    const [
+      { createRoot: createClientRoot },
+      { ChakraProvider: ClientChakraProvider },
+      { default: ClientDataTable }
+    ] = await Promise.all([
+      import('react-dom/client'),
+      import('@chakra-ui/react'),
+      import('@/pageComponents/model/ModelDashboard/DataTableComponent')
+    ]);
 
     const container = document.createElement('div');
     document.body.appendChild(container);
-    const root = createRoot(container);
+    const root = createClientRoot(container);
 
     const models = [
       {
@@ -446,9 +478,9 @@ describe('model dashboard LLM TPS', () => {
       await act(async () => {
         root.render(
           React.createElement(
-            ChakraProvider,
+            ClientChakraProvider,
             { theme },
-            React.createElement(DataTableComponent, {
+            React.createElement(ClientDataTable, {
               data,
               filterProps: {},
               channelList: [{ label: 'Channel', value: '1' }],
@@ -473,12 +505,28 @@ describe('model dashboard LLM TPS', () => {
       // 默认按请求次数降序：Mid(20), Slow(10), Fast(5)
       expect(getRowModels()).toEqual(['Mid LLM', 'Slow LLM', 'Fast LLM']);
 
-      // 第 1 次点击：TPS 降序
+      const headerContainer = container.querySelector<HTMLDivElement>('[data-fixed-table-header]');
+      const bodyContainer = container.querySelector<HTMLDivElement>('[data-fixed-table-body]');
+      expect(headerContainer).not.toBeNull();
+      expect(bodyContainer).not.toBeNull();
+
+      // 模拟窄容器内 Tab 聚焦屏外排序按钮时浏览器滚动 overflow:hidden 表头容器
+      await act(async () => {
+        tpsButton?.focus();
+        headerContainer!.scrollLeft = 300;
+        headerContainer!.dispatchEvent(new dom.window.Event('scroll'));
+      });
+      expect(bodyContainer!.scrollLeft).toBe(300);
+      expect(headerContainer!.scrollLeft).toBe(300);
+
+      // 第 1 次点击：TPS 降序，排序后表头与表体仍对齐
       await act(async () => {
         tpsButton?.click();
       });
       expect(tpsTh?.getAttribute('aria-sort')).toBe('descending');
       expect(getRowModels()).toEqual(['Fast LLM', 'Mid LLM', 'Slow LLM']);
+      expect(headerContainer!.scrollLeft).toBe(300);
+      expect(bodyContainer!.scrollLeft).toBe(300);
 
       // 第 2 次点击：TPS 升序
       await act(async () => {
@@ -486,6 +534,8 @@ describe('model dashboard LLM TPS', () => {
       });
       expect(tpsTh?.getAttribute('aria-sort')).toBe('ascending');
       expect(getRowModels()).toEqual(['Slow LLM', 'Mid LLM', 'Fast LLM']);
+      expect(headerContainer!.scrollLeft).toBe(300);
+      expect(bodyContainer!.scrollLeft).toBe(300);
 
       // 第 3 次点击：取消排序，恢复聚合原始顺序
       await act(async () => {
@@ -493,6 +543,8 @@ describe('model dashboard LLM TPS', () => {
       });
       expect(tpsTh?.getAttribute('aria-sort')).toBe('none');
       expect(getRowModels()).toEqual(['Slow LLM', 'Fast LLM', 'Mid LLM']);
+      expect(headerContainer!.scrollLeft).toBe(300);
+      expect(bodyContainer!.scrollLeft).toBe(300);
     } finally {
       await act(async () => root.unmount());
       container.remove();
