@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   data: [] as GetChannelDashboardResponse,
   models: [] as (PriceType & {
     model: string;
+    name?: string;
+    avatar?: string;
     provider: string;
     type: ModelTypeEnum;
     scope: ModelScopeEnum;
@@ -41,16 +43,19 @@ vi.mock('@fastgpt/web/components/common/charts/AreaChartComponent', () => ({
   default: ({
     title,
     data,
+    enableCumulative,
     tooltipItems
   }: {
     title: string;
     data: { totalCost: number }[];
+    enableCumulative?: boolean;
     tooltipItems?: { formatter?: (value: number) => string }[];
   }) =>
     React.createElement(
       'output',
       {
         'data-chart': title,
+        'data-enable-cumulative': String(enableCumulative ?? true),
         'data-displayed-total': tooltipItems?.[0]?.formatter?.(
           data.reduce((sum, point) => sum + point.totalCost, 0)
         )
@@ -68,6 +73,7 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
 
 import ModelDashboard from '@/pageComponents/model/ModelDashboard';
 import DataTableComponent from '@/pageComponents/model/ModelDashboard/DataTableComponent';
+import { calcAvgTps, getNextSortState } from '@/pageComponents/model/ModelDashboard/utils';
 
 const cacheTier = {
   inputPrice: 2000,
@@ -190,4 +196,144 @@ describe('model dashboard cache pricing', () => {
       }
     }
   );
+});
+
+describe('model dashboard LLM TPS', () => {
+  beforeEach(() => {
+    mocks.requestIndex = 0;
+  });
+
+  it('calculates output_tokens / total_time_s with zero-safe guards', () => {
+    expect(calcAvgTps(1500, 30000)).toBe(50);
+    expect(calcAvgTps(100, 3000)).toBe(33.33);
+    expect(calcAvgTps(0, 3000)).toBe(0);
+    expect(calcAvgTps(100, 0)).toBe(0);
+    expect(calcAvgTps(-10, 1000)).toBe(0);
+  });
+
+  it('cycles tri-state table sorting: none -> desc -> asc -> none', () => {
+    const s1 = getNextSortState({ field: null, direction: null }, 'avgTps');
+    expect(s1).toEqual({ field: 'avgTps', direction: 'desc' });
+    const s2 = getNextSortState(s1, 'avgTps');
+    expect(s2).toEqual({ field: 'avgTps', direction: 'asc' });
+    const s3 = getNextSortState(s2, 'avgTps');
+    expect(s3).toEqual({ field: null, direction: null });
+    // 切换新列从降序开始
+    expect(getNextSortState(s2, 'totalCalls')).toEqual({ field: 'totalCalls', direction: 'desc' });
+  });
+
+  it('excludes non-LLM duration from chart avgTps and renders TPS column for LLM models only', () => {
+    mocks.models = [
+      {
+        pricing: { tiers: [] },
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        avatar: 'model/openai',
+        provider: 'openai',
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.llm
+      },
+      {
+        pricing: { tiers: [] },
+        model: 'text-embedding-3',
+        provider: 'openai',
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.embedding
+      }
+    ];
+    mocks.data = GetChannelDashboardResponseSchema.parse([
+      {
+        timestamp: 1000,
+        summary: [
+          {
+            model: 'gpt-4o',
+            channel_id: 12,
+            request_count: 2,
+            output_tokens: 300,
+            total_time_milliseconds: 6000
+          },
+          {
+            model: 'text-embedding-3',
+            channel_id: 12,
+            request_count: 5,
+            output_tokens: 0,
+            total_time_milliseconds: 10000
+          }
+        ]
+      },
+      {
+        timestamp: 4600,
+        summary: [
+          {
+            model: 'gpt-4o',
+            channel_id: 12,
+            request_count: 1,
+            output_tokens: 200,
+            total_time_milliseconds: 4000
+          }
+        ]
+      }
+    ]);
+
+    const render = (element: React.ReactElement) =>
+      new JSDOM(renderToStaticMarkup(React.createElement(ChakraProvider, { theme }, element)));
+
+    const chart = render(React.createElement(ModelDashboard, { Tab: null, channelType: 'system' }));
+    const tpsChart = chart.window.document.querySelector('[data-chart="config_model:avg_tps"]')!;
+    const cacheChart = chart.window.document.querySelector(
+      '[data-chart="config_model:cache_hit_rate"]'
+    )!;
+    const points = JSON.parse(tpsChart.textContent!) as { avgTps: number }[];
+    // 仅统计 LLM 耗时：300 / 6s = 50，200 / 4s = 50；embedding 的 10s 不拉低 TPS。
+    expect(points.map(({ avgTps }) => avgTps)).toEqual([50, 50]);
+    expect(tpsChart.getAttribute('data-enable-cumulative')).toBe('false');
+    expect(cacheChart.getAttribute('data-enable-cumulative')).toBe('false');
+    chart.window.close();
+
+    const isLLMModel = (model: string) => model === 'gpt-4o';
+    const modelTable = render(
+      React.createElement(DataTableComponent, {
+        data: mocks.data,
+        filterProps: {},
+        channelList: [{ label: 'Channel', value: '12' }],
+        modelPriceMap: new Map(mocks.models.map((model) => [model.model, model])),
+        isLLMModel,
+        onViewDetail: vi.fn()
+      })
+    );
+    const getVisibleText = (el: Element) => {
+      const clone = el.cloneNode(true) as Element;
+      clone.querySelectorAll('style').forEach((node) => node.remove());
+      return clone.textContent?.trim();
+    };
+    const rows = Array.from(modelTable.window.document.querySelectorAll('tbody tr')).map((tr) =>
+      Array.from(tr.querySelectorAll('td')).map(getVisibleText)
+    );
+    const llmRow = rows.find((cells) => cells[0] === 'GPT-4o');
+    const embeddingRow = rows.find((cells) => cells[0] === 'text-embedding-3');
+    // 列顺序（无渠道列、含计费列）：模型[0]、调用量[1]、失败量[2]、积分[3]、耗时[4]、TTFB[5]、TPS[6]、缓存[7]
+    expect(llmRow?.[6]).toBe('50.00');
+    expect(embeddingRow?.[6]).toBe('-');
+    modelTable.window.close();
+
+    const channelTable = render(
+      React.createElement(DataTableComponent, {
+        data: mocks.data.map((point) => ({
+          ...point,
+          summary: point.summary.filter((item) => item.model === 'gpt-4o')
+        })),
+        filterProps: { model: 'gpt-4o' },
+        channelList: [{ label: 'Channel', value: '12' }],
+        modelPriceMap: new Map(mocks.models.map((model) => [model.model, model])),
+        isLLMModel,
+        onViewDetail: vi.fn()
+      })
+    );
+    const channelCells = Array.from(
+      channelTable.window.document.querySelectorAll('tbody tr td')
+    ).map((td) => td.textContent?.trim());
+    // 含渠道列时 TPS 在索引 7
+    expect(channelCells[7]).toBe('50.00');
+    channelTable.window.close();
+  });
 });
