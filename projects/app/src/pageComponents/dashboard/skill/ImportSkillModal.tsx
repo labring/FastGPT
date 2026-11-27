@@ -258,7 +258,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
           </Box>
 
           <Box>
-            <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
+            <FormLabel mb={2}>{t('common:avatar_and_name')}</FormLabel>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
                 <Flex

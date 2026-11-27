@@ -426,10 +426,10 @@ const TemplateConfigModal = ({
           ) : (
             <Box>
               <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'}>
-                {t('admin:enter_a_name')}
+                {t('common:avatar_and_name')}
               </Box>
               <Flex mt={2} alignItems={'center'}>
-                <MyTooltip label={'点击上传头像'}>
+                <MyTooltip label={t('common:set_avatar')}>
                   {avatar ? (
                     <Avatar
                       flexShrink={0}

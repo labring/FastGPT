@@ -117,7 +117,7 @@ function EditModal({
         }
       >
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('account_team:set_name_avatar')}
+          {t('common:avatar_and_name')}
         </Box>
         <AvatarUploader />
         <Flex mt={3} alignItems={'center'}>
