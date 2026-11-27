@@ -141,7 +141,8 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => {
 });
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({
-    t: (key: string, options?: { count: number }) => (options ? `${key}: ${options.count}` : key)
+    t: (key: string, options?: { count?: number; max?: number }) =>
+      options ? `${key}: ${options.count ?? options.max}` : key
   })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
@@ -250,6 +251,77 @@ afterEach(async () => {
 const flush = async () => new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 
 describe('ImportModelFromChannelModal', () => {
+  it('warns only when trying to select more than 100 models', async () => {
+    const template: AIModelDocumentDataType = {
+      model: 'preset',
+      name: 'Preset',
+      provider: 'openai',
+      scope: ModelScopeEnum.team,
+      type: ModelTypeEnum.llm,
+      config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 800 }
+    };
+    apiMocks.getImportPreviewFromChannel.mockResolvedValue({
+      items: Array.from({ length: 101 }, (_, index) => ({
+        providerModelSlug: `upstream-model-${index}`,
+        candidate: {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: 'preset' },
+          modelData: template
+        }
+      }))
+    });
+    apiMocks.getModelTemplates.mockResolvedValue({ models: [] });
+    const getButton = (text: string) =>
+      [...host.querySelectorAll('button')].find((button) => button.textContent === text)!;
+
+    await act(async () => {
+      root.render(
+        React.createElement(ImportModelFromChannelModal, {
+          channelType: 'team',
+          channels: [],
+          installedModels: [],
+          providers: [],
+          createModelData: () => template,
+          onSuccess: async () => {},
+          onClose: () => {}
+        })
+      );
+    });
+    await act(async () => getButton('choose channel').click());
+    await act(async () => {
+      getButton('config_model:next_step').click();
+      await flush();
+    });
+    const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
+    Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 10_000 });
+    await act(async () => {
+      scrollContainer.dispatchEvent(new Event('scroll'));
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    });
+
+    const checkboxes = [
+      ...host.querySelectorAll<HTMLInputElement>(
+        'input[aria-label^="config_model:channel_import_model upstream-model-"]'
+      )
+    ];
+    expect(checkboxes).toHaveLength(101);
+    await act(async () => checkboxes.slice(0, 100).forEach((checkbox) => checkbox.click()));
+    expect(getButton('config_model:next_step').disabled).toBe(false);
+    expect(apiMocks.toast).not.toHaveBeenCalled();
+    await act(async () => checkboxes[100].click());
+    expect(checkboxes[100].checked).toBe(false);
+    expect(getButton('config_model:next_step').disabled).toBe(false);
+    expect(apiMocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'warning',
+      title: 'config_model:channel_import_selection_limit: 100'
+    });
+
+    await act(async () => checkboxes[0].click());
+    await act(async () => checkboxes[100].click());
+    expect(checkboxes[100].checked).toBe(true);
+    expect(apiMocks.toast).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     {
       title: 'shows an unsupported message with a back action',

@@ -199,6 +199,7 @@
   "create_from_channel": "从渠道新建",
   "channel_import_import_step": "导入模型",
   "channel_import_selected_count": "仅显示未在系统内的模型，已选择: {{count}}",
+  "channel_import_selection_limit": "单次最多导入 {{max}} 个模型",
   "channel_import_channel": "渠道",
   "channel_import_model": "上游模型",
   "channel_import_preset_template": "预设模板",

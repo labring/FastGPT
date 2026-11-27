@@ -211,11 +211,12 @@ describe('apply model imports from channel', () => {
     expect(preview.items[0].candidate).toMatchObject({ category: 'blank' });
   });
 
-  it('keeps result order and continues after create and binding failures', async () => {
+  it('keeps result order and distinguishes existing bindings from a failed batch update', async () => {
     createModelMock
       .mockRejectedValueOnce(new Error('duplicate'))
       .mockResolvedValueOnce({ modelId: 'created-id' })
       .mockResolvedValueOnce({ modelId: 'successful-id' });
+    channel.models = ['upstream/successful'];
     updateChannelMock.mockRejectedValueOnce(new Error('binding failed'));
 
     const results = await importFromChannel({
@@ -248,7 +249,9 @@ describe('apply model imports from channel', () => {
   it.each(['system', 'team'] as const)(
     'adds the upstream model with the %s channel update and honors enabled state',
     async (channelType) => {
-      createModelMock.mockResolvedValueOnce({ modelId: 'disabled-id' });
+      createModelMock
+        .mockResolvedValueOnce({ modelId: 'disabled-id' })
+        .mockResolvedValueOnce({ modelId: 'enabled-id' });
       channel.models = ['existing-model'];
       channel.model_mapping = { 'existing-model': 'vendor/existing-model' };
 
@@ -256,19 +259,23 @@ describe('apply model imports from channel', () => {
         channelId: 1,
         ...scope,
         channelType,
-        models: [createModelData('upstream/disabled-model', false)]
+        models: [
+          createModelData('upstream/disabled-model', false),
+          createModelData('upstream/enabled-model')
+        ]
       });
 
-      expect(results.results.map(({ status }) => status)).toEqual(['success']);
+      expect(results.results.map(({ status }) => status)).toEqual(['success', 'success']);
       expect(createModelMock).toHaveBeenCalledWith(
         expect.objectContaining({
           channelType,
           modelData: expect.objectContaining({ model: 'upstream/disabled-model', isActive: false })
         })
       );
+      expect(resolveChannelMock).toHaveBeenCalledTimes(2);
       const update = channelType === 'system' ? updateChannelMock : updateGroupChannelMock;
       expect(update).toHaveBeenCalledExactlyOnceWith(1, {
-        models: ['existing-model', 'upstream/disabled-model'],
+        models: ['existing-model', 'upstream/disabled-model', 'upstream/enabled-model'],
         model_mapping: { 'existing-model': 'vendor/existing-model' }
       });
     }
@@ -332,41 +339,81 @@ describe('apply model imports from channel', () => {
     }
   );
 
-  it('blocks a concurrent import for the same system channel before creating its model', async () => {
+  it('keeps the created ID when another import is writing the same channel', async () => {
     const updateStarted = Promise.withResolvers<void>();
     const completeUpdate = Promise.withResolvers<void>();
-    createModelMock.mockResolvedValueOnce({ modelId: 'first-id' });
+    createModelMock
+      .mockResolvedValueOnce({ modelId: 'first-id' })
+      .mockResolvedValueOnce({ modelId: 'second-id' });
     updateChannelMock.mockImplementationOnce(async (_id, patch) => {
       updateStarted.resolve();
       await completeUpdate.promise;
       Object.assign(channel, patch);
     });
     const first = importFromChannel({
-      channelId: 1,
       ...scope,
+      channelId: 1,
       models: [createModelData('first')]
     });
-    const second = {
-      channelId: 1,
-      ...scope,
-      tmbId: '60000000000000000000000b',
-      models: [createModelData('second')]
-    };
-
     await Promise.race([updateStarted.promise, first]);
+
     try {
-      await expect(importFromChannel(second)).rejects.toMatchObject({
-        name: 'RedisLeaseUnavailableError'
+      await expect(
+        importFromChannel({
+          ...scope,
+          channelId: 1,
+          tmbId: '60000000000000000000000b',
+          models: [createModelData('second')]
+        })
+      ).resolves.toEqual({
+        results: [
+          {
+            status: 'failed',
+            model: 'second',
+            modelId: 'second-id',
+            error: expect.stringContaining('Redis lease is already held for model-channel-import')
+          }
+        ]
       });
-      expect(createModelMock).toHaveBeenCalledTimes(1);
+      expect(updateChannelMock).toHaveBeenCalledTimes(1);
     } finally {
       completeUpdate.resolve();
       await first;
     }
 
-    createModelMock.mockResolvedValueOnce({ modelId: 'second-id' });
-    const { results } = await importFromChannel(second);
-    expect(results).toEqual([{ status: 'success', model: 'second', modelId: 'second-id' }]);
+    await expect(first).resolves.toEqual({
+      results: [{ status: 'success', model: 'first', modelId: 'first-id' }]
+    });
+    expect(channel.models).toEqual(['first']);
+  });
+
+  it('returns confirmed model IDs when the lease expires just after the write', async () => {
+    createModelMock
+      .mockResolvedValueOnce({ modelId: 'first-id' })
+      .mockResolvedValueOnce({ modelId: 'second-id' });
+    const now = Date.now;
+    const clock = vi.spyOn(Date, 'now');
+    updateChannelMock.mockImplementationOnce(async (_id, patch) => {
+      Object.assign(channel, patch);
+      clock.mockImplementation(() => now() + 60_001);
+    });
+
+    try {
+      await expect(
+        importFromChannel({
+          ...scope,
+          channelId: 1,
+          models: [createModelData('first'), createModelData('second')]
+        })
+      ).resolves.toEqual({
+        results: [
+          { status: 'success', model: 'first', modelId: 'first-id' },
+          { status: 'success', model: 'second', modelId: 'second-id' }
+        ]
+      });
+    } finally {
+      clock.mockRestore();
+    }
     expect(channel.models).toEqual(['first', 'second']);
   });
 
@@ -397,6 +444,29 @@ describe('apply model imports from channel', () => {
       error: ModelErrEnum.channelModelMappingConflict
     });
     expect(createModelMock).not.toHaveBeenCalled();
+    expect(updateChannelMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the created ID if a conflicting alias appears before binding', async () => {
+    createModelMock.mockImplementationOnce(async () => {
+      channel.model_mapping = { 'new-upstream': 'other-upstream' };
+      return { modelId: 'created-id' };
+    });
+
+    const { results } = await importFromChannel({
+      channelId: 1,
+      ...scope,
+      models: [createModelData('new-upstream')]
+    });
+
+    expect(results).toEqual([
+      {
+        status: 'failed',
+        model: 'new-upstream',
+        modelId: 'created-id',
+        error: ModelErrEnum.channelModelMappingConflict
+      }
+    ]);
     expect(updateChannelMock).not.toHaveBeenCalled();
   });
 });

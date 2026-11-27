@@ -28,10 +28,11 @@ import {
   defaultProvider,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/model/provider';
-import type {
-  CreateModelData,
-  ImportPreviewCandidate,
-  ModelChannelSummary
+import {
+  MAX_CHANNEL_IMPORT_MODELS,
+  type CreateModelData,
+  type ImportPreviewCandidate,
+  type ModelChannelSummary
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -43,6 +44,7 @@ import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleR
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { enableMapSet, produce, type Draft } from 'immer';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -464,6 +466,7 @@ const ModelPreviewStep = ({
   onPrevious: () => void;
 }) => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
   const [state, setState] = useState<PreviewState>(() => ({
     items: undefined,
     loading: false,
@@ -642,6 +645,16 @@ const ModelPreviewStep = ({
 
   const toggleSelected = useCallback(
     (providerModelSlug: string) => {
+      const isSelected = state.rowSelections.get(providerModelSlug)?.selected;
+      if (!isSelected && selectedItems.length >= MAX_CHANNEL_IMPORT_MODELS) {
+        toast({
+          status: 'warning',
+          title: t('config_model:channel_import_selection_limit', {
+            max: MAX_CHANNEL_IMPORT_MODELS
+          })
+        });
+        return;
+      }
       updateState((draft) => {
         const current = draft.rowSelections.get(providerModelSlug);
         draft.rowSelections.set(providerModelSlug, {
@@ -650,7 +663,7 @@ const ModelPreviewStep = ({
         });
       });
     },
-    [updateState]
+    [selectedItems.length, state.rowSelections, t, toast, updateState]
   );
 
   const handleModelTypeChange = useCallback(

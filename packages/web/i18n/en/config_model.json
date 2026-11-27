@@ -199,6 +199,7 @@
   "create_from_channel": "Create from channel",
   "channel_import_import_step": "Import models",
   "channel_import_selected_count": "Only models that are not in the system are shown. Selected: {{count}}",
+  "channel_import_selection_limit": "You can import up to {{max}} models at a time.",
   "channel_import_channel": "Channel",
   "channel_import_model": "Upstream model",
   "channel_import_preset_template": "Preset template",

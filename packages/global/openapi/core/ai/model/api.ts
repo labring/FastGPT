@@ -540,23 +540,28 @@ export type CreateModelResponse = z.infer<typeof CreateModelResponseSchema>;
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
+export const MAX_CHANNEL_IMPORT_MODELS = 100;
+
 export const ImportFromChannelBodySchema = z.object({
   channelId: IntSchema.positive().meta({ example: 1, description: '目标渠道 ID' }),
   channelType: ModelChannelTypeSchema,
-  models: z.array(CreateModelDataSchema).meta({
-    example: [
-      {
-        type: ModelTypeEnum.llm,
-        provider: 'openai',
-        model: 'openai/gpt-5.4',
-        name: 'GPT-5.4',
-        scope: 'system',
-        isActive: true,
-        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
-      }
-    ],
-    description: '按请求顺序创建的模型配置。model 使用原始上游 ID，isActive 缺省时启用'
-  })
+  models: z
+    .array(CreateModelDataSchema)
+    .max(MAX_CHANNEL_IMPORT_MODELS)
+    .meta({
+      example: [
+        {
+          type: ModelTypeEnum.llm,
+          provider: 'openai',
+          model: 'openai/gpt-5.4',
+          name: 'GPT-5.4',
+          scope: 'system',
+          isActive: true,
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+        }
+      ],
+      description: `按请求顺序创建的模型配置，单次最多 ${MAX_CHANNEL_IMPORT_MODELS} 条。model 使用原始上游 ID，isActive 缺省时启用`
+    })
 });
 export type ImportFromChannelBody = z.infer<typeof ImportFromChannelBodySchema>;
 

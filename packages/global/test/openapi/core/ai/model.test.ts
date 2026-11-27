@@ -139,6 +139,25 @@ describe('admin system model API schemas', () => {
     expect(apply.error?.issues).toEqual([scopeIssue]);
   });
 
+  it('accepts 100 channel import models and rejects 101', () => {
+    const models = Array.from({ length: 101 }, (_, index) => ({
+      type: 'llm',
+      provider: 'openai',
+      model: `openai/model-${index}`,
+      name: `Model ${index}`,
+      scope: 'team',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    }));
+    const scope = { channelId: 1, channelType: 'team' };
+
+    expect(
+      ImportFromChannelBodySchema.parse({ ...scope, models: models.slice(0, 100) }).models
+    ).toHaveLength(100);
+    expect(ImportFromChannelBodySchema.safeParse({ ...scope, models }).error?.issues).toEqual([
+      expect.objectContaining({ code: 'too_big', path: ['models'], maximum: 100 })
+    ]);
+  });
+
   it('rejects associating an existing model through channel import', () => {
     expect(() =>
       ImportFromChannelBodySchema.parse({
