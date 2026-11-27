@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultQAModels } from '@fastgpt/global/core/ai/constants';
 
-const { providerRunMock, getAgentLoopProviderMock } = vi.hoisted(() => ({
-  providerRunMock: vi.fn(),
-  getAgentLoopProviderMock: vi.fn()
+const { providerRunMock } = vi.hoisted(() => ({
+  providerRunMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/llm/agentLoop/provider/registry', () => ({
-  getAgentLoopProvider: getAgentLoopProviderMock
+vi.mock('@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent', () => ({
+  fastAgentProvider: {
+    name: 'fastAgent',
+    run: providerRunMock
+  }
 }));
 
 import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/interface/run';
@@ -15,10 +17,6 @@ import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/interface/r
 describe('runAgentLoop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAgentLoopProviderMock.mockReturnValue({
-      name: 'fastAgent',
-      run: providerRunMock
-    });
   });
 
   it('uses pushed usages as the read-only result without repeating billing callbacks', async () => {
@@ -56,7 +54,6 @@ describe('runAgentLoop', () => {
     });
 
     const result = await runAgentLoop({
-      provider: 'fastAgent',
       input: { messages: [] },
       runtime: {
         teamId: 'team_1',
@@ -103,11 +100,9 @@ describe('runAgentLoop', () => {
   });
 
   it('normalizes an unexpected fastAgent rejection', async () => {
-    getAgentLoopProviderMock.mockReturnValue({ name: 'fastAgent', run: providerRunMock });
     providerRunMock.mockRejectedValue(new Error('provider crashed'));
 
     const result = await runAgentLoop({
-      provider: 'fastAgent',
       input: {
         messages: [{ role: 'user', content: 'hello' }]
       },

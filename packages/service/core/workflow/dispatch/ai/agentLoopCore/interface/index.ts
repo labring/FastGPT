@@ -43,7 +43,6 @@ export {
 } from '../application/runtime/workflowToolRunner';
 
 export { createAgentLoopCoreChildInteractiveParams } from '../adapter/interactive/child';
-export { buildAgentLoopCoreDoneMemories } from '../adapter/memory/nodeMemory';
 export { createAgentLoopCoreToolCallNodeResponse } from '../adapter/nodeResponse/toolCallNodeResponse';
 export { getAgentLoopCoreSystemToolInfo } from '../adapter/toolInfo/getSystemToolInfo';
 

@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type {
   AppFormEditFormType,
@@ -5,10 +6,11 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type {
-  AIChatItemValueItemType,
-  ChatHistoryItemResType,
-  ChatItemMiniType
+import {
+  ChatItemMiniSchema,
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType,
+  type ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -29,13 +31,13 @@ import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../
 import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowNodeMemoryKey } from '../../context/memory';
 import {
-  buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   createAgentLoopCoreChildInteractiveParams,
   readAgentLoopCoreActivePlan,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import { buildAgentLoopCoreDoneMemories } from '../agentLoopCore/adapter/memory/nodeMemory';
 import {
   buildAgentLoopCoreRequestMessages,
   filterAgentLoopCoreHistoryTools
@@ -215,11 +217,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     nodeId
   });
   // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
-  // 交互恢复时优先从节点作用域 memoryContext 恢复暂停前保存的完整 transcript，缺省再回退到历史。
-  const restoredMessages =
-    lastInteractive && Array.isArray(rawStoredMemory) && rawStoredMemory.length > 0
-      ? (rawStoredMemory as ChatItemMiniType[])
-      : undefined;
+  // 交互恢复时优先用 ChatItemMiniSchema 校验节点作用域 memoryContext，校验失败则安全回退到历史。
+  const parsedStoredMemory = lastInteractive
+    ? z.array(ChatItemMiniSchema).min(1).safeParse(rawStoredMemory)
+    : undefined;
+  const restoredMessages = parsedStoredMemory?.success ? parsedStoredMemory.data : undefined;
   const hasStoredNodeMemory = rawStoredMemory !== undefined;
   const getRestoredAssistantResponses = (messages?: ChatItemMiniType[]) => {
     if (!messages?.length) return [];

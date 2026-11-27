@@ -6,44 +6,40 @@ import type { SystemMigrationLogger } from '@/migration/registry';
 const FEATURE_DOMAIN = 'feature';
 const LEGACY_AGENT_ENGINE_FIELD = 'agentEngine';
 
+type RawFeatureInstanceConfigDoc = {
+  _id: Types.ObjectId | string;
+  domain?: unknown;
+  overrides?: {
+    agentEngine?: unknown;
+    [key: string]: unknown;
+  };
+  explicitDefaultPaths?: string[];
+  revision?: number;
+  updatedAt?: Date;
+};
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** 兼容标准 domain='feature' 文档及早期以域名字符串作为 _id 的遗留文档。 */
-const featureDocumentScopeFilter = {
-  $or: [{ domain: FEATURE_DOMAIN }, { _id: FEATURE_DOMAIN as unknown as Types.ObjectId }]
-};
+/** 使用真实 BSON 文档泛型（`_id: ObjectId | string`）访问原生集合，读写与复查共享同一类型。 */
+const getFeatureConfigCollection = () =>
+  MongoSystemInstanceConfig.db.collection<RawFeatureInstanceConfigDoc>(
+    MongoSystemInstanceConfig.collection.collectionName
+  );
 
+/** 兼容标准 domain='feature' 文档及早期以域名字符串作为 _id 的遗留文档。 */
 const dirtyFeatureAgentEngineFilter = {
   $and: [
-    featureDocumentScopeFilter,
+    {
+      $or: [{ domain: FEATURE_DOMAIN }, { _id: FEATURE_DOMAIN }]
+    },
     {
       $or: [
-        { [`overrides.${LEGACY_AGENT_ENGINE_FIELD}`]: { $exists: true } },
+        { 'overrides.agentEngine': { $exists: true } },
         { explicitDefaultPaths: LEGACY_AGENT_ENGINE_FIELD }
       ]
     }
   ]
-};
-
-type RawFeatureInstanceConfigDoc = {
-  _id: Types.ObjectId | string;
-  domain?: unknown;
-  overrides?: unknown;
-  explicitDefaultPaths?: unknown;
-};
-
-type RawFeatureConfigCollection = {
-  find: typeof MongoSystemInstanceConfig.collection.find;
-  updateOne: (
-    filter: Record<string, unknown>,
-    update: {
-      $unset: Record<string, ''>;
-      $pull?: { explicitDefaultPaths: string };
-      $inc: { revision: number };
-      $set: { updatedAt: Date };
-    }
-  ) => ReturnType<typeof MongoSystemInstanceConfig.collection.updateOne>;
 };
 
 /** 统计单条 feature 文档中待清理的历史 agentEngine 项数量（overrides 键 + explicitDefaultPaths 标记）。 */
@@ -73,13 +69,13 @@ export const cleanupLegacyAgentEngineConfig = async ({
   signal: AbortSignal;
   logger: SystemMigrationLogger;
 }): Promise<{ cleanedDocumentCount: number; removedFieldCount: number }> => {
-  const collection = MongoSystemInstanceConfig.collection as unknown as RawFeatureConfigCollection;
+  const collection = getFeatureConfigCollection();
   const dirtyDocs = await collection
-    .find<RawFeatureInstanceConfigDoc>(dirtyFeatureAgentEngineFilter, {
+    .find(dirtyFeatureAgentEngineFilter, {
       projection: {
         _id: 1,
         domain: 1,
-        [`overrides.${LEGACY_AGENT_ENGINE_FIELD}`]: 1,
+        'overrides.agentEngine': 1,
         explicitDefaultPaths: 1
       },
       readPreference: 'primary'
@@ -106,12 +102,12 @@ export const cleanupLegacyAgentEngineConfig = async ({
       {
         _id: doc._id,
         $or: [
-          { [`overrides.${LEGACY_AGENT_ENGINE_FIELD}`]: { $exists: true } },
+          { 'overrides.agentEngine': { $exists: true } },
           { explicitDefaultPaths: LEGACY_AGENT_ENGINE_FIELD }
         ]
       },
       {
-        $unset: { [`overrides.${LEGACY_AGENT_ENGINE_FIELD}`]: '' },
+        $unset: { 'overrides.agentEngine': '' },
         ...(doc.explicitDefaultPaths === undefined || Array.isArray(doc.explicitDefaultPaths)
           ? { $pull: { explicitDefaultPaths: LEGACY_AGENT_ENGINE_FIELD } }
           : {}),
@@ -141,8 +137,8 @@ export const cleanupLegacyAgentEngineConfig = async ({
 export const validateLegacyAgentEngineConfigCleaned = async (): Promise<
   SystemMigrationFailedRecord[]
 > => {
-  const remainingDocs = await MongoSystemInstanceConfig.collection
-    .find<RawFeatureInstanceConfigDoc>(dirtyFeatureAgentEngineFilter, {
+  const remainingDocs = await getFeatureConfigCollection()
+    .find(dirtyFeatureAgentEngineFilter, {
       projection: { _id: 1, domain: 1 },
       readPreference: 'primary'
     })

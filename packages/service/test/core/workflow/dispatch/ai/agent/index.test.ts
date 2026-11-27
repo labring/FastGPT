@@ -902,7 +902,6 @@ describe('dispatchRunAgent user context', () => {
       `当前沙盒的工作目录: ${workDir}`
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
-    expect(runAgentLoopMock.mock.calls[0][0].provider).toBeUndefined();
     const runtimeToolNames = loopRuntime.toolCatalog.runtimeTools.map(
       (tool: any) => tool.function.name
     );
@@ -1380,7 +1379,7 @@ describe('dispatchRunAgent user context', () => {
     expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
-  it('routes agent runs through default fastAgent and clears leftover non-array node memory on completion', async () => {
+  it('routes agent runs through fastAgent and clears leftover non-array node memory on completion', async () => {
     const props = createProps();
     props.histories[props.histories.length - 1].memories = {
       'agentLoopMemory-agent_node': {
@@ -1410,7 +1409,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock.mock.calls[0][0].provider).toBeUndefined();
     expect(result.data.answerText).toBe('fastAgent answer');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
       'app:app_1:agent_node': undefined
@@ -1728,67 +1726,67 @@ describe('dispatchRunAgent user context', () => {
     });
   });
 
-  it('ignores non-array stored node memory on resume and overwrites it with a fastAgent array on re-pause', async () => {
-    const props = createProps();
-    props.lastInteractive = {
-      type: 'agentAsk',
-      params: {
-        toolCallId: 'call_ask_1',
-        arguments: JSON.stringify({
-          reason: '',
-          blockerType: 'user_choice',
-          questions: [{ question: 'Need confirmation', options: [] }]
-        })
-      }
-    };
-    props.histories[props.histories.length - 1].memories = {
-      'agentLoopMemory-agent_node': {
-        staleObject: true
-      }
-    };
-    runAgentLoopMock.mockResolvedValueOnce({
-      status: 'paused',
-      pause: {
-        toolCallId: 'call_ask_2',
-        interactive: {
-          type: 'agentAsk',
-          params: {
-            toolCallId: 'call_ask_2',
-            arguments: JSON.stringify({
-              reason: 'Need another confirmation',
-              blockerType: 'missing_required_input',
-              questions: [
-                {
-                  question: 'Confirm again?',
-                  options: [
-                    { summary: 'Yes', value: 'Yes' },
-                    { summary: 'No', value: 'No' }
-                  ]
-                }
-              ]
-            })
-          }
+  it.each([{ staleObject: true }, [{ invalidItem: true }]])(
+    'ignores invalid stored node memory on resume (%j) and overwrites it with a fastAgent array on re-pause',
+    async (invalidMemory) => {
+      const props = createProps();
+      props.lastInteractive = {
+        type: 'agentAsk',
+        params: {
+          toolCallId: 'call_ask_1',
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [{ question: 'Need confirmation', options: [] }]
+          })
         }
-      },
-      completeMessages: [],
-      assistantMessages: [],
-      requestIds: []
-    });
+      };
+      props.histories[props.histories.length - 1].memories = {
+        'agentLoopMemory-agent_node': invalidMemory
+      };
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'paused',
+        pause: {
+          toolCallId: 'call_ask_2',
+          interactive: {
+            type: 'agentAsk',
+            params: {
+              toolCallId: 'call_ask_2',
+              arguments: JSON.stringify({
+                reason: 'Need another confirmation',
+                blockerType: 'missing_required_input',
+                questions: [
+                  {
+                    question: 'Confirm again?',
+                    options: [
+                      { summary: 'Yes', value: 'Yes' },
+                      { summary: 'No', value: 'No' }
+                    ]
+                  }
+                ]
+              })
+            }
+          }
+        },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      });
 
-    const result = await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+      const result = await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
 
-    const callArg = runAgentLoopMock.mock.calls[0][0];
-    expect(callArg.provider).toBeUndefined();
-    expect(callArg.input.messages.length).toBeGreaterThan(0);
-    expect(
-      Array.isArray(result[DispatchNodeResponseKeyEnum.memories]['app:app_1:agent_node'])
-    ).toBe(true);
-    expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
-      expect.objectContaining({
-        params: expect.objectContaining({ toolCallId: 'call_ask_2' })
-      })
-    );
-  });
+      const callArg = runAgentLoopMock.mock.calls[0][0];
+      expect(callArg.input.messages.length).toBeGreaterThan(0);
+      expect(
+        Array.isArray(result[DispatchNodeResponseKeyEnum.memories]['app:app_1:agent_node'])
+      ).toBe(true);
+      expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
+        expect.objectContaining({
+          params: expect.objectContaining({ toolCallId: 'call_ask_2' })
+        })
+      );
+    }
+  );
 
   it('clears nested scoped non-array node memory on completion when history=0', async () => {
     const { WorkflowMemoryContext } =
@@ -1822,7 +1820,6 @@ describe('dispatchRunAgent user context', () => {
     const result = await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
 
     const callArg = runAgentLoopMock.mock.calls[0][0];
-    expect(callArg.provider).toBeUndefined();
     expect(callArg.input.messages.length).toBeGreaterThan(0);
     expect(result.data?.answerText).toBe('ok');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({

@@ -72,7 +72,6 @@ describe('continuation through the real fastAgent Core and Provider', () => {
       text({ content: 'Tool completed.' })
     ]);
     const output = await runAgentLoopCoreWithSummary({
-      provider: 'fastAgent',
       input: { messages: [{ role: 'user', content: 'Review the draft.' }] },
       runtime: {
         teamId: 'team',

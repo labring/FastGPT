@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  FeatureConfigReadSchema,
-  FeatureConfigSchema
-} from '@fastgpt/global/common/system/config/schemas/feature';
+import { FeatureConfigSchema } from '@fastgpt/global/common/system/config/schemas/feature';
 import { resolveFeatureConfigForEdition } from '@fastgpt/global/common/system/config/feature';
 import {
   parseDomainOverrides,
@@ -55,17 +52,17 @@ describe('resolveFeatureConfigForEdition', () => {
   });
 });
 
-describe('legacy agentEngine compatibility (read-lenient, write-strict)', () => {
+describe('legacy agentEngine compatibility (z.object strips unknown keys on read, override write stays strict)', () => {
   it('parses persisted feature data containing legacy agentEngine without crashing and strips the field', () => {
     for (const legacyEngine of ['piAgent', 'fastAgent', 'legacy-unknown']) {
-      const parsedRead = FeatureConfigReadSchema.parse({
+      const parsedFeature = FeatureConfigSchema.parse({
         agentEngine: legacyEngine,
         multipleDataToBase64: true,
         enableTeamModel: true
       });
-      expect(parsedRead).not.toHaveProperty('agentEngine');
-      expect(parsedRead.multipleDataToBase64).toBe(true);
-      expect(parsedRead.enableTeamModel).toBe(true);
+      expect(parsedFeature).not.toHaveProperty('agentEngine');
+      expect(parsedFeature.multipleDataToBase64).toBe(true);
+      expect(parsedFeature.enableTeamModel).toBe(true);
 
       const parsedFullSnapshot = parseSystemInstanceConfig({
         feature: { agentEngine: legacyEngine, multipleDataToBase64: true }
@@ -97,21 +94,31 @@ describe('legacy agentEngine compatibility (read-lenient, write-strict)', () => 
     }
   });
 
-  it('still rejects unknown non-legacy fields on FeatureConfigReadSchema and rejects agentEngine on strict writes', () => {
-    expect(() =>
-      FeatureConfigReadSchema.parse({
-        agentEngine: 'piAgent',
-        unexpectedField: true
-      })
-    ).toThrow();
-    expect(() =>
-      parseSystemInstanceConfig({
-        feature: { agentEngine: 'piAgent', unexpectedField: true }
-      })
-    ).toThrow();
-    expect(() => FeatureConfigSchema.parse({ agentEngine: 'piAgent' })).toThrow();
+  it('strips unknown fields on FeatureConfigSchema and full snapshot reads while still rejecting agentEngine on strict override writes', () => {
+    const parsedWithExtra = FeatureConfigSchema.parse({
+      agentEngine: 'piAgent',
+      unexpectedField: true,
+      enableTeamModel: true
+    });
+    expect(parsedWithExtra).not.toHaveProperty('agentEngine');
+    expect(parsedWithExtra).not.toHaveProperty('unexpectedField');
+    expect(parsedWithExtra.enableTeamModel).toBe(true);
+
+    const parsedSnapshot = parseSystemInstanceConfig({
+      feature: { agentEngine: 'piAgent', unexpectedField: true, multipleDataToBase64: true }
+    });
+    expect(parsedSnapshot.feature).not.toHaveProperty('agentEngine');
+    expect(parsedSnapshot.feature).not.toHaveProperty('unexpectedField');
+    expect(parsedSnapshot.feature.multipleDataToBase64).toBe(true);
+
     expect(() =>
       parseDomainOverrides({
+        domain: 'feature',
+        overrides: { agentEngine: 'piAgent' }
+      })
+    ).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({
         domain: 'feature',
         overrides: { agentEngine: 'piAgent' }
       })

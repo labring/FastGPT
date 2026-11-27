@@ -1,12 +1,10 @@
-export type AgentLoopProviderName = 'fastAgent';
-
 import type { AgentLoopInput } from './input';
 import type { AgentLoopResult } from './result';
 import type { AgentLoopRuntime } from './runtime';
 
-/** Provider 实现必须遵守的统一 Agent Loop 执行端口。 */
+/** Agent Loop 底层执行端口（供 application 层组合与单测注入）。 */
 export type AgentLoopProvider = {
-  name: AgentLoopProviderName;
+  name: 'fastAgent';
   run: <TChildrenResponse = unknown>(params: {
     input: AgentLoopInput<TChildrenResponse>;
     runtime: AgentLoopRuntime<TChildrenResponse>;

@@ -230,7 +230,7 @@ describe('WorkflowMemoryContext & unified node memory helpers', () => {
         { rootSource: rootAppInfo }
       );
 
-      // 1. Legacy piAgent key is readable via unified readNodeMemory
+      // 1. Legacy agentLoopMemory key is readable via unified readNodeMemory
       expect(
         rootState.readNodeMemory({
           runningAppInfo: rootAppInfo,

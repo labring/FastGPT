@@ -119,7 +119,6 @@ describe('FastAgent ChatItem replay', () => {
     };
     const completed: string[] = [];
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime({
         executeTool: async ({ call }) => {
@@ -207,7 +206,6 @@ describe('FastAgent ChatItem replay', () => {
       text({ content: 'Correcting the preview' })
     ]);
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: [] },
       runtime: runtime({
         executeTool: async () => ({
@@ -281,7 +279,6 @@ describe('FastAgent ChatItem replay', () => {
       value: [{ text: { content: 'Build' } }]
     };
     const { result, summary } = await runAgentLoopCoreWithSummary({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime({
         executeTool: async () => ({
@@ -343,7 +340,6 @@ describe('FastAgent ChatItem replay', () => {
       value: [{ text: { content: 'Build' } }]
     };
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime({
         completionPolicy: ({ requestIndex }) =>
@@ -408,7 +404,6 @@ describe('FastAgent ChatItem replay', () => {
     };
     mockCreateLLMResponseQueue(mocks.llm, [toolCall({ id: 'parent-call', name: 'search' })]);
     const first = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime({
         executeTool: async () => ({
@@ -434,7 +429,6 @@ describe('FastAgent ChatItem replay', () => {
     });
     const nextChild = { ...child, params: { ...child.params, toolCallId: 'next-child-ask' } };
     const middle = await runAgentLoopCoreWithSummary({
-      provider: 'fastAgent',
       input: {
         messages: first.completeMessages,
         childrenInteractiveParams: {
@@ -468,7 +462,6 @@ describe('FastAgent ChatItem replay', () => {
     });
     mockCreateLLMResponseQueue(mocks.llm, [text({ content: 'Parent finished' })]);
     const second = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: {
         messages: middle.result.completeMessages,
         childrenInteractiveParams: {
@@ -538,7 +531,6 @@ describe('FastAgent ChatItem replay', () => {
       value: [{ text: { content: 'Old request' } }]
     };
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime()
     });
@@ -553,7 +545,6 @@ describe('FastAgent ChatItem replay', () => {
   it('does not invent transcript messages when the completion policy fails', async () => {
     mockCreateLLMResponseQueue(mocks.llm, [text({ content: 'Check' })]);
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: [] },
       runtime: runtime({
         completionPolicy: () => {
@@ -583,7 +574,6 @@ describe('FastAgent ChatItem replay', () => {
       }
     ]);
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: [] },
       runtime: runtime({
         systemTools: {
@@ -616,7 +606,6 @@ describe('FastAgent ChatItem replay', () => {
       toolCall({ id: 'ask-context', name: 'ask_user', args: ask })
     ]);
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: {
         messages: [{ role: 'user', content: prepared }]
       },
@@ -643,7 +632,6 @@ describe('FastAgent ChatItem replay', () => {
     };
 
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: { messages: rebuild([initial]) },
       runtime: runtime(),
       assistantResponses: { showReasoning: false }
@@ -775,7 +763,6 @@ describe('fastAgent reasoning/thinking field round-trip regression', () => {
         });
 
       const result = await runAgentLoop({
-        provider: 'fastAgent',
         input: {
           messages: [{ role: 'user', content: 'Research FastGPT' }]
         },
@@ -831,7 +818,6 @@ describe('fastAgent reasoning/thinking field round-trip regression', () => {
     ]);
 
     const result = await runAgentLoop({
-      provider: 'fastAgent',
       input: {
         messages: [
           { role: 'user', content: 'Previous question' },

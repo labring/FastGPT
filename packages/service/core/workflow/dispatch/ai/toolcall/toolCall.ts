@@ -174,7 +174,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
   const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
-      provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
         messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt,

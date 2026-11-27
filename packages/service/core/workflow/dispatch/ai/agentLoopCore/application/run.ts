@@ -1,9 +1,5 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type {
-  AgentLoopInput,
-  AgentLoopProviderName,
-  AgentLoopRuntime
-} from '../../../../../ai/llm/agentLoop/interface';
+import type { AgentLoopInput, AgentLoopRuntime } from '../../../../../ai/llm/agentLoop/interface';
 import { runAgentLoop } from '../../../../../ai/llm/agentLoop/interface';
 import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses/eventCollector';
 import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from './output/result';
@@ -12,7 +8,6 @@ import type { AgentLoopCoreResult } from '../domain/result';
 import type { AgentLoopCoreToolDisplayInfo } from '../domain/toolInfo';
 
 export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
-  provider?: AgentLoopProviderName;
   input: AgentLoopInput<TChildrenResponse>;
   runtime: AgentLoopRuntime<TChildrenResponse>;
   assistantResponses?: {
@@ -37,7 +32,6 @@ export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
  * eventTarget 可让调用方复用已有数组；不传时由 core 创建本轮独立容器。
  */
 export const runAgentLoopCore = async <TChildrenResponse = unknown>({
-  provider,
   input,
   runtime,
   assistantResponses
@@ -52,7 +46,6 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
   let firstTokenTime: number | undefined;
   let hasRecordedEvents = false;
   const result = await runAgentLoop<TChildrenResponse>({
-    provider,
     input,
     runtime: {
       ...runtime,
@@ -71,7 +64,7 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
       }
     }
   });
-  // 只记录本轮改写后的用户输入；历史 messages、Ask 回答和 provider 快照均不重复保存。
+  // 只记录本轮改写后的用户输入；历史 messages 和 Ask 回答均不重复保存。
   const currentInput = input.messages.at(-1);
   if (assistantResponses?.persistInputContext && currentInput?.role === 'user') {
     const target = eventAssistantResponses.find(
