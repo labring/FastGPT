@@ -317,4 +317,46 @@ describe('user account OpenAPI contracts', () => {
     expect(response).toHaveProperty([...memberNamePath, 'type'], 'string');
     expect(response).toHaveProperty([...memberNamePath, 'default'], 'Member');
   });
+
+  it('falls back unrecognized language preferences to en without blocking session recovery', () => {
+    const baseUser = {
+      _id: objectIdLike,
+      username: 'user@example.com',
+      avatar: '/icon/avatar.svg',
+      timezone: 'Asia/Shanghai',
+      hasPassword: true,
+      status: 'active',
+      team: {
+        userId: objectIdLike,
+        teamId: objectIdLike,
+        teamName: 'FastGPT 团队',
+        memberName: '普通成员',
+        avatar: '/icon/avatar.svg',
+        tmbId: objectIdLike,
+        status: 'active',
+        permission: {}
+      },
+      permission: {}
+    };
+
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: 'tr-TR' }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: null }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: '' }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse(baseUser).language).toBeUndefined();
+    expect(
+      LoginByPasswordBodySchema.parse({
+        username: 'admin',
+        password: 'a'.repeat(64),
+        code: '123456'
+      }).language
+    ).toBe('zh-CN');
+    expect(
+      LoginByPasswordBodySchema.parse({
+        username: 'admin',
+        password: 'a'.repeat(64),
+        code: '123456',
+        language: 'tr-TR'
+      }).language
+    ).toBe('en');
+  });
 });
