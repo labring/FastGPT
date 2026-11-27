@@ -5,6 +5,7 @@ import * as tokenLoginApi from '@/pages/api/support/user/account/tokenLogin';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
@@ -126,9 +127,13 @@ describe('tokenLogin API', () => {
         userId: String(testUser._id),
         teamId: String(testTeam._id),
         tmbId: String(testTmb._id),
+        appId: '',
+        authType: AuthUserTypeEnum.token,
+        sourceName: undefined,
+        apikey: '',
         isRoot: false,
         sessionId: 'session123'
-      } as any
+      }
     });
 
     expect(res.code).toBe(200);
