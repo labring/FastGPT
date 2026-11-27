@@ -153,15 +153,16 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     cursor.pause();
 
     try {
-      const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
-        [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
+      // 先在原始 Markdown/HTML 正文上签发预览链接，再做 CSV 转义，避免引号加倍破坏 HTML <img> 或标题匹配。
+      const [previewQ, previewA] = await replaceS3KeysToPreviewUrls(
+        [doc.q || '', doc.a || ''],
         getStorageFileUrlExpiredTime(),
         {
           filter: createDatasetFileS3KeyFilter(collection.datasetId)
         }
       );
 
-      write(`\n${sanitizedQ},${sanitizedA}`);
+      write(`\n${sanitizeCsvField(previewQ)},${sanitizeCsvField(previewA)}`);
     } catch (error) {
       logger.error(`export usage error`, { error });
       recordExportAudit();
