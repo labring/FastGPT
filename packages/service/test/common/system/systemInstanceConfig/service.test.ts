@@ -50,7 +50,6 @@ describe('SystemInstanceConfigManager', () => {
         domain: 'feature',
         revision: 1,
         overrides: {
-          agentEngine: 'piAgent',
           multipleDataToBase64: true,
           hideChatCopyrightSetting: true,
           enableTeamPluginUpload: true,
@@ -64,13 +63,18 @@ describe('SystemInstanceConfigManager', () => {
         }
       }
     ]);
+    // 模拟升级前存量库中残留已下架的 agentEngine='piAgent'（绕过新 Mongoose 写入校验写入原始脏字段）
+    await MongoSystemInstanceConfig.collection.updateOne(
+      { domain: 'feature' },
+      { $set: { 'overrides.agentEngine': 'piAgent' } }
+    );
     systemInstanceConfig.setFrontendContext({ commercialService: false });
     const community = await systemInstanceConfig.refresh();
     expect(community.proEnv.teamMode).toBe('single');
     expect(community.commercial.subPlans).toBeUndefined();
     expect(community.license.data).toBeUndefined();
+    expect(getSystemInstanceConfig().feature).not.toHaveProperty('agentEngine');
     expect(getSystemInstanceConfig().feature).toMatchObject({
-      agentEngine: 'piAgent',
       multipleDataToBase64: true,
       hideChatCopyrightSetting: false,
       enableTeamPluginUpload: false,
@@ -89,6 +93,7 @@ describe('SystemInstanceConfigManager', () => {
     expect(global.feConfigs.show_publish_wechat).toBe(true);
     systemInstanceConfig.setFrontendContext({ commercialService: true });
     const pro = await systemInstanceConfig.refresh();
+    expect(pro.feature).not.toHaveProperty('agentEngine');
     expect(pro.proEnv.teamMode).toBe('multi');
     expect(pro.commercial.subPlans?.extraDatasetSize?.price).toBe(7);
     expect(pro.license.data).toEqual(license);
@@ -96,6 +101,23 @@ describe('SystemInstanceConfigManager', () => {
     expect(pro.feature.enableTeamModel).toBe(true);
     expect(pro.feature.showDatasetFeishu).toBe(false);
     expect(pro.feature.showPublishWechat).toBe(false);
+
+    // 管理端读取与局部更新均安全剥离残留的 agentEngine，不阻断管理员保存有效字段
+    const adminRead = await systemInstanceConfig.readForEdit('feature', 'pro');
+    expect(adminRead.effectiveConfig).not.toHaveProperty('agentEngine');
+    expect(adminRead.overrides).not.toHaveProperty('agentEngine');
+    await systemInstanceConfig.update({
+      items: [
+        {
+          domain: 'feature',
+          expectedRevision: adminRead.revision,
+          overrides: { multipleDataToBase64: false }
+        }
+      ],
+      actor: { actor: 'admin' }
+    });
+    const cleanedDoc = await MongoSystemInstanceConfig.findOne({ domain: 'feature' }).lean();
+    expect(cleanedDoc?.overrides).not.toHaveProperty('agentEngine');
   });
   it('joins an outer write transaction without publishing uncommitted state', async () => {
     const previous = systemInstanceConfig.get();

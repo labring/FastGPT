@@ -31,7 +31,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.email.pass',
     'auth.loginProviders.phone.accessKeySecret',
     'feature.multipleDataToBase64',
-    'feature.agentEngine',
     'storage.fileDomain',
     'storage.downloadMode',
     'storage.externalEndpoint',

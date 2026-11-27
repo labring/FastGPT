@@ -802,7 +802,6 @@ describe('migration env wiring', () => {
       // feature
       ['feature.hideChatCopyrightSetting', legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING],
       ['feature.multipleDataToBase64', legacyEnv.MULTIPLE_DATA_TO_BASE64],
-      ['feature.agentEngine', legacyEnv.AGENT_ENGINE],
       // commercial
       ['commercial.showCoupon', legacyEnv.SHOW_COUPON],
       ['commercial.showDiscountCoupon', legacyEnv.SHOW_DISCOUNT_COUPON],
@@ -890,10 +889,12 @@ describe('migration env wiring', () => {
       ]
     ];
 
-    // EVAL_CONCURRENCY 与 AGENT_SANDBOX_EPHEMERAL_STORAGE_SIZE 已明确弃用，本轮不迁入实例配置。
+    // EVAL_CONCURRENCY、AGENT_ENGINE 与 AGENT_SANDBOX_EPHEMERAL_STORAGE_SIZE 已明确弃用，本轮不迁入实例配置。
     expect(legacyEnv).not.toHaveProperty('EVAL_CONCURRENCY');
+    expect(legacyEnv).not.toHaveProperty('AGENT_ENGINE');
     expect(legacyEnv).not.toHaveProperty('AGENT_SANDBOX_EPHEMERAL_STORAGE_SIZE');
     expect(pick(overrides, 'performance.task.evalConcurrency')).toBeUndefined();
+    expect(pick(overrides, 'feature.agentEngine')).toBeUndefined();
     expect(
       pick(overrides, 'subservice.agentSandbox.opensandbox.ephemeralStorageSize')
     ).toBeUndefined();
@@ -1064,5 +1065,30 @@ describe('migration env wiring', () => {
       legacyEnv: { LLM_REQUEST_TRACKING_RETENTION_HOURS: 1440 }
     });
     expect(pick(largeOverrides, 'performance.tracking.retentionHours')).toBe(1000);
+  });
+
+  it('safely skips retired AGENT_ENGINE env values including piAgent without throwing or writing feature.agentEngine', () => {
+    for (const value of ['piAgent', 'fastAgent', 'legacy-invalid']) {
+      vi.stubEnv('AGENT_ENGINE', value);
+      const parsedEnv = readLegacyInstanceConfigEnv();
+      expect(parsedEnv).not.toHaveProperty('AGENT_ENGINE');
+
+      const rawOverrides = buildFromLegacy({
+        feConfigs: {},
+        systemEnv: {},
+        legacyEnv: parsedEnv
+      });
+      expect(pick(rawOverrides, 'feature.agentEngine')).toBeUndefined();
+
+      const sparse = buildSparseLegacyOverrides({
+        feConfigs: { enable_team_model: true },
+        systemEnv: {}
+      });
+      expect(sparse.feature).not.toHaveProperty('agentEngine');
+      expect(sparse.feature?.enableTeamModel).toBe(true);
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain: 'feature', overrides: sparse.feature })
+      ).not.toThrow();
+    }
   });
 });

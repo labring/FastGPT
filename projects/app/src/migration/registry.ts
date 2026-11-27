@@ -17,6 +17,7 @@ import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes
 import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
+import { cleanupAgentEngineConfig } from './tasks/4180/20261127_cleanup_agent_engine_config';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -407,6 +408,30 @@ export const systemMigrations = [
     // 不在启动阶段自动删除 SYSTEM_ROOT；由新版 App/Pro 运行时透明兼容，待全部服务升级完毕后由管理员手动触发清理。
     manual: true,
     run: cleanApiDatasetSystemRoot
+  },
+  {
+    id: '20261127_cleanup_agent_engine_config',
+    version: '4.18.0',
+    // 启动配置迁移完成后独立后台执行，覆盖 4.17 首次升级及已执行过 20261116 的 4.18 灰度/测试环境。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261127_cleanup_agent_engine_config.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.result'),
+    progressSteps: [
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.cleanup')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261127_cleanup_agent_engine_config.validation'
+        )
+      }
+    ],
+    run: cleanupAgentEngineConfig
   }
 ] as const satisfies readonly SystemMigration[];
 

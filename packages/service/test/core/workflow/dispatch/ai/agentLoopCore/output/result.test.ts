@@ -118,13 +118,7 @@ describe('summarizeAgentLoopCoreResult', () => {
     expect(abortedResult.finalText).toBeUndefined();
   });
 
-  it('builds ask interactive and keeps provider state for workflow adapter wrapping', () => {
-    const providerState = {
-      pendingMainContext: {
-        askToolCallId: 'call_ask',
-        messages: []
-      }
-    };
+  it('builds ask interactive', () => {
     const ask = {
       reason: 'Need input',
       blockerType: 'missing_required_input' as const,
@@ -142,39 +136,37 @@ describe('summarizeAgentLoopCoreResult', () => {
 
     const argumentsText = JSON.stringify(ask, null, 2);
 
-    expect(
-      summarizeAgentLoopCoreResult({
-        status: 'interactive',
-        requestIds: [],
-        completeMessages: [
-          {
-            role: 'assistant',
-            tool_calls: [
-              {
-                id: 'call_ask',
-                type: 'function',
-                function: { name: 'ask_user', arguments: argumentsText }
-              }
-            ]
-          }
-        ],
-        assistantMessages: [],
-        assistantResponses: [],
-        finishReason: 'stop',
-        usages: [],
-        pause: {
-          toolCallId: 'call_ask',
-          interactive: {
-            type: 'agentAsk',
-            params: { toolCallId: 'call_ask', arguments: argumentsText }
-          }
-        },
-        providerState
-      })
-    ).toEqual(
+    const summary = summarizeAgentLoopCoreResult({
+      status: 'interactive',
+      requestIds: [],
+      completeMessages: [
+        {
+          role: 'assistant',
+          tool_calls: [
+            {
+              id: 'call_ask',
+              type: 'function',
+              function: { name: 'ask_user', arguments: argumentsText }
+            }
+          ]
+        }
+      ],
+      assistantMessages: [],
+      assistantResponses: [],
+      finishReason: 'stop',
+      usages: [],
+      pause: {
+        toolCallId: 'call_ask',
+        interactive: {
+          type: 'agentAsk',
+          params: { toolCallId: 'call_ask', arguments: argumentsText }
+        }
+      }
+    });
+
+    expect(summary).toEqual(
       expect.objectContaining({
         status: 'interactive',
-        providerState,
         interactive: {
           type: 'agentAsk',
 

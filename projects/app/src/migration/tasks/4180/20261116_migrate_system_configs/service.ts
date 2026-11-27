@@ -244,10 +244,10 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['security'];
 
   // ---------- feature ----------
+  // AGENT_ENGINE 已随 piAgent 下架停止迁入，确保残留该环境变量的老部署跳过写入且不触发严格 Schema 报错。
   overrides.feature = compact({
     hideChatCopyrightSetting: optionalBool(legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING),
     multipleDataToBase64: optionalBool(legacyEnv.MULTIPLE_DATA_TO_BASE64),
-    agentEngine: optionalText(legacyEnv.AGENT_ENGINE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
     showOpenaiAccount: optionalBool(feConfigs.show_openai_account),
     enableTeamModel: optionalBool(feConfigs.enable_team_model),

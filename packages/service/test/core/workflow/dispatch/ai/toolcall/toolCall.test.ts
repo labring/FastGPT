@@ -730,7 +730,6 @@ describe('runToolCall compression node responses', () => {
     expect(result.requestIds).toEqual(['req_main']);
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'fastAgent',
         runtime: expect.objectContaining({
           systemTools: expect.objectContaining({
             plan: { enabled: false },

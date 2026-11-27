@@ -117,9 +117,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
   MULTIPLE_DATA_TO_BASE64: LegacyBooleanSchema.default(false).meta({
     description: '是否强制将图片、音频、视频转成 base64 传递给模型'
   }),
-  AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
-    description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
-  }),
+  // AGENT_ENGINE 已随 piAgent 下架废止，老环境即使保留 AGENT_ENGINE=piAgent 也在迁移时安全跳过。
   SKIP_FILE_TYPE_CHECK: LegacyBooleanSchema.default(false).meta({
     description: '是否跳过文件类型检查'
   }),

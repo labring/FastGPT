@@ -112,9 +112,17 @@ describe('Field permissions by edition', () => {
       expect(isConfigFieldAllowed(field, 'community'), field).toBe(false);
       expect(isConfigFieldAllowed(field, 'pro'), field).toBe(true);
     }
-    expect(getDomainAllowedKeys('feature', 'community')).toEqual(
-      new Set(['agentEngine', 'multipleDataToBase64'])
-    );
+    expect(getDomainAllowedKeys('feature', 'community')).toEqual(new Set(['multipleDataToBase64']));
+    expect(isConfigFieldAllowed('feature.agentEngine', 'community')).toBe(false);
+    expect(isConfigFieldAllowed('feature.agentEngine', 'pro')).toBe(false);
+    expect(adminConfigPageFieldsMap['/admin/settings/core']).not.toContain('feature.agentEngine');
+    expect(
+      filterDomainDataByEdition({
+        domain: 'feature',
+        data: { agentEngine: 'piAgent', multipleDataToBase64: true },
+        edition: 'pro'
+      })
+    ).toEqual({ multipleDataToBase64: true });
   });
 
   it('restricts pro-only fields from the community edition', () => {

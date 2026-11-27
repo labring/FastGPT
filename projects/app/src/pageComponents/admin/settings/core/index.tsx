@@ -51,7 +51,6 @@ import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 type CoreConfigForm = {
   publicUrl: SystemInstanceConfigDomainMap['site']['publicUrl'];
   documentParse: SystemInstanceConfigDomainMap['providers']['documentParse'];
-  agentEngine: SystemInstanceConfigDomainMap['feature']['agentEngine'];
   multipleDataToBase64: SystemInstanceConfigDomainMap['feature']['multipleDataToBase64'];
   fileDomain: SystemInstanceConfigDomainMap['storage']['fileDomain'];
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
@@ -126,7 +125,6 @@ const CoreSettingComponent = () => {
     defaultValues: {
       publicUrl: '',
       documentParse: normalizeDocumentParse(providers.effectiveConfig?.documentParse),
-      agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       fileDomain: '',
       downloadMode: 'short-proxy',
@@ -247,7 +245,6 @@ const CoreSettingComponent = () => {
       // 仅为空配置提供浏览器草稿，保存前不发布到 scope，不覆盖已有公网地址。
       publicUrl: site.effectiveConfig?.publicUrl || window.location.origin,
       documentParse: normalizeDocumentParse(providers.effectiveConfig?.documentParse),
-      agentEngine: feature.effectiveConfig?.agentEngine ?? 'fastAgent',
       multipleDataToBase64: feature.effectiveConfig?.multipleDataToBase64 ?? false,
       fileDomain: storage.effectiveConfig?.fileDomain ?? '',
       downloadMode: storage.effectiveConfig?.downloadMode ?? 'short-proxy',
@@ -378,7 +375,6 @@ const CoreSettingComponent = () => {
             overrides: deepMergeConfig(
               filterConfigDataByEdition('feature', feature.overrides) as Record<string, unknown>,
               filterConfigData('feature', {
-                agentEngine: formData.agentEngine,
                 multipleDataToBase64: formData.multipleDataToBase64
               })
             )
@@ -447,58 +443,26 @@ const CoreSettingComponent = () => {
             </Text>
           )}
         </AdminFormItem>
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} alignItems={'start'}>
-          <AdminFormItem
-            label={t('admin:agent_execution_engine')}
-            tooltip={t('admin:fastagent_lightweight_high_concurrency_single_node_engine_pi')}
-            isRequired
-            mb={0}
-          >
+        <AdminFormItem
+          label={t('admin:convert_multimodal_content_to_base64_for_models')}
+          tooltip={t('admin:when_enabled_rich_media_such_as_images_is_converted_to_base6')}
+          mb={0}
+        >
+          <Box minH={9} display={'flex'} alignItems={'center'}>
             <Controller
-              name="agentEngine"
+              name="multipleDataToBase64"
               control={control}
               render={({ field }) => (
-                <MySelect<string>
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  width={'100%'}
-                  maxW={'400px'}
-                  list={[
-                    {
-                      label: t('admin:fastagent_high_performance_single_node_streaming_engine'),
-                      value: 'fastAgent'
-                    },
-                    {
-                      label: t('admin:piagent_multi_step_reasoning_and_tool_planning_engine'),
-                      value: 'piAgent'
-                    }
-                  ]}
-                  value={field.value}
-                  onChange={field.onChange}
+                <Switch
+                  aria-label={t('admin:convert_multimodal_content_to_base64_for_models')}
+                  isChecked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  colorScheme={'blue'}
                 />
               )}
             />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:convert_multimodal_content_to_base64_for_models')}
-            tooltip={t('admin:when_enabled_rich_media_such_as_images_is_converted_to_base6')}
-            mb={0}
-          >
-            <Box minH={9} display={'flex'} alignItems={'center'}>
-              <Controller
-                name="multipleDataToBase64"
-                control={control}
-                render={({ field }) => (
-                  <Switch
-                    aria-label={t('admin:convert_multimodal_content_to_base64_for_models')}
-                    isChecked={field.value}
-                    onChange={(event) => field.onChange(event.target.checked)}
-                    colorScheme={'blue'}
-                  />
-                )}
-              />
-            </Box>
-          </AdminFormItem>
-        </SimpleGrid>
+          </Box>
+        </AdminFormItem>
       </AdminSettingSection>
 
       {/* 2. 文件系统 */}

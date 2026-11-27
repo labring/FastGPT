@@ -16,7 +16,6 @@ export type AgentLoopResultStatus = 'done' | 'paused' | 'aborted' | 'error';
 
 export type AgentLoopResultBase = {
   activePlan?: AgentPlanType;
-  providerState?: unknown;
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   requestIds: string[];

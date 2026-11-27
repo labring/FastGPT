@@ -28,7 +28,6 @@ export type AgentLoopCoreOutputSummary<TChildrenResponse = unknown> = {
   errorText?: string;
   finalText?: string;
   reasoningText?: string;
-  providerState?: AgentLoopCoreResult<TChildrenResponse>['providerState'];
   interactive?: InteractiveNodeResponseType;
 };
 
@@ -89,7 +88,6 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     errorText,
     finalText,
     reasoningText: getAgentLoopCoreFinalMessageReasoning(result.assistantMessages),
-    providerState: result.providerState,
     interactive: parsedInteractive.success ? parsedInteractive.data : undefined
   };
 };

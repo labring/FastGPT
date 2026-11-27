@@ -114,5 +114,10 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "플러그인 사고 강도 프리셋 불러오기",
   "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "모델 사고 강도 목록 채우기",
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "채우기 결과 검증",
-  "migrations.20261125_backfill_model_reasoning_effort_list.result": "플러그인 프리셋 {{presetCount}}개를 불러와 일치하는 LLM 모델 {{verifiedCount}}개를 검증했습니다."
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "플러그인 프리셋 {{presetCount}}개를 불러와 일치하는 LLM 모델 {{verifiedCount}}개를 검증했습니다.",
+  "migrations.20261127_cleanup_agent_engine_config.name": "레거시 Agent 실행 엔진 설정 정리",
+  "migrations.20261127_cleanup_agent_engine_config.description": "시스템 설정 마이그레이션 완료 후 백그라운드에서 독립적으로 인스턴스 기능 설정(feature)의 사용 중단된 agentEngine 재정의 항목과 기본값 표시를 정리하며, 나머지 기능 설정은 유지하고 이미 정리된 경우 읽기 전용으로 건너뜁니다.",
+  "migrations.20261127_cleanup_agent_engine_config.cleanup": "레거시 엔진 설정 정리",
+  "migrations.20261127_cleanup_agent_engine_config.validation": "정리 결과 검증",
+  "migrations.20261127_cleanup_agent_engine_config.result": "기능 설정 문서 {{cleanedDocumentCount}}개를 정리하고 레거시 엔진 항목 {{removedFieldCount}}개를 제거했습니다."
 }

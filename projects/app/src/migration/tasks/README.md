@@ -14,6 +14,7 @@
 | `20261117_migrate_sandbox_to_opensandbox` | 手动触发 | 存量 Sealos Devbox、旧 OpenSandbox 持久卷与 `.zip` 流式转码迁移至 OpenSandbox `.tar.zst` |
 | `20261117_cleanup_legacy_sandbox_resources` | 手动触发 | 核验并清理历史 Sealos Devbox、旧持久卷与旧 `.zip` 遗留资源 |
 | `20261125_backfill_model_reasoning_effort_list` | 手动触发 | 按插件预设回填存量 LLM 缺失的可用思考等级（`reasoningEffortList`），保留已手工配置项 |
+| `20261127_cleanup_agent_engine_config` | 独立执行 | 清理实例功能配置（`feature`）中已下线的 `agentEngine` 覆盖项与默认值标记 |
 
 ## 废弃 MongoDB 索引按版本清理约定
 

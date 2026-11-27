@@ -259,7 +259,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
       case 'plan_operation': {
         const group = event.id ? (groupsByCall.get(event.id) ?? ensureCurrent()) : ensureCurrent();
         if (event.success) group.plan = event.plan;
-        // Pi 或旧事件未提供 request-end 调用时仍按显式 call ID 补齐，不猜测相邻工具。
+        // 旧事件未提供 request-end 调用时仍按显式 call ID 补齐，不猜测相邻工具。
         if (event.id) {
           const { tool } = ensureTool(
             {

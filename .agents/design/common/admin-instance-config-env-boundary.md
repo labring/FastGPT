@@ -99,7 +99,6 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | 最大登录客户端数 | `MAX_LOGIN_SESSION` | `config.security` | 用户会话策略 |
 | 自定义跨域来源 | `ALLOWED_ORIGINS` | `config.security` | 需要定义空值和默认策略，不能只依赖前端配置 |
 | 多媒体转 Base64 | `MULTIPLE_DATA_TO_BASE64` | `config.feature` | 运行时能力开关 |
-| Agent 引擎 | `AGENT_ENGINE` | `config.feature` | 版本能力过滤后展示 |
 | 知识库同义词 | `DATASET_SYNONYM_ENABLED` | `config.feature` | 功能开关 |
 | 跳过文件类型检查 | `SKIP_FILE_TYPE_CHECK` | `config.security` | 建议高风险操作单独审计 |
 | 禁用缓存 | `DISABLE_CACHE` | `config.feature.disableCache` | 可配置，但要提示需要重新加载进程缓存 |
@@ -514,7 +513,6 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `SKIP_FILE_TYPE_CHECK` | `config.security.skipFileTypeCheck` | 高风险开关，必须审计 |
 | `MULTIPLE_DATA_TO_BASE64` | `config.feature.multipleDataToBase64` | 多媒体传输策略 |
 | `DATASET_SYNONYM_ENABLED` | `config.feature.datasetSynonymEnabled` | 知识库同义词开关 |
-| `AGENT_ENGINE` | `config.feature.agentEngine` | `fastAgent` 或 `piAgent` |
 | `DISABLE_CACHE` | `config.feature.disableCache` | 生效时需要清理或重建进程缓存 |
 
 #### 并发、超时与资源限制
@@ -1183,7 +1181,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `security.fileUrlWhitelist` | 聊天及工作流输入文件域名白名单（开关开启时显示） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `feature.hideChatCopyrightSetting` | 分享链接版权配置 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false（版权配置开启） |
 | `feature.multipleDataToBase64` | 发送给模型的多模态内容转换为 base64 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `feature.enableTeamPluginUpload` | 允许团队上传插件 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
 | `feature.showOpenaiAccount` | 用户可配置 OpenAI 账号（已弃用） | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false；商业版仅为已有 true 显示关闭入口，保存 false 后隐藏，API 禁止重新开启 |
 | `feature.enableTeamModel` | 启用团队模型 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |

@@ -25,7 +25,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
       '20261125_backfill_model_reasoning_effort_list',
-      '20261120_clean_api_dataset_system_root'
+      '20261120_clean_api_dataset_system_root',
+      '20261127_cleanup_agent_engine_config'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -65,7 +66,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261117_migrate_sandbox_to_opensandbox',
       '20261117_cleanup_legacy_sandbox_resources',
       '20261125_backfill_model_reasoning_effort_list',
-      '20261120_clean_api_dataset_system_root'
+      '20261120_clean_api_dataset_system_root',
+      '20261127_cleanup_agent_engine_config'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -162,7 +164,9 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: false,
       dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
     });
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(
+      systemMigrations.find(({ id }) => id === '20261120_clean_api_dataset_system_root')
+    ).toMatchObject({
       id: '20261120_clean_api_dataset_system_root',
       version: '4.18.0',
       manual: true
@@ -186,13 +190,29 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
   });
 
+  it('registers legacy feature.agentEngine cleanup at tail as an independent background task', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261127_cleanup_agent_engine_config',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+    expect(task).not.toHaveProperty('resumable');
+    expect(task).not.toHaveProperty('dependsOn');
+  });
+
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
       '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261123_cleanup_mongo_indexes'
+      '20261123_cleanup_mongo_indexes',
+      '20261127_cleanup_agent_engine_config'
     ]);
   });
 
