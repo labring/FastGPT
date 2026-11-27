@@ -541,5 +541,10 @@
   "audit_detail_invitation_link": "链接名：{{link}}",
   "audit_detail_login_ip": "IP：{{ip}}",
   "audit_detail_login_region": "地区：{{region}}",
-  "audit_detail_export_audit_logs": "时间范围：{{dateStart}} 至 {{dateEnd}}\n成员：{{tmbIds}}\n类型：{{events}}\n匹配条数：{{total}}"
+  "audit_detail_export_audit_logs": "时间范围：{{dateStart}} 至 {{dateEnd}}\n成员：{{tmbIds}}\n类型：{{events}}\n匹配条数：{{total}}",
+  "transfer_member_resources_to": "将资源与权限转移给",
+  "leave_team_transfer_tip": "退出后，您在该团队名下的资源所有权及资源协作者权限将转移并合并给所选成员；个人 API Key 将直接停用，应用 API Key 将转移给对应应用的负责人。",
+  "remove_member_transfer_tip": "确认将 {{username}} 移出团队？成员将被标记为“离开”，其资源所有权及资源协作者权限将转移并合并给所选成员；个人 API Key 将直接停用，应用 API Key 将转移给对应应用的负责人。",
+  "forbidden_member_transfer_tip": "确认将 {{username}} 停用？成员将被标记为“停用”并无法登录，其资源所有权及资源协作者权限将转移并合并给所选成员；个人 API Key 将直接停用，应用 API Key 将转移给对应应用的负责人。",
+  "no_transfer_member_found": "暂无可选成员"
 }

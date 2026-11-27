@@ -55,6 +55,7 @@ import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import MyTag from '@fastgpt/web/components/common/Tag';
 
 type EditProps = EditApiKeyProps & { _id?: string; defaultAppId?: string };
 const defaultEditData: EditProps = {
@@ -397,41 +398,65 @@ const ApiKeyTable = ({
 
   const renderTableCell = (field: ApiKeyTableField, item: (typeof apiKeys)[number]) => {
     switch (field) {
-      case 'name':
+      case 'name': {
+        const readOnlyTags: ApiKeyDisplayTag[] = item.disabled
+          ? [
+              ...(item.appName
+                ? [{ _id: `appName-${item._id}`, name: item.appName, isAppName: true }]
+                : []),
+              ...(item.tags ?? [])
+            ]
+          : [];
         return (
           <Td key={field} maxW={'240px'}>
             <Flex flexDirection={'column'} minW={0}>
-              <MyTooltip label={item.name} showOnlyWhenOverflow>
-                <Box
-                  maxW={'220px'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                >
-                  {item.name}
-                </Box>
-              </MyTooltip>
-              {!isAppKey && (
-                <ApiKeyTagEditor
-                  key={`${item._id}-${(item.tagIds || []).join(',')}`}
-                  apiKeyId={item._id}
-                  appName={item.appName}
-                  tagIds={item.tagIds || []}
-                  allTags={openApiTags}
-                  onSave={async (apiKeyId, tagIds) => {
-                    await onUpdateApiKeyTags({
-                      apiKeyId,
-                      tagIds
-                    });
-                  }}
-                  onManage={() => setShowTagManage(true)}
-                  onCreateTag={onCreateTagFromSelect}
-                  isLoading={isGettingTags || isUpdatingApiKeyTags}
-                />
-              )}
+              <Flex alignItems={'center'} gap={1.5} minW={0}>
+                <MyTooltip label={item.name} showOnlyWhenOverflow>
+                  <Box
+                    maxW={'220px'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                    color={item.disabled ? 'myGray.500' : undefined}
+                  >
+                    {item.name}
+                  </Box>
+                </MyTooltip>
+                {item.disabled && (
+                  <MyTag flexShrink={0} colorSchema="gray">
+                    {t('apikey:disabled')}
+                  </MyTag>
+                )}
+              </Flex>
+              {!isAppKey &&
+                (item.disabled ? (
+                  readOnlyTags.length > 0 && (
+                    <Box mt={1}>
+                      <TagDisplayList tags={readOnlyTags} />
+                    </Box>
+                  )
+                ) : (
+                  <ApiKeyTagEditor
+                    key={`${item._id}-${(item.tagIds || []).join(',')}`}
+                    apiKeyId={item._id}
+                    appName={item.appName}
+                    tagIds={item.tagIds || []}
+                    allTags={openApiTags}
+                    onSave={async (apiKeyId, tagIds) => {
+                      await onUpdateApiKeyTags({
+                        apiKeyId,
+                        tagIds
+                      });
+                    }}
+                    onManage={() => setShowTagManage(true)}
+                    onCreateTag={onCreateTagFromSelect}
+                    isLoading={isGettingTags || isUpdatingApiKeyTags}
+                  />
+                ))}
             </Flex>
           </Td>
         );
+      }
       case 'sourceMember':
         return (
           <Td key={field}>
@@ -507,24 +532,26 @@ const ApiKeyTable = ({
         return (
           <Td key={field} w={'92px'}>
             <Flex alignItems={'center'} gap={2}>
-              <MyTooltip label={t('common:Edit')}>
-                <IconButton
-                  icon={<MyIcon name={'edit'} w={4} />}
-                  variant={'whitePrimary'}
-                  size={'sm'}
-                  aria-label={t('common:Edit')}
-                  onClick={() =>
-                    setEditData({
-                      _id: item._id,
-                      name: item.name,
-                      limit: item.limit,
-                      authProxy: item.authProxy,
-                      defaultAppId: item.defaultAppId,
-                      tags: item.tagIds || []
-                    })
-                  }
-                />
-              </MyTooltip>
+              {!item.disabled && (
+                <MyTooltip label={t('common:Edit')}>
+                  <IconButton
+                    icon={<MyIcon name={'edit'} w={4} />}
+                    variant={'whitePrimary'}
+                    size={'sm'}
+                    aria-label={t('common:Edit')}
+                    onClick={() =>
+                      setEditData({
+                        _id: item._id,
+                        name: item.name,
+                        limit: item.limit,
+                        authProxy: item.authProxy,
+                        defaultAppId: item.defaultAppId,
+                        tags: item.tagIds || []
+                      })
+                    }
+                  />
+                </MyTooltip>
+              )}
               <MyTooltip label={t('common:Delete')}>
                 <IconButton
                   icon={<MyIcon name={'delete'} w={4} />}

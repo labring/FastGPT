@@ -3,7 +3,12 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CopyApiKeyBodySchema,
@@ -11,6 +16,7 @@ import {
   type CopyApiKeyBodyType,
   type CopyApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
 
 async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyApiKeyResponseType> {
@@ -24,6 +30,10 @@ async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyAp
     authToken: true,
     id
   });
+
+  if (openapi.disabled) {
+    return Promise.reject(OpenApiErrEnum.unAuth);
+  }
 
   const scope = resolveApiKeyScope(openapi);
   const resources = [

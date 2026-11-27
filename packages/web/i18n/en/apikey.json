@@ -42,5 +42,6 @@
   "bound_app_id": "Bound app ID",
   "app_key_empty": "No app keys yet. Create one to connect your backend to this app.",
   "call_example": "Request example",
-  "delete_key_tip": "Deleting this key immediately revokes calls that use it."
+  "delete_key_tip": "Deleting this key immediately revokes calls that use it.",
+  "disabled": "Disabled"
 }

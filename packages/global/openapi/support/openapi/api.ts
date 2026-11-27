@@ -53,6 +53,10 @@ export const OpenApiKeySchema = z.object({
   authProxy: z.boolean().default(false).meta({
     description: '是否允许 API Key 在应用对话及对话管理请求中通过 authProxy 代理团队成员身份'
   }),
+  disabled: z.boolean().default(false).meta({
+    example: false,
+    description: '是否已停用；成员离职后其个人 API Key 会被停用且不可再调用'
+  }),
   appName: z.string().optional().meta({
     example: '客服助手',
     description: '历史应用级 API Key 对应应用名，仅用于展示'

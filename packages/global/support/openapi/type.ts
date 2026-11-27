@@ -13,6 +13,7 @@ export type OpenApiSchema = {
   appName?: string;
   tagIds?: string[];
   authProxy?: boolean;
+  disabled?: boolean;
   name: string;
   usagePoints: number;
   limit?: {

@@ -4,6 +4,7 @@ import {
   DeleteTeamMemberQuerySchema,
   ExportTeamMembersResponseSchema,
   GetTeamMemberCountResponseSchema,
+  LeaveTeamQuerySchema,
   ListTeamMembersBodySchema,
   ListTeamMembersResponseSchema,
   RestoreTeamMemberBodySchema,
@@ -35,7 +36,7 @@ export const TeamMemberPath: OpenAPIPath = {
   '/proApi/support/user/team/member/delete': {
     delete: {
       summary: '删除团队成员',
-      description: '将指定团队成员移出当前团队',
+      description: '将指定团队成员移出当前团队，支持通过 transferTmbId 指定资源与权限接收人',
       tags: [...TeamMemberTags],
       requestParams: {
         query: DeleteTeamMemberQuerySchema
@@ -67,8 +68,12 @@ export const TeamMemberPath: OpenAPIPath = {
   '/proApi/support/user/team/member/leave': {
     delete: {
       summary: '离开团队',
-      description: '当前用户主动离开当前团队，团队所有者不能执行此操作',
+      description:
+        '当前用户主动离开当前团队，支持通过 transferTmbId 指定资源与权限接收人；团队所有者不能执行此操作',
       tags: [...TeamMemberTags],
+      requestParams: {
+        query: LeaveTeamQuerySchema
+      },
       responses: {
         200: {
           description: '离开团队成功'

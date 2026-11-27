@@ -486,4 +486,40 @@ describe('support/openapi/list', () => {
       'unlimited remaining'
     ]);
   });
+
+  it('returns disabled status and marks disabled keys as non-copyable', async () => {
+    const user = await getRootUser();
+    await MongoOpenApi.create([
+      {
+        type: ApiKeyTypeEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        apiKey: 'fastgpt-active-list-key',
+        name: 'active key'
+      },
+      {
+        type: ApiKeyTypeEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        apiKey: 'fastgpt-disabled-list-key',
+        name: 'disabled key',
+        disabled: true
+      }
+    ]);
+
+    const result = await Call(handler, {
+      auth: user,
+      query: {}
+    });
+
+    expect(result.code).toBe(200);
+    expect(result.data.find((item) => item.name === 'active key')).toMatchObject({
+      disabled: false,
+      canCopy: true
+    });
+    expect(result.data.find((item) => item.name === 'disabled key')).toMatchObject({
+      disabled: true,
+      canCopy: false
+    });
+  });
 });

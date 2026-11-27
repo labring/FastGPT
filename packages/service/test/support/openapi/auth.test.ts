@@ -398,4 +398,31 @@ describe('openapi auth', () => {
 
     expect(result.authProxy).toBe(true);
   });
+
+  it.each([true, false])(
+    '已停用的 API Key 在商业版/社区版（isPlus=%s）均被拒绝且不更新最后使用时间',
+    async (isPlus) => {
+      setTestProLicense(isPlus);
+      await MongoOpenApi.create({
+        ...teamApiKey,
+        apiKey: `fastgpt-disabled-${isPlus}`,
+        disabled: true
+      });
+
+      await expect(authOpenApiKey({ apikey: `fastgpt-disabled-${isPlus}` })).rejects.toBe(
+        ERROR_ENUM.unAuthApiKey
+      );
+      await expect(
+        parseHeaderCert({
+          req: {
+            headers: {
+              authorization: `Bearer fastgpt-disabled-${isPlus}`
+            }
+          } as any,
+          authApiKey: true
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthApiKey);
+      expect(updateApiKeyUsedTimeSpy).not.toHaveBeenCalled();
+    }
+  );
 });

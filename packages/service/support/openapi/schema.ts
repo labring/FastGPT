@@ -51,6 +51,10 @@ const OpenApiSchema = new Schema(
       type: Boolean,
       default: false
     },
+    disabled: {
+      type: Boolean,
+      default: false
+    },
     name: {
       type: String,
       default: 'Api Key',

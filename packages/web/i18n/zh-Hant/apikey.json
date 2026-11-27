@@ -42,5 +42,6 @@
   "bound_app_id": "綁定應用 ID",
   "app_key_empty": "暫無應用 Key，建立後可供業務後端接入目前應用。",
   "call_example": "呼叫範例",
-  "delete_key_tip": "刪除後，使用此 Key 的呼叫將立即失效。"
+  "delete_key_tip": "刪除後，使用此 Key 的呼叫將立即失效。",
+  "disabled": "已停用"
 }

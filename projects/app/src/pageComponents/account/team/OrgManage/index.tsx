@@ -37,10 +37,13 @@ import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import type { MemberTransferTarget } from '../MemberTransferLeaveModal';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
 const OrgMoveModal = dynamic(() => import('./OrgMoveModal'));
+const MemberTransferLeaveModal = dynamic(() => import('../MemberTransferLeaveModal'));
 
 function ActionButton({
   icon,
@@ -79,6 +82,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const [editOrg, setEditOrg] = useState<OrgFormType>();
   const [manageMemberOrg, setManageMemberOrg] = useState<OrgListItemType>();
   const [movingOrg, setMovingOrg] = useState<OrgListItemType>();
+  const [removingMember, setRemovingMember] = useState<MemberTransferTarget | null>(null);
   const {
     currentOrg,
     orgs,
@@ -107,11 +111,6 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   // Delete member
   const { ConfirmModal: ConfirmDeleteMemberFromOrg, openConfirm: openDeleteMemberFromOrgModal } =
-    useConfirm({
-      type: 'delete'
-    });
-
-  const { ConfirmModal: ConfirmDeleteMemberFromTeam, openConfirm: openDeleteMemberFromTeamModal } =
     useConfirm({
       type: 'delete'
     });
@@ -227,72 +226,70 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                   ))}
                 {!searchKey &&
                   members.map((member) => {
+                    const canRemoveFromTeam =
+                      member.role !== TeamMemberRoleEnum.owner &&
+                      member.tmbId !== userInfo?.team.tmbId;
+                    const memberMenuItems = [
+                      ...(canRemoveFromTeam
+                        ? [
+                            {
+                              menuItemStyles: {
+                                _hover: {
+                                  color: 'red.600',
+                                  backgroundColor: 'red.50'
+                                }
+                              },
+                              label: t('account_team:delete_from_team', {
+                                username: member.memberName
+                              }),
+                              onClick: () =>
+                                setRemovingMember({
+                                  tmbId: member.tmbId,
+                                  memberName: member.memberName,
+                                  avatar: member.avatar
+                                })
+                            }
+                          ]
+                        : []),
+                      ...(isSyncMember
+                        ? []
+                        : [
+                            {
+                              menuItemStyles: {
+                                _hover: {
+                                  color: 'red.600',
+                                  bgColor: 'red.50'
+                                }
+                              },
+                              label: t('account_team:delete_from_org'),
+                              onClick: () =>
+                                openDeleteMemberFromOrgModal({
+                                  onConfirm: () => {
+                                    if (currentOrg) {
+                                      return deleteMemberReq(currentOrg._id, member.tmbId);
+                                    }
+                                  },
+                                  customContent: t('account_team:confirm_delete_from_org', {
+                                    username: member.memberName
+                                  })
+                                })()
+                            }
+                          ])
+                    ];
+
                     return (
                       <Tr key={member.tmbId}>
                         <Td>
                           <MemberTag name={member.memberName} avatar={member.avatar} />
                         </Td>
                         <Td w={'6rem'}>
-                          {isTeamAdmin && (
+                          {isTeamAdmin && memberMenuItems.length > 0 && (
                             <MyMenu
                               trigger={'hover'}
                               Button={<IconButton name="more" />}
                               menuList={[
                                 {
-                                  children: [
-                                    {
-                                      menuItemStyles: {
-                                        _hover: {
-                                          color: 'red.600',
-                                          backgroundColor: 'red.50'
-                                        }
-                                      },
-                                      label: t('account_team:delete_from_team', {
-                                        username: member.memberName
-                                      }),
-                                      onClick: () => {
-                                        openDeleteMemberFromTeamModal({
-                                          onConfirm: () => deleteMemberFromTeamReq(member.tmbId),
-                                          customContent: t(
-                                            'account_team:confirm_delete_from_team',
-                                            {
-                                              username: member.memberName
-                                            }
-                                          )
-                                        })();
-                                      }
-                                    },
-                                    ...(isSyncMember
-                                      ? []
-                                      : [
-                                          {
-                                            menuItemStyles: {
-                                              _hover: {
-                                                color: 'red.600',
-                                                bgColor: 'red.50'
-                                              }
-                                            },
-                                            label: t('account_team:delete_from_org'),
-                                            onClick: () =>
-                                              openDeleteMemberFromOrgModal({
-                                                onConfirm: () => {
-                                                  if (currentOrg) {
-                                                    return deleteMemberReq(
-                                                      currentOrg._id,
-                                                      member.tmbId
-                                                    );
-                                                  }
-                                                },
-                                                customContent: t(
-                                                  'account_team:confirm_delete_from_org',
-                                                  {
-                                                    username: member.memberName
-                                                  }
-                                                )
-                                              })()
-                                          }
-                                        ])
-                                  ]
+                                  children: memberMenuItems
                                 }
                               ]}
                             />
@@ -393,9 +390,20 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
         />
       )}
 
+      {removingMember && (
+        <MemberTransferLeaveModal
+          mode="remove"
+          isSyncMode={isSyncMember}
+          member={removingMember}
+          onConfirm={(transferTmbId) =>
+            deleteMemberFromTeamReq(removingMember.tmbId, transferTmbId)
+          }
+          onClose={() => setRemovingMember(null)}
+        />
+      )}
+
       <ConfirmDeleteOrgModal />
       <ConfirmDeleteMemberFromOrg />
-      <ConfirmDeleteMemberFromTeam />
     </>
   );
 }

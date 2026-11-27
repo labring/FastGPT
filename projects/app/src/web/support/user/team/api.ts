@@ -66,13 +66,17 @@ export const putUpdateMemberNameByManager = (tmbId: string, name: string) =>
 
 export const putUpdateMemberName = (name: string) =>
   PUT(`/proApi/support/user/team/member/updateName`, { name });
-export const delRemoveMember = (tmbId: string) =>
-  DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
+export const delRemoveMember = (tmbId: string, transferTmbId?: string) =>
+  DELETE(`/proApi/support/user/team/member/delete`, {
+    tmbId,
+    ...(transferTmbId ? { transferTmbId } : {})
+  });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
 export const postRestoreMember = (tmbId: string) =>
   POST('/proApi/support/user/team/member/restore', { tmbId });
-export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
+export const delLeaveTeam = (transferTmbId?: string) =>
+  DELETE('/proApi/support/user/team/member/leave', transferTmbId ? { transferTmbId } : undefined);
 
 /* -------------- team invitaionlink -------------------- */
 

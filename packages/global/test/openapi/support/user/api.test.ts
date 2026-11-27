@@ -25,6 +25,8 @@ import {
   UserSyncResponseSchema
 } from '@fastgpt/global/openapi/support/user/team/api';
 import {
+  DeleteTeamMemberQuerySchema,
+  LeaveTeamQuerySchema,
   ListTeamMembersBodySchema,
   ListTeamMembersResponseSchema,
   RestoreTeamMemberBodySchema,
@@ -713,5 +715,27 @@ describe('support user OpenAPI contracts', () => {
       status: 'waiting',
       contact: null
     });
+  });
+
+  it('parses optional transferTmbId on member delete and leave query contracts', () => {
+    expect(DeleteTeamMemberQuerySchema.parse({ tmbId: objectId })).toEqual({ tmbId: objectId });
+    expect(
+      DeleteTeamMemberQuerySchema.parse({ tmbId: objectId, transferTmbId: secondObjectId })
+    ).toEqual({
+      tmbId: objectId,
+      transferTmbId: secondObjectId
+    });
+    expect(
+      DeleteTeamMemberQuerySchema.safeParse({ tmbId: objectId, transferTmbId: 'invalid' }).success
+    ).toBe(false);
+
+    expect(LeaveTeamQuerySchema.parse({})).toEqual({});
+    expect(LeaveTeamQuerySchema.parse({ transferTmbId: secondObjectId })).toEqual({
+      transferTmbId: secondObjectId
+    });
+    expect(LeaveTeamQuerySchema.safeParse({ transferTmbId: 'invalid' }).success).toBe(false);
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/member/leave']?.delete?.parameters
+    ).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'transferTmbId' })]));
   });
 });
