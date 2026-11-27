@@ -31,13 +31,18 @@
     "dayjs": "catalog:",
     "dotenv": "^17.3.1",
     "hono": "catalog:",
+    "http-proxy-agent": "^7.0.2",
+    "https-proxy-agent": "^7.0.6",
     "moment": "^2.31.0",
+    "proxy-from-env": "^1.1.0",
     "qs": "catalog:",
+    "socks-proxy-agent": "^8.0.5",
     "uuid": "^9.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/proxy-from-env": "^1.0.4",
     "lodash": "4.18.1",
     "tsdown": "catalog:",
     "tsx": "catalog:",

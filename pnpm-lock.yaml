@@ -843,6 +843,9 @@ importers:
       sharp:
         specifier: 0.35.5
         version: 0.35.5(@types/node@24.13.3)
+      socks-proxy-agent:
+        specifier: ^8.0.5
+        version: 8.0.5
       tar-stream:
         specifier: 'catalog:'
         version: 3.2.2(bare-buffer@3.7.1)
@@ -1829,12 +1832,24 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.13.16
+      http-proxy-agent:
+        specifier: ^7.0.2
+        version: 7.0.2
+      https-proxy-agent:
+        specifier: ^7.0.6
+        version: 7.0.6
       moment:
         specifier: ^2.31.0
         version: 2.31.0
+      proxy-from-env:
+        specifier: ^1.1.0
+        version: 1.1.0
       qs:
         specifier: 'catalog:'
         version: 6.17.0
+      socks-proxy-agent:
+        specifier: ^8.0.5
+        version: 8.0.5
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
@@ -1845,6 +1860,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@types/proxy-from-env':
+        specifier: ^1.0.4
+        version: 1.0.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.12(vitest@4.1.12)
