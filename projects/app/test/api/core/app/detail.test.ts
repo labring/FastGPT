@@ -268,8 +268,8 @@ describe('get app detail api', () => {
       { appId },
       {
         $set: {
-          'nodes.1.metadataLocale': 'tr-TR',
-          'nodes.2.inputs.0.value.0.metadataLocale': 'tr-TR'
+          'nodes.1.metadataLocale': 'ja-JP',
+          'nodes.2.inputs.0.value.0.metadataLocale': 'ja-JP'
         }
       }
     );

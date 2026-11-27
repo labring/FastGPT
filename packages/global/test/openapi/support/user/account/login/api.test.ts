@@ -339,7 +339,8 @@ describe('user account OpenAPI contracts', () => {
       permission: {}
     };
 
-    expect(OpenAPIUserSchema.parse({ ...baseUser, language: 'tr-TR' }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: 'tr-TR' }).language).toBe('tr-TR');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: 'ja-JP' }).language).toBe('en');
     expect(OpenAPIUserSchema.parse({ ...baseUser, language: null }).language).toBe('en');
     expect(OpenAPIUserSchema.parse({ ...baseUser, language: '' }).language).toBe('en');
     expect(OpenAPIUserSchema.parse(baseUser).language).toBeUndefined();
@@ -355,7 +356,7 @@ describe('user account OpenAPI contracts', () => {
         username: 'admin',
         password: 'a'.repeat(64),
         code: '123456',
-        language: 'tr-TR'
+        language: 'ja-JP'
       }).language
     ).toBe('en');
   });

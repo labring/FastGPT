@@ -1,0 +1,13 @@
+{
+  "fastgpt_marketplace": "FastGPT Marketplace",
+  "plugin_development": "Eklenti geliştirme rehberi",
+  "plugin_offline_tips": "Sistemin Marketplace verilerine doğrudan erişemiyor.\nDaha fazla eklenti için adresi elle kopyalayıp git",
+  "plugin_offline_url": "Adres",
+  "tab_moderation": "İçerik denetimi",
+  "tab_system_tool": "Sistem araçları",
+  "toolkit_marketplace_search_placeholder": "Eklenti ara",
+  "toolkit_marketplace_submit_request": "İstek gönder",
+  "toolkit_marketplace_title": "Daha fazla eklenti keşfet",
+  "toolkit_uninstalled_only": "Yalnızca kurulu olmayanlar",
+  "toolkit_updatable": "Güncellenebilir"
+}

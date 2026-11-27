@@ -264,6 +264,268 @@
         "forbidden": []
       }
     ],
+    "tr-TR": [
+      {
+        "zh": ["飞书"],
+        "target": ["Lark"],
+        "forbidden": ["Feishu"]
+      },
+      {
+        "zh": ["语雀"],
+        "target": ["Yuque"],
+        "forbidden": []
+      },
+      {
+        "zh": ["钉钉"],
+        "target": ["DingTalk"],
+        "forbidden": ["Ding Talk"]
+      },
+      {
+        "zh": ["应用代码", "代码应用"],
+        "target": ["kodu uygula"],
+        "forbidden": []
+      },
+      {
+        "zh": ["额外积分/知识库索引量"],
+        "target": ["ek paket", "ek puan / veri kümesi dizin kapasitesi"],
+        "forbidden": []
+      },
+      {
+        "zh": ["知识库引用"],
+        "target": ["veri kümesi alıntı"],
+        "forbidden": ["bilgi bankası"]
+      },
+      {
+        "zh": ["知识库搜索"],
+        "target": ["veri kümesi arama"],
+        "forbidden": ["bilgi bankası"]
+      },
+      {
+        "zh": ["知识库索引量"],
+        "target": ["dizin kapasitesi"],
+        "forbidden": ["bilgi bankası"]
+      },
+      {
+        "zh": ["额外资源包", "额外套餐", "资源包"],
+        "target": ["ek paket"],
+        "forbidden": ["kaynak paketi"]
+      },
+      {
+        "zh": ["系统提示词"],
+        "target": ["sistem prompt"],
+        "forbidden": []
+      },
+      {
+        "zh": ["团队成员"],
+        "target": ["ekip üyesi"],
+        "forbidden": ["takım"]
+      },
+      {
+        "zh": ["插件市场"],
+        "target": ["marketplace"],
+        "forbidden": ["eklenti pazarı"]
+      },
+      {
+        "zh": ["发布渠道"],
+        "target": ["yayın kanalı", "yayın kanalları"],
+        "forbidden": []
+      },
+      {
+        "zh": ["全文检索"],
+        "target": ["tam metin arama"],
+        "forbidden": []
+      },
+      {
+        "zh": ["混合检索"],
+        "target": ["hibrit arama"],
+        "forbidden": []
+      },
+      {
+        "zh": ["语义检索"],
+        "target": ["anlamsal arama"],
+        "forbidden": []
+      },
+      {
+        "zh": ["结果重排"],
+        "target": ["yeniden sıralama"],
+        "forbidden": []
+      },
+      {
+        "zh": ["重排模型"],
+        "target": ["rerank modeli"],
+        "forbidden": []
+      },
+      {
+        "zh": ["问题优化"],
+        "target": ["sorgu yeniden yazımı"],
+        "forbidden": []
+      },
+      {
+        "zh": ["索引模型"],
+        "target": ["embedding modeli"],
+        "forbidden": []
+      },
+      {
+        "zh": ["模型渠道"],
+        "target": ["model sağlayıcı"],
+        "forbidden": ["model kanalı"]
+      },
+      {
+        "zh": ["对话记录"],
+        "target": ["sohbet geçmişi"],
+        "forbidden": ["konuşma kaydı"]
+      },
+      {
+        "zh": ["对话日志"],
+        "target": ["sohbet günlüğü"],
+        "forbidden": ["konuşma günlüğü"]
+      },
+      {
+        "zh": ["工具调用"],
+        "target": ["araç çağrı"],
+        "forbidden": []
+      },
+      {
+        "zh": ["工具集"],
+        "target": ["araç seti"],
+        "forbidden": []
+      },
+      {
+        "zh": ["AI积分", "AI 积分"],
+        "target": ["AI puan"],
+        "forbidden": ["AI kredi"]
+      },
+      {
+        "zh": ["试运行"],
+        "target": ["deneme çalıştırma"],
+        "forbidden": []
+      },
+      {
+        "zh": ["工作台"],
+        "target": ["studio"],
+        "forbidden": ["çalışma tezgahı"]
+      },
+      {
+        "zh": ["工作流"],
+        "target": ["iş akışı", "iş akışları"],
+        "forbidden": []
+      },
+      {
+        "zh": ["知识库"],
+        "target": ["veri kümesi", "veri kümeleri"],
+        "forbidden": ["bilgi bankası", "bilgi tabanı"]
+      },
+      {
+        "zh": ["数据集", "集合"],
+        "target": ["koleksiyon"],
+        "forbidden": []
+      },
+      {
+        "zh": ["索引量"],
+        "target": ["dizin kapasitesi"],
+        "forbidden": []
+      },
+      {
+        "zh": ["智能体"],
+        "target": ["ajan"],
+        "forbidden": ["asistan"]
+      },
+      {
+        "zh": ["应用"],
+        "target": ["uygulama"],
+        "forbidden": []
+      },
+      {
+        "zh": ["技能"],
+        "target": ["yetenek", "yeteneğ"],
+        "forbidden": []
+      },
+      {
+        "zh": ["节点", "模块"],
+        "target": ["düğüm"],
+        "forbidden": ["modül"]
+      },
+      {
+        "zh": ["工具"],
+        "target": ["araç"],
+        "forbidden": []
+      },
+      {
+        "zh": ["插件"],
+        "target": ["eklenti"],
+        "forbidden": []
+      },
+      {
+        "zh": ["团队"],
+        "target": ["ekip", "ekib"],
+        "forbidden": ["takım", "çalışma alanı"]
+      },
+      {
+        "zh": ["协作者", "合作者"],
+        "target": ["ortak çalışan"],
+        "forbidden": []
+      },
+      {
+        "zh": ["沙盒"],
+        "target": ["sandbox"],
+        "forbidden": []
+      },
+      {
+        "zh": ["触发器"],
+        "target": ["tetikleyici"],
+        "forbidden": []
+      },
+      {
+        "zh": ["提示词"],
+        "target": ["prompt"],
+        "forbidden": []
+      },
+      {
+        "zh": ["数据源"],
+        "target": ["veri kaynağı"],
+        "forbidden": []
+      },
+      {
+        "zh": ["分块"],
+        "target": ["parça"],
+        "forbidden": []
+      },
+      {
+        "zh": ["调试"],
+        "target": ["hata ayıkla"],
+        "forbidden": []
+      },
+      {
+        "zh": ["引用"],
+        "target": ["alıntı"],
+        "forbidden": ["referans"]
+      },
+      {
+        "zh": ["套餐"],
+        "target": ["plan"],
+        "forbidden": []
+      },
+      {
+        "zh": ["积分"],
+        "target": ["puan"],
+        "forbidden": ["kredi"]
+      },
+      {
+        "zh": ["用量"],
+        "target": ["kullanım"],
+        "forbidden": []
+      },
+      {
+        "zh": ["订阅"],
+        "target": ["abonelik", "abone"],
+        "forbidden": []
+      },
+      {
+        "zh": ["训练"],
+        "target": ["dizinle"],
+        "forbidden": ["eğitim"]
+      }
+    ],
     "zh-Hant": [
       {
         "zh": ["飞书"],
@@ -289,6 +551,7 @@
       "source": "应用",
       "en": ["Apply"],
       "ko-KR": ["적용"],
+      "tr-TR": ["uygula"],
       "forbidden": [],
       "note": "Here 应用 is the Apply action for generated code, not the FastGPT App entity."
     }

@@ -1,0 +1,19 @@
+{
+  "Chinese_ip_tip": "Çin anakarası IP adresi algılandı. Çin anakarası sürümüne gitmek için tıkla.",
+  "Login": "Giriş yap",
+  "agree": "Kabul et",
+  "cookies_tip": "Bu web sitesi daha iyi bir hizmet deneyimi sunmak için çerez kullanır. Kullanmaya devam etmen Çerez Politikamızı kabul ettiğin anlamına gelir.",
+  "forget_password": "Şifreni mi unuttun?",
+  "login_redirect_failed": "Giriş tamamlandı ancak sayfa yönlendirmesi başarısız oldu. Sayfayı yenile.",
+  "login_success": "Giriş yapıldı",
+  "no_remind": "Bir daha hatırlatma",
+  "password_condition": "Şifre en fazla 60 karakter olabilir",
+  "password_tip": "En az 8 karakter olmalı ve rakam, küçük harf, büyük harf veya özel karakterden en az ikisini içermeli. Boşluk kullanılamaz.",
+  "policy_tip": "Bu hizmeti kullanarak<lineBreak/><termsLink> Hizmet Sözleşmemizi </termsLink> ve <privacyLink> Gizlilik Sözleşmemizi</privacyLink> okuyup kabul etmiş olursun",
+  "privacy_policy": "Gizlilik politikası",
+  "redirect": "Git",
+  "register": "Hesap oluştur",
+  "reset_password_tip": "Yeni şifre en az 8 karakter olmalı ve rakam, küçük harf, büyük harf veya özel karakterden en az ikisini içermeli. Boşluk kullanılamaz.",
+  "root_password_placeholder": "root başlangıç şifresi için dağıtım belgesine bak. İlk girişte değiştirilmesi gerekir.",
+  "use_root_login": "root kullanıcısıyla giriş yap"
+}

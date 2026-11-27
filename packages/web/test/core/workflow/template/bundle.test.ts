@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LocaleList, type localeType } from '@fastgpt/global/common/i18n/type';
 import { workflowTemplateResources } from '@fastgpt/workflow-core/template/i18n';
 import enApp from '../../../../i18n/en/app.json';
 import enCommon from '../../../../i18n/en/common.json';
@@ -12,16 +13,24 @@ import zhHantWorkflow from '../../../../i18n/zh-Hant/workflow.json';
 import koApp from '../../../../i18n/ko-KR/app.json';
 import koCommon from '../../../../i18n/ko-KR/common.json';
 import koWorkflow from '../../../../i18n/ko-KR/workflow.json';
+import trApp from '../../../../i18n/tr-TR/app.json';
+import trCommon from '../../../../i18n/tr-TR/common.json';
+import trWorkflow from '../../../../i18n/tr-TR/workflow.json';
 
-const webLocales: Record<string, Record<string, Record<string, string>>> = {
+const webLocales: Record<localeType, Record<string, Record<string, string>>> = {
   en: { app: enApp, common: enCommon, workflow: enWorkflow },
   'zh-CN': { app: zhCnApp, common: zhCnCommon, workflow: zhCnWorkflow },
   'zh-Hant': { app: zhHantApp, common: zhHantCommon, workflow: zhHantWorkflow },
-  'ko-KR': { app: koApp, common: koCommon, workflow: koWorkflow }
+  'ko-KR': { app: koApp, common: koCommon, workflow: koWorkflow },
+  'tr-TR': { app: trApp, common: trCommon, workflow: trWorkflow }
 };
 
 describe('workflow template i18n parity', () => {
-  it.each(['en', 'zh-CN', 'zh-Hant', 'ko-KR'])(
+  it('covers every supported locale in LocaleList', () => {
+    expect(Object.keys(workflowTemplateResources).sort()).toEqual([...LocaleList].sort());
+  });
+
+  it.each(LocaleList)(
     'keeps @fastgpt/workflow-core template dictionary in sync with @fastgpt/web %s resources',
     (locale) => {
       const coreDict = workflowTemplateResources[locale];

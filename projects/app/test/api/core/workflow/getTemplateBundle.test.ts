@@ -50,7 +50,8 @@ describe('getTemplateBundle', () => {
 
   it.each([
     [{ locale: 'zh-CN' }, 'zh-CN'],
-    [{ locale: 'tr-TR' }, 'en'],
+    [{ locale: 'tr-TR' }, 'tr-TR'],
+    [{ locale: 'ja-JP' }, 'en'],
     [{}, 'ko-KR']
   ])('validates the query and returns a private template bundle for %j', async (query, locale) => {
     const { result, req, setHeader } = request(query);

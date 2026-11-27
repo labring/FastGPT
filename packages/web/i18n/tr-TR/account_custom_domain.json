@@ -1,0 +1,23 @@
+{
+  "custom_domain": "Özel alan adı",
+  "DNS_record": "DNS kaydı",
+  "DNS_record.type": "Tür",
+  "DNS_resolve_hint": "Alan adı sağlayıcına gidip bu alan adı için <bold>{{domain}}</bold> adresine yönlendiren bir CNAME kaydı ekle. Kayıt yayıldıktan sonra özel alan adını bağlayabilirsin.",
+  "delete_confirm": "Bu özel alan adı silinsin mi?",
+  "dns_resolved": "Doğrulandı",
+  "dns_resolving": "Doğrulanıyor",
+  "domain": "Alan adı",
+  "domain_verify": "Alan adı doğrulama",
+  "domain_verify.content": "Dosya içeriği",
+  "domain_verify.desc": "Kaydettikten sonra {{domain}}/{{path}} adresi {{content}} döndürür",
+  "domain_verify.path": "Dosya yolu",
+  "provider": "Alan adı sağlayıcısı",
+  "provider.aliyun": "Alibaba Cloud",
+  "provider.tencent": "Tencent Cloud",
+  "provider.volcengine": "Volcengine",
+  "registration_hint": "Kendi alan adını hazırla ve <bold>{{provider}}</bold> üzerinden ICP kaydını tamamla, sonra alan adını aşağıdaki alana gir",
+  "status.active": "Etkin",
+  "status.inactive": "Etkin değil",
+  "upgrade_to_use_custom_domain": "Mevcut plan özel alan adını desteklemiyor, önce planını yükselt",
+  "upgrade_plan": "Planı yükselt"
+}

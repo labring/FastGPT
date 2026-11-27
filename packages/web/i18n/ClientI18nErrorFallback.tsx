@@ -20,6 +20,11 @@ const errorContent = {
     title: '언어 리소스를 불러오지 못했습니다. 페이지를 새로고침한 후 다시 시도해 주세요.',
     refresh: '페이지 새로고침',
     unknownError: '알 수 없는 오류'
+  },
+  'tr-TR': {
+    title: 'Dil kaynakları yüklenemedi. Sayfayı yenileyip tekrar dene.',
+    refresh: 'Sayfayı yenile',
+    unknownError: 'Bilinmeyen hata'
   }
 } as const;
 

@@ -20,9 +20,9 @@ describe('LanguageSchema', () => {
       expect(LanguageSchema.parse(locale)).toBe(locale);
     }
 
-    expect(LanguageSchema.parse('tr-TR')).toBe('en');
+    expect(LanguageSchema.parse('ja-JP')).toBe('en');
     expect(LanguageSchema.optional().parse(undefined)).toBeUndefined();
-    expect(LanguageSchema.optional().parse('tr-TR')).toBe('en');
+    expect(LanguageSchema.optional().parse('ja-JP')).toBe('en');
 
     for (const invalid of [undefined, null, '', '   ', 123]) {
       expect(LanguageSchema.safeParse(invalid).success).toBe(false);
@@ -46,6 +46,13 @@ describe('parseLocale', () => {
     'should normalize Korean locale %s to ko-KR',
     (locale) => {
       expect(parseLocale(locale)).toBe('ko-KR');
+    }
+  );
+
+  it.each(['tr', 'tr-TR', 'tr-tr', 'TR_TR', 'tr-CY'])(
+    'should normalize Turkish locale %s to tr-TR',
+    (locale) => {
+      expect(parseLocale(locale)).toBe('tr-TR');
     }
   );
 
@@ -100,6 +107,7 @@ describe('parseI18nString', () => {
 
   it('should accept legacy translation objects without zh-CN', () => {
     expect(parseI18nString({ en: 'Hello' }, 'ko-KR')).toBe('Hello');
+    expect(parseI18nString({ en: 'Hello' }, 'tr-TR')).toBe('Hello');
   });
 
   it('falls back to an empty string when all translations are omitted', () => {
