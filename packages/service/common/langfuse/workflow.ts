@@ -12,8 +12,7 @@ import {
 import {
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
-  getLangfuseTraceOutput,
-  langfuseTraceOutputAllowedKeys,
+  serializeLangfuseTraceOutput,
   serializeLangfuseValue
 } from './utils';
 
@@ -51,12 +50,9 @@ export const onWorkflowEnd = ({
   output: AIChatItemValueItemType[];
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
-  const serializedOutput = serializeLangfuseValue(getLangfuseTraceOutput(output), {
-    keepExcludedKeys: langfuseTraceOutputAllowedKeys
+  setActiveLangfuseTraceAttributes({
+    'langfuse.trace.output': serializeLangfuseTraceOutput(output)
   });
-  if (serializedOutput !== undefined) {
-    setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': serializedOutput });
-  }
 };
 
 /** 在 Langfuse 私有上下文中启动节点，不把 observation 标记写入通用 OTEL span。 */

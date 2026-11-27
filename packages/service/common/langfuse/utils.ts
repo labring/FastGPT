@@ -6,6 +6,23 @@ const LANGFUSE_MAX_OBJECT_KEYS = 100;
 const LANGFUSE_MAX_DEPTH = 8;
 const LANGFUSE_MAX_SERIALIZED_LENGTH = 100000;
 
+/**
+ * trace.output 的白名单字段：只上报回复内容相关字段。
+ * 输入上下文（inputContext，本轮改写后的完整用户输入）、恢复上下文（contextCheckpoint）
+ * 以及服务端内部状态一律不上报，避免把用户输入写进 trace。
+ */
+const langfuseTraceOutputItemKeys = [
+  'id',
+  'text',
+  'reasoning',
+  'tools',
+  'skills',
+  'interactive',
+  'plan',
+  'planStatus',
+  'tool'
+] as const;
+
 const LANGFUSE_TRACE_NAME = 'message';
 
 /**
@@ -152,6 +169,52 @@ export const getLangfuseTraceOutput = (
   if (result.length === 0) result.push({ text: { content: '' } });
 
   return result;
+};
+
+/** 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。 */
+const projectLangfuseTraceOutputItem = (item: AIChatItemValueItemType): AIChatItemValueItemType => {
+  const projected: Record<string, unknown> = {};
+  for (const key of langfuseTraceOutputItemKeys) {
+    const value = item[key];
+    if (value !== undefined && value !== null) projected[key] = value;
+  }
+  return projected as AIChatItemValueItemType;
+};
+
+const isSerializedJsonArray = (value?: string) => {
+  if (value === undefined) return false;
+  try {
+    return Array.isArray(JSON.parse(value));
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 序列化 trace.output。
+ *
+ * 1. 只序列化白名单字段，输入与恢复上下文不上报。
+ * 2. 总长度超过上限时按消息项收缩（丢弃较早的项，保留最近的回复），
+ *    保证结果始终是 JSON 数组；不会走 `serializeLangfuseValue` 的
+ *    “超长退化成 JSON 字符串”分支，避免下游按数组读取失败。
+ */
+export const serializeLangfuseTraceOutput = (values: AIChatItemValueItemType[]): string => {
+  const items = getLangfuseTraceOutput(values).map(projectLangfuseTraceOutputItem);
+
+  for (let start = 0; start < items.length; start++) {
+    const serialized = serializeLangfuseValue(items.slice(start), {
+      keepExcludedKeys: langfuseTraceOutputAllowedKeys
+    });
+    if (isSerializedJsonArray(serialized)) return serialized as string;
+  }
+
+  // 兜底：单条消息项自身超限时保留其可见文本并标记截断，仍然返回数组。
+  const last = items[items.length - 1];
+  const content = (last?.text?.content ?? last?.reasoning?.content ?? '').slice(
+    0,
+    LANGFUSE_MAX_STRING_LENGTH
+  );
+  return JSON.stringify([{ text: { content: content ? `${content}...[truncated]` : '' } }]);
 };
 
 /** 构造根 workflow span 的初始属性，使 Langfuse 能在 onStart 阶段识别应用根。 */

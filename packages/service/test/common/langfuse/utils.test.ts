@@ -4,6 +4,7 @@ import {
   getLangfuseTraceAttributes,
   getLangfuseTraceOutput,
   langfuseTraceOutputAllowedKeys,
+  serializeLangfuseTraceOutput,
   serializeLangfuseValue
 } from '@fastgpt/service/common/langfuse/utils';
 
@@ -42,6 +43,39 @@ describe('getLangfuseTraceOutput', () => {
 
   it('falls back to an empty text item when output is empty', () => {
     expect(getLangfuseTraceOutput([])).toEqual([{ text: { content: '' } }]);
+  });
+});
+
+describe('serializeLangfuseTraceOutput', () => {
+  it('drops input context, recovery state and internal fields', () => {
+    const serialized = serializeLangfuseTraceOutput([
+      {
+        inputContext: { content: 'full rewritten user input' },
+        contextCheckpoint: { key: 'checkpoint' },
+        userMessage: { content: 'hidden instruction', source: 'server' },
+        toolResponses: [{ id: 'tool-1', response: 'private' }],
+        text: { content: 'answer' }
+      } as any
+    ]);
+
+    expect(JSON.parse(serialized)).toEqual([{ text: { content: 'answer' } }]);
+  });
+
+  it('keeps a JSON array when the serialized output exceeds the size limit', () => {
+    const items = Array.from({ length: 12 }, (_, index) => ({
+      tools: [{ id: `tool-${index}`, response: 'x'.repeat(10000) }]
+    })) as any[];
+
+    const serialized = serializeLangfuseTraceOutput(items);
+    const parsed = JSON.parse(serialized);
+
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed.length).toBeGreaterThan(0);
+    expect(serialized.length).toBeLessThanOrEqual(100000);
+  });
+
+  it('keeps an empty output as an array with an empty text item', () => {
+    expect(JSON.parse(serializeLangfuseTraceOutput([]))).toEqual([{ text: { content: '' } }]);
   });
 });
 
