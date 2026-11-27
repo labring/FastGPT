@@ -312,8 +312,66 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     expect(events).toEqual([
       { event: 'answer', data: 'Hello' },
-      { data: 'World', id: 'msg-1' }
+      { data: 'World', id: 'msg-1' },
+      { data: '[DONE]' }
     ]);
+  });
+
+  it('aborts stalled SSE body stream when timeoutMs expires after headers arrive', async () => {
+    const encoder = new TextEncoder();
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('event: answer\ndata: {"partial":true}\n\n'));
+      },
+      cancel() {
+        cancelled = true;
+      }
+    });
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(stream, { headers: { 'content-type': 'text/event-stream' } })
+    });
+
+    const received: string[] = [];
+    await expect(
+      (async () => {
+        for await (const evt of client.streamSse({
+          path: '/core/chat/chatTest',
+          body: {},
+          timeoutMs: 40
+        })) {
+          received.push(evt.data);
+        }
+      })()
+    ).rejects.toThrow(/SSE stream timed out/i);
+    expect(received).toEqual(['{"partial":true}']);
+    expect(cancelled).toBe(true);
+  });
+
+  it('strips signed query parameters from presigned upload errors', async () => {
+    const signedUrl =
+      'https://s3.example.com/bucket/avatar.png?X-Amz-Signature=super-secret-sig&X-Amz-Credential=ak-123';
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () => new Response('AccessDenied', { status: 403 })
+    });
+
+    try {
+      await client.putPresignedUrl({
+        url: signedUrl,
+        body: new Uint8Array([1, 2, 3])
+      });
+      expect.unreachable('should fail');
+    } catch (error: any) {
+      expect(error.details?.url).toBe('https://s3.example.com/bucket/avatar.png');
+      expect(JSON.stringify(error)).not.toContain('super-secret-sig');
+      expect(JSON.stringify(error)).not.toContain('ak-123');
+    }
   });
 
   it('supports uploadMultipart and requestRaw methods', async () => {

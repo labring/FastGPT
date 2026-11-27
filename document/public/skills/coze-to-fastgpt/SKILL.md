@@ -53,13 +53,17 @@ description: End-to-end migration workflow from Coze (扣子) to FastGPT China (
    - **插件 / MCP**：服务 URL、协议类型、Header 鉴权配置、OpenAPI/工具列表与头像。
    - **知识库（Knowledge）**：文档清单、原始文件（PDF/TXT/DOCX 等）或分段文本，以及知识库头像。
    - **自定义 Skill**：整理为标准 `.zip` 包（根目录含 `SKILL.md` 及可选 `scripts/`、`references/`）。
-2. 将所有资源头像下载为本地图片文件（PNG/JPG/WEBP）。
+2. 将所有资源头像下载为本地图片文件；若源头像为 `.webp` 等非标准格式，先在本地转为 `.png` 或 `.jpg`（`fastgpt file upload-avatar` 仅接受 `.png`/`.jpg`/`.jpeg`，上限 5 MB），例如：
+   ```bash
+   python3 -c 'from PIL import Image; Image.open("avatar.webp").convert("RGBA").save("avatar.png")'
+   # 或使用 macOS sips / ffmpeg：sips -s format png avatar.webp --out avatar.png
+   ```
 
 ### 阶段 2：上传头像与建构四棵目录树
 
-1. 逐一上传 Coze 资源头像，记录返回的 `/api/system/img/avatar/...` 路径：
+1. 逐一上传转换后的 PNG/JPG 头像文件，记录返回的 `/api/system/img/avatar/...` 路径：
    ```bash
-   fastgpt file upload-avatar <local-image-path> --profile china --format json
+   fastgpt file upload-avatar <local-png-or-jpg-path> --profile china --format json
    ```
 2. 按 FastGPT 四棵独立目录树创建迁移目录（注意目录头像规则——服务端**不会**为 `dataset`/`app` 目录自动补头像）：
    - **知识库目录**（必须显式传 `--avatar /imgs/files/folder.svg`）：

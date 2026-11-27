@@ -300,6 +300,14 @@ describe('PlatformSkillService (cli/src/domain/skill/platform-skill-service.ts)'
       'expected skill folder'
     );
 
+    // Ordinary skill delete must refuse folder IDs to prevent accidental recursive deletion
+    await expect(service.delete({ client, skillId: OBJECT_ID_FOLDER })).rejects.toThrow(
+      /is a skill folder/
+    );
+
+    const deletedSkill = await service.delete({ client, skillId: OBJECT_ID_SKILL });
+    expect(deletedSkill.data).toEqual({ deleted: true, skillId: OBJECT_ID_SKILL });
+
     const deleted = await service.deleteFolder({ client, folderId: OBJECT_ID_FOLDER });
     expect(deleted.data).toEqual({ deleted: true, folderId: OBJECT_ID_FOLDER });
   });

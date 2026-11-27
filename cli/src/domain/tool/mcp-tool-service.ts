@@ -1,4 +1,5 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
   DeleteAppQuerySchema,
   ListAppV2BodySchema,
@@ -22,15 +23,19 @@ import {
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
-import { CliArgumentError } from '../../shared/errors';
+import { CliApiError, CliArgumentError } from '../../shared/errors';
 import { buildPaginationMeta, isPlainObject, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import {
   fetchAndAssertAppType,
+  hasSavedCredentials,
+  isSameToolEndpoint,
   normalizeHeaderSecretInput,
   parseToolMetadataUpdate,
-  redactHeaderSecretPreview
+  redactHeaderSecretPreview,
+  validateToolEndpointUrl,
+  wrapPartialWriteError
 } from './tool-shared';
 
 type ExtractedMcpConfig = {
@@ -321,6 +326,11 @@ export function createMcpToolService(): McpToolService {
         );
       }
 
+      const validatedUrl =
+        config.url !== undefined
+          ? validateToolEndpointUrl(config.url, 'MCP server URL')
+          : undefined;
+
       if (dryRun) {
         return createDryRunResult({
           operation: 'tool mcp update',
@@ -345,7 +355,7 @@ export function createMcpToolService(): McpToolService {
                     refreshTools: config.refresh === true,
                     payload: {
                       appId: validatedQuery.appId,
-                      ...(config.url !== undefined ? { url: trimIfString(config.url) } : {}),
+                      ...(validatedUrl !== undefined ? { url: validatedUrl } : {}),
                       ...(normalizedHeaders !== undefined
                         ? { headerSecret: redactHeaderSecretPreview(normalizedHeaders) }
                         : {}),
@@ -367,26 +377,31 @@ export function createMcpToolService(): McpToolService {
         resourceLabel: 'MCP toolset'
       });
 
-      if (metadataBody) {
-        await client.request<UpdateAppResponseType>({
-          method: 'PUT',
-          path: '/core/app/update',
-          query: validatedQuery,
-          body: metadataBody
-        });
-      }
-
-      let updatedUrl: string | undefined;
-      let updatedToolCount: number | undefined;
+      // 先完成配置校验、改址凭据隔离检查与（可选）工具探测，确保首次写库前无本地/契约错误。
+      let validatedConfigBody: ReturnType<typeof UpdateMcpToolsBodySchema.parse> | undefined;
       if (hasConfigUpdate) {
         const existing = extractMcpToolSetConfig(detail);
-        const targetUrl =
-          config.url !== undefined ? trimIfString(config.url) : (existing.url ?? '');
+        const targetUrl = validatedUrl ?? existing.url ?? '';
         if (!targetUrl) {
           throw new CliArgumentError(
             'Unable to resolve MCP server URL from existing toolset.',
             undefined,
             'Pass --url explicitly.'
+          );
+        }
+        validateToolEndpointUrl(targetUrl, 'MCP server URL');
+
+        if (
+          validatedUrl !== undefined &&
+          existing.url &&
+          !isSameToolEndpoint(validatedUrl, existing.url) &&
+          hasSavedCredentials(existing.headerSecret) &&
+          normalizedHeaders === undefined
+        ) {
+          throw new CliArgumentError(
+            `Refusing to forward saved headerSecret from "${existing.url}" to new MCP URL "${validatedUrl}".`,
+            undefined,
+            'Pass --header-secret explicitly for the new URL (or "{}" to clear saved headers).'
           );
         }
 
@@ -416,18 +431,45 @@ export function createMcpToolService(): McpToolService {
           return existing.toolList ?? [];
         })();
 
-        const validatedConfigBody = UpdateMcpToolsBodySchema.parse({
+        validatedConfigBody = UpdateMcpToolsBodySchema.parse({
           appId: validatedQuery.appId,
           url: targetUrl,
           ...(effectiveHeaderSecret !== undefined ? { headerSecret: effectiveHeaderSecret } : {}),
           toolList: targetToolList
         });
+      }
 
-        await client.request<UpdateMcpToolsResponseType>({
+      if (metadataBody) {
+        await client.request<UpdateAppResponseType>({
           method: 'PUT',
-          path: '/core/app/mcpTools/update',
-          body: validatedConfigBody
+          path: '/core/app/update',
+          query: validatedQuery,
+          body: metadataBody
         });
+      }
+
+      let updatedUrl: string | undefined;
+      let updatedToolCount: number | undefined;
+      if (validatedConfigBody) {
+        try {
+          await client.request<UpdateMcpToolsResponseType>({
+            method: 'PUT',
+            path: '/core/app/mcpTools/update',
+            body: validatedConfigBody
+          });
+        } catch (error) {
+          if (metadataBody) {
+            throw wrapPartialWriteError({
+              error,
+              operation: 'tool mcp update',
+              appId: validatedQuery.appId,
+              completedSteps: ['metadata'],
+              failedStep: 'config',
+              recoveryHint: `Metadata was updated for ${validatedQuery.appId}. Fix the MCP config and re-run: fastgpt tool mcp update ${validatedQuery.appId} ...`
+            });
+          }
+          throw error;
+        }
 
         updatedUrl = validatedConfigBody.url;
         updatedToolCount = validatedConfigBody.toolList.length;
@@ -449,7 +491,10 @@ export function createMcpToolService(): McpToolService {
 
     run: async ({ client, input, dryRun }) => {
       const appId = trimIfString(input.appId);
-      const explicitUrl = trimIfString(input.url);
+      const explicitUrlRaw = trimIfString(input.url);
+      const explicitUrl = explicitUrlRaw
+        ? validateToolEndpointUrl(explicitUrlRaw, 'MCP server URL')
+        : '';
       const toolName = trimIfString(input.toolName);
       const normalizedHeaders = normalizeHeaderSecretInput(input.headerSecret);
 
@@ -504,6 +549,23 @@ export function createMcpToolService(): McpToolService {
           'Pass --url explicitly.'
         );
       }
+      validateToolEndpointUrl(resolvedUrl, 'MCP server URL');
+
+      // 防止通过 --id 加载已保存凭据后被 --url 覆盖发送到未授权地址。
+      if (
+        appId &&
+        explicitUrl &&
+        existingConfig?.url &&
+        !isSameToolEndpoint(explicitUrl, existingConfig.url) &&
+        hasSavedCredentials(existingConfig.headerSecret) &&
+        normalizedHeaders === undefined
+      ) {
+        throw new CliArgumentError(
+          `Refusing to send saved headerSecret from MCP toolset "${appId}" to overridden URL "${explicitUrl}".`,
+          undefined,
+          'Omit --url to invoke the saved endpoint, or pass --header-secret explicitly for the new URL.'
+        );
+      }
 
       const resolvedHeaders =
         normalizedHeaders ??
@@ -523,6 +585,18 @@ export function createMcpToolService(): McpToolService {
         path: '/core/app/mcpTools/runTool',
         body: validatedBody
       });
+
+      const mcpErrorText = isPlainObject(data)
+        ? getMCPToolErrorText(
+            data as { isError?: boolean; content?: Array<{ type: string; text?: string }> }
+          )
+        : undefined;
+      if (mcpErrorText) {
+        throw new CliApiError({
+          message: mcpErrorText,
+          details: data
+        });
+      }
 
       return createChangedResult({
         data,

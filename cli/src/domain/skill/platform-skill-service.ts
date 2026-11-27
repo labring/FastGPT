@@ -351,6 +351,19 @@ export function createPlatformSkillService(): PlatformSkillService {
         });
       }
 
+      const detail = await client.request<GetSkillDetailResponse>({
+        method: 'GET',
+        path: '/core/ai/skill/detail',
+        query: GetSkillDetailQuerySchema.parse({ skillId: validatedQuery.skillId })
+      });
+      if (detail.type === AgentSkillTypeEnum.folder) {
+        throw new CliArgumentError(
+          `Resource "${validatedQuery.skillId}" is a skill folder, not a single skill. Deleting a folder recursively removes all nested skills and subfolders.`,
+          undefined,
+          `Use: fastgpt skill folder delete ${validatedQuery.skillId} --yes`
+        );
+      }
+
       await client.request<void>({
         method: 'DELETE',
         path: '/core/ai/skill/delete',
@@ -541,7 +554,8 @@ export function createPlatformSkillService(): PlatformSkillService {
           preview: {
             method: 'DELETE',
             path: '/core/ai/skill/delete',
-            query: validatedQuery
+            query: validatedQuery,
+            recursive: true
           }
         });
       }

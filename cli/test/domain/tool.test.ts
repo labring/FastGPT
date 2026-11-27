@@ -309,4 +309,195 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
     const delRes = await httpService.delete({ client, appId: HTTP_ID });
     expect(delRes.data).toMatchObject({ deleted: true, appId: HTTP_ID });
   });
+
+  it('isolates saved credentials on URL override, redacts custom/child headers in previews, inherits child HTTP tool config, fails on tool business errors, and reports partial write recovery', async () => {
+    const mcpService = createMcpToolService();
+    const httpService = createHttpToolService();
+
+    // 1. Field-level preview redaction (arbitrary custom header names + child tool headerSecret/staticHeaders)
+    const dryHttpCreate = await httpService.create({
+      client: createMockClient(async () => undefined),
+      input: { name: 'RedactedHTTP' },
+      config: {
+        baseUrl: 'https://api.example.com',
+        headerSecret: { 'X-Custom-Vault': 'vault-secret-999' },
+        customHeaders: { 'X-Arbitrary-Auth': 'custom-secret-888' },
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search endpoint',
+            path: '/search',
+            method: 'GET',
+            headerSecret: { 'X-Child-Auth': { value: 'child-secret-777' } },
+            staticHeaders: [{ key: 'X-Static-Key', value: 'static-secret-666' }]
+          }
+        ]
+      },
+      dryRun: true
+    });
+    const dryJson = JSON.stringify(dryHttpCreate);
+    expect(dryJson).not.toContain('vault-secret-999');
+    expect(dryJson).not.toContain('custom-secret-888');
+    expect(dryJson).not.toContain('child-secret-777');
+    expect(dryJson).not.toContain('static-secret-666');
+    expect(dryJson).toContain('X-Arbitrary-Auth');
+    expect(dryJson).toContain('X-Child-Auth');
+
+    // 2. Credential isolation on MCP run & update --refresh when overriding URL
+    const mcpClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: MCP_ID,
+          name: 'AuthMCP',
+          type: 'toolSet',
+          nodes: [
+            {
+              toolConfig: {
+                mcpToolSet: {
+                  url: 'https://trusted.mcp.example/mcp',
+                  headerSecret: { Authorization: { value: 'Bearer saved-mcp-secret' } },
+                  toolList: []
+                }
+              }
+            }
+          ]
+        };
+      }
+      if (path === '/core/app/mcpTools/runTool') {
+        return { isError: true, content: [{ type: 'text', text: 'Remote MCP tool failed' }] };
+      }
+      return undefined;
+    });
+
+    await expect(
+      mcpService.run({
+        client: mcpClient,
+        input: { appId: MCP_ID, url: 'https://evil.example/mcp', toolName: 'ping' }
+      })
+    ).rejects.toThrow(/Refusing to send saved headerSecret/);
+
+    await expect(
+      mcpService.update({
+        client: mcpClient,
+        appId: MCP_ID,
+        metadata: { name: 'Changed' },
+        config: { url: 'https://evil.example/mcp', refresh: true }
+      })
+    ).rejects.toThrow(/Refusing to forward saved headerSecret/);
+
+    // 3. MCP business failure (isError: true) throws CliApiError
+    await expect(
+      mcpService.run({
+        client: mcpClient,
+        input: { appId: MCP_ID, toolName: 'ping' }
+      })
+    ).rejects.toThrow('Remote MCP tool failed');
+
+    // 4. HTTP run --id inherits child tool method/headerSecret/staticParams/staticHeaders/staticBody,
+    // blocks URL override credential leak & host-hijack toolPath, and throws on errorMsg.
+    let capturedRunBody: any;
+    let runMode: 'ok' | 'errorMsg' = 'ok';
+    const httpClient = createMockClient(async ({ path, body }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'AuthHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'https://trusted.api.example',
+                  customHeaders: JSON.stringify({ 'X-Set-Header': 'set-secret' }),
+                  headerSecret: { 'X-Set-Auth': { value: 'set-auth-secret' } },
+                  toolList: [
+                    {
+                      name: 'get_item',
+                      path: '/v1/items',
+                      method: 'GET',
+                      headerSecret: { 'X-Child-Token': { value: 'child-token-123' } },
+                      staticParams: [{ key: 'env', value: 'prod' }],
+                      staticHeaders: [{ key: 'X-Static', value: 'yes' }],
+                      staticBody: { type: 'json', content: '{"fixed":"1"}' }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      if (path === '/core/app/httpTools/runTool') {
+        capturedRunBody = body;
+        return runMode === 'ok' ? { data: { ok: true } } : { errorMsg: 'Upstream 502 error' };
+      }
+      if (path === '/core/app/httpTools/create') {
+        return HTTP_ID;
+      }
+      if (path === '/core/app/httpTools/update') {
+        throw new Error('config rejected by server');
+      }
+      return undefined;
+    });
+
+    await expect(
+      httpService.run({
+        client: httpClient,
+        input: { appId: HTTP_ID, baseUrl: 'https://evil.example', toolPath: '/v1/items' }
+      })
+    ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    await expect(
+      httpService.run({
+        client: httpClient,
+        input: { baseUrl: 'https://trusted.api.example', toolPath: 'https://evil.example/steal' }
+      })
+    ).rejects.toThrow(/Invalid HTTP tool path/);
+
+    const okRun = await httpService.run({
+      client: httpClient,
+      input: { appId: HTTP_ID, toolPath: '/v1/items', params: { q: 'test' } }
+    });
+    expect(okRun.changed).toBe(true);
+    expect(capturedRunBody).toMatchObject({
+      baseUrl: 'https://trusted.api.example',
+      toolPath: '/v1/items',
+      method: 'GET',
+      headerSecret: { 'X-Child-Token': { value: 'child-token-123' } },
+      staticParams: [{ key: 'env', value: 'prod' }],
+      staticHeaders: [{ key: 'X-Static', value: 'yes' }],
+      staticBody: { type: 'json', content: '{"fixed":"1"}' }
+    });
+
+    runMode = 'errorMsg';
+    await expect(
+      httpService.run({
+        client: httpClient,
+        input: { appId: HTTP_ID, toolPath: '/v1/items' }
+      })
+    ).rejects.toThrow('Upstream 502 error');
+
+    // 5. Partial failure recovery on HTTP create when follow-up configure fails
+    try {
+      await httpService.create({
+        client: httpClient,
+        input: { name: 'PartialHTTP' },
+        config: {
+          baseUrl: 'https://trusted.api.example',
+          toolList: [
+            { name: 'get_item', description: 'Get item', path: '/v1/items', method: 'GET' }
+          ]
+        }
+      });
+      expect.unreachable('should fail');
+    } catch (error: any) {
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        failedStep: 'configure'
+      });
+      expect(error.hint).toContain(HTTP_ID);
+    }
+  });
 });

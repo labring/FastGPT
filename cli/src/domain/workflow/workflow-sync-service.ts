@@ -4,7 +4,11 @@ import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { AppTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { serializeAgentTool } from '@fastgpt/global/core/app/formEdit/utils';
 import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '@fastgpt/global/core/chat/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { CanonicalSelectedToolsValueSchema } from '@fastgpt/global/core/workflow/migration';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -1287,9 +1291,43 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
               `Resource "${appId}" has type "${appDetail.type}", expected an agent (${AppTypeList.join(', ')}).`
             );
           }
+          // /core/app/detail 会将 Agent V2 已挂载的 selectedTools 展开成展示态（含完整 NodeIO inputs 且移除 config）；
+          // 送入 /core/chat/chatTest 前复用编辑器官方 serializeAgentTool 还原为持久化可执行契约。
+          const normalizedNodes = (appDetail.nodes ?? []).map((node) => {
+            if (!Array.isArray(node.inputs)) return node;
+            let changed = false;
+            const nextInputs = node.inputs.map((input) => {
+              if (input.key !== NodeInputKeyEnum.selectedTools || !Array.isArray(input.value)) {
+                return input;
+              }
+              if (CanonicalSelectedToolsValueSchema.safeParse(input.value).success) {
+                return input;
+              }
+              changed = true;
+              const serializedTools = input.value.map((tool) => {
+                if (CanonicalSelectedToolsValueSchema.safeParse([tool]).success) {
+                  return tool;
+                }
+                if (isPlainObject(tool) && (Array.isArray(tool.inputs) || tool.pluginData)) {
+                  return serializeAgentTool({
+                    tool: {
+                      ...tool,
+                      inputs: Array.isArray(tool.inputs) ? tool.inputs : []
+                    } as unknown as SelectedToolItemType
+                  });
+                }
+                return tool;
+              });
+              return {
+                ...input,
+                value: serializedTools
+              };
+            });
+            return changed ? { ...node, inputs: nextInputs } : node;
+          });
           return {
             appName: appDetail.name || 'Agent Test',
-            nodes: appDetail.nodes ?? [],
+            nodes: normalizedNodes,
             edges: appDetail.edges ?? [],
             chatConfig: appDetail.chatConfig ?? {}
           };
@@ -1336,6 +1374,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         let interactive: unknown;
         let durationSeconds: number | undefined;
         let title: string | undefined;
+        let finishReason: string | undefined;
+        let streamCompleted = false;
 
         for await (const sse of client.streamSse({
           method: 'POST',
@@ -1344,7 +1384,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
           timeoutMs: timeoutMs ?? 300_000
         })) {
           if (sse.data === '[DONE]') {
-            continue;
+            streamCompleted = true;
+            break;
           }
 
           let parsed: unknown;
@@ -1371,15 +1412,22 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             eventName === SseResponseEventEnum.answer ||
             eventName === SseResponseEventEnum.fastAnswer
           ) {
-            const delta = isPlainObject(parsed)
-              ? (parsed.choices as Array<{ delta?: Record<string, unknown> }> | undefined)?.[0]
-                  ?.delta
+            const choice = isPlainObject(parsed)
+              ? (
+                  parsed.choices as
+                    | Array<{ delta?: Record<string, unknown>; finish_reason?: unknown }>
+                    | undefined
+                )?.[0]
               : undefined;
+            const delta = choice?.delta;
             if (typeof delta?.content === 'string') {
               answerParts.push(delta.content);
             }
             if (typeof delta?.reasoning_content === 'string') {
               reasoningParts.push(delta.reasoning_content);
+            }
+            if (typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0) {
+              finishReason = choice.finish_reason;
             }
             continue;
           }
@@ -1441,6 +1489,21 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         const reasoningText = reasoningParts.join('');
         const toolCalls = [...toolCallMap.values()];
 
+        if (!streamCompleted) {
+          throw new CliApiError({
+            message:
+              'Agent chatTest stream ended before receiving completion signal ([DONE]); execution outcome is unknown.',
+            hint: 'Retry the test or inspect server logs for stream interruption.',
+            details: {
+              appId,
+              chatId: resolvedChatId,
+              completed: false,
+              partialAnswerText: answerText,
+              executedNodeCount: effectiveNodeResponses.length
+            }
+          });
+        }
+
         return createChangedResult({
           message: `Completed chat test on Agent "${resolvedWorkflow.appName}" (${appId})`,
           data: {
@@ -1448,6 +1511,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             appName: resolvedWorkflow.appName,
             chatId: resolvedChatId,
             source: resolvedSource,
+            completed: true,
+            finishReason: finishReason ?? 'stop',
             answerText,
             ...(reasoningText ? { reasoningText } : {}),
             ...(title ? { title } : {}),

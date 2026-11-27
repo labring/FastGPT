@@ -737,7 +737,8 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['skill', 'folder', 'delete'],
-      summary: 'Delete a FastGPT platform skill folder and its child skills',
+      summary:
+        'Recursively delete a FastGPT platform skill folder and all nested skills and subfolders',
       risk: 'destructive',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
@@ -780,7 +781,7 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
 
         await confirmDestructiveAction({
           ctx,
-          message: `Delete skill folder "${folderId}" and all child skills?`
+          message: `Delete skill folder "${folderId}" and recursively delete all nested skills and subfolders?`
         });
 
         return ctx.container.platformSkillService.deleteFolder({

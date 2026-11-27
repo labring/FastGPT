@@ -1,4 +1,3 @@
-import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import {
   CreateAppRequestBodySchema,
@@ -16,6 +15,7 @@ import { CliArgumentError } from '../../shared/errors';
 import { buildPaginationMeta, isPlainObject, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
+import { createAppFolderService } from '../shared/app-folder-service';
 import { fetchAndAssertAppType, parseToolMetadataUpdate } from '../tool/tool-shared';
 
 const AGENT_TREE_TYPES = [
@@ -180,6 +180,13 @@ export type AgentService = {
  * 严格限定在 Agent 资源树（`chatAgent` / `simple` / `advanced` / `folder`），与工具树物理隔离。
  */
 export function createAgentService(): AgentService {
+  const folderService = createAppFolderService({
+    folderType: AppTypeEnum.folder,
+    commandPrefix: 'agent folder',
+    label: 'agent folder',
+    capitalizedLabel: 'Agent folder'
+  });
+
   return {
     list: async ({ client, input }) => {
       const types = validateAgentListTypes(input.type);
@@ -367,169 +374,9 @@ export function createAgentService(): AgentService {
       });
     },
 
-    listFolders: async ({ client, input }) => {
-      const validatedBody = ListAppV2BodySchema.parse({
-        type: [AppTypeEnum.folder],
-        ...(input.searchKey !== undefined ? { searchKey: input.searchKey } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {})
-      });
-
-      const data = await client.request<ListAppV2ResponseType>({
-        method: 'POST',
-        path: '/core/app/listV2',
-        body: validatedBody
-      });
-
-      return createSuccessResult({
-        data,
-        meta: buildPaginationMeta({
-          validatedBody: validatedBody as Record<string, unknown>,
-          total: data.total,
-          count: data.list.length
-        })
-      });
-    },
-
-    createFolder: async ({ client, input, dryRun }) => {
-      const name = trimIfString(input.name);
-      if (!name) {
-        throw new CliArgumentError(
-          'Agent folder name is required.',
-          undefined,
-          'Pass --name "<folderName>".'
-        );
-      }
-
-      const validatedBody = CreateAppRequestBodySchema.parse({
-        name,
-        type: AppTypeEnum.folder,
-        avatar: input.avatar ?? FolderImgUrl,
-        ...(input.intro !== undefined ? { intro: input.intro } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.inheritPermission !== undefined
-          ? { inheritPermission: input.inheritPermission }
-          : {})
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'agent folder create',
-          risk: 'write',
-          preview: {
-            method: 'POST',
-            path: '/core/app/create',
-            payload: validatedBody
-          }
-        });
-      }
-
-      const folderId = await client.request<CreateAppResponseType>({
-        method: 'POST',
-        path: '/core/app/create',
-        body: validatedBody
-      });
-
-      return createChangedResult({
-        data: {
-          folderId,
-          name: validatedBody.name,
-          ...(validatedBody.parentId !== undefined ? { parentId: validatedBody.parentId } : {})
-        },
-        message: `Agent folder "${validatedBody.name}" created (${folderId}).`
-      });
-    },
-
-    updateFolder: async ({ client, folderId, input, dryRun }) => {
-      const validatedQuery = UpdateAppQuerySchema.parse({
-        appId: trimIfString(folderId)
-      });
-      const validatedBody = parseToolMetadataUpdate(input);
-
-      if (!validatedBody) {
-        throw new CliArgumentError(
-          'At least one field to update is required.',
-          undefined,
-          'Provide --name, --intro, --avatar, or --parent-id.'
-        );
-      }
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'agent folder update',
-          risk: 'write',
-          preview: {
-            method: 'PUT',
-            path: '/core/app/update',
-            query: validatedQuery,
-            payload: validatedBody
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
-        client,
-        appId: validatedQuery.appId,
-        allowedTypes: [AppTypeEnum.folder],
-        resourceLabel: 'agent folder'
-      });
-
-      await client.request<UpdateAppResponseType>({
-        method: 'PUT',
-        path: '/core/app/update',
-        query: validatedQuery,
-        body: validatedBody
-      });
-
-      return createChangedResult({
-        data: {
-          updated: true,
-          folderId: validatedQuery.appId,
-          ...validatedBody
-        },
-        message: `Agent folder "${validatedQuery.appId}" updated.`
-      });
-    },
-
-    deleteFolder: async ({ client, folderId, dryRun }) => {
-      const validatedQuery = DeleteAppQuerySchema.parse({
-        appId: trimIfString(folderId)
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'agent folder delete',
-          risk: 'destructive',
-          preview: {
-            method: 'DELETE',
-            path: '/core/app/del',
-            query: validatedQuery
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
-        client,
-        appId: validatedQuery.appId,
-        allowedTypes: [AppTypeEnum.folder],
-        resourceLabel: 'agent folder'
-      });
-
-      const deletedAppIds = await client.request<DeleteAppResponseType>({
-        method: 'DELETE',
-        path: '/core/app/del',
-        query: validatedQuery
-      });
-
-      return createChangedResult({
-        data: {
-          deleted: true,
-          folderId: validatedQuery.appId,
-          deletedAppIds
-        },
-        message: `Agent folder "${validatedQuery.appId}" deleted.`
-      });
-    }
+    listFolders: folderService.list,
+    createFolder: folderService.create,
+    updateFolder: folderService.update,
+    deleteFolder: folderService.delete
   };
 }

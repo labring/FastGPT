@@ -288,7 +288,54 @@ function unpackFastGptResponse<T>({
   return parsed as T;
 }
 
-async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
+function sanitizePresignedUrlForError(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return redactText(rawUrl.split(/[?#]/, 1)[0] ?? rawUrl);
+  }
+}
+
+async function readChunkWithAbort(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal?: AbortSignal
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (!signal) {
+    return reader.read();
+  }
+  if (signal.aborted) {
+    void reader.cancel(signal.reason).catch(() => {});
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new CliNetworkError('SSE stream aborted.');
+  }
+
+  return await new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
+    const onAbort = () => {
+      void reader.cancel(signal.reason).catch(() => {});
+      reject(
+        signal.reason instanceof Error ? signal.reason : new CliNetworkError('SSE stream aborted.')
+      );
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    reader.read().then(
+      (result) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(result);
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(signal.aborted && signal.reason instanceof Error ? signal.reason : err);
+      }
+    );
+  });
+}
+
+async function* parseSseStream(
+  stream: ReadableStream<Uint8Array>,
+  signal?: AbortSignal
+): AsyncIterable<SseEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
@@ -298,7 +345,7 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readChunkWithAbort(reader, signal);
       if (done) {
         break;
       }
@@ -313,14 +360,14 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
         if (line === '') {
           if (currentDataLines.length > 0) {
             const data = currentDataLines.join('\n');
-            if (data === '[DONE]') {
-              return;
-            }
             yield {
               ...(currentEvent !== undefined ? { event: currentEvent } : {}),
               ...(currentId !== undefined ? { id: currentId } : {}),
               data
             };
+            if (data === '[DONE]') {
+              return;
+            }
             currentEvent = undefined;
             currentId = undefined;
             currentDataLines = [];
@@ -343,16 +390,27 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
       }
     }
 
-    // 处理末尾残留块
+    // 处理末尾无换行或无空行的残留内容（含 [DONE] 终结信号）
+    const remaining = `${buffer}${decoder.decode()}`.trim();
+    if (remaining) {
+      const line = remaining.endsWith('\r') ? remaining.slice(0, -1) : remaining;
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        const content = line.startsWith('data: ') ? line.slice(6) : line.slice(5);
+        currentDataLines.push(content);
+      } else if (line.startsWith('id:')) {
+        currentId = line.slice(3).trim();
+      }
+    }
+
     if (currentDataLines.length > 0) {
       const data = currentDataLines.join('\n');
-      if (data !== '[DONE]') {
-        yield {
-          ...(currentEvent !== undefined ? { event: currentEvent } : {}),
-          ...(currentId !== undefined ? { id: currentId } : {}),
-          data
-        };
-      }
+      yield {
+        ...(currentEvent !== undefined ? { event: currentEvent } : {}),
+        ...(currentId !== undefined ? { id: currentId } : {}),
+        data
+      };
     }
   } finally {
     reader.releaseLock();
@@ -746,6 +804,7 @@ export function createFastGptHttpClient({
       timeoutMs: requestTimeout = LONG_OPERATION_TIMEOUT_MS
     }): Promise<void> => {
       const targetUrl = new URL(url, normalizedBaseUrl).toString();
+      const safeTargetUrl = sanitizePresignedUrlForError(targetUrl);
       const activeFetch = await resolveTransportFetch();
       const requestHeaders: Record<string, string> = {
         ...extraHeaders,
@@ -766,11 +825,11 @@ export function createFastGptHttpClient({
         const msg = redactText(error instanceof Error ? error.message : String(error));
         const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
         throw new CliNetworkError(
-          `Presigned upload failed for ${redactText(targetUrl)}: ${msg}`,
+          `Presigned upload failed for ${safeTargetUrl}: ${msg}`,
           isTls
             ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
             : 'Verify the presigned upload URL is reachable from this machine.',
-          { url: redactText(targetUrl) }
+          { url: safeTargetUrl }
         );
       }
 
@@ -781,7 +840,7 @@ export function createFastGptHttpClient({
             redactText(rawText.trim().slice(0, 300)) ||
             `Presigned upload failed with HTTP ${response.status}`,
           httpStatus: response.status,
-          details: { url: redactText(targetUrl) }
+          details: { url: safeTargetUrl }
         });
       }
     },
@@ -798,38 +857,61 @@ export function createFastGptHttpClient({
     }): AsyncIterable<SseEvent> {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const client = await buildKyClient({
-        timeout: requestTimeout,
-        auth,
-        extraHeaders: {
-          accept: 'text/event-stream',
-          ...extraHeaders
-        }
-      });
+      const streamController = new AbortController();
+      const timer =
+        Number.isFinite(requestTimeout) && requestTimeout > 0
+          ? setTimeout(() => {
+              streamController.abort(
+                new CliNetworkError(
+                  `SSE stream timed out after ${requestTimeout}ms.`,
+                  'Increase --timeout or verify the server completed execution.'
+                )
+              );
+            }, requestTimeout)
+          : undefined;
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method,
-        searchParams,
-        jsonBody: body,
-        signal
-      });
+      const combinedSignal = signal
+        ? AbortSignal.any([signal, streamController.signal])
+        : streamController.signal;
 
-      if (response.status >= 400) {
-        const rawText = await response.text();
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: finalUrl
+      try {
+        const client = await buildKyClient({
+          timeout: requestTimeout,
+          auth,
+          extraHeaders: {
+            accept: 'text/event-stream',
+            ...extraHeaders
+          }
         });
-      }
 
-      if (!response.body) {
-        return;
-      }
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method,
+          searchParams,
+          jsonBody: body,
+          signal: combinedSignal
+        });
 
-      yield* parseSseStream(response.body);
+        if (response.status >= 400) {
+          const rawText = await response.text();
+          throw mapServerError({
+            httpStatus: response.status,
+            message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+            url: finalUrl
+          });
+        }
+
+        if (!response.body) {
+          return;
+        }
+
+        yield* parseSseStream(response.body, combinedSignal);
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      }
     }
   };
 }

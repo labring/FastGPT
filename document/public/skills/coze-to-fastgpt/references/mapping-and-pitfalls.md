@@ -54,9 +54,8 @@
 - **原因**：`chatNode.modelId` 的自动化策略为 `remoteValidated`，本地校验无法证明远端团队模型权限，故输出 warning（`valid: true`, `diagnostics: []`）。
 - **处理**：属于正常非阻断提示；通过 `agent test --detail` 或 `agent run` 实际触发一次模型调用确认 `finishReason: stop` 即可。
 
-### 4.3 `chatAgent` 执行 `agent test --remote` 报 `nodes.X.inputs.Y.value: Invalid input`
-- **原因**：`GET /core/app/detail` 会把 `agent_selectedTools` 改写为前端展示态展开对象（带 `flowNodeType`/`outputs`、缺少 `config`、且 `inputs` 为完整 IO 项），而 `/core/chat/chatTest` 的 `ChatTestPropsSchema` 要求 `CanonicalSelectedToolsValueSchema` 持久化态。
-- **修复**：在本地 `workflow.json` 中将 `agent_selectedTools` 保持为持久化形态：
+### 4.3 `chatAgent` 中 `agent_selectedTools` 需保持持久化契约
+- **背景**：`GET /core/app/detail` 会把 `agent_selectedTools` 展开为前端展示态对象（带 `flowNodeType`/`outputs`、缺少 `config`、且 `inputs` 为完整 IO 项），而 `/core/chat/chatTest` 与创建/发布接口均要求 `CanonicalSelectedToolsValueSchema` 持久化态。CLI 执行 `agent test --remote` 时会自动通过 `serializeAgentTool` 还原远端展示态草稿；但在手工组装创建 JSON 或本地 `workflow.json` 时，仍必须写成持久化形态：
   ```json
   {
     "id": "<toolAppId>",

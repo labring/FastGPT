@@ -201,7 +201,9 @@ export async function runCli({
         skillMisuseAction !== undefined
           ? `Did you mean "fastgpt skills ${skillMisuseAction}" for local agent skill packages?`
           : appMisuseAction !== undefined
-            ? `The "app" command group has been replaced by "agent". Try "fastgpt agent ${appMisuseAction}".`
+            ? appMisuseAction === 'test'
+              ? 'The "app" command group has been replaced: use "fastgpt agent test" for chatTest streaming runs, or "fastgpt workflow test" for single-step workflow assertion cases.'
+              : `The "app" command group has been replaced by "agent". Try "fastgpt agent ${appMisuseAction}".`
             : safeCommandName !== 'fastgpt' &&
                 specs.some((s) => s.path.join(' ') === safeCommandName)
               ? `Run: fastgpt commands --command "${safeCommandName}" --format json`
