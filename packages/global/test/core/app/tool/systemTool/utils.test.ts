@@ -303,6 +303,39 @@ describe('stripUnsetOptionalToolInputs', () => {
     });
   });
 
+  it('ignores root-level $ref object constraints when checking whether an optional property accepts null', () => {
+    const rootRefSchema = JSONSchemaInputTypeSchema.parse({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $ref: '#/$defs/common',
+      $defs: {
+        common: {
+          type: 'object',
+          required: ['action']
+        }
+      },
+      type: 'object',
+      properties: {
+        action: { type: 'string' },
+        setting: { type: ['string', 'null'] },
+        count: { type: 'number' }
+      }
+    });
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          action: 'send',
+          setting: null,
+          count: null
+        },
+        inputSchema: rootRefSchema
+      })
+    ).toEqual({
+      action: 'send',
+      setting: null
+    });
+  });
+
   it('does not touch unknown keys outside schema properties', () => {
     const inputSchema: JSONSchemaInputType = {
       type: 'object',

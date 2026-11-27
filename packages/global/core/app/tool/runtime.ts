@@ -216,30 +216,6 @@ const formatValidationErrors = (errors?: ErrorObject[] | null) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const ROOT_OBJECT_CONSTRAINT_KEYS = new Set([
-  '$id',
-  'id',
-  'required',
-  'minProperties',
-  'maxProperties',
-  'dependentRequired',
-  'dependencies',
-  'dependentSchemas',
-  'additionalProperties',
-  'patternProperties',
-  'unevaluatedProperties',
-  'propertyNames',
-  'allOf',
-  'anyOf',
-  'oneOf',
-  'not',
-  'if',
-  'then',
-  'else',
-  'const',
-  'enum'
-]);
-
 const decodeJsonPointerSegment = (segment: string): string | undefined => {
   try {
     return decodeURIComponent(segment).replace(/~1/g, '/').replace(/~0/g, '~');
@@ -323,9 +299,9 @@ const collectReferencedRootProperties = ({
 };
 
 /**
- * 在完整根 Schema 上下文（保留 `definitions`、`$defs`、自定义容器及当前属性可达的同级 `properties`）中
- * 校验单个顶层属性值，仅剥离 `$id` 与根级对象整体约束。
- * 用于需要区分“确定拒绝”与“Schema 无法编译”的边界场景，避免误删无法判定的输入。
+ * 仅携带 `$schema`、`definitions`、`$defs` 及当前属性可达的同级 `properties` 校验单个顶层属性值，
+ * 不复制根级 `$ref`、`required`、`allOf` 等对象整体约束，避免对象级规则污染单属性判定。
+ * 用于需要区分“确定拒绝”与“Schema 无法编译”的边界场景，无法隔离或编译失败时返回 `'error'` 以保留原值。
  */
 export const validateToolPropertyValue = ({
   rootSchema,
@@ -340,13 +316,6 @@ export const validateToolPropertyValue = ({
 }): 'valid' | 'invalid' | 'error' => {
   try {
     const normalizedRoot = rootSchema ? normalizeJsonSchema({ schema: rootSchema }) : undefined;
-    const baseSchema: Record<string, unknown> = isRecord(normalizedRoot)
-      ? Object.fromEntries(
-          Object.entries(normalizedRoot).filter(
-            ([key]) => key !== 'properties' && !ROOT_OBJECT_CONSTRAINT_KEYS.has(key)
-          )
-        )
-      : {};
     const normalizedProperty = normalizeJsonSchema({ schema: propertySchema });
     const wrapperProperties: Record<string, unknown> = {
       [propertyKey]: normalizedProperty
@@ -368,7 +337,15 @@ export const validateToolPropertyValue = ({
     }
 
     const wrapperSchema: Record<string, unknown> = {
-      ...baseSchema,
+      ...(isRecord(normalizedRoot) && typeof normalizedRoot.$schema === 'string'
+        ? { $schema: normalizedRoot.$schema }
+        : {}),
+      ...(isRecord(normalizedRoot) && isRecord(normalizedRoot.definitions)
+        ? { definitions: normalizedRoot.definitions }
+        : {}),
+      ...(isRecord(normalizedRoot) && isRecord(normalizedRoot.$defs)
+        ? { $defs: normalizedRoot.$defs }
+        : {}),
       type: 'object',
       properties: wrapperProperties
     };

@@ -4,11 +4,15 @@ import { resolveLocalJsonSchemaRef, validateToolPropertyValue } from '../runtime
 const isSchemaRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isNonStringTypedSchema = (
-  schema: unknown,
-  rootSchema?: Record<string, unknown>,
-  visitedRefs: ReadonlySet<string> = new Set()
-): boolean => {
+const isNonStringTypedSchema = ({
+  schema,
+  rootSchema,
+  visitedRefs = new Set<string>()
+}: {
+  schema: unknown;
+  rootSchema?: Record<string, unknown>;
+  visitedRefs?: ReadonlySet<string>;
+}): boolean => {
   if (!isSchemaRecord(schema)) return false;
   if (typeof schema.type === 'string') return schema.type !== 'string';
 
@@ -27,21 +31,27 @@ const isNonStringTypedSchema = (
   if (
     Array.isArray(schema.anyOf) &&
     schema.anyOf.length > 0 &&
-    schema.anyOf.every((branch) => isNonStringTypedSchema(branch, rootSchema, visitedRefs))
+    schema.anyOf.every((branch) =>
+      isNonStringTypedSchema({ schema: branch, rootSchema, visitedRefs })
+    )
   ) {
     return true;
   }
   if (
     Array.isArray(schema.oneOf) &&
     schema.oneOf.length > 0 &&
-    schema.oneOf.every((branch) => isNonStringTypedSchema(branch, rootSchema, visitedRefs))
+    schema.oneOf.every((branch) =>
+      isNonStringTypedSchema({ schema: branch, rootSchema, visitedRefs })
+    )
   ) {
     return true;
   }
   if (
     Array.isArray(schema.allOf) &&
     schema.allOf.length > 0 &&
-    schema.allOf.some((branch) => isNonStringTypedSchema(branch, rootSchema, visitedRefs))
+    schema.allOf.some((branch) =>
+      isNonStringTypedSchema({ schema: branch, rootSchema, visitedRefs })
+    )
   ) {
     return true;
   }
@@ -51,7 +61,11 @@ const isNonStringTypedSchema = (
     if (resolved !== undefined) {
       const nextVisited = new Set(visitedRefs);
       nextVisited.add(schema.$ref);
-      return isNonStringTypedSchema(resolved, rootSchema, nextVisited);
+      return isNonStringTypedSchema({
+        schema: resolved,
+        rootSchema,
+        visitedRefs: nextVisited
+      });
     }
   }
 
@@ -100,7 +114,9 @@ export const stripUnsetOptionalToolInputs = ({
           }) !== 'invalid'
         );
       }
-      if (value === '' && isNonStringTypedSchema(propSchema, inputSchema)) return false;
+      if (value === '' && isNonStringTypedSchema({ schema: propSchema, rootSchema: inputSchema })) {
+        return false;
+      }
 
       return true;
     })
