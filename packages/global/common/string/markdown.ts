@@ -168,13 +168,20 @@ export type MarkdownImageParseOptions = {
   controler?: MarkdownImageUploadController;
 };
 
-const mdBase64ImageSrcRegex = /^data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)$/;
+const base64DataUrlPrefix = 'data:image/';
+const base64DataUrlMarker = ';base64,';
+const base64BodyRegex = /^[A-Za-z0-9+/=]+$/;
 
-/** 识别图片 data URL 并提取声明类型和编码；严格解码、内容校验及失败策略由调用方负责。 */
+/** 识别图片 data URL 并提取声明类型和编码；采用前缀定位避免大图正则捕获开销。 */
 export const parseBase64ImageDataUrl = (url: string) => {
-  const match = mdBase64ImageSrcRegex.exec(url);
-  if (!match) return undefined;
-  return { mime: `image/${match[1]}`, base64: match[2] };
+  if (!url.startsWith(base64DataUrlPrefix)) return undefined;
+  const markerIndex = url.indexOf(base64DataUrlMarker, base64DataUrlPrefix.length);
+  if (markerIndex <= base64DataUrlPrefix.length) return undefined;
+  const subtype = url.slice(base64DataUrlPrefix.length, markerIndex);
+  if (subtype.includes(';')) return undefined;
+  const base64 = url.slice(markerIndex + base64DataUrlMarker.length);
+  if (!base64 || !base64BodyRegex.test(base64)) return undefined;
+  return { mime: `image/${subtype}`, base64 };
 };
 const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
@@ -197,45 +204,186 @@ const isAsciiPunctuation = (char: string) => {
  * 还原 Markdown 图片目的地址中的反斜杠转义。
  * CommonMark 允许所有 ASCII 标点被转义，包含尖括号目的地址中的 `\\<` 与 `\\>`。
  */
-export const unescapeMarkdownImageUrl = (url: string) =>
-  url.replace(/\\([\s\S])/g, (match, char: string) => (isAsciiPunctuation(char) ? char : match));
+export const unescapeMarkdownImageUrl = (url: string) => {
+  if (!url.includes('\\')) return url;
+  return url.replace(/\\([\s\S])/g, (match, char: string) =>
+    isAsciiPunctuation(char) ? char : match
+  );
+};
 
 /**
- * HTML <img> 标签正则片段（各含 1 个捕获组，value 含 3 个）：
- * - prefix：按属性 token 消费 src 之前的所有内容，避免命中引号属性值内的 `src=` 文本
- * - value：src 值（双引号 / 单引号 / 无引号）
- * - suffix：src 之后的剩余标签内容
- *
- * 供本包 matchDocumentImages 与 service 侧 S3 key 预览正则共享，
- * 拼接时保持 prefix→value→suffix 顺序即可维持各自既有捕获组编号。
+ * 保留历史 HTML <img> 标签正则片段导出以维持兼容；内部扫描已改为线性无回溯实现。
  */
 export const htmlImgTokenPrefixPattern = String.raw`(<img\b(?:(?:[^"'<>]|"[^"]*"|'[^']*'))*?\s+src\s*=\s*)`;
 export const htmlImgTokenValuePattern = '(?:"([^"]*)"|\'([^\']*)\'|([^\\s"\'=<>`]+))';
 export const htmlImgTokenSuffixPattern = String.raw`((?:(?:[^"'<>]|"[^"]*"|'[^']*'))*>)`;
 
-const htmlImgTokenRegex = new RegExp(
-  `${htmlImgTokenPrefixPattern}${htmlImgTokenValuePattern}${htmlImgTokenSuffixPattern}`,
-  'gi'
-);
+const isHtmlWhitespace = (code: number) =>
+  code === 32 || code === 9 || code === 10 || code === 13 || code === 12;
 
-const htmlImgAttrTokenRegex =
-  /(?:^|\s)([^\s"'=<>`]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+const isUnquotedAttrBreak = (code: number) =>
+  isHtmlWhitespace(code) ||
+  code === 34 || // "
+  code === 39 || // '
+  code === 61 || // =
+  code === 60 || // <
+  code === 62 || // >
+  code === 96; // `
 
 /**
- * 在 HTML 标签文本上按属性 token 逐个消费取值，避免值内部出现 `alt=`、`src=`
- * 等字样时被子串误命中（属性串味）。
+ * 线性解析单个闭合 `<img ...>` 标签内的属性，仅提取首个 `src` 与 `alt`，
+ * 避免引号属性值内的 `src=` / `alt=` 串味，且总耗时严格 O(L)。
  */
-const getHtmlImgAttrToken = (tag: string, name: string): string | undefined => {
-  htmlImgAttrTokenRegex.lastIndex = 0;
+const parseHtmlImgTag = (tag: string, index: number): DocumentImageItem | undefined => {
+  let cursor = 4; // 跳过 `<img`
+  const limit = tag.length - 1; // 排除末尾 `>`
+  let srcInfo:
+    | { url: string; rawValStart: number; rawValEnd: number; quote: '"' | "'" }
+    | undefined;
+  let altText: string | undefined;
 
-  let match: RegExpExecArray | null;
-  while ((match = htmlImgAttrTokenRegex.exec(tag)) !== null) {
-    if (match[1].toLowerCase() === name) {
-      return (match?.[2] ?? match?.[3] ?? match?.[4])?.trim();
+  while (cursor < limit) {
+    let sawWhitespace = false;
+    while (cursor < limit && isHtmlWhitespace(tag.charCodeAt(cursor))) {
+      sawWhitespace = true;
+      cursor++;
+    }
+    if (cursor >= limit) break;
+    if (tag.charCodeAt(cursor) === 47) {
+      // 自闭合 `/`
+      cursor++;
+      continue;
+    }
+
+    const nameStart = cursor;
+    while (cursor < limit && !isUnquotedAttrBreak(tag.charCodeAt(cursor))) {
+      cursor++;
+    }
+    if (cursor === nameStart) {
+      cursor++;
+      continue;
+    }
+    const attrName = tag.slice(nameStart, cursor).toLowerCase();
+
+    while (cursor < limit && isHtmlWhitespace(tag.charCodeAt(cursor))) {
+      cursor++;
+    }
+    if (cursor >= limit || tag.charCodeAt(cursor) !== 61) {
+      // 无值布尔属性
+      continue;
+    }
+    cursor++; // 跳过 `=`
+    while (cursor < limit && isHtmlWhitespace(tag.charCodeAt(cursor))) {
+      cursor++;
+    }
+    if (cursor >= limit) break;
+
+    const rawValStart = cursor;
+    const quoteCode = tag.charCodeAt(cursor);
+    let rawVal = '';
+    let rawValEnd = cursor;
+    let quote: '"' | "'" = '"';
+
+    if (quoteCode === 34 || quoteCode === 39) {
+      quote = quoteCode === 34 ? '"' : "'";
+      const closeIndex = tag.indexOf(quote, cursor + 1);
+      if (closeIndex === -1 || closeIndex >= limit) return undefined;
+      rawVal = tag.slice(cursor + 1, closeIndex);
+      rawValEnd = closeIndex + 1;
+      cursor = rawValEnd;
+    } else {
+      while (cursor < limit && !isUnquotedAttrBreak(tag.charCodeAt(cursor))) {
+        cursor++;
+      }
+      rawVal = tag.slice(rawValStart, cursor);
+      rawValEnd = cursor;
+    }
+
+    if (sawWhitespace && attrName === 'src' && !srcInfo) {
+      const url = rawVal.trim();
+      if (!url) return undefined;
+      srcInfo = { url, rawValStart, rawValEnd, quote };
+    } else if (sawWhitespace && attrName === 'alt' && altText === undefined) {
+      altText = rawVal.trim();
     }
   }
 
-  return undefined;
+  if (!srcInfo) return undefined;
+  const prefix = tag.slice(0, srcInfo.rawValStart);
+  const suffix = tag.slice(srcInfo.rawValEnd);
+  const quote = srcInfo.quote;
+
+  return {
+    format: 'html',
+    altText: altText ?? '',
+    url: srcInfo.url,
+    fullMatch: tag,
+    index,
+    replace: (nextUrl: string) => (nextUrl ? `${prefix}${quote}${nextUrl}${quote}${suffix}` : '')
+  };
+};
+
+/**
+ * 线性无回溯扫描 HTML `<img>` 标签：先按引号配对找标签边界，再在闭合标签内提取属性。
+ * 对无闭合 `>` 的退化输入（如 `<img src=x src=x ...`）保持 O(N)，杜绝 ReDoS。
+ */
+const scanHtmlImages = (text: string): DocumentImageItem[] => {
+  const results: DocumentImageItem[] = [];
+  const openRegex = /<img\b/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = openRegex.exec(text)) !== null) {
+    const tagStart = match.index;
+    let pos = tagStart + 4;
+    let quoteCode = 0;
+    let quoteStart = -1;
+    let tagEnd = -1;
+    let abortAt = -1;
+
+    while (pos < text.length) {
+      const code = text.charCodeAt(pos);
+      if (quoteCode !== 0) {
+        if (code === quoteCode) {
+          quoteCode = 0;
+          quoteStart = -1;
+        }
+        pos++;
+        continue;
+      }
+      if (code === 34 || code === 39) {
+        quoteCode = code;
+        quoteStart = pos;
+        pos++;
+        continue;
+      }
+      if (code === 60) {
+        abortAt = pos;
+        break;
+      }
+      if (code === 62) {
+        tagEnd = pos + 1;
+        break;
+      }
+      pos++;
+    }
+
+    if (abortAt !== -1) {
+      openRegex.lastIndex = abortAt;
+      continue;
+    }
+    if (tagEnd === -1) {
+      // 未闭合引号最多在文末出现一次，仅从其后继续；无未闭合引号说明后续无 `<` 和 `>`，直接结束。
+      if (quoteCode === 0) break;
+      openRegex.lastIndex = quoteStart + 1;
+      continue;
+    }
+
+    const item = parseHtmlImgTag(text.slice(tagStart, tagEnd), tagStart);
+    if (item) results.push(item);
+    openRegex.lastIndex = tagEnd;
+  }
+
+  return results;
 };
 
 export type DocumentImageItem = {
@@ -277,25 +425,8 @@ export const matchDocumentImages = (text = ''): DocumentImageItem[] => {
     });
   }
 
-  htmlImgTokenRegex.lastIndex = 0;
-
-  let match: RegExpExecArray | null;
-  while ((match = htmlImgTokenRegex.exec(text)) !== null) {
-    const [, prefix, doubleQuoted, singleQuoted, unquoted, suffix] = match;
-    const url = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim() || '';
-    if (!url) continue;
-
-    const altText = getHtmlImgAttrToken(match[0], 'alt') ?? '';
-    const quote = doubleQuoted !== undefined ? '"' : singleQuoted !== undefined ? "'" : '"';
-
-    rawMatches.push({
-      format: 'html',
-      altText,
-      url,
-      fullMatch: match[0],
-      index: match.index,
-      replace: (nextUrl: string) => (nextUrl ? `${prefix}${quote}${nextUrl}${quote}${suffix}` : '')
-    });
+  for (const item of scanHtmlImages(text)) {
+    rawMatches.push(item);
   }
 
   rawMatches.sort((left, right) => left.index - right.index);

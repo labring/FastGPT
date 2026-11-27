@@ -1,7 +1,10 @@
 import { unescapeMarkdownImageUrl } from '@fastgpt/global/common/string/markdown';
 import { createOpaqueS3FileKey } from '../../../../common/s3/opaqueKey';
 import { S3Buckets } from '../../../../common/s3/config/constants';
-import { forEachDocumentImageAndGap } from '../../../../common/s3/utils/textReferences';
+import {
+  forEachDocumentImageAndGap,
+  forEachFallbackMarkdownLink
+} from '../../../../common/s3/utils/textReferences';
 import type { S3MQJobData } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
 
 export type ChunkImageContent = {
@@ -13,9 +16,9 @@ export type ChunkImageContent = {
 
 /** 快速预判：CommonMark 仅转义 ASCII 标点，chunk-images 目录名中只有连字符前可能出现反斜杠。 */
 const possibleChunkImageHintRegex = /chunk\\?-images/i;
-/** 匹配普通 Markdown 链接目标（支持 CommonMark 标点转义如 dataset\/ 与 chunk\-images），避免整段正文反转义。 */
-const markdownChunkLinkRegex =
-  /(!?)\[[^\]]*\]\(\s*(?:<(dataset\\?\/[^>\r\n]+)>|(dataset\\?\/[^\s)\r\n]+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gi;
+/** 粘连校验 `](` 后的受管图片目标地址（支持 CommonMark 标点转义如 dataset\/ 与 chunk\-images），避免 O(N^2) 回溯与整段反转义。 */
+const markdownChunkDestinationRegex =
+  /\s*(?:<(dataset\\?\/[^>\r\n]+)>|(dataset\\?\/[^\s)\r\n]+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/iy;
 
 const collectChunkImageKeysFromText = (text: string, keys: Set<string>) => {
   if (!text || !possibleChunkImageHintRegex.test(text)) return;
@@ -25,15 +28,20 @@ const collectChunkImageKeysFromText = (text: string, keys: Set<string>) => {
       const url = image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url;
       if (parseChunkImageKey(url)) keys.add(url);
     },
-    onGap: (gapText) => {
+    onGap: (gapText, gapOffset) => {
       if (!gapText.includes('](') || !possibleChunkImageHintRegex.test(gapText)) return;
 
-      for (const match of gapText.matchAll(markdownChunkLinkRegex)) {
-        const rawDest = match[2] ?? match[3];
-        if (!rawDest) continue;
-        const url = unescapeMarkdownImageUrl(rawDest);
-        if (parseChunkImageKey(url)) keys.add(url);
-      }
+      forEachFallbackMarkdownLink(
+        gapText,
+        gapOffset,
+        markdownChunkDestinationRegex,
+        ({ destMatch }) => {
+          const rawDest = destMatch[1] ?? destMatch[2];
+          if (!rawDest) return;
+          const url = unescapeMarkdownImageUrl(rawDest);
+          if (parseChunkImageKey(url)) keys.add(url);
+        }
+      );
     }
   });
 };

@@ -114,4 +114,66 @@ describe('normalizeDatasetDataImages', () => {
       scope.collectionId
     ]);
   });
+
+  it('allows up to 3 inline images per data item and rejects 4+ before any DB or S3 writes', async () => {
+    const { scope } = await createDatasetCollectionFixture();
+    const three = await normalizeDatasetDataImages({
+      ...scope,
+      data: [{ q: `![1](${url}) ![2](${url})`, a: `<img src="${url}">` }]
+    });
+    expect(three.imageUploadKeys).toHaveLength(1);
+    expect(s3Utils.uploadImage2S3Bucket).toHaveBeenCalledTimes(1);
+
+    const { scope: scope2 } = await createDatasetCollectionFixture();
+    vi.mocked(s3Utils.uploadImage2S3Bucket).mockClear();
+    await expect(
+      normalizeDatasetDataImages({
+        ...scope2,
+        data: [
+          { q: `![ok](${url})` },
+          { q: `![1](${url}) ![2](${url}) ![3](${url})`, a: `![4](${url})` }
+        ]
+      })
+    ).rejects.toThrow('at most 3 inline images');
+    expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
+    expect(
+      (await MongoDatasetCollection.findById(scope2.collectionId).lean())?.chunkImagePrefixId
+    ).toBeUndefined();
+
+    // 编辑已有 3 张受管内联图的数据再追加第 4 张新图时也应被预检拒绝
+    const existingKeys = Array.from(
+      { length: 3 },
+      (_, i) =>
+        `dataset/${scope2.datasetId}/chunk-images/${scope2.collectionId}/file/${String(i).padStart(32, 'a')}.png`
+    );
+    await expect(
+      normalizeDatasetDataImages({
+        ...scope2,
+        data: [
+          {
+            q: existingKeys.map((k, i) => `![e${i}](${k})`).join(' '),
+            a: `![new4](${url})`
+          }
+        ]
+      })
+    ).rejects.toThrow('at most 3 inline images');
+    expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-canonical trailing base64 bits and unpadded remainder=1 without touching storage', async () => {
+    const { scope } = await createDatasetCollectionFixture();
+    await expect(
+      normalizeDatasetDataImages({
+        ...scope,
+        data: [{ q: '![badbits](data:image/png;base64,YR==)' }]
+      })
+    ).rejects.toThrow('Invalid inline base64 image');
+    await expect(
+      normalizeDatasetDataImages({
+        ...scope,
+        data: [{ q: '![badlen](data:image/png;base64,AAAAA)' }]
+      })
+    ).rejects.toThrow('Invalid inline base64 image');
+    expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
+  });
 });

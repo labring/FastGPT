@@ -1377,6 +1377,15 @@ describe('markdown 字符串处理函数测试', () => {
       expect(performance.now() - started).toBeLessThan(5000);
     });
 
+    it('未闭合 HTML img 含大量重复 src 属性时仍在线性时间内完成', () => {
+      const text = '<img' + ' src=x'.repeat(20000) + '<img src="https://example.com/ok.png">';
+      const started = performance.now();
+      expect(matchDocumentImages(text)).toMatchObject([
+        { format: 'html', url: 'https://example.com/ok.png' }
+      ]);
+      expect(performance.now() - started).toBeLessThan(200);
+    });
+
     it('传入空字符串或非法输入时不报错且返回空数组', () => {
       expect(matchMarkdownImages('')).toEqual([]);
       expect(matchMarkdownImages(null as any)).toEqual([]);

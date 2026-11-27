@@ -810,5 +810,11 @@ describe('批量 S3 预览 URL 格式化', () => {
     expect(replaced).toContain(
       '[doc 1999](https://preview.test/dataset/team/chunk-images/col1/file/1999.pdf)'
     );
+
+    // 退化未闭合 HTML 与大量未闭合 `[` 应在线性时间内返回，不触发正则回溯卡死
+    const unclosedImg = '<img' + ' src=x'.repeat(5000) + ' [ok](dataset/team/tail.png)';
+    const unclosedBrackets = '['.repeat(50000) + '](https://example.com) [ok](dataset/team/a.png)';
+    expect(getS3ObjectKeysFromTexts([unclosedImg])).toEqual(['dataset/team/tail.png']);
+    expect(getS3ObjectKeysFromTexts([unclosedBrackets])).toEqual(['dataset/team/a.png']);
   });
 });

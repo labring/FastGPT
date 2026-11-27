@@ -10,11 +10,99 @@ const s3SourcePattern = Object.values(S3Sources)
 
 const s3SourcePrefixRegex = new RegExp(`^(?:${s3SourcePattern})`, 'i');
 
-/** 仅兜底普通 Markdown 链接及含未转义 > 的历史尖括号写法；规范图片与 HTML <img> 由共享扫描器提供。 */
-const s3MarkdownFallbackRegex = new RegExp(
-  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)`,
-  'gi'
+/** 仅在 `](` 之后用粘连正则校验 S3 目标地址，避免从 `[` 出发在大量未闭合方括号上触发 O(N^2) 回溯。 */
+const s3MarkdownDestinationRegex = new RegExp(
+  String.raw`\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)\r\n]+)>|((?:${s3SourcePattern})[^\s)\r\n]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)`,
+  'iy'
 );
+
+export type FallbackMarkdownLinkMatch = {
+  bang: string;
+  alt: string;
+  index: number;
+  fullMatch: string;
+  destMatch: RegExpExecArray;
+};
+
+/** 判断位置 `pos` 是否被奇数个反斜杠转义。 */
+const isEscapedAt = (text: string, pos: number, minStart: number) => {
+  let backslashes = 0;
+  let i = pos - 1;
+  while (i >= minStart && text.charCodeAt(i) === 92) {
+    backslashes++;
+    i--;
+  }
+  return (backslashes & 1) === 1;
+};
+
+/**
+ * 以 `](` 为锚点线性扫描空隙文本中的普通 Markdown 链接（及历史尖括号写法）。
+ * 仅当 `](` 后的目标地址命中粘连正则时才向左查找配对 `[`，并单调推进下界 `minStart`，
+ * 保证全篇字符最多向左扫描一次，对 `[[[...](` 等退化输入严格保持 O(N)。
+ */
+export const forEachFallbackMarkdownLink = (
+  gapText: string,
+  gapOffset: number,
+  destinationRegex: RegExp,
+  onMatch: (match: FallbackMarkdownLinkMatch) => void
+) => {
+  let searchFrom = 0;
+  let minStart = 0;
+
+  while (searchFrom < gapText.length) {
+    const closeBracket = gapText.indexOf('](', searchFrom);
+    if (closeBracket === -1) break;
+
+    if (isEscapedAt(gapText, closeBracket, minStart)) {
+      searchFrom = closeBracket + 2;
+      continue;
+    }
+
+    destinationRegex.lastIndex = closeBracket + 2;
+    const destMatch = destinationRegex.exec(gapText);
+    if (!destMatch) {
+      searchFrom = closeBracket + 2;
+      continue;
+    }
+
+    let depth = 0;
+    let openBracket = -1;
+    for (let i = closeBracket - 1; i >= minStart; i--) {
+      const code = gapText.charCodeAt(i);
+      if (code !== 91 && code !== 93) continue;
+      if (isEscapedAt(gapText, i, minStart)) continue;
+      if (code === 93) {
+        depth++;
+      } else if (depth === 0) {
+        openBracket = i;
+        break;
+      } else {
+        depth--;
+      }
+    }
+
+    if (openBracket === -1) {
+      minStart = closeBracket + 2;
+      searchFrom = closeBracket + 2;
+      continue;
+    }
+
+    const destEnd = destinationRegex.lastIndex;
+    const hasBang = openBracket > minStart && gapText.charCodeAt(openBracket - 1) === 33;
+    const matchStart = hasBang ? openBracket - 1 : openBracket;
+
+    onMatch({
+      bang: hasBang ? '!' : '',
+      alt: gapText.slice(openBracket + 1, closeBracket),
+      index: gapOffset + matchStart,
+      fullMatch: gapText.slice(matchStart, destEnd),
+      destMatch
+    });
+
+    minStart = destEnd;
+    searchFrom = destEnd;
+  }
+};
 
 export type S3TextReference = {
   objectKey: string;
@@ -97,19 +185,24 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
     onGap: (gapText, gapOffset) => {
       if (!gapText.includes('](')) return;
 
-      for (const match of gapText.matchAll(s3MarkdownFallbackRegex)) {
-        const [, bang, alt, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = match;
-        const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
-        if (!objectKey) continue;
+      forEachFallbackMarkdownLink(
+        gapText,
+        gapOffset,
+        s3MarkdownDestinationRegex,
+        ({ bang, alt, index, fullMatch, destMatch }) => {
+          const [, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = destMatch;
+          const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
+          if (!objectKey) return;
 
-        references.push({
-          objectKey,
-          format: 'markdown',
-          index: gapOffset + match.index,
-          fullMatch: match[0],
-          replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
-        });
-      }
+          references.push({
+            objectKey,
+            format: 'markdown',
+            index,
+            fullMatch,
+            replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
+          });
+        }
+      );
     }
   });
 
