@@ -124,13 +124,34 @@ export const serializeLangfuseValue = (
  */
 export const langfuseTraceOutputAllowedKeys: ReadonlySet<string> = new Set(['reasoning']);
 
+/** 只有“纯文本 / 纯推理”项参与合并；带 tools/skills/interactive/plan 等字段的项保持边界。 */
+const isPureLangfuseTextItem = (item: AIChatItemValueItemType) =>
+  !!item.text &&
+  !item.reasoning &&
+  !item.tools &&
+  !item.skills &&
+  !item.interactive &&
+  !item.plan &&
+  !item.planStatus &&
+  !item.tool;
+
+const isPureLangfuseReasoningItem = (item: AIChatItemValueItemType) =>
+  !!item.reasoning &&
+  !item.text &&
+  !item.tools &&
+  !item.skills &&
+  !item.interactive &&
+  !item.plan &&
+  !item.planStatus &&
+  !item.tool;
+
 /**
  * 构造 trace.output 的 AI 消息项数组，合并规则与 1.5.0 的
- * `mergeAssistantResponseAnswerText` 保持一致：连续 text 合并、连续 reasoning 合并，
+ * `mergeAssistantResponseAnswerText` 保持一致：连续纯 text 合并、连续纯 reasoning 合并，
  * 结果为空时补一个空 text 项。
  *
- * 1.6 的消息项没有 1.5 的 `type` 字段，这里按内容字段推断 text / reasoning 项；
- * 同时 text 与 reasoning 并存的项不参与合并，保持原有边界。
+ * 只有“纯文本 / 纯推理”项参与合并：同一项同时带 text + tools，或带 interactive/plan 等字段时
+ * 保持独立边界，避免合并时丢掉工具记录与交互快照。
  * 合并时生成新对象，不修改调用方的消息项（避免同一数组被多次归一时内容叠加）。
  */
 export const getLangfuseTraceOutput = (
@@ -141,21 +162,21 @@ export const getLangfuseTraceOutput = (
   for (const item of values) {
     const lastItem = result[result.length - 1];
 
-    if (item.text && !item.reasoning) {
-      if (lastItem?.text && !lastItem.reasoning && lastItem.text.content) {
+    if (isPureLangfuseTextItem(item)) {
+      if (lastItem && isPureLangfuseTextItem(lastItem) && lastItem.text?.content) {
         result[result.length - 1] = {
           ...lastItem,
-          text: { content: lastItem.text.content + (item.text.content || '') }
+          text: { content: (lastItem.text?.content || '') + (item.text?.content || '') }
         };
         continue;
       }
-    } else if (item.reasoning && !item.text) {
-      if (lastItem?.reasoning && !lastItem.text) {
+    } else if (isPureLangfuseReasoningItem(item)) {
+      if (lastItem && isPureLangfuseReasoningItem(lastItem)) {
         result[result.length - 1] = {
           ...lastItem,
           reasoning: {
-            ...lastItem.reasoning,
-            content: (lastItem.reasoning.content || '') + (item.reasoning.content || '')
+            ...(lastItem.reasoning ?? {}),
+            content: (lastItem.reasoning?.content || '') + (item.reasoning?.content || '')
           }
         };
         continue;
@@ -171,20 +192,57 @@ export const getLangfuseTraceOutput = (
   return result;
 };
 
+/** 交互对象里的续跑快照字段：上报时一律剔除，避免把节点输入/输出带进 trace。 */
+const langfuseInteractiveSnapshotKeys = new Set([
+  'nodeOutputs',
+  'memoryEdges',
+  'entryNodeIds',
+  'skipNodeQueue',
+  'usageId',
+  'nodeResponseId',
+  'interactiveId'
+]);
+
+/** 递归保留交互的展示字段（type / params 等），剔除续跑快照（nodeOutputs 等）。 */
+const sanitizeLangfuseInteractive = (value: unknown, depth = 0): unknown => {
+  if (depth > LANGFUSE_MAX_DEPTH) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, LANGFUSE_MAX_ARRAY_LENGTH)
+      .map((item) => sanitizeLangfuseInteractive(item, depth + 1));
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+      if (langfuseInteractiveSnapshotKeys.has(key)) return;
+      const sanitized = sanitizeLangfuseInteractive(entry, depth + 1);
+      if (sanitized !== undefined) result[key] = sanitized;
+    });
+    return result;
+  }
+  return value;
+};
+
 /** 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。 */
 const projectLangfuseTraceOutputItem = (item: AIChatItemValueItemType): AIChatItemValueItemType => {
   const projected: Record<string, unknown> = {};
   for (const key of langfuseTraceOutputItemKeys) {
     const value = item[key];
-    if (value !== undefined && value !== null) projected[key] = value;
+    if (value === undefined || value === null) continue;
+    projected[key] = key === 'interactive' ? sanitizeLangfuseInteractive(value) : value;
   }
   return projected as AIChatItemValueItemType;
 };
 
-const isSerializedJsonArray = (value?: string) => {
+/** 结果必须是“消息项对象数组”：排除字符串占位（如 "[Truncated]"）与空元素。 */
+const isLangfuseMessageItemArray = (value?: string) => {
   if (value === undefined) return false;
   try {
-    return Array.isArray(JSON.parse(value));
+    const parsed = JSON.parse(value);
+    return (
+      Array.isArray(parsed) &&
+      parsed.every((item) => !!item && typeof item === 'object' && !Array.isArray(item))
+    );
   } catch {
     return false;
   }
@@ -193,19 +251,20 @@ const isSerializedJsonArray = (value?: string) => {
 /**
  * 序列化 trace.output。
  *
- * 1. 只序列化白名单字段，输入与恢复上下文不上报。
- * 2. 总长度超过上限时按消息项收缩（丢弃较早的项，保留最近的回复），
- *    保证结果始终是 JSON 数组；不会走 `serializeLangfuseValue` 的
- *    “超长退化成 JSON 字符串”分支，避免下游按数组读取失败。
+ * 1. 只序列化白名单字段，输入与恢复上下文不上报；交互对象只保留展示字段。
+ * 2. 先取最近的完整消息项（最多 LANGFUSE_MAX_ARRAY_LENGTH 条），避免通用序列化按条数
+ *    截断时丢掉最终答复、并在数组里混入 "[Truncated]" 字符串。
+ * 3. 总长度仍超限时继续丢弃较早的项，保证结果始终是消息项对象数组。
  */
 export const serializeLangfuseTraceOutput = (values: AIChatItemValueItemType[]): string => {
-  const items = getLangfuseTraceOutput(values).map(projectLangfuseTraceOutputItem);
+  const projected = getLangfuseTraceOutput(values).map(projectLangfuseTraceOutputItem);
+  const items = projected.slice(-LANGFUSE_MAX_ARRAY_LENGTH);
 
   for (let start = 0; start < items.length; start++) {
     const serialized = serializeLangfuseValue(items.slice(start), {
       keepExcludedKeys: langfuseTraceOutputAllowedKeys
     });
-    if (isSerializedJsonArray(serialized)) return serialized as string;
+    if (isLangfuseMessageItemArray(serialized)) return serialized as string;
   }
 
   // 兜底：单条消息项自身超限时保留其可见文本并标记截断，仍然返回数组。

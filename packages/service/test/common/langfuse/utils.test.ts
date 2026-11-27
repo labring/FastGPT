@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type {
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
@@ -8,8 +14,20 @@ import {
   serializeLangfuseValue
 } from '@fastgpt/service/common/langfuse/utils';
 
+const buildToolItem = (
+  overrides: Partial<ToolModuleResponseItemType> = {}
+): ToolModuleResponseItemType => ({
+  id: 'tool-1',
+  toolName: 'get_weather',
+  toolAvatar: 'core/app/type/plugin',
+  params: '{"city":"北京"}',
+  response: '晴',
+  functionName: 'get_weather',
+  ...overrides
+});
+
 describe('getLangfuseTraceOutput', () => {
-  it('merges consecutive text and reasoning items like 1.5.0', () => {
+  it('merges consecutive pure text and reasoning items like 1.5.0', () => {
     expect(
       getLangfuseTraceOutput([
         { reasoning: { content: 'think-1' } },
@@ -23,22 +41,34 @@ describe('getLangfuseTraceOutput', () => {
     ]);
   });
 
-  it('keeps item boundaries of other value types', () => {
-    const tools = [{ id: 'tool-1', response: 'ok' }];
-    expect(
-      getLangfuseTraceOutput([
-        { text: { content: 'before' } },
-        { tools } as any,
-        { text: { content: 'after' } }
-      ])
-    ).toEqual([{ text: { content: 'before' } }, { tools }, { text: { content: 'after' } }]);
+  it('keeps boundaries of items that carry tools or interactive fields', () => {
+    const tool = buildToolItem();
+    const items: AIChatItemValueItemType[] = [
+      { text: { content: 'before' } },
+      { text: { content: 'with-tool' }, tools: [tool] },
+      { text: { content: 'after' } }
+    ];
+
+    expect(getLangfuseTraceOutput(items)).toEqual(items);
+  });
+
+  it('does not merge text into a previous reasoning item', () => {
+    const items: AIChatItemValueItemType[] = [
+      { reasoning: { content: 'think' } },
+      { text: { content: 'answer' } }
+    ];
+
+    expect(getLangfuseTraceOutput(items)).toEqual(items);
   });
 
   it('does not mutate the caller items', () => {
-    const values: any[] = [{ text: { content: 'A' } }, { text: { content: 'B' } }];
+    const values: AIChatItemValueItemType[] = [
+      { text: { content: 'A' } },
+      { text: { content: 'B' } }
+    ];
     getLangfuseTraceOutput(values);
-    expect(values[0].text.content).toBe('A');
-    expect(values[1].text.content).toBe('B');
+    expect(values[0].text?.content).toBe('A');
+    expect(values[1].text?.content).toBe('B');
   });
 
   it('falls back to an empty text item when output is empty', () => {
@@ -48,29 +78,74 @@ describe('getLangfuseTraceOutput', () => {
 
 describe('serializeLangfuseTraceOutput', () => {
   it('drops input context, recovery state and internal fields', () => {
-    const serialized = serializeLangfuseTraceOutput([
-      {
-        inputContext: { content: 'full rewritten user input' },
-        contextCheckpoint: { key: 'checkpoint' },
-        userMessage: { content: 'hidden instruction', source: 'server' },
-        toolResponses: [{ id: 'tool-1', response: 'private' }],
-        text: { content: 'answer' }
-      } as any
-    ]);
+    const item: AIChatItemValueItemType = {
+      inputContext: { content: 'full rewritten user input' },
+      contextCheckpoint: 'checkpoint-snapshot',
+      userMessage: { content: 'hidden instruction', source: 'server' },
+      toolResponses: [{ id: 'tool-1', response: 'private' }],
+      text: { content: 'answer' }
+    };
 
-    expect(JSON.parse(serialized)).toEqual([{ text: { content: 'answer' } }]);
+    expect(JSON.parse(serializeLangfuseTraceOutput([item]))).toEqual([
+      { text: { content: 'answer' } }
+    ]);
   });
 
-  it('keeps a JSON array when the serialized output exceeds the size limit', () => {
-    const items = Array.from({ length: 12 }, (_, index) => ({
-      tools: [{ id: `tool-${index}`, response: 'x'.repeat(10000) }]
-    })) as any[];
+  it('drops interactive resume snapshots but keeps display fields', () => {
+    const interactive: WorkflowInteractiveResponseType = {
+      type: 'userInput',
+      entryNodeIds: ['workflowStartNodeId'],
+      memoryEdges: [],
+      nodeOutputs: [
+        {
+          nodeId: 'workflowStartNodeId',
+          key: NodeOutputKeyEnum.userChatInput,
+          value: 'full user input'
+        }
+      ],
+      params: {
+        description: '请补充信息',
+        inputForm: []
+      }
+    };
+
+    expect(JSON.parse(serializeLangfuseTraceOutput([{ interactive }]))).toEqual([
+      {
+        interactive: {
+          type: 'userInput',
+          params: { description: '请补充信息', inputForm: [] }
+        }
+      }
+    ]);
+  });
+
+  it('keeps recent complete items when the count exceeds the array limit', () => {
+    const tool = buildToolItem();
+    const items: AIChatItemValueItemType[] = Array.from({ length: 120 }, (_, index) =>
+      index === 119 ? { text: { content: 'final-answer' } } : { tools: [tool] }
+    );
+
+    const parsed = JSON.parse(serializeLangfuseTraceOutput(items));
+
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed.length).toBeLessThanOrEqual(100);
+    expect(
+      parsed.every((item: unknown) => !!item && typeof item === 'object' && !Array.isArray(item))
+    ).toBe(true);
+    expect(parsed[parsed.length - 1]).toEqual({ text: { content: 'final-answer' } });
+  });
+
+  it('keeps a JSON object array when the serialized output exceeds the size limit', () => {
+    const items: AIChatItemValueItemType[] = Array.from({ length: 12 }, (_, index) => ({
+      tools: [buildToolItem({ id: `tool-${index}`, response: 'x'.repeat(10000) })]
+    }));
 
     const serialized = serializeLangfuseTraceOutput(items);
     const parsed = JSON.parse(serialized);
 
     expect(Array.isArray(parsed)).toBe(true);
     expect(parsed.length).toBeGreaterThan(0);
+    expect(parsed.every((item: unknown) => !!item && typeof item === 'object')).toBe(true);
     expect(serialized.length).toBeLessThanOrEqual(100000);
   });
 
