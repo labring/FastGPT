@@ -1,5 +1,10 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
+import {
+  normalizeDocumentParseUrl,
+  resolveSomarkBaseUrl
+} from '@fastgpt/global/common/system/config/schemas/providers';
 import {
   SYSTEM_INSTANCE_CONFIG_SCOPES,
   type SystemInstanceConfigDomainKey,
@@ -295,6 +300,90 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   return result as GetDomainConfigResult<T>;
 };
 
+type DocumentParseCredentialGroupRule = {
+  path: [string, string, string];
+  getGroup: (
+    docParse?: DeepPartial<SystemInstanceConfigDomainMap['providers']['documentParse']>
+  ) => Record<string, unknown> | undefined;
+  urlKey: string;
+  secretKey: string;
+  normalizeUrl: (value?: string) => string;
+  requireNonEmptySubmittedUrl: boolean;
+  message: string;
+};
+
+const DOCUMENT_PARSE_CREDENTIAL_GROUP_RULES: readonly DocumentParseCredentialGroupRule[] = [
+  {
+    path: ['documentParse', 'customPdf', 'somarkApiKey'],
+    getGroup: (docParse) => docParse?.customPdf as Record<string, unknown> | undefined,
+    urlKey: 'somarkBaseUrl',
+    secretKey: 'somarkApiKey',
+    normalizeUrl: resolveSomarkBaseUrl,
+    requireNonEmptySubmittedUrl: false,
+    message: 'Changing SoMark base URL requires explicitly replacing or clearing Somark API Key'
+  },
+  {
+    path: ['documentParse', 'customPdf', 'key'],
+    getGroup: (docParse) => docParse?.customPdf as Record<string, unknown> | undefined,
+    urlKey: 'url',
+    secretKey: 'key',
+    normalizeUrl: normalizeDocumentParseUrl,
+    requireNonEmptySubmittedUrl: true,
+    message:
+      'Changing custom PDF parser URL requires explicitly replacing or clearing Custom PDF parser key'
+  },
+  {
+    path: ['documentParse', 'sangfor', 'key'],
+    getGroup: (docParse) => docParse?.sangfor as Record<string, unknown> | undefined,
+    urlKey: 'url',
+    secretKey: 'key',
+    normalizeUrl: normalizeDocumentParseUrl,
+    requireNonEmptySubmittedUrl: true,
+    message: 'Changing Sangfor parser URL requires explicitly replacing or clearing Sangfor key'
+  }
+];
+
+/**
+ * 校验文档增强解析的可配置地址与对应密钥是否成组变更：
+ * 若库中已有密钥且本次实质变更了目标服务地址，必须显式替换或清空该密钥，
+ * 避免保存后把旧服务凭据发往新目标，并与测试接口的凭据组规则保持一致。
+ */
+const assertDocumentParseCredentialGroups = ({
+  existingOverrides,
+  submittedOverrides
+}: {
+  existingOverrides: DeepPartial<SystemInstanceConfigDomainMap['providers']>;
+  submittedOverrides: DeepPartial<SystemInstanceConfigDomainMap['providers']>;
+}) => {
+  const existingDocParse = existingOverrides?.documentParse;
+  const submittedDocParse = submittedOverrides?.documentParse;
+  if (!submittedDocParse) return;
+
+  for (const rule of DOCUMENT_PARSE_CREDENTIAL_GROUP_RULES) {
+    const existingGroup = rule.getGroup(existingDocParse);
+    const submittedGroup = rule.getGroup(submittedDocParse);
+    if (!submittedGroup) continue;
+
+    const rawExistingSecret = existingGroup?.[rule.secretKey];
+    const existingSecret = typeof rawExistingSecret === 'string' ? rawExistingSecret.trim() : '';
+    if (!existingSecret || submittedGroup[rule.secretKey] !== undefined) continue;
+
+    const rawSubmittedUrl = submittedGroup[rule.urlKey];
+    if (typeof rawSubmittedUrl !== 'string') continue;
+
+    const normalizedSubmittedUrl = rule.normalizeUrl(rawSubmittedUrl);
+    if (rule.requireNonEmptySubmittedUrl && !normalizedSubmittedUrl) continue;
+
+    const rawExistingUrl = existingGroup?.[rule.urlKey];
+    const normalizedExistingUrl = rule.normalizeUrl(
+      typeof rawExistingUrl === 'string' ? rawExistingUrl : undefined
+    );
+    if (normalizedSubmittedUrl !== normalizedExistingUrl) {
+      throw new ZodError([{ code: 'custom', path: rule.path, message: rule.message }]);
+    }
+  }
+};
+
 export type BatchUpdateItemInput = {
   domain: SystemInstanceConfigDomainKey;
   expectedRevision: number;
@@ -514,9 +603,45 @@ export const batchUpdateDomainConfigs = async (
       );
     }
 
+    const existingDecryptedOverrides = decryptDomainSecrets(domain, existing?.overrides ?? {});
+    // 合并前仅归一化库中可能残留的历史越界 retentionHours（如旧版 0 或 1440），
+    // 避免同域局部保存被旧值阻断；显式提交非法值已在上方提交边界严格拒绝。
+    if (domain === 'performance') {
+      const existingTracking = existingDecryptedOverrides.tracking;
+      if (
+        typeof existingTracking === 'object' &&
+        existingTracking !== null &&
+        !Array.isArray(existingTracking) &&
+        'retentionHours' in existingTracking &&
+        typeof existingTracking.retentionHours === 'number' &&
+        Number.isFinite(existingTracking.retentionHours)
+      ) {
+        existingDecryptedOverrides.tracking = {
+          ...existingTracking,
+          retentionHours: clampLlmTraceRetentionHours(existingTracking.retentionHours)
+        };
+      }
+    }
+
+    if (domain === 'providers') {
+      try {
+        assertDocumentParseCredentialGroups({
+          existingOverrides: existingDecryptedOverrides as DeepPartial<
+            SystemInstanceConfigDomainMap['providers']
+          >,
+          submittedOverrides: submittedOverrides as DeepPartial<
+            SystemInstanceConfigDomainMap['providers']
+          >
+        });
+      } catch (error) {
+        if (error instanceof ZodError) throw configInputError(error);
+        throw error;
+      }
+    }
+
     const mergedOverrides = mergeSubmittedOverrides({
       domain,
-      existingOverrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
+      existingOverrides: existingDecryptedOverrides,
       submittedOverrides
     });
     if (domain === 'commercial' && normalizedSubPlans !== undefined) {

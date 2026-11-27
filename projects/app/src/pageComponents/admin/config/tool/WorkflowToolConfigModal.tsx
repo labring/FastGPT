@@ -405,14 +405,12 @@ const WorkflowToolConfigModal = ({
         ) : (
           <Box w={'full'}>
             <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-              {t('app:custom_plugin_name_label')}
+              {t('common:avatar_and_name')}
             </Box>
             <Flex mt={2} alignItems={'center'}>
               <MyTooltip
                 label={
-                  isUploadingAvatar
-                    ? t('app:custom_plugin_uploading')
-                    : t('app:custom_plugin_click_upload_avatar')
+                  isUploadingAvatar ? t('app:custom_plugin_uploading') : t('common:set_avatar')
                 }
               >
                 <Avatar

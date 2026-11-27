@@ -7,6 +7,10 @@ const mocks = vi.hoisted(() => ({
   env: {
     MONGODB_URI: 'mongodb://127.0.0.1:27017/unused_index_startup',
     MONGODB_LOG_URI: undefined as string | undefined,
+    DB_DIALECT: 'mongo' as 'mongo' | 'oceanbase',
+    OCEANBASE_DB_URI: undefined as string | undefined,
+    OCEANBASE_LOG_DB_URI: undefined as string | undefined,
+    OCEANBASE_DB_READ_URI: undefined as string | undefined,
     DB_MAX_LINK: 10,
     SYNC_INDEX: false
   },
@@ -20,7 +24,7 @@ vi.mock('@fastgpt/service/common/mongo/indexManager', () => ({
 }));
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
-  LogCategories: { INFRA: { MONGO: 'mongo' } }
+  LogCategories: { INFRA: { MONGO: 'mongo', OCEANBASE: 'oceanbase' } }
 }));
 vi.mock('@fastgpt/service/common/profiling', () => ({
   isProfiling: () => false,
@@ -39,11 +43,19 @@ beforeEach(() => {
   mocks.sync.mockResolvedValue(undefined);
   mocks.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/unused_index_startup';
   mocks.env.MONGODB_LOG_URI = undefined;
+  mocks.env.DB_DIALECT = 'mongo';
+  mocks.env.OCEANBASE_DB_URI = undefined;
+  mocks.env.OCEANBASE_LOG_DB_URI = undefined;
+  mocks.env.OCEANBASE_DB_READ_URI = undefined;
   mocks.env.DB_MAX_LINK = 10;
   vi.stubEnv('NODE_ENV', 'production');
   vi.stubEnv('NEXT_PHASE', undefined);
   vi.stubEnv('SYNC_INDEX', 'false');
   vi.stubEnv('MONGODB_LOG_URI', '');
+  vi.stubEnv('DB_DIALECT', undefined);
+  vi.stubEnv('OCEANBASE_DB_URI', undefined);
+  vi.stubEnv('OCEANBASE_LOG_DB_URI', undefined);
+  vi.stubEnv('OCEANBASE_DB_READ_URI', undefined);
   // 只验证启动委派，不建立数据库连接。
   vi.stubGlobal('mongodb', new Mongoose());
   vi.stubGlobal('mongodbLog', new Mongoose());
@@ -101,9 +113,10 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(sharedDefault.connectionLogMongo).toBe(sharedDefault.connectionMongo);
     expect(sharedDefault.MONGO_LOG_URL).toBe(sharedDefault.MONGO_URL);
 
-    const { configureMongoDalRuntime: configureDefault } =
-      await import('@fastgpt/service/common/mongo/dalRuntime');
+    const { configureDalRuntime: configureDefault } =
+      await import('@fastgpt/service/common/db/dalRuntime');
     const defaultRuntime = configureDefault({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: undefined
     });
@@ -117,9 +130,10 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(sharedSameUri.hasSeparateMongoLogUri).toBe(false);
     expect(sharedSameUri.connectionLogMongo).toBe(sharedSameUri.connectionMongo);
 
-    const { configureMongoDalRuntime: configureSameUri } =
-      await import('@fastgpt/service/common/mongo/dalRuntime');
+    const { configureDalRuntime: configureSameUri } =
+      await import('@fastgpt/service/common/db/dalRuntime');
     const sameUriRuntime = configureSameUri({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: mocks.env.MONGODB_LOG_URI
     });
@@ -133,8 +147,9 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     expect(separateMod.connectionLogMongo).not.toBe(separateMod.connectionMongo);
     expect(separateMod.MONGO_LOG_URL).toBe('mongodb://127.0.0.1:27017/unused_index_startup_log');
 
-    const { configureMongoDalRuntime } = await import('@fastgpt/service/common/mongo/dalRuntime');
-    const separateRuntime = configureMongoDalRuntime({
+    const { configureDalRuntime } = await import('@fastgpt/service/common/db/dalRuntime');
+    const separateRuntime = configureDalRuntime({
+      dialect: 'mongo',
       mainWriteUrl: mocks.env.MONGODB_URI,
       logWriteUrl: mocks.env.MONGODB_LOG_URI
     });
@@ -253,6 +268,113 @@ describe('Mongo shared vs separate pool topology and DAL startup DDL index sync'
     } finally {
       await activeDb.connection.db?.dropDatabase().catch(() => undefined);
       await activeDb.disconnect().catch(() => undefined);
+    }
+  });
+
+  it('routes Mongo startup DDL index sync by actual Mongo topology even when OceanBase runtime has a different logMode', async () => {
+    // 1. OceanBase shared + Mongo separate：独立 Mongo 日志库严禁创建仅属于主库的 app_registrations
+    vi.resetModules();
+    vi.stubGlobal('mongodb', new Mongoose());
+    vi.stubGlobal('mongodbLog', new Mongoose());
+    const mainUri = buildIsolatedMongoUri('dal_ob_shared_mongo_main');
+    const logUri = buildIsolatedMongoUri('dal_ob_shared_mongo_log');
+    mocks.env.DB_DIALECT = 'oceanbase';
+    mocks.env.OCEANBASE_DB_URI = 'mysql://root@127.0.0.1:2881/ob_main';
+    mocks.env.OCEANBASE_LOG_DB_URI = undefined;
+    mocks.env.MONGODB_URI = mainUri;
+    mocks.env.MONGODB_LOG_URI = logUri;
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PHASE', undefined);
+
+    const dalRuntimeMod1 = await import('@fastgpt/service/common/db/dalRuntime');
+    const mongoMod1 = await import('@fastgpt/service/common/mongo');
+    const initMod1 = await vi.importActual<typeof import('@fastgpt/service/common/mongo/init')>(
+      '@fastgpt/service/common/mongo/init'
+    );
+
+    try {
+      const obSharedRuntime = dalRuntimeMod1.configureDalRuntime();
+      expect(obSharedRuntime.dialect).toBe('oceanbase');
+      expect(obSharedRuntime.logMode).toBe('shared');
+      expect(mongoMod1.hasSeparateMongoLogUri).toBe(true);
+      expect(mongoMod1.connectionLogMongo).not.toBe(mongoMod1.connectionMongo);
+      expect(initMod1.resolveDalIndexSyncDatasources(mongoMod1.connectionMongo)).toEqual(['main']);
+      expect(initMod1.resolveDalIndexSyncDatasources(mongoMod1.connectionLogMongo)).toEqual([
+        'log'
+      ]);
+
+      await Promise.all([
+        initMod1.connectMongo({ db: mongoMod1.connectionMongo, url: mainUri }),
+        initMod1.connectMongo({ db: mongoMod1.connectionLogMongo, url: logUri })
+      ]);
+
+      await vi.waitFor(
+        async () => {
+          const indexes = await mongoMod1.connectionMongo.connection
+            .db!.collection('app_registrations')
+            .indexes();
+          expect(indexes.map((idx) => idx.name)).toContain('teamId_1');
+        },
+        { timeout: 10_000 }
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const logCollections = await mongoMod1.connectionLogMongo.connection
+        .db!.listCollections({ name: 'app_registrations' })
+        .toArray();
+      expect(logCollections).toEqual([]);
+    } finally {
+      await closeDbRuntime();
+      await mongoMod1.connectionMongo.connection.db?.dropDatabase().catch(() => undefined);
+      await mongoMod1.connectionLogMongo.connection.db?.dropDatabase().catch(() => undefined);
+      await mongoMod1.connectionMongo.disconnect().catch(() => undefined);
+      await mongoMod1.connectionLogMongo.disconnect().catch(() => undefined);
+    }
+
+    // 2. OceanBase separate + Mongo shared：单池 Mongo 仍须同时同步 main 与 log 数据源集合
+    vi.resetModules();
+    vi.stubGlobal('mongodb', new Mongoose());
+    vi.stubGlobal('mongodbLog', new Mongoose());
+    const sharedMainUri = buildIsolatedMongoUri('dal_ob_sep_mongo_shared');
+    mocks.env.DB_DIALECT = 'oceanbase';
+    mocks.env.OCEANBASE_DB_URI = 'mysql://root@127.0.0.1:2881/ob_main';
+    mocks.env.OCEANBASE_LOG_DB_URI = 'mysql://root@127.0.0.1:2883/ob_log';
+    mocks.env.MONGODB_URI = sharedMainUri;
+    mocks.env.MONGODB_LOG_URI = undefined;
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PHASE', undefined);
+
+    const dalRuntimeMod2 = await import('@fastgpt/service/common/db/dalRuntime');
+    const mongoMod2 = await import('@fastgpt/service/common/mongo');
+    const initMod2 = await vi.importActual<typeof import('@fastgpt/service/common/mongo/init')>(
+      '@fastgpt/service/common/mongo/init'
+    );
+
+    try {
+      const obSepRuntime = dalRuntimeMod2.configureDalRuntime();
+      expect(obSepRuntime.dialect).toBe('oceanbase');
+      expect(obSepRuntime.logMode).toBe('separate');
+      expect(mongoMod2.hasSeparateMongoLogUri).toBe(false);
+      expect(mongoMod2.connectionLogMongo).toBe(mongoMod2.connectionMongo);
+      expect(initMod2.resolveDalIndexSyncDatasources(mongoMod2.connectionMongo)).toEqual([
+        'main',
+        'log'
+      ]);
+
+      await initMod2.connectMongo({ db: mongoMod2.connectionMongo, url: sharedMainUri });
+      await vi.waitFor(
+        async () => {
+          const indexes = await mongoMod2.connectionMongo.connection
+            .db!.collection('app_registrations')
+            .indexes();
+          expect(indexes.map((idx) => idx.name)).toContain('teamId_1');
+        },
+        { timeout: 10_000 }
+      );
+    } finally {
+      await closeDbRuntime();
+      await mongoMod2.connectionMongo.connection.db?.dropDatabase().catch(() => undefined);
+      await mongoMod2.connectionMongo.disconnect().catch(() => undefined);
     }
   });
 });

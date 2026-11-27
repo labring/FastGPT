@@ -39,6 +39,7 @@ import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
+  ApiDatasetTypeMap,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   DatasetStatusEnum,
@@ -201,6 +202,8 @@ const CollectionCard = () => {
     return trainingErrorRequest.deactivate;
   }, [trainingErrorRequest]);
 
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
+
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
     {
@@ -225,6 +228,9 @@ const CollectionCard = () => {
       onSuccess() {
         refreshCollections();
         refreshDatasetTrainingError().catch(() => undefined);
+        if (isApiDataset) {
+          loadDatasetDetail(datasetDetail._id).catch(() => undefined);
+        }
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')
@@ -782,18 +788,25 @@ const CollectionCard = () => {
             avatar={editPerCollection.dataset.avatar}
             name={editPerCollection.name}
             hasParent
+            readOnly={datasetDetail.apiDatasetServer?.permissionSync === true}
             isInheritPermission={editPerCollection.inheritPermission !== false}
             refetchResource={refreshPermissionCollection}
-            resumeInheritPermission={() =>
-              putResumeCollectionInheritPermission(editPerCollection._id).then(
-                refreshPermissionCollection
-              )
+            resumeInheritPermission={
+              datasetDetail.apiDatasetServer?.permissionSync === true
+                ? undefined
+                : () =>
+                    putResumeCollectionInheritPermission(editPerCollection._id).then(
+                      refreshPermissionCollection
+                    )
             }
-            onChangeOwner={(tmbId) =>
-              postChangeCollectionOwner({
-                collectionId: editPerCollection._id,
-                ownerId: tmbId
-              }).then(refreshPermissionCollection)
+            onChangeOwner={
+              datasetDetail.apiDatasetServer?.permissionSync === true
+                ? undefined
+                : (tmbId) =>
+                    postChangeCollectionOwner({
+                      collectionId: editPerCollection._id,
+                      ownerId: tmbId
+                    }).then(refreshPermissionCollection)
             }
             managePer={{
               defaultRole: ReadRoleVal,

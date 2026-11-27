@@ -6,7 +6,7 @@ import { createWorkflowRuntimeSummary, summarizeRuntimeNodeResponses } from '../
 /**
  * 收集 Agent 内部持续产生的 nodeResponse。
  *
- * 普通 Agent 和 PiAgent 都会在一次节点运行中产生多条内部详情。运行 Context 总会提供响应
+ * Agent 在一次节点运行中会产生多条内部详情。运行 Context 总会提供响应
  * Scope，详情逐条串行发布并释放；scope.publish 已写入当前层总账，这里只维护本 Agent 的摘要。
  */
 export const createAgentNodeResponseCollector = ({

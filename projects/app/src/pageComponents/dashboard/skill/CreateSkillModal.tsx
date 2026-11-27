@@ -119,10 +119,10 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
         }
       >
         <Flex flexDirection={'column'} gap={6}>
-          {/* 图标 & 名称 */}
+          {/* 头像 & 名称 */}
           <Box>
             <Flex justify={'space-between'} alignItems={'center'}>
-              <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
+              <FormLabel mb={2}>{t('common:avatar_and_name')}</FormLabel>
               <Flex
                 as={'span'}
                 alignItems={'center'}

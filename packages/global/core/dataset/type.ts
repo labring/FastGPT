@@ -188,6 +188,10 @@ export const DatasetSchema = z
     deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),
 
     autoSync: z.boolean().optional().meta({ description: '自动同步' }),
+    syncAll: z
+      .boolean()
+      .optional()
+      .meta({ description: '是否同步第三方知识库根目录下的新增文件与文件夹' }),
     externalReadUrl: z.string().optional().meta({ description: '外部读取 URL', deprecated: true }),
     defaultPermission: z.number().optional().meta({ description: '默认权限', deprecated: true }),
     apiServer: APIFileServerSchema.optional().meta({
@@ -241,6 +245,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
   apiFileId: z.string().optional().meta({ description: 'API 文件 ID' }),
   apiFileParentId: z.string().optional().meta({ description: 'API 文件父级 ID' }),
+  syncChildren: z
+    .boolean()
+    .optional()
+    .meta({ description: 'API 集合是否自动同步新增直属子级；缺省兼容存量视为 true' }),
   externalFileUrl: z.string().optional().meta({ description: '外部文件 URL' }),
 
   rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),
@@ -315,6 +323,10 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  createTime: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '创建时间；历史数据缺失时按 ObjectId 生成时间计算' }),
   chunkIndex: z.int().min(0).meta({ description: '块索引' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
   history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),
@@ -458,6 +470,11 @@ export const DatasetItemSchema = DatasetSchema.omit({
     example: false
   }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
+  permissionSyncStatus: z
+    .enum(DatasetStatusEnum)
+    .optional()
+    .meta({ description: '外部文件权限同步状态；仅在 permissionSync 开启时返回' }),
+  permissionSyncErrorMsg: z.string().optional().meta({ description: '外部文件权限同步失败信息' }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),

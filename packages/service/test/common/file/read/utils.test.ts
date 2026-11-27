@@ -121,6 +121,9 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
   axios: {
     get: vi.fn(),
     post: mockAxiosPost
+  },
+  axiosWithoutSSRF: {
+    post: mockAxiosPost
   }
 }));
 
@@ -360,10 +363,10 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should use custom URL service for pdf when configured', async () => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
     Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
       url: 'http://custom-pdf-service.com/parse',
-      key: 'test-key'
+      key: 'test-key',
+      timeoutSeconds: 1200
     });
 
     mockAxiosPost.mockResolvedValueOnce({

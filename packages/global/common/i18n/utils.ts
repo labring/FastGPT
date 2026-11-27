@@ -6,6 +6,7 @@ type I18nStringLikeType = {
   'zh-CN'?: string;
   'zh-Hant'?: string;
   'ko-KR'?: string;
+  'tr-TR'?: string;
 };
 
 /**
@@ -27,6 +28,9 @@ export const parseLocale = (value?: string): localeType | undefined => {
   }
   if (normalized === 'ko' || normalized.startsWith('ko-')) {
     return LangEnum.ko_KR;
+  }
+  if (normalized === 'tr' || normalized.startsWith('tr-')) {
+    return LangEnum.tr_TR;
   }
   if (
     normalized === LangEnum.zh_Hant.toLowerCase() ||

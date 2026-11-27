@@ -10,6 +10,7 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -26,14 +27,15 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 
 const mocks = vi.hoisted(() => ({
   getChatHistoryStatus: vi.fn(),
-  streamResumeFetch: vi.fn()
+  streamResumeFetch: vi.fn(),
+  toast: vi.fn()
 }));
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
-  useToast: () => ({ toast: vi.fn() })
+  useToast: () => ({ toast: mocks.toast })
 }));
 vi.mock('@/web/core/chat/history/api', () => ({
   getChatHistoryStatus: mocks.getChatHistoryStatus
@@ -730,6 +732,199 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
       status: ChatGenerateStatusEnum.done,
       hasBeenRead: false,
       title: undefined
+    });
+  });
+
+  it('toasts errorText first, falls back to legacy error, and ignores captured errors on normal completion', async () => {
+    const cases = [
+      {
+        nodeResponse: {
+          id: 'agent-1',
+          nodeId: 'agent-1',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'Agent failed via errorText',
+          error: 'Legacy error should not win'
+        },
+        expectedTitle: 'Agent failed via errorText'
+      },
+      {
+        nodeResponse: {
+          id: 'code-1',
+          nodeId: 'code-1',
+          moduleName: 'Code',
+          moduleType: FlowNodeTypeEnum.code,
+          error: { message: 'Legacy code failure' }
+        },
+        expectedTitle: 'Legacy code failure'
+      },
+      {
+        nodeResponse: {
+          id: 'http-1',
+          nodeId: 'http-1',
+          moduleName: 'HTTP',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: 'Caught http failure',
+          errorCaptured: true
+        },
+        expectedTitle: undefined
+      }
+    ];
+
+    for (const testCase of cases) {
+      mocks.toast.mockClear();
+      await renderProvider(async ({ generatingMessage }) => {
+        generatingMessage({
+          event: SseResponseEventEnum.flowNodeResponse,
+          nodeResponse: testCase.nodeResponse as any
+        });
+        return { responseText: '', isNewChat: true };
+      });
+
+      await act(async () => {
+        await onSubmit({ variables: {} } as ChatBoxInputFormType);
+        await Promise.resolve();
+      });
+
+      if (testCase.expectedTitle) {
+        expect(mocks.toast).toHaveBeenCalledWith({
+          title: testCase.expectedTitle,
+          status: 'error'
+        });
+      } else {
+        expect(mocks.toast).not.toHaveBeenCalled();
+      }
+
+      if (root) {
+        await act(async () => {
+          root?.unmount();
+        });
+        root = null;
+      }
+      container?.remove();
+    }
+  });
+
+  it('toasts errorText and legacy error when reconciling an interrupted persisted failure', async () => {
+    const cases = [
+      {
+        responseData: [
+          {
+            id: 'agent-persisted',
+            nodeId: 'agent-persisted',
+            moduleName: 'Agent',
+            moduleType: FlowNodeTypeEnum.agent,
+            errorText: 'Persisted errorText failure'
+          }
+        ],
+        expectedTitle: 'Persisted errorText failure'
+      },
+      {
+        responseData: [
+          {
+            id: 'code-persisted',
+            nodeId: 'code-persisted',
+            moduleName: 'Code',
+            moduleType: FlowNodeTypeEnum.code,
+            error: 'Persisted legacy failure'
+          }
+        ],
+        expectedTitle: 'Persisted legacy failure'
+      }
+    ];
+
+    for (const testCase of cases) {
+      mocks.toast.mockClear();
+      let submittedResponseChatItemId = '';
+      mocks.getChatHistoryStatus.mockResolvedValueOnce({
+        list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+      });
+      refreshChatRecords.mockImplementationOnce(async () => [
+        {
+          dataId: 'human-persisted',
+          obj: ChatRoleEnum.Human,
+          value: [{ text: { content: '{}' } }],
+          status: ChatStatusEnum.finish
+        },
+        {
+          dataId: submittedResponseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: [],
+          responseData: testCase.responseData as any,
+          status: ChatStatusEnum.finish
+        }
+      ]);
+
+      await renderProvider(async ({ responseChatItemId }) => {
+        submittedResponseChatItemId = responseChatItemId;
+        throw new Error('stream dropped');
+      });
+
+      await act(async () => {
+        await onSubmit({ variables: {} } as ChatBoxInputFormType);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: testCase.expectedTitle,
+        status: 'error'
+      });
+
+      if (root) {
+        await act(async () => {
+          root?.unmount();
+        });
+        root = null;
+      }
+      container?.remove();
+    }
+  });
+
+  it('toasts transport error instead of previous round errorText when interrupted before persisting', async () => {
+    const previousFailedRecords: ChatSiteItemType[] = [
+      {
+        dataId: 'human-prev',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: '{}' } }],
+        status: ChatStatusEnum.finish
+      },
+      {
+        dataId: 'ai-prev',
+        obj: ChatRoleEnum.AI,
+        value: [],
+        responseData: [
+          {
+            id: 'agent-prev',
+            nodeId: 'agent-prev',
+            moduleName: 'Agent',
+            moduleType: FlowNodeTypeEnum.agent,
+            errorText: 'Previous round agent failure'
+          } as any
+        ],
+        status: ChatStatusEnum.finish
+      }
+    ];
+
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+    });
+    refreshChatRecords.mockResolvedValueOnce(previousFailedRecords);
+
+    await renderProvider(
+      async () => {
+        throw new Error('transport disconnected');
+      },
+      { chatRecords: previousFailedRecords }
+    );
+
+    await act(async () => {
+      await onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      title: 'transport disconnected',
+      status: 'error'
     });
   });
 });

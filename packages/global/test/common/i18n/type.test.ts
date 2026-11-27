@@ -15,4 +15,18 @@ describe('I18nStringSchema', () => {
       'ko-KR': '안녕하세요'
     });
   });
+
+  it('accepts Turkish translations', () => {
+    expect(
+      I18nStringSchema.parse({
+        en: 'Hello',
+        'zh-CN': '你好',
+        'tr-TR': 'Merhaba'
+      })
+    ).toEqual({
+      en: 'Hello',
+      'zh-CN': '你好',
+      'tr-TR': 'Merhaba'
+    });
+  });
 });

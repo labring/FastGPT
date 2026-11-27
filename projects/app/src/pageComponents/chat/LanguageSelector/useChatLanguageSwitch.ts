@@ -12,7 +12,8 @@ export const chatLanguageList: localeType[] = [
   LangEnum.zh_CN,
   LangEnum.zh_Hant,
   LangEnum.en,
-  LangEnum.ko_KR
+  LangEnum.ko_KR,
+  LangEnum.tr_TR
 ];
 
 /**

@@ -76,7 +76,11 @@ export type ChannelConfig = z.infer<typeof ChannelConfigSchema>;
 export const ChannelInfoSchema = ChannelConfigSchema.extend({
   id: IntSchema,
   status: z.enum(ChannelStatusEnum),
-  created_at: NumSchema.optional()
+  created_at: NumSchema.optional(),
+  keyConfigured: z
+    .boolean()
+    .optional()
+    .meta({ description: '是否已配置 API 密钥；编辑态用于展示脱敏状态，不回传密钥原文' })
 });
 export type ChannelInfoType = z.infer<typeof ChannelInfoSchema>;
 

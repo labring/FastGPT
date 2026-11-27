@@ -119,7 +119,7 @@
   "aipoint_desc": "Each AI model call uses AI points, similar to Tokens. Click to view the calculation rules.",
   "all_result": "Full Results",
   "app_evaluation": "App Evaluation(Beta)",
-  "app_icon_and_name": "icon",
+  "avatar_and_name": "Avatar & Name",
   "auth_config": "Authentication",
   "auth_type": "Authentication type",
   "auth_type.Custom": "Customize",
@@ -141,7 +141,6 @@
   "chose_condition": "Choose Condition",
   "chosen": "Chosen",
   "classification": "Classification",
-  "click_select_avatar": "Click to Select Avatar",
   "click_to_copy": "Click to copy",
   "click_to_resume": "Click to Resume",
   "code_editor": "Code Editor",
@@ -320,7 +319,6 @@
   "core.app.Interval timer run": "Scheduled run",
   "core.app.Interval timer tip": "Run an App on a schedule",
   "core.app.Make a brief introduction of your app": "Give Your AI App an Introduction",
-  "core.app.Name and avatar": "Avatar & Name",
   "core.app.QG.Custom prompt tip": "To ensure the generated content follows the correct format, [Yellow Prompt] cannot be modified",
   "core.app.QG.Custom prompt tip1": "To ensure the generated content follows the correct format, ",
   "core.app.QG.Custom prompt tip2": "[Yellow Prompt]",
@@ -1156,7 +1154,7 @@
   "stream_response_error": "Stream response error",
   "select_reference_variable": "Select Citation Variable",
   "select_template": "Select Template",
-  "set_avatar": "Click to set_avatar",
+  "set_avatar": "Click to set avatar",
   "share_link": "Share Link",
   "speech_error_tip": "Speech to Text Failed",
   "speech_not_support": "Your Browser Does Not Support Speech Input",
@@ -1465,5 +1463,6 @@
   "puzzle_captcha_expired": "This image expired. Get a new image.",
   "puzzle_captcha_load_failed": "Could not load the image. Select New image.",
   "model.cache_read_price": "Cache read",
-  "model.cache_creation_price": "Cache creation"
+  "model.cache_creation_price": "Cache creation",
+  "core.dataset.error.permissionSyncManaged": "File permissions of this knowledge base are managed by the external API file library and cannot be edited here"
 }

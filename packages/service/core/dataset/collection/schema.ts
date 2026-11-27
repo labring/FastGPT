@@ -87,6 +87,8 @@ const DatasetCollectionSchema = new Schema({
   // Parse settings
   customPdfParse: Boolean,
   apiFileParentId: String,
+  // API 目录/节点级同步范围标记；缺省（undefined）兼容存量视为 true，显式 false 表示不自动拉取新增直属子级
+  syncChildren: Boolean,
 
   // Chunk settings
   ...ChunkSettings

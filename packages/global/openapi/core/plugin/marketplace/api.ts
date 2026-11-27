@@ -2,7 +2,7 @@ import z from 'zod';
 import { IntSchema } from '../../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { PluginTextSchema, PluginToolTagSchema } from '../../../../core/plugin/type';
-import { LanguageSchema } from '../../../../common/i18n/type';
+import { I18nStringSchema } from '../../../../common/i18n/type';
 import { PluginPermissionListSchema } from '../../../../sdk/fastgpt-plugin';
 
 export const MarketplaceOfficialSource = 'official';
@@ -83,8 +83,8 @@ export const MarketplaceToolBaseSchema = z.object({
     example: 'https://example.com/readme.md',
     description: '插件 README 地址'
   }),
-  readmeUrls: z
-    .partialRecord(LanguageSchema, z.string())
+  // 使用部分对象而非带 catch 的 record key，避免未知语言键被重映射并覆写 en 链接。
+  readmeUrls: I18nStringSchema.partial()
     .optional()
     .meta({ description: '按语言区分的插件 README 地址' }),
   tags: z

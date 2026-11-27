@@ -9,7 +9,6 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY patches ./patches
 COPY ./packages ./packages
 COPY ./sdk ./sdk
 COPY ./projects/marketplace/package.json ./projects/marketplace/package.json

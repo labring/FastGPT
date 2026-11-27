@@ -71,9 +71,9 @@ const EditResourceModal = ({
       }
     >
       <Flex flexDirection={'column'} gap={6}>
-        {/* 图标 & 名称 */}
+        {/* 头像 & 名称 */}
         <Box>
-          <FormLabel mb={2}>{t('common:core.app.Name and avatar')}</FormLabel>
+          <FormLabel mb={2}>{t('common:avatar_and_name')}</FormLabel>
           <Flex alignItems={'center'}>
             <MyTooltip label={t('common:set_avatar')}>
               <Flex

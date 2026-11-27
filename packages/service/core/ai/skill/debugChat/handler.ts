@@ -333,7 +333,7 @@ export async function runSkillDebugChat({
       aiContent: aiResponse,
       durationSeconds,
       workflowRuntimeSummary,
-      metadata: { originIp }
+      systemMetadata: { originIp }
     };
 
     if (interactive) {

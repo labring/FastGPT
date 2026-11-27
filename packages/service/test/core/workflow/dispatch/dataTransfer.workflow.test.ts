@@ -1087,7 +1087,12 @@ describe('real container child workflows', () => {
         fails && !catchError ? 'container' : undefined
       );
       if (fails) {
-        const iteration = responses.find((response) => response.error === failure.message);
+        const iteration = responses.find(
+          (response) =>
+            response.moduleType === FlowNodeTypeEnum.loopRun &&
+            response.nodeId !== 'container' &&
+            response.errorText === failure.message
+        );
         expect(iteration).toMatchObject({ errorCaptured: true });
         expect(responses.find((response) => response.nodeId === 'container')?.errorCaptured).toBe(
           catchError ? true : undefined
@@ -1145,7 +1150,12 @@ describe('real container child workflows', () => {
     );
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
     expect(result.workflowRuntimeSummary.errorCount).toBe(1);
-    const failedAttempt = responses.find((response) => response.error === 'failed task');
+    const failedAttempt = responses.find(
+      (response) =>
+        response.moduleType === FlowNodeTypeEnum.parallelRun &&
+        response.nodeId !== 'container' &&
+        response.errorText === 'failed task'
+    );
     expect(failedAttempt).toBeDefined();
     expect(failedAttempt?.errorCaptured).toBeUndefined();
   });
@@ -1229,7 +1239,14 @@ describe('real container child workflows', () => {
     expect(codeSandbox.runCode).toHaveBeenCalledTimes(3);
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
     expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
-    expect(responses.find((response) => response.error === 'retry once')).toMatchObject({
+    expect(
+      responses.find(
+        (response) =>
+          response.moduleType === FlowNodeTypeEnum.parallelRun &&
+          response.nodeId !== 'container' &&
+          response.errorText === 'retry once'
+      )
+    ).toMatchObject({
       errorCaptured: true
     });
   });

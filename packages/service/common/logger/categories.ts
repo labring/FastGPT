@@ -22,6 +22,7 @@ export const LogCategories = {
   // 基础设施层
   INFRA: {
     MONGO: ['infra', 'mongo'],
+    OCEANBASE: ['infra', 'oceanbase'],
     POSTGRES: ['infra', 'postgres'],
     REDIS: ['infra', 'redis'],
     VECTOR: ['infra', 'vector'],

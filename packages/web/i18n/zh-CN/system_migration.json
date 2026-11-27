@@ -84,6 +84,11 @@
   "migrations.20261120_migrate_model_pricing.llmTiers": "迁移 LLM 阶梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "校验模型价格",
   "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已回填 {{llmModels}} 个系统 LLM 模型的 K Tokens 阶梯上限。",
+  "migrations.20261120_clean_api_dataset_system_root.name": "清理 API 知识库历史虚拟根节点",
+  "migrations.20261120_clean_api_dataset_system_root.description": "清理存量 API 知识库中的 SYSTEM_ROOT 哨兵目录，将顶层子集合重挂到知识库根目录并回填 Dataset.syncAll 标记。请待所有主服务与 Pro 服务均升级至新版后再手动执行。",
+  "migrations.20261120_clean_api_dataset_system_root.migrate": "清理哨兵节点并回填同步标记",
+  "migrations.20261120_clean_api_dataset_system_root.validation": "核验无残留虚拟根节点",
+  "migrations.20261120_clean_api_dataset_system_root.result": "已处理 {{datasets}} 个知识库，清理 {{sentinels}} 个哨兵节点，重挂 {{reparented}} 个顶层集合。",
   "migrations.20261123_cleanup_mongo_indexes.name": "清理历史废弃 MongoDB 索引",
   "migrations.20261123_cleanup_mongo_indexes.description": "启动后在后台独立清理历史已废弃的 MongoDB 索引：删除前持续跟踪前置替代索引直至构建就绪，并严格按索引名、键定义与完整选项精确匹配，自动跳过客户自建或签名不符的索引；设置 MONGO_DEPRECATE_INDEX=false 时保留现有废弃索引并延后等待开启或手动清理后重试。",
   "migrations.20261123_cleanup_mongo_indexes.cleanup": "清理废弃索引",
@@ -109,5 +114,15 @@
   "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "加载插件思考等级预设",
   "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "回填模型可用思考等级",
   "migrations.20261125_backfill_model_reasoning_effort_list.validation": "校验回填结果",
-  "migrations.20261125_backfill_model_reasoning_effort_list.result": "共加载 {{presetCount}} 条插件预设，已完成回填并校验通过 {{verifiedCount}} 个命中预设的 LLM 模型。"
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "共加载 {{presetCount}} 条插件预设，已完成回填并校验通过 {{verifiedCount}} 个命中预设的 LLM 模型。",
+  "migrations.20261127_cleanup_agent_engine_config.name": "清理历史 Agent 执行引擎配置",
+  "migrations.20261127_cleanup_agent_engine_config.description": "系统配置迁移完成后在后台独立清理实例功能配置（feature）中已下线的 agentEngine 覆盖项与默认值标记，保留其余功能开关配置；已干净时只读跳过。",
+  "migrations.20261127_cleanup_agent_engine_config.cleanup": "清理历史引擎配置",
+  "migrations.20261127_cleanup_agent_engine_config.validation": "校验清理结果",
+  "migrations.20261127_cleanup_agent_engine_config.result": "已清理 {{cleanedDocumentCount}} 条功能配置文档，移除 {{removedFieldCount}} 项历史引擎配置。",
+  "migrations.20261127_backfill_team_member_sort_key.name": "回填团队成员拼音排序键",
+  "migrations.20261127_backfill_team_member_sort_key.description": "启动后在后台独立分批扫描存量团队成员并回填 nameSortKey（按字母/拼音优先、同首字母中文在前、数字与符号沉底编码），支持断点续跑与并发改名防覆盖，用于成员列表按索引高效排序分页。",
+  "migrations.20261127_backfill_team_member_sort_key.members": "回填成员排序键",
+  "migrations.20261127_backfill_team_member_sort_key.validation": "校验排序键回填结果",
+  "migrations.20261127_backfill_team_member_sort_key.result": "已扫描 {{scannedCount}} 条团队成员记录，回填排序键 {{backfilledCount}} 条。"
 }

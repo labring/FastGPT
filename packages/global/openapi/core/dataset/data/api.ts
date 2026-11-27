@@ -303,6 +303,9 @@ export const GetDataListItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  createTime: z.coerce.date().meta({
+    description: '数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回'
+  }),
   q: z.string().optional().meta({ description: '问题/主文本' }),
   a: z.string().optional().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),

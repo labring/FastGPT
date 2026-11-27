@@ -31,6 +31,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 // 后端返回的 file.filename/name 已是解码后的纯文件名，但仍可能包含字面 %（如 `¥%……`）。
 // 直接 decodeURIComponent 会抛 URIError；这里安全解码，兼容历史百分号编码数据且不崩溃。
@@ -45,6 +47,10 @@ const safeDecodeURIComponent = (value: string) => {
 const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const isPermissionSyncManaged = useContextSelector(
+    DatasetPageContext,
+    (v) => v.datasetDetail.apiDatasetServer?.permissionSync === true
+  );
   const { collectionId = '' } = router.query as {
     collectionId: string;
     datasetId: string;
@@ -264,7 +270,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
                   <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
                     {t('common:permission.Collaborator')}
                   </Box>
-                  {collection.permission.hasManagePer && (
+                  {collection.permission.hasManagePer && !isPermissionSyncManaged && (
                     <MyTooltip label={t('common:permission.Manage')}>
                       <MyIcon
                         w="1rem"

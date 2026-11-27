@@ -1,9 +1,10 @@
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MemberRateLimitPolicy } from '@fastgpt/service/common/rateLimit/interface/member';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
@@ -46,6 +47,10 @@ const manifest = { directories: [], files: [] };
 
 const createRequest = (body = { datasetId, collectionIds }) =>
   Object.assign(new EventEmitter(), { body });
+
+afterEach(() => {
+  setDisableApiDatasetSuperAdmin(false);
+});
 
 describe('POST /core/dataset/collection/getDownloadTicket', () => {
   beforeEach(() => {
@@ -124,6 +129,40 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
     await handler(createRequest() as any, new EventEmitter() as any);
 
     expect(events).toEqual(['lease', 'rate-limit', 'prepare']);
+  });
+
+  it('forwards the effective root flag and disableSuperAdmin to the readability check', async () => {
+    setDisableApiDatasetSuperAdmin(true);
+    mocks.authDataset.mockResolvedValueOnce({
+      dataset: {
+        _id: datasetId,
+        name: 'Managed',
+        type: DatasetTypeEnum.dataset,
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' }
+        }
+      },
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      isRoot: false
+    });
+    mocks.prepareDatasetArchive.mockImplementationOnce(
+      async ({ assertCollectionsReadable }: any) => {
+        await assertCollectionsReadable(collectionIds);
+        return manifest;
+      }
+    );
+
+    await handler(createRequest() as any, new EventEmitter() as any);
+
+    expect(mocks.assertDatasetArchiveCollectionsReadable).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      datasetId,
+      tmbId: 'member-1',
+      isRoot: false,
+      ignoreTeamOwner: true,
+      collectionIds
+    });
   });
 
   it('rejects unsupported dataset types before acquiring archive resources', async () => {

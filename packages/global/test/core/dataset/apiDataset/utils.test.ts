@@ -7,6 +7,10 @@ import {
 } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
+const defaultSwitches = {
+  permissionSync: false
+};
+
 describe('filterApiDatasetServerPublicData', () => {
   it('should return undefined when apiDatasetServer is undefined', () => {
     const result = filterApiDatasetServerPublicData(undefined);
@@ -18,10 +22,22 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: undefined,
       yuqueServer: undefined,
       feishuServer: undefined,
       dingtalkServer: undefined
+    });
+  });
+
+  it('should keep permission sync switches so the frontend can round-trip them', () => {
+    const result = filterApiDatasetServerPublicData({
+      apiServer: { baseUrl: 'https://api.example.com' },
+      permissionSync: true
+    });
+
+    expect(result).toMatchObject({
+      permissionSync: true
     });
   });
 
@@ -36,6 +52,7 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: {
         baseUrl: 'https://api.example.com',
         authorization: '',
@@ -58,6 +75,7 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: undefined,
       yuqueServer: {
         userId: 'user-123',
@@ -80,6 +98,7 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: undefined,
       yuqueServer: undefined,
       feishuServer: {
@@ -110,6 +129,7 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: {
         baseUrl: 'https://api.example.com',
         authorization: '',
@@ -144,6 +164,7 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData(input);
 
     expect(result).toEqual({
+      ...defaultSwitches,
       apiServer: undefined,
       yuqueServer: undefined,
       feishuServer: undefined,

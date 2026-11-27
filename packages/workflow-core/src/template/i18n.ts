@@ -1,6 +1,8 @@
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+
 type TranslationDictionary = Record<string, string>;
 
-export const workflowTemplateResources: Record<string, TranslationDictionary> = {
+export const workflowTemplateResources: Record<localeType, TranslationDictionary> = {
   en: {
     'app:document_quote': 'Document Citation',
     'app:document_quote_tip':
@@ -1332,12 +1334,358 @@ export const workflowTemplateResources: Record<string, TranslationDictionary> = 
     'workflow:user_question': '사용자 질문',
     'workflow:variable_update': '변수 업데이트',
     'workflow:workflow_builder_version_name': 'AI 생성 버전 {{versionNo}}'
+  },
+  'tr-TR': {
+    'app:document_quote': 'Belge alıntısı',
+    'app:document_quote_tip':
+      'Genellikle kullanıcının yüklediği belge içeriğini (belge ayrıştırma gerektirir) kabul etmek için kullanılır; başka metin verilerini alıntılamak için de kullanılabilir.',
+    'app:toolType_http': 'HTTP aracı',
+    'app:toolType_mcp': 'MCP aracı',
+    'app:use_agent_sandbox': 'Sanal makine',
+    'app:use_computer_desc':
+      "Açıldığında AI'a komut çalıştırabileceği, dosyaları işleyebileceği ve kod çalıştırabileceği bir sanal makine ortamı verilir. Her oturum tek bir sanal makine ortamını paylaşır.",
+    'app:variable.internal_type_desc':
+      'Yalnızca iş akışı içinde kullanılır, sohbet kutusunda görünmez',
+    'app:variable.select type_desc':
+      'Site içi sohbette ve hata ayıklamada giriş kutusu gösterilir, paylaşım bağlantısında bu değişken gösterilmez',
+    'app:variable.textarea_type_desc': 'Kullanıcının en fazla 4000 karakter girebildiği bir kutu.',
+    'app:workflow.file_url': 'Belge bağlantısı',
+    'app:workflow.form_input': 'Form girişi',
+    'app:workflow.form_input_description_placeholder': 'Örneğin:\nBilgilerini tamamla',
+    'app:workflow.form_input_tip':
+      'Bu düğüm, kullanıcıyı belirli içerikleri girmeye yönlendirmek için çeşitli girişler yapılandırabilir.',
+    'app:workflow.input_description_tip':
+      'Kullanıcıya ne girmesi gerektiğini anlatan bir açıklama metni ekleyebilirsin',
+    'app:workflow.read_files': 'Belge ayrıştırma',
+    'app:workflow.read_files_result': 'Belge ayrıştırma sonucu',
+    'app:workflow.read_files_result_desc':
+      'Belgenin orijinal metni; dosya adı ve belge içeriğinden oluşur, birden fazla dosya yatay çizgiyle ayrılır.',
+    'app:workflow.read_files_tip':
+      'Bu turda yüklenen belgeleri ayrıştırır ve ilgili belge içeriğini döndürür',
+    'app:workflow.select_description': 'Açıklama metni',
+    'app:workflow.select_description_placeholder': 'Örneğin: \nBuzdolabında domates var mı?',
+    'app:workflow.select_description_tip':
+      'Her seçeneğin ne anlama geldiğini kullanıcıya anlatan bir açıklama metni ekleyebilirsin.',
+    'app:workflow.select_result': 'Seçim sonucu',
+    'app:workflow.user_file_input': 'Dosya bağlantısı',
+    'app:workflow.user_file_input_desc': 'Kullanıcının yüklediği belge ve görsel bağlantıları',
+    'app:workflow.user_select': 'Kullanıcı seçimi',
+    'app:workflow.user_select_tip':
+      'Bu düğüm, sohbet sırasında seçilebilecek birden fazla seçenek yapılandırabilir. Farklı seçenekler farklı iş akışı dallarına yönlendirebilir',
+    'common:core.ai.Model': 'AI modeli',
+    'common:core.ai.Prompt': 'Prompt',
+    'common:core.app.edit.Query extension background prompt': 'Sohbet arka planı açıklaması',
+    'common:core.app.edit.Query extension background tip':
+      'Mevcut sohbetin kapsamını anlat; AI mevcut soruyu tamamlayıp genişletirken bundan yararlanır. Yazdığın içerik genellikle bu ajanın kullanım amacıdır',
+    'common:core.app.tip.chatNodeSystemPromptTip': "Prompt'u buraya gir",
+    'common:core.app.tip.systemPromptTip':
+      'Modelin sabit yönlendirme metni. Bu içeriği düzenleyerek modelin sohbet yönünü belirleyebilirsin. İçerik bağlamın başına sabitlenir. / yazarak değişken seçip ekleyebilirsin.\nBir veri kümesi bağlıysa, uygun bir açıklamayla modeli veri kümesi aramasını ne zaman çağıracağı konusunda yönlendirebilirsin. Örneğin:\nSen "Interstellar" filminin asistanısın. Kullanıcı "Interstellar" ile ilgili bir şey sorduğunda veri kümesinde arama yap ve arama sonuçlarına göre yanıtla.',
+    'common:core.chat.History': 'Geçmiş',
+    'common:core.chat.Select dataset': 'Veri kümesi seç',
+    'common:core.dataset.Dataset': 'Veri kümesi',
+    'common:core.dataset.search.ReRank': 'Yeniden sıralama',
+    'common:core.module.Dataset quote.label': 'Veri kümesi alıntısı',
+    'common:core.module.QueryExtension.placeholder':
+      'Örneğin:\nPython\'a giriş ve kullanımıyla ilgili sorular.\nMevcut sohbet "GTA5" oyunuyla ilgili.',
+    'common:core.module.http.AppId': 'Uygulama kimliği',
+    'common:core.module.http.ChatId': 'Mevcut sohbet kimliği',
+    'common:core.module.http.Current time': 'Mevcut zaman',
+    'common:core.module.http.Histories': 'Geçmiş kayıtlar',
+    'common:core.module.http.ResponseChatItemId': 'AI yanıtının kimliği',
+    'common:core.module.input.description.Background':
+      'Kullanıcı sorularının türünü daha iyi tanımak için belirli içeriklerin tanıtımını ekleyebilirsin. Bu içerik genellikle modelin bilmediği bir konuyu ona tanıtmak içindir.',
+    'common:core.module.input.description.HTTP Dynamic Input':
+      'Önceki düğümün çıktı değerlerini değişken olarak alır; bu değişkenler HTTP istek parametrelerinde kullanılabilir.',
+    'common:core.module.input.description.Http Request Header':
+      'Özel istek başlıkları, lütfen kesinlikle JSON metni gir.\n1. Son özelliğin sonunda virgül olmadığından emin ol\n2. Anahtarın çift tırnak içerdiğinden emin ol\nÖrneğin: {"Authorization":"Bearer xxx"}',
+    'common:core.module.input.description.Http Request Url':
+      'Yeni HTTP istek adresi. İki "istek adresi" görünüyorsa bu düğümü silip yeniden ekleyebilirsin; en güncel düğüm yapılandırması alınır.',
+    'common:core.module.input.description.Response content':
+      'Ardışık satır sonları için \\n kullanabilirsin.\nYanıt, dış düğüm girdisiyle verilebilir; dış düğümden girdi geldiğinde buraya yazılan içeriğin üzerine yazılır.\nMetin olmayan veri gelirse otomatik olarak metne dönüştürülür',
+    'common:core.module.input.label.Background': 'Arka plan bilgisi',
+    'common:core.module.input.label.Response content': 'Yanıt içeriği',
+    'common:core.module.input.label.Select dataset': 'Veri kümesi seç',
+    'common:core.module.input.label.aiModel': 'AI modeli',
+    'common:core.module.input.label.chat history': 'Sohbet geçmişi',
+    'common:core.module.input.label.user question': 'Kullanıcı sorusu',
+    'common:core.module.input.placeholder.Classify background':
+      'Örneğin:\n1. AIGC (yapay zekâ ile üretilen içerik), metin, görsel, müzik, video gibi dijital içeriklerin yapay zekâ teknolojisiyle otomatik veya yarı otomatik üretilmesidir.\n2. AIGC teknolojisi doğal dil işleme, bilgisayarlı görü, makine öğrenimi ve derin öğrenmeyi içerir ancak bunlarla sınırlı değildir. Bu teknolojiler belirli yaratıcı, eğitsel, eğlence veya bilgi ihtiyaçlarını karşılamak için yeni içerik oluşturabilir veya mevcut içeriği değiştirebilir.',
+    'common:core.module.output.description.Ai response content':
+      'Akış (stream) yanıtı tamamlandıktan sonra tetiklenir',
+    'common:core.module.output.description.New context':
+      'Bu yanıtın içeriğini geçmiş kayıtlara ekleyip yeni bağlam olarak döndürür',
+    'common:core.module.output.description.query extension result':
+      'Metin dizisi olarak çıktı verir; bu sonuç doğrudan "Veri kümesi araması" düğümünün "Kullanıcı sorusu" girdisine bağlanabilir, "AI sohbeti" düğümünün "Kullanıcı sorusu" girdisine bağlanması önerilmez',
+    'common:core.module.output.label.Ai response content': 'AI yanıt içeriği',
+    'common:core.module.output.label.New context': 'Yeni bağlam',
+    'common:core.module.output.label.query extension result': 'Yeniden yazım sonucu',
+    'common:core.module.template.Query extension': 'Sorgu yeniden yazımı',
+    'common:core.module.variable.variable options': 'Seçenekler',
+    'common:core.workflow.Dataset quote': 'Veri kümesi alıntısı',
+    'common:core.workflow.dynamic_input': 'Dinamik girdi',
+    'common:core.workflow.inputType.custom': 'Harici değişken',
+    'common:core.workflow.inputType.file': 'Dosya yükleme',
+    'common:core.workflow.inputType.internal': 'Dahili değişkenler',
+    'common:core.workflow.inputType.modelSelect': 'Sohbet modeli seçimi',
+    'common:core.workflow.inputType.multipleSelect': 'Çoklu seçim kutusu',
+    'common:core.workflow.inputType.number input': 'Sayı girdi kutusu',
+    'common:core.workflow.inputType.password': 'Şifre',
+    'common:core.workflow.inputType.select': 'Tekli seçim kutusu',
+    'common:core.workflow.inputType.switch': 'Anahtar',
+    'common:core.workflow.inputType.textInput': 'Metin girdi kutusu',
+    'common:core.workflow.inputType.textarea': 'Çok satırlı girdi kutusu',
+    'common:core.workflow.inputType.timePointSelect': 'Zaman noktası',
+    'common:core.workflow.inputType.timeRangeSelect': 'Zaman aralığı',
+    'common:navbar.Skill': 'Yetenek',
+    'workflow:Array_element_index': 'Dizin',
+    'workflow:agent.prompt_placeholder':
+      'Değişken alıntılamak için “/” yaz; yetenek, uygulama, araç ve veri kümesi gibi belirli özellikleri eklemek için “@” yaz.',
+    'workflow:agent.tools': 'Araçlar',
+    'workflow:append_application_reply_to_history_as_new_context':
+      'Bu uygulamanın yanıtını geçmişe ekleyip yeni bağlam olarak döndür',
+    'workflow:application_call': 'Uygulama çağrısı',
+    'workflow:assigned_reply': 'Belirli yanıt',
+    'workflow:can_not_add_inside_container': 'Bu düğüm mevcut kapsayıcının içine eklenemez',
+    'workflow:can_not_loop': 'Bu düğüm iç içe döngüyü desteklemiyor',
+    'workflow:can_not_parallel': 'Bu düğüm paralel çalıştırma düğümünde kullanılamaz',
+    'workflow:choose_another_application_to_call': 'Çağırmak için başka bir uygulama seç',
+    'workflow:classification_result': 'Sınıflandırma sonucu',
+    'workflow:cli.config.auto_execute':
+      'Uygulamanın, kullanıcı oturuma girer girmez otomatik çalışması gerektiğinde yapılandır. Hem açık durumu hem de varsayılan soru ayarlanmalı.',
+    'workflow:cli.config.auto_execute_open':
+      'Yalnızca oturuma girer girmez iş akışının kullanıcı girişini beklemeden çalışması gerektiğinde aç.',
+    'workflow:cli.config.auto_execute_prompt':
+      'Otomatik çalıştırmada eklenecek kullanıcı sorusunu ayarlar. Otomatik çalıştırmayı açmadan önce mutlaka yapılandırılmalı.',
+    'workflow:cli.config.chat_input_guide':
+      'Sohbet girişi standart giriş deneyimi yerine özel bir yönlendirme sayfası kullanacaksa yapılandır.',
+    'workflow:cli.config.file_select':
+      'İş akışı, kullanıcının sohbet girişinden sağladığı dosyaları kullanacaksa dosya işleme düğümlerini kurmadan önce açılmalı ve uygun dosya türleri seçilmeli. Açıldığında iş akışı başlangıç düğümüne userFiles çıktısı eklenir.',
+    'workflow:cli.config.instruction':
+      'Kullanıcının uygulama sohbet sayfasında kullanım talimatlarını sürekli görmesi gerekiyorsa yapılandır.',
+    'workflow:cli.config.question_guide':
+      'Uygulama yanıt verdikten sonra devam sorusu önerileri üretilecekse yapılandır. Özellik açılmalı ve kullanılabilir bir model bağlanmalı.',
+    'workflow:cli.config.question_guide_model':
+      'Devam sorusu önerileri üretmek için kullanılabilir bir model bağlar. Soru yönlendirmeyi açmadan önce mutlaka yapılandırılmalı.',
+    'workflow:cli.config.question_guide_open':
+      'Kullanıcı, uygulama yanıtından sonra üretilen devam sorusu önerilerini görmeliyse aç.',
+    'workflow:cli.config.question_guide_prompt':
+      'Yalnızca devam sorusu önerileri uygulamaya özgü üretim kuralları gerektiriyorsa ek prompt ayarla.',
+    'workflow:cli.config.scheduled_trigger':
+      'İş akışı zamanlanmış çalışacaksa yapılandır. Cron ifadesi, saat dilimi ve eklenecek varsayılan soru birlikte verilmeli.',
+    'workflow:cli.config.tts':
+      'Kullanıcının uygulama yanıtlarını tarayıcı veya ses modeliyle sesli dinlemesi gerekiyorsa yapılandır.',
+    'workflow:cli.config.welcome_config':
+      'Yeni oturum başlarken gösterilecek açılış içeriğini yapılandırır.',
+    'workflow:cli.config.welcome_questions':
+      'Kullanıcının açılış mesajından sonra doğrudan tıklayabileceği soruları ayarlar. Sorular kısa, eksiksiz ve mevcut iş akışına uygun olmalı.',
+    'workflow:cli.config.welcome_text':
+      'Yeni oturumda hazır yönlendirme, örnek veya hızlı işlemler gösterilecekse yapılandır.',
+    'workflow:cli.config.whisper':
+      'Kullanıcının soruyu ses tanıma ile göndermesi gerekiyorsa yapılandır.',
+    'workflow:cli.input.ai_model': 'Bu AI düğümünün kullandığı model',
+    'workflow:cli.input.answer': 'Sabit yanıt metni veya üst akış çıktısına başvuru',
+    'workflow:cli.input.custom_feedback': 'Mevcut sohbet geçmişine eklenecek geri bildirim içeriği',
+    'workflow:cli.input.dataset_quotes': 'Üst akış düğümünün sağladığı veri kümesi alıntıları',
+    'workflow:cli.input.system_prompt': 'Asistanın rolünü ve yanıt kurallarını tanımlayan talimat',
+    'workflow:cli.input.text_editor':
+      'Statik metin veya üst akış değişkenlerinden birleştirilen metin. Bu düz metin giriş kutusudur. Üst akış çıktısına {{$nodeId.outputKey$}} ile, genel değişkenlere {{$VARIABLE_NODE_ID.variableKey$}} ile başvur. Çıplak {{variableKey}} veya {{nodeId.outputKey}} yer tutucuları üretme.',
+    'workflow:cli.input.user_question': 'İş akışı başlangıç düğümünün sağladığı kullanıcı sorusu',
+    'workflow:code_execution': 'Kod çalıştırma',
+    'workflow:code_sandbox_intro':
+      'Sandbox içinde bir betik kodu çalıştırır. Karmaşık veri işleme için kullanılabilir; söz dizimi ve kullanılabilir bağımlılıklar kısıtlıdır.',
+    'workflow:complete_extraction_result': 'Tam çıkarma sonucu',
+    'workflow:complete_extraction_result_description':
+      'Bir JSON dizesi. Örneğin: {"name":"YY","Time":"2023/7/2 18:00"}',
+    'workflow:concatenation_result': 'Birleştirme sonucu',
+    'workflow:concatenation_text': 'Birleştirilecek metin',
+    'workflow:condition_checker': 'Koşul denetleyici',
+    'workflow:contains': 'İçerir',
+    'workflow:content_to_retrieve': 'Aranacak içerik',
+    'workflow:content_to_search': 'Arama terimi veya arama ifadesi',
+    'workflow:current_index': 'Geçerli dizin',
+    'workflow:current_index_desc': 'Dizi modunda geçerli öğenin 0 tabanlı dizini.',
+    'workflow:current_item': 'Geçerli öğe',
+    'workflow:current_item_desc': 'Dizi modunda o anda işlenen öğe.',
+    'workflow:current_iteration': 'Geçerli döngü sayısı',
+    'workflow:current_iteration_desc': 'Koşullu döngü modunda 1 tabanlı yineleme sayısı.',
+    'workflow:custom_feedback': 'Özel geri bildirim',
+    'workflow:end_with': 'Şununla biter',
+    'workflow:error_text': 'Hata bilgisi',
+    'workflow:execute_different_branches_based_on_conditions':
+      'Belirli koşullara göre farklı dalları çalıştırır.',
+    'workflow:extraction_requirements_description': 'Çıkarma gereksinimi açıklaması',
+    'workflow:extraction_requirements_description_detail':
+      "AI'a ilgili arka plan bilgisi veya gereksinim açıklaması vererek görevi daha iyi yapmasını sağla.\\nBu giriş kutusunda genel değişkenler kullanılabilir.",
+    'workflow:extraction_requirements_placeholder':
+      'Örneğin: 1. Şu anki zaman: {{cTime}}. Sen bir laboratuvar randevu asistanısın; görevin kullanıcının laboratuvar randevusu almasına yardım etmek ve metinden ilgili randevu bilgilerini almak.\n2. Sen bir Google arama asistanısın; metinden uygun arama terimlerini çıkarman gerekiyor.',
+    'workflow:feedback_text': 'Geri bildirim metni',
+    'workflow:form_input_result': 'Kullanıcının tam giriş sonucu',
+    'workflow:form_input_result_tip': 'Tam sonucu içeren bir nesne',
+    'workflow:full_field_extraction': 'Alanların tamamen çıkarılması',
+    'workflow:full_field_extraction_description':
+      'Çıkarılan alanların hepsi doldurulduğunda true döner (model çıkarması veya varsayılan değer kullanımı başarı sayılır)',
+    'workflow:full_response_data': 'Tam yanıt verisi',
+    'workflow:greater_than': 'Büyüktür',
+    'workflow:greater_than_or_equal_to': 'Büyük veya eşittir',
+    'workflow:http_extract_output': 'Çıkış alanı çıkarma',
+    'workflow:http_extract_output_description':
+      'JSONPath söz dizimiyle yanıt değerinden belirli alanları çıkarabilirsin',
+    'workflow:http_full_error': 'Tam hata',
+    'workflow:http_full_error_description':
+      'HTTP isteği başarısız olduğunda message, status, code, data gibi alanları içeren tam hata nesnesi.',
+    'workflow:http_raw_response_description':
+      'HTTP isteğinin ham yanıtı. Yalnızca metin veya JSON türünde yanıt verisi kabul edilir.',
+    'workflow:http_request': 'HTTP isteği',
+    'workflow:input_variable_list': '/ yazarak değişken listesini açabilirsin',
+    'workflow:intro_assigned_reply':
+      'Bu düğüm belirli bir içerikle doğrudan yanıt verebilir. Genellikle yönlendirme ve ipucu için kullanılır. Metin olmayan içerik gelirse metne dönüştürülerek çıktı verilir.',
+    'workflow:intro_custom_feedback':
+      'Bu düğüm tetiklendiğinde mevcut sohbet geçmişine bir geri bildirim ekler. Sohbet etkisini otomatik kaydetmek gibi amaçlarla kullanılabilir.',
+    'workflow:intro_custom_plugin_output':
+      'Harici çıktıları özel olarak yapılandırır. Eklenti kullanılırken yalnızca özel yapılandırılan çıktılar açığa çıkar',
+    'workflow:intro_http_request':
+      'Daha karmaşık işlemler (internette arama, veritabanı sorgusu vb.) için bir HTTP isteği gönderebilir',
+    'workflow:intro_knowledge_base_search_merge':
+      'Birden fazla veri kümesi arama sonucunu birleştirip çıktı verebilir. Son sıralama için RRF birleştirme yöntemi kullanılır.',
+    'workflow:intro_loop':
+      'Bir dizi girilir; dizi üzerinde gezilir ve her dizi öğesi giriş öğesi olarak iş akışına verilerek çalıştırılır.',
+    'workflow:intro_loop_run':
+      'Tekrarlayan iş akışını çalıştırır ve bir sonraki işlemin yapılıp yapılmayacağına döngü sonucu karar verir.',
+    'workflow:intro_parallel_run':
+      'Bir dizi girilir; iş akışı dizinin her öğesi için paralel çalıştırılır ve sonunda sonuçlar toplanıp çıktı verilir.',
+    'workflow:intro_plugin_input':
+      'Eklentinin hangi girişlere ihtiyaç duyduğunu yapılandırabilir ve bu girişlerle eklentiyi çalıştırabilirsin',
+    'workflow:intro_question_classification':
+      'Kullanıcının geçmişine ve mevcut soruya göre bu sorunun türünü belirler.',
+    'workflow:intro_question_optimization':
+      'Sorgu yeniden yazımı, veri kümesinde ardışık sohbetlerde arama doğruluğunu artırır. Bu özellik kullanıldığında AI önce bağlama göre bir veya daha fazla yeni arama terimi üretir; bu terimler veri kümesi aramasına daha uygundur. Bu düğüm veri kümesi arama düğümünde yerleşik olarak bulunur; yalnızca bir kez veri kümesi araması yapıyorsan veri kümesinin yerleşik tamamlama özelliğini doğrudan kullanabilirsin.',
+    'workflow:intro_text_concatenation':
+      'Sabit veya gelen metni işleyerek çıktı verebilir; metin olmayan veriler sonunda metne dönüştürülür.',
+    'workflow:intro_text_content_extraction':
+      'Metinden belirli verileri çıkarabilir. Örneğin: sql ifadeleri, arama anahtar sözcükleri, kod vb.',
+    'workflow:intro_tool_call_termination':
+      'Bu düğüm araç çağrısıyla birlikte yapılandırılmalıdır. Bu düğüm çalıştığında bu araç çağrısı zorla sonlandırılır ve AI araç çağrısı sonucuna göre soruyu yanıtlamak için tekrar çağrılmaz.',
+    'workflow:intro_tool_params_config':
+      'Bu düğüm araç çağrısıyla birlikte kullanılmalıdır. Araç çağrısı parametrelerini özelleştirip sonraki düğümlere iletebilir',
+    'workflow:is_empty': 'Boş',
+    'workflow:is_equal_to': 'Eşittir',
+    'workflow:is_not_empty': 'Boş değil',
+    'workflow:is_not_equal': 'Eşit değildir',
+    'workflow:judgment_result': 'Karar sonucu',
+    'workflow:knowledge_base_reference': 'Veri kümesi alıntısı',
+    'workflow:knowledge_base_search_merge': 'Veri kümesi arama alıntılarını birleştirme',
+    'workflow:length_equal_to': 'Uzunluk eşittir',
+    'workflow:length_greater_than': 'Uzunluk büyüktür',
+    'workflow:length_greater_than_or_equal_to': 'Uzunluk büyük veya eşittir',
+    'workflow:length_less_than': 'Uzunluk küçüktür',
+    'workflow:length_less_than_or_equal_to': 'Uzunluk küçük veya eşittir',
+    'workflow:length_not_equal_to': 'Uzunluk eşit değildir',
+    'workflow:less_than': 'Küçüktür',
+    'workflow:less_than_or_equal_to': 'Küçük veya eşittir',
+    'workflow:loop': 'Toplu çalıştırma',
+    'workflow:loop_custom_outputs': 'Özel çıktılar',
+    'workflow:loop_custom_outputs_tip':
+      'Dışarıya açılan çıktı alanlarını tanımlar; her alan alt akıştaki bir düğümün çıktısına başvurur.',
+    'workflow:loop_end': 'Bitiş',
+    'workflow:loop_input_array': 'Dizi',
+    'workflow:loop_result': 'Dizi çalıştırma sonucu',
+    'workflow:loop_run': 'Döngü düğümü',
+    'workflow:loop_run_break': 'Döngüyü sonlandır',
+    'workflow:loop_run_break_must_inside_loop_run':
+      'Döngü sonlandırma düğümü yalnızca döngü çalıştırma düğümünün içine konabilir',
+    'workflow:loop_run_break_tip':
+      'Bu düğüm döngü düğümünün içinde kullanılmalıdır. Bu düğüm çalıştığında döngü düğümünün çalışması zorla sonlandırılır.',
+    'workflow:loop_run_input_array': 'Dizi',
+    'workflow:loop_run_mode': 'Döngü türü',
+    'workflow:loop_run_mode_array': 'Dizi döngüsü',
+    'workflow:loop_run_mode_array_desc': 'Listedeki her öğeyi sırayla işler',
+    'workflow:loop_run_mode_conditional': 'Koşullu döngü',
+    'workflow:loop_run_mode_conditional_desc': 'Belirli bir koşul sağlanana kadar tekrar çalışır',
+    'workflow:loop_run_mode_tip':
+      'Döngünün çalışma şeklini seç: dizi öğelerine göre sırayla çalıştır veya “Döngüyü sonlandır” düğümüne ulaşana kadar çalışmaya devam et.',
+    'workflow:loop_run_start': 'Döngü başlangıcı',
+    'workflow:loop_start': 'Başlangıç',
+    'workflow:max_dialog_rounds': 'En fazla kaç tur sohbet geçmişi eklensin',
+    'workflow:max_tokens': 'Maksimum token',
+    'workflow:new_context': 'Yeni bağlam',
+    'workflow:not_contains': 'İçermez',
+    'workflow:parallel_full_results': 'Tam sonuçlar',
+    'workflow:parallel_full_results_desc':
+      'Giriş dizisiyle aynı uzunlukta sonuç dizisi; her öğe {success, message, data} biçimindedir: başarılıysa success=true, message boş, data çıktı değeri; başarısızsa success=false, message hata bilgisi, data null.',
+    'workflow:parallel_run': 'Paralel çalıştırma',
+    'workflow:parallel_run_max_concurrency': 'Maksimum eşzamanlılık',
+    'workflow:parallel_run_max_concurrency_tip':
+      'Aynı anda paralel çalışacak en fazla görev sayısı; aralık 1 - üst sınır (varsayılan 5).',
+    'workflow:parallel_run_max_retry_times': 'Tur başına hata yeniden deneme sayısı',
+    'workflow:parallel_run_max_retry_times_tip':
+      'Tek bir görev başarısız olduktan sonra en fazla yeniden deneme sayısı; aralık 0-5 (varsayılan 3). 0 ise başarısızlıkta yeniden denenmez.',
+    'workflow:parallel_status': 'Tamamlanma durumu',
+    'workflow:parallel_status_desc':
+      'Genel çalışma durumu: success (hepsi başarılı), partial_success (bir kısmı başarısız), failed (hepsi başarısız).',
+    'workflow:parallel_success_results': 'Başarılı sonuçlar',
+    'workflow:parallel_success_results_desc':
+      'Başarıyla çalışan tüm görevlerin çıktıları, giriş sırasına göre dizilir (yalnızca başarılı olanlar).',
+    'workflow:pass_returned_object_as_output_to_next_nodes':
+      'Kodda return edilen nesneyi çıktı olarak sonraki düğümlere iletir. Değişken adı, return edilen key ile eşleşmeli',
+    'workflow:plugin_input': 'Eklenti girişi',
+    'workflow:question_classification': 'Soru sınıflandırma',
+    'workflow:question_classification_default_1': 'Selamlaşma',
+    'workflow:question_classification_default_2': 'xxx hakkında sorular',
+    'workflow:question_classification_default_3': 'Diğer sorular',
+    'workflow:question_optimization': 'Sorgu yeniden yazımı',
+    'workflow:quote_num': 'Alıntı',
+    'workflow:raw_response': 'Ham yanıt',
+    'workflow:reasoning_content': 'Düşünme süreci',
+    'workflow:regex': 'Regex',
+    'workflow:reply_text': 'Yanıt metni',
+    'workflow:search_query': 'Arama içeriği',
+    'workflow:select_an_application': 'Uygulama seç',
+    'workflow:select_another_application_to_call': 'Çağırmak için başka bir uygulama seçebilirsin',
+    'workflow:special_array_format': 'Özel dizi biçimi. Arama sonucu boşsa boş dizi döner.',
+    'workflow:start_with': 'Şununla başlar',
+    'workflow:tag_filter': 'Etiket filtresi',
+    'workflow:tag_filter_description':
+      "Şu an etiket, oluşturulma zamanı ve koleksiyon ID'sine göre filtreleme desteklenir; ilgili dosyaları tam olarak bulup arama doğruluğunu ve verimliliğini artırır. Örneğin: kullanıcı “Geçerlilik süresi ne kadar?” diye sorarsa ve sorunun sipariş edilen A ürünüyle ilgili olduğu belliyse, meta veri filtresiyle A ürününe ait dosyalara odaklanılır ve “geçerlilik süresi” geçen diğer dosyalarda aranmaz.",
+    'workflow:target_fields_description':
+      "'Açıklama' ve 'key' bir hedef alanı oluşturur; birden fazla hedef alan çıkarılabilir",
+    'workflow:template.agent': 'Araç çağrısı',
+    'workflow:template.agent_intro': 'Araç çağrılarına AI kendisi karar verir.',
+    'workflow:template.agent_module': 'Ajan',
+    'workflow:template.agent_module_intro':
+      "Gerekli araç ve yetenekleri bağlayarak AI'ın kendi başına çağrı yapmasını ve planlamasını sağlar",
+    'workflow:template.ai_chat': 'AI sohbeti',
+    'workflow:template.ai_chat_intro': 'AI büyük model sohbeti',
+    'workflow:template.dataset_search': 'Veri kümesi araması',
+    'workflow:template.dataset_search_intro':
+      '“Anlamsal arama” ve “tam metin araması” yeteneklerini kullanarak “veri kümesi”nde soruyla ilgili olabilecek referans içerikleri bulur',
+    'workflow:template.forbid_stream': 'Akış çıktısını kapat',
+    'workflow:template.forbid_stream_desc':
+      'İç içe çalışan uygulamaların hepsini akışsız modda çalışmaya zorlar',
+    'workflow:template.plugin_output': 'Eklenti çıktısı',
+    'workflow:template.workflow_start': 'Akış başlangıcı',
+    'workflow:text_concatenation': 'Metin birleştirme',
+    'workflow:text_content_extraction': 'Metin içeriği çıkarma',
+    'workflow:text_to_extract': 'Çıkarılacak metin',
+    'workflow:these_variables_will_be_input_parameters_for_code_execution':
+      'Bu değişkenler kodun giriş parametreleri olarak kullanılır',
+    'workflow:tool_call_termination': 'Araç çağrısını sonlandır',
+    'workflow:tool_custom_field': 'Özel araç değişkeni',
+    'workflow:tool_raw_response_description': 'Aracın ham yanıtı',
+    'workflow:trigger_after_application_completion': 'Uygulama tamamen bittikten sonra tetiklenir',
+    'workflow:update_specified_node_output_or_global_variable':
+      'Belirli bir düğümün çıktı değerini veya genel değişkeni güncelleyebilir',
+    'workflow:use_user_id': "Kullanıcı ID'si",
+    'workflow:user_question': 'Kullanıcı sorusu',
+    'workflow:variable_update': 'Değişken güncelleme',
+    'workflow:workflow_builder_version_name': 'AI üretimi sürüm {{versionNo}}'
   }
 };
 
 /** 工作流模板与配置描述共用轻量词典，避免 CLI 依赖前端全量翻译文件；未知 locale/key 回退英文或原值。 */
 export const createTranslator = (locale: string) => {
-  const localeResources = workflowTemplateResources[locale] ?? workflowTemplateResources.en;
+  const localeResources = Object.prototype.hasOwnProperty.call(workflowTemplateResources, locale)
+    ? workflowTemplateResources[locale as localeType]
+    : workflowTemplateResources.en;
   return (value: string) => {
     if (!value.includes(':')) return value;
     return localeResources[value] ?? workflowTemplateResources.en[value] ?? value;

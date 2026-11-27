@@ -137,7 +137,7 @@ describe('buildAgentLoopCoreRequestMessages', () => {
 });
 
 describe('buildAgentLoopCoreInput', () => {
-  it('keeps provider resume and child interactive fields inside one core input boundary', () => {
+  it('keeps resume and child interactive fields inside one core input boundary', () => {
     const childrenInteractiveParams = {
       childrenResponse: {
         type: 'userSelect'
@@ -154,11 +154,6 @@ describe('buildAgentLoopCoreInput', () => {
           }
         ],
         systemPrompt: 'system prompt',
-        providerState: {
-          pendingMainContext: {
-            askToolCallId: 'call_ask'
-          }
-        },
         userAnswer: 'confirmed',
         childrenInteractiveParams
       })
@@ -170,11 +165,6 @@ describe('buildAgentLoopCoreInput', () => {
         }
       ],
       systemPrompt: 'system prompt',
-      providerState: {
-        pendingMainContext: {
-          askToolCallId: 'call_ask'
-        }
-      },
       userAnswer: 'confirmed',
       childrenInteractiveParams
     });

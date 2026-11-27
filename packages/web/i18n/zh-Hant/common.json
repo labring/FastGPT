@@ -119,7 +119,7 @@
   "aipoint_desc": "每次呼叫 AI 模型時，都會消耗一定的 AI 點數（類似於 Token）。點選可檢視詳細計算規則。",
   "all_result": "完整結果",
   "app_evaluation": "應用評測(Beta)",
-  "app_icon_and_name": "圖示",
+  "avatar_and_name": "頭像 & 名稱",
   "auth_config": "鑑權配置",
   "auth_type": "鑑權類型",
   "auth_type.Custom": "自定義",
@@ -141,7 +141,6 @@
   "chose_condition": "選擇條件",
   "chosen": "已選擇",
   "classification": "分類",
-  "click_select_avatar": "點選選擇頭像",
   "click_to_copy": "點選複製",
   "click_to_resume": "點選繼續",
   "code_editor": "程式碼編輯器",
@@ -320,7 +319,6 @@
   "core.app.Interval timer run": "排程執行",
   "core.app.Interval timer tip": "可排程執行應用程式",
   "core.app.Make a brief introduction of your app": "為您的 AI 應用程式寫一段介紹",
-  "core.app.Name and avatar": "頭像與名稱",
   "core.app.QG.Custom prompt tip": "為確保生成的內容遵循正確格式，【黃色部分提示詞】不允許修改",
   "core.app.QG.Custom prompt tip1": "為確保生成的內容遵循正確格式，",
   "core.app.QG.Custom prompt tip2": "【黃色部分提示詞】",
@@ -1465,5 +1463,6 @@
   "puzzle_captcha_expired": "圖片已過期，請換一張",
   "puzzle_captcha_load_failed": "圖片載入失敗，請點擊換一張",
   "model.cache_read_price": "快取讀取",
-  "model.cache_creation_price": "快取建立"
+  "model.cache_creation_price": "快取建立",
+  "core.dataset.error.permissionSyncManaged": "該知識庫的檔案權限由外部 API 檔案庫同步維護，無法在此修改"
 }

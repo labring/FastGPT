@@ -459,8 +459,6 @@ const taskResults = await batchRun(
 limit?: {
   exportDatasetLimitMinutes?: number;
   websiteSyncLimitMinuted?: number;
-  agentSandboxMax?: number;
-  agentSandboxMaxSessionRuntime?: number;
   workflowParallelRunMaxConcurrency?: number;  // 新增
 };
 ```

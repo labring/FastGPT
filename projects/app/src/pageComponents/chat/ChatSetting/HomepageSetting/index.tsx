@@ -111,7 +111,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
             )
           }
         ];
-        setValue('selectedTools', next);
+        setValue('selectedTools', next, { shouldDirty: true });
       }
     },
     [selectedTools, setValue]
@@ -123,7 +123,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       const next = selectedTools.filter(
         (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
       );
-      setValue('selectedTools', next);
+      setValue('selectedTools', next, { shouldDirty: true });
     },
     [selectedTools, setValue]
   );

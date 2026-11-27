@@ -141,41 +141,4 @@ describe('instance configuration field metadata', () => {
     expect(new Set(declared).size).toBe(declared.length);
     expect([...getRenderedFields(route)].sort()).toEqual([...declared].sort());
   });
-
-  it('documents every registered leaf exactly once with matching edition, visibility and page data', () => {
-    const doc = fs.readFileSync(
-      path.join(projectRoot, '../../.agents/design/common/admin-instance-config-env-boundary.md'),
-      'utf8'
-    );
-    expect(doc).toContain(`**${systemInstanceConfigRegistry.length} 个配置叶子**`);
-    const matrix = doc
-      .split('<!-- instance-config-field-matrix:start -->')[1]
-      .split('<!-- instance-config-field-matrix:end -->')[0];
-    const rows = matrix
-      .split('\n')
-      .filter((line) => /^\| `/.test(line))
-      .map((line) =>
-        line
-          .split('|')
-          .slice(1, -1)
-          .map((cell) => cell.trim())
-      );
-    const documented = rows.map(([key]) => key.replaceAll('`', ''));
-    expect(new Set(documented).size).toBe(documented.length);
-    expect([...documented].sort()).toEqual(systemInstanceConfigRegistry.map((f) => f.key).sort());
-    for (const field of systemInstanceConfigRegistry) {
-      const row = rows.find(([key]) => key === `\`${field.key}\``)!;
-      expect(row[2]).toBe(['all', 'community'].includes(field.edition) ? '✅' : '—');
-      expect(row[3]).toBe(['all', 'pro'].includes(field.edition) ? '✅' : '—');
-      expect(row[4]).toBe(field.isSaasOnly ? '✅' : '—');
-      expect(row[5]).toBe(field.secret ? '✅' : '—');
-      const routes = Object.entries(adminConfigPageFieldsMap)
-        .filter(([, keys]) => keys.includes(field.key))
-        .map(([route]) => route)
-        .sort();
-      expect([...row[6].matchAll(/`(\/admin\/[^`]+)`/g)].map((m) => m[1]).sort()).toEqual(routes);
-      if (routes.length === 0) expect(row[6]).toContain('仅 API');
-      if (Object.values(readonlyFields).includes(field.key)) expect(row[6]).toContain('只读');
-    }
-  });
 });

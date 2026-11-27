@@ -1,8 +1,9 @@
 import { testModel } from '@/web/core/ai/model/api';
 import { Table, Thead, Tbody, Tr, Th, Td, Box, Flex, Button, HStack } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import React, { useEffect, useRef, useState } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -16,23 +17,35 @@ import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 type ModelTestItem = {
-  label: React.ReactNode;
+  avatar: string;
   modelId: string;
   model: string;
+  mappedModel: string;
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
   loading?: boolean; // 单个模型的loading状态
 };
 
+/** 按渠道持久化 model_mapping 展示配置映射；非空目标按原字符串使用，与 AIProxy 行为一致。 */
+const getConfiguredMappedModel = (model: string, modelMapping?: Record<string, string>): string => {
+  if (!modelMapping || !Object.prototype.hasOwnProperty.call(modelMapping, model)) {
+    return model;
+  }
+  const mapped = modelMapping[model];
+  return mapped !== '' ? mapped : model;
+};
+
 const ModelTest = ({
   channelId,
   models,
+  modelMapping,
   channelType,
   onClose
 }: {
   channelId: number;
   models: string[];
+  modelMapping?: Record<string, string>;
   channelType: ChannelType;
   onClose: () => void;
 }) => {
@@ -44,87 +57,93 @@ const ModelTest = ({
   } = useModelConfig({ channelType, language: i18n.language });
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
-
-  const statusMap = useRef({
-    waiting: {
-      label: t('config_model:waiting_test'),
-      colorSchema: 'gray'
-    },
-    running: {
-      label: t('config_model:running_test'),
-      colorSchema: 'blue'
-    },
-    success: {
-      label: t('common:Success'),
-      colorSchema: 'green'
-    },
-    error: {
-      label: t('common:failed'),
-      colorSchema: 'red'
-    }
-  });
+  const hasAutoStartedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    const list = models.flatMap((model) => {
-      const modelData = availableModels.find((item) => item.model === model);
-      if (!modelData) return [];
-      const provider = getModelProvider(modelData.provider, i18n.language);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-      return [
-        {
-          label: (
-            <HStack>
-              <MyIcon name={provider.avatar as any} w={'1rem'} />
-              <Box>{modelData.name}</Box>
-            </HStack>
-          ),
-          modelId: modelData.modelId,
-          model: modelData.model,
-          status: 'waiting' as const,
-          loading: false
+  const statusMap = useMemo(
+    () =>
+      ({
+        waiting: {
+          label: t('config_model:waiting_test'),
+          colorSchema: 'gray'
+        },
+        running: {
+          label: t('config_model:running_test'),
+          colorSchema: 'blue'
+        },
+        success: {
+          label: t('common:Success'),
+          colorSchema: 'green'
+        },
+        error: {
+          label: t('common:failed'),
+          colorSchema: 'red'
         }
-      ];
-    });
-    setTestModelList(list);
-  }, [availableModels, getModelProvider, i18n.language, models, t]);
+      }) as const,
+    [t]
+  );
 
-  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest(
-    async () => {
+  /** 执行单个模型测试并更新对应行状态，卸载后忽略滞后回调。 */
+  const executeSingleModelTest = async (modelId: string): Promise<boolean> => {
+    if (!mountedRef.current) return true;
+    setTestModelList((prev) =>
+      prev.map((item) =>
+        item.modelId === modelId ? { ...item, status: 'running', message: '', loading: true } : item
+      )
+    );
+    const start = Date.now();
+    try {
+      await testModel({ modelId, channelId, channelType });
+      if (!mountedRef.current) return true;
+      const duration = Date.now() - start;
+      setTestModelList((prev) =>
+        prev.map((item) =>
+          item.modelId === modelId
+            ? { ...item, status: 'success', duration: duration / 1000, loading: false }
+            : item
+        )
+      );
+      return true;
+    } catch (error) {
+      if (!mountedRef.current) return false;
+      setTestModelList((prev) =>
+        prev.map((item) =>
+          item.modelId === modelId
+            ? { ...item, status: 'error', message: getErrText(error), loading: false }
+            : item
+        )
+      );
+      return false;
+    }
+  };
+
+  const { run: onStartTest, loading: isAnyModelLoading } = useRequest(
+    async (targetList?: ModelTestItem[]) => {
+      const listToRun = targetList ?? testModelList;
+      if (listToRun.length === 0) return;
+
       let errorNum = 0;
-      setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
+      setTestModelList((prev) =>
+        prev.map((item) => ({ ...item, status: 'waiting', message: '', loading: true }))
+      );
 
-      const runTestItem = async (testItem: ModelTestItem) => {
-        setTestModelList((prev) =>
-          prev.map((item) =>
-            item.modelId === testItem.modelId ? { ...item, status: 'running', message: '' } : item
-          )
-        );
-        const start = Date.now();
-        try {
-          await testModel({ modelId: testItem.modelId, channelId, channelType });
-          const duration = Date.now() - start;
-          setTestModelList((prev) =>
-            prev.map((item) =>
-              item.modelId === testItem.modelId
-                ? { ...item, status: 'success', duration: duration / 1000, loading: false }
-                : item
-            )
-          );
-        } catch (error) {
-          setTestModelList((prev) =>
-            prev.map((item) =>
-              item.modelId === testItem.modelId
-                ? { ...item, status: 'error', message: getErrText(error), loading: false }
-                : item
-            )
-          );
-          errorNum++;
-        }
-      };
+      await batchRun(
+        listToRun,
+        async (testItem) => {
+          const ok = await executeSingleModelTest(testItem.modelId);
+          if (!ok) errorNum++;
+        },
+        5
+      );
 
-      await batchRun(testModelList, runTestItem, 5);
-
-      if (errorNum > 0) {
+      if (mountedRef.current && errorNum > 0) {
         toast({
           status: 'warning',
           title: t('config_model:test_failed', { num: errorNum })
@@ -132,45 +151,50 @@ const ModelTest = ({
       }
     },
     {
-      refreshDeps: [testModelList]
+      manual: true
     }
   );
 
-  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
+  useEffect(() => {
+    if (loadingModels || hasAutoStartedRef.current) return;
+
+    const list = models.flatMap((model) => {
+      const modelData = availableModels.find((item) => item.model === model);
+      if (!modelData) return [];
+      const provider = getModelProvider(modelData.provider, i18n.language);
+
+      return [
+        {
+          avatar: provider.avatar || HUGGING_FACE_ICON,
+          modelId: modelData.modelId,
+          model: modelData.model,
+          mappedModel: getConfiguredMappedModel(modelData.model, modelMapping),
+          status: 'waiting' as const,
+          loading: false
+        }
+      ];
+    });
+    setTestModelList((prev) => (list.length === 0 && prev.length === 0 ? prev : list));
+
+    // 弹窗打开且模型元数据就绪后自动执行一次批量测试，无需用户再手动点击。
+    if (list.length > 0) {
+      hasAutoStartedRef.current = true;
+      onStartTest(list);
+    }
+  }, [
+    availableModels,
+    getModelProvider,
+    i18n.language,
+    loadingModels,
+    modelMapping,
+    models,
+    onStartTest
+  ]);
+
+  const { run: onTestOneModel, loading: testingOneModel } = useRequest(
     async (modelId: string) => {
-      const target = testModelList.find((item) => item.modelId === modelId);
-      if (!target) return;
-
-      const start = Date.now();
-
-      setTestModelList((prev) =>
-        prev.map((item) =>
-          item.modelId === modelId
-            ? { ...item, status: 'running', message: '', loading: true }
-            : item
-        )
-      );
-
-      try {
-        await testModel({ modelId, channelId, channelType });
-        const duration = Date.now() - start;
-
-        setTestModelList((prev) =>
-          prev.map((item) =>
-            item.modelId === modelId
-              ? { ...item, status: 'success', duration: duration / 1000, loading: false }
-              : item
-          )
-        );
-      } catch (error) {
-        setTestModelList((prev) =>
-          prev.map((item) =>
-            item.modelId === modelId
-              ? { ...item, status: 'error', message: getErrText(error), loading: false }
-              : item
-          )
-        );
-      }
+      if (!testModelList.some((item) => item.modelId === modelId)) return;
+      await executeSingleModelTest(modelId);
     },
     {
       manual: true
@@ -194,7 +218,7 @@ const ModelTest = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={isTesting} variant={'primary'} onClick={onStartTest}>
+          <Button isLoading={isTesting} variant={'primary'} onClick={() => onStartTest()}>
             {t('config_model:start_test', { num: testModelList.length })}
           </Button>
         </>
@@ -221,8 +245,8 @@ const ModelTest = ({
               </colgroup>
               <Thead>
                 <Tr>
-                  <Th>{t('config_model:model_name')}</Th>
                   <Th>{t('config_model:model.model_id')}</Th>
+                  <Th>{t('config_model:channel_configured_mapping')}</Th>
                   <Th>{t('config_model:channel_status')}</Th>
                   <Th></Th>
                 </Tr>
@@ -239,18 +263,23 @@ const ModelTest = ({
               </colgroup>
               <Tbody>
                 {testModelList.map((item) => {
-                  const data = statusMap.current[item.status];
+                  const data = statusMap[item.status];
                   return (
                     <Tr key={item.model}>
-                      <Td>{item.label}</Td>
-                      <Td>{item.model}</Td>
+                      <Td>
+                        <HStack>
+                          <Avatar src={item.avatar} w={'1rem'} flexShrink={0} />
+                          <Box>{item.model}</Box>
+                        </HStack>
+                      </Td>
+                      <Td>{item.mappedModel}</Td>
                       <Td>
                         <Flex alignItems={'center'}>
-                          <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
+                          <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema}>
                             {data.label}
                           </MyTag>
                           {item.message && <QuestionTip label={item.message} />}
-                          {item.status === 'success' && item.duration && (
+                          {item.status === 'success' && item.duration !== undefined && (
                             <Box fontSize={'sm'} color={'myGray.500'}>
                               {t('config_model:request_duration', {
                                 duration: item.duration.toFixed(2)

@@ -5,11 +5,14 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   DatasetCollectionSyncResultEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { PerResourceTypeEnum, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import * as webFetch from '@fastgpt/service/common/string/cheerio';
 import * as datasetS3 from '@fastgpt/service/common/s3/sources/dataset';
+import * as collectionUtils from '@fastgpt/service/core/dataset/collection/utils';
+import * as datasetPermissionSync from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -241,5 +244,97 @@ describe('sync collection audit', () => {
     expect(response.code).not.toBe(200);
     expect(webFetch.urlsFetch).not.toHaveBeenCalled();
     expect(await MongoTeamAudit.countDocuments({ teamId: context.owner.teamId })).toBe(0);
+  });
+});
+
+/** 建一个带指定 apiDatasetServer 的知识库 + 直属于它的 collection。 */
+const createDatasetAndCollection = async ({
+  apiFileId,
+  apiDatasetServer
+}: {
+  apiFileId?: string;
+  apiDatasetServer?: Record<string, unknown>;
+}) => {
+  const users = await getFakeUsers(1);
+  const dataset = await MongoDataset.create({
+    name: 'sync-dataset',
+    type: DatasetTypeEnum.dataset,
+    teamId: users.owner.teamId,
+    tmbId: users.owner.tmbId,
+    vectorModelId: 'test-model',
+    apiDatasetServer
+  });
+  const collection = await MongoDatasetCollection.create({
+    name: 'sync-collection',
+    type: apiFileId ? DatasetCollectionTypeEnum.apiFile : DatasetCollectionTypeEnum.link,
+    teamId: users.owner.teamId,
+    tmbId: users.owner.tmbId,
+    datasetId: dataset._id,
+    apiFileId
+  });
+
+  return { users, dataset, collection };
+};
+
+describe('collection sync permission enqueue', () => {
+  let mockEnqueue: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.spyOn(collectionUtils, 'syncCollection').mockResolvedValue(
+      DatasetCollectionSyncResultEnum.success
+    );
+    mockEnqueue = vi
+      .spyOn(datasetPermissionSync, 'enqueueDatasetPermissionSync')
+      .mockResolvedValue(undefined);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('enqueues a targeted permission sync for an api file when permission sync is on', async () => {
+    const { users, dataset, collection } = await createDatasetAndCollection({
+      apiFileId: 'file-1',
+      apiDatasetServer: { permissionSync: true, apiServer: { baseUrl: 'https://example.com' } }
+    });
+
+    const res = await Call(handler, {
+      auth: users.owner,
+      body: { collectionId: String(collection._id) }
+    });
+
+    expect(res.code).toBe(200);
+    // 根 = 该文件当前的 collection 行；入队失败不影响内容同步结果
+    expect(mockEnqueue).toHaveBeenCalledWith({
+      datasetId: String(dataset._id),
+      collectionIds: [String(collection._id)]
+    });
+  });
+
+  it('does not enqueue when permission sync is off', async () => {
+    const { users, collection } = await createDatasetAndCollection({
+      apiFileId: 'file-1',
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+    });
+
+    const res = await Call(handler, {
+      auth: users.owner,
+      body: { collectionId: String(collection._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mockEnqueue).not.toHaveBeenCalled();
+  });
+
+  it('does not enqueue for a link collection without an external source', async () => {
+    const { users, collection } = await createDatasetAndCollection({
+      apiDatasetServer: { permissionSync: true, apiServer: { baseUrl: 'https://example.com' } }
+    });
+
+    const res = await Call(handler, {
+      auth: users.owner,
+      body: { collectionId: String(collection._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mockEnqueue).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,13 @@
 import z from 'zod';
 
-export const FeatureConfigSchema = z.strictObject({
+/**
+ * Feature 域配置 Schema。
+ * 使用默认 `z.object` 自动剥离历史或滚动升级新增的未知字段（如已下架的 `agentEngine`）；
+ * 管理端写入边界由 `makeDomainOverrideSchema(FeatureConfigSchema)` 派生严格校验。
+ */
+export const FeatureConfigSchema = z.object({
   hideChatCopyrightSetting: z.boolean().default(false),
   multipleDataToBase64: z.boolean().default(false),
-  agentEngine: z.enum(['fastAgent', 'piAgent']).default('fastAgent'),
   enableTeamPluginUpload: z.boolean().default(false),
   showOpenaiAccount: z.boolean().default(false).meta({
     deprecated: true,

@@ -25,6 +25,7 @@ const FolderSlideCard = ({
   showIntro = true,
   // 为 false 时不渲染协作者区（如知识库未开启数据集权限配置）
   showCollaborator = true,
+  collaboratorReadOnly = false,
 
   managePer,
   isInheritPermission,
@@ -37,6 +38,7 @@ const FolderSlideCard = ({
   intro?: string;
   showIntro?: boolean;
   showCollaborator?: boolean;
+  collaboratorReadOnly?: boolean;
   onEdit: () => void;
   onMove: () => void;
   deleteTip: string;
@@ -132,7 +134,7 @@ const FolderSlideCard = ({
           <MyDivider my={6} />
 
           <Box>
-            {!isInheritPermission && (
+            {!isInheritPermission && !collaboratorReadOnly && resumeInheritPermission && (
               <Box mt={2}>
                 <ResumeInherit onResume={() => resumeInheritPermission?.().then(refetchResource)} />
               </Box>
@@ -152,7 +154,7 @@ const FolderSlideCard = ({
                         <Box fontSize={'sm'} color={'myGray.500'}>
                           {t('common:permission.Collaborator')}
                         </Box>
-                        {managePer.permission.hasManagePer && (
+                        {managePer.permission.hasManagePer && !collaboratorReadOnly && (
                           <MyTooltip label={t('common:permission.Manage')}>
                             <MyIcon
                               w="1rem"

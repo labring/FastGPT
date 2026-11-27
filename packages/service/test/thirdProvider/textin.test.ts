@@ -134,4 +134,22 @@ describe('useTextinServer', () => {
       text: 'hello ![img](https://textin.example.com/image.png)'
     });
   });
+
+  it('接口错误与网络异常抛错不带厂商前缀', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        code: 40101,
+        message: 'Invalid AppId'
+      }
+    });
+
+    await expect(
+      useTextinServer({ appId: 'bad', secretCode: 'bad' }).parsePDF(Buffer.from('pdf'))
+    ).rejects.toBe('API error: Invalid AppId');
+
+    postMock.mockRejectedValueOnce(new Error('network unavailable'));
+    await expect(
+      useTextinServer({ appId: 'bad', secretCode: 'bad' }).parsePDF(Buffer.from('pdf'))
+    ).rejects.toEqual({ message: 'network unavailable' });
+  });
 });

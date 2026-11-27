@@ -410,4 +410,38 @@ describe('serviceEnv bootstrap configuration', () => {
       expect(Object.keys(serviceEnv)).not.toContain(key);
     }
   });
+
+  it('defaults DB_DIALECT to mongo and rejects unsupported dialects', async () => {
+    vi.stubEnv('DB_DIALECT', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.DB_DIALECT).toBe('mongo');
+
+    vi.stubEnv('DB_DIALECT', 'postgres');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('requires valid mysql:// OCEANBASE_DB_URI when DB_DIALECT=oceanbase and stays isolated from vector DB env', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DB_DIALECT', 'oceanbase');
+    vi.stubEnv('OCEANBASE_URL', 'mysql://root@127.0.0.1:2881/vector');
+    vi.stubEnv('SEEKDB_URL', 'mysql://root@127.0.0.1:2881/seekdb');
+    vi.stubEnv('OCEANBASE_DB_URI', '   ');
+
+    await expect(importServiceEnv()).rejects.toThrow('OCEANBASE_DB_URI is required');
+
+    vi.stubEnv('OCEANBASE_DB_URI', 'postgres://user:super-secret@127.0.0.1:5432/db');
+    await expect(importServiceEnv()).rejects.toThrow(/OCEANBASE_DB_URI/);
+
+    vi.stubEnv('OCEANBASE_DB_URI', '  mysql://root@127.0.0.1:2881/fastgpt  ');
+    vi.stubEnv('OCEANBASE_LOG_DB_URI', '  mysql://root@127.0.0.1:2883/fastgpt_log  ');
+    vi.stubEnv('OCEANBASE_DB_READ_URI', '   ');
+
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.DB_DIALECT).toBe('oceanbase');
+    expect(serviceEnv.OCEANBASE_DB_URI).toBe('mysql://root@127.0.0.1:2881/fastgpt');
+    expect(serviceEnv.OCEANBASE_LOG_DB_URI).toBe('mysql://root@127.0.0.1:2883/fastgpt_log');
+    expect(serviceEnv.OCEANBASE_DB_READ_URI).toBeUndefined();
+  });
 });

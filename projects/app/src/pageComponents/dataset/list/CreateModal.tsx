@@ -132,7 +132,7 @@ const CreateModal = ({
           <Box w={'100%'}>
             <Flex justify={'space-between'}>
               <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
-                {t('common:Name')}
+                {t('common:avatar_and_name')}
               </Box>
               {DatasetTypeMap[type]?.courseUrl && (
                 <Flex
@@ -149,7 +149,7 @@ const CreateModal = ({
               )}
             </Flex>
             <Flex mt={'12px'} alignItems={'center'}>
-              <MyTooltip label={t('common:click_select_avatar')}>
+              <MyTooltip label={t('common:set_avatar')}>
                 <Avatar
                   flexShrink={0}
                   src={avatar}

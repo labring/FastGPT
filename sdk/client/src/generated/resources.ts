@@ -710,6 +710,7 @@ const DATASETS_COLLECTIONS_UPDATE_SPEC: OperationSpec = {
     'name',
     'tags',
     'forbid',
+    'syncChildren',
     'createTime',
     'datasetId',
     'externalFileId'
@@ -907,6 +908,7 @@ const DATASETS_UPDATE_SPEC: OperationSpec = {
     'externalReadUrl',
     'apiDatasetServer',
     'autoSync',
+    'syncAll',
     'chunkSettings',
     'sangforFileParseConfig'
   ]

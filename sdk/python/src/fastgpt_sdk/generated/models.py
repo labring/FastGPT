@@ -2018,6 +2018,7 @@ class DatasetsCollectionsDetailResDatasetApiDatasetServer(FastGPTResponseModel):
     feishu_server: DatasetsCollectionsDetailResDatasetApiDatasetServerFeishuServer | None = Field(default=None, validation_alias=AliasChoices("feishu_server", "feishuServer"), serialization_alias="feishuServer", description="飞书服务器配置")
     yuque_server: DatasetsCollectionsDetailResDatasetApiDatasetServerYuqueServer | None = Field(default=None, validation_alias=AliasChoices("yuque_server", "yuqueServer"), serialization_alias="yuqueServer", description="语雀服务器配置")
     dingtalk_server: DatasetsCollectionsDetailResDatasetApiDatasetServerDingtalkServer | None = Field(default=None, validation_alias=AliasChoices("dingtalk_server", "dingtalkServer"), serialization_alias="dingtalkServer", description="钉钉知识库配置")
+    permission_sync: bool | None = Field(default=None, validation_alias=AliasChoices("permission_sync", "permissionSync"), serialization_alias="permissionSync", description="外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL")
 
 
 class DatasetsCollectionsDetailResDatasetApiServer(FastGPTResponseModel):
@@ -2080,6 +2081,7 @@ class DatasetsCollectionsDetailResDataset(FastGPTResponseModel):
     api_dataset_server: DatasetsCollectionsDetailResDatasetApiDatasetServer | None = Field(default=None, validation_alias=AliasChoices("api_dataset_server", "apiDatasetServer"), serialization_alias="apiDatasetServer", description="API 服务器配置")
     delete_time: str | None = Field(default=None, validation_alias=AliasChoices("delete_time", "deleteTime"), serialization_alias="deleteTime", description="删除时间")
     auto_sync: bool | None = Field(default=None, validation_alias=AliasChoices("auto_sync", "autoSync"), serialization_alias="autoSync", description="自动同步")
+    sync_all: bool | None = Field(default=None, validation_alias=AliasChoices("sync_all", "syncAll"), serialization_alias="syncAll", description="是否同步第三方知识库根目录下的新增文件与文件夹")
     external_read_url: str | None = Field(default=None, validation_alias=AliasChoices("external_read_url", "externalReadUrl"), serialization_alias="externalReadUrl", description="外部读取 URL", deprecated=True)
     default_permission: float | None = Field(default=None, validation_alias=AliasChoices("default_permission", "defaultPermission"), serialization_alias="defaultPermission", description="默认权限", deprecated=True)
     api_server: DatasetsCollectionsDetailResDatasetApiServer | None = Field(default=None, validation_alias=AliasChoices("api_server", "apiServer"), serialization_alias="apiServer", description="API 服务器配置", deprecated=True)
@@ -2140,6 +2142,7 @@ class DatasetsCollectionsDetailRes(FastGPTResponseModel):
     external_file_id: str | None = Field(default=None, validation_alias=AliasChoices("external_file_id", "externalFileId"), serialization_alias="externalFileId", description="外部文件 ID")
     api_file_id: str | None = Field(default=None, validation_alias=AliasChoices("api_file_id", "apiFileId"), serialization_alias="apiFileId", description="API 文件 ID")
     api_file_parent_id: str | None = Field(default=None, validation_alias=AliasChoices("api_file_parent_id", "apiFileParentId"), serialization_alias="apiFileParentId", description="API 文件父级 ID")
+    sync_children: bool | None = Field(default=None, validation_alias=AliasChoices("sync_children", "syncChildren"), serialization_alias="syncChildren", description="API 集合是否自动同步新增直属子级；缺省兼容存量视为 true")
     external_file_url: str | None = Field(default=None, validation_alias=AliasChoices("external_file_url", "externalFileUrl"), serialization_alias="externalFileUrl", description="外部文件 URL")
     raw_text_length: float | None = Field(default=None, validation_alias=AliasChoices("raw_text_length", "rawTextLength"), serialization_alias="rawTextLength", description="原始文本长度")
     hash_raw_text: str | None = Field(default=None, validation_alias=AliasChoices("hash_raw_text", "hashRawText"), serialization_alias="hashRawText", description="文本哈希")
@@ -2208,6 +2211,8 @@ class DatasetsCollectionsListResListItem(FastGPTResponseModel):
     training_type: Literal["chunk", "qa", "imageParse", "backup", "template", "auto"] | None = Field(default=None, validation_alias=AliasChoices("training_type", "trainingType"), serialization_alias="trainingType", description="训练类型")
     tags: list[DatasetsCollectionsDetailResTagsItem] | None = Field(default=None, description="标签。string 为标签名；新格式为 { tag, value }")
     external_file_id: str | None = Field(default=None, validation_alias=AliasChoices("external_file_id", "externalFileId"), serialization_alias="externalFileId", description="外部文件 ID")
+    api_file_id: str | None = Field(default=None, validation_alias=AliasChoices("api_file_id", "apiFileId"), serialization_alias="apiFileId", description="API 文件 ID")
+    sync_children: bool | None = Field(default=None, validation_alias=AliasChoices("sync_children", "syncChildren"), serialization_alias="syncChildren", description="API 集合是否自动同步新增直属子级；缺省兼容存量视为 true")
     file_id: str | None = Field(default=None, validation_alias=AliasChoices("file_id", "fileId"), serialization_alias="fileId", description="文件 ID")
     raw_link: str | None = Field(default=None, validation_alias=AliasChoices("raw_link", "rawLink"), serialization_alias="rawLink", description="原始链接")
     permission: DatasetsCollectionsDetailResPermission = Field(description="权限对象序列化后的 JSON 结构")
@@ -2234,6 +2239,7 @@ class DatasetsCollectionsUpdateReqVariant1(FastGPTRequestModel):
     name: str | None = Field(default=None, description="集合名称")
     tags: list[DatasetsCollectionsCreateReqTagsItem] | None = Field(default=None, description="标签列表（支持 String 旧格式 或 { tag, value } 新格式）")
     forbid: bool | None = Field(default=None, description="是否禁用")
+    sync_children: bool | None = Field(default=None, validation_alias=AliasChoices("sync_children", "syncChildren"), serialization_alias="syncChildren", description="是否自动同步该 API 目录下的新增子级（仅 API 目录生效）")
     create_time: str | None = Field(default=None, validation_alias=AliasChoices("create_time", "createTime"), serialization_alias="createTime", description="创建时间")
     dataset_id: str | None = Field(default=None, validation_alias=AliasChoices("dataset_id", "datasetId"), serialization_alias="datasetId", description="数据集ID，配合 externalFileId 使用")
     external_file_id: str | None = Field(default=None, validation_alias=AliasChoices("external_file_id", "externalFileId"), serialization_alias="externalFileId", description="外部文件ID，配合 datasetId 使用")
@@ -2246,6 +2252,7 @@ class DatasetsCollectionsUpdateReqVariant2(FastGPTRequestModel):
     name: str | None = Field(default=None, description="集合名称")
     tags: list[DatasetsCollectionsCreateReqTagsItem] | None = Field(default=None, description="标签列表（支持 String 旧格式 或 { tag, value } 新格式）")
     forbid: bool | None = Field(default=None, description="是否禁用")
+    sync_children: bool | None = Field(default=None, validation_alias=AliasChoices("sync_children", "syncChildren"), serialization_alias="syncChildren", description="是否自动同步该 API 目录下的新增子级（仅 API 目录生效）")
     create_time: str | None = Field(default=None, validation_alias=AliasChoices("create_time", "createTime"), serialization_alias="createTime", description="创建时间")
     dataset_id: str = Field(validation_alias=AliasChoices("dataset_id", "datasetId"), serialization_alias="datasetId", description="数据集ID，配合 externalFileId 使用")
     external_file_id: str = Field(validation_alias=AliasChoices("external_file_id", "externalFileId"), serialization_alias="externalFileId", description="外部文件ID，配合 datasetId 使用")
@@ -2292,6 +2299,7 @@ class DatasetsCreateReqApiDatasetServer(FastGPTRequestModel):
     feishu_server: DatasetsCreateReqApiDatasetServerFeishuServer | None = Field(default=None, validation_alias=AliasChoices("feishu_server", "feishuServer"), serialization_alias="feishuServer", description="飞书服务器配置")
     yuque_server: DatasetsCreateReqApiDatasetServerYuqueServer | None = Field(default=None, validation_alias=AliasChoices("yuque_server", "yuqueServer"), serialization_alias="yuqueServer", description="语雀服务器配置")
     dingtalk_server: DatasetsCreateReqApiDatasetServerDingtalkServer | None = Field(default=None, validation_alias=AliasChoices("dingtalk_server", "dingtalkServer"), serialization_alias="dingtalkServer", description="钉钉知识库配置")
+    permission_sync: bool | None = Field(default=None, validation_alias=AliasChoices("permission_sync", "permissionSync"), serialization_alias="permissionSync", description="外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL")
 
 
 class DatasetsCreateReqSangforFileParseConfig(FastGPTRequestModel):
@@ -2594,6 +2602,7 @@ class DatasetsDetailRes(FastGPTResponseModel):
     api_dataset_server: DatasetsCollectionsDetailResDatasetApiDatasetServer | None = Field(default=None, validation_alias=AliasChoices("api_dataset_server", "apiDatasetServer"), serialization_alias="apiDatasetServer", description="API 服务器配置")
     delete_time: str | None = Field(default=None, validation_alias=AliasChoices("delete_time", "deleteTime"), serialization_alias="deleteTime", description="删除时间")
     auto_sync: bool | None = Field(default=None, validation_alias=AliasChoices("auto_sync", "autoSync"), serialization_alias="autoSync", description="自动同步")
+    sync_all: bool | None = Field(default=None, validation_alias=AliasChoices("sync_all", "syncAll"), serialization_alias="syncAll", description="是否同步第三方知识库根目录下的新增文件与文件夹")
     external_read_url: str | None = Field(default=None, validation_alias=AliasChoices("external_read_url", "externalReadUrl"), serialization_alias="externalReadUrl", description="外部读取 URL", deprecated=True)
     default_permission: float | None = Field(default=None, validation_alias=AliasChoices("default_permission", "defaultPermission"), serialization_alias="defaultPermission", description="默认权限", deprecated=True)
     api_server: DatasetsCollectionsDetailResDatasetApiServer | None = Field(default=None, validation_alias=AliasChoices("api_server", "apiServer"), serialization_alias="apiServer", description="API 服务器配置", deprecated=True)
@@ -2603,6 +2612,8 @@ class DatasetsDetailRes(FastGPTResponseModel):
     status: Literal["active", "syncing", "waiting", "error"] = Field(description="状态")
     has_training_task: bool = Field(validation_alias=AliasChoices("has_training_task", "hasTrainingTask"), serialization_alias="hasTrainingTask", description="是否存在普通训练任务或待处理、处理中、失败的索引/同义词重建数据")
     error_msg: str | None = Field(default=None, validation_alias=AliasChoices("error_msg", "errorMsg"), serialization_alias="errorMsg", description="错误信息")
+    permission_sync_status: Literal["active", "syncing", "waiting", "error"] | None = Field(default=None, validation_alias=AliasChoices("permission_sync_status", "permissionSyncStatus"), serialization_alias="permissionSyncStatus", description="外部文件权限同步状态；仅在 permissionSync 开启时返回")
+    permission_sync_error_msg: str | None = Field(default=None, validation_alias=AliasChoices("permission_sync_error_msg", "permissionSyncErrorMsg"), serialization_alias="permissionSyncErrorMsg", description="外部文件权限同步失败信息")
     vector_model: DatasetsDetailResVectorModel | None = Field(default=None, validation_alias=AliasChoices("vector_model", "vectorModel"), serialization_alias="vectorModel", description="向量模型；模型已删除时为空，已停用模型仍返回展示数据")
     agent_model: DatasetsDetailResAgentModel | None = Field(default=None, validation_alias=AliasChoices("agent_model", "agentModel"), serialization_alias="agentModel", description="AI 模型；模型已删除时为空，已停用模型仍返回展示数据")
     vlm_model: DatasetsDetailResVlmModel | None = Field(default=None, validation_alias=AliasChoices("vlm_model", "vlmModel"), serialization_alias="vlmModel", description="视觉语言模型")
@@ -2854,6 +2865,7 @@ class DatasetsUpdateReq(FastGPTRequestModel):
     external_read_url: str | None = Field(default=None, validation_alias=AliasChoices("external_read_url", "externalReadUrl"), serialization_alias="externalReadUrl", description="外部读取 URL")
     api_dataset_server: DatasetsCreateReqApiDatasetServer | None = Field(default=None, validation_alias=AliasChoices("api_dataset_server", "apiDatasetServer"), serialization_alias="apiDatasetServer", description="第三方知识库服务器配置(API/飞书/语雀/钉钉)")
     auto_sync: bool | None = Field(default=None, validation_alias=AliasChoices("auto_sync", "autoSync"), serialization_alias="autoSync", description="是否自动同步")
+    sync_all: bool | None = Field(default=None, validation_alias=AliasChoices("sync_all", "syncAll"), serialization_alias="syncAll", description="是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）")
     chunk_settings: DatasetsUpdateReqChunkSettings | None = Field(default=None, validation_alias=AliasChoices("chunk_settings", "chunkSettings"), serialization_alias="chunkSettings", description="分块配置")
     sangfor_file_parse_config: DatasetsUpdateReqSangforFileParseConfig | None = Field(default=None, validation_alias=AliasChoices("sangfor_file_parse_config", "sangforFileParseConfig"), serialization_alias="sangforFileParseConfig", description="外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效;编辑后仅对新解析的文件生效")
 
