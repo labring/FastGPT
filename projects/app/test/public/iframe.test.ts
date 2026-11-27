@@ -113,13 +113,21 @@ describe('floating chat window resizing', () => {
             : dom.window.document.documentElement;
         const viewportWidth = viewportEl?.clientWidth || dom.window.innerWidth;
         const viewportHeight = viewportEl?.clientHeight || dom.window.innerHeight;
-        const right = viewportWidth - (parseFloat(this.style.right) || 0);
-        const bottom = viewportHeight - (parseFloat(this.style.bottom) || 0);
+        const hasLeft = Boolean(this.style.left) && this.style.left !== 'unset';
+        const hasTop = Boolean(this.style.top) && this.style.top !== 'unset';
+        const left = hasLeft
+          ? parseFloat(this.style.left) || 0
+          : viewportWidth - (parseFloat(this.style.right) || 0) - width;
+        const top = hasTop
+          ? parseFloat(this.style.top) || 0
+          : viewportHeight - (parseFloat(this.style.bottom) || 0) - height;
+        const right = left + width;
+        const bottom = top + height;
         return {
-          x: right - width,
-          y: bottom - height,
-          left: right - width,
-          top: bottom - height,
+          x: left,
+          y: top,
+          left,
+          top,
           right,
           bottom,
           width,
@@ -355,5 +363,133 @@ describe('floating chat window resizing', () => {
     pointer({ type: 'lostpointercapture', x: 0, y: 0 });
     expect(iframe().offsetHeight).toBe(775);
     expect(iframe().getBoundingClientRect().top).toBe(30);
+  });
+
+  it('adapts window anchor and resize handle across top-left, top-right, and bottom-left quadrants', () => {
+    const btn = dom.window.document.getElementById('fastgpt-chatbot-button')!;
+    iframe().style.height = '400px';
+
+    // Top-left quadrant: button near top-left -> window opens right & down, handle at bottom-right
+    btn.style.right = '1340px';
+    btn.style.bottom = '920px';
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const tlRect = iframe().getBoundingClientRect();
+    expect(iframe().style.left).toBe('70px');
+    expect(iframe().style.top).toBe('40px');
+    expect(iframe().style.right).toBe('unset');
+    expect(iframe().style.bottom).toBe('unset');
+    expect(handle().style.left).toBe(`${tlRect.right - 18}px`);
+    expect(handle().style.top).toBe(`${tlRect.bottom - 18}px`);
+    expect(handle().style.cursor).toBe('nwse-resize');
+
+    pointer({ type: 'pointerdown', x: tlRect.right - 9, y: tlRect.bottom - 9 });
+    pointer({ type: 'pointermove', x: tlRect.right + 141, y: tlRect.bottom + 91 });
+    pointer({ type: 'lostpointercapture', x: 0, y: 0 });
+    expect(iframe().offsetWidth).toBe(525);
+    expect(iframe().offsetHeight).toBe(500);
+    expect(iframe().getBoundingClientRect().left).toBe(tlRect.left);
+    expect(iframe().getBoundingClientRect().top).toBe(tlRect.top);
+
+    handle().dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    handle().dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    expect(iframe().offsetWidth).toBe(545);
+    expect(iframe().offsetHeight).toBe(520);
+
+    // Top-right quadrant: button near upper-right -> window opens left & down, handle at bottom-left
+    btn.style.right = '60px';
+    btn.style.bottom = '860px';
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const trRect = iframe().getBoundingClientRect();
+    expect(iframe().style.right).toBe('110px');
+    expect(iframe().style.top).toBe('100px');
+    expect(handle().style.left).toBe(`${trRect.left}px`);
+    expect(handle().style.top).toBe(`${trRect.bottom - 18}px`);
+    expect(handle().style.cursor).toBe('nesw-resize');
+
+    pointer({ type: 'pointerdown', x: trRect.left + 9, y: trRect.bottom - 9 });
+    pointer({ type: 'pointermove', x: trRect.left - 91, y: trRect.bottom + 91 });
+    pointer({ type: 'lostpointercapture', x: 0, y: 0 });
+    expect(iframe().offsetWidth).toBe(645);
+    expect(iframe().offsetHeight).toBe(620);
+    expect(iframe().getBoundingClientRect().right).toBe(trRect.right);
+    expect(iframe().getBoundingClientRect().top).toBe(trRect.top);
+
+    // Bottom-left quadrant: button near bottom-left -> window opens right & up, handle at top-right
+    btn.style.right = '1340px';
+    btn.style.bottom = '30px';
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const blRect = iframe().getBoundingClientRect();
+    expect(iframe().style.left).toBe('70px');
+    expect(iframe().style.bottom).toBe('30px');
+    expect(handle().style.left).toBe(`${blRect.right - 18}px`);
+    expect(handle().style.top).toBe(`${blRect.top}px`);
+    expect(handle().style.cursor).toBe('nesw-resize');
+  });
+
+  it('clamps downward-expanding window inside bottom viewport margin when button sits mid-upper', () => {
+    const btn = dom.window.document.getElementById('fastgpt-chatbot-button')!;
+    btn.style.right = '60px';
+    btn.style.bottom = '520px';
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const rect = iframe().getBoundingClientRect();
+    expect(rect.top).toBeGreaterThanOrEqual(30);
+    expect(dom.window.innerHeight - rect.bottom).toBe(30);
+  });
+
+  it('allows dragging the launcher button only while the chat window is closed', () => {
+    dom.window.document.body.innerHTML =
+      '<script id="chatbot-iframe" data-bot-src="https://chat.example.com/" data-drag="true" data-default-open="true"></script>';
+    new Function(`${source}\nembedChatbot();`)();
+
+    const btn = dom.window.document.getElementById('fastgpt-chatbot-button')!;
+    const dragBtn = ({
+      fromX,
+      fromY,
+      toX,
+      toY
+    }: {
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+    }) => {
+      btn.dispatchEvent(
+        new dom.window.MouseEvent('mousedown', { clientX: fromX, clientY: fromY, bubbles: true })
+      );
+      dom.window.dispatchEvent(
+        new dom.window.MouseEvent('mousemove', { clientX: toX, clientY: toY, bubbles: true })
+      );
+      dom.window.dispatchEvent(
+        new dom.window.MouseEvent('mouseup', { clientX: toX, clientY: toY, bubbles: true })
+      );
+    };
+
+    // Open: dragging must be blocked
+    dragBtn({ fromX: 1320, fromY: 950, toX: 200, toY: 120 });
+    expect(btn.style.right).toBe('60px');
+    expect(btn.style.bottom).toBe('30px');
+
+    // Close the window, then dragging works and reopening adopts the new quadrant
+    btn.click();
+    expect(iframe().style.visibility).toBe('hidden');
+
+    dragBtn({ fromX: 1320, fromY: 950, toX: 60, toY: 80 });
+    expect(btn.style.right).toBe('1320px');
+    expect(btn.style.bottom).toBe('900px');
+
+    btn.dispatchEvent(
+      new dom.window.MouseEvent('mousedown', { clientX: 60, clientY: 80, bubbles: true })
+    );
+    dom.window.dispatchEvent(
+      new dom.window.MouseEvent('mouseup', { clientX: 60, clientY: 80, bubbles: true })
+    );
+    btn.click();
+    expect(iframe().style.visibility).toBe('unset');
+    expect(iframe().style.left).toBe('90px');
+    expect(iframe().style.top).toBe('60px');
   });
 });
