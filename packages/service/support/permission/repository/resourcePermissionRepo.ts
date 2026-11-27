@@ -11,10 +11,12 @@ import {
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import {
   CommonRolePerMap,
+  NullRoleVal,
   OwnerPermissionVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type {
   CollaboratorIdType,
   CollaboratorItemType
@@ -963,6 +965,8 @@ export const resourcePermissionRepo = {
     resourceIds?: string[];
     session?: ClientSession;
   }) => {
+    if (String(oldTmbId) === String(newTmbId)) return;
+
     const rows = await MongoResourcePermission.find(
       {
         teamId,
@@ -977,29 +981,45 @@ export const resourcePermissionRepo = {
     ).lean();
 
     const oldRows = rows.filter((row) => String(row.tmbId) === String(oldTmbId));
-    const newRows = rows.filter((row) => String(row.tmbId) === String(newTmbId));
-    const operations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+    if (oldRows.length === 0) return;
+
     const resourceKey = (row: {
       resourceType: string;
       resourceId?: unknown;
       resourceName?: unknown;
     }) => `${row.resourceType}:${String(row.resourceId ?? '')}:${String(row.resourceName ?? '')}`;
 
+    const newRowMap = new Map(
+      rows
+        .filter((row) => String(row.tmbId) === String(newTmbId))
+        .map((row) => [resourceKey(row), row])
+    );
+    const operations: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
+
     for (const oldRow of oldRows) {
-      const newRow = newRows.find((row) => resourceKey(row) === resourceKey(oldRow));
+      // 显式空权限（0）仅代表旧成员被单独拒绝，不能转移成接收人的个人拒绝记录而覆盖其组/组织权限。
+      if (oldRow.permission === NullRoleVal) {
+        operations.push({ deleteOne: { filter: { _id: oldRow._id } } });
+        continue;
+      }
+
+      const newRow = newRowMap.get(resourceKey(oldRow));
       if (newRow) {
-        operations.push({ deleteOne: { filter: { _id: newRow._id } } });
-        operations.push({
-          updateOne: {
-            filter: { _id: oldRow._id },
-            update: {
-              $set: {
-                tmbId: newTmbId,
-                permission: oldRow.permission | newRow.permission
+        // 使用 sumPer 避免 OwnerRoleVal（0xFFFFFFFF）在 JS 有符号按位或时溢出为 -1。
+        const mergedPermission = sumPer(oldRow.permission, newRow.permission) ?? NullRoleVal;
+        operations.push({ deleteOne: { filter: { _id: oldRow._id } } });
+        if (mergedPermission !== newRow.permission) {
+          operations.push({
+            updateOne: {
+              filter: { _id: newRow._id },
+              update: {
+                $set: {
+                  permission: mergedPermission
+                }
               }
             }
-          }
-        });
+          });
+        }
       } else {
         operations.push({
           updateOne: {
@@ -1049,14 +1069,15 @@ export const resourcePermissionRepo = {
       const targetKey = `${rowKey(row)}:${newOrgId}`;
       const target = targetRows.get(targetKey);
       if (target && String(target._id) !== String(row._id)) {
+        const mergedPermission = sumPer(target.permission, row.permission) ?? NullRoleVal;
         operations.push({ deleteOne: { filter: { _id: row._id } } });
         operations.push({
           updateOne: {
             filter: { _id: target._id },
-            update: { $set: { permission: target.permission | row.permission } }
+            update: { $set: { permission: mergedPermission } }
           }
         });
-        target.permission |= row.permission;
+        target.permission = mergedPermission;
       } else {
         operations.push({
           updateOne: {

@@ -80,6 +80,35 @@ export const transferAppApiKeys = async ({
   return changes;
 };
 
+/**
+ * 停用指定成员在当前团队内的个人 API Key（含未迁移的历史个人记录），不删除也不变更归属。
+ * 必须在同一事务中执行；应用 Key 仍由 transferAppApiKeys 按绑定应用 owner 单独交接。
+ */
+export const disablePersonalApiKeys = async ({
+  teamId,
+  tmbIds,
+  session
+}: {
+  teamId: string;
+  tmbIds: string[];
+  session: ClientSession;
+}): Promise<number> => {
+  if (tmbIds.length === 0) return 0;
+  const result = await MongoOpenApi.updateMany(
+    {
+      teamId,
+      tmbId: { $in: tmbIds },
+      type: { $ne: ApiKeyTypeEnum.app },
+      disabled: { $ne: true }
+    },
+    {
+      $set: { disabled: true }
+    },
+    { session }
+  );
+  return result.modifiedCount;
+};
+
 /** 事务成功后记录归属变化；自动离职流程使用 system 作用域，不伪造离职者操作。 */
 export const auditAppApiKeyTransfers = async ({
   teamId,

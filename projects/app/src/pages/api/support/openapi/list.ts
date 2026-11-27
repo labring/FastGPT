@@ -153,6 +153,7 @@ async function handler(
       const scope = resolveApiKeyScope(item);
       return {
         ...item,
+        disabled: Boolean(item.disabled),
         appId: scope.type === ApiKeyTypeEnum.app ? scope.appId : undefined,
         ...scope,
         sourceMember: members.get(String(item.tmbId)),
@@ -164,7 +165,7 @@ async function handler(
           const tag = tagMap.get(String(tagId));
           return tag ? [tag] : [];
         }),
-        canCopy: true
+        canCopy: !item.disabled
       };
     }),
     sortBy

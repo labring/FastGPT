@@ -259,4 +259,27 @@ describe('support/openapi/update', () => {
     const updated = await MongoOpenApi.findById(openapi._id).lean();
     expect(updated?.tagIds || []).toHaveLength(0);
   });
+
+  it('rejects updating a disabled personal APIKey', async () => {
+    const { owner } = await getFakeUsers(1);
+    const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      apiKey: 'fastgpt-disabled-update',
+      name: 'disabled key',
+      disabled: true
+    });
+
+    const res = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: owner,
+      body: {
+        _id: String(openapi._id),
+        name: 'renamed disabled key'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect((await MongoOpenApi.findById(openapi._id).lean())?.name).toBe('disabled key');
+  });
 });

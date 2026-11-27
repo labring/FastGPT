@@ -1,6 +1,8 @@
 import {
   ManagePermissionVal,
+  NullRoleVal,
   OwnerPermissionVal,
+  OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal,
   WritePermissionVal
@@ -595,6 +597,91 @@ describe('resourcePermissionRepo mutation helpers', () => {
       ])
     );
     expect(rows.every((row) => String(row.tmbId) === String(newTmbId))).toBe(true);
+  });
+
+  it('merges OwnerRoleVal without 32-bit sign overflow and skips NullRoleVal deny rows on transfer', async () => {
+    const oldTmbId = objectId();
+    const newTmbId = objectId();
+    const oldOwnerAppId = objectId();
+    const newOwnerAppId = objectId();
+    const deniedAppId = objectId();
+
+    await MongoResourcePermission.collection.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: oldOwnerAppId,
+        tmbId: oldTmbId,
+        permission: OwnerRoleVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: oldOwnerAppId,
+        tmbId: newTmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: newOwnerAppId,
+        tmbId: oldTmbId,
+        permission: WritePermissionVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: newOwnerAppId,
+        tmbId: newTmbId,
+        permission: OwnerRoleVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.app,
+        resourceId: deniedAppId,
+        tmbId: oldTmbId,
+        permission: NullRoleVal
+      }
+    ]);
+
+    await resourcePermissionRepo.transferTmbPermissions({
+      teamId: String(teamId),
+      oldTmbId: String(oldTmbId),
+      newTmbId: String(newTmbId),
+      resourceType: PerResourceTypeEnum.app
+    });
+
+    const rows = await MongoResourcePermission.find({ teamId }).lean();
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.map((row) => ({
+        resourceId: String(row.resourceId),
+        tmbId: String(row.tmbId),
+        permission: row.permission
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          resourceId: String(oldOwnerAppId),
+          tmbId: String(newTmbId),
+          permission: OwnerRoleVal
+        },
+        {
+          resourceId: String(newOwnerAppId),
+          tmbId: String(newTmbId),
+          permission: OwnerRoleVal
+        }
+      ])
+    );
+
+    // 同一成员转移为无操作，保持原记录不变。
+    await resourcePermissionRepo.transferTmbPermissions({
+      teamId: String(teamId),
+      oldTmbId: String(newTmbId),
+      newTmbId: String(newTmbId),
+      resourceType: PerResourceTypeEnum.app
+    });
+    expect(await MongoResourcePermission.countDocuments({ teamId, tmbId: newTmbId })).toBe(2);
   });
 
   it('migrates organization permissions and merges target collisions', async () => {

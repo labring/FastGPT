@@ -541,5 +541,10 @@
   "audit_detail_invitation_link": "Link name: {{link}}",
   "audit_detail_login_ip": "IP: {{ip}}",
   "audit_detail_login_region": "Region: {{region}}",
-  "audit_detail_export_audit_logs": "Time range: {{dateStart}} to {{dateEnd}}\nMembers: {{tmbIds}}\nTypes: {{events}}\nTotal: {{total}}"
+  "audit_detail_export_audit_logs": "Time range: {{dateStart}} to {{dateEnd}}\nMembers: {{tmbIds}}\nTypes: {{events}}\nTotal: {{total}}",
+  "transfer_member_resources_to": "Transfer resources & permissions to",
+  "leave_team_transfer_tip": "After leaving, your owned resources and collaborator permissions in this team will be transferred and merged to the selected member. Personal API keys will be disabled, and app API keys will be transferred to each app's owner.",
+  "remove_member_transfer_tip": "Remove {{username}} from the team? The member will be marked as left. Their owned resources and collaborator permissions will be transferred and merged to the selected member. Personal API keys will be disabled, and app API keys will be transferred to each app's owner.",
+  "forbidden_member_transfer_tip": "Disable {{username}}? The member will be marked as disabled and unable to sign in. Their owned resources and collaborator permissions will be transferred and merged to the selected member. Personal API keys will be disabled, and app API keys will be transferred to each app's owner.",
+  "no_transfer_member_found": "No available members"
 }

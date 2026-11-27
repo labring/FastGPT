@@ -2530,6 +2530,7 @@ class DatasetsDetailResAgentModelConfig(FastGPTResponseModel):
     video: bool | None = None
     reasoning: bool | None = None
     reasoning_effort: bool | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort", "reasoningEffort"), serialization_alias="reasoningEffort")
+    reasoning_effort_list: list[Literal["none", "minimal", "low", "medium", "high", "xhigh"]] | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort_list", "reasoningEffortList"), serialization_alias="reasoningEffortList", description="模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置")
     function_call: bool | None = Field(default=None, validation_alias=AliasChoices("function_call", "functionCall"), serialization_alias="functionCall")
     tool_choice: bool | None = Field(default=None, validation_alias=AliasChoices("tool_choice", "toolChoice"), serialization_alias="toolChoice")
     default_system_chat_prompt: str | None = Field(default=None, validation_alias=AliasChoices("default_system_chat_prompt", "defaultSystemChatPrompt"), serialization_alias="defaultSystemChatPrompt")
@@ -2898,6 +2899,7 @@ class ModelsCatalogResDataModelsItemVariant1Config(FastGPTResponseModel):
     video: bool | None = None
     reasoning: bool | None = None
     reasoning_effort: bool | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort", "reasoningEffort"), serialization_alias="reasoningEffort")
+    reasoning_effort_list: list[Literal["none", "minimal", "low", "medium", "high", "xhigh"]] | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort_list", "reasoningEffortList"), serialization_alias="reasoningEffortList", description="模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置")
     function_call: bool | None = Field(default=None, validation_alias=AliasChoices("function_call", "functionCall"), serialization_alias="functionCall")
     tool_choice: bool | None = Field(default=None, validation_alias=AliasChoices("tool_choice", "toolChoice"), serialization_alias="toolChoice")
 

@@ -191,4 +191,33 @@ describe('support/openapi/copy', () => {
     expect(JSON.stringify(result)).not.toContain('fastgpt-member-private-secret');
     expect(addAuditLog).not.toHaveBeenCalled();
   });
+
+  it('不能复制已停用的个人 APIKey', async () => {
+    const user = await getRootUser();
+    const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      apiKey: 'fastgpt-disabled-copy-secret',
+      name: 'disabled key',
+      disabled: true
+    });
+
+    const result = await Call(handler, {
+      auth: {
+        ...user,
+        userId: String(user.userId),
+        teamId: String(user.teamId),
+        tmbId: String(user.tmbId)
+      },
+      body: {
+        id: String(openapi._id)
+      }
+    });
+
+    expect(result.code).toBe(500);
+    expect(result.data).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('fastgpt-disabled-copy-secret');
+    expect(addAuditLog).not.toHaveBeenCalled();
+  });
 });

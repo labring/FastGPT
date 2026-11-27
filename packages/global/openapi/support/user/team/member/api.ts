@@ -50,12 +50,15 @@ export type GetTeamMemberCountResponseType = z.infer<typeof GetTeamMemberCountRe
  * API: 删除团队成员
  * Route: DELETE /api/proApi/support/user/team/member/delete
  * Method: DELETE
- * Description: 将指定团队成员移出当前团队。
+ * Description: 将指定团队成员移出当前团队，并可指定成员接收其资源与权限（默认转移给团队所有者）。
  * Tags: ['成员管理', '团队管理', 'Delete']
  * ============================================================================ */
 
 export const DeleteTeamMemberQuerySchema = z.object({
-  tmbId: TeamMemberIdSchema
+  tmbId: TeamMemberIdSchema,
+  transferTmbId: TeamMemberIdSchema.optional().meta({
+    description: '接收离职成员资源与权限的团队成员 ID，不传时默认转移给团队所有者'
+  })
 });
 export type DeleteTeamMemberQueryType = z.infer<typeof DeleteTeamMemberQuerySchema>;
 
@@ -76,9 +79,16 @@ export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResp
  * API: 离开团队
  * Route: DELETE /api/proApi/support/user/team/member/leave
  * Method: DELETE
- * Description: 当前用户主动离开当前团队，团队所有者不能执行此操作。
+ * Description: 当前用户主动离开当前团队，可指定成员接收其资源与权限（默认转移给团队所有者）；团队所有者不能执行此操作。
  * Tags: ['成员管理', '团队管理', 'Delete']
  * ============================================================================ */
+
+export const LeaveTeamQuerySchema = z.object({
+  transferTmbId: TeamMemberIdSchema.optional().meta({
+    description: '接收离职成员资源与权限的团队成员 ID，不传时默认转移给团队所有者'
+  })
+});
+export type LeaveTeamQueryType = z.infer<typeof LeaveTeamQuerySchema>;
 
 /* ============================================================================
  * API: 获取团队成员列表

@@ -42,5 +42,6 @@
   "bound_app_id": "绑定应用 ID",
   "app_key_empty": "暂无应用 Key，创建后可供业务后端接入当前应用。",
   "call_example": "调用示例",
-  "delete_key_tip": "删除后，使用此 Key 的调用将立即失效。"
+  "delete_key_tip": "删除后，使用此 Key 的调用将立即失效。",
+  "disabled": "已停用"
 }

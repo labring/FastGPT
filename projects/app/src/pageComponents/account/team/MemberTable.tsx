@@ -49,9 +49,11 @@ import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import type { MemberTransferTarget } from './MemberTransferLeaveModal';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
+const MemberTransferLeaveModal = dynamic(() => import('./MemberTransferLeaveModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
@@ -111,6 +113,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   }, [refetchMemberList]);
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
+  const [transferLeaveState, setTransferLeaveState] = useState<{
+    mode: 'leave' | 'remove';
+    member: MemberTransferTarget;
+  } | null>(null);
 
   const { runAsync: onSyncMember, loading: isSyncing } = useRequest(postSyncMembers, {
     onSuccess: onRefreshMembers,
@@ -120,8 +126,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { runAsync: onLeaveTeam } = useRequest(delLeaveTeam, {
     onSuccess() {
-      const defaultTeam = myTeams[0];
-      onSwitchTeam(defaultTeam.teamId);
+      const nextTeam = myTeams.find((item) => item.teamId !== userInfo?.team.teamId) ?? myTeams[0];
+      if (nextTeam) {
+        onSwitchTeam(nextTeam.teamId);
+      }
     },
     errorToast: t('account_team:user_team_leave_team_failed')
   });
@@ -264,22 +272,26 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           )}
           {!userInfo?.team.permission.isOwner && !isSyncMode && !isWecomTeam && (
             <Box w={['100%', 'auto']}>
-              <PopoverConfirm
-                Trigger={
-                  <Button
-                    w={'100%'}
-                    variant={'whitePrimary'}
-                    size="md"
-                    borderRadius={'md'}
-                    leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
-                  >
-                    {t('account_team:user_team_leave_team')}
-                  </Button>
-                }
-                type="delete"
-                content={t('account_team:confirm_leave_team')}
-                onConfirm={() => onLeaveTeam()}
-              />
+              <Button
+                w={'100%'}
+                variant={'whitePrimary'}
+                size="md"
+                borderRadius={'md'}
+                leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
+                onClick={() => {
+                  if (!userInfo?.team) return;
+                  setTransferLeaveState({
+                    mode: 'leave',
+                    member: {
+                      tmbId: userInfo.team.tmbId,
+                      memberName: userInfo.team.memberName,
+                      avatar: userInfo.team.avatar
+                    }
+                  });
+                }}
+              >
+                {t('account_team:user_team_leave_team')}
+              </Button>
             </Box>
           )}
         </Flex>
@@ -356,28 +368,21 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             hoverColor={'blue.500'}
                             onClick={() => handleEditMemberName(member.tmbId, member.memberName)}
                           />
-                          <PopoverConfirm
-                            Trigger={
-                              <Box>
-                                <MyIconButton
-                                  icon={'common/trash'}
-                                  hoverColor={'red.500'}
-                                  hoverBg="red.50"
-                                  size={'1rem'}
-                                />
-                              </Box>
+                          <MyIconButton
+                            icon={'common/trash'}
+                            hoverColor={'red.500'}
+                            hoverBg="red.50"
+                            size={'1rem'}
+                            onClick={() =>
+                              setTransferLeaveState({
+                                mode: 'remove',
+                                member: {
+                                  tmbId: member.tmbId,
+                                  memberName: member.memberName,
+                                  avatar: member.avatar
+                                }
+                              })
                             }
-                            type="delete"
-                            content={
-                              isSyncMode
-                                ? t('account_team:forbidden_tip', {
-                                    username: member.memberName
-                                  })
-                                : t('account_team:remove_tip', {
-                                    username: member.memberName
-                                  })
-                            }
-                            onConfirm={() => onRemoveMember(member.tmbId)}
                           />
                         </HStack>
                       ) : isSyncMode && member.status === TeamMemberStatusEnum.forbidden ? (
@@ -416,6 +421,19 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
             initUserInfo();
             refetchMemberList();
           }}
+        />
+      )}
+      {transferLeaveState && (
+        <MemberTransferLeaveModal
+          mode={transferLeaveState.mode}
+          isSyncMode={isSyncMode}
+          member={transferLeaveState.member}
+          onConfirm={(transferTmbId) =>
+            transferLeaveState.mode === 'leave'
+              ? onLeaveTeam(transferTmbId)
+              : onRemoveMember(transferLeaveState.member.tmbId, transferTmbId)
+          }
+          onClose={() => setTransferLeaveState(null)}
         />
       )}
     </>

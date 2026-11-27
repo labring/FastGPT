@@ -1,4 +1,5 @@
 import { Types } from '@fastgpt/service/common/mongo';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -411,5 +412,40 @@ describe('support/openapi/create', () => {
 
     expect(res.code).toBe(500);
     expect(await MongoOpenApi.findOne({ name: 'invalid tagged key' })).toBeNull();
+  });
+
+  it('excludes disabled personal APIKeys from the per-member active key limit', async () => {
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: member.teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+    await MongoOpenApi.create(
+      Array.from({ length: 10 }, (_, index) => ({
+        type: ApiKeyTypeEnum.personal,
+        teamId: member.teamId,
+        tmbId: member.tmbId,
+        apiKey: `fastgpt-disabled-quota-${index}`,
+        name: `disabled-${index}`,
+        disabled: true
+      }))
+    );
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: member,
+      body: {
+        name: 'active after disabled',
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(await MongoOpenApi.findOne({ name: 'active after disabled' })).not.toBeNull();
   });
 });

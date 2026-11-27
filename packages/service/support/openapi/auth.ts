@@ -67,7 +67,7 @@ export async function authOpenApiKey({
 
     const { apikey: realApiKey, parsedAppId } = resolveOpenApiCredential(apikey);
     const openApi = await MongoOpenApi.findOne({ apiKey: realApiKey }).lean();
-    if (!openApi) {
+    if (!openApi || openApi.disabled) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }
 

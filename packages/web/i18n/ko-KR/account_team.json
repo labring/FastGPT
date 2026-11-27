@@ -541,5 +541,10 @@
   "audit_detail_invitation_link": "링크 이름: {{link}}",
   "audit_detail_login_ip": "IP: {{ip}}",
   "audit_detail_login_region": "지역: {{region}}",
-  "audit_detail_export_audit_logs": "시간 범위: {{dateStart}} ~ {{dateEnd}}\n멤버: {{tmbIds}}\n유형: {{events}}\n일치 건수: {{total}}"
+  "audit_detail_export_audit_logs": "시간 범위: {{dateStart}} ~ {{dateEnd}}\n멤버: {{tmbIds}}\n유형: {{events}}\n일치 건수: {{total}}",
+  "transfer_member_resources_to": "리소스 및 권한 이전 대상",
+  "leave_team_transfer_tip": "팀을 떠나면 이 팀에서 보유한 리소스 소유권과 리소스 협업 권한이 선택한 멤버에게 이전·병합됩니다. 개인 API 키는 즉시 비활성화되며, 앱 API 키는 각 앱의 소유자에게 이전됩니다.",
+  "remove_member_transfer_tip": "{{username}}님을 팀에서 내보내시겠습니까? 해당 멤버는 '퇴사함'으로 표시되며, 보유한 리소스 소유권과 리소스 협업 권한이 선택한 멤버에게 이전·병합됩니다. 개인 API 키는 즉시 비활성화되며, 앱 API 키는 각 앱의 소유자에게 이전됩니다.",
+  "forbidden_member_transfer_tip": "{{username}}님을 비활성화하시겠습니까? 해당 멤버는 '비활성화됨'으로 표시되어 로그인할 수 없으며, 보유한 리소스 소유권과 리소스 협업 권한이 선택한 멤버에게 이전·병합됩니다. 개인 API 키는 즉시 비활성화되며, 앱 API 키는 각 앱의 소유자에게 이전됩니다.",
+  "no_transfer_member_found": "선택 가능한 멤버가 없습니다"
 }
