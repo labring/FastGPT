@@ -780,14 +780,19 @@ test('middleware resolves section landings, language roots, and historical paths
     }
   });
 
-  const cliSkillPath = '/cli/skill.md';
-  const cliSkillResponse = middleware(new NextRequest(`http://localhost:3210${cliSkillPath}`));
-  assert.equal(cliSkillResponse.headers.get('x-middleware-next'), '1');
-  assert.equal(
-    unstable_doesMiddlewareMatch({ config: middlewareConfig, url: cliSkillPath }),
-    false
-  );
-  assert.ok(fs.existsSync(path.join(__dirname, '../public', cliSkillPath)));
+  for (const staticSkillPath of [
+    '/cli/skill.md',
+    '/skills/coze-to-fastgpt/SKILL.md',
+    '/skills/coze-to-fastgpt/references/mapping-and-pitfalls.md'
+  ]) {
+    const skillResponse = middleware(new NextRequest(`http://localhost:3210${staticSkillPath}`));
+    assert.equal(skillResponse.headers.get('x-middleware-next'), '1');
+    assert.equal(
+      unstable_doesMiddlewareMatch({ config: middlewareConfig, url: staticSkillPath }),
+      false
+    );
+    assert.ok(fs.existsSync(path.join(__dirname, '../public', staticSkillPath)));
+  }
 
   const cases = [
     ['/zh-CN', '/zh-CN/guide/getting-started'],

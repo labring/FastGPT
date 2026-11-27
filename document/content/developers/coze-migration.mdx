@@ -1,0 +1,105 @@
+---
+title: 迁移 Coze 资产到 FastGPT
+description: 通过官方迁移 Skill 与 FastGPT CLI，将 Coze 知识库、工具、Skill、工作流与智能体完整迁移至 FastGPT 国内版。
+---
+
+import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT 提供标准化的 Coze 资产迁移 Skill，配合官方命令行工具 `@fastgpt/cli`（`fastgpt`），可由 AI 编程助手自动完成 Coze 知识库、MCP / HTTP 工具、自定义 Skill、工作流、智能体与头像的全量迁移，并通过 `workflow-build` 校验纠偏和在线冒烟完成验收。
+
+---
+
+## 前置条件
+
+在开始迁移之前，请确认以下三项条件已准备就绪：
+
+<Alert context="warning">
+
+1. **仅支持迁移到 FastGPT 国内版**：当前方案仅适配 FastGPT 国内版（`https://cloud.fastgpt.cn`），暂不支持国际版或未适配的旧版本环境。
+2. **准备 FastGPT 账号、密码与可用额度**：需要提供 FastGPT 国内版账号和密码供 CLI 登录；建议同时在浏览器登录 `cloud.fastgpt.cn` 方便可视化核对结果，并确保目标团队具备可用额度（知识库索引、工作流试运行与智能体冒烟测试均会消耗额度）。
+3. **浏览器提前登录 Coze**：需要提前在浏览器中登录 Coze（`https://www.coze.cn`），以便 AI Agent 读取待迁移空间中的 Bot、工作流、插件与知识库源文件。
+
+</Alert>
+
+---
+
+## 一键让 AI Agent 执行迁移
+
+如果你正在使用支持终端与浏览器操作的 AI 编程助手（如 **Codex**、**Claude Code** 等），直接将以下提示词发送给你的 Agent。Agent 将拉取官方迁移 Skill 与映射排障手册，并按依赖拓扑逐步执行迁移：
+
+<Alert context="info">在 AI 编程助手对话框中直接发送以下提示词：</Alert>
+
+```text
+请参考 https://doc.fastgpt.cn/skills/coze-to-fastgpt/SKILL.md，帮我将 Coze 资产迁移到 FastGPT 国内版。
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+如需将 Skill 下载到本地目录离线查阅或加载到自定义 Agent，可执行：
+
+```bash
+mkdir -p ./coze-to-fastgpt/references
+curl -fsSL https://doc.fastgpt.cn/skills/coze-to-fastgpt/SKILL.md -o ./coze-to-fastgpt/SKILL.md
+curl -fsSL https://doc.fastgpt.cn/skills/coze-to-fastgpt/references/mapping-and-pitfalls.md -o ./coze-to-fastgpt/references/mapping-and-pitfalls.md
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+CLI 的安装、登录与常用命令参考 [使用 CLI 操作 FastGPT](/zh-CN/guide/getting-started/cli)。
+
+---
+
+## 支持迁移的资产与映射关系
+
+| Coze 资产           | FastGPT 目标类型                                                   | 所属目录树                   | 对应 CLI 入口                      | 说明                                                                                                       |
+| ------------------- | ------------------------------------------------------------------ | ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 知识库与文件 / 分段 | 知识库（`dataset`）与集合                                          | 知识库目录树                 | `fastgpt dataset`                  | 同步头像、原始文件或文本分段，并核对集合数量                                                               |
+| MCP / HTTP 插件     | MCP / HTTP 工具集                                                  | 工具目录树                   | `fastgpt tool mcp` / `tool http`   | 解析工具清单、创建工具集、补写简介并做在线试调用                                                           |
+| 自定义 Skill        | Agent Skill（`skill`）                                             | 技能目录树                   | `fastgpt skill import`             | 导入根目录含 `SKILL.md` 的 `.zip` 包                                                                       |
+| 工作流（Workflow）  | 工作流（`advanced`）                                               | Agent 目录树                 | `fastgpt agent` + `workflow-build` | 转换节点与模型后，强制走 `workflow-build` 校验纠偏并发布                                                   |
+| 智能体（Bot）       | 标准对话应用（`simple`，默认）或对话 Agent V2（`chatAgent`，按需） | Agent 目录树                 | `fastgpt agent`                    | 默认优先使用 `simple`（支持全局变量、知识库、工具与工作流）；仅在需要 Skill 或虚拟机沙箱时使用 `chatAgent` |
+| 头像与分组目录      | 头像资源与 4 棵独立目录树                                          | 知识库 / 工具 / 技能 / Agent | `fastgpt file upload-avatar`       | 按 FastGPT 四棵目录树分别归档，避免跨树混放                                                                |
+
+> **兼容边界**：Coze 商店中依赖平台 OAuth 或专属凭证的插件（如飞书云文档、LinkReader 等）无法自动迁移鉴权凭证。迁移 Skill 会在工作流说明和交付清单中显式标注这些插件，方便你在 FastGPT 中手动补绑对应工具或凭证。
+
+---
+
+## 标准迁移流程概览
+
+迁移 Skill 按以下 8 个阶段顺序执行，确保所有下游引用都指向真实的 FastGPT 资源 ID：
+
+1. **CLI 就绪与登录核验**：检查 `fastgpt` 版本，使用国内版账号密码通过标准输入登录 `https://cloud.fastgpt.cn`，拉取可用模型清单并确认团队额度。
+2. **Coze 资产盘点与导出**：复用已登录 Coze 的浏览器会话，导出 Bot、工作流 `schema_json`、插件配置、知识库文件与资源头像。
+3. **头像上传与四棵目录树建设**：上传全部 Coze 头像，分别在知识库、工具、技能和 Agent 目录树下建立迁移分组目录。
+4. **知识库与集合迁移**：逐个创建知识库并导入原始文件或分段文本，核对集合总数。
+5. **MCP / HTTP 工具迁移**：探测工具元数据、创建工具集、校验子工具并在线试调用。
+6. **Skill 导入**：将打包好的 `.zip` 导入技能目录并校验生效版本。
+7. **工作流迁移与 `workflow-build` 纠偏**：创建工作流后执行 `agent pull` → `workflow-build inspect/validate` → 清理异常 `catch` 边或字段问题 → `agent save` / `agent publish` → `workflow diff` → `agent test --detail`。
+8. **智能体组装与全链路验收**：默认优先创建为 `simple`（保留全局变量、知识库与工具/工作流绑定），仅在需要 Skill 或虚拟机沙箱时创建为 `chatAgent`（Agent V2）；随后执行发布、`agent test`、`agent run` 与日志核验并交付映射报告。
+
+### 过程保障机制
+
+- **逐资源实时汇报**：迁移 Skill 强制要求在每个目录、知识库、工具、Skill、工作流和智能体开始前与结束后即时汇报名称、状态与 ID，便于随时掌握进度与定位异常。
+- **幂等可重入**：创建前按名称与父目录查重复用，支持中断后继续执行而不产生重复资产。
+- **工作流结构自愈**：所有工作流必须通过 `workflow-build` 结构校验与远端测试，确保反编译状态与发布版本完全同步。
+
+---
+
+## 常见问题与注意事项
+
+### 迁移智能体时应选择 `simple` 还是 `chatAgent`（Agent V2）？
+
+默认优先使用 `simple`（[对话 Agent / 标准应用](/zh-CN/guide/build/chat-agent)）：`simple` 完整支持**全局变量**、知识库检索以及 MCP / HTTP / 工作流工具挂载，能够覆盖大多数 Coze Bot 场景。仅当源 Bot 明确需要挂载 **Agent Skill**、启用**虚拟机执行沙箱**或依赖 Agent V2 自主规划能力时，再选择 `chatAgent`（[对话 Agent V2](/zh-CN/guide/build/agentv2/settings)）。需注意 **Agent V2 目前暂不支持全局变量**；如果源 Bot 同时包含全局变量与 Skill，建议按业务优先级取舍或通过工作流承接变量。
+
+### 目录头像为什么有时为空？
+
+FastGPT 服务端不会在创建知识库或 Agent 目录时自动补填默认头像。使用 `fastgpt tool folder create` 和 `fastgpt agent folder create` 时 CLI 会自动注入 `/imgs/files/folder.svg`；创建知识库目录（`fastgpt dataset create --type folder`）时须显式传入 `--avatar "/imgs/files/folder.svg"`；技能目录留空由服务端使用默认图标。
+
+### `workflow-build validate` 出现 `WORKFLOW_BINDING_UNVERIFIED` 警告如何处理？
+
+`chatNode` 节点的 `modelId` 采用远端校验策略，本地离线校验无法直接验证团队模型权限，因此会提示非阻断警告（此时仍为 `valid: true`）。直接执行一次 `fastgpt agent test --detail` 确认模型实际返回 `finishReason: stop` 即可。
+
+### 迁移过程为什么需要确保账户有额度？
+
+知识库导入集合时会触发向量化索引，工作流与智能体迁移完成后会执行 `agent test` / `agent run` 真实冒烟调用，均会消耗目标团队的积分或模型额度。如果余额不足，索引或冒烟步骤将失败。
