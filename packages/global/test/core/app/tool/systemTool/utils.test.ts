@@ -138,6 +138,76 @@ describe('stripUnsetOptionalToolInputs', () => {
     expect(stripUnsetOptionalToolInputs({ input, inputSchema })).toEqual(input);
   });
 
+  it('keeps null for allOf with annotation branch, $ref to nullable definitions/$defs, untyped properties, and unresolvable $ref', () => {
+    const draft7Schema = {
+      $id: 'https://fastgpt.example.com/tool-draft7.json',
+      type: 'object',
+      definitions: {
+        nullableSetting: { type: ['object', 'null'] },
+        strictNumber: { type: 'number' }
+      },
+      properties: {
+        allOfAnnotatedNullable: {
+          allOf: [{ type: ['object', 'null'] }, { description: 'Override setting' }]
+        },
+        allOfStrictObject: {
+          allOf: [{ type: ['object', 'null'] }, { type: 'object' }]
+        },
+        refNullable: { $ref: '#/definitions/nullableSetting' },
+        refStrictNumber: { $ref: '#/definitions/strictNumber' },
+        unresolvableRef: { $ref: '#/definitions/missing' },
+        untypedEmpty: {},
+        untypedAnnotated: { description: 'Any value' }
+      }
+    } as unknown as JSONSchemaInputType;
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          allOfAnnotatedNullable: null,
+          allOfStrictObject: null,
+          refNullable: null,
+          refStrictNumber: null,
+          unresolvableRef: null,
+          untypedEmpty: null,
+          untypedAnnotated: null
+        },
+        inputSchema: draft7Schema
+      })
+    ).toEqual({
+      allOfAnnotatedNullable: null,
+      refNullable: null,
+      unresolvableRef: null,
+      untypedEmpty: null,
+      untypedAnnotated: null
+    });
+
+    const draft2020Schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      $defs: {
+        nullableSetting: { anyOf: [{ type: 'object' }, { type: 'null' }] },
+        strictString: { type: 'string' }
+      },
+      properties: {
+        refNullable: { $ref: '#/$defs/nullableSetting' },
+        refStrictString: { $ref: '#/$defs/strictString' }
+      }
+    } as unknown as JSONSchemaInputType;
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          refNullable: null,
+          refStrictString: null
+        },
+        inputSchema: draft2020Schema
+      })
+    ).toEqual({
+      refNullable: null
+    });
+  });
+
   it('does not touch unknown keys outside schema properties', () => {
     const inputSchema: JSONSchemaInputType = {
       type: 'object',

@@ -213,6 +213,41 @@ const getValidator = (schema: object) => {
 const formatValidationErrors = (errors?: ErrorObject[] | null) =>
   (errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * 在根 Schema 上下文（$schema、definitions、$defs）中校验单个顶层属性值。
+ * 用于需要区分“确定拒绝”与“Schema 无法编译”的边界场景，避免误删无法判定的输入。
+ */
+export const validateToolPropertyValue = ({
+  rootSchema,
+  propertyKey,
+  propertySchema,
+  value
+}: {
+  rootSchema?: Record<string, unknown>;
+  propertyKey: string;
+  propertySchema: unknown;
+  value: unknown;
+}): 'valid' | 'invalid' | 'error' => {
+  try {
+    const wrapperSchema: Record<string, unknown> = {
+      ...(typeof rootSchema?.$schema === 'string' ? { $schema: rootSchema.$schema } : {}),
+      ...(isRecord(rootSchema?.definitions) ? { definitions: rootSchema.definitions } : {}),
+      ...(isRecord(rootSchema?.$defs) ? { $defs: rootSchema.$defs } : {}),
+      type: 'object',
+      properties: {
+        [propertyKey]: propertySchema
+      }
+    };
+    const validator = getValidator(wrapperSchema);
+    return validator({ [propertyKey]: value }) ? 'valid' : 'invalid';
+  } catch {
+    return 'error';
+  }
+};
+
 /** 使用原始 JSON Schema property 校验单个手工配置值。 */
 export const validateToolInputValue = ({
   schema,

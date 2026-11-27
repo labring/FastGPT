@@ -1,27 +1,8 @@
 import type { JSONSchemaInputType } from '../../jsonschema';
+import { validateToolPropertyValue } from '../runtime';
 
 const isSchemaRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const schemaAllowsNull = (schema: unknown): boolean => {
-  if (!isSchemaRecord(schema)) return false;
-  if (schema.nullable === true || schema.type === 'null') return true;
-  if (Array.isArray(schema.type) && schema.type.includes('null')) return true;
-  if (Object.prototype.hasOwnProperty.call(schema, 'const') && schema.const === null) return true;
-  if (Array.isArray(schema.enum) && schema.enum.includes(null)) return true;
-
-  if (Array.isArray(schema.anyOf) && schema.anyOf.some(schemaAllowsNull)) return true;
-  if (Array.isArray(schema.oneOf) && schema.oneOf.some(schemaAllowsNull)) return true;
-  if (
-    Array.isArray(schema.allOf) &&
-    schema.allOf.length > 0 &&
-    schema.allOf.every(schemaAllowsNull)
-  ) {
-    return true;
-  }
-
-  return false;
-};
 
 const isNonStringTypedSchema = (schema: unknown): boolean => {
   if (!isSchemaRecord(schema)) return false;
@@ -57,7 +38,8 @@ const isNonStringTypedSchema = (schema: unknown): boolean => {
  *
  * - 缺少 `inputSchema` 或 `properties` 时原样透传；
  * - 必填字段（`required`）保留原值，由插件侧校验处理；
- * - 仅在 schema 未显式允许 `null` 时移除 `null` / `undefined`，保留 `.nullable()` 等合法 `null` 语义；
+ * - 对 `null` 使用带根 Schema 上下文（`$schema`、`definitions`、`$defs`）的 AJV 校验，仅在确定拒绝 `null` 时移除，
+ *   保留 `.nullable()`、`$ref`、带注解分支的 `allOf`、无类型限制属性以及无法编译的 Schema 原值；
  * - 仅在字段声明类型不包含 `string` 时移除 `''`，避免误删可选文本字段的空字符串。
  */
 export const stripUnsetOptionalToolInputs = ({
@@ -80,9 +62,19 @@ export const stripUnsetOptionalToolInputs = ({
 
       const propSchema = properties[key];
       if (propSchema === undefined) return true;
+      if (isSchemaRecord(propSchema) && propSchema.required === true) return true;
 
       if (value === undefined) return false;
-      if (value === null) return schemaAllowsNull(propSchema);
+      if (value === null) {
+        return (
+          validateToolPropertyValue({
+            rootSchema: inputSchema,
+            propertyKey: key,
+            propertySchema: propSchema,
+            value: null
+          }) !== 'invalid'
+        );
+      }
       if (value === '' && isNonStringTypedSchema(propSchema)) return false;
 
       return true;
