@@ -123,6 +123,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {paths.length > 0 && isPc ? (
               <Box flexShrink={0}>
                 <FolderPath
+                  rootName={'Agent'}
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
                   forbidLastClick
@@ -211,6 +212,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               {paths.length > 0 && (
                 <Box overflowX={'auto'}>
                   <FolderPath
+                    rootName={'Agent'}
                     paths={paths}
                     forbidLastClick
                     onClick={(parentId) => {

@@ -104,9 +104,13 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               </Flex>
             </>
           ) : (
-            <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
+            <Flex py={'0.38rem'} px={2} h={10} ml={0.5} alignItems={'center'}>
               <FolderPath
+                rootName={t('common:navbar.Datasets')}
                 paths={paths}
+                currentName={datasetDetail.name}
+                hoverStyle={{ color: 'primary.600' }}
+                fontSize={'14px'}
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);
                 }}

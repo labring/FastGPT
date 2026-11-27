@@ -12,13 +12,19 @@ import type { PostPublishAppProps } from '@/global/core/app/api';
 const mocks = vi.hoisted(() => ({
   save: vi.fn<(data: PostPublishAppProps) => Promise<boolean>>(),
   clickSave: undefined as ((data: { isPublish: boolean }) => Promise<unknown>) | undefined,
-  leave: undefined as (() => Promise<unknown>) | undefined
+  leave: undefined as (() => Promise<unknown>) | undefined,
+  folderPathProps: undefined as Record<string, unknown> | undefined
 }));
 
 vi.mock('@/pageComponents/app/detail/context', async () => {
   const { createContext } = await import('use-context-selector');
   return {
-    AppContext: createContext({ appId: 'app', currentTab: 'appEdit', onSaveApp: mocks.save }),
+    AppContext: createContext({
+      appId: 'app',
+      appDetail: { name: 'FastGPT迁移测试助手' },
+      currentTab: 'appEdit',
+      onSaveApp: mocks.save
+    }),
     TabEnum: { appEdit: 'appEdit' }
   };
 });
@@ -47,7 +53,12 @@ vi.mock('@fastgpt/web/components/common/Tag/index', () => ({
   default: ({ children }: { children: React.ReactNode }) =>
     React.createElement('span', { role: 'status' }, children)
 }));
-vi.mock('@/components/common/folder/Path', () => ({ default: () => null }));
+vi.mock('@/components/common/folder/Path', () => ({
+  default: (props: Record<string, unknown>) => {
+    mocks.folderPathProps = props;
+    return null;
+  }
+}));
 vi.mock('@/pageComponents/app/detail/RouteTab', () => ({ default: () => null }));
 vi.mock('@/pageComponents/app/detail/PublishHistoriesSlider', () => ({ default: () => null }));
 
@@ -100,6 +111,10 @@ it('retries newer form changes when only the earlier save succeeded', async () =
 
   try {
     await act(async () => render(initial));
+    expect(mocks.folderPathProps).toMatchObject({
+      rootName: 'Agent',
+      currentName: 'FastGPT迁移测试助手'
+    });
     await act(async () => render(earlier));
     await act(async () => {
       void mocks.clickSave?.({ isPublish: true });

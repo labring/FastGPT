@@ -24,6 +24,7 @@ const Header = ({
 }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail?.name);
   const router = useRouter();
 
   const { lastAppListRouteType } = useSystemStore();
@@ -68,8 +69,9 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('common:All')}
+            rootName={t('common:navbar.Tools')}
             paths={paths}
+            currentName={appName}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
             fontSize={'14px'}

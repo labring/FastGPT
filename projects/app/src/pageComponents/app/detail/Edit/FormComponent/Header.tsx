@@ -54,6 +54,7 @@ const Header = ({
   const { toast } = useToast();
   const router = useRouter();
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail?.name);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
@@ -184,8 +185,9 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'} ml={'16px'}>
           <FolderPath
-            rootName={t('common:All')}
+            rootName={'Agent'}
             paths={paths}
+            currentName={appName}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
             fontSize={'14px'}
