@@ -66,8 +66,8 @@ const Header = ({
           <RouteTab />
         </Flex>
       )} */}
-      <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'}>
+      <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'} gap={3}>
+        <Box flex={'1'} minW={0} overflow={'hidden'}>
           <FolderPath
             rootName={t('common:navbar.Tools')}
             paths={paths}

@@ -182,10 +182,17 @@ const Header = ({
           <RouteTab />
         </Flex>
       )}
-      <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'} ml={'16px'}>
+      <Box
+        w={'full'}
+        h={'full'}
+        display={isPc ? 'grid' : 'flex'}
+        gridTemplateColumns={isPc ? 'minmax(0, 1fr) auto minmax(0, 1fr)' : undefined}
+        alignItems={'center'}
+        gap={3}
+      >
+        <Box flex={isPc ? undefined : '1'} minW={0} ml={'16px'} overflow={'hidden'}>
           <FolderPath
-            rootName={'Agent'}
+            rootName={t('app:my_agents')}
             paths={paths}
             currentName={appName}
             hoverStyle={{ color: 'primary.600' }}
@@ -194,12 +201,12 @@ const Header = ({
           />
         </Box>
         {isPc && (
-          <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+          <Box justifySelf={'center'}>
             <RouteTab />
           </Box>
         )}
-        {currentTab === TabEnum.appEdit && (
-          <Flex alignItems={'center'}>
+        {currentTab === TabEnum.appEdit ? (
+          <Flex alignItems={'center'} justifySelf={'end'} flexShrink={0}>
             {!isShowHistories && isPc && (
               <MyTag
                 mr={3}
@@ -250,8 +257,10 @@ const Header = ({
               }}
             />
           </Flex>
+        ) : (
+          isPc && <Box />
         )}
-      </Flex>
+      </Box>
 
       <PublishHistories<SimpleAppSnapshotType>
         isOpen={isShowHistories && currentTab === TabEnum.appEdit}

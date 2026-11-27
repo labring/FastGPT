@@ -131,6 +131,7 @@ describe('Dataset detail NavBar breadcrumb', () => {
         );
       });
 
+      expect(mocks.getDatasetPaths).toHaveBeenCalledTimes(1);
       expect(mocks.getDatasetPaths).toHaveBeenCalledWith({
         sourceId: 'ds-1',
         type: 'parent'

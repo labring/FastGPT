@@ -143,17 +143,17 @@ export const DatasetPageContextProvider = ({
     errorToast: ''
   });
 
+  const isDetailLoaded = !!datasetId && datasetDetail._id === datasetId;
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () =>
-      datasetId
-        ? getDatasetPaths({
-            sourceId: datasetId,
-            type: 'parent'
-          })
-        : Promise.resolve([] as ParentTreePathItemType[]),
+      getDatasetPaths({
+        sourceId: datasetDetail._id,
+        type: 'parent'
+      }),
     {
       manual: false,
-      refreshDeps: [datasetId, datasetDetail.parentId]
+      ready: isDetailLoaded,
+      refreshDeps: [datasetDetail._id, datasetDetail.parentId]
     }
   );
 

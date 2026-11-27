@@ -112,7 +112,7 @@ it('retries newer form changes when only the earlier save succeeded', async () =
   try {
     await act(async () => render(initial));
     expect(mocks.folderPathProps).toMatchObject({
-      rootName: 'Agent',
+      rootName: 'app:my_agents',
       currentName: 'FastGPT迁移测试助手'
     });
     await act(async () => render(earlier));

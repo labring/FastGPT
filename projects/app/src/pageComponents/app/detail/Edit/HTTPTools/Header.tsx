@@ -42,7 +42,7 @@ const Header = () => {
   return (
     <Box h={14}>
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'}>
+        <Box flex={'1'} minW={0} overflow={'hidden'}>
           <FolderPath
             rootName={t('common:navbar.Tools')}
             paths={paths}
