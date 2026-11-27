@@ -1,4 +1,5 @@
 import {
+  channelListItemToChannelInfo,
   deleteChannel,
   getAffectedModels,
   getChannelPageList,
@@ -162,7 +163,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
     type: 'delete'
   });
 
-  const { runAsync: deleteChannelRequest, loading: loadingDeleteChannel } = useRequest(
+  const { runAsync: deleteChannelRequest } = useRequest(
     (channelId: number) => deleteChannel(channelId, channelType),
     {
       manual: true,
@@ -172,26 +173,29 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
       }
     }
   );
-  const onDeleteChannel = (channelId: number) =>
-    runChannelMutation(() => deleteChannelRequest(channelId));
 
-  // Delete preflight checking for affected models
-  const handleDeleteChannel = async (item: ChannelListItem) => {
-    let affectedWarning = '';
+  /** 删除前预检独占受影响模型，预检失败不阻断确认弹窗。 */
+  const getDeleteAffectedWarning = async (ids: number[]) => {
     try {
-      const res = await getAffectedModels({ ids: [item.id], channelType });
+      const res = await getAffectedModels({ ids, channelType });
       if (res?.affectedModels && res.affectedModels.length > 0) {
         const names = res.affectedModels.map((m) => m.name || m.model).join(', ');
-        affectedWarning = t('config_model:channel.delete_affected_models_warning', {
+        return t('config_model:channel.delete_affected_models_warning', {
           models: names
         });
       }
     } catch (_error) {
-      // preflight failure does not block deletion dialog
+      // 预检失败不阻断删除弹窗
     }
+    return '';
+  };
+
+  // Delete preflight checking for affected models
+  const handleDeleteChannel = async (item: ChannelListItem) => {
+    const affectedWarning = await getDeleteAffectedWarning([item.id]);
 
     openConfirm({
-      onConfirm: () => onDeleteChannel(item.id),
+      onConfirm: () => deleteChannelRequest(item.id),
       customContent:
         affectedWarning ||
         t('config_model:confirm_delete_channel', {
@@ -233,22 +237,10 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
   const handleBatchDelete = async () => {
     if (selectedItems.length === 0) return;
     const selectedIds = selectedItems.map((c) => c.id);
-    let affectedWarning = '';
-    try {
-      const res = await getAffectedModels({ ids: selectedIds, channelType });
-      if (res?.affectedModels && res.affectedModels.length > 0) {
-        const names = res.affectedModels.map((m) => m.name || m.model).join(', ');
-        affectedWarning = t('config_model:channel.delete_affected_models_warning', {
-          models: names
-        });
-      }
-    } catch (_error) {
-      // 预检失败不阻断删除弹窗
-    }
+    const affectedWarning = await getDeleteAffectedWarning(selectedIds);
 
     openConfirm({
       onConfirm: async () => {
-        setBatchOperating(true);
         try {
           await postBatchDeleteChannels({
             ids: selectedIds,
@@ -265,8 +257,6 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
             status: 'error',
             title: getErrText(err, 'Batch delete failed')
           });
-        } finally {
-          setBatchOperating(false);
         }
       },
       customContent:
@@ -277,13 +267,17 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
     })();
   };
 
-  const [modelTestData, setTestModelData] = useState<{ channelId: number; models: string[] }>();
+  const [modelTestData, setTestModelData] = useState<{
+    channelId: number;
+    models: string[];
+    modelMapping?: Record<string, string>;
+  }>();
 
+  // 删除操作由 ConfirmModal 确认按钮单独承载 loading，避免外层列表同步遮罩。
   const isLoading =
     loadingChannelList ||
     loadingChannelProviders ||
     loadingUpdateChannel ||
-    loadingDeleteChannel ||
     channelMutationLoading ||
     batchOperating;
 
@@ -467,7 +461,8 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
                             onClick={() =>
                               setTestModelData({
                                 channelId: item.id,
-                                models: item.models
+                                models: item.models,
+                                modelMapping: item.model_mapping
                               })
                             }
                           />
@@ -476,17 +471,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
                             tip={t('config_model:edit')}
                             pointerEvents={channelMutationLoading ? 'none' : undefined}
                             opacity={channelMutationLoading ? 0.5 : 1}
-                            onClick={() =>
-                              setEditChannel({
-                                ...defaultChannel,
-                                ...item,
-                                key: '',
-                                status: item.status as ChannelStatusEnum,
-                                base_url: item.base_url ?? '',
-                                priority: item.priority ?? 1,
-                                created_at: item.created_at ?? 0
-                              })
-                            }
+                            onClick={() => setEditChannel(channelListItemToChannelInfo(item))}
                           />
                           <MyIconButton
                             icon={'delete'}
@@ -555,16 +540,14 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
           defaultConfig={editChannel}
           channelType={channelType}
           onClose={() => setEditChannel(undefined)}
-          onSuccess={() => {
-            setEditChannel(undefined);
-            refreshChannelList();
-          }}
+          onSuccess={refreshChannelList}
         />
       )}
       {modelTestData && (
         <ModelTest
           channelId={modelTestData.channelId}
           models={modelTestData.models}
+          modelMapping={modelTestData.modelMapping}
           channelType={channelType}
           onClose={() => setTestModelData(undefined)}
         />

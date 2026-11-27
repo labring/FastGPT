@@ -11,12 +11,15 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { useMemo } from 'react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import ModelMappingInput from './ModelMappingInput';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/model/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -25,6 +28,7 @@ import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
@@ -56,14 +60,20 @@ const EditChannelModal = ({
   onSuccess: (createdChannelData?: CreateChannelResponse) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useSafeTranslation();
+  const { toast } = useToast();
+  const isEdit = defaultConfig.id !== 0;
+  const currentModels = useMemo(
+    () => fixedModels ?? (fixedModel ? [fixedModel] : []),
+    [fixedModel, fixedModels]
+  );
+  const isCompactCreate = !isEdit && currentModels.length > 0;
+  const isSingleCompactCreate = isCompactCreate && currentModels.length === 1;
+  // 精简新建弹窗不展示模型多选框，跳过模型列表请求避免无意义加载。
   const {
     getModelProvider,
     models: availableModels,
     loading: loadingModels
-  } = useModelConfig({ channelType, language: i18n.language });
-  const isEdit = defaultConfig.id !== 0;
-  const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
-  const isCompactCreate = !isEdit && currentModels.length > 0;
+  } = useModelConfig({ channelType, language: i18n.language, manual: isCompactCreate });
 
   const { register, handleSubmit, control, setValue } = useForm<ChannelInfoType>({
     defaultValues: {
@@ -121,6 +131,16 @@ const EditChannelModal = ({
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
+    // 候选模型仍在加载时保留当前已选模型作为占位，避免 MultipleSelect 短暂把已有模型标红为无效项。
+    if (loadingModels && availableModels.length === 0) {
+      return models.map((model) => ({
+        icon: undefined,
+        label: model,
+        value: model,
+        searchText: model
+      }));
+    }
+
     return sortModelSelectorModels(availableModels).map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
@@ -131,14 +151,80 @@ const EditChannelModal = ({
         searchText: item.model
       };
     });
-  }, [getModelProvider, i18n.language, availableModels]);
+  }, [availableModels, getModelProvider, i18n.language, loadingModels, models]);
+
+  const pendingModelLabel = t('config_model:model_pending_creation');
+  const singleCompactModelName = useMemo(() => {
+    if (!isSingleCompactCreate) return '';
+    const candidate = (models[0] || currentModels[0]?.model || '').trim();
+    return candidate !== '' && candidate !== pendingModelLabel ? candidate : '';
+  }, [currentModels, isSingleCompactCreate, models, pendingModelLabel]);
+
+  const modelIconMap = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    modelList.forEach((item) => {
+      map.set(item.value, item.icon);
+    });
+    currentModels.forEach((item) => {
+      if (!map.has(item.model) && item.avatar) {
+        map.set(item.model, item.avatar);
+      }
+    });
+    return map;
+  }, [currentModels, modelList]);
+
+  // 模型映射左侧仅允许从当前渠道已选模型中选择；精简弹窗空白新建时过滤待绑定占位文案。
+  const mappingKeyOptions = useMemo(() => {
+    const sourceModels =
+      models.length > 0
+        ? models
+        : isCompactCreate
+          ? currentModels
+              .map((item) => item.model.trim())
+              .filter((name) => name !== '' && name !== pendingModelLabel)
+          : [];
+
+    return Array.from(new Set(sourceModels)).map((modelName) => ({
+      icon: modelIconMap.get(modelName) || HUGGING_FACE_ICON,
+      label: modelName,
+      value: modelName,
+      searchText: modelName
+    }));
+  }, [currentModels, isCompactCreate, modelIconMap, models, pendingModelLabel]);
+
+  const apiKey = useWatch({ control, name: 'key' });
+  const [hasEditedKey, setHasEditedKey] = useState(false);
+  const hasEditedKeyRef = useRef(false);
+  const handleKeyChange = (val: string) => {
+    hasEditedKeyRef.current = true;
+    setHasEditedKey(true);
+    setValue('key', val);
+  };
+  const isKeyConfigured = Boolean(defaultConfig.keyConfigured) && !hasEditedKey;
 
   const modelMapping = useWatch({ control, name: 'model_mapping' });
+  const [compactMappingTarget, setCompactMappingTarget] = useState(() =>
+    singleCompactModelName ? (defaultConfig.model_mapping?.[singleCompactModelName] ?? '') : ''
+  );
+  const handleCompactMappingChange = (val: string) => {
+    setCompactMappingTarget(val);
+    if (!singleCompactModelName) {
+      setValue('model_mapping', {});
+      return;
+    }
+    const trimmed = val.trim();
+    setValue('model_mapping', trimmed ? { [singleCompactModelName]: trimmed } : {});
+  };
+  const hasDuplicateModelMappingRef = useRef(false);
   const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
     async (formData: ChannelInfoType) => {
+      if (hasDuplicateModelMappingRef.current) {
+        return Promise.reject(t('config_model:mapping_key_duplicate'));
+      }
       const { chat_upstream_protocol, ...otherConfigs } = formData.configs ?? {};
+      const { keyConfigured: _keyConfigured, ...restFormData } = formData;
       const data = {
-        ...formData,
+        ...restFormData,
         configs: {
           ...otherConfigs,
           ...(supportsChatUpstreamProtocol ? { chat_upstream_protocol } : {})
@@ -147,23 +233,35 @@ const EditChannelModal = ({
       if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      if (isEdit) {
-        await putChannel({
+      const createdChannel = await (async () => {
+        if (isEdit) {
+          await putChannel({
+            ...data,
+            // 未修改已保存密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
+            ...(defaultConfig.keyConfigured && !hasEditedKeyRef.current ? { key: undefined } : {}),
+            status: data.status === 1 || data.status === 2 ? data.status : undefined,
+            channelType
+          });
+          return undefined;
+        }
+
+        return postCreateChannel({
           ...data,
           status: data.status === 1 || data.status === 2 ? data.status : undefined,
-          channelType
+          channelType,
+          model_mapping: data.model_mapping ?? {}
         });
-        await onSuccess();
-        return;
-      }
+      })();
 
-      const createdChannel = await postCreateChannel({
-        ...data,
-        status: data.status === 1 || data.status === 2 ? data.status : undefined,
-        channelType,
-        model_mapping: data.model_mapping ?? {}
-      });
-      await onSuccess(createdChannel);
+      try {
+        await onSuccess(createdChannel);
+      } catch (error) {
+        // 渠道写入已成功，后续列表或详情刷新失败单独提醒，避免误报写入失败导致重复提交。
+        toast({
+          status: 'warning',
+          title: getErrText(error)
+        });
+      }
     },
     {
       onSuccess() {
@@ -174,8 +272,6 @@ const EditChannelModal = ({
     }
   );
   const onSubmit = useLockFn(submitRequest);
-
-  const isLoading = loadingModels || loadingChannelProviderMetas || loadingCreate;
 
   const chatProtocolField = supportsChatUpstreamProtocol ? (
     <Box>
@@ -196,18 +292,36 @@ const EditChannelModal = ({
     </Box>
   ) : null;
 
+  const modelMappingField = (
+    <Box>
+      <HStack spacing={1} mb={2}>
+        <FormLabel>{t('config_model:mapping')}</FormLabel>
+        <QuestionTip label={t('config_model:mapping_tip')} />
+      </HStack>
+      <ModelMappingInput
+        value={modelMapping}
+        modelOptions={mappingKeyOptions}
+        getModelAvatar={(modelName) => modelIconMap.get(modelName) || HUGGING_FACE_ICON}
+        inputHeight={isCompactCreate ? '36px' : undefined}
+        onChange={(val) => setValue('model_mapping', val)}
+        onValidationChange={({ hasDuplicateKey }) => {
+          hasDuplicateModelMappingRef.current = hasDuplicateKey;
+        }}
+      />
+    </Box>
+  );
+
   return (
     <MyModal
-      isLoading={isLoading}
       title={isEdit ? t('config_model:edit_channel') : t('config_model:create_channel')}
       onClose={onClose}
       size={isCompactCreate ? 'sm' : 'lg'}
       footer={
         <>
-          <Button variant={isEdit ? 'outline' : 'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
+          <Button variant={'primary'} isLoading={loadingCreate} onClick={handleSubmit(onSubmit)}>
             {isEdit ? t('common:Update') : t('common:new_create')}
           </Button>
         </>
@@ -234,7 +348,9 @@ const EditChannelModal = ({
               <MySelect
                 h="36px"
                 list={providerList}
+                isLoading={loadingChannelProviderMetas}
                 placeholder={t('config_model:select_provider_placeholder')}
+                searchPlaceholder={t('config_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
                 onChange={(val) => setValue('type', val)}
@@ -256,10 +372,13 @@ const EditChannelModal = ({
 
           <Box>
             <FormLabel mb={2}>{t('config_model:api_key')}</FormLabel>
-            <Input
+            <SecretValueInput
               h="36px"
-              {...register('key')}
+              bg="white"
+              value={apiKey ?? ''}
+              isConfigured={isKeyConfigured}
               placeholder={t('config_model:api_key_placeholder')}
+              onChange={handleKeyChange}
             />
           </Box>
 
@@ -288,26 +407,25 @@ const EditChannelModal = ({
             )}
           </Flex>
 
-          <Box>
-            <HStack spacing={1} mb={2}>
-              <FormLabel>{t('config_model:mapping')}</FormLabel>
-              <QuestionTip label={t('config_model:mapping_tip')} />
-            </HStack>
-            <JsonEditor
-              resize={false}
-              defaultHeight={100}
-              value={JSON.stringify(modelMapping, null, 2)}
-              onChange={(val) => {
-                if (!val) {
-                  setValue('model_mapping', {});
-                  return;
-                }
-                try {
-                  setValue('model_mapping', JSON.parse(val));
-                } catch (_error) {}
-              }}
-            />
-          </Box>
+          {isSingleCompactCreate ? (
+            <Flex alignItems="center" gap={8}>
+              <HStack spacing={1} {...CompactLabelStyles}>
+                <FormLabel>{t('config_model:mapping')}</FormLabel>
+                <QuestionTip label={t('config_model:compact_mapping_tip')} />
+              </HStack>
+              <Input
+                flex="1 0 0"
+                minW={0}
+                h="36px"
+                value={compactMappingTarget}
+                isDisabled={!singleCompactModelName}
+                placeholder={t('config_model:mapping_value_placeholder')}
+                onChange={(e) => handleCompactMappingChange(e.target.value)}
+              />
+            </Flex>
+          ) : (
+            modelMappingField
+          )}
         </Flex>
       ) : (
         <Box>
@@ -326,7 +444,9 @@ const EditChannelModal = ({
             <Box mt={1}>
               <MySelect
                 list={providerList}
+                isLoading={loadingChannelProviderMetas}
                 placeholder={t('config_model:select_provider_placeholder')}
+                searchPlaceholder={t('config_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
                 onChange={(val) => {
@@ -376,11 +496,16 @@ const EditChannelModal = ({
                 </Flex>
               )}
             </Flex>
-            <Input
-              mt={1}
-              {...register('key')}
-              placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
-            />
+            <Box mt={1}>
+              <SecretValueInput
+                h="36px"
+                bg="white"
+                value={apiKey ?? ''}
+                isConfigured={isKeyConfigured}
+                placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
+                onChange={handleKeyChange}
+              />
+            </Box>
           </Box>
           {chatProtocolField && <Box mt={4}>{chatProtocolField}</Box>}
           {/* Model */}
@@ -390,7 +515,7 @@ const EditChannelModal = ({
                 {t('config_model:model')}({models.length})
               </FormLabel>
 
-              <Button size={'sm'} variant={'whitePrimary'} onClick={() => setValue('models', [])}>
+              <Button size={'sm'} variant={'whiteBase'} onClick={() => setValue('models', [])}>
                 {t('config_model:clear_model')}
               </Button>
             </Flex>
@@ -398,6 +523,7 @@ const EditChannelModal = ({
               <MultipleSelect
                 value={models}
                 list={modelList}
+                isLoading={loadingModels}
                 onSelect={(val) => {
                   setValue('models', val);
                 }}
@@ -412,26 +538,7 @@ const EditChannelModal = ({
             </Box>
           </Box>
           {/* Mapping */}
-          <Box mt={4}>
-            <HStack>
-              <FormLabel>{t('config_model:mapping')}</FormLabel>
-              <QuestionTip label={t('config_model:mapping_tip')} />
-            </HStack>
-            <Box mt={2}>
-              <JsonEditor
-                value={JSON.stringify(modelMapping, null, 2)}
-                onChange={(val) => {
-                  if (!val) {
-                    setValue('model_mapping', {});
-                  } else {
-                    try {
-                      setValue('model_mapping', JSON.parse(val));
-                    } catch (_error) {}
-                  }
-                }}
-              />
-            </Box>
-          </Box>
+          <Box mt={4}>{modelMappingField}</Box>
         </Box>
       )}
     </MyModal>

@@ -9,9 +9,15 @@ import type DndDrag from '@fastgpt/web/components/common/DndDrag';
 type DndProps = React.ComponentProps<typeof DndDrag<ModelConfigListItem>>;
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
+  deleteModel: vi.fn(),
   refresh: vi.fn(),
   onError: vi.fn(),
-  dnd: undefined as DndProps | undefined
+  dnd: undefined as DndProps | undefined,
+  activeDragRubric: undefined as { draggableId: string; index: number } | undefined,
+  addModelDisabled: undefined as boolean | undefined,
+  confirmDelete: undefined as (() => void) | undefined,
+  currentModels: [] as ModelConfigListItem[],
+  setMockModels: undefined as ((next: ModelConfigListItem[]) => void) | undefined
 }));
 
 vi.mock('@chakra-ui/react', async (importOriginal) => ({
@@ -50,14 +56,24 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 vi.mock('@/web/core/ai/model/api', () => ({
   putUpdateModelOrder: mocks.save,
-  deleteModel: vi.fn(),
+  deleteModel: mocks.deleteModel,
   deleteModels: vi.fn(),
   testModel: vi.fn(),
   putModelsStatus: vi.fn(),
   postUpdateModelChannels: vi.fn()
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (request: unknown) => ({ runAsync: request, loading: false })
+  useRequest: (
+    request: (...args: any[]) => Promise<unknown>,
+    options?: { onSuccess?: () => void }
+  ) => ({
+    runAsync: async (...args: any[]) => {
+      const res = await request(...args);
+      options?.onSuccess?.();
+      return res;
+    },
+    loading: false
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@fastgpt/web/hooks/useConfirm', () => ({
@@ -87,6 +103,35 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
 vi.mock('@fastgpt/web/components/common/DndDrag', () => ({
   default: (props: DndProps) => {
     mocks.dnd = props;
+    const clone =
+      mocks.activeDragRubric && props.renderClone
+        ? props.renderClone(
+            {
+              innerRef: () => {},
+              draggableProps: {
+                'data-rbd-draggable-context-id': '0',
+                'data-rbd-draggable-id': mocks.activeDragRubric.draggableId
+              },
+              dragHandleProps: null
+            },
+            {
+              isDragging: true,
+              isDropAnimating: false,
+              draggingOver: 'droppable',
+              combineWith: null,
+              combineTargetFor: null,
+              mode: 'SNAP'
+            },
+            {
+              draggableId: mocks.activeDragRubric.draggableId,
+              type: 'DEFAULT',
+              source: {
+                droppableId: 'droppable',
+                index: mocks.activeDragRubric.index
+              }
+            }
+          )
+        : null;
     return React.createElement(
       'tbody',
       null,
@@ -96,11 +141,12 @@ vi.mock('@fastgpt/web/components/common/DndDrag', () => ({
           { key: model.modelId },
           React.createElement('td', null, model.model)
         )
-      )
+      ),
+      clone
     );
   },
   Draggable: () => null,
-  getDraggableItemProps: vi.fn()
+  getDraggableItemProps: () => ({ draggableItemProps: {}, dragHandleProps: {} })
 }));
 vi.mock('@/components/core/ai/ModelTabHeader', () => ({
   default: ({ children }: React.PropsWithChildren) => children
@@ -114,8 +160,31 @@ vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null })
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Icon/button', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/String/CopyBox', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({ default: () => null }));
-vi.mock('@/pageComponents/model/AddModel', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ onConfirm }: { onConfirm?: () => void }) => {
+    mocks.confirmDelete = onConfirm;
+    return null;
+  }
+}));
+vi.mock('@/pageComponents/model/AddModel', () => ({
+  default: ({ isDisabled }: { isDisabled?: boolean }) => {
+    const [open, setOpen] = React.useState(false);
+    mocks.addModelDisabled = isDisabled;
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(
+        'button',
+        {
+          disabled: Boolean(isDisabled),
+          onClick: () => setOpen(true)
+        },
+        'config_model:create_model'
+      ),
+      open ? React.createElement('div', { 'data-testid': 'add-model-form' }, 'draft-form') : null
+    );
+  }
+}));
 vi.mock('@/pageComponents/model/ModelChannelCount', () => ({ default: () => null }));
 vi.mock('@/pageComponents/model/ModelChannelModal', () => ({ default: () => null }));
 vi.mock('@/pageComponents/model/ModelEditModal', () => ({ default: () => null }));
@@ -134,15 +203,19 @@ const models: ModelConfigListItem[] = ['A', 'B', 'C'].map((model, index) => ({
   channels: []
 }));
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
-  useModelConfig: () => ({
-    data: { models },
-    models,
-    channels: [],
-    providers: [],
-    getModelProvider: () => ({}),
-    refresh: mocks.refresh,
-    loading: false
-  })
+  useModelConfig: () => {
+    const [list, setList] = React.useState<ModelConfigListItem[]>(() => mocks.currentModels);
+    mocks.setMockModels = setList;
+    return {
+      data: { models: list },
+      models: list,
+      channels: [],
+      providers: [],
+      getModelProvider: () => ({}),
+      refresh: mocks.refresh,
+      loading: false
+    };
+  }
 }));
 
 let dom: JSDOM;
@@ -193,6 +266,12 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   mocks.dnd = undefined;
+  mocks.activeDragRubric = undefined;
+  mocks.addModelDisabled = undefined;
+  mocks.confirmDelete = undefined;
+  mocks.currentModels = [...models];
+  mocks.setMockModels = undefined;
+  mocks.refresh.mockResolvedValue(undefined);
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -228,5 +307,116 @@ describe('ModelConfigTable sorting', () => {
     });
     expect(mocks.refresh).toHaveBeenCalledOnce();
     expect(host.textContent).not.toContain('config_model:model.cancel_sort');
+  });
+
+  it('never disables custom sort or create model buttons while deleting and keeps AddModel form mounted after refresh', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
+
+    expect(button('custom_sort').disabled).toBe(false);
+    expect(mocks.addModelDisabled).toBeUndefined();
+
+    // 删除进行中两个按钮均可用，打开新增表单后后台删除与刷新完成不会卸载表单。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    expect(mocks.deleteModel).toHaveBeenCalledOnce();
+    expect(button('custom_sort').disabled).toBe(false);
+    expect(mocks.addModelDisabled).toBeUndefined();
+
+    const createBtn = Array.from(host.querySelectorAll('button')).find(
+      (item) => item.textContent === 'config_model:create_model'
+    );
+    await act(async () => {
+      createBtn?.click();
+    });
+    expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
+
+    await act(async () => {
+      resolveDelete();
+    });
+    expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
+  });
+
+  it('reconciles sort draft automatically when deletion or concurrent creation refreshes modelItems and preserves dragged order', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
+
+    // 删除进行中进入排序并拖拽最后一行 C；拖拽尚未放下时删除刷新到达，克隆预览与索引保持在本次拖拽快照上不越界，放下后再按 ID 与最新目录合并。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(sortNames()).toEqual(['A', 'B', 'C']);
+
+    await act(async () => {
+      mocks.activeDragRubric = { draggableId: models[2].modelId, index: 2 };
+      mocks.dnd!.onBeforeCapture?.({ draggableId: models[2].modelId });
+    });
+
+    // 删除刷新在拖拽中途将 modelItems 缩短为 [B, C]，renderClone 仍按 source.index = 2 渲染 C 而不报错。
+    await act(async () => {
+      resolveDelete();
+    });
+    expect(mocks.dnd!.dataList.map((item) => item.model)).toEqual(['A', 'B', 'C']);
+    expect(sortNames().at(-1)).toBe('C');
+
+    // 模拟 DndDrag.handleDragEnd：按本次拖拽快照将 index 2 的 C 移至 index 0，并触发 onDragEnd + onDragEndCb。
+    await act(async () => {
+      const nextList = Array.from(mocks.dnd!.dataList);
+      const [moved] = nextList.splice(2, 1);
+      nextList.splice(0, 0, moved);
+      mocks.activeDragRubric = undefined;
+      mocks.dnd!.onDragEnd?.();
+      mocks.dnd!.onDragEndCb(nextList);
+    });
+    expect(sortNames()).toEqual(['C', 'B']);
+
+    await act(async () => button('save_sort').click());
+    expect(mocks.save).toHaveBeenCalledWith({
+      channelType: 'system',
+      modelIds: [models[2].modelId, models[1].modelId]
+    });
+  });
+
+  it('self-heals stale sort draft via catalog refresh after save failure so retry succeeds', async () => {
+    // 若提交时服务端已删除模型 A 导致保存拒绝，自动刷新剔除 A 并保留 B/C 拖拽顺序，再次保存即可成功。
+    mocks.save.mockRejectedValueOnce(new Error('model not exist')).mockResolvedValueOnce(undefined);
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
+
+    await act(async () => mocks.dnd!.onDragEndCb([models[0], models[2], models[1]]));
+    await act(async () => button('save_sort').click());
+    expect(mocks.onError).toHaveBeenCalledOnce();
+    expect(sortNames()).toEqual(['C', 'B']);
+
+    await act(async () => button('save_sort').click());
+    expect(mocks.save).toHaveBeenLastCalledWith({
+      channelType: 'system',
+      modelIds: [models[2].modelId, models[1].modelId]
+    });
   });
 });
