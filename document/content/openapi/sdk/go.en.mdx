@@ -1,0 +1,345 @@
+---
+title: Go SDK
+description: Use the official FastGPT Go SDK (Go 1.24+, zero third-party dependencies) for SSE chat, interactive Workflows, and Datasets.
+---
+
+import { ApiReferenceNotice } from '@/components/docs/ApiReferenceNotice';
+
+<ApiReferenceNotice />
+
+**Compatibility: Go 1.24 or later for FastGPT System OpenAPI.**
+
+`github.com/labring/FastGPT/sdk/go` (`package fastgpt`) is the official Go SDK for FastGPT System OpenAPI. Built with **zero third-party dependencies** purely on the Go 1.24 standard library (`net/http`, `encoding/json`, `iter.Seq2`, `context.AfterFunc`, `log/slog`), its models and service tree are deterministically generated from the System OpenAPI IR and cover all 47 System OpenAPI operations plus dual-mode chat streaming.
+
+<Callout type="info">
+  If you only need basic OpenAI-compatible chat calls, see the [API Quick Start](/en/openapi/intro).
+  Use the official Go SDK when integrating streaming chat, interactive Workflows, Dataset
+  processing, batch archive downloads, or App logs in Go services.
+</Callout>
+
+## Installation and Module Path
+
+- Runtime: **Go 1.24+**
+- Third-party dependencies: none
+- Module path: `github.com/labring/FastGPT/sdk/go`
+
+During the beta release (`v0.1.0-beta.1`), install explicitly with the tag (or omit the tag once a stable release is published):
+
+```bash
+# Install the beta pre-release
+go get github.com/labring/FastGPT/sdk/go@v0.1.0-beta.1
+
+# Install the latest stable version after GA release
+go get github.com/labring/FastGPT/sdk/go
+```
+
+Optional environment variables supported as fallbacks:
+
+| Variable           | Purpose                                                                  | Default / Fallback                                                              |
+| ------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `FASTGPT_BASE_URL` | FastGPT server origin (with or without `/api`, normalized automatically) | Used when `WithBaseURL` is omitted; falls back to `https://cloud.fastgpt.cn`    |
+| `FASTGPT_API_KEY`  | Personal API key or App API key                                          | Read when `WithAPIKey`, `WithAPIKeyProvider`, and `WithRequestAPIKey` are unset |
+
+## Quick Start and Client Configuration
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	fastgpt "github.com/labring/FastGPT/sdk/go"
+)
+
+func main() {
+	ctx := context.Background()
+
+	client := fastgpt.NewClient(
+		fastgpt.WithBaseURL(os.Getenv("FASTGPT_BASE_URL")),
+		fastgpt.WithAPIKey(os.Getenv("FASTGPT_API_KEY")),
+		fastgpt.WithDefaultAppID(os.Getenv("FASTGPT_APP_ID")), // optional for App API keys
+	)
+
+	catalog, err := client.Models.Catalog(ctx, fastgpt.ModelsCatalogParams{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	count := 0
+	if catalog.Data != nil {
+		count = len(catalog.Data.Models)
+	}
+	fmt.Printf("version=%s models=%d\n", catalog.Version, count)
+}
+```
+
+### Common `ClientOption` helpers
+
+| Option                    | Purpose                                                                                    | Default                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `WithBaseURL(url)`        | Set server base URL (auto-normalized to `/api`)                                            | `FASTGPT_BASE_URL` or `https://cloud.fastgpt.cn` |
+| `WithAPIKey(key)`         | Set a static API key                                                                       | `FASTGPT_API_KEY`                                |
+| `WithAPIKeyProvider(fn)`  | Resolve credentials dynamically per request for key rotation                               | `nil`                                            |
+| `WithDefaultAppID(appID)` | Default `appId` injected on App-scoped operations                                          | `""`                                             |
+| `WithIdentity(identity)`  | Default caller identity context                                                            | `nil`                                            |
+| `WithTimeout(d)`          | Full-attempt timeout for JSON calls; handshake-only for SSE and binary downloads           | `60 * time.Second`                               |
+| `WithMaxRetries(n)`       | Retry cap for idempotent `GET` requests on `408`/`429`/`502`/`503`/`504` or network errors | `2`                                              |
+| `WithDefaultHeader(k, v)` | Add a default HTTP header to every request                                                 | None                                             |
+| `WithHTTPClient(hc)`      | Supply a custom `*http.Client`                                                             | `&http.Client{}`                                 |
+| `WithHooks(hooks)`        | Register `OnRequest`, `OnResponse`, and `OnError` hooks                                    | None                                             |
+| `WithLogger(logger)`      | Attach `*slog.Logger` with automatic secret redaction                                      | `nil`                                            |
+
+## Identity Isolation, Derived Clients, and Per-Request Overrides
+
+### Derived clients (`WithIdentity` / `WithOptions`)
+
+Both `client.WithIdentity(...)` and `client.WithOptions(...)` **share the parent client's `*http.Client` connection pool**, making it cheap to derive scoped clients per tenant or end user:
+
+```go
+// 1. Track external end users via CustomUID (App API key or Personal API key)
+userClient := client.WithIdentity(fastgpt.IdentityCustomUID("tenant-01:user-42"))
+histories, err := userClient.Chat.Histories.List(ctx, fastgpt.ChatHistoriesListParams{
+	PageSize: fastgpt.Int(20),
+})
+
+// 2. Act on behalf of a team member with Personal API key and AuthProxy enabled
+memberClient := client.WithIdentity(fastgpt.IdentityAuthProxy(fastgpt.AuthProxyByUsername("alice")))
+```
+
+`CustomUID` and `AuthProxy` (as well as `TmbID` and `Username` inside `AuthProxy`) are mutually exclusive and fail fast with `ErrBadRequest` before sending a request. See [Identity Proxy](/en/openapi/identity-proxy) for server-side setup.
+
+### Per-request overrides (`RequestOption`)
+
+Every resource method accepts `opts ...RequestOption` to override configuration or inspect raw HTTP responses:
+
+```go
+var raw fastgpt.RawResponse
+detail, err := client.Datasets.Detail(
+	ctx,
+	fastgpt.DatasetsDetailParams{ID: "68ad85a7463006c963799a05"},
+	fastgpt.WithRequestAPIKey(os.Getenv("FASTGPT_PERSONAL_KEY")),
+	fastgpt.WithRequestTimeout(10*time.Second),
+	fastgpt.WithRequestMaxRetries(0),
+	fastgpt.WithRawResponse(&raw),
+)
+if err == nil {
+	fmt.Println(detail.Name, raw.StatusCode, raw.RequestID)
+}
+```
+
+Available options: `WithRequestHeader`, `WithRequestTimeout`, `WithRequestMaxRetries`, `WithRequestAPIKey`, `WithRequestAppID`, `WithRequestIdentity`, and `WithRawResponse`.
+
+## Tri-State Optional Fields (`Opt[T]`) and Sealed Unions
+
+### Tri-state `Opt[T]`
+
+Using Go 1.24 `json:",omitzero"`, `fastgpt.Opt[T]` cleanly separates omitted keys, explicit zero values (`false`, `0`, `""`), and explicit JSON `null`:
+
+- **Omitted**: Leave the field unset (zero `Opt[T]{}`; `IsZero()` returns `true`).
+- **Explicit value**: Use `fastgpt.String(...)`, `fastgpt.Bool(...)`, `fastgpt.Int(...)`, `fastgpt.Float64(...)`, or generic `fastgpt.Some(val)`.
+- **Explicit `null`**: Use `fastgpt.Null[T]()` (`IsNull()` returns `true`).
+- **Reading values**: Inspect via `.Get() (T, bool)` or `.Or(fallback)`.
+
+### Sealed unions and constructors
+
+- **Request unions**: Mutually exclusive request parameters expose typed constructors that strip disallowed fields—for example `fastgpt.DeleteCollectionByID(id)`, `fastgpt.DeleteCollectionsByIDs(ids...)`, `fastgpt.DeleteCollectionsByAPIFiles(datasetID, apiFileIDs...)`, and message constructors (`fastgpt.SystemMessage`, `UserMessage`, `AssistantMessage`, `ToolMessage`).
+- **Response unions**: Polymorphic response types preserve `RawJSON` alongside variant helpers such as `AsApp()`, `AsLLM()`, `Text()`, and `Parts()` so unknown future variants degrade safely.
+
+## Resource Tree
+
+| Service Field     | Coverage                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `client.Chat`     | `CompletionsV2`, `CompletionsV2Stream`, `Stop`, `Interactive` helpers, plus `Histories`, `Records`, and `Feedbacks`     |
+| `client.Datasets` | Dataset lifecycle, hybrid `Search`, `Collections` (local file, link, text, batch download), and `Data` Chunk management |
+| `client.Apps`     | `Apps.Logs` cursor search (`Search` / `SearchAutoPaging`), chart analytics, and user lists                              |
+| `client.Models`   | Team `List`, `Catalog`, and `Summary`                                                                                   |
+
+## Chat Completions and SSE Streaming
+
+`/v2/chat/completions` is split into non-streaming `CompletionsV2` and streaming `CompletionsV2Stream`.
+
+### Iterating SSE events with Go 1.24 `iter.Seq2`
+
+```go
+stream, err := userClient.Chat.CompletionsV2Stream(ctx, fastgpt.ChatCompletionsV2Params{
+	ChatID:   fastgpt.String("chat_001"),
+	Messages: fastgpt.Some([]fastgpt.ChatMessage{fastgpt.UserMessage("Summarize today's Workflow logs.")}),
+	Detail:   fastgpt.Bool(true),
+})
+if err != nil {
+	log.Fatal(err)
+}
+defer stream.Close()
+
+for ev, err := range stream.Events() {
+	if err != nil {
+		log.Fatal(err)
+	}
+	switch e := ev.(type) {
+	case fastgpt.ChatSSEAnswerEvent:
+		fmt.Print(e.TextDelta)
+	case fastgpt.ChatSSEFlowNodeStatusEvent:
+		fmt.Printf("\n[Node] %s (%s)\n", e.Name, e.Status)
+	}
+}
+
+summary, err := stream.FinalResult()
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("\nTitle=%q Quotes=%d\n", summary.ChatTitle, len(summary.Quotes))
+```
+
+### Consumer ownership rules
+
+`ChatStream` enforces exclusive consumer ownership to prevent concurrent frame stealing:
+
+- Use `for ev, err := range stream.Events()` (or call `stream.FinalResult()` / `stream.FinalText()` directly).
+- If using manual `for stream.Next() { ev := stream.Current() }` followed by `stream.Err()`, **do not call `FinalResult()` / `FinalText()` while `Next()` is still active**—doing so immediately returns `ErrBadRequest`. Finish draining `Next()` or call `stream.Close()` first.
+
+## Resuming Interactive Workflows
+
+`client.Chat.Interactive` detects, unwraps, and resumes interactive Workflow pauses—see [Interactive Nodes & Variables](/en/openapi/interactive-and-variables) for full protocol details:
+
+```go
+if userClient.Chat.Interactive.IsInteractivePending(completion) {
+	outer := userClient.Chat.Interactive.ExtractInteractive(completion)
+	prompt := userClient.Chat.Interactive.UnwrapInteractive(outer)
+
+	switch {
+	case fastgpt.IsUserSelectInteractive(prompt):
+		_, err = userClient.Chat.Interactive.ReplyUserSelect(ctx, fastgpt.ReplyUserSelectParams{
+			ChatID: "chat_001",
+			Value:  prompt.UserSelect.UserSelectOptions[0].Value,
+		})
+	case fastgpt.IsUserInputInteractive(prompt):
+		_, err = userClient.Chat.Interactive.ReplyUserForm(ctx, fastgpt.ReplyUserFormParams{
+			ChatID: "chat_001",
+			Values: map[string]any{"project": "FastGPT", "priority": "P0"},
+		})
+	}
+}
+```
+
+## Datasets, Streaming Downloads, and Auto-Pagination
+
+### Multipart file uploads
+
+```go
+created, err := client.Datasets.Collections.CreateByLocalFile(ctx, fastgpt.DatasetsCollectionsCreateByLocalFileParams{
+	DatasetID:    "68ad85a7463006c963799a05",
+	TrainingType: fastgpt.String("chunk"),
+	File: fastgpt.FileUpload{
+		Filename:    "handbook.md",
+		ContentType: "text/markdown",
+		Bytes:       markdownBytes,
+	},
+})
+```
+
+### Streaming archive download (`*BinaryStream`)
+
+`BatchDownload` returns `*fastgpt.BinaryStream` (implementing `io.ReadCloser` and `io.WriterTo`, plus `.Bytes()`, `.ContentType()`, `.ContentLength()`, and `.Response()`), streaming ZIP bytes without buffering the entire archive in memory. The transport disables SDK retries, `net/http` keep-alive replays, and unfollowed-redirect masking so single-use tickets are never consumed twice or confused with HTML error pages:
+
+```go
+ticketRes, err := client.Datasets.Collections.GetDownloadTicket(ctx, fastgpt.DatasetsCollectionsGetDownloadTicketParams{
+	DatasetID:     "68ad85a7463006c963799a05",
+	CollectionIDs: []string{created.CollectionID},
+})
+if err != nil {
+	log.Fatal(err)
+}
+
+dlStream, err := client.Datasets.Collections.BatchDownload(ctx, fastgpt.DatasetsCollectionsBatchDownloadParams{
+	Ticket: ticketRes.Ticket,
+})
+if err != nil {
+	log.Fatal(err)
+}
+defer dlStream.Close()
+
+outFile, err := os.Create("collections.zip")
+if err != nil {
+	log.Fatal(err)
+}
+defer outFile.Close()
+
+if _, err := io.Copy(outFile, dlStream); err != nil {
+	log.Fatal(err)
+}
+```
+
+### Automatic pagination (`*Pager[T]`)
+
+Paginated endpoints provide `*AutoPaging` methods supporting `.All()`, `.Pages()`, `.Collect()`, and manual `Next()` / `Current()` / `Err()`, bounded via `WithPageSize`, `WithMaxPages`, `WithMaxItems`, and `WithPagerRequestOptions`:
+
+```go
+// 1. Offset auto-pagination across Chunks
+for chunk, err := range client.Datasets.Data.ListAutoPaging(
+	ctx,
+	fastgpt.DatasetsDataListParams{CollectionID: created.CollectionID},
+	fastgpt.WithPageSize(50),
+	fastgpt.WithMaxItems(500),
+).All() {
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(chunk.ID_, chunk.Q)
+}
+
+// 2. Cursor auto-pagination for App chat logs (POST /core/app/logs/search)
+logs, err := client.Apps.Logs.SearchAutoPaging(
+	ctx,
+	fastgpt.AppsLogsSearchParams{
+		DateStart: "2026-01-01T00:00:00.000Z",
+		DateEnd:   "2026-01-31T23:59:59.999Z",
+	},
+	fastgpt.WithMaxPages(5),
+).Collect()
+```
+
+## Observability and Structured Errors
+
+Every SDK error is an `*fastgpt.APIError` compatible with `errors.Is` and `errors.As`. Messages, URLs, causes, hooks, and `slog` output automatically redact API keys and URL query secrets (`ticket`, `token`, `apiKey`):
+
+```go
+client := fastgpt.NewClient(
+	fastgpt.WithAPIKey(os.Getenv("FASTGPT_API_KEY")),
+	fastgpt.WithLogger(slog.Default()),
+	fastgpt.WithHooks(fastgpt.Hooks{
+		OnRequest: func(_ context.Context, r fastgpt.RequestHookContext) {
+			log.Printf("-> %s %s (attempt %d)", r.Method, r.URL, r.Attempt)
+		},
+		OnResponse: func(_ context.Context, r fastgpt.ResponseHookContext) {
+			log.Printf("<- %d reqId=%s (%s)", r.StatusCode, r.RequestID, r.Duration)
+		},
+		OnError: func(_ context.Context, e fastgpt.ErrorHookContext) {
+			log.Printf("!! %s: %v", e.OperationID, e.Error)
+		},
+	}),
+)
+
+if _, err := client.Chat.Histories.List(ctx, fastgpt.ChatHistoriesListParams{}); err != nil {
+	var apiErr *fastgpt.APIError
+	_ = errors.As(err, &apiErr)
+
+	switch {
+	case errors.Is(err, fastgpt.ErrAuth):
+		// 401 / 403 / server code 514 (unAuthApiKey)
+	case errors.Is(err, fastgpt.ErrConflict):
+		// 409 / chatIsGenerating: inspect apiErr.ChatGeneratingConflict()
+	case errors.Is(err, fastgpt.ErrRateLimit):
+		// 429 / tooManyRequest / uploadFileIntervalLimit
+	case errors.Is(err, fastgpt.ErrTimeout):
+		// Handshake or non-streaming read timeout
+	case errors.Is(err, fastgpt.ErrNetwork):
+		// Transport failure or SSE stream ended before [DONE]
+	case errors.Is(err, fastgpt.ErrAborted):
+		// Caller context canceled or stream closed early
+	}
+}
+```
+
+Sentinel error kinds: `ErrAPI` (matched by all `*APIError` values), `ErrAuth`, `ErrBadRequest`, `ErrNotFound`, `ErrConflict`, `ErrRateLimit`, `ErrServer`, `ErrTimeout`, `ErrNetwork`, and `ErrAborted`.

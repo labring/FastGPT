@@ -1,0 +1,321 @@
+---
+title: Python SDK
+description: 使用 FastGPT 官方 Python SDK（fastgpt-sdk）同步或异步调用对话、知识库、应用日志与模型接口。
+---
+
+import { ApiReferenceNotice } from '@/components/docs/ApiReferenceNotice';
+
+<ApiReferenceNotice />
+
+**版本适配：Python >= 3.10，对应 FastGPT System OpenAPI。**
+
+`fastgpt-sdk`（导入包名 `fastgpt_sdk`）是 FastGPT 官方维护的 Python SDK，基于 `httpx` 和 Pydantic v2 构建，同时提供同步客户端 `FastGPT` 与异步客户端 `AsyncFastGPT`。全套接口由 System OpenAPI IR 确定性生成，覆盖**对话补全、SSE 流式响应、工作流交互续跑、知识库与集合管理、应用日志及模型目录**共 47 个接口。
+
+<Callout type="info">
+  如果只需要以 OpenAI 兼容协议调用基础对话接口，可直接使用 OpenAI Python SDK，参见 [API
+  快速入门](/zh-CN/openapi/intro)；需要操作知识库、工作流交互节点、聊天记录管理、应用日志或完整类型校验时，推荐使用本官方
+  SDK。
+</Callout>
+
+## 安装与环境要求
+
+- 运行环境：**Python 3.10 及以上**
+- 核心依赖：`httpx`、`pydantic >= 2.7`
+
+当前 `fastgpt-sdk` 处于 Beta 阶段（`0.1.0b1`），安装时需允许预发布版本：
+
+```bash
+pip install --pre fastgpt-sdk
+# 或使用 uv
+uv add --prerelease=allow fastgpt-sdk
+```
+
+SDK 支持通过环境变量提供默认连接与鉴权信息：
+
+| 环境变量           | 说明                                                         | 默认值 / 行为                                                           |
+| ------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `FASTGPT_BASE_URL` | FastGPT 服务地址（可带或不带 `/api` 后缀，SDK 会自动归一化） | 未传入 `base_url` 时读取，回退为 `https://cloud.fastgpt.cn`             |
+| `FASTGPT_API_KEY`  | 个人 API Key 或应用 Key                                      | 未传入 `api_key` 且未通过 `request_options` 指定时自动读取              |
+| `FASTGPT_APP_ID`   | 默认应用 ID                                                  | 可由调用方通过 `os.environ.get("FASTGPT_APP_ID")` 传给 `default_app_id` |
+
+## 快速开始与鉴权
+
+### 同步客户端（`FastGPT`）
+
+`FastGPT` 支持配合上下文管理器 `with` 使用，退出时自动释放连接池。
+
+```python
+import os
+from fastgpt_sdk import FastGPT
+
+with FastGPT(
+    base_url=os.environ.get("FASTGPT_BASE_URL", "https://cloud.fastgpt.cn"),
+    api_key=os.environ.get("FASTGPT_API_KEY"),
+    default_app_id=os.environ.get("FASTGPT_APP_ID"),  # 使用应用 API Key 时可省略
+) as client:
+    catalog = client.models.catalog()
+    model_count = len(catalog.data.models) if catalog.data else 0
+    print(f"version={catalog.version}, models={model_count}")
+```
+
+### 异步客户端（`AsyncFastGPT`）
+
+`AsyncFastGPT` 暴露与同步客户端一致的资源树与 Pydantic 模型，适合接入 FastAPI、Sanic 等异步后端服务。
+
+```python
+import asyncio
+import os
+from fastgpt_sdk import AsyncFastGPT
+
+
+async def main() -> None:
+    async with AsyncFastGPT(
+        base_url=os.environ.get("FASTGPT_BASE_URL", "https://cloud.fastgpt.cn"),
+        api_key=os.environ.get("FASTGPT_API_KEY"),
+        default_app_id=os.environ.get("FASTGPT_APP_ID"),
+    ) as client:
+        completion = await client.chat.completions_v2(
+            chat_id="chat_001",
+            messages=[{"role": "user", "content": "请总结今天的发布说明。"}],
+            detail=True,
+        )
+        print(completion.choices)
+
+
+asyncio.run(main())
+```
+
+### 个人密钥与应用 Key
+
+- **应用 API Key（v4.18.0+）**：在服务端固定绑定单个应用，调用对话和对话管理接口时可省略 `default_app_id`。
+- **个人 API Key**：可访问创建成员有权限的全部 System OpenAPI 资源；调用特定应用的对话与日志接口时，可通过 `default_app_id` 设置默认应用，或在单次请求中覆盖 `app_id`。
+- **动态密钥轮转**：`api_key` 支持传入可调用对象（同步客户端传 `Callable[[], str]`，异步客户端传同步或 `async` 回调），每次发请求时实时解析最新凭据。
+
+### 客户端主要配置参数
+
+| 参数              | 类型                                        | 默认值              | 说明                                                                           |
+| ----------------- | ------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| `base_url`        | `str \| None`                               | `None`              | FastGPT 实例根地址，自动补齐 `/api`                                            |
+| `api_key`         | `str \| Callable \| None`                   | `None`              | 静态密钥或动态密钥回调                                                         |
+| `default_app_id`  | `str \| None`                               | `None`              | 自动注入需要 `appId` 的应用级接口                                              |
+| `identity`        | `FastGPTIdentity \| Mapping \| None`        | `None`              | 默认终端身份上下文（`custom_uid` 或 `auth_proxy`）                             |
+| `timeout`         | `float \| httpx.Timeout \| None`            | `60.0`              | 单次请求超时（秒）                                                             |
+| `max_retries`     | `int \| None`                               | `2`（可重试 `GET`） | 幂等 `GET` 请求在 `408` / `429` / `502` / `503` / `504` 或网络瞬断时的重试次数 |
+| `default_headers` | `Mapping[str, str] \| None`                 | `None`              | 全局附加请求头                                                                 |
+| `hooks`           | `FastGPTHooks \| None`                      | `None`              | 请求/响应/异常可观测钩子                                                       |
+| `logger`          | `FastGPTLogger \| LogLevel \| None`         | `None`              | 内置脱敏日志级别或自定义日志器                                                 |
+| `http_client`     | `httpx.Client \| httpx.AsyncClient \| None` | `None`              | 自定义 `httpx` 客户端实例                                                      |
+
+## 用户身份隔离与单次请求覆盖
+
+### 派生租户或终端用户客户端（`with_identity`）
+
+业务后端通常全局维护一个客户端实例，再按当前登录用户派生轻量级实例。`with_identity` 会复用父客户端的底层 `httpx` 连接池，同时按接口契约自动将身份参数注入 JSON 请求体或 URL 查询参数：
+
+```python
+# 1. 应用 Key 或个人 Key 场景：使用 custom_uid 标识外部业务用户
+user_client = client.with_identity(custom_uid="tenant-01:user-42")
+histories = user_client.chat.histories.list(page_size=20)
+
+# 2. 团队所有者开启身份代理后的个人 Key 场景：使用 auth_proxy 代理团队成员
+# 详细权限规则参见身份代理文档
+member_client = client.with_identity(auth_proxy={"username": "alice"})
+```
+
+`custom_uid` 与 `auth_proxy` 严格互斥；若同时传递，SDK 会在发请求前抛出校验错误。身份代理说明参见 [身份代理机制](/zh-CN/openapi/identity-proxy)。
+
+### 派生配置与单次覆盖（`with_options` / `request_options`）
+
+- `client.with_options(...)`：生成覆盖 `timeout`、`api_key`、`default_app_id`、`max_retries` 等配置的新客户端，继续复用父连接池。
+- `request_options`：在任意接口方法上按单次调用粒度覆盖密钥、超时、重试次数、请求头、身份或 `app_id`。
+
+```python
+detail = client.datasets.detail(
+    id="68ad85a7463006c963799a05",
+    request_options={
+        "api_key": os.environ["FASTGPT_PERSONAL_KEY"],
+        "timeout": 10.0,
+        "max_retries": 0,
+    },
+)
+```
+
+## 资源目录与入参风格
+
+客户端按 FastGPT 业务域组织为 4 棵子资源树，方法签名与参数均已补充完整类型提示：
+
+| 领域路径          | 核心能力                                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `client.chat`     | `/v2/chat/completions` 同步与流式对话、`stop` 中止、工作流交互续跑（`interactive`），以及 `histories`、`records`、`feedbacks` 管理 |
+| `client.datasets` | 知识库生命周期、混合检索（`search`），以及 `collections`（本地文件、链接、文本、批量归档下载等）和 `data` 分块增删改查             |
+| `client.apps`     | `apps.logs` 下的应用对话日志游标搜索（`search`）、统计图表与用户列表                                                               |
+| `client.models`   | 团队可用模型列表（`list`）、模型目录（`catalog`）与摘要查询（`summary`）                                                           |
+
+所有接口入参支持 3 种等效写法（单次调用传位置参数或关键字参数之一，不可混用）：
+
+1. **Python 风格关键字参数**：如 `client.datasets.list(page_size=20, search_key="手册")`。
+2. **Pydantic 请求模型**：从 `fastgpt_sdk.generated.models` 导入强类型模型。
+3. **原始字典（`dict`）**：键名同时兼容 `snake_case` 与 OpenAPI 原生 `camelCase`，对同一字段传入不同值触发冲突拦截。
+
+对区分“不传该字段”与“显式传 JSON `null`”的可选字段，可使用哨兵值 `NOT_GIVEN`（默认省略）与 `None`（显式序列化为 `null`），并配合 `is_given(...)` 进行类型守卫检查。
+
+## 对话补全与 SSE 流式响应
+
+`/v2/chat/completions` 在 SDK 中拆分为非流式 `completions_v2` 与流式 `completions_v2_stream` 两个方法，避免返回值类型二义性。
+
+### 同步流式读取
+
+```python
+with user_client.chat.completions_v2_stream(
+    chat_id="chat_001",
+    messages=[{"role": "user", "content": "请帮我拆解今天的工作流日志。"}],
+    detail=True,
+) as stream:
+    for event in stream:
+        if event.type == "answer":
+            print(event.text_delta, end="", flush=True)
+        elif event.type == "flowNodeStatus":
+            print(f"\n[节点] {event.name}: {event.status}")
+
+    summary = stream.final_result()
+    print("\n引用数量:", len(summary.quotes), "交互事件:", summary.interactive)
+```
+
+### 异步流式读取
+
+```python
+async with await async_user_client.chat.completions_v2_stream(
+    chat_id="chat_001",
+    messages=[{"role": "user", "content": "请帮我拆解今天的工作流日志。"}],
+    detail=True,
+) as stream:
+    async for event in stream:
+        if event.type == "answer":
+            print(event.text_delta, end="", flush=True)
+
+    full_text = await stream.final_text()
+```
+
+### `ChatStream` / `AsyncChatStream` 常用能力
+
+- `final_result()`：返回汇总对象 `ChatStreamFinalResult`，包含完整文本（`text`）、思考内容（`reasoning_text`）、会话标题（`chat_title`）、知识库引用（`quotes`）、交互节点负载（`interactive`）及流完成状态。
+- `final_text()`：消费剩余帧并返回最终拼接好的文本回复。
+- 当消费上下文提前退出（如 `break` 或取消异步任务）时，`with` / `async with` 会自动屏蔽取消干扰并关闭底层 HTTP 响应，防止连接泄漏。
+
+## 工作流交互节点续跑
+
+当应用的工作流运行到人工选择或表单填写等交互节点时，会在响应或流式汇总的 `interactive` 字段中返回暂停信息。`client.chat.interactive` 提供统一的识别、解包与续跑辅助方法，详细交互协议参见 [交互与变量](/zh-CN/openapi/interactive-and-variables)：
+
+```python
+if user_client.chat.interactive.is_pending(completion):
+    prompt = user_client.chat.interactive.unwrap(
+        user_client.chat.interactive.extract(completion)
+    )
+    if prompt.type == "userSelect":
+        next_res = user_client.chat.interactive.reply_user_select(
+            chat_id="chat_001",
+            value=prompt.params.user_select_options[0].value,
+        )
+    elif prompt.type == "userInput":
+        next_res = user_client.chat.interactive.reply_user_form(
+            chat_id="chat_001",
+            values={"project": "FastGPT", "priority": "P0"},
+        )
+```
+
+对于异步客户端 `AsyncFastGPT`，使用相同的 `async_client.chat.interactive` 并对 `reply_user_select` / `reply_user_form` 添加 `await`。
+
+## 知识库、文件上传与自动分页
+
+### 本地文件上传（Multipart）
+
+`create_by_local_file` 接受 `bytes`、`bytearray`、`pathlib.Path`、可读二进制流或 `(filename, content, content_type)` 元组，自动拼装 `multipart/form-data` 中的 `file` 与 `data` 字段：
+
+```python
+from pathlib import Path
+
+created = client.datasets.collections.create_by_local_file(
+    dataset_id="68ad85a7463006c963799a05",
+    training_type="chunk",
+    file=("handbook.md", Path("./handbook.md").read_bytes(), "text/markdown"),
+)
+print("新建集合 ID:", created.collection_id)
+```
+
+### 集合批量归档下载
+
+集合批量下载分为“申请一次性凭证”和“按凭证下载 ZIP 字节”两步，SDK 会将 `batch_download` 标记为不可重试（`retryable=False`），防止网络重试意外消耗一次性凭证：
+
+```python
+ticket_res = client.datasets.collections.get_download_ticket(
+    dataset_id="68ad85a7463006c963799a05",
+    collection_ids=[created.collection_id],
+)
+zip_bytes = client.datasets.collections.batch_download(ticket=ticket_res.ticket)
+Path("./collections.zip").write_bytes(zip_bytes)
+```
+
+### 自动分页遍历（`*_auto_paging`）
+
+针对使用 `offset`、`pageNum` 或游标 `cursor` 的列表与搜索接口，SDK 提供了自动翻页迭代器，支持逐条迭代（`for item in pager` / `async for item in pager`）、按页迭代（`.pages()`）及一次性收集为列表（`.to_list()`），并通过 `max_items` 与 `max_pages` 限制拉取上限：
+
+```python
+# 1. Offset 分页遍历集合内分块数据
+for chunk in client.datasets.data.list_auto_paging(
+    collection_id=created.collection_id,
+    page_size=50,
+    max_items=500,
+):
+    print(chunk.id_, chunk.q)
+
+# 2. 游标分页遍历应用对话日志（POST /core/app/logs/search）
+for log in client.apps.logs.search_auto_paging(
+    date_start="2026-01-01T00:00:00.000Z",
+    date_end="2026-01-31T23:59:59.999Z",
+    max_pages=5,
+):
+    print(log.chat_id, log.title)
+```
+
+## 原始响应、可观测性与错误处理
+
+### 读取原始 HTTP 响应头与状态码
+
+通过 `client.with_raw_response` 访问任意接口时，会返回包装后的 `APIResponse[T]`，可用于读取 `status_code`、`headers`、`request_id`，再调用 `.parse()` 获取强类型业务模型：
+
+```python
+raw = client.with_raw_response.models.list()
+models_res = raw.parse()
+print(raw.status_code, raw.request_id, len(models_res.models))
+```
+
+### Hooks、日志与自动脱敏
+
+配置 `FastGPTHooks` 与 `logger` 后，所有请求、响应及错误上下文中的 `Authorization` 头、`fastgpt-` / `openapi-` 前缀密钥以及 URL 中的 `ticket`、`token`、`apiKey` 参数都会自动脱敏：
+
+```python
+from fastgpt_sdk import FastGPT, FastGPTHooks
+
+hooks = FastGPTHooks(
+    on_request=lambda ctx: print("->", ctx.method, ctx.url, ctx.attempt),
+    on_response=lambda ctx: print("<-", ctx.status_code, ctx.request_id, f"{ctx.duration_ms:.1f}ms"),
+    on_error=lambda ctx: print("!!", ctx.operation_id, ctx.error),
+)
+
+client = FastGPT(api_key=os.environ["FASTGPT_API_KEY"], logger="warn", hooks=hooks)
+```
+
+### 异常体系
+
+SDK 将传输异常、HTTP 4xx/5xx、旧版以 HTTP 200 返回的业务错误码以及 SSE 错误帧统一映射为以下异常体系（均继承自 `FastGPTError`）：
+
+| 异常类                   | 典型触发场景                                                    |
+| ------------------------ | --------------------------------------------------------------- |
+| `FastGPTAuthError`       | HTTP `401` / `403`、业务码 `514`、`unAuth*` 状态或缺少 API Key  |
+| `FastGPTBadRequestError` | 其他 `4xx` 参数校验错误或本地调用前置校验失败                   |
+| `FastGPTNotFoundError`   | HTTP `404` / `410` 或 `*UnExist` / `*NotFound` 错误             |
+| `FastGPTConflictError`   | HTTP `409` 或 `chatIsGenerating`（同一会话仍在生成中）          |
+| `FastGPTRateLimitError`  | HTTP `429` 或 `tooManyRequest` / `uploadFileIntervalLimit` 限流 |
+| `FastGPTServerError`     | `5xx` 服务端内部错误                                            |
+| `FastGPTTimeoutError`    | 建连或读取响应体超时                                            |
+| `FastGPTNetworkError`    | 底层连接失败或 SSE 未收到 `[DONE]` 提前断开                     |

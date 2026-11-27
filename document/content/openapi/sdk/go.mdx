@@ -1,0 +1,344 @@
+---
+title: Go SDK
+description: 使用 FastGPT 官方 Go SDK 调用 System OpenAPI，支持零第三方依赖、SSE 流式对话、交互续跑与自动分页。
+---
+
+import { ApiReferenceNotice } from '@/components/docs/ApiReferenceNotice';
+
+<ApiReferenceNotice />
+
+**版本适配：Go 1.24 及以上，对应 FastGPT System OpenAPI。**
+
+`github.com/labring/FastGPT/sdk/go`（导入包名 `fastgpt`）是 FastGPT 官方维护的 Go SDK，**零第三方依赖**，完全基于 Go 1.24 标准库（`net/http`、`encoding/json`、`iter.Seq2`、`context.AfterFunc`、`log/slog`）构建。模型与服务树由 System OpenAPI IR 确定性生成，覆盖 47 个 System OpenAPI 接口及双模态流式对话。
+
+<Callout type="info">
+  如果只需要以 OpenAI 兼容协议接入基础对话补全，可参考 [API 快速入门](/zh-CN/openapi/intro)；在 Go
+  后端中集成完整对话流、工作流交互、知识库文档处理、批量归档下载与应用日志时，推荐使用本官方 SDK。
+</Callout>
+
+## 安装与模块说明
+
+- 运行环境：**Go 1.24+**
+- 第三方依赖：无（Zero third-party dependencies）
+- 模块路径：`github.com/labring/FastGPT/sdk/go`
+
+当前版本为 Beta（`v0.1.0-beta.1`），测试版与正式版安装命令如下：
+
+```bash
+# 安装测试版（显式指定预发布 tag）
+go get github.com/labring/FastGPT/sdk/go@v0.1.0-beta.1
+
+# 正式版发布后可直接安装最新稳定版
+go get github.com/labring/FastGPT/sdk/go
+```
+
+SDK 支持以下环境变量回退：
+
+| 环境变量           | 说明                                                  | 默认值 / 行为                                                               |
+| ------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| `FASTGPT_BASE_URL` | FastGPT 服务地址（可带或不带 `/api`，SDK 自动归一化） | 未传入 `WithBaseURL` 时读取，回退为 `https://cloud.fastgpt.cn`              |
+| `FASTGPT_API_KEY`  | 个人 API Key 或应用 Key                               | 未通过 `WithAPIKey` / `WithAPIKeyProvider` / `WithRequestAPIKey` 指定时读取 |
+
+## 快速开始与客户端配置
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	fastgpt "github.com/labring/FastGPT/sdk/go"
+)
+
+func main() {
+	ctx := context.Background()
+
+	client := fastgpt.NewClient(
+		fastgpt.WithBaseURL(os.Getenv("FASTGPT_BASE_URL")),
+		fastgpt.WithAPIKey(os.Getenv("FASTGPT_API_KEY")),
+		fastgpt.WithDefaultAppID(os.Getenv("FASTGPT_APP_ID")), // 使用应用 API Key 时可省略
+	)
+
+	catalog, err := client.Models.Catalog(ctx, fastgpt.ModelsCatalogParams{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	count := 0
+	if catalog.Data != nil {
+		count = len(catalog.Data.Models)
+	}
+	fmt.Printf("version=%s models=%d\n", catalog.Version, count)
+}
+```
+
+### 常用 `ClientOption`
+
+| 选项函数                  | 说明                                                                           | 默认值                                           |
+| ------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `WithBaseURL(url)`        | 设置服务地址（自动补齐 `/api`）                                                | `FASTGPT_BASE_URL` 或 `https://cloud.fastgpt.cn` |
+| `WithAPIKey(key)`         | 设置静态 API Key                                                               | `FASTGPT_API_KEY`                                |
+| `WithAPIKeyProvider(fn)`  | 每次请求动态回调获取凭据，适合密钥轮转                                         | `nil`                                            |
+| `WithDefaultAppID(appID)` | 自动注入应用级接口所需的 `appId`                                               | 空字符串                                         |
+| `WithIdentity(identity)`  | 全局默认终端用户身份上下文                                                     | `nil`                                            |
+| `WithTimeout(d)`          | 非流式全请求超时；SSE 与二进制下载仅作用于建连握手阶段                         | `60 * time.Second`                               |
+| `WithMaxRetries(n)`       | 幂等 `GET` 请求在 `408` / `429` / `502` / `503` / `504` 或网络瞬断时的重试次数 | `2`                                              |
+| `WithDefaultHeader(k, v)` | 为所有请求追加默认 HTTP 头                                                     | 无                                               |
+| `WithHTTPClient(hc)`      | 注入自定义 `*http.Client`                                                      | `&http.Client{}`                                 |
+| `WithHooks(hooks)`        | 绑定 `OnRequest`、`OnResponse`、`OnError` 回调                                 | 无                                               |
+| `WithLogger(logger)`      | 接入标准库 `*slog.Logger` 输出自动脱敏日志                                     | `nil`                                            |
+
+## 身份隔离、派生客户端与单次请求覆盖
+
+### 派生身份客户端（`WithIdentity`）与配置覆盖（`WithOptions`）
+
+`client.WithIdentity(...)` 和 `client.WithOptions(...)` 会**共享父客户端底层 `*http.Client` 连接池**，可安全地为每个请求或租户派生轻量子客户端：
+
+```go
+// 1. 绑定外部终端用户（应用 Key / 个人 Key 均适用）
+userClient := client.WithIdentity(fastgpt.IdentityCustomUID("tenant-01:user-42"))
+histories, err := userClient.Chat.Histories.List(ctx, fastgpt.ChatHistoriesListParams{
+	PageSize: fastgpt.Int(20),
+})
+
+// 2. 团队所有者开启身份代理后，使用个人密钥代理团队成员
+memberClient := client.WithIdentity(fastgpt.IdentityAuthProxy(fastgpt.AuthProxyByUsername("alice")))
+```
+
+`CustomUID` 与 `AuthProxy`（以及 `AuthProxy` 内的 `TmbID` 与 `Username`）严格互斥，违反互斥约束会在发请求前直接返回 `ErrBadRequest`。身份代理机制参见 [身份代理机制](/zh-CN/openapi/identity-proxy)。
+
+### 单次请求选项（`RequestOption`）
+
+所有资源方法均接收可变长参数 `opts ...RequestOption`，支持在调用点临时覆盖配置或获取原始 HTTP 元数据：
+
+```go
+var raw fastgpt.RawResponse
+detail, err := client.Datasets.Detail(
+	ctx,
+	fastgpt.DatasetsDetailParams{ID: "68ad85a7463006c963799a05"},
+	fastgpt.WithRequestAPIKey(os.Getenv("FASTGPT_PERSONAL_KEY")),
+	fastgpt.WithRequestTimeout(10*time.Second),
+	fastgpt.WithRequestMaxRetries(0),
+	fastgpt.WithRawResponse(&raw),
+)
+if err == nil {
+	fmt.Println(detail.Name, raw.StatusCode, raw.RequestID)
+}
+```
+
+可用请求选项包括 `WithRequestHeader`、`WithRequestTimeout`、`WithRequestMaxRetries`、`WithRequestAPIKey`、`WithRequestAppID`、`WithRequestIdentity` 与 `WithRawResponse`。
+
+## 三态可选字段（`Opt[T]`）与密封联合类型
+
+### 三态字段 `Opt[T]`
+
+为了精准区分“未传递字段（JSON 省略）”、“显式零值（如 `false` / `0` / `""`）”与“显式 `null`”，Go SDK 借助 Go 1.24 `json:",omitzero"` 提供泛型类型 `fastgpt.Opt[T]`：
+
+- **省略不传**：声明结构体时不赋值（零值 `Opt[T]{}`，`.IsZero()` 为 `true`）。
+- **显式赋值**：使用辅助函数 `fastgpt.String("...")`、`fastgpt.Bool(false)`、`fastgpt.Int(0)`、`fastgpt.Float64(0)` 或泛型 `fastgpt.Some(val)`。
+- **显式传递 JSON `null`**：使用 `fastgpt.Null[T]()`（`.IsNull()` 为 `true`）。
+- **安全读取**：通过 `.Get() (val T, ok bool)` 或 `.Or(fallback)` 提取值。
+
+### 密封联合类型与便捷构造器
+
+- **请求侧联合**：带互斥分支的参数接口提供语义化构造函数并自动剔除互斥字段，例如 `fastgpt.DeleteCollectionByID(id)`、`fastgpt.DeleteCollectionsByIDs(ids...)`、`fastgpt.DeleteCollectionsByAPIFiles(datasetID, apiFileIDs...)`，以及消息构造器 `fastgpt.SystemMessage` / `UserMessage` / `AssistantMessage` / `ToolMessage`。
+- **响应侧联合**：返回多态联合类型的结构体均保留原始字节 `RawJSON` 与强类型断言方法（如 `item.AsApp()`、`item.AsLLM()`、`content.Text()`、`content.Parts()`），兼容服务端新增变体时的容错解析。
+
+## 资源目录
+
+| 服务字段          | 覆盖能力                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `client.Chat`     | `CompletionsV2`、`CompletionsV2Stream`、`Stop`、交互续跑 `Interactive`，以及 `Histories`、`Records`、`Feedbacks` |
+| `client.Datasets` | 知识库管理、`Search` 检索、`Collections`（本地文件、链接、文本、批量归档下载等）与 `Data` 分块管理               |
+| `client.Apps`     | `Apps.Logs` 应用对话日志游标搜索（`Search` / `SearchAutoPaging`）、图表与用户统计                                |
+| `client.Models`   | `List` 团队模型、`Catalog` 模型目录与 `Summary` 摘要                                                             |
+
+## 对话补全与 SSE 流式响应
+
+`/v2/chat/completions` 在 Go SDK 中对应非流式 `CompletionsV2` 与流式 `CompletionsV2Stream`。
+
+### 使用 Go 1.24 `iter.Seq2` 迭代事件
+
+```go
+stream, err := userClient.Chat.CompletionsV2Stream(ctx, fastgpt.ChatCompletionsV2Params{
+	ChatID:   fastgpt.String("chat_001"),
+	Messages: fastgpt.Some([]fastgpt.ChatMessage{fastgpt.UserMessage("请总结今天的工作流日志。")}),
+	Detail:   fastgpt.Bool(true),
+})
+if err != nil {
+	log.Fatal(err)
+}
+defer stream.Close()
+
+for ev, err := range stream.Events() {
+	if err != nil {
+		log.Fatal(err)
+	}
+	switch e := ev.(type) {
+	case fastgpt.ChatSSEAnswerEvent:
+		fmt.Print(e.TextDelta)
+	case fastgpt.ChatSSEFlowNodeStatusEvent:
+		fmt.Printf("\n[节点] %s (%s)\n", e.Name, e.Status)
+	}
+}
+
+summary, err := stream.FinalResult()
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("\nTitle=%q Quotes=%d\n", summary.ChatTitle, len(summary.Quotes))
+```
+
+### 消费所有权约束
+
+`ChatStream` 对读取器实行独占所有权管理，防止多协程抢占 SSE 帧：
+
+- 标准用法是通过 `for ev, err := range stream.Events()` 迭代（或直接调用 `stream.FinalResult()` / `stream.FinalText()`）。
+- 如需手动步进控制，可使用 `for stream.Next() { ev := stream.Current() }` 并随后检查 `stream.Err()`；但**在 `Next()` 尚未结束前不可同时调用 `FinalResult()` / `FinalText()`**（未结束时调用会立即返回 `ErrBadRequest`），请先完成 `Next()` 迭代或显式调用 `stream.Close()`。
+
+## 工作流交互节点续跑
+
+`client.Chat.Interactive` 封装了工作流暂停节点的识别、嵌套解包与回复参数构建（详情参见 [交互与变量](/zh-CN/openapi/interactive-and-variables)）：
+
+```go
+if userClient.Chat.Interactive.IsInteractivePending(completion) {
+	outer := userClient.Chat.Interactive.ExtractInteractive(completion)
+	prompt := userClient.Chat.Interactive.UnwrapInteractive(outer)
+
+	switch {
+	case fastgpt.IsUserSelectInteractive(prompt):
+		_, err = userClient.Chat.Interactive.ReplyUserSelect(ctx, fastgpt.ReplyUserSelectParams{
+			ChatID: "chat_001",
+			Value:  prompt.UserSelect.UserSelectOptions[0].Value,
+		})
+	case fastgpt.IsUserInputInteractive(prompt):
+		_, err = userClient.Chat.Interactive.ReplyUserForm(ctx, fastgpt.ReplyUserFormParams{
+			ChatID: "chat_001",
+			Values: map[string]any{"project": "FastGPT", "priority": "P0"},
+		})
+	}
+}
+```
+
+## 知识库上传、归档下载与自动分页
+
+### 本地文件上传（Multipart）
+
+```go
+created, err := client.Datasets.Collections.CreateByLocalFile(ctx, fastgpt.DatasetsCollectionsCreateByLocalFileParams{
+	DatasetID:    "68ad85a7463006c963799a05",
+	TrainingType: fastgpt.String("chunk"),
+	File: fastgpt.FileUpload{
+		Filename:    "handbook.md",
+		ContentType: "text/markdown",
+		Bytes:       markdownBytes,
+	},
+})
+```
+
+### 流式归档下载（`*BinaryStream`）
+
+`BatchDownload` 返回 `*fastgpt.BinaryStream`（实现 `io.ReadCloser` 与 `io.WriterTo`，同时提供便捷方法 `Bytes()`、`ContentType()`、`ContentLength()` 与 `Response()`），以流式方式落盘大文件而不在内存缓存整包；同时 SDK 在传输层禁用该接口的错误重试、底层连接重放与未跟随重定向误判，确保一次性 Ticket 安全：
+
+```go
+ticketRes, err := client.Datasets.Collections.GetDownloadTicket(ctx, fastgpt.DatasetsCollectionsGetDownloadTicketParams{
+	DatasetID:     "68ad85a7463006c963799a05",
+	CollectionIDs: []string{created.CollectionID},
+})
+if err != nil {
+	log.Fatal(err)
+}
+
+dlStream, err := client.Datasets.Collections.BatchDownload(ctx, fastgpt.DatasetsCollectionsBatchDownloadParams{
+	Ticket: ticketRes.Ticket,
+})
+if err != nil {
+	log.Fatal(err)
+}
+defer dlStream.Close()
+
+outFile, err := os.Create("collections.zip")
+if err != nil {
+	log.Fatal(err)
+}
+defer outFile.Close()
+
+if _, err := io.Copy(outFile, dlStream); err != nil {
+	log.Fatal(err)
+}
+```
+
+### 自动分页（`*Pager[T]`）
+
+各列表接口提供 `*AutoPaging` 变体，支持 `.All()`、`.Pages()`、`.Collect()` 以及手动 `Next()` / `Current()` / `Err()`，可通过 `WithPageSize`、`WithMaxPages`、`WithMaxItems` 和 `WithPagerRequestOptions` 控制分页边界：
+
+```go
+// 1. Offset 自动分页遍历分块
+for chunk, err := range client.Datasets.Data.ListAutoPaging(
+	ctx,
+	fastgpt.DatasetsDataListParams{CollectionID: created.CollectionID},
+	fastgpt.WithPageSize(50),
+	fastgpt.WithMaxItems(500),
+).All() {
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(chunk.ID_, chunk.Q)
+}
+
+// 2. Cursor 自动分页拉取应用对话日志（POST /core/app/logs/search）
+logs, err := client.Apps.Logs.SearchAutoPaging(
+	ctx,
+	fastgpt.AppsLogsSearchParams{
+		DateStart: "2026-01-01T00:00:00.000Z",
+		DateEnd:   "2026-01-31T23:59:59.999Z",
+	},
+	fastgpt.WithMaxPages(5),
+).Collect()
+```
+
+## 可观测性与结构化错误处理
+
+SDK 返回的所有错误均为 `*fastgpt.APIError`，支持使用标准库 `errors.Is` / `errors.As` 判定错误类别；错误消息、URL、`Cause`、Hooks 与 `slog` 输出会自动脱敏 API Key 与 URL 中的 `ticket`、`token`、`apiKey` 参数：
+
+```go
+client := fastgpt.NewClient(
+	fastgpt.WithAPIKey(os.Getenv("FASTGPT_API_KEY")),
+	fastgpt.WithLogger(slog.Default()),
+	fastgpt.WithHooks(fastgpt.Hooks{
+		OnRequest: func(_ context.Context, r fastgpt.RequestHookContext) {
+			log.Printf("-> %s %s (attempt %d)", r.Method, r.URL, r.Attempt)
+		},
+		OnResponse: func(_ context.Context, r fastgpt.ResponseHookContext) {
+			log.Printf("<- %d reqId=%s (%s)", r.StatusCode, r.RequestID, r.Duration)
+		},
+		OnError: func(_ context.Context, e fastgpt.ErrorHookContext) {
+			log.Printf("!! %s: %v", e.OperationID, e.Error)
+		},
+	}),
+)
+
+if _, err := client.Chat.Histories.List(ctx, fastgpt.ChatHistoriesListParams{}); err != nil {
+	var apiErr *fastgpt.APIError
+	_ = errors.As(err, &apiErr)
+
+	switch {
+	case errors.Is(err, fastgpt.ErrAuth):
+		// 401 / 403 / 业务码 514（unAuthApiKey）
+	case errors.Is(err, fastgpt.ErrConflict):
+		// 409 / chatIsGenerating：可调用 apiErr.ChatGeneratingConflict() 提取恢复参数
+	case errors.Is(err, fastgpt.ErrRateLimit):
+		// 429 / tooManyRequest / uploadFileIntervalLimit
+	case errors.Is(err, fastgpt.ErrTimeout):
+		// 建连握手或非流式读写超时
+	case errors.Is(err, fastgpt.ErrNetwork):
+		// 网络传输错误或 SSE 流未收到 [DONE] 提前截断
+	case errors.Is(err, fastgpt.ErrAborted):
+		// 调用方取消 context 或主动提前关闭流
+	}
+}
+```
+
+完整的错误哨兵分类包括 `ErrAPI`（所有 `*APIError` 均匹配）、`ErrAuth`、`ErrBadRequest`、`ErrNotFound`、`ErrConflict`、`ErrRateLimit`、`ErrServer`、`ErrTimeout`、`ErrNetwork` 与 `ErrAborted`。
