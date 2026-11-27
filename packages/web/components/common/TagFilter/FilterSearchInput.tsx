@@ -30,7 +30,7 @@ type Props = {
 };
 
 /** 输入框显示组合中的文本，搜索只接收已确认的值。 */
-export const useComposedSearchInput = (value: string, onChange: (next: string) => void) => {
+const useComposedSearchInput = (value: string, onChange: (next: string) => void) => {
   const [draft, setDraft] = useState<string>();
   const isComposingRef = useRef(false);
   const resetInput = useCallback(() => {
@@ -51,7 +51,6 @@ export const useComposedSearchInput = (value: string, onChange: (next: string) =
     inputValue: draft ?? value,
     isComposingRef,
     resetInput,
-    updateInput,
     compositionProps: {
       onCompositionStart: () => {
         isComposingRef.current = true;

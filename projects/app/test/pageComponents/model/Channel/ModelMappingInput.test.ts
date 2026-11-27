@@ -86,25 +86,25 @@ import ModelMappingInput, {
 } from '@/pageComponents/model/Channel/ModelMappingInput';
 
 describe('ModelMappingInput utils', () => {
-  it('converts between Record<string, string> and editable rows while preserving untouched values and skipping incomplete drafts', () => {
+  it('converts between Record<string, string> and editable rows while preserving untouched values (including empty targets) and skipping new/cleared drafts', () => {
     let seq = 0;
-    const rows = recordToMappingRows({ 'gpt-4o': 'gpt-4o-test ', claude: 'claude-3' }, () =>
-      String(++seq)
-    );
+    const rows = recordToMappingRows({ 'gpt-4o': 'gpt-4o-test ', claude: '' }, () => String(++seq));
     expect(rows).toEqual([
-      { id: '1', key: 'gpt-4o', value: 'gpt-4o-test ', valueTouched: false },
-      { id: '2', key: 'claude', value: 'claude-3', valueTouched: false }
+      { id: '1', key: 'gpt-4o', value: 'gpt-4o-test ', preserveInitialValue: true },
+      { id: '2', key: 'claude', value: '', preserveInitialValue: true }
     ]);
     expect(recordToMappingRows(undefined)).toEqual([]);
     expect(
       mappingRowsToRecord([
-        { key: 'gpt-4o', value: 'vendor-raw ', valueTouched: false },
-        { key: 'claude', value: '  upstream-claude  ', valueTouched: true },
-        { key: '   ', value: 'ignored', valueTouched: true },
-        { key: 'qwen', value: '   ', valueTouched: true }
+        { key: 'gpt-4o', value: 'vendor-raw ', preserveInitialValue: true },
+        { key: 'legacy-empty', value: '', preserveInitialValue: true },
+        { key: 'claude', value: '  upstream-claude  ', preserveInitialValue: false },
+        { key: '   ', value: 'ignored', preserveInitialValue: false },
+        { key: 'qwen', value: '   ', preserveInitialValue: false }
       ])
     ).toEqual({
       'gpt-4o': 'vendor-raw ',
+      'legacy-empty': '',
       claude: 'upstream-claude'
     });
   });
@@ -295,6 +295,58 @@ describe('ModelMappingInput component', () => {
     });
     expect(onChange).toHaveBeenLastCalledWith({
       'gpt-4o': 'up-4o '
+    });
+  });
+
+  it('preserves untouched persisted empty-target entries when adding a draft row', async () => {
+    const onChange = vi.fn();
+    const modelOptions = [
+      { label: 'model-a', value: 'model-a' },
+      { label: 'model-b', value: 'model-b' }
+    ];
+
+    await renderInput({
+      value: { 'model-a': '' },
+      modelOptions,
+      onChange
+    });
+
+    // 只点击“添加映射”新增空草稿时，不应改写或丢弃存量的 {"model-a": ""}。
+    const addButton = [...container.querySelectorAll('button')].find(
+      (btn) => btn.textContent === 'config_model:mapping_add_row'
+    );
+    await act(async () => {
+      addButton?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 仅在第 2 行选择模型但不填目标，依然保留存量记录且不写入第 2 行空目标。
+    const selects = container.querySelectorAll('select[data-testid="model-select"]');
+    await act(async () => {
+      const select = selects[1] as HTMLSelectElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLSelectElement.prototype,
+        'value'
+      )?.set;
+      nativeSetter?.call(select, 'model-b');
+      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 为第 2 行填写非空目标后，存量空目标与新映射一并保留输出。
+    const inputs = container.querySelectorAll('input');
+    await act(async () => {
+      const input = inputs[1] as HTMLInputElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      nativeSetter?.call(input, 'upstream-b');
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      'model-a': '',
+      'model-b': 'upstream-b'
     });
   });
 });

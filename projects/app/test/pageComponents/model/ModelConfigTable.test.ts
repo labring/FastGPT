@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   onError: vi.fn(),
   dnd: undefined as DndProps | undefined,
   addModelDisabled: undefined as boolean | undefined,
+  addModelOnSuccess: undefined as (() => Promise<void>) | undefined,
   confirmDelete: undefined as (() => void) | undefined,
   currentModels: [] as ModelConfigListItem[],
   setMockModels: undefined as ((next: ModelConfigListItem[]) => void) | undefined
@@ -126,8 +127,15 @@ vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
   }
 }));
 vi.mock('@/pageComponents/model/AddModel', () => ({
-  default: ({ isDisabled }: { isDisabled?: boolean }) => {
+  default: ({
+    isDisabled,
+    onSuccess
+  }: {
+    isDisabled?: boolean;
+    onSuccess?: () => Promise<void>;
+  }) => {
     mocks.addModelDisabled = isDisabled;
+    mocks.addModelOnSuccess = onSuccess;
     return React.createElement(
       'button',
       { disabled: Boolean(isDisabled) },
@@ -217,6 +225,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   mocks.dnd = undefined;
   mocks.addModelDisabled = undefined;
+  mocks.addModelOnSuccess = undefined;
   mocks.confirmDelete = undefined;
   mocks.currentModels = [...models];
   mocks.setMockModels = undefined;
@@ -338,5 +347,76 @@ describe('ModelConfigTable sorting', () => {
       channelType: 'system',
       modelIds: [models[2].modelId, models[1].modelId]
     });
+  });
+
+  it('unblocks sort when a concurrent AddModel refresh supersedes a hanging delete refresh and retries after failed refresh', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    const addedModel: ModelConfigListItem = {
+      ...models[0],
+      modelId: '68ad85a7463006c963799a09',
+      model: 'D',
+      name: 'D'
+    };
+
+    // 1. 删除成功后首路刷新被后续 AddModel 刷新取代（模拟 ahooks runAsync 返回永不落定 Promise），锁不卡死且排序按最新目录放行。
+    mocks.deleteModel.mockResolvedValueOnce(undefined);
+    mocks.refresh.mockImplementationOnce(() => new Promise<void>(() => {}));
+    let resolveSupersedingRefresh!: () => void;
+    mocks.refresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSupersedingRefresh = () => {
+            mocks.setMockModels?.([models[1], models[2], addedModel]);
+            resolve();
+          };
+        })
+    );
+
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
+
+    await act(async () => {
+      void mocks.addModelOnSuccess?.();
+    });
+    await act(async () => {
+      resolveSupersedingRefresh();
+    });
+    expect(sortNames()).toEqual(['B', 'C', 'D']);
+
+    // 2. 删除成功但目录刷新失败时，首次退出等待且不按旧快照建草稿；再次点击排序应重拉目录后再进入排序。
+    await act(async () => button('cancel_sort').click());
+    mocks.deleteModel.mockResolvedValueOnce(undefined);
+    mocks.refresh.mockRejectedValueOnce(new Error('network error'));
+    let resolveRetryRefresh!: () => void;
+    mocks.refresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetryRefresh = () => {
+            mocks.setMockModels?.([models[2], addedModel]);
+            resolve();
+          };
+        })
+    );
+
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
+
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
+
+    await act(async () => {
+      resolveRetryRefresh();
+    });
+    expect(sortNames()).toEqual(['C', 'D']);
   });
 });

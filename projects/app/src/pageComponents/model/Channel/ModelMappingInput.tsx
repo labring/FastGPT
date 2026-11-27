@@ -12,8 +12,8 @@ export type ModelMappingRow = {
   id: string;
   key: string;
   value: string;
-  /** 仅标记用户实际编辑过目标值的行，避免修改某一行时重写其他历史映射原值 */
-  valueTouched?: boolean;
+  /** 标识从已持久化记录载入且未编辑过目标值的历史行，用于无损保留原始值（含空目标与空白字符） */
+  preserveInitialValue?: boolean;
 };
 
 export type ModelMappingValidationState = {
@@ -44,7 +44,7 @@ export const recordToMappingRows = (
     id: createId(),
     key,
     value: typeof value === 'string' ? value : String(value ?? ''),
-    valueTouched: false
+    preserveInitialValue: true
   }));
 };
 
@@ -74,19 +74,23 @@ export const getDuplicateMappingKeys = (rows: Pick<ModelMappingRow, 'key'>[]): S
 
 /**
  * 将映射行序列化为普通对象：
- * - 键或目标为空白的行视为本地草稿不写入，避免保存空目标导致 AIProxy 关闭协议默认映射；
- * - 未编辑过的历史行保留原始键值，仅对本次编辑过的目标值做首尾空白裁剪。
+ * - 从已存在记录初始化且未编辑目标值的行原样保留（含历史空目标与原始空白字符）；
+ * - 新建或已编辑目标值的行在键或目标为空白时视为本地草稿不写入，非空目标裁剪首尾空白。
  */
 export const mappingRowsToRecord = (
-  rows: Pick<ModelMappingRow, 'key' | 'value' | 'valueTouched'>[]
+  rows: Pick<ModelMappingRow, 'key' | 'value' | 'preserveInitialValue'>[]
 ): Record<string, string> => {
   const entries: [string, string][] = [];
 
   for (const row of rows) {
     if (row.key.trim() === '') continue;
-    const normalizedValue = row.valueTouched ? row.value.trim() : row.value;
-    if (normalizedValue.trim() === '') continue;
-    entries.push([row.key, normalizedValue]);
+    if (row.preserveInitialValue) {
+      entries.push([row.key, row.value]);
+      continue;
+    }
+    const trimmedValue = row.value.trim();
+    if (trimmedValue === '') continue;
+    entries.push([row.key, trimmedValue]);
   }
 
   return Object.fromEntries(entries);
@@ -170,7 +174,7 @@ const ModelMappingInput = ({
   };
 
   const handleAddRow = () => {
-    commitRows([...rows, { id: getNanoid(), key: '', value: '', valueTouched: false }]);
+    commitRows([...rows, { id: getNanoid(), key: '', value: '', preserveInitialValue: false }]);
   };
 
   const handleUpdateRow = ({
@@ -188,7 +192,7 @@ const ModelMappingInput = ({
           ? {
               ...row,
               [field]: nextValue,
-              ...(field === 'value' ? { valueTouched: true } : {})
+              ...(field === 'value' ? { preserveInitialValue: false } : {})
             }
           : row
       )

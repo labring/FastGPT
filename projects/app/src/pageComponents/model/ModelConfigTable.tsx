@@ -194,9 +194,40 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     channels: channelList,
     providers: modelProviders,
     getModelProvider,
-    refresh: refreshModels,
+    refresh: rawRefreshModels,
     loading: loadingModels
   } = useModelConfig({ channelType, language: i18n.language });
+
+  // 按递增序号追踪目录刷新，避免 ahooks 被后发刷新取代时阻塞删除锁，同时确保排序草稿总基于删除后的最新目录。
+  const refreshSeqRef = React.useRef(0);
+  const minFreshSeqRef = React.useRef(0);
+  const lastCommittedSeqRef = React.useRef(0);
+  const latestRefreshSettledRef = React.useRef(true);
+  const [requiredRefreshSeq, setRequiredRefreshSeq] = useState(0);
+  const [committedRefreshSeq, setCommittedRefreshSeq] = useState(0);
+  const [waitingEnterSort, setWaitingEnterSort] = useState(false);
+
+  const refreshModels = useCallback(async () => {
+    const seq = ++refreshSeqRef.current;
+    latestRefreshSettledRef.current = false;
+    try {
+      await rawRefreshModels();
+      if (seq > lastCommittedSeqRef.current) {
+        lastCommittedSeqRef.current = seq;
+        setCommittedRefreshSeq(seq);
+      }
+      if (seq === refreshSeqRef.current) {
+        latestRefreshSettledRef.current = true;
+      }
+    } catch (error) {
+      if (seq === refreshSeqRef.current) {
+        latestRefreshSettledRef.current = true;
+        // 最新目录刷新失败时退出本次排序等待，保留过期标记待用户再次点击排序时重试拉取。
+        setWaitingEnterSort(false);
+      }
+      throw error;
+    }
+  }, [rawRefreshModels]);
 
   const isRoot = userInfo?.username === 'root';
 
@@ -315,26 +346,30 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     await refreshModels().catch(() => {});
   };
 
-  const pendingDeleteCountRef = React.useRef(0);
-  const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
-  const [waitingEnterSort, setWaitingEnterSort] = useState(false);
-  const runTrackedDelete = (operation: () => Promise<unknown>) =>
-    runChannelMutation(async () => {
-      pendingDeleteCountRef.current += 1;
-      setPendingDeleteCount(pendingDeleteCountRef.current);
+  const activeDeleteCountRef = React.useRef(0);
+  const [activeDeleteCount, setActiveDeleteCount] = useState(0);
+  const runTrackedDelete = async (operation: () => Promise<unknown>) => {
+    let deleteSucceeded = false;
+    await runChannelMutation(async () => {
+      activeDeleteCountRef.current += 1;
+      setActiveDeleteCount(activeDeleteCountRef.current);
       try {
         await operation();
-        try {
-          await refreshModels();
-        } catch {
-          // 删除成功但目录刷新失败时取消待进入排序，避免按旧快照生成含已删 ID 的草稿。
-          setWaitingEnterSort(false);
-        }
+        deleteSucceeded = true;
+        // 必须在删除完成后发起的刷新成功提交，才允许排序入口把目录视为新鲜快照。
+        minFreshSeqRef.current = refreshSeqRef.current + 1;
+        setRequiredRefreshSeq(minFreshSeqRef.current);
       } finally {
-        pendingDeleteCountRef.current -= 1;
-        setPendingDeleteCount(pendingDeleteCountRef.current);
+        activeDeleteCountRef.current -= 1;
+        setActiveDeleteCount(activeDeleteCountRef.current);
       }
     });
+
+    if (deleteSucceeded) {
+      // 目录刷新放在删除互斥锁外，避免与并发 AddModel 等刷新竞态时被 ahooks 取代而卡死锁。
+      void refreshModels().catch(() => {});
+    }
+  };
 
   const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
     successToast: t('common:delete_success')
@@ -432,32 +467,36 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   // 入口级粗筛：root 或拥有“安装模型”权限才展示管理操作；单个模型的最终判定以服务端 authModelConfig（action: config）为准
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
 
-  /** 从未过滤的完整列表创建排序草稿；若有删除及目录刷新在进行中，先等待刷新完成再取快照，避免草稿带入已删 ID。 */
-  const openSortModeWithCurrentModels = useCallback(() => {
-    if (isSortBusy) return;
+  /** 统一从当前最新未过滤列表初始化排序草稿，避免点击路径与等待恢复路径各自维护一套初始化逻辑。 */
+  const initializeSortDraft = () => {
     setSelectedItems([]);
     setSortModels([...modelItems]);
     setInitialSortModelIds(modelItems.map((model) => model.modelId));
     setIsSortMode(true);
-  }, [isSortBusy, modelItems, setSelectedItems]);
+  };
 
-  const enterSortMode = useCallback(() => {
+  /** 若删除或删除后的目录刷新尚未完成，先等待最新目录提交；上次刷新失败时在点击时自动重拉。 */
+  const enterSortMode = () => {
     if (isSortBusy) return;
-    if (pendingDeleteCountRef.current > 0) {
+    if (activeDeleteCountRef.current > 0) {
       setWaitingEnterSort(true);
       return;
     }
-    openSortModeWithCurrentModels();
-  }, [isSortBusy, openSortModeWithCurrentModels]);
+    if (lastCommittedSeqRef.current < minFreshSeqRef.current) {
+      setWaitingEnterSort(true);
+      if (latestRefreshSettledRef.current) {
+        void refreshModels().catch(() => {});
+      }
+      return;
+    }
+    initializeSortDraft();
+  };
 
-  // 删除及目录刷新结束后立即用最新 modelItems 进入排序，避免在 effect 中二次渲染或快照旧列表。
-  if (waitingEnterSort && pendingDeleteCount === 0) {
+  // 删除及所需目录刷新全部完成后立即用最新 modelItems 初始化草稿，避免在 effect 中二次渲染。
+  if (waitingEnterSort && activeDeleteCount === 0 && committedRefreshSeq >= requiredRefreshSeq) {
     setWaitingEnterSort(false);
     if (!isSortBusy) {
-      setSelectedItems([]);
-      setSortModels([...modelItems]);
-      setInitialSortModelIds(modelItems.map((model) => model.modelId));
-      setIsSortMode(true);
+      initializeSortDraft();
     }
   }
 
