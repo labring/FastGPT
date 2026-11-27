@@ -8,7 +8,11 @@
  */
 import { randomUUID } from 'node:crypto';
 import { subDays } from 'date-fns';
-import { RedisLeaseUnavailableError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+import {
+  LeaseCache,
+  RedisLeaseUnavailableError,
+  type RedisLeaseContext
+} from '@fastgpt/dal/redis/caches';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { extractToSandboxDirectory, packSandboxDirectory } from './ideAgent';
 import { batchRun } from '@fastgpt/global/common/system/utils';
@@ -18,7 +22,12 @@ import {
   getS3SandboxSource
 } from '../../../../common/s3/sources/sandbox';
 import { getAgentSandboxCommonConfig } from '../config';
-import { SANDBOX_ARCHIVE_CONCURRENCY, SandboxInstanceStatusEnum } from '../constants';
+import {
+  SANDBOX_ARCHIVE_CONCURRENCY,
+  SANDBOX_LEASE_RENEW_INTERVAL_MS,
+  SANDBOX_LEASE_TTL_MS,
+  SandboxInstanceStatusEnum
+} from '../constants';
 import {
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceBySandboxId,
@@ -52,6 +61,8 @@ import { normalizeSandboxImage } from './runtime/image';
 import type { OwnedSandboxResource } from './runtime/type';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+const archiveSweepLeaseCache = new LeaseCache();
+const SANDBOX_ARCHIVE_SWEEP_LEASE_KEY = 'agent-sandbox:archive-sweep';
 
 type SandboxArchiveSingleResult =
   | { status: 'success'; resource: SandboxResourceDoc }
@@ -358,43 +369,77 @@ export async function archiveSandboxResource(
   }
 }
 
-/** 流式归档全部 inactive 候选，受 `SANDBOX_ARCHIVE_CONCURRENCY` 限制防止风暴。 */
-async function archiveSandboxResources(inactiveBefore: Date) {
+/** 流式归档全部 inactive 候选，受 `SANDBOX_ARCHIVE_CONCURRENCY` 限制防止风暴；扫盘租约丢失后立即停止派发后续批次。 */
+async function archiveSandboxResources(inactiveBefore: Date, sweepLease: RedisLeaseContext) {
   const cursor = createSandboxResourcesToArchiveCursor(inactiveBefore);
   let batch: SandboxResourceDoc[] = [];
 
   const archiveBatch = async (resources: SandboxResourceDoc[]) => {
-    if (resources.length === 0) return;
+    if (resources.length === 0 || sweepLease.signal.aborted) return;
     await batchRun(
       resources,
-      (resource) =>
-        archiveSandboxResource(resource, inactiveBefore).catch((error) => {
+      async (resource) => {
+        if (sweepLease.signal.aborted) return;
+        await archiveSandboxResource(resource, inactiveBefore).catch((error) => {
           logger.error('Failed to execute sandbox archive task', {
             sandboxId: resource.sandboxId,
             provider: resource.provider,
             error
           });
-        }),
+        });
+      },
       SANDBOX_ARCHIVE_CONCURRENCY
     );
   };
 
   try {
     for await (const resource of cursor) {
+      if (sweepLease.signal.aborted) break;
       batch.push(resource);
       if (batch.length >= SANDBOX_ARCHIVE_CONCURRENCY) {
         await archiveBatch(batch);
         batch = [];
+        if (sweepLease.signal.aborted) break;
       }
     }
-    await archiveBatch(batch);
+    if (!sweepLease.signal.aborted) {
+      await archiveBatch(batch);
+    }
   } finally {
     await cursor.close().catch(() => undefined);
   }
 }
 
+/**
+ * 扫描并冷归档超期闲置的 `stopped` 沙盒。
+ *
+ * 通过可自动续租的分布式扫描租约串行化全局归档轮次：即使某轮积压耗时超过 1 小时、
+ * `cron` 整点去重锁到期触发下一轮，也会直接跳过而非叠加第二轮并发扫盘，保证并发上限始终收敛在 `SANDBOX_ARCHIVE_CONCURRENCY`。
+ */
 export async function archiveInactiveSandboxes(now = new Date()) {
-  await archiveSandboxResources(subDays(now, getAgentSandboxCommonConfig().archiveInactiveDays));
+  let entered = false;
+  try {
+    await archiveSweepLeaseCache.withLease({
+      key: SANDBOX_ARCHIVE_SWEEP_LEASE_KEY,
+      label: 'archive-inactive-sandboxes',
+      ttlMs: SANDBOX_LEASE_TTL_MS,
+      renewIntervalMs: SANDBOX_LEASE_RENEW_INTERVAL_MS,
+      fn: async (sweepLease) => {
+        entered = true;
+        await archiveSandboxResources(
+          subDays(now, getAgentSandboxCommonConfig().archiveInactiveDays),
+          sweepLease
+        );
+      }
+    });
+  } catch (error) {
+    // 仅跳过入口抢锁失败（上一轮归档仍在活跃续租中）；进入临界区后的租约丢失或 Redis 故障继续上抛暴露。
+    if (!entered && error instanceof RedisLeaseUnavailableError) {
+      logger.info('Skipped sandbox archive sweep because a previous run is still active');
+      return;
+    }
+    throw error;
+  }
 }
 
 /**

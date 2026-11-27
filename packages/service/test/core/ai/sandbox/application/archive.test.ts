@@ -1,5 +1,11 @@
 import { Readable } from 'node:stream';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  RedisLeaseAcquireError,
+  RedisLeaseLostError,
+  RedisLeaseUnavailableError,
+  type WithLeaseOptions
+} from '@fastgpt/dal/redis/caches/lease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultInstanceConfig,
@@ -8,6 +14,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+  withSweepLease: vi.fn(),
   withSandboxLease: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
   claimSandboxOperation: vi.fn(),
@@ -36,6 +43,16 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
   LogCategories: { MODULE: { AI: { SANDBOX: 'sandbox' } } }
 }));
+
+vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
+  return {
+    ...actual,
+    LeaseCache: class MockLeaseCache {
+      withLease = mocks.withSweepLease;
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
   withSandboxLease: mocks.withSandboxLease
@@ -209,6 +226,20 @@ describe('sandbox archive lifecycle', () => {
     global.systemInstanceConfig = createDefaultInstanceConfig();
     invalidateIdeAgentPasswordCache();
     lease.assertValid.mockReset();
+    const heldSweepKeys = new Set<string>();
+    mocks.withSweepLease.mockImplementation(
+      async ({ key, label, fn }: WithLeaseOptions<unknown>) => {
+        if (heldSweepKeys.has(key)) {
+          throw new RedisLeaseUnavailableError({ key, label });
+        }
+        heldSweepKeys.add(key);
+        try {
+          return await fn({ signal: new AbortController().signal, assertValid: vi.fn() });
+        } finally {
+          heldSweepKeys.delete(key);
+        }
+      }
+    );
     mocks.withSandboxLease.mockImplementation(async ({ fn }: any) => fn(lease));
     mocks.getOpenSandboxRuntimeConfig.mockReturnValue({
       image: { repository: 'fastgpt/sandbox', tag: 'v2' }
@@ -436,6 +467,15 @@ describe('sandbox archive lifecycle', () => {
 
     await archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'));
 
+    expect(mocks.withSweepLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'agent-sandbox:archive-sweep',
+        label: 'archive-inactive-sandboxes',
+        ttlMs: 30_000,
+        renewIntervalMs: 5_000,
+        fn: expect.any(Function)
+      })
+    );
     expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledWith(
       new Date('2026-07-03T00:00:00.000Z')
     );
@@ -451,6 +491,135 @@ describe('sandbox archive lifecycle', () => {
     expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenLastCalledWith(
       new Date('2026-07-07T00:00:00.000Z')
     );
+  });
+
+  it('skips overlapping archive sweep while a previous run is still active and keeps concurrency bounded to 2', async () => {
+    const firstClose = vi.fn(async () => undefined);
+    const secondClose = vi.fn(async () => undefined);
+    const candidates = Array.from({ length: 6 }, (_, index) =>
+      createResource('stopped', { sandboxId: `sandbox-${index + 1}` })
+    );
+    mocks.createSandboxResourcesToArchiveCursor
+      .mockReturnValueOnce({
+        async *[Symbol.asyncIterator]() {
+          for (const candidate of candidates) {
+            yield candidate;
+          }
+        },
+        close: firstClose
+      })
+      .mockReturnValueOnce({
+        async *[Symbol.asyncIterator]() {},
+        close: secondClose
+      });
+
+    let activeCount = 0;
+    let maxConcurrency = 0;
+    let notifyFirstBatchFull!: () => void;
+    const firstBatchFull = new Promise<void>((resolve) => {
+      notifyFirstBatchFull = resolve;
+    });
+    let releaseFirstBatch!: () => void;
+    const firstBatchGate = new Promise<void>((resolve) => {
+      releaseFirstBatch = resolve;
+    });
+
+    mocks.withSandboxLease.mockImplementation(async ({ sandboxId }: { sandboxId: string }) => {
+      activeCount += 1;
+      maxConcurrency = Math.max(maxConcurrency, activeCount);
+      if (activeCount === 2 && (sandboxId === 'sandbox-1' || sandboxId === 'sandbox-2')) {
+        notifyFirstBatchFull();
+      }
+      if (sandboxId === 'sandbox-1' || sandboxId === 'sandbox-2') {
+        await firstBatchGate;
+      }
+      activeCount -= 1;
+      return { status: 'success' };
+    });
+
+    const firstRun = archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'));
+    await firstBatchFull;
+
+    // 模拟上一轮积压超过一小时后，下一整点在定时锁到期后再次触发归档。
+    await expect(
+      archiveInactiveSandboxes(new Date('2026-07-10T01:00:00.000Z'))
+    ).resolves.toBeUndefined();
+    expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Skipped sandbox archive sweep because a previous run is still active'
+    );
+    expect(maxConcurrency).toBe(2);
+
+    releaseFirstBatch();
+    await firstRun;
+
+    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(6);
+    expect(maxConcurrency).toBe(2);
+    expect(firstClose).toHaveBeenCalledTimes(1);
+
+    // 上一轮释放扫描租约后，后续整点应正常启动新一轮扫描。
+    await archiveInactiveSandboxes(new Date('2026-07-10T02:00:00.000Z'));
+    expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledTimes(2);
+    expect(secondClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops dispatching further batches and propagates RedisLeaseLostError when the sweep lease is lost mid-run', async () => {
+    const close = vi.fn(async () => undefined);
+    const candidates = Array.from({ length: 4 }, (_, index) =>
+      createResource('stopped', { sandboxId: `sandbox-${index + 1}` })
+    );
+    mocks.createSandboxResourcesToArchiveCursor.mockReturnValueOnce({
+      async *[Symbol.asyncIterator]() {
+        for (const candidate of candidates) {
+          yield candidate;
+        }
+      },
+      close
+    });
+
+    const sweepAbortController = new AbortController();
+    let lostError: RedisLeaseLostError | undefined;
+    mocks.withSweepLease.mockImplementationOnce(async ({ fn }: WithLeaseOptions<unknown>) => {
+      const assertValid = () => {
+        if (lostError) throw lostError;
+      };
+      await fn({ signal: sweepAbortController.signal, assertValid });
+      assertValid();
+    });
+
+    mocks.withSandboxLease.mockImplementation(async ({ sandboxId }: { sandboxId: string }) => {
+      await Promise.resolve();
+      if (sandboxId === 'sandbox-1') {
+        lostError = new RedisLeaseLostError({
+          key: 'lock:agent-sandbox:archive-sweep',
+          label: 'archive-inactive-sandboxes'
+        });
+        sweepAbortController.abort(lostError);
+      }
+      return { status: 'success' };
+    });
+
+    await expect(
+      archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'))
+    ).rejects.toBeInstanceOf(RedisLeaseLostError);
+
+    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates RedisLeaseAcquireError instead of sweeping without an execution lease', async () => {
+    mocks.withSweepLease.mockRejectedValueOnce(
+      new RedisLeaseAcquireError({
+        key: 'lock:agent-sandbox:archive-sweep',
+        label: 'archive-inactive-sandboxes',
+        cause: new Error('redis unavailable')
+      })
+    );
+
+    await expect(
+      archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'))
+    ).rejects.toBeInstanceOf(RedisLeaseAcquireError);
+    expect(mocks.createSandboxResourcesToArchiveCursor).not.toHaveBeenCalled();
   });
 
   it('rechecks inactivity under the lease before claiming', async () => {
