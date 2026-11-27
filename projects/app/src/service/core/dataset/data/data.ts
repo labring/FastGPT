@@ -7,7 +7,10 @@ import type {
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
@@ -305,7 +308,7 @@ export class DatasetDataOperation {
             collectionId: String(collectionId),
             data: [{ q: dataQ, a, imageId, indexes: results }],
             imageUploadKeys,
-            session: mongoSession
+            tx: bridgeClientSessionToDbSession(mongoSession)
           });
 
           if (
@@ -501,7 +504,7 @@ export class DatasetDataOperation {
             collectionId: String(mongoData.collectionId),
             data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: newIndexes }],
             imageUploadKeys,
-            session: mongoSession
+            tx: bridgeClientSessionToDbSession(mongoSession)
           });
 
           if (!commit && isFailed) {
@@ -912,7 +915,7 @@ export class DatasetDataOperation {
             }
           ],
           imageUploadKeys,
-          session
+          tx: bridgeClientSessionToDbSession(session)
         });
 
         if (isFailed) {

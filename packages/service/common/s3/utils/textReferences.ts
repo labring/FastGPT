@@ -1,8 +1,5 @@
 import { S3Sources } from '../contracts/type';
 import {
-  htmlImgTokenPrefixPattern,
-  htmlImgTokenValuePattern,
-  htmlImgTokenSuffixPattern,
   matchDocumentImages,
   type DocumentImageItem
 } from '@fastgpt/global/common/string/markdown';
@@ -13,12 +10,9 @@ const s3SourcePattern = Object.values(S3Sources)
 
 const s3SourcePrefixRegex = new RegExp(`^(?:${s3SourcePattern})`, 'i');
 
-/** 兜底匹配普通 Markdown 链接及含未转义 > 的历史尖括号写法；图片节点优先走共享文档图片扫描器。 */
-const s3TextKeyRegex = new RegExp(
-  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)|` +
-    htmlImgTokenPrefixPattern +
-    htmlImgTokenValuePattern +
-    htmlImgTokenSuffixPattern,
+/** 仅兜底普通 Markdown 链接及含未转义 > 的历史尖括号写法；规范图片与 HTML <img> 由共享扫描器提供。 */
+const s3MarkdownFallbackRegex = new RegExp(
+  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)`,
   'gi'
 );
 
@@ -47,14 +41,14 @@ const replaceMarkdownImageForPreview = (item: DocumentImageItem, nextUrl: string
 };
 
 /**
- * 统一提取文本中的 S3 对象引用及替换函数，供预览提取、预览替换和写入校验共用。
+ * 统一提取文本中的 S3 对象引用及替换函数，供预览提取与预览替换共用。
  * 图片节点复用 `matchDocumentImages`（支持嵌套/转义方括号 alt 与完整 HTML `<img>` 边界），
- * 普通 Markdown 链接及历史非规范尖括号 key 由正则在不与图片节点重叠的区间补齐。
+ * 普通 Markdown 链接及历史非规范尖括号 key 通过单调游标在 O(N) 内按位置合并。
  */
 export const getS3TextReferences = (text: string): S3TextReference[] => {
   if (!text || typeof text !== 'string') return [];
 
-  const refs: S3TextReference[] = [];
+  const imageRefs: S3TextReference[] = [];
   const occupiedSpans: Array<[number, number]> = [];
 
   for (const item of matchDocumentImages(text)) {
@@ -65,7 +59,7 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
 
     if (!s3SourcePrefixRegex.test(item.url)) continue;
 
-    refs.push({
+    imageRefs.push({
       objectKey: item.url,
       format: item.format,
       index: start,
@@ -77,50 +71,26 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
     });
   }
 
-  for (const match of text.matchAll(s3TextKeyRegex)) {
+  const fallbackRefs: S3TextReference[] = [];
+  let spanCursor = 0;
+
+  for (const match of text.matchAll(s3MarkdownFallbackRegex)) {
     const start = match.index;
     const fullMatch = match[0];
     const end = start + fullMatch.length;
-    if (occupiedSpans.some(([spanStart, spanEnd]) => start < spanEnd && end > spanStart)) {
+    // 两路序列均按起始偏移递增，单调推进游标跳过已结束区间，避免平方级重叠检查。
+    while (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![1] <= start) {
+      spanCursor++;
+    }
+    if (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![0] < end) {
       continue;
     }
 
-    const [
-      ,
-      bang,
-      alt,
-      wrappedObjectKey,
-      unwrappedObjectKey,
-      markdownTitle,
-      htmlPrefix,
-      doubleQuoted,
-      singleQuoted,
-      unquoted,
-      htmlSuffix
-    ] = match;
-
-    if (htmlPrefix !== undefined) {
-      const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
-      if (!objectKey) continue;
-      occupiedSpans.push([start, end]);
-      refs.push({
-        objectKey,
-        format: 'html',
-        index: start,
-        fullMatch,
-        replace: (nextUrl: string) => {
-          if (doubleQuoted !== undefined) return `${htmlPrefix}"${nextUrl}"${htmlSuffix}`;
-          if (singleQuoted !== undefined) return `${htmlPrefix}'${nextUrl}'${htmlSuffix}`;
-          return `${htmlPrefix}"${nextUrl}"${htmlSuffix}`;
-        }
-      });
-      continue;
-    }
-
+    const [, bang, alt, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = match;
     const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
     if (!objectKey) continue;
-    occupiedSpans.push([start, end]);
-    refs.push({
+
+    fallbackRefs.push({
       objectKey,
       format: 'markdown',
       index: start,
@@ -129,6 +99,20 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
     });
   }
 
-  refs.sort((left, right) => left.index - right.index);
-  return refs;
+  if (fallbackRefs.length === 0) return imageRefs;
+  if (imageRefs.length === 0) return fallbackRefs;
+
+  const merged: S3TextReference[] = [];
+  let imageIndex = 0;
+  let fallbackIndex = 0;
+  while (imageIndex < imageRefs.length && fallbackIndex < fallbackRefs.length) {
+    if (imageRefs[imageIndex]!.index <= fallbackRefs[fallbackIndex]!.index) {
+      merged.push(imageRefs[imageIndex++]!);
+    } else {
+      merged.push(fallbackRefs[fallbackIndex++]!);
+    }
+  }
+  while (imageIndex < imageRefs.length) merged.push(imageRefs[imageIndex++]!);
+  while (fallbackIndex < fallbackRefs.length) merged.push(fallbackRefs[fallbackIndex++]!);
+  return merged;
 };

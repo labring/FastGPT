@@ -2,7 +2,6 @@ import {
   matchDocumentImages,
   unescapeMarkdownImageUrl
 } from '@fastgpt/global/common/string/markdown';
-import { getS3TextReferences } from '../../../../common/s3/utils/textReferences';
 import { createOpaqueS3FileKey } from '../../../../common/s3/opaqueKey';
 import { S3Buckets } from '../../../../common/s3/config/constants';
 import type { S3MQJobData } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
@@ -14,31 +13,55 @@ export type ChunkImageContent = {
   indexes?: Array<{ text?: string }>;
 };
 
-/** 按预览支持的语法临时提取受管图片，不在 data/task 中持久化第二份引用清单。 */
-export const getChunkImageReferences = (data: ChunkImageContent[]) =>
-  new Set(
-    data
-      .flatMap((item) => [
-        ...(item.imageId ? [item.imageId] : []),
-        ...[
-          item.q ?? '',
-          item.a ?? '',
-          ...(item.indexes?.map(({ text }) => text ?? '') ?? [])
-        ].flatMap((text) => [
-          ...matchDocumentImages(text).map((image) =>
-            image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url
-          ),
-          ...getS3TextReferences(text).map(({ objectKey, format }) =>
-            format === 'markdown' ? unescapeMarkdownImageUrl(objectKey) : objectKey
-          ),
-          // 预览正则先要求 dataset/ 前缀；普通链接的转义斜线需先还原再识别，HTML 保持字面值。
-          ...getS3TextReferences(unescapeMarkdownImageUrl(text))
-            .filter(({ format }) => format === 'markdown')
-            .map(({ objectKey }) => objectKey)
-        ])
-      ])
-      .filter((key) => parseChunkImageKey(key))
-  );
+/** 快速预判：CommonMark 仅转义 ASCII 标点，chunk-images 目录名中只有连字符前可能出现反斜杠。 */
+const possibleChunkImageHintRegex = /chunk\\?-images/i;
+/** 匹配普通 Markdown 链接目标（支持 CommonMark 标点转义如 dataset\/ 与 chunk\-images），避免整段正文反转义。 */
+const markdownChunkLinkRegex =
+  /(!?)\[[^\]]*\]\(\s*(?:<(dataset\\?\/[^>\r\n]+)>|(dataset\\?\/[^\s)\r\n]+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gi;
+
+const collectChunkImageKeysFromText = (text: string, keys: Set<string>) => {
+  if (!text || !possibleChunkImageHintRegex.test(text)) return;
+
+  const occupiedSpans: Array<[number, number]> = [];
+  for (const image of matchDocumentImages(text)) {
+    occupiedSpans.push([image.index, image.index + image.fullMatch.length]);
+    const url = image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url;
+    if (parseChunkImageKey(url)) keys.add(url);
+  }
+
+  let spanCursor = 0;
+  for (const match of text.matchAll(markdownChunkLinkRegex)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    while (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![1] <= start) {
+      spanCursor++;
+    }
+    if (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![0] < end) {
+      continue;
+    }
+
+    const rawDest = match[2] ?? match[3];
+    if (!rawDest) continue;
+    const url = unescapeMarkdownImageUrl(rawDest);
+    if (parseChunkImageKey(url)) keys.add(url);
+  }
+};
+
+/** 按预览支持的语法临时提取受管图片，仅对命中的目标地址反转义，不在 data/task 中持久化第二份引用清单。 */
+export const getChunkImageReferences = (data: ChunkImageContent[]) => {
+  const keys = new Set<string>();
+  for (const item of data) {
+    if (item.imageId && parseChunkImageKey(item.imageId)) keys.add(item.imageId);
+    if (item.q) collectChunkImageKeysFromText(item.q, keys);
+    if (item.a) collectChunkImageKeysFromText(item.a, keys);
+    if (item.indexes) {
+      for (const index of item.indexes) {
+        if (index.text) collectChunkImageKeysFromText(index.text, keys);
+      }
+    }
+  }
+  return keys;
+};
 
 const scopePattern = /^dataset\/([a-f0-9]{24})\/chunk-images\/([a-f0-9]{24})\//;
 

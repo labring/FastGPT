@@ -1,7 +1,10 @@
 import { readChunkImagePrefixIdForRebuild } from '@fastgpt/service/core/dataset/collection/entity';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
@@ -46,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
       teamId: String(collection.teamId),
       datasetId: String(collection.datasetId),
       collectionId: String(collection._id),
-      session
+      tx: bridgeClientSessionToDbSession(session)
     });
     // 重训会以新 _id 重建 collection，而创建流程只写入默认快照（独立态仅 owner）：
     // 必须在删除原集合前留存其权限快照，并在新集合创建后写回，否则协作者配置会丢失。

@@ -742,4 +742,40 @@ describe('批量 S3 预览 URL 格式化', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[1][0]).toHaveLength(1);
     expect(result.get('dataset/team/500.png')).toContain('mock-short-link-dataset/team/500.png');
   });
+
+  it('混合语法和大文档应按位置线性合并且不误扫 HTML 属性内的假链接', () => {
+    const mixed = [
+      '![Figure [1]](dataset/team/img-1.png)',
+      '<img alt="[fake](dataset/team/fake.png)" src="dataset/team/html-2.png">',
+      '[doc](chat/app/link-3.pdf "doc title")',
+      '![legacy](<dataset/team/a>b.png>)'
+    ].join('\n');
+
+    expect(getS3ObjectKeysFromTexts([mixed])).toEqual([
+      'dataset/team/img-1.png',
+      'dataset/team/html-2.png',
+      'chat/app/link-3.pdf',
+      'dataset/team/a>b.png'
+    ]);
+
+    const largeLines = Array.from({ length: 2000 }, (_, i) =>
+      i % 2 === 0
+        ? `![img ${i}](dataset/team/chunk-images/col1/file/${i}.png)`
+        : `[doc ${i}](dataset/team/chunk-images/col1/file/${i}.pdf)`
+    );
+    const largeText = largeLines.join('\n');
+    const keys = getS3ObjectKeysFromTexts([largeText]);
+    expect(keys).toHaveLength(2000);
+    expect(keys[0]).toBe('dataset/team/chunk-images/col1/file/0.png');
+    expect(keys[1999]).toBe('dataset/team/chunk-images/col1/file/1999.pdf');
+
+    const map = new Map(keys.map((key) => [key, `https://preview.test/${key}`]));
+    const replaced = replaceS3KeysWithPreviewUrlMap(largeText, map);
+    expect(replaced).toContain(
+      '![img 0](https://preview.test/dataset/team/chunk-images/col1/file/0.png)'
+    );
+    expect(replaced).toContain(
+      '[doc 1999](https://preview.test/dataset/team/chunk-images/col1/file/1999.pdf)'
+    );
+  });
 });

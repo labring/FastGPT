@@ -10,7 +10,10 @@ import type {
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
@@ -793,7 +796,7 @@ export class DatasetDataIndexOperation {
           datasetId: String(sourceData.datasetId),
           collectionId: String(sourceData.collectionId),
           data: [{ indexes: [{ text: trimText }] }],
-          session
+          tx: bridgeClientSessionToDbSession(session)
         });
         const updateResult = targetIndex
           ? await MongoDatasetData.updateOne(

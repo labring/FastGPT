@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { readDatasetSourceRawText } from '../read';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 import { getCollectionCollaborators } from '../../../support/permission/collection/collaborator';
@@ -378,7 +378,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         teamId: String(collection.teamId),
         datasetId: String(collection.datasetId),
         collectionId: String(collection._id),
-        session
+        tx: bridgeClientSessionToDbSession(session)
       });
       // 同步同样以新 _id 重建 collection：删除前留存权限快照，创建后写回，避免协作者配置丢失。
       const collaborators = await getCollectionCollaborators({

@@ -193,7 +193,7 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         datasetId: String(task.datasetId),
         collectionId: String(task.collectionId),
         data: [{ ...current, ...next }],
-        session
+        tx: bridgeClientSessionToDbSession(session)
       });
       const readyUpdate = getTrainingTaskReadyUpdate();
       const result = await MongoDatasetTraining.updateOne(

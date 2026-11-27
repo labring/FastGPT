@@ -1,9 +1,7 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { ClientSession } from '../../../../common/mongo';
-import { MongoDatasetCollection } from '../../collection/schema';
-import { MongoS3TTL } from '../../../../common/s3/models/ttl';
-import { S3Buckets } from '../../../../common/s3/config/constants';
-import { removeS3TTL } from '../../../../common/s3/utils';
+import type { DbSession } from '@fastgpt/dal/db/types';
+import { hasCollectionChunkImagePrefix } from '../../collection/entity';
+import { findPendingS3TTLKeys, removeS3TTL } from '../../../../common/s3/utils';
 import { parseChunkImageKey, getChunkImageReferences, type ChunkImageContent } from './utils';
 
 /**
@@ -16,14 +14,14 @@ export const persistChunkImageReferences = async ({
   collectionId,
   data,
   imageUploadKeys = [],
-  session
+  tx
 }: {
   teamId: string;
   datasetId: string;
   collectionId: string;
   data: ChunkImageContent[];
   imageUploadKeys?: string[];
-  session: ClientSession;
+  tx?: DbSession;
 }) => {
   const keys = [...getChunkImageReferences(data)];
   if (keys.length === 0) return;
@@ -34,28 +32,21 @@ export const persistChunkImageReferences = async ({
   )
     throw new UserError('Image does not belong to this collection');
 
-  const collection = await MongoDatasetCollection.findOne({
-    _id: collectionId,
+  const ownsPrefix = await hasCollectionChunkImagePrefix({
     teamId,
     datasetId,
-    chunkImagePrefixId: prefixId
-  })
-    .session(session)
-    .select('_id')
-    .lean();
-  if (!collection) throw new UserError('Image does not belong to this collection');
+    collectionId,
+    chunkImagePrefixId: prefixId,
+    tx
+  });
+  if (!ownsPrefix) throw new UserError('Image does not belong to this collection');
 
   const newKeys = keys.filter((key) => imageUploadKeys.includes(key));
-  const pending = await MongoS3TTL.find({
-    bucketName: S3Buckets.private,
-    minioKey: { $in: keys }
-  })
-    .session(session)
-    .lean();
-  if (pending.some((file) => !newKeys.includes(file.minioKey)))
+  const pendingKeys = await findPendingS3TTLKeys({ keys, bucketName: 'private', tx });
+  if (pendingKeys.some((minioKey) => !newKeys.includes(minioKey)))
     throw new UserError('Image upload has not been committed');
   if (newKeys.length === 0) return;
-  const promoted = await removeS3TTL({ key: newKeys, bucketName: 'private', session });
+  const promoted = await removeS3TTL({ key: newKeys, bucketName: 'private', tx });
   if (promoted?.deletedCount !== newKeys.length)
     throw new UserError('Image upload is no longer available');
 };

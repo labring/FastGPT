@@ -179,7 +179,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       collectionId: String(collection._id),
       data: [{ ...current, ...normalized.data[0] }],
       imageUploadKeys: normalized.imageUploadKeys,
-      session
+      tx: bridgeClientSessionToDbSession(session)
     });
     if (data.dataId) {
       await MongoDatasetData.updateOne(

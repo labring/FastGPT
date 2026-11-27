@@ -49,7 +49,8 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: mockMongoSessionRun
+  mongoSessionRun: mockMongoSessionRun,
+  bridgeClientSessionToDbSession: vi.fn((session: unknown) => session)
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/utils', () => ({
@@ -176,7 +177,7 @@ describe('reTrainingCollection', () => {
       teamId: 'team-b',
       datasetId: sourceDatasetId,
       collectionId: sourceCollectionId,
-      session: 'session'
+      tx: 'session'
     });
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({

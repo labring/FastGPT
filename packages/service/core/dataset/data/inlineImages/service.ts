@@ -10,9 +10,7 @@ import { createChunkImageKey } from './utils';
 import { normalizeMimeType, resolveMimeExtension } from '../../../../common/s3/utils/mime';
 import { isValidImageContentType } from '../../../../common/file/image/utils';
 import { validateUploadFile } from '../../../../common/s3/validation/upload';
-import { MongoS3TTL } from '../../../../common/s3/models/ttl';
-import { S3Buckets } from '../../../../common/s3/config/constants';
-import { uploadImage2S3Bucket } from '../../../../common/s3/utils';
+import { registerS3TTL, uploadImage2S3Bucket } from '../../../../common/s3/utils';
 
 /**
  * 将直接写入的 Base64 图片转存为本集合对象，只替换地址，保留分块与正文。
@@ -63,9 +61,9 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
         });
         key = createChunkImageKey({ datasetId, chunkImagePrefixId, filename: file.filename });
         // 存储端写入后抛错也必须有清理依据，不使用上传完成后才登记 TTL 的旧分支。
-        await MongoS3TTL.create({
-          bucketName: S3Buckets.private,
-          minioKey: key,
+        await registerS3TTL({
+          bucketName: 'private',
+          key,
           expiredTime: addHours(new Date(), 3)
         });
         await uploadImage2S3Bucket('private', {

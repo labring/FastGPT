@@ -287,7 +287,7 @@ export const pushDataListToTrainingQueue = async ({
       collectionId: String(collectionId),
       data: dataToInsert,
       imageUploadKeys,
-      session
+      tx: bridgeClientSessionToDbSession(session)
     });
     let insertedCount = 0;
     const insertedModes = new Set<TrainingModeEnum>();

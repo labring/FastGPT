@@ -10,7 +10,10 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -38,7 +41,7 @@ describe('persistChunkImageReferences', () => {
         ...scope,
         data: [{ q: `![image](${key})` }],
         imageUploadKeys: [key],
-        session
+        tx: bridgeClientSessionToDbSession(session)
       });
     });
     expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(0);
@@ -52,7 +55,7 @@ describe('persistChunkImageReferences', () => {
     expect(collection.chunkImagePrefixId).toBeUndefined();
     await getOrCreateChunkImagePrefixId(scope);
     const current = await mongoSessionRun((session) =>
-      readChunkImagePrefixIdForRebuild({ ...scope, session })
+      readChunkImagePrefixIdForRebuild({ ...scope, tx: bridgeClientSessionToDbSession(session) })
     );
     expect(current).toBe(scope.collectionId);
   });
@@ -66,7 +69,7 @@ describe('persistChunkImageReferences', () => {
           ...scope,
           data: [{ q: `![image](${key})` }],
           imageUploadKeys: [key],
-          session
+          tx: bridgeClientSessionToDbSession(session)
         });
         throw new Error('rollback');
       })
@@ -82,7 +85,7 @@ describe('persistChunkImageReferences', () => {
         ...scope,
         data: [{ q: 'filtered image no longer present' }],
         imageUploadKeys: [key],
-        session
+        tx: bridgeClientSessionToDbSession(session)
       })
     );
     expect(await MongoS3TTL.findById(record._id)).toBeTruthy();
@@ -97,7 +100,7 @@ describe('persistChunkImageReferences', () => {
           ...scope,
           data: [{ q: `![image](${key})` }],
           imageUploadKeys: [key],
-          session
+          tx: bridgeClientSessionToDbSession(session)
         })
       )
     ).rejects.toThrow('no longer available');
@@ -107,7 +110,11 @@ describe('persistChunkImageReferences', () => {
     const { scope, key } = await setup();
     await expect(
       mongoSessionRun((session) =>
-        persistChunkImageReferences({ ...scope, data: [{ q: `[image](${key})` }], session })
+        persistChunkImageReferences({
+          ...scope,
+          data: [{ q: `[image](${key})` }],
+          tx: bridgeClientSessionToDbSession(session)
+        })
       )
     ).rejects.toThrow('not been committed');
   });
@@ -137,7 +144,7 @@ describe('persistChunkImageReferences', () => {
             ...other,
             datasetId: scope.datasetId,
             data: [data],
-            session
+            tx: bridgeClientSessionToDbSession(session)
           })
         )
       ).rejects.toThrow('does not belong');
@@ -146,7 +153,13 @@ describe('persistChunkImageReferences', () => {
 
   it('deduplicates plain links and full image syntax without changing text', async () => {
     const { key } = await setup();
-    const text = `![one](${key}) [two](<${key}> "title") <img src='${key}'>`;
+    const fakeKey = key.replace(/a{32}/, 'b'.repeat(32));
+    const escapedKey = key.replace(/[./-]/g, '\\$&');
+    const text = [
+      `![Figure [1]](${key})`,
+      `[two](<${escapedKey}> "title")`,
+      `<img alt="[fake](${fakeKey})" src='${key}'>`
+    ].join(' ');
     expect([...getChunkImageReferences([{ q: text }, { imageId: key }])]).toEqual([key]);
   });
 });
