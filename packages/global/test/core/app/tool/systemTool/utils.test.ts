@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { stripUnsetOptionalToolInputs } from '@fastgpt/global/core/app/tool/systemTool/utils';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import {
+  JSONSchemaInputTypeSchema,
+  type JSONSchemaInputType
+} from '@fastgpt/global/core/app/jsonschema';
 
 describe('stripUnsetOptionalToolInputs', () => {
   it('passes input through unchanged when inputSchema or properties is missing', () => {
@@ -139,7 +142,7 @@ describe('stripUnsetOptionalToolInputs', () => {
   });
 
   it('keeps null for allOf with annotation branch, $ref to nullable definitions/$defs, untyped properties, and unresolvable $ref', () => {
-    const draft7Schema = {
+    const draft7Schema = JSONSchemaInputTypeSchema.parse({
       $id: 'https://fastgpt.example.com/tool-draft7.json',
       type: 'object',
       definitions: {
@@ -159,7 +162,7 @@ describe('stripUnsetOptionalToolInputs', () => {
         untypedEmpty: {},
         untypedAnnotated: { description: 'Any value' }
       }
-    } as unknown as JSONSchemaInputType;
+    });
 
     expect(
       stripUnsetOptionalToolInputs({
@@ -182,7 +185,7 @@ describe('stripUnsetOptionalToolInputs', () => {
       untypedAnnotated: null
     });
 
-    const draft2020Schema = {
+    const draft2020Schema = JSONSchemaInputTypeSchema.parse({
       $schema: 'https://json-schema.org/draft/2020-12/schema',
       type: 'object',
       $defs: {
@@ -193,7 +196,7 @@ describe('stripUnsetOptionalToolInputs', () => {
         refNullable: { $ref: '#/$defs/nullableSetting' },
         refStrictString: { $ref: '#/$defs/strictString' }
       }
-    } as unknown as JSONSchemaInputType;
+    });
 
     expect(
       stripUnsetOptionalToolInputs({
@@ -205,6 +208,98 @@ describe('stripUnsetOptionalToolInputs', () => {
       })
     ).toEqual({
       refNullable: null
+    });
+  });
+
+  it('resolves sibling property and $defs/definitions $ref consistently for both null and empty string', () => {
+    const siblingRefSchema = JSONSchemaInputTypeSchema.parse({
+      type: 'object',
+      required: ['priority'],
+      properties: {
+        priority: { type: 'number' },
+        fallbackPriority: { $ref: '#/properties/priority' },
+        legacyRequiredOther: { type: 'string', required: true },
+        label: { type: 'string', minLength: 1 },
+        fallbackLabel: { $ref: '#/properties/label' }
+      }
+    });
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          priority: 1,
+          fallbackPriority: null,
+          fallbackLabel: ''
+        },
+        inputSchema: siblingRefSchema
+      })
+    ).toEqual({
+      priority: 1,
+      fallbackLabel: ''
+    });
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          priority: 1,
+          fallbackPriority: '',
+          fallbackLabel: null
+        },
+        inputSchema: siblingRefSchema
+      })
+    ).toEqual({
+      priority: 1
+    });
+
+    const defsRefSchema = JSONSchemaInputTypeSchema.parse({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      $defs: {
+        limit: { type: 'number' },
+        nonEmptyText: { type: 'string', minLength: 1 },
+        statusEnum: { enum: ['active', 'paused'] },
+        cyclic: { $ref: '#/$defs/cyclic' }
+      },
+      properties: {
+        limit: { $ref: '#/$defs/limit' },
+        nullableLimit: { anyOf: [{ $ref: '#/$defs/limit' }, { type: 'null' }] },
+        title: { $ref: '#/$defs/nonEmptyText' },
+        status: { $ref: '#/$defs/statusEnum' },
+        cyclicField: { $ref: '#/$defs/cyclic' },
+        missingRef: { $ref: '#/$defs/missing' }
+      }
+    });
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          limit: '',
+          nullableLimit: '',
+          title: '',
+          status: '',
+          cyclicField: '',
+          missingRef: ''
+        },
+        inputSchema: defsRefSchema
+      })
+    ).toEqual({
+      title: '',
+      status: '',
+      cyclicField: '',
+      missingRef: ''
+    });
+
+    expect(
+      stripUnsetOptionalToolInputs({
+        input: {
+          limit: null,
+          nullableLimit: null,
+          title: null
+        },
+        inputSchema: defsRefSchema
+      })
+    ).toEqual({
+      nullableLimit: null
     });
   });
 
