@@ -1,5 +1,10 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import { type ChannelStatusType } from '@fastgpt/global/core/ai/model/channel';
+import {
+  defaultChannel,
+  type ChannelInfoType,
+  type ChannelStatusEnum,
+  type ChannelStatusType
+} from '@fastgpt/global/core/ai/model/channel';
 import type {
   CreateChannelBody,
   CreateChannelResponse,
@@ -22,6 +27,24 @@ import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 
 const channelBasePath = '/core/ai/model/channel';
+
+/** 将列表接口返回的渠道项规范化为编辑表单状态，剥离列表统计与分组等只读字段。 */
+export const channelListItemToChannelInfo = (item: ChannelListItem): ChannelInfoType => ({
+  ...defaultChannel,
+  id: item.id,
+  name: item.name,
+  type: item.type,
+  status: item.status as ChannelStatusEnum,
+  key: '',
+  keyConfigured: item.keyConfigured,
+  models: item.models,
+  model_mapping: item.model_mapping ?? {},
+  configs: item.configs,
+  base_url: item.base_url ?? '',
+  priority: item.priority ?? 1,
+  sets: item.sets,
+  created_at: item.created_at ?? 0
+});
 
 /**
  * 获取渠道分页列表。强制显式传递 channelType 作用域。

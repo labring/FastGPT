@@ -9,9 +9,12 @@ import type DndDrag from '@fastgpt/web/components/common/DndDrag';
 type DndProps = React.ComponentProps<typeof DndDrag<ModelConfigListItem>>;
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
+  deleteModel: vi.fn(),
   refresh: vi.fn(),
   onError: vi.fn(),
-  dnd: undefined as DndProps | undefined
+  dnd: undefined as DndProps | undefined,
+  addModelDisabled: undefined as boolean | undefined,
+  confirmDelete: undefined as (() => void) | undefined
 }));
 
 vi.mock('@chakra-ui/react', async (importOriginal) => ({
@@ -50,7 +53,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 vi.mock('@/web/core/ai/model/api', () => ({
   putUpdateModelOrder: mocks.save,
-  deleteModel: vi.fn(),
+  deleteModel: mocks.deleteModel,
   deleteModels: vi.fn(),
   testModel: vi.fn(),
   putModelsStatus: vi.fn(),
@@ -114,8 +117,22 @@ vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null })
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Icon/button', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/String/CopyBox', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({ default: () => null }));
-vi.mock('@/pageComponents/model/AddModel', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ onConfirm }: { onConfirm?: () => void }) => {
+    mocks.confirmDelete = onConfirm;
+    return null;
+  }
+}));
+vi.mock('@/pageComponents/model/AddModel', () => ({
+  default: ({ isDisabled }: { isDisabled?: boolean }) => {
+    mocks.addModelDisabled = isDisabled;
+    return React.createElement(
+      'button',
+      { disabled: Boolean(isDisabled) },
+      'config_model:create_model'
+    );
+  }
+}));
 vi.mock('@/pageComponents/model/ModelChannelCount', () => ({ default: () => null }));
 vi.mock('@/pageComponents/model/ModelChannelModal', () => ({ default: () => null }));
 vi.mock('@/pageComponents/model/ModelEditModal', () => ({ default: () => null }));
@@ -193,6 +210,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   mocks.dnd = undefined;
+  mocks.addModelDisabled = undefined;
+  mocks.confirmDelete = undefined;
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -228,5 +247,34 @@ describe('ModelConfigTable sorting', () => {
     });
     expect(mocks.refresh).toHaveBeenCalledOnce();
     expect(host.textContent).not.toContain('config_model:model.cancel_sort');
+  });
+
+  it('never disables custom sort or create model buttons while deleting a model', async () => {
+    // 退出排序态，回到包含自定义排序、新增模型和行删除按钮的主列表视图。
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+
+    const customSortBtn = button('custom_sort');
+    expect(customSortBtn.disabled).toBe(false);
+    expect(mocks.addModelDisabled).toBeUndefined();
+
+    // 触发删除请求并停留在请求进行中状态，校验两个按钮均保持可用。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    expect(mocks.deleteModel).toHaveBeenCalledOnce();
+    expect(button('custom_sort').disabled).toBe(false);
+    expect(mocks.addModelDisabled).toBeUndefined();
+
+    await act(async () => {
+      resolveDelete();
+    });
   });
 });

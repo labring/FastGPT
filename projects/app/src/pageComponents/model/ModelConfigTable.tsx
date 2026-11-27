@@ -506,7 +506,6 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
-                  isDisabled={isSortBusy || channelMutationLoading || modelItems.length === 0}
                   onClick={enterSortMode}
                 >
                   {t('config_model:model.custom_sort')}
@@ -554,7 +553,6 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   providers={modelProviders}
                   channelType={channelType}
                   onSuccess={refreshModels}
-                  isDisabled={channelMutationLoading}
                   w={'100%'}
                   minW={0}
                   px={[2, 4]}
