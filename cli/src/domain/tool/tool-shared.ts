@@ -215,15 +215,18 @@ export function validateHttpToolPath(rawPath: string): string {
 }
 
 /**
- * 与服务端 `runHTTPTool` 对齐的基址补全规则：历史已保存的无协议 `baseUrl` 默认按 `https://` 补全。
+ * 与服务端 `packages/service/core/app/http.ts` 对齐的历史基址补全规则：
+ * 仅将带 `://` 的前缀识别为显式协议（避免把 `api.example.com:8443/v1` 的端口分隔符误判为协议），
+ * 无协议历史基址统一按 `https://` 补全后再做协议与主机校验。
  */
 export function normalizeSavedHttpBaseUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   if (!trimmed) return '';
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-    return validateToolEndpointUrl(trimmed, 'HTTP target URL');
-  }
-  return validateToolEndpointUrl(`https://${trimmed}`, 'HTTP target URL');
+  const normalized =
+    /^https?:\/\//i.test(trimmed) || /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+  return validateToolEndpointUrl(normalized, 'HTTP target URL');
 }
 
 /**
@@ -314,9 +317,22 @@ export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
 }
 
 /**
- * 判断异常是否携带 FastGPT 服务端明确的写入拒绝依据：
- * - 参数/鉴权拒绝，或 4xx（非 408 请求超时）HTTP 拒绝，或解析出 FastGPT 标准 JSON 信封 `serverCode`（非 408）属于明确失败；
- * - 网络断连/响应体中断、网关 502/503/504 等无 FastGPT 确认应答的异常一律归为结果未知。
+ * 校验工具配置写入接口（`PUT /core/app/{httpTools,mcpTools}/update`）的解包返回值：
+ * FastGPT 成功确认信封的 `data` 固定为 `null`（或单测替身 `undefined`），非空字符串/对象视为代理拦截或异常响应。
+ */
+export function assertEmptyConfigUpdateAck(response: unknown, operation: string): void {
+  if (response !== undefined && response !== null) {
+    throw new CliNetworkError(
+      `${operation} received an unexpected non-empty response payload instead of a FastGPT confirmation envelope.`,
+      'Inspect authoritative resource state on the server before retrying.'
+    );
+  }
+}
+
+/**
+ * 判断异常是否属于明确的前置写入拒绝信号：
+ * - 仅认可本地参数/鉴权拒绝，以及 4xx（非 408 请求超时）前置拒绝；
+ * - 任何 5xx（含 JSON 502/503/504 与服务端 500）、408 超时、网络/响应体中断或非 FastGPT 信封一律归为结果未知。
  */
 function isConfirmedWriteRejection(error: unknown): boolean {
   if (error instanceof CliArgumentError || error instanceof CliAuthError) {
@@ -331,7 +347,13 @@ function isConfirmedWriteRejection(error: unknown): boolean {
     ) {
       return true;
     }
-    if (error.serverCode !== undefined && error.serverCode !== 408) {
+    if (
+      (error.httpStatus === undefined || (error.httpStatus >= 200 && error.httpStatus < 300)) &&
+      error.serverCode !== undefined &&
+      error.serverCode >= 400 &&
+      error.serverCode < 500 &&
+      error.serverCode !== 408
+    ) {
       return true;
     }
   }

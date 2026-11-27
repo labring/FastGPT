@@ -37,6 +37,7 @@ import {
   parseAppMetadataUpdate
 } from '../shared/app-resource';
 import {
+  assertEmptyConfigUpdateAck,
   hasSavedCredentials,
   hasStaticHeaders,
   isAbsoluteHttpUrl,
@@ -457,19 +458,22 @@ export function createHttpToolService(): HttpToolService {
       const appId = await client.request<CreateAppResponseType>({
         method: 'POST',
         path: '/core/app/httpTools/create',
-        body: validatedCreateBody
+        body: validatedCreateBody,
+        requireFastGptEnvelope: true
       });
 
       if (validatedConfigPreview) {
         try {
-          await client.request<UpdateHttpToolsResponseType>({
+          const ack = await client.request<UpdateHttpToolsResponseType>({
             method: 'PUT',
             path: '/core/app/httpTools/update',
             body: {
               ...validatedConfigPreview,
               appId
-            }
+            },
+            requireFastGptEnvelope: true
           });
+          assertEmptyConfigUpdateAck(ack, 'tool http create');
         } catch (error) {
           throw wrapPartialWriteError({
             error,
@@ -589,24 +593,20 @@ export function createHttpToolService(): HttpToolService {
       let mergedConfigBody: ReturnType<typeof UpdateHttpToolsBodySchema.parse> | undefined;
       if (hasConfigUpdate) {
         const existing = extractHttpToolSetConfig(detail);
-        const normalizedExistingBaseUrl = existing.baseUrl
-          ? normalizeSavedHttpBaseUrl(existing.baseUrl)
-          : undefined;
-        if (
-          validatedBaseUrl !== undefined &&
-          normalizedExistingBaseUrl &&
-          !isSameToolEndpoint(validatedBaseUrl, normalizedExistingBaseUrl)
-        ) {
-          const reusingSavedHeaderSecret =
-            hasSavedCredentials(existing.headerSecret) && normalizedHeaders === undefined;
-          const reusingSavedCustomHeaders =
-            hasSavedCredentials(existing.customHeaders) && customHeaders === undefined;
-          if (reusingSavedHeaderSecret || reusingSavedCustomHeaders) {
-            throw new CliArgumentError(
-              `Refusing to forward saved HTTP headers/credentials from "${existing.baseUrl}" to new target URL "${validatedBaseUrl}".`,
-              undefined,
-              'Pass --header-secret / --custom-headers explicitly for the new target URL (or "{}" to clear).'
-            );
+        if (validatedBaseUrl !== undefined && existing.baseUrl) {
+          const normalizedExistingBaseUrl = normalizeSavedHttpBaseUrl(existing.baseUrl);
+          if (!isSameToolEndpoint(validatedBaseUrl, normalizedExistingBaseUrl)) {
+            const reusingSavedHeaderSecret =
+              hasSavedCredentials(existing.headerSecret) && normalizedHeaders === undefined;
+            const reusingSavedCustomHeaders =
+              hasSavedCredentials(existing.customHeaders) && customHeaders === undefined;
+            if (reusingSavedHeaderSecret || reusingSavedCustomHeaders) {
+              throw new CliArgumentError(
+                `Refusing to forward saved HTTP headers/credentials from "${existing.baseUrl}" to new target URL "${validatedBaseUrl}".`,
+                undefined,
+                'Pass --header-secret / --custom-headers explicitly for the new target URL (or "{}" to clear).'
+              );
+            }
           }
         }
 
@@ -669,22 +669,26 @@ export function createHttpToolService(): HttpToolService {
       }
 
       if (metadataBody) {
-        await client.request<UpdateAppResponseType>({
+        const metaAck = await client.request<UpdateAppResponseType>({
           method: 'PUT',
           path: '/core/app/update',
           query: validatedQuery,
-          body: metadataBody
+          body: metadataBody,
+          requireFastGptEnvelope: true
         });
+        assertEmptyConfigUpdateAck(metaAck, 'tool http update');
       }
 
       let updatedToolCount: number | undefined;
       if (mergedConfigBody) {
         try {
-          await client.request<UpdateHttpToolsResponseType>({
+          const ack = await client.request<UpdateHttpToolsResponseType>({
             method: 'PUT',
             path: '/core/app/httpTools/update',
-            body: mergedConfigBody
+            body: mergedConfigBody,
+            requireFastGptEnvelope: true
           });
+          assertEmptyConfigUpdateAck(ack, 'tool http update');
         } catch (error) {
           if (metadataBody) {
             throw wrapPartialWriteError({

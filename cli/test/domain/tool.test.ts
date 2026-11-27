@@ -881,5 +881,161 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       expect(error.details.failedStep).toBeUndefined();
       expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
     }
+
+    // 8. Gateway JSON 502 and proxy HTTP 200 login HTML on follow-up configure write both report outcome: unknown
+    const gatewayJson502Client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes('/core/app/httpTools/create')) {
+          return new Response(JSON.stringify({ code: 200, statusText: '', data: HTTP_ID }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify({ code: 502, message: 'Bad Gateway' }), {
+          status: 502,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+    });
+
+    try {
+      await httpService.create({
+        client: gatewayJson502Client,
+        input: { name: 'Json502HTTP' },
+        config: {
+          baseUrl: 'https://api.example.com/v1',
+          toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+        }
+      });
+      expect.unreachable('should report unknown outcome on JSON 502');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(CliApiError);
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        uncertainStep: 'configure'
+      });
+      expect(error.details.failedStep).toBeUndefined();
+      expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
+    }
+
+    const proxyLoginHtmlClient = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes('/core/app/httpTools/create')) {
+          return new Response(JSON.stringify({ code: 200, statusText: '', data: HTTP_ID }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response('<!DOCTYPE html><html><body>SSO Login</body></html>', {
+          status: 200,
+          headers: { 'content-type': 'text/html' }
+        });
+      }
+    });
+
+    try {
+      await httpService.create({
+        client: proxyLoginHtmlClient,
+        input: { name: 'ProxyHtmlHTTP' },
+        config: {
+          baseUrl: 'https://api.example.com/v1',
+          toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+        }
+      });
+      expect.unreachable('should reject HTTP 200 proxy login HTML as unknown outcome');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(CliNetworkError);
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        uncertainStep: 'configure'
+      });
+      expect(error.details.failedStep).toBeUndefined();
+      expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
+    }
+
+    // 9. Legacy scheme-less host:port baseUrl (e.g. api.example.com:8443/v1) works for both run and header-only update,
+    // while changing port still enforces credential isolation.
+    let legacyPortRunBody: any;
+    let legacyPortUpdateBody: any;
+    const legacyPortClient = createMockClient(async ({ path, body }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'LegacyPortHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'api.example.com:8443/v1',
+                  toolList: [
+                    {
+                      name: 'search',
+                      description: 'Search',
+                      path: '/search',
+                      method: 'GET',
+                      headerSecret: { Authorization: { value: 'Bearer port-token' } }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      if (path === '/core/app/httpTools/runTool') {
+        legacyPortRunBody = body;
+        return { data: { ok: true } };
+      }
+      if (path === '/core/app/httpTools/update') {
+        legacyPortUpdateBody = body;
+        return null;
+      }
+      return undefined;
+    });
+
+    const portRun = await httpService.run({
+      client: legacyPortClient,
+      input: { appId: HTTP_ID, toolPath: '/search' }
+    });
+    expect(portRun.changed).toBe(true);
+    expect(legacyPortRunBody).toMatchObject({
+      baseUrl: 'https://api.example.com:8443/v1',
+      toolPath: '/search',
+      method: 'GET'
+    });
+
+    const portHeaderUpdate = await httpService.update({
+      client: legacyPortClient,
+      appId: HTTP_ID,
+      metadata: {},
+      config: { headerSecret: { 'X-Extra': 'new-val' } }
+    });
+    expect(portHeaderUpdate.changed).toBe(true);
+    expect(legacyPortUpdateBody).toMatchObject({
+      baseUrl: 'api.example.com:8443/v1',
+      headerSecret: { 'X-Extra': { value: 'new-val' } }
+    });
+
+    await expect(
+      httpService.update({
+        client: legacyPortClient,
+        appId: HTTP_ID,
+        metadata: {},
+        config: { baseUrl: 'https://api.example.com:9443/v1' }
+      })
+    ).rejects.toThrow(/Refusing to retain saved sub-tool headerSecret\/staticHeaders/);
   });
 });

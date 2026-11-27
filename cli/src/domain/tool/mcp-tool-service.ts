@@ -32,6 +32,7 @@ import {
   parseAppMetadataUpdate
 } from '../shared/app-resource';
 import {
+  assertEmptyConfigUpdateAck,
   hasSavedCredentials,
   isSameToolEndpoint,
   normalizeHeaderSecretInput,
@@ -434,23 +435,27 @@ export function createMcpToolService(): McpToolService {
       }
 
       if (metadataBody) {
-        await client.request<UpdateAppResponseType>({
+        const metaAck = await client.request<UpdateAppResponseType>({
           method: 'PUT',
           path: '/core/app/update',
           query: validatedQuery,
-          body: metadataBody
+          body: metadataBody,
+          requireFastGptEnvelope: true
         });
+        assertEmptyConfigUpdateAck(metaAck, 'tool mcp update');
       }
 
       let updatedUrl: string | undefined;
       let updatedToolCount: number | undefined;
       if (validatedConfigBody) {
         try {
-          await client.request<UpdateMcpToolsResponseType>({
+          const ack = await client.request<UpdateMcpToolsResponseType>({
             method: 'PUT',
             path: '/core/app/mcpTools/update',
-            body: validatedConfigBody
+            body: validatedConfigBody,
+            requireFastGptEnvelope: true
           });
+          assertEmptyConfigUpdateAck(ack, 'tool mcp update');
         } catch (error) {
           if (metadataBody) {
             throw wrapPartialWriteError({

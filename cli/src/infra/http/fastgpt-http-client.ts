@@ -37,6 +37,7 @@ export type FastGptHttpClient = {
     auth?: HttpRequestAuth;
     headers?: Record<string, string>;
     timeoutMs?: number;
+    requireFastGptEnvelope?: boolean;
   }) => Promise<T>;
   requestRaw: (params: {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -224,11 +225,13 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl
+  displayUrl,
+  requireFastGptEnvelope = false
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
+  requireFastGptEnvelope?: boolean;
 }): T {
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
@@ -249,6 +252,13 @@ function unpackFastGptResponse<T>({
           message: rawText.slice(0, 300) || `HTTP ${response.status}`,
           url: displayUrl
         });
+      }
+      if (requireFastGptEnvelope) {
+        throw new CliNetworkError(
+          `Expected a FastGPT JSON confirmation envelope from ${redactText(displayUrl)}, but received non-JSON HTTP ${response.status} response.`,
+          'Verify FASTGPT_BASE_URL and check whether a proxy/SSO login page intercepted the request.',
+          { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_envelope' }
+        );
       }
       return rawText as T;
     }
@@ -278,7 +288,7 @@ function unpackFastGptResponse<T>({
       });
     }
 
-    if ('code' in envelope && 'data' in envelope) {
+    if (serverCode !== undefined && 'data' in envelope) {
       return envelope.data as T;
     }
   }
@@ -289,6 +299,14 @@ function unpackFastGptResponse<T>({
       message: `Request failed (HTTP ${response.status})`,
       url: displayUrl
     });
+  }
+
+  if (requireFastGptEnvelope) {
+    throw new CliNetworkError(
+      `Expected a FastGPT JSON confirmation envelope from ${redactText(displayUrl)}, but received an unrecognized HTTP ${response.status} payload.`,
+      'Verify FASTGPT_BASE_URL and check whether an upstream proxy intercepted the request.',
+      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_envelope' }
+    );
   }
 
   return parsed as T;
@@ -666,7 +684,8 @@ export function createFastGptHttpClient({
       body,
       auth,
       headers: extraHeaders,
-      timeoutMs: requestTimeout = timeoutMs
+      timeoutMs: requestTimeout = timeoutMs,
+      requireFastGptEnvelope = false
     }: {
       method: 'GET' | 'POST' | 'PUT' | 'DELETE';
       path: string;
@@ -675,6 +694,7 @@ export function createFastGptHttpClient({
       auth?: HttpRequestAuth;
       headers?: Record<string, string>;
       timeoutMs?: number;
+      requireFastGptEnvelope?: boolean;
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
@@ -692,7 +712,8 @@ export function createFastGptHttpClient({
       return unpackFastGptResponse<T>({
         response,
         rawText,
-        displayUrl: finalUrl
+        displayUrl: finalUrl,
+        requireFastGptEnvelope
       });
     },
 
