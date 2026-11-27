@@ -243,9 +243,7 @@ const parseHtmlImgTag = (tag: string, index: number): DocumentImageItem | undefi
   let altText: string | undefined;
 
   while (cursor < limit) {
-    let sawWhitespace = false;
     while (cursor < limit && isHtmlWhitespace(tag.charCodeAt(cursor))) {
-      sawWhitespace = true;
       cursor++;
     }
     if (cursor >= limit) break;
@@ -256,6 +254,8 @@ const parseHtmlImgTag = (tag: string, index: number): DocumentImageItem | undefi
     }
 
     const nameStart = cursor;
+    // 直接核对属性名前一位是否为 HTML 空白，避免无值布尔属性消费尾部空白后误丢紧邻属性。
+    const precededByWhitespace = nameStart > 4 && isHtmlWhitespace(tag.charCodeAt(nameStart - 1));
     while (cursor < limit && !isUnquotedAttrBreak(tag.charCodeAt(cursor))) {
       cursor++;
     }
@@ -299,11 +299,11 @@ const parseHtmlImgTag = (tag: string, index: number): DocumentImageItem | undefi
       rawValEnd = cursor;
     }
 
-    if (sawWhitespace && attrName === 'src' && !srcInfo) {
+    if (precededByWhitespace && attrName === 'src' && !srcInfo) {
       const url = rawVal.trim();
       if (!url) return undefined;
       srcInfo = { url, rawValStart, rawValEnd, quote };
-    } else if (sawWhitespace && attrName === 'alt' && altText === undefined) {
+    } else if (precededByWhitespace && attrName === 'alt' && altText === undefined) {
       altText = rawVal.trim();
     }
   }

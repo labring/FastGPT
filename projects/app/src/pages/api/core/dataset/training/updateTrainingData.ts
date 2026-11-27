@@ -163,21 +163,29 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       : undefined;
 
   const readyUpdate = getTrainingTaskReadyUpdate();
-  const normalized = await normalizeDatasetDataImages({
-    teamId: String(collection.teamId),
-    datasetId: String(collection.datasetId),
-    collectionId: String(collection._id),
-    data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }]
-  });
+  // 按当前完整正文预检数量上限，避免仅提交单字段时绕过“每条数据最多 3 张内联图”约束；实际写回仍只更新本次提交字段。
+  const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
+    q !== undefined || a !== undefined
+      ? await normalizeDatasetDataImages({
+          teamId: String(collection.teamId),
+          datasetId: String(collection.datasetId),
+          collectionId: String(collection._id),
+          data: [{ q: q ?? data.q, a: a ?? data.a }]
+        })
+      : { data: [{}], imageUploadKeys: [] };
+  const submittedFields = {
+    ...(q !== undefined && { q: normalized.data[0].q }),
+    ...(a !== undefined && { a: normalized.data[0].a })
+  };
   await mongoSessionRun(async (session) => {
-    // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属校验。
+    // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属与 3 张数量上限校验。
     const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();
     if (!current) throw new Error('Training data no longer exists');
     await persistChunkImageReferences({
       teamId: String(collection.teamId),
       datasetId: String(collection.datasetId),
       collectionId: String(collection._id),
-      data: [{ ...current, ...normalized.data[0] }],
+      data: [{ ...current, ...submittedFields }],
       imageUploadKeys: normalized.imageUploadKeys,
       tx: bridgeClientSessionToDbSession(session)
     });
@@ -207,8 +215,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         $set: {
           ...readyUpdate.$set,
           ...(nextMode && { mode: nextMode }),
-          ...(q !== undefined && { q: normalized.data[0].q }),
-          ...(a !== undefined && { a: normalized.data[0].a }),
+          ...submittedFields,
           ...(chunkIndex !== undefined && { chunkIndex })
         }
       },

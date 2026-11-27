@@ -816,5 +816,15 @@ describe('批量 S3 预览 URL 格式化', () => {
     const unclosedBrackets = '['.repeat(50000) + '](https://example.com) [ok](dataset/team/a.png)';
     expect(getS3ObjectKeysFromTexts([unclosedImg])).toEqual(['dataset/team/tail.png']);
     expect(getS3ObjectKeysFromTexts([unclosedBrackets])).toEqual(['dataset/team/a.png']);
+
+    // 紧跟布尔属性（如 ismap）的 HTML img src 仍应被提取与替换
+    const boolAttrImg = '<img ismap src="dataset/team/ismap.png" alt="ok">';
+    expect(getS3ObjectKeysFromTexts([boolAttrImg])).toEqual(['dataset/team/ismap.png']);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        boolAttrImg,
+        new Map([['dataset/team/ismap.png', 'https://preview.test/ismap']])
+      )
+    ).toBe('<img ismap src="https://preview.test/ismap" alt="ok">');
   });
 });

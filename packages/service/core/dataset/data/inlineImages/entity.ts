@@ -2,7 +2,13 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import { hasCollectionChunkImagePrefix } from '../../collection/entity';
 import { findPendingS3TTLKeys, removeS3TTL } from '../../../../common/s3/utils';
-import { parseChunkImageKey, getChunkImageReferences, type ChunkImageContent } from './utils';
+import {
+  countChunkImagesInContent,
+  getChunkImageReferences,
+  MAX_INLINE_IMAGES_PER_DATA_ITEM,
+  parseChunkImageKey,
+  type ChunkImageContent
+} from './utils';
 
 /**
  * 写入最终正文时验证新图片属于本集合；本请求实际使用的上传与业务写入同事务取消 TTL。
@@ -23,6 +29,17 @@ export const persistChunkImageReferences = async ({
   imageUploadKeys?: string[];
   tx?: DbSession;
 }) => {
+  if (imageUploadKeys.length > 0) {
+    // 并发部分编辑可能在预检后改变另一字段，必须在事务内按最终合并正文再校验一次 3 张上限。
+    for (const item of data) {
+      if (countChunkImagesInContent(item) > MAX_INLINE_IMAGES_PER_DATA_ITEM) {
+        throw new UserError(
+          `Each data item supports at most ${MAX_INLINE_IMAGES_PER_DATA_ITEM} inline images`
+        );
+      }
+    }
+  }
+
   const keys = [...getChunkImageReferences(data)];
   if (keys.length === 0) return;
   const scopes = keys.map((key) => parseChunkImageKey(key)!);

@@ -187,4 +187,25 @@ describe('persistChunkImageReferences', () => {
       )
     ).rejects.toThrow('does not belong');
   });
+
+  it('rejects transactional commit when concurrent partial edit pushes merged q+a past 3 managed images', async () => {
+    const { scope, key } = await setup();
+    const existingKeys = [1, 2, 3].map((n) => key.replace(/a{32}/, String(n).repeat(32)));
+    await expect(
+      mongoSessionRun((session) =>
+        persistChunkImageReferences({
+          ...scope,
+          data: [
+            {
+              q: `![new](${key})`,
+              a: existingKeys.map((k, i) => `![e${i}](${k})`).join(' ')
+            }
+          ],
+          imageUploadKeys: [key],
+          tx: bridgeClientSessionToDbSession(session)
+        })
+      )
+    ).rejects.toThrow('at most 3 inline images');
+    expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(1);
+  });
 });

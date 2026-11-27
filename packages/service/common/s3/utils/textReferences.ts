@@ -10,9 +10,9 @@ const s3SourcePattern = Object.values(S3Sources)
 
 const s3SourcePrefixRegex = new RegExp(`^(?:${s3SourcePattern})`, 'i');
 
-/** 仅在 `](` 之后用粘连正则校验 S3 目标地址，避免从 `[` 出发在大量未闭合方括号上触发 O(N^2) 回溯。 */
+/** 仅在 `](` 之后用粘连正则校验 S3 目标地址，禁止尖括号内再次出现 `<` 以降低未闭合退化扫描开销。 */
 const s3MarkdownDestinationRegex = new RegExp(
-  String.raw`\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)\r\n]+)>|((?:${s3SourcePattern})[^\s)\r\n]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)`,
+  String.raw`\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^<)\r\n]+)>|((?:${s3SourcePattern})[^\s)\r\n]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)`,
   'iy'
 );
 
@@ -25,7 +25,7 @@ export type FallbackMarkdownLinkMatch = {
 };
 
 /** 判断位置 `pos` 是否被奇数个反斜杠转义。 */
-const isEscapedAt = (text: string, pos: number, minStart: number) => {
+const isEscapedAt = ({ text, pos, minStart }: { text: string; pos: number; minStart: number }) => {
   let backslashes = 0;
   let i = pos - 1;
   while (i >= minStart && text.charCodeAt(i) === 92) {
@@ -36,24 +36,35 @@ const isEscapedAt = (text: string, pos: number, minStart: number) => {
 };
 
 /**
- * 以 `](` 为锚点线性扫描空隙文本中的普通 Markdown 链接（及历史尖括号写法）。
- * 仅当 `](` 后的目标地址命中粘连正则时才向左查找配对 `[`，并单调推进下界 `minStart`，
- * 保证全篇字符最多向左扫描一次，对 `[[[...](` 等退化输入严格保持 O(N)。
+ * 以 `](` 为锚点扫描空隙文本中的普通 Markdown 链接（及历史尖括号写法）。
+ * 仅当 `](` 后存在闭合 `)` 且目标地址命中粘连正则时才向左查找配对 `[`，并单调推进下界 `minStart`，
+ * 避免大量未闭合 `[` 或无闭合 `)` 触发平方回溯。
  */
-export const forEachFallbackMarkdownLink = (
-  gapText: string,
-  gapOffset: number,
-  destinationRegex: RegExp,
-  onMatch: (match: FallbackMarkdownLinkMatch) => void
-) => {
+export const forEachFallbackMarkdownLink = ({
+  gapText,
+  gapOffset,
+  destinationRegex,
+  onMatch
+}: {
+  gapText: string;
+  gapOffset: number;
+  destinationRegex: RegExp;
+  onMatch: (match: FallbackMarkdownLinkMatch) => void;
+}) => {
   let searchFrom = 0;
   let minStart = 0;
+  let nextCloseParen = -1;
 
   while (searchFrom < gapText.length) {
     const closeBracket = gapText.indexOf('](', searchFrom);
     if (closeBracket === -1) break;
 
-    if (isEscapedAt(gapText, closeBracket, minStart)) {
+    if (nextCloseParen < closeBracket + 2) {
+      nextCloseParen = gapText.indexOf(')', closeBracket + 2);
+      if (nextCloseParen === -1) break;
+    }
+
+    if (isEscapedAt({ text: gapText, pos: closeBracket, minStart })) {
       searchFrom = closeBracket + 2;
       continue;
     }
@@ -70,7 +81,7 @@ export const forEachFallbackMarkdownLink = (
     for (let i = closeBracket - 1; i >= minStart; i--) {
       const code = gapText.charCodeAt(i);
       if (code !== 91 && code !== 93) continue;
-      if (isEscapedAt(gapText, i, minStart)) continue;
+      if (isEscapedAt({ text: gapText, pos: i, minStart })) continue;
       if (code === 93) {
         depth++;
       } else if (depth === 0) {
@@ -185,11 +196,11 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
     onGap: (gapText, gapOffset) => {
       if (!gapText.includes('](')) return;
 
-      forEachFallbackMarkdownLink(
+      forEachFallbackMarkdownLink({
         gapText,
         gapOffset,
-        s3MarkdownDestinationRegex,
-        ({ bang, alt, index, fullMatch, destMatch }) => {
+        destinationRegex: s3MarkdownDestinationRegex,
+        onMatch: ({ bang, alt, index, fullMatch, destMatch }) => {
           const [, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = destMatch;
           const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
           if (!objectKey) return;
@@ -202,7 +213,7 @@ export const getS3TextReferences = (text: string): S3TextReference[] => {
             replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
           });
         }
-      );
+      });
     }
   });
 

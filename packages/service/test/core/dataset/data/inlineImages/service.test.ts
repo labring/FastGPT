@@ -176,4 +176,33 @@ describe('normalizeDatasetDataImages', () => {
     ).rejects.toThrow('Invalid inline base64 image');
     expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
   });
+
+  it('normalizes CommonMark-escaped data:image URLs such as data:image\\/png;base64,...', async () => {
+    const { scope } = await createDatasetCollectionFixture();
+    const escapedUrl = `data:image\\/png;base64,${png}`;
+    const result = await normalizeDatasetDataImages({
+      ...scope,
+      data: [{ q: `![escaped](${escapedUrl})` }]
+    });
+    expect(result.imageUploadKeys).toHaveLength(1);
+    expect(result.data[0].q).toBe(`![escaped](${result.imageUploadKeys[0]})`);
+  });
+
+  it('validates actual image bytes across the entire batch before any DB prefix, TTL or S3 write', async () => {
+    const { scope } = await createDatasetCollectionFixture();
+    await expect(
+      normalizeDatasetDataImages({
+        ...scope,
+        data: [
+          { q: `![valid-first](${url})` },
+          { q: '![mismatched-second](data:image/png;base64,aGk=)' }
+        ]
+      })
+    ).rejects.toThrow();
+    expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
+    expect(
+      (await MongoDatasetCollection.findById(scope.collectionId).lean())?.chunkImagePrefixId
+    ).toBeUndefined();
+  });
 });

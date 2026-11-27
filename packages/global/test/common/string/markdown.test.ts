@@ -1386,6 +1386,22 @@ describe('markdown 字符串处理函数测试', () => {
       expect(performance.now() - started).toBeLessThan(200);
     });
 
+    it('应识别紧跟无值布尔属性（如 ismap/decoding）之后的 HTML img src 与 alt', () => {
+      const text =
+        '<img ismap src="https://example.com/a.png" alt="first"> <img decoding ismap alt="second" src="https://example.com/b.png">';
+      const matched = matchDocumentImages(text);
+      expect(matched).toMatchObject([
+        { format: 'html', url: 'https://example.com/a.png', altText: 'first' },
+        { format: 'html', url: 'https://example.com/b.png', altText: 'second' }
+      ]);
+      expect(matched[0].replace('https://cdn.test/a.png')).toBe(
+        '<img ismap src="https://cdn.test/a.png" alt="first">'
+      );
+      expect(matched[1].replace('https://cdn.test/b.png')).toBe(
+        '<img decoding ismap alt="second" src="https://cdn.test/b.png">'
+      );
+    });
+
     it('传入空字符串或非法输入时不报错且返回空数组', () => {
       expect(matchMarkdownImages('')).toEqual([]);
       expect(matchMarkdownImages(null as any)).toEqual([]);

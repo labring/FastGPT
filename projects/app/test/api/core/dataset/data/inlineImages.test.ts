@@ -152,6 +152,27 @@ describe('direct data image ingestion', () => {
     expect(updated.a).toBe('keep original answer');
     expect(updated.retryCount).toBe(3);
     expect(await MongoS3TTL.countDocuments()).toBe(0);
+
+    // 若未提交的回答中已有 3 张受管内联图，单独编辑问题新增第 4 张图应在上传前被拒绝且保留原回答
+    const existingKeys = [1, 2, 3].map(
+      (n) =>
+        `dataset/${scope.datasetId}/chunk-images/${scope.collectionId}/file/${String(n).repeat(32)}.png`
+    );
+    await MongoDatasetTraining.updateOne(
+      { _id: task._id },
+      { $set: { a: existingKeys.map((k, i) => `![e${i}](${k})`).join(' ') } }
+    );
+    storage.uploadObject.mockClear();
+    const rejected = await Call(updateTrainingHandler, {
+      auth: root,
+      body: { dataId: String(task._id), q: imageText }
+    });
+    expect(rejected.code).not.toBe(200);
+    expect(String(rejected.error?.message ?? rejected.message)).toContain(
+      'at most 3 inline images'
+    );
+    expect(storage.uploadObject).not.toHaveBeenCalled();
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
   });
 
   it.each([false, true])(

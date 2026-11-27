@@ -18,10 +18,12 @@ import {
 const PushDataChunkSchema = z.object({
   q: z.string().optional().meta({
     example: '什么是 FastGPT？',
-    description: '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象'
+    description:
+      '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   a: z.string().optional().meta({
-    description: '回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象'
+    description:
+      '回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   imageId: z.string().optional().meta({
     description: '图片 ID'
@@ -62,7 +64,8 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
 export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema.omit({
   metadata: true
 }).meta({
-  description: '更新分块正文；q/a 中新增的 Base64 图片会转存，已有图片地址保持原样'
+  description:
+    '更新分块正文；q/a 中新增的 Base64 图片会转存（每条数据 q+a 最多 3 张内联图，单图解码上限 10MB），已有图片地址保持原样'
 });
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
 export const UpdateDatasetDataResponseSchema = z.object({
@@ -211,7 +214,8 @@ export type GetQuoteDataResponse = z.infer<typeof GetQuoteDataResponseSchema>;
 export const InsertDataBodySchema = PushDataChunkSchema.omit({ q: true }).extend({
   q: z.string().nonempty().meta({
     example: '什么是 FastGPT？',
-    description: '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象'
+    description:
+      '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
