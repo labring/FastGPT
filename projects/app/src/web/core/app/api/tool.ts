@@ -22,6 +22,8 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import type {
   GetPreviewNodeQuery,
   GetToolSetChildrenResponseType,
@@ -149,8 +151,17 @@ export const getAppToolPaths = (data: GetToolPathQueryType) => {
   return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };
 
-export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
-  GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
+type ClientToolPreviewQuery = GetPreviewNodeQuery extends infer T
+  ? T extends GetPreviewNodeQuery
+    ? Omit<T, 'lang'> & { lang?: string }
+    : never
+  : never;
+
+export const getClientToolPreviewNode = (data: ClientToolPreviewQuery) =>
+  GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', {
+    ...data,
+    ...(data.lang !== undefined ? { lang: parseLocale(data.lang) ?? LangEnum.en } : {})
+  });
 
 /**
  * 添加工具时，个人工作流和 Agent 默认跟随最新发布版本；系统工具保留固定最新版本的策略。

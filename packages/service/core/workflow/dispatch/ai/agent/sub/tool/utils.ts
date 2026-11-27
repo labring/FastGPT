@@ -9,7 +9,8 @@ import {
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
-import { resolveSupportedLocale, type localeType } from '@fastgpt/global/common/i18n/type';
+import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -164,7 +165,7 @@ export const getAgentRuntimeTools = async ({
     versionId?: string;
     metadataLocale?: string;
   }): Promise<AgentRuntimeNode> => {
-    const uiLocale = resolveSupportedLocale(metadataLocale);
+    const uiLocale = parseLocale(metadataLocale) ?? LangEnum.en;
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolConfigSource = (() => {
       if (isDebugToolSource(runtimeSource)) return runtimeSource;

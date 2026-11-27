@@ -217,7 +217,7 @@ describe('get app detail api', () => {
     expect(res.data.chatConfig).toEqual({});
   });
 
-  it('preserves unrecognized Agent tool metadataLocale across detail hydration and unrelated auto-save', async () => {
+  it('preserves unrecognized node and Agent tool metadataLocale across detail hydration and unrelated auto-save', async () => {
     const owner = await getUser(`detail-locale-${getNanoid(6)}`);
     const appId = await onCreateApp({
       name: 'Agent metadataLocale round-trip',
@@ -229,6 +229,15 @@ describe('get app detail api', () => {
           nodeId: 'start-1',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
           name: 'Start',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'tool-1',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: 'Tool',
+          pluginId: 'systemTool-missing-locale-node',
+          metadataLocale: 'tr-TR',
           inputs: [],
           outputs: []
         },
@@ -267,6 +276,9 @@ describe('get app detail api', () => {
     });
 
     expect(detailRes.code).toBe(200);
+    expect(detailRes.data.nodes.find((node) => node.nodeId === 'tool-1')?.metadataLocale).toBe(
+      'tr-TR'
+    );
     const detailTools = detailRes.data.nodes
       .find((node) => node.nodeId === 'agent-1')
       ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as
@@ -291,6 +303,7 @@ describe('get app detail api', () => {
 
     expect(saveRes.code).toBe(200);
     const draft = await MongoAppVersion.findOne({ appId, isAutoSave: true }).lean();
+    expect(draft?.nodes.find((node) => node.nodeId === 'tool-1')?.metadataLocale).toBe('tr-TR');
     const savedTools = draft?.nodes
       .find((node) => node.nodeId === 'agent-1')
       ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as

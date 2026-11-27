@@ -19,15 +19,13 @@ export type localeType = `${LangEnum}`;
 export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
 const localeSet: ReadonlySet<string> = new Set(LocaleList);
 
-/** 将任意语言标识归一化为当前支持的 locale；缺失或无法识别时回退为英文。 */
-export const resolveSupportedLocale = (value?: string): localeType =>
-  value && localeSet.has(value) ? (value as localeType) : LangEnum.en;
-
-// 保留必填与字符串类型校验，仅将当前版本不识别的非空语言标识回退为英文。
+// 保留必填与非空字符串校验，仅将当前版本不识别的非空语言标识回退为英文。
 export const LanguageSchema = z
   .preprocess(
     (value) =>
-      typeof value === 'string' && value.length > 0 && !localeSet.has(value) ? 'en' : value,
+      typeof value === 'string' && value.trim().length > 0 && !localeSet.has(value)
+        ? LangEnum.en
+        : value,
     z.enum(LocaleList)
   )
   .meta({ description: '用户语言偏好' });

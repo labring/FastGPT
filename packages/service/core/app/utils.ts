@@ -24,7 +24,7 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { resolveSupportedLocale, type localeType } from '@fastgpt/global/common/i18n/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
   SelectedAgentSkillItemTypeSchema,
@@ -160,7 +160,7 @@ export async function rewriteAppWorkflowToDetail({
       const preview = await getClientToolPreviewNode({
         appId: id,
         versionId,
-        lang: resolveSupportedLocale(metadataLocale),
+        lang: metadataLocale ?? 'en',
         source,
         teamId
       });

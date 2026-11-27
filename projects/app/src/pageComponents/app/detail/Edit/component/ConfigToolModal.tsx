@@ -29,7 +29,6 @@ import {
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { resolveSupportedLocale } from '@fastgpt/global/common/i18n/type';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
@@ -814,7 +813,7 @@ const ToolVersionSelect = ({
         appId: tool.pluginId,
         versionId,
         source: tool.source,
-        lang: resolveSupportedLocale(tool.metadataLocale)
+        lang: tool.metadataLocale ?? 'en'
       });
       const mergedTool = mergeConfiguredTool({
         nextTool,
