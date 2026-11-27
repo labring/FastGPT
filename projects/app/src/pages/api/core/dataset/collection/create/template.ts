@@ -74,7 +74,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       fileId,
       datasetId: String(dataset._id)
     });
-    const rawText = await parseDatasetImportFile({
+    const importData = await parseDatasetImportFile({
       teamId,
       tmbId,
       source,
@@ -87,7 +87,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     const collectionType = DatasetCollectionTypeEnum.file;
     const collectionResult = await createCollectionAndInsertData({
       dataset,
-      rawText,
+      ...importData,
       modelAuthContext,
       backupParse: true,
       createCollectionParams: {

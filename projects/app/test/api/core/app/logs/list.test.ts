@@ -36,6 +36,11 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOrigi
 
 type EmptyQuery = Record<string, never>;
 
+const expectXlsxRows = (rows: string[][], expected: unknown[][]) => {
+  const prefixes = rows.map((row) => row.slice(0, expected[0].length));
+  expect(prefixes).toEqual(expect.arrayContaining(expected));
+};
+
 describe('logs list API - errorFilter', () => {
   let testAppId: string;
   let testTeamId: string;
@@ -271,21 +276,17 @@ describe('logs list API - errorFilter', () => {
         ]
       }
     });
-    const exportedRows = readXlsxRows(exported.buffer)
-      .slice(1)
-      .map((row) => row.slice(0, 3));
-    expect(exportedRows).toEqual(
-      expect.arrayContaining([
-        ['channel-api', 'API调用', '当前名称'],
-        ['channel-old', '-', '历史入口'],
-        ['channel-deleted', 'API调用', '-'],
-        ['channel-online', '在线使用', '-'],
-        ['channel-online-legacy', '在线使用', '-'],
-        ['channel-test', '在线调试', '-'],
-        ['channel-cron', '定时任务', '-']
-      ])
-    );
-    expect(exportedRows.flat()).not.toContain('不应作为渠道名的旧应用名');
+    const exportedRows = readXlsxRows(exported.buffer);
+    expectXlsxRows(exportedRows, [
+      ['channel-api', 'API调用', '当前名称'],
+      ['channel-old', '-', '历史入口'],
+      ['channel-deleted', 'API调用', '-'],
+      ['channel-online', '在线使用', '-'],
+      ['channel-online-legacy', '在线使用', '-'],
+      ['channel-test', '在线调试', '-'],
+      ['channel-cron', '定时任务', '-']
+    ]);
+    expect(exportedRows.some(([, , name]) => name === '不应作为渠道名的旧应用名')).toBe(false);
     expect(
       (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
         .data.total
@@ -1016,17 +1017,11 @@ describe('logs list API - errorFilter', () => {
     const named = await exportIdentities();
     expect(named.code).toBe(200);
     const memberIdentity = `${testTmbId}:Test Member Logs List`;
-    const identityRows = (buffer: Buffer) =>
-      readXlsxRows(buffer)
-        .slice(1)
-        .map((row) => row.slice(0, 3));
-    expect(identityRows(named.buffer)).toEqual(
-      expect.arrayContaining([
-        [memberIdentity, memberIdentity, 'member-identity'],
-        ['customer-42', memberIdentity, 'external-identity'],
-        [missingId, missingId, 'missing-identity']
-      ])
-    );
+    expectXlsxRows(readXlsxRows(named.buffer), [
+      [memberIdentity, memberIdentity, 'member-identity'],
+      ['customer-42', memberIdentity, 'external-identity'],
+      [missingId, missingId, 'missing-identity']
+    ]);
 
     for (const name of ['   ', undefined]) {
       await MongoTeamMember.updateOne(
@@ -1035,12 +1030,10 @@ describe('logs list API - errorFilter', () => {
       );
       const nameless = await exportIdentities();
       expect(nameless.code).toBe(200);
-      expect(identityRows(nameless.buffer)).toEqual(
-        expect.arrayContaining([
-          [testTmbId, testTmbId, 'member-identity'],
-          ['customer-42', testTmbId, 'external-identity']
-        ])
-      );
+      expectXlsxRows(readXlsxRows(nameless.buffer), [
+        [testTmbId, testTmbId, 'member-identity'],
+        ['customer-42', testTmbId, 'external-identity']
+      ]);
     }
   });
 
@@ -1080,7 +1073,7 @@ describe('logs list API - errorFilter', () => {
     ]);
   });
 
-  it('keeps feedback and unread filters consistent in the list and CSV', async () => {
+  it('keeps feedback and unread filters consistent in the list and XLSX export', async () => {
     const base = {
       appId: testAppId,
       teamId: testTeamId,
@@ -1182,17 +1175,12 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      const rows = readXlsxRows(exported.buffer)
-        .slice(1)
-        .map((row) => row.slice(0, 2));
-      expect(rows).toEqual(
-        expect.arrayContaining([
-          ['chat-with-version-1', 'version-with-id'],
-          ['chat-with-version-2', 'version-with-id'],
-          ['chat-without-version', ''],
-          ['chat-deleted-version', '']
-        ])
-      );
+      expectXlsxRows(readXlsxRows(exported.buffer), [
+        ['chat-with-version-1', 'version-with-id'],
+        ['chat-with-version-2', 'version-with-id'],
+        ['chat-without-version', ''],
+        ['chat-deleted-version', '']
+      ]);
 
       expect(chatAggregateSpy).not.toHaveBeenCalled();
       expect(versionFindSpy).toHaveBeenCalledTimes(1);
@@ -1525,15 +1513,15 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exportedZh.code).toBe(200);
-    const zhRows = readXlsxRows(exportedZh.buffer).map((row) => row.slice(0, 2));
+    const zhRows = readXlsxRows(exportedZh.buffer);
     expect(zhRows).toHaveLength(6);
-    expect(zhRows).toEqual(expect.arrayContaining([
+    expectXlsxRows(zhRows, [
       ['ip-legacy-number', '-'],
       ['ip-legacy-object', '-'],
       ['ip-public', '新加坡，新加坡: 139.162.20.230'],
       ['ip-private', '其他: 192.168.1.1'],
       ['ip-missing', '-']
-    ]));
+    ]);
 
     const exportedEn = await StreamCall(exportLogs, {
       auth: authUser,
@@ -1548,14 +1536,14 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exportedEn.code).toBe(200);
-    const enRows = readXlsxRows(exportedEn.buffer).map((row) => row.slice(0, 2));
+    const enRows = readXlsxRows(exportedEn.buffer);
     expect(enRows).toHaveLength(6);
-    expect(enRows).toEqual(expect.arrayContaining([
+    expectXlsxRows(enRows, [
       ['ip-legacy-number', '-'],
       ['ip-legacy-object', '-'],
       ['ip-public', expect.stringMatching(/^Singapore, ?Singapore: 139\.162\.20\.230$/)],
       ['ip-private', 'Other: 192.168.1.1'],
       ['ip-missing', '-']
-    ]));
+    ]);
   });
 });

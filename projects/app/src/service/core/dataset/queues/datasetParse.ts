@@ -272,18 +272,17 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
-          // 模板与备份同为 CSV 结构化导入（逐行 q/a/index/metadata），重解析必须走行解析器，
-          // 且必须读取原始 CSV——默认的 formatText 是 Markdown 表格，行解析器识别不出表头。
-          const csvStructured =
+          // 模板与备份重解析沿用导入时的结构化读取，避免宽稀疏 XLSX 展开成文本矩阵。
+          const structured =
             collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
             collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
 
-          const { title, rawText } = await readDatasetSourceRawText({
+          const { title, rawText, importedTable } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,
             customPdfParse: collection.customPdfParse,
-            getFormatText: !csvStructured,
-            // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
+            getFormatText: !structured,
+            backupParse: structured,
             sangforFileParseConfig: collection.customPdfParse
               ? getDatasetIultmzhFileParseConfig(dataset)
               : undefined,
@@ -304,7 +303,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             modelId: agentModelData?.modelId ?? dataset.agentModelId,
             teamId: String(data.teamId),
             billId: data.billId,
-            paragraphChunkAIMode: collection.paragraphChunkAIMode
+            paragraphChunkAIMode: importedTable ? undefined : collection.paragraphChunkAIMode
           });
           // 跳过 AI 分段时没有用量，不要求文本模型存在；实际消耗不能在缺少计费元数据时静默漏记。
           if (totalInputTokens > 0 || totalOutputTokens > 0) {
@@ -323,21 +322,23 @@ export const datasetParseQueue = async (): Promise<any> => {
           }
 
           // 4. Chunk split
-          const chunks = await rawText2Chunks({
-            rawText: resultText,
-            chunkTriggerType: collection.chunkTriggerType,
-            chunkTriggerMinSize: collection.chunkTriggerMinSize,
-            chunkSize: collection.chunkSize,
-            paragraphChunkDeep: collection.paragraphChunkDeep,
-            paragraphChunkMinSize: collection.paragraphChunkMinSize,
-            maxSize: getLLMMaxChunkSize(agentModelData),
-            overlapRatio:
-              collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-            customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
-            chunkSettingMode: collection.chunkSettingMode,
-            trainingType: collection.trainingType,
-            backupParse: csvStructured
-          });
+          const chunks =
+            importedTable?.chunks ??
+            (await rawText2Chunks({
+              rawText: resultText,
+              chunkTriggerType: collection.chunkTriggerType,
+              chunkTriggerMinSize: collection.chunkTriggerMinSize,
+              chunkSize: collection.chunkSize,
+              paragraphChunkDeep: collection.paragraphChunkDeep,
+              paragraphChunkMinSize: collection.paragraphChunkMinSize,
+              maxSize: getLLMMaxChunkSize(agentModelData),
+              overlapRatio:
+                collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
+              customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
+              chunkSettingMode: collection.chunkSettingMode,
+              trainingType: collection.trainingType,
+              backupParse: structured
+            }));
 
           // Check dataset limit
           await checkDatasetIndexLimit({
@@ -361,8 +362,8 @@ export const datasetParseQueue = async (): Promise<any> => {
               { _id: collection._id },
               {
                 ...(title && { name: title }),
-                rawTextLength: resultText.length,
-                hashRawText: hashStr(resultText)
+                rawTextLength: importedTable?.rawTextLength ?? resultText.length,
+                ...(importedTable ? {} : { hashRawText: hashStr(resultText) })
               },
               { session }
             );

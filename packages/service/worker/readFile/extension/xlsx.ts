@@ -59,20 +59,44 @@ const ISO_FOR_LOCALE_DATE_FORMATS = new Map<string, string>([
   [XLSX.SSF.get_table()[22] as string, 'yyyy-mm-dd hh:mm']
 ]);
 
+/** 恢复用于展示的日期格式，同时保留工作簿的日期系统。 */
+const writeLocaleDatesAsIso = (worksheet: XLSX.WorkSheet, date1904: boolean) => {
+  for (const address of Object.keys(worksheet)) {
+    if (address.startsWith('!')) continue;
+    const cell = worksheet[address] as XLSX.CellObject;
+    if (cell.t !== 'n' || typeof cell.v !== 'number' || typeof cell.z !== 'string') continue;
+
+    const isoFormat = ISO_FOR_LOCALE_DATE_FORMATS.get(cell.z);
+    if (isoFormat) cell.w = XLSX.SSF.format(isoFormat, cell.v, { date1904 });
+  }
+};
+
+const isValidCoordinate = (value: number) => Number.isSafeInteger(value) && value >= 0;
+
 /**
- * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
- *
- * 工作簿会在生成二维数组和回填合并单元格前完成范围校验；任何工作表范围、
- * 工作簿总单元格数或合并回填量超出配置预算时都会直接报错。
+ * 将 XLSX 转换为 CSV 原文和 Markdown 表格，或按原始列坐标读取知识库导入行。
+ * 在解析工作簿前校验 ZIP、坐标和 XML 数量。稀疏模式另按实际数据格计量。
  */
-export const readXlsxRawText = async ({
-  buffer
-}: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const parseLimits = getXlsxParseLimits(buffer.length);
-  await preflightXlsx({
+export const readXlsxRawText = async (
+  { buffer }: ReadRawTextByBuffer,
+  { sparseRows = false }: { sparseRows?: boolean } = {}
+): Promise<ReadFileResponse> => {
+  const { maxCells, ...limits } = getXlsxParseLimits(buffer.length);
+  // 旧备份会显式写空格。XML 扫描保留默认解析容量和一行表头的余量，实际数据另计。
+  const maxCellElements = Math.min(
+    limits.maxRows * limits.maxColumns,
+    Math.max(1_000_000, maxCells) + limits.maxColumns
+  );
+  const structure = await preflightXlsx({
     buffer,
-    limits: parseLimits
+    limits: sparseRows ? { ...limits, maxCellElements } : { ...limits, maxCells }
   });
+  if (sparseRows && structure.worksheetCount !== 1) {
+    throw new Error('Excel dataset import requires exactly one worksheet');
+  }
+  if (sparseRows && structure.workbookMergedCellCount > 0) {
+    throw new Error('Excel dataset import does not support merged cells');
+  }
 
   const workbook = XLSX.read(buffer, {
     type: 'buffer',
@@ -81,13 +105,54 @@ export const readXlsxRawText = async ({
     // 保留格式串，用于识别默认日期格式和被“常规”格式改写为科学计数法的整数。
     cellNF: true,
     // 预检已验证真实坐标；这里继续截断，避免后续依赖升级意外绕过纵深保护。
-    sheetRows: XLSX_PARSE_LIMITS.maxRows
+    sheetRows: limits.maxRows,
+    ...(sparseRows ? { cellHTML: false } : {})
   });
+  const date1904 = workbook.Workbook?.WBProps?.date1904 ?? false;
 
-  /**
-   * 拒绝无效坐标，避免减法、乘法或循环边界被非有限值绕过。
-   */
-  const isValidCoordinate = (value: number) => Number.isSafeInteger(value) && value >= 0;
+  if (sparseRows) {
+    if (workbook.SheetNames.length !== 1) {
+      throw new Error('Excel dataset import requires exactly one worksheet');
+    }
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    if (worksheet['!merges']?.length) {
+      throw new Error('Excel dataset import does not support merged cells');
+    }
+    keepWholeNumberDigits(worksheet);
+    writeLocaleDatesAsIso(worksheet, date1904);
+
+    const rows = new Map<number, Map<number, string>>();
+    for (const address of Object.keys(worksheet)) {
+      if (address.startsWith('!')) continue;
+      const cell = worksheet[address] as XLSX.CellObject;
+      if (cell.v === null || cell.v === undefined || cell.t === 'z' || cell.t === 'e') continue;
+      const value = XLSX.utils.format_cell(cell);
+      if (value === '') continue;
+      const { r, c } = XLSX.utils.decode_cell(address);
+      if (
+        !isValidCoordinate(r) ||
+        !isValidCoordinate(c) ||
+        r >= limits.maxRows ||
+        c >= limits.maxColumns
+      ) {
+        throw new Error('XLSX worksheet has a cell outside the coordinate limits');
+      }
+      let row = rows.get(r);
+      if (!row) rows.set(r, (row = new Map()));
+      row.set(c, value);
+    }
+
+    // 延续备份导入的空行语义。表头按其实际宽度预留，数据预算只计剩余行的非空单元格。
+    const xlsxRows = [...rows]
+      .sort(([a], [b]) => a - b)
+      .map(([, row]) => row)
+      .filter((row) => [...row.values()].some((value) => value.trim() !== ''));
+    const populatedCells = xlsxRows.reduce((count, row) => count + row.size, 0);
+    if (populatedCells - (xlsxRows[0]?.size ?? 0) > maxCells) {
+      throw new RangeError(`XLSX workbook exceeds the maximum data cell limit of ${maxCells}`);
+    }
+    return { rawText: '', xlsxRows };
+  }
 
   let workbookCellCount = 0;
   let workbookMergedCellCount = 0;
@@ -168,28 +233,9 @@ export const readXlsxRawText = async ({
     };
   });
 
-  /**
-   * 用原始日期序列值和工作簿日期系统生成无歧义的文本，避免 Date 往返导致日期或时间偏移。
-   * 只覆盖目标格式数值单元格的显示文本；其他日期格式、纯时间和文本单元格保持原样。
-   */
-  const writeLocaleDatesAsIso = (worksheet: XLSX.WorkSheet) => {
-    const formatOptions = { date1904: workbook.Workbook?.WBProps?.date1904 ?? false };
-
-    for (const address of Object.keys(worksheet)) {
-      if (address.startsWith('!')) continue;
-      const cell = worksheet[address] as XLSX.CellObject;
-      if (cell.t !== 'n' || typeof cell.v !== 'number' || typeof cell.z !== 'string') continue;
-
-      const isoFormat = ISO_FOR_LOCALE_DATE_FORMATS.get(cell.z);
-      if (isoFormat) {
-        cell.w = XLSX.SSF.format(isoFormat, cell.v, formatOptions);
-      }
-    }
-  };
-
   const result = worksheets.map(({ name, worksheet, merges, sheetRange }) => {
     keepWholeNumberDigits(worksheet);
-    writeLocaleDatesAsIso(worksheet);
+    writeLocaleDatesAsIso(worksheet, date1904);
     const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
       header: 1,
       defval: '',

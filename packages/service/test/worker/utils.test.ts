@@ -34,6 +34,7 @@ parentPort.on('message', (message) => {
   if (message.loadFile) {
     parentPort.once('message', (response) => {
       if (response.type === 'loadFileResult') {
+        if (message.waitAfterLoad) return;
         parentPort.postMessage({
           id,
           type: 'success',
@@ -740,6 +741,46 @@ describe('worker/utils WorkerPool', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('取消已经载入文件的解析任务会回收 worker 并派发等待任务', async () => {
+    type Task = { loadFile?: true; waitAfterLoad?: true; simple?: true; payload?: string };
+    const pool = createPool<Task, { payload: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger: createLogger(),
+      resourcePolicy: {
+        getTaskResourceBytes: () => 60,
+        getResourceSnapshot: () => ({ availableResourceBytes: 100, maximumTaskResourceBytes: 100 }),
+        queueTimeoutMs: 1000
+      }
+    });
+    const controller = new AbortController();
+    const parsing = pool.run({ loadFile: true, waitAfterLoad: true }, undefined, {
+      signal: controller.signal,
+      loadFile: async () => ({ buffer: new ArrayBuffer(1), bufferSize: 1, metadata: {} })
+    });
+    const worker = pool.workerQueue[0].worker;
+    const postMessage = vi.spyOn(worker, 'postMessage');
+    const terminate = vi.spyOn(worker, 'terminate');
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'loadFileResult' }),
+        expect.any(Array)
+      )
+    );
+    expect(pool.reservedResourceBytes).toBe(60);
+    const next = pool.run({ simple: true, payload: 'next' });
+    expect(pool.waitQueue).toHaveLength(1);
+
+    const error = new Error('Download disconnected');
+    const cancelled = parsing.catch((error: unknown) => error);
+    controller.abort(error);
+
+    expect(terminate).toHaveBeenCalledOnce();
+    await expect(cancelled).resolves.toBe(error);
+    await expect(next).resolves.toEqual({ payload: 'next' });
+    expect(pool.reservedResourceBytes).toBe(0);
   });
 
   it('延迟物化期间执行超时会 abort source 并释放增长后的软预留', async () => {

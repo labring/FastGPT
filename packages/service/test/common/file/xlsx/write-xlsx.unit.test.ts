@@ -43,6 +43,21 @@ describe('writeXlsx', () => {
     }
   });
 
+  it('省略空格时保留后续单元格的坐标和空白字符', async () => {
+    const destination = new PassThrough();
+    const [, bytes] = await Promise.all([
+      writeXlsx({
+        sheets: [{ name: 'Dataset', omitEmptyCells: true, rows: () => [['q', '', ' ', 'meta']] }],
+        destination
+      }),
+      buffer(destination)
+    ]);
+    const { Dataset } = XLSX.read(bytes, { type: 'buffer' }).Sheets;
+    expect(Dataset.B1).toBeUndefined();
+    expect(Dataset.C1.v).toBe(' ');
+    expect(Dataset.D1.v).toBe('meta');
+  });
+
   it.each([[], ['Data', 'DATA'], ['a/b'], ['History'], ['表'.repeat(32)]])(
     '拒绝无效工作表 %j，且不读取行',
     async (...names) => {

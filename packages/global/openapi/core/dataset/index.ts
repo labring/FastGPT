@@ -444,6 +444,9 @@ export const DatasetPath: OpenAPIPath = {
         200: {
           description: '流式返回 XLSX 文件',
           content: { [XLSX_CONTENT_TYPE]: { schema: XlsxDownloadResponseSchema } }
+        },
+        400: {
+          description: '目标为目录，或备份超过当前回导限制'
         }
       }
     }

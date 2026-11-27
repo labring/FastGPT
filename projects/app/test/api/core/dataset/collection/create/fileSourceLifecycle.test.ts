@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
+import type { ApiRequestProps, NextApiResponse } from '@fastgpt/next/type';
 
 const {
   mockResolveFormData,
@@ -85,6 +88,30 @@ import backupHandler from '@/pages/api/core/dataset/collection/create/backup';
 import localFileHandler from '@/pages/api/core/dataset/collection/create/localFile';
 import templateHandler from '@/pages/api/core/dataset/collection/create/template';
 
+const callMultipartHandler = (handler: typeof backupHandler) => {
+  const request: ApiRequestProps = Object.assign(new IncomingMessage(new Socket()), {
+    method: 'POST',
+    query: {},
+    body: {},
+    cookies: {},
+    env: {}
+  });
+  const response: NextApiResponse = Object.assign(new ServerResponse(request), {
+    send: vi.fn(),
+    json: vi.fn(),
+    status(code: number) {
+      response.statusCode = code;
+      return response;
+    },
+    redirect: () => response,
+    setDraftMode: () => response,
+    setPreviewData: () => response,
+    clearPreviewData: () => response,
+    revalidate: async () => {}
+  });
+  return handler(request, response);
+};
+
 const datasetId = '68ad85a7463006c963799439';
 const fileId = `dataset/${datasetId}/pending-file.csv`;
 const source = {
@@ -121,7 +148,7 @@ describe('dataset multipart file source lifecycle', () => {
     mockUpload.mockResolvedValue(fileId);
     mockGetDatasetFileSource.mockResolvedValue(source);
     mockCleanupPendingDatasetFile.mockResolvedValue(undefined);
-    mockParseDatasetImportFile.mockResolvedValue([{ q: 'question', a: 'answer' }]);
+    mockParseDatasetImportFile.mockResolvedValue({ rawText: 'q,a\nquestion,answer' });
     mockCreateCollectionAndInsertData.mockResolvedValue({
       collectionId: '68ad85a7463006c963799440',
       results: { insertLen: 1 }
@@ -140,7 +167,7 @@ describe('dataset multipart file source lifecycle', () => {
       getReadStream: vi.fn(() => 'local-upload-stream')
     });
 
-    await templateHandler({} as never);
+    await callMultipartHandler(templateHandler);
 
     expect(mockResolveFormData).toHaveBeenCalledWith(
       expect.objectContaining({ defParamCharset: 'utf8' })
@@ -156,39 +183,53 @@ describe('dataset multipart file source lifecycle', () => {
   it.each([
     ['template', templateHandler],
     ['backup', backupHandler]
-  ])(
-    'uploads %s files before parsing the S3 source and releases the temp file early',
-    async (_, handler) => {
-      await handler({} as never);
+  ])('uploads %s XLSX files before parsing and forwards the parsed chunks', async (_, handler) => {
+    const filename = 'source.xlsx';
+    const xlsxSource = { ...source, metadata: { ...source.metadata, filename, extension: 'xlsx' } };
+    const xlsxFileId = fileId.replace('.csv', '.xlsx');
+    const importedTable = {
+      chunks: [{ q: 'question', a: 'answer', indexes: ['index'], metadata: { rank: 1 } }],
+      rawTextLength: 28
+    };
+    mockResolveFormData.mockResolvedValueOnce({
+      data: { datasetId, tags: [{ tag: 'score', value: 10 }] },
+      fileMetadata: { path: '/tmp/source.xlsx', originalname: filename, size: 128 },
+      getReadStream: () => 'local-upload-stream'
+    });
+    mockUpload.mockResolvedValueOnce(xlsxFileId);
+    mockGetDatasetFileSource.mockResolvedValueOnce(xlsxSource);
+    mockParseDatasetImportFile.mockResolvedValueOnce({ importedTable });
 
-      expect(mockUpload).toHaveBeenCalledWith({
-        datasetId,
-        stream: 'local-upload-stream',
-        size: 128,
-        filename: 'source.csv'
-      });
-      expect(mockGetDatasetFileSource).toHaveBeenCalledWith({ fileId, datasetId });
-      expect(mockParseDatasetImportFile).toHaveBeenCalledWith({
-        teamId: 'team-id',
-        tmbId: 'tmb-id',
-        source,
-        filename: 'source.csv'
-      });
-      expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/source.csv']);
-      expect(mockClearDiskTempFiles.mock.invocationCallOrder[0]).toBeLessThan(
-        mockParseDatasetImportFile.mock.invocationCallOrder[0]
-      );
-      expect(mockCleanupPendingDatasetFile).not.toHaveBeenCalled();
-      expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
-        expect.objectContaining({
-          modelAuthContext,
-          createCollectionParams: expect.objectContaining({
-            tags: [{ tag: 'score', value: 10 }]
-          })
+    await callMultipartHandler(handler);
+
+    expect(mockUpload).toHaveBeenCalledWith({
+      datasetId,
+      stream: 'local-upload-stream',
+      size: 128,
+      filename
+    });
+    expect(mockGetDatasetFileSource).toHaveBeenCalledWith({ fileId: xlsxFileId, datasetId });
+    expect(mockParseDatasetImportFile).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      source: xlsxSource,
+      filename
+    });
+    expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/source.xlsx']);
+    expect(mockClearDiskTempFiles.mock.invocationCallOrder[0]).toBeLessThan(
+      mockParseDatasetImportFile.mock.invocationCallOrder[0]
+    );
+    expect(mockCleanupPendingDatasetFile).not.toHaveBeenCalled();
+    expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelAuthContext,
+        importedTable,
+        createCollectionParams: expect.objectContaining({
+          tags: [{ tag: 'score', value: 10 }]
         })
-      );
-    }
-  );
+      })
+    );
+  });
 
   it.each([
     ['template', templateHandler],
@@ -198,7 +239,7 @@ describe('dataset multipart file source lifecycle', () => {
     const error = new Error('embedding model is not authorized');
     mockGetDatasetModelAuthContext.mockRejectedValueOnce(error);
 
-    await expect(handler({} as never)).rejects.toBe(error);
+    await expect(callMultipartHandler(handler)).rejects.toBe(error);
 
     expect(mockUpload).not.toHaveBeenCalled();
     expect(mockGetDatasetFileSource).not.toHaveBeenCalled();
@@ -215,7 +256,7 @@ describe('dataset multipart file source lifecycle', () => {
       mockParseDatasetImportFile.mockRejectedValueOnce(new Error('malformed file'));
       mockCleanupPendingDatasetFile.mockRejectedValueOnce(new Error('cleanup failed'));
 
-      await expect(handler({} as never)).rejects.toBe(error);
+      await expect(callMultipartHandler(handler)).rejects.toBe(error);
       expect(mockCleanupPendingDatasetFile).toHaveBeenCalledWith(fileId);
       expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
     }
@@ -225,12 +266,12 @@ describe('dataset multipart file source lifecycle', () => {
     const createError = new Error('collection insert failed');
     mockCreateCollectionAndInsertData.mockRejectedValueOnce(createError);
 
-    await expect(templateHandler({} as never)).rejects.toBe(createError);
+    await expect(callMultipartHandler(templateHandler)).rejects.toBe(createError);
     expect(mockCleanupPendingDatasetFile).toHaveBeenCalledWith(fileId);
   });
 
   it('keeps a successfully promoted local-file upload', async () => {
-    await localFileHandler({} as never);
+    await callMultipartHandler(localFileHandler);
 
     expect(mockUpload).toHaveBeenCalledOnce();
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledOnce();
@@ -242,7 +283,7 @@ describe('dataset multipart file source lifecycle', () => {
     const createError = new Error('collection insert failed');
     mockCreateCollectionAndInsertData.mockRejectedValueOnce(createError);
 
-    await expect(localFileHandler({} as never)).rejects.toBe(createError);
+    await expect(callMultipartHandler(localFileHandler)).rejects.toBe(createError);
     expect(mockCleanupPendingDatasetFile).toHaveBeenCalledWith(fileId);
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/source.csv']);
   });

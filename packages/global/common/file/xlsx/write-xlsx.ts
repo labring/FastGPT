@@ -7,6 +7,7 @@ import { encodeWorksheetRow, planWorkbook, worksheetEnd, worksheetStart } from '
 export type Worksheet = {
   name: string;
   rows: (signal: AbortSignal) => Iterable<readonly string[]> | AsyncIterable<readonly string[]>;
+  omitEmptyCells?: boolean;
 };
 
 /** 按声明顺序逐表写入，ZIP 和目标流均完成后返回。行源应响应传入的取消信号。 */
@@ -50,7 +51,7 @@ export async function writeXlsx({
       await append(part.path, part.xml);
     }
     for (const [index, sheet] of sheets.entries()) {
-      const xml = Readable.from(worksheetXml(sheet, runSignal), {
+      const xml = Readable.from(worksheetXml({ sheet, signal: runSignal }), {
         objectMode: false,
         highWaterMark: 64 * 1024
       });
@@ -74,7 +75,7 @@ export async function writeXlsx({
   }
 }
 
-async function* worksheetXml(sheet: Worksheet, signal: AbortSignal) {
+async function* worksheetXml({ sheet, signal }: { sheet: Worksheet; signal: AbortSignal }) {
   yield worksheetStart;
   signal.throwIfAborted();
 
@@ -82,7 +83,10 @@ async function* worksheetXml(sheet: Worksheet, signal: AbortSignal) {
   for await (const values of sheet.rows(signal)) {
     signal.throwIfAborted();
     rowNumber += 1;
-    yield encodeWorksheetRow({ sheet: sheet.name, rowNumber }, values);
+    yield encodeWorksheetRow(
+      { sheet: sheet.name, rowNumber, omitEmptyCells: sheet.omitEmptyCells },
+      values
+    );
   }
   yield worksheetEnd;
 }

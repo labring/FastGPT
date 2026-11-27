@@ -160,6 +160,31 @@ describe('datasetParseQueue creates index-ready data', () => {
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
   });
 
+  it('reuses the structured reader when retraining an XLSX backup', async () => {
+    const { task, collection } = await createTask({
+      trainingType: DatasetCollectionDataProcessModeEnum.backup
+    });
+    mocks.read.mockResolvedValueOnce({
+      title: 'backup.xlsx',
+      rawText: '',
+      importedTable: {
+        chunks: [{ q: 'Question', a: 'Answer', indexes: [], metadata: { rank: 1 } }],
+        rawTextLength: 32
+      }
+    });
+
+    await datasetParseQueue();
+
+    expect(mocks.read).toHaveBeenCalledOnce();
+    expect(mocks.read).toHaveBeenCalledWith(expect.objectContaining({ backupParse: true }));
+    expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+    expect(await MongoDatasetData.findOne({ collectionId: collection._id }).lean()).toMatchObject({
+      q: 'Question',
+      a: 'Answer',
+      metadata: { rank: 1 }
+    });
+  });
+
   it('does not consume a retry when parsing loses its lease', async () => {
     const { task, collection } = await createTask();
     mocks.read.mockRejectedValueOnce(new TrainingLeaseLostError());

@@ -24,6 +24,7 @@ type IncomingMessage = {
     buffer?: ArrayBuffer;
     sharedBuffer?: SharedArrayBuffer;
     bufferSize: number;
+    sparseXlsxRows?: boolean;
     imageKeyOptions?: {
       prefix: string;
       expiredTime?: Date;
@@ -82,8 +83,11 @@ const requestMaterializedFile = ({ id }: { id: string }) =>
 
 const read = async (
   params: ReadRawTextByBuffer,
-  options: { uploadFile?: UploadFileHandler } = {}
+  options: { uploadFile?: UploadFileHandler; sparseXlsxRows?: boolean } = {}
 ) => {
+  if (options.sparseXlsxRows && params.extension !== 'xlsx') {
+    throw new Error('Expected an XLSX workbook for structured import');
+  }
   switch (params.extension) {
     case 'txt':
     case 'md':
@@ -103,7 +107,7 @@ const read = async (
     case 'pptx':
       return readPptxRawText(params);
     case 'xlsx':
-      return readXlsxRawText(params);
+      return readXlsxRawText(params, { sparseRows: options.sparseXlsxRows });
     case 'csv':
       return readCsvRawText(params);
     case 'ofd':
@@ -135,7 +139,8 @@ parentPort?.on('message', async (props: IncomingMessage) => {
     bufferSize,
     extension,
     encoding,
-    imageKeyOptions
+    imageKeyOptions,
+    sparseXlsxRows
   } = props;
 
   try {
@@ -158,7 +163,7 @@ parentPort?.on('message', async (props: IncomingMessage) => {
     try {
       const data = await read(
         { extension: finalExtension, encoding: finalEncoding, buffer },
-        { uploadFile: uploadFileHandler.uploadFile }
+        { uploadFile: uploadFileHandler.uploadFile, sparseXlsxRows }
       );
 
       parentPort?.postMessage({

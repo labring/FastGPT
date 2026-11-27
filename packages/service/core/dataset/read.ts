@@ -13,7 +13,7 @@ import { chunkByIultmzh } from '../../thirdProvider/sangfor/chunk';
 import { serviceEnv } from '../../env';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { text2Chunks } from '../../worker/function';
+import { readRawContentFromSource, text2Chunks } from '../../worker/function';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
@@ -21,7 +21,11 @@ import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../common/s3/sources/dataset/key';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
-import { createExternalHttpFileSource } from '../../common/file/read/source';
+import {
+  createExternalHttpFileSource,
+  resolveFileSourceDeclaredExtension,
+  type FileSource
+} from '../../common/file/read/source';
 import { getTeamFileSizeLimitBytes } from '../../support/permission/fileLimit';
 
 const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
@@ -52,6 +56,26 @@ export const parseDatasetCsvHeaders = (headers: string[]) => {
 export const getDatasetCsvHeaders = (rawText: string) => {
   const [headers = []] = Papa.parse(rawText).data as string[][];
   return headers;
+};
+
+export type DatasetImportTable = {
+  chunks: ReturnType<typeof parseDatasetBackupRows>;
+  rawTextLength: number;
+};
+
+/** 读取知识库单表，按原始列坐标映射知识块。 */
+export const readDatasetXlsxTable = async (source: FileSource): Promise<DatasetImportTable> => {
+  const { xlsxRows } = await readRawContentFromSource({ source, sparseXlsxRows: true });
+  if (!xlsxRows) throw new Error('Missing structured XLSX import result');
+  if (!parseDatasetCsvHeaders(Array.from(xlsxRows[0]?.values() ?? [])).validTypedHeader) {
+    throw new Error('Invalid dataset import headers');
+  }
+
+  let rawTextLength = 0;
+  for (const row of xlsxRows) {
+    for (const value of row.values()) rawTextLength += value.length;
+  }
+  return { chunks: parseDatasetBackupRows({ rows: xlsxRows }), rawTextLength };
 };
 
 export const readFileRawTextByUrl = async ({
@@ -129,6 +153,7 @@ export const readDatasetSourceRawText = async ({
   customPdfParse,
   sangforFileParseConfig,
   getFormatText,
+  backupParse,
   usageId,
   datasetId
 }: {
@@ -140,6 +165,7 @@ export const readDatasetSourceRawText = async ({
   /** 外部文档解析开关;建议传入 getDatasetIultmzhFileParseConfig(dataset) 补全后的完整配置 */
   sangforFileParseConfig?: IultmzhFileParseConfigType;
   getFormatText?: boolean;
+  backupParse?: boolean;
 
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
@@ -149,6 +175,7 @@ export const readDatasetSourceRawText = async ({
 }): Promise<{
   title?: string;
   rawText: string;
+  importedTable?: DatasetImportTable;
 }> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     if (!datasetId || !isS3ObjectKey(sourceId, 'dataset')) {
@@ -159,7 +186,18 @@ export const readDatasetSourceRawText = async ({
       return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
     }
 
-    const { filename, rawText } = await getS3DatasetSource().getDatasetFileRawText({
+    const datasetSource = getS3DatasetSource();
+    if (backupParse && /\.xlsx$/i.test(sourceId)) {
+      const source = await datasetSource.getDatasetFileSource({ fileId: sourceId, datasetId });
+      if (resolveFileSourceDeclaredExtension(source.metadata) === 'xlsx') {
+        return {
+          title: source.metadata.filename,
+          rawText: '',
+          importedTable: await readDatasetXlsxTable(source)
+        };
+      }
+    }
+    const { filename, rawText } = await datasetSource.getDatasetFileRawText({
       teamId,
       tmbId,
       fileId: sourceId,
@@ -259,6 +297,106 @@ export const readApiServerFileContent = async ({
   });
 };
 
+type DatasetBackupRow = string[] | ReadonlyMap<number, string>;
+type DatasetBackupChunk = {
+  q: string;
+  a: string;
+  indexes: string[];
+  metadata?: Record<string, unknown>;
+  imageIdList?: string[];
+};
+
+/** 将旧 CSV 行或按坐标读取的 XLSX 行映射成同一套问答、索引与元数据。 */
+export const parseDatasetBackupRows = ({
+  rows,
+  imageIdList
+}: {
+  rows: DatasetBackupRow[];
+  imageIdList?: string[];
+}): DatasetBackupChunk[] => {
+  if (rows.length < 2) return [];
+
+  const [header, ...data] = rows;
+  const headerEntries = [...header.entries()].sort(([a], [b]) => a - b);
+  const { normalized, typedHeader } = parseDatasetCsvHeaders(
+    headerEntries.map(([, value]) => value)
+  );
+  let qIdx = -1;
+  let aIdx = -1;
+  const indexColumns = new Set<number>();
+  const metadataKeys: { idx: number; key: string }[] = [];
+  const metadataColumns: number[] = [];
+
+  for (const [offset, name] of normalized.entries()) {
+    const [column, label] = headerEntries[offset];
+    if (name === 'q') {
+      qIdx = column;
+    } else if (name === 'a') {
+      aIdx = column;
+    } else if (name === 'index' || name === 'indexes') {
+      indexColumns.add(column);
+    } else if (typedHeader && name === 'metadata') {
+      metadataColumns.push(column);
+    } else {
+      metadataKeys.push({ idx: column, key: label.trim() });
+    }
+  }
+
+  // 旧格式可以只有一个 indexes 表头，实际索引值延伸至行尾。
+  const legacyIndexesStart =
+    metadataKeys.length === 0 && metadataColumns.length === 0 && indexColumns.size === 1
+      ? [...indexColumns][0]
+      : undefined;
+  const isIndexColumn = (column: number) =>
+    legacyIndexesStart === undefined ? indexColumns.has(column) : column >= legacyIndexesStart;
+  const declaredColumns = new Set(headerEntries.map(([column]) => column));
+
+  return data
+    .map((row) => {
+      const sparse = !Array.isArray(row);
+      const cellText = (column: number) => (sparse ? row.get(column) : row[column]) ?? '';
+      const indexEntries: [number, string][] = [];
+      for (const [column, value] of row.entries()) {
+        if (isIndexColumn(column)) {
+          const text = value.trim();
+          if (text) indexEntries.push([column, text]);
+        } else if (sparse && !declaredColumns.has(column)) {
+          throw new Error('XLSX dataset import has data in a column without a header');
+        }
+      }
+      const indexes = indexEntries.sort(([a], [b]) => a - b).map(([, value]) => value);
+
+      let metadata: Record<string, unknown> | undefined;
+      for (const { idx, key } of metadataKeys) {
+        const value = cellText(idx).trim();
+        if (value) metadata = { ...metadata, [key]: value };
+      }
+      for (const column of metadataColumns) {
+        const value = cellText(column).trim();
+        if (!value) continue;
+
+        let parsedValue: unknown;
+        try {
+          parsedValue = JSON.parse(value);
+        } catch {}
+        // 固定 metadata 表头没有字段名，非法 JSON 按列序保存原文。
+        metadata =
+          parsedValue && typeof parsedValue === 'object' && !Array.isArray(parsedValue)
+            ? { ...metadata, ...parsedValue }
+            : { ...metadata, [`metadata_${column - headerEntries[0][0]}`]: value };
+      }
+
+      return {
+        q: cellText(qIdx),
+        a: cellText(aIdx),
+        indexes,
+        metadata,
+        imageIdList
+      };
+    })
+    .filter(({ q, a }) => q || a);
+};
+
 export const rawText2Chunks = async ({
   rawText = '',
   chunkTriggerType = ChunkTriggerConfigTypeEnum.minSize,
@@ -290,97 +428,9 @@ export const rawText2Chunks = async ({
     imageIdList?: string[];
   }[]
 > => {
-  const parseDatasetBackup2Chunks = (rawText: string) => {
-    const csvArr = Papa.parse<string[]>(rawText, {
-      // 空记录不会生成知识库 chunk；解析时提前跳过，避免短 CSV 的尾部空行干扰分隔符推断。
-      skipEmptyLines: 'greedy'
-    }).data;
-    if (csvArr.length < 2) return { chunks: [] };
-
-    const rawHeaders = csvArr[0];
-    const { normalized: headers, typedHeader } = parseDatasetCsvHeaders(rawHeaders);
-
-    // Build column index mapping
-    let qIdx = -1,
-      aIdx = -1;
-    const indexesIdxs: number[] = [];
-    const metadataKeys: { idx: number; key: string }[] = [];
-    const metadataIdxs: number[] = [];
-
-    headers.forEach((header, idx) => {
-      if (header === 'q') {
-        qIdx = idx;
-      } else if (header === 'a') {
-        aIdx = idx;
-      } else if (header === 'index' || header === 'indexes') {
-        indexesIdxs.push(idx);
-      } else if (typedHeader && header === 'metadata') {
-        metadataIdxs.push(idx);
-      } else {
-        metadataKeys.push({ idx, key: rawHeaders[idx].trim() });
-      }
-    });
-
-    // 旧导出格式只有一个 indexes 表头，但数据行会把多个索引展开到后续单元格。
-    const legacyIndexesStart =
-      metadataKeys.length === 0 && metadataIdxs.length === 0 && indexesIdxs.length === 1
-        ? indexesIdxs[0]
-        : undefined;
-
-    const chunks = csvArr
-      .slice(1)
-      .map((item) => {
-        const q = qIdx >= 0 ? item[qIdx] || '' : '';
-        const a = aIdx >= 0 ? item[aIdx] || '' : '';
-
-        const indexes = (
-          legacyIndexesStart !== undefined
-            ? item.slice(legacyIndexesStart)
-            : indexesIdxs.map((idx) => item[idx])
-        )
-          .map((value) => (value || '').trim())
-          .filter(Boolean);
-
-        // Build metadata: only include non-empty values
-        let metadata: Record<string, any> | undefined;
-        for (const { idx, key } of metadataKeys) {
-          const val = (item[idx] || '').trim();
-          if (val) {
-            metadata = metadata || {};
-            metadata[key] = val;
-          }
-        }
-
-        for (const idx of metadataIdxs) {
-          const val = (item[idx] || '').trim();
-          if (!val) continue;
-
-          let parsedValue: Record<string, any> | undefined;
-          try {
-            const parsed = JSON.parse(val);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              parsedValue = parsed;
-            }
-          } catch {}
-
-          metadata = metadata || {};
-          if (parsedValue) {
-            Object.assign(metadata, parsedValue);
-          } else {
-            // 固定 metadata 表头没有字段名，非法 JSON 仍按列序保留，避免静默丢值。
-            metadata[`metadata_${idx}`] = val;
-          }
-        }
-
-        return { q, a, indexes, metadata, imageIdList };
-      })
-      .filter((item) => item.q || item.a);
-
-    return { chunks };
-  };
-
   if (backupParse) {
-    return parseDatasetBackup2Chunks(rawText).chunks;
+    const { data } = Papa.parse<string[]>(rawText, { skipEmptyLines: 'greedy' });
+    return parseDatasetBackupRows({ rows: data, imageIdList });
   }
 
   // Chunk condition

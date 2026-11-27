@@ -11,6 +11,7 @@
   "backup_dataset": "備份導入",
   "backup_dataset_success": "備份創建成功",
   "backup_dataset_tip": "可以將導出知識庫時，下載的 XLSX 文件重新導入。",
+  "backup_export_limit_exceeded": "此 XLSX 備份超出了目前的匯入限制。",
   "backup_mode": "備份導入",
   "backup_template_invalid": "文件格式異常，請檢查表頭和內容是否符合要求。表頭應為 q、a、index、metadata（index 可重複，metadata 可選）；Excel 文件僅支持單個工作表，且不能包含合併單元格",
   "batch_delete": "批量刪除檔案",

@@ -11,6 +11,7 @@
   "backup_dataset": "백업 가져오기",
   "backup_dataset_success": "백업이 생성되었습니다",
   "backup_dataset_tip": "데이터셋을 내보낼 때 다운로드한 XLSX 파일을 다시 가져옵니다.",
+  "backup_export_limit_exceeded": "이 XLSX 백업이 현재 복원 한도를 초과합니다.",
   "backup_mode": "백업 가져오기",
   "backup_template_invalid": "파일 형식이 올바르지 않습니다. 헤더와 콘텐츠가 요구사항에 맞는지 확인하세요. 헤더는 q, a, index, metadata여야 합니다(index는 반복 가능, metadata는 선택 사항). Excel 파일은 워크시트 하나만 지원하며 병합된 셀을 포함할 수 없습니다",
   "batch_delete": "파일 일괄 삭제",

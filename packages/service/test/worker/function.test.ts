@@ -426,12 +426,14 @@ describe('worker/function', () => {
   describe('readRawContentFromSource', () => {
     it('可信 S3 按 HEAD size 一次性预留物化与解析峰值的较大值', async () => {
       mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const requestSignal = new AbortController().signal;
       const materialize = vi.fn(async () => ({
         buffer: Buffer.from('0123456789'),
         metadata: { filename: 'a.txt', extension: 'txt', encoding: 'utf-8' }
       }));
 
       await readRawContentFromSource({
+        signal: requestSignal,
         source: {
           kind: 's3',
           sizeBytes: 10,
@@ -450,6 +452,7 @@ describe('worker/function', () => {
       expect(runArg.buffer).toBeUndefined();
       expect(runArg.sharedBuffer).toBeUndefined();
       expect(transferList).toBeUndefined();
+      expect(handlers.signal).toBe(requestSignal);
       expect(materialize).not.toHaveBeenCalled();
 
       const updateResourceBytes = vi.fn();

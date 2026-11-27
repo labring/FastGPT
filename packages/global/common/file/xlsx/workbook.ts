@@ -104,7 +104,15 @@ export function planWorkbook(names: readonly string[]) {
 
 /** 将业务文本序列化为一行，校验工作表的行列范围。 */
 export function encodeWorksheetRow(
-  { sheet, rowNumber }: { sheet: string; rowNumber: number },
+  {
+    sheet,
+    rowNumber,
+    omitEmptyCells = false
+  }: {
+    sheet: string;
+    rowNumber: number;
+    omitEmptyCells?: boolean;
+  },
   values: readonly string[]
 ) {
   if (rowNumber > 1_048_576) {
@@ -116,6 +124,7 @@ export function encodeWorksheetRow(
 
   const cells: string[] = [];
   for (const [index, value] of values.entries()) {
+    if (omitEmptyCells && value === '') continue;
     const address = `${columnName(index + 1)}${rowNumber}`;
     if (typeof value !== 'string' || unpairedSurrogate.test(value)) {
       throw new Error(`${sheet}!${address} 需要有效的 Unicode 文本`);

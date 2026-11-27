@@ -39,6 +39,9 @@ const buildFileFilter = (allowedExtensions: string[]) => {
 
 type MulterRequestHandler = (req: unknown, res: unknown, next: (error?: unknown) => void) => void;
 
+/** multipart 达到该字节数时触发文件大小上限。 */
+export const getMultipartFileSizeLimitBytes = (megabytes: number) => megabytes * 1024 * 1024;
+
 export const multer = {
   _storage: m.diskStorage({
     filename: (_, file, cb) => {
@@ -52,7 +55,7 @@ export const multer = {
   }),
 
   singleStore(maxFileSize: number = 500, options?: MulterFileFilterOptions): MulterRequestHandler {
-    const fileSize = maxFileSize * 1024 * 1024;
+    const fileSize = getMultipartFileSizeLimitBytes(maxFileSize);
     const fileFilter = options?.allowedExtensions?.length
       ? buildFileFilter(options.allowedExtensions)
       : undefined;
@@ -72,7 +75,7 @@ export const multer = {
     maxFileSize: number = 500,
     options?: MulterFileFilterOptions
   ): MulterRequestHandler {
-    const fileSize = maxFileSize * 1024 * 1024;
+    const fileSize = getMultipartFileSizeLimitBytes(maxFileSize);
     const fileFilter = options?.allowedExtensions?.length
       ? buildFileFilter(options.allowedExtensions)
       : undefined;
