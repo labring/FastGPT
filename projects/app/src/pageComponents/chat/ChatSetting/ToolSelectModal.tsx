@@ -91,10 +91,13 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   });
 
   const templates = useMemo(() => {
+    const nonDebugTemplates = rawTemplates.filter(
+      (template) => !isDebugToolSource(template.source)
+    );
     if (selectedTagIds.length === 0) {
-      return rawTemplates;
+      return nonDebugTemplates;
     }
-    return rawTemplates.filter((template) => {
+    return nonDebugTemplates.filter((template) => {
       return template.tags?.some((tag) => selectedTagIds.includes(tag));
     });
   }, [rawTemplates, selectedTagIds]);
