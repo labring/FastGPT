@@ -107,10 +107,12 @@ describe('floating chat window resizing', () => {
       function (this: HTMLElement) {
         const width = this.offsetWidth;
         const height = this.offsetHeight;
-        const viewportWidth =
-          dom.window.document.documentElement.clientWidth || dom.window.innerWidth;
-        const viewportHeight =
-          dom.window.document.documentElement.clientHeight || dom.window.innerHeight;
+        const viewportEl =
+          dom.window.document.compatMode === 'BackCompat'
+            ? dom.window.document.body
+            : dom.window.document.documentElement;
+        const viewportWidth = viewportEl?.clientWidth || dom.window.innerWidth;
+        const viewportHeight = viewportEl?.clientHeight || dom.window.innerHeight;
         const right = viewportWidth - (parseFloat(this.style.right) || 0);
         const bottom = viewportHeight - (parseFloat(this.style.bottom) || 0);
         return {
@@ -288,18 +290,24 @@ describe('floating chat window resizing', () => {
   });
 
   it('keeps enlarged window and handle inside viewport when host shrinks with a classic scrollbar', () => {
-    const setViewport = (innerWidth: number, clientWidth: number, innerHeight = 1000) => {
+    const setViewport = ({
+      innerWidth,
+      clientWidth
+    }: {
+      innerWidth: number;
+      clientWidth: number;
+    }) => {
       Object.defineProperties(dom.window, {
         innerWidth: { configurable: true, writable: true, value: innerWidth },
-        innerHeight: { configurable: true, writable: true, value: innerHeight }
+        innerHeight: { configurable: true, writable: true, value: 1000 }
       });
       Object.defineProperties(dom.window.document.documentElement, {
         clientWidth: { configurable: true, writable: true, value: clientWidth },
-        clientHeight: { configurable: true, writable: true, value: innerHeight }
+        clientHeight: { configurable: true, writable: true, value: 1000 }
       });
     };
 
-    setViewport(1400, 1383);
+    setViewport({ innerWidth: 1400, clientWidth: 1383 });
     dom.window.dispatchEvent(new dom.window.Event('resize'));
 
     const before = iframe().getBoundingClientRect();
@@ -308,11 +316,44 @@ describe('floating chat window resizing', () => {
     pointer({ type: 'lostpointercapture', x: 0, y: 0 });
     expect(iframe().offsetWidth).toBe(495);
 
-    setViewport(620, 603);
+    setViewport({ innerWidth: 620, clientWidth: 603 });
     dom.window.dispatchEvent(new dom.window.Event('resize'));
 
     expect(iframe().style.right).toBe('108px');
     expect(iframe().getBoundingClientRect().left).toBe(0);
     expect(handle().style.left).toBe('0px');
+  });
+
+  it('uses body viewport metrics in BackCompat mode on tall pages without a doctype', () => {
+    Object.defineProperty(dom.window.document, 'compatMode', {
+      configurable: true,
+      value: 'BackCompat'
+    });
+    Object.defineProperties(dom.window, {
+      innerWidth: { configurable: true, writable: true, value: 1200 },
+      innerHeight: { configurable: true, writable: true, value: 835 }
+    });
+    Object.defineProperties(dom.window.document.documentElement, {
+      clientWidth: { configurable: true, writable: true, value: 1183 },
+      clientHeight: { configurable: true, writable: true, value: 2082 }
+    });
+    Object.defineProperties(dom.window.document.body, {
+      clientWidth: { configurable: true, writable: true, value: 1183 },
+      clientHeight: { configurable: true, writable: true, value: 835 }
+    });
+
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    expect(iframe().style.bottom).toBe('30px');
+    const rect = iframe().getBoundingClientRect();
+    expect(rect.top).toBe(138);
+    expect(rect.bottom).toBe(805);
+    expect(handle().style.top).toBe('138px');
+
+    pointer({ type: 'pointerdown', x: rect.left + 8, y: rect.top + 8 });
+    pointer({ type: 'pointermove', x: rect.left + 8, y: -500 });
+    pointer({ type: 'lostpointercapture', x: 0, y: 0 });
+    expect(iframe().offsetHeight).toBe(775);
+    expect(iframe().getBoundingClientRect().top).toBe(30);
   });
 });

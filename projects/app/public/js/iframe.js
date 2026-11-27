@@ -137,10 +137,14 @@ function embedChatbot() {
   const verticalEdgeGap = 30;
 
   /** 获取扣除占位滚动条后的可用视口尺寸，与 position: fixed 定位坐标系保持一致。 */
-  const getViewportSize = () => ({
-    width: document.documentElement?.clientWidth || window.innerWidth,
-    height: document.documentElement?.clientHeight || window.innerHeight
-  });
+  const getViewportSize = () => {
+    const viewportEl =
+      document.compatMode === 'BackCompat' ? document.body : document.documentElement;
+    return {
+      width: viewportEl?.clientWidth || window.innerWidth,
+      height: viewportEl?.clientHeight || window.innerHeight
+    };
+  };
 
   /** 保持右下角固定，并将调整后的窗口限制在可视区域内（上下预留对称边距）。 */
   const resizeChatWindow = (width, height) => {
