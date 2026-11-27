@@ -1,11 +1,16 @@
 import { createWorkflowToolInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive/child';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/domain/runtime';
+import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/interface/run';
+import { useLLMResponseAccumulator } from '@fastgpt/service/core/ai/llm/request/hooks/useLLMResponseAccumulator';
+import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import {
   runAgentLoopCore,
   runAgentLoopCoreWithSummary
@@ -140,7 +145,6 @@ describe('FastAgent ChatItem replay', () => {
       })
     });
     expect(result.status).toBe('interactive');
-    expect(result.providerState).toBeUndefined();
     expect(completed).toEqual(['b', 'a']);
     const values = result.assistantResponses;
     const research = values.find((value) => value.text?.content === 'Research')!;
@@ -614,14 +618,7 @@ describe('FastAgent ChatItem replay', () => {
     const result = await runAgentLoopCore({
       provider: 'fastAgent',
       input: {
-        messages: [{ role: 'user', content: prepared }],
-        providerState: {
-          pendingMainContext: {
-            messages: [{ role: 'assistant', tool_calls: [call('legacy', 'ask_user')] }],
-            askToolCallId: 'legacy'
-          }
-        },
-        userAnswer: 'Legacy answer'
+        messages: [{ role: 'user', content: prepared }]
       },
       runtime: runtime(),
       assistantResponses: { persistInputContext: true }
@@ -630,7 +627,238 @@ describe('FastAgent ChatItem replay', () => {
     expect(
       transcript(rebuild([original, { obj: ChatRoleEnum.AI, value: result.assistantResponses }]))
     ).toEqual(transcript(result.completeMessages));
-    expect(result).not.toHaveProperty('pendingMainContext');
-    expect(result.providerState).toBeUndefined();
+  });
+
+  it('preserves reasoning_content across ChatItem replay even when showReasoning is false', async () => {
+    mockCreateLLMResponseQueue(mocks.llm, [
+      {
+        ...text({ content: 'Step 1', reasoning: 'Analyze hidden reasoning' }),
+        toolCalls: [call('ask-reason', 'ask_user', ask)],
+        finishReason: 'tool_calls'
+      }
+    ]);
+    const initial: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [{ text: { content: 'Plan with hidden reasoning' } }]
+    };
+
+    const result = await runAgentLoopCore({
+      provider: 'fastAgent',
+      input: { messages: rebuild([initial]) },
+      runtime: runtime(),
+      assistantResponses: { showReasoning: false }
+    });
+
+    expect(result.status).toBe('interactive');
+    expect(result.assistantResponses[0]).toMatchObject({
+      reasoning: { content: 'Analyze hidden reasoning' },
+      hideReason: true
+    });
+
+    const humanReply: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          select: { type: 'agentAsk', questions: [{ question: 'Format?', value: 'Keep it brief' }] }
+        }
+      ]
+    };
+    const replayed = rebuild([
+      initial,
+      { obj: ChatRoleEnum.AI, value: result.assistantResponses },
+      humanReply
+    ]);
+    expect(replayed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          reasoning_content: 'Analyze hidden reasoning',
+          tool_calls: [expect.objectContaining({ id: 'ask-reason' })]
+        })
+      ])
+    );
+  });
+});
+
+describe('fastAgent reasoning/thinking field round-trip regression', () => {
+  const createReasoningModel = (reasoning: boolean): LLMModelDataType => ({
+    modelId: '68ad85a7463006c963799a62',
+    type: ModelTypeEnum.llm,
+    scope: ModelScopeEnum.system,
+    provider: 'openai',
+    model: 'deepseek-r1',
+    name: 'DeepSeek R1',
+    config: {
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 60000,
+      functionCall: true,
+      toolChoice: true,
+      reasoning,
+      reasoningEffort: true
+    }
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.compress.mockImplementation(async ({ messages }) => ({ messages }));
+  });
+
+  it.each(['Step 1 deep thinking', ''])(
+    'preserves reasoning_content (%j) across multi-turn tool calls when model supports reasoning, and forwards reasoning_effort',
+    async (round1Reasoning) => {
+      const capturedBodies: Array<{
+        messages: ChatCompletionMessageParam[];
+        reasoning_effort?: unknown;
+        supportReason?: boolean;
+      }> = [];
+      const events: Array<{ type: string; reasoningText?: string }> = [];
+
+      const searchCall = toolCall({ id: 'call_search_1', name: 'search', args: { q: 'FastGPT' } });
+      mocks.llm
+        .mockImplementationOnce(async ({ body }) => {
+          capturedBodies.push({
+            messages: structuredClone(body.messages),
+            reasoning_effort: body.reasoning_effort,
+            supportReason: body.model.config.reasoning
+          });
+          // 走真实 useLLMResponseAccumulator 验证思考模型空/非空 reasoning_content 构造不回归
+          const accumulator = useLLMResponseAccumulator({
+            supportReason: body.model.config.reasoning
+          });
+          accumulator.appendResponse({
+            answerText: '',
+            reasoningText: round1Reasoning,
+            toolCalls: searchCall.toolCalls,
+            finish_reason: 'tool_calls'
+          });
+          const accumulated = accumulator.getResponse();
+          return {
+            requestId: 'req_reason_1',
+            isStreamResponse: false,
+            answerText: accumulated.answerText,
+            reasoningText: accumulated.reasoningText,
+            toolCalls: accumulated.toolCalls,
+            finish_reason: accumulated.finish_reason,
+            usage: { inputTokens: 100, outputTokens: 20, usedUserOpenAIKey: false },
+            requestMessages: body.messages,
+            assistantMessage: accumulated.assistantMessage,
+            completeMessages: [...body.messages, accumulated.assistantMessage]
+          };
+        })
+        .mockImplementationOnce(async ({ body }) => {
+          capturedBodies.push({
+            messages: structuredClone(body.messages),
+            reasoning_effort: body.reasoning_effort,
+            supportReason: body.model.config.reasoning
+          });
+          const accumulator = useLLMResponseAccumulator({
+            supportReason: body.model.config.reasoning
+          });
+          accumulator.appendResponse({
+            answerText: 'Final reasoned answer',
+            reasoningText: 'Step 2 synthesis',
+            finish_reason: 'stop'
+          });
+          const accumulated = accumulator.getResponse();
+          return {
+            requestId: 'req_reason_2',
+            isStreamResponse: false,
+            answerText: accumulated.answerText,
+            reasoningText: accumulated.reasoningText,
+            finish_reason: accumulated.finish_reason,
+            usage: { inputTokens: 120, outputTokens: 30, usedUserOpenAIKey: false },
+            requestMessages: body.messages,
+            assistantMessage: accumulated.assistantMessage,
+            completeMessages: [...body.messages, accumulated.assistantMessage]
+          };
+        });
+
+      const result = await runAgentLoop({
+        provider: 'fastAgent',
+        input: {
+          messages: [{ role: 'user', content: 'Research FastGPT' }]
+        },
+        runtime: runtime({
+          llmParams: {
+            model: createReasoningModel(true),
+            reasoningEffort: 'high',
+            stream: true
+          },
+          emitEvent: (event) => {
+            if (event.type === 'llm_request_end') {
+              events.push({ type: event.type, reasoningText: event.reasoningText });
+            }
+          }
+        })
+      });
+
+      expect(result.status).toBe('done');
+      expect(capturedBodies.map((item) => item.reasoning_effort)).toEqual(['high', 'high']);
+      expect(capturedBodies).toHaveLength(2);
+      // 第二轮真实经 loadRequestMessages 出站时，必须原样回传首轮思考字段（含空串）
+      const outboundSecondTurn = await loadRequestMessages({
+        messages: capturedBodies[1].messages,
+        supportReason: capturedBodies[1].supportReason
+      });
+      const serializedSecondTurn = JSON.parse(JSON.stringify(outboundSecondTurn));
+      expect(serializedSecondTurn[1]).toMatchObject({
+        role: 'assistant',
+        reasoning_content: round1Reasoning,
+        tool_calls: [expect.objectContaining({ id: 'call_search_1' })]
+      });
+      expect(events).toEqual([
+        { type: 'llm_request_end', reasoningText: round1Reasoning },
+        { type: 'llm_request_end', reasoningText: 'Step 2 synthesis' }
+      ]);
+    }
+  );
+
+  it('strips reasoning_content on outbound loadRequestMessages when target model does not support reasoning', async () => {
+    const capturedBodies: Array<{
+      messages: ChatCompletionMessageParam[];
+      supportReason?: boolean;
+    }> = [];
+
+    mockCreateLLMResponseQueue(mocks.llm, [
+      ({ body }) => {
+        capturedBodies.push({
+          messages: structuredClone(body.messages),
+          supportReason: body.model.config.reasoning
+        });
+        return text({ content: 'Plain answer' });
+      }
+    ]);
+
+    const result = await runAgentLoop({
+      provider: 'fastAgent',
+      input: {
+        messages: [
+          { role: 'user', content: 'Previous question' },
+          {
+            role: 'assistant',
+            content: 'Previous answer',
+            reasoning_content: 'Old model thinking'
+          },
+          { role: 'user', content: 'Follow-up' }
+        ]
+      },
+      runtime: runtime({
+        llmParams: {
+          model: createReasoningModel(false),
+          stream: true
+        }
+      })
+    });
+
+    expect(result.status).toBe('done');
+    expect(capturedBodies).toHaveLength(1);
+    const outbound = await loadRequestMessages({
+      messages: capturedBodies[0].messages,
+      supportReason: capturedBodies[0].supportReason
+    });
+    const serialized = JSON.parse(JSON.stringify(outbound));
+    expect(serialized[1]).toEqual({ role: 'assistant', content: 'Previous answer' });
+    expect(serialized[1]).not.toHaveProperty('reasoning_content');
   });
 });

@@ -1,5 +1,4 @@
 export * from './event';
-export * from './continuation';
 export * from './input';
 export * from './interactive';
 export * from './mainPrompt';

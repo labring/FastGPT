@@ -295,10 +295,10 @@ describe('configuration form edition boundary', () => {
       mocks.isPro = isPro;
       renderToStaticMarkup(React.createElement(CoreSettings));
       expect(mocks.formLabels).toContain('admin:file_service_domain');
+      expect(mocks.formLabels).not.toContain('admin:agent_execution_engine');
       expect(mocks.formLabels).not.toContain('admin:openapi_key_prefix');
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
-        agentEngine: 'fastAgent',
         multipleDataToBase64: false,
         downloadMode: 'short-proxy',
         fileDomain: 'https://files.test',
@@ -487,7 +487,6 @@ describe('configuration form edition boundary', () => {
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       teamMode: 'multi',
-      agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
       externalEndpoint: '',
@@ -585,7 +584,6 @@ describe('configuration form edition boundary', () => {
     expect(html).not.toContain('id="team"');
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
-      agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
       externalEndpoint: '',
@@ -601,6 +599,10 @@ describe('configuration form edition boundary', () => {
     );
     expect(submitted.overrides).not.toHaveProperty('teamMode');
     expect(submitted.overrides.loginProviders.wecom.providerSecret).toBe('keep-secret');
+    const featureSubmitted = mocks.update.mock.calls[0][0].items.find(
+      (item: { domain: string }) => item.domain === 'feature'
+    );
+    expect(featureSubmitted.overrides).not.toHaveProperty('agentEngine');
   });
 
   it.each([false, true])(

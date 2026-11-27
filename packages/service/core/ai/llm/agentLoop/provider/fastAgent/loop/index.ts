@@ -126,7 +126,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     toolCatalog: normalized
   };
 
-  // FastAgent 完全使用 ChatItem 重建后的消息；旧 providerState 不参与恢复。
   const messages = buildInitialMessages({ input });
   let activePlan = input.activePlan;
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。

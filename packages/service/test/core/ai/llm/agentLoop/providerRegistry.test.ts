@@ -7,10 +7,6 @@ describe('agent loop provider registry', () => {
     expect(getAgentLoopProvider('fastAgent').name).toBe('fastAgent');
   });
 
-  it('resolves piAgent by the new provider name', () => {
-    expect(getAgentLoopProvider('piAgent').name).toBe('piAgent');
-  });
-
   it('throws for unknown providers', () => {
     expect(() => getAgentLoopProvider('unknown' as any)).toThrow('Unknown agent loop provider');
   });

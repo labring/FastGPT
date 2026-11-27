@@ -232,10 +232,10 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'feature',
-    keys: ['multipleDataToBase64', 'agentEngine'],
+    keys: ['multipleDataToBase64'],
     options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
-  // 社区版固定使用功能默认值；核心页的引擎与多模态设置仍独立配置。
+  // 社区版固定使用功能默认值；核心页的多模态设置仍独立配置。
   ...createEntries({
     section: 'feature',
     keys: [

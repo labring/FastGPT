@@ -232,7 +232,6 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       status: 'error',
       error,
       activePlan: input.activePlan,
-      providerState: provider.name === 'fastAgent' ? undefined : input.providerState,
       completeMessages: filterMessages(input.messages),
       assistantMessages: [],
       requestIds: [],

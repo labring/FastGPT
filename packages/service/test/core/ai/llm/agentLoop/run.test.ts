@@ -102,37 +102,31 @@ describe('runAgentLoop', () => {
     expect(result.usages).toEqual([providerUsage]);
   });
 
-  it.each(['fastAgent', 'piAgent'] as const)(
-    'normalizes an unexpected %s rejection and only preserves Pi state',
-    async (provider) => {
-      const providerState = { cursor: 'state_1' };
-      getAgentLoopProviderMock.mockReturnValue({ name: provider, run: providerRunMock });
-      providerRunMock.mockRejectedValue(new Error('provider crashed'));
+  it('normalizes an unexpected fastAgent rejection', async () => {
+    getAgentLoopProviderMock.mockReturnValue({ name: 'fastAgent', run: providerRunMock });
+    providerRunMock.mockRejectedValue(new Error('provider crashed'));
 
-      const result = await runAgentLoop({
-        provider,
-        input: {
-          messages: [{ role: 'user', content: 'hello' }],
-          providerState
-        },
-        runtime: {
-          teamId: 'team_1',
-          llmParams: { model: defaultQAModels[0] },
-          toolCatalog: { runtimeTools: [] },
-          executeTool: vi.fn()
-        }
-      });
+    const result = await runAgentLoop({
+      provider: 'fastAgent',
+      input: {
+        messages: [{ role: 'user', content: 'hello' }]
+      },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: { model: defaultQAModels[0] },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn()
+      }
+    });
 
-      expect(result).toMatchObject({
-        status: 'error',
-        error: expect.objectContaining({ message: 'provider crashed' }),
-        completeMessages: [{ role: 'user', content: 'hello' }],
-        assistantMessages: [],
-        requestIds: [],
-        providerState: provider === 'fastAgent' ? undefined : providerState,
-        finishReason: 'error',
-        usages: []
-      });
-    }
-  );
+    expect(result).toMatchObject({
+      status: 'error',
+      error: expect.objectContaining({ message: 'provider crashed' }),
+      completeMessages: [{ role: 'user', content: 'hello' }],
+      assistantMessages: [],
+      requestIds: [],
+      finishReason: 'error',
+      usages: []
+    });
+  });
 });

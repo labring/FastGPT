@@ -40,7 +40,6 @@ describe('workflow agent-loop core boundary', () => {
 
     expect(source).not.toContain('infrastructure');
     expect(source).not.toContain('runFastAgentLoop');
-    expect(source).not.toContain('runPiAgentLoop');
   });
 
   it('removes legacy root entries instead of forwarding them', () => {

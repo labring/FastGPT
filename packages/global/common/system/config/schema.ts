@@ -1,7 +1,7 @@
 import z from 'zod';
 import { AuthConfigSchema } from './schemas/auth';
 import { CommercialConfigSchema } from './schemas/commercial';
-import { FeatureConfigSchema } from './schemas/feature';
+import { FeatureConfigReadSchema, FeatureConfigSchema } from './schemas/feature';
 import { nonNegativeInteger } from './schemas/primitives';
 import { PerformanceConfigBaseSchema, PerformanceConfigSchema } from './schemas/performance';
 import { ProvidersConfigBaseSchema, ProvidersConfigSchema } from './schemas/providers';
@@ -361,7 +361,7 @@ export const SystemInstanceConfigSchema = z.strictObject({
   site: SiteConfigSchema.prefault({}),
   auth: AuthConfigSchema.prefault({}),
   security: SecurityConfigSchema.prefault({}),
-  feature: FeatureConfigSchema.prefault({}),
+  feature: FeatureConfigReadSchema.prefault({}),
   commercial: CommercialConfigSchema.prefault({}),
   resource: ResourceConfigSchema.prefault({}),
   performance: PerformanceConfigSchema.prefault({}),

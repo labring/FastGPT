@@ -1,4 +1,4 @@
-export type AgentLoopProviderName = 'fastAgent' | 'piAgent';
+export type AgentLoopProviderName = 'fastAgent';
 
 import type { AgentLoopInput } from './input';
 import type { AgentLoopResult } from './result';
