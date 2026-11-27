@@ -97,6 +97,58 @@ export function trimIfString<T>(value: T): T {
 }
 
 /**
+ * 解析成对布尔开关参数（支持正/反标志以及 Commander `--no-*` 产生的 `false`）。
+ */
+export function parseOptionalBooleanFlag({
+  positive,
+  negative
+}: {
+  positive?: unknown;
+  negative?: unknown;
+}): boolean | undefined {
+  if (positive === true) return true;
+  if (negative === true || positive === false) return false;
+  return undefined;
+}
+
+/**
+ * 解析可选数值参数，拒绝 `NaN`/`Infinity` 并返回清晰参数错误。
+ */
+export function parseOptionalNumber(raw: unknown): number | undefined {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      throw new CliArgumentError(`Expected a numeric value but received "${raw}".`);
+    }
+    return parsed;
+  }
+  if (typeof raw === 'number') {
+    if (!Number.isFinite(raw)) {
+      throw new CliArgumentError(`Expected a numeric value but received "${raw}".`);
+    }
+    return raw;
+  }
+  return undefined;
+}
+
+/**
+ * 解析内联 JSON 选项字符串；空字符串或非字符串输入返回 `undefined`，非法 JSON 抛出参数错误。
+ */
+export function parseInlineJsonValue(raw: unknown, flagLabel: string): unknown {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new CliArgumentError(`Invalid JSON for ${flagLabel}: ${msg}`);
+  }
+}
+
+/**
  * 运行时类型守卫：判断值是否为普通对象（非 null 且非数组）。
  */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -205,7 +257,12 @@ export function buildPaginationMeta({
     };
   }
 
-  const page = typeof validatedBody.pageNum === 'number' ? validatedBody.pageNum : DEFAULT_PAGE_NUM;
+  const page =
+    typeof validatedBody.pageNum === 'number'
+      ? validatedBody.pageNum
+      : typeof validatedBody.page === 'number'
+        ? validatedBody.page
+        : DEFAULT_PAGE_NUM;
   const hasMore = page * pageSize < total;
   return {
     total,

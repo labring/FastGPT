@@ -7,7 +7,7 @@ Run the local authoring commands under `fastgpt workflow-build`. Use `--dir <pat
 - `meta show` reads local application metadata, and `meta set` updates `--name` or `--intro` in `workflow.json`.
 - `import --input <path>` decompiles StoreWorkflow into the workspace. `build --output <path>` validates the working document and compiles a StoreWorkflow artifact.
 - `skills [reference]` reads the bundled workflow-building skill or one reference document.
-- `app pull`, `workflow diff`, `app save`, `app test`, and `app publish` connect a workspace to an existing App.
+- `agent pull`, `workflow diff`, `workflow debug`, `workflow test`, `agent test`, `agent save`, and `agent publish` connect a workspace to an existing Agent.
 
 ## Output
 

@@ -9,6 +9,8 @@ function createMockHttpClient(handler: (params: any) => Promise<any>): FastGptHt
     request: vi.fn(handler),
     requestRaw: vi.fn(),
     uploadMultipart: vi.fn(),
+    uploadBinary: vi.fn(),
+    putPresignedUrl: vi.fn(),
     streamSse: vi.fn()
   };
 }

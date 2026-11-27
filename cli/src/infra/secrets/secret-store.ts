@@ -6,21 +6,7 @@ import { execSystemCommand, type ExecCommandFn } from './exec-command';
 import { createFileSecretStore } from './file-secret-store';
 import { createLinuxSecretToolStore } from './linux-secret-tool-store';
 import { createMacosKeychainStore } from './macos-keychain-store';
-
-export type SecretStoreStrategy = {
-  readonly backend: SecretStoreBackend;
-  isAvailable: () => Promise<boolean>;
-  get: (profileName: string) => Promise<string | undefined>;
-  set: (profileName: string, secret: string) => Promise<boolean>;
-  delete: (profileName: string) => Promise<void>;
-};
-
-export type SecretStore = {
-  getBackendName: (profileName?: string) => Promise<SecretStoreBackend>;
-  getSecret: (profileName: string) => Promise<string | undefined>;
-  setSecret: (profileName: string, secret: string) => Promise<{ backend: SecretStoreBackend }>;
-  deleteSecret: (profileName: string) => Promise<void>;
-};
+import type { SecretStore, SecretStoreStrategy } from './types';
 
 /**
  * 组合模式凭据存储：优先尝试主 Keychain 策略，不可用或写入失败时优雅降级到 0600 文件策略，

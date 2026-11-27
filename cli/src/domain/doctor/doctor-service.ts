@@ -1,42 +1,42 @@
 import type { ConfigRepository } from '../../infra/config/config-repository';
-import type { SecretStore } from '../../infra/secrets/secret-store';
+import type { HttpClientFactory } from '../../infra/http/fastgpt-http-client';
+import type { SecretStore } from '../../infra/secrets/types';
 import type { CliResult, GlobalCliOptions } from '../../shared/types';
-import type { HttpClientFactory } from '../auth/auth-service';
-import { buildCapabilitySummary } from '../auth/capability';
-import type { WhoamiProbeHandler } from '../auth/probe/probe-chain';
-import type { DoctorCheck, DoctorCheckResult, DoctorRunContext } from './checks/doctor-check';
+import type {
+  DoctorAuthPort,
+  DoctorCheck,
+  DoctorCheckResult,
+  DoctorRunContext
+} from './checks/doctor-check';
 
 export type DoctorService = {
   runDiagnostics: (params: { global: GlobalCliOptions }) => Promise<CliResult>;
 };
 
 /**
- * 诊断服务：按顺序执行可插拔的 DoctorCheck 管线并汇总健康状态与能力矩阵。
+ * 诊断服务：按顺序执行可插拔的 DoctorCheck 管线并通过注入端口汇总健康状态与能力矩阵。
  */
 export function createDoctorService({
   checks,
-  env,
   configRepo,
   secretStore,
   createHttpClient,
-  probeHandlers
+  authPort
 }: {
   checks: readonly DoctorCheck[];
-  env: NodeJS.ProcessEnv;
   configRepo: ConfigRepository;
   secretStore: SecretStore;
   createHttpClient: HttpClientFactory;
-  probeHandlers: readonly WhoamiProbeHandler[];
+  authPort: DoctorAuthPort;
 }): DoctorService {
   return {
     runDiagnostics: async ({ global }) => {
       const ctx: DoctorRunContext = {
         global,
-        env,
         configRepo,
         secretStore,
         createHttpClient,
-        probeHandlers,
+        authPort,
         warnings: []
       };
 
@@ -54,7 +54,7 @@ export function createDoctorService({
         data: {
           ok,
           checks: results,
-          capabilities: buildCapabilitySummary({
+          capabilities: authPort.summarizeCapabilities({
             probe: ctx.probeResult,
             resolved: ctx.resolved
           })

@@ -16,6 +16,8 @@ function createMockHttpClient(overrides?: {
     request: vi.fn(overrides?.request ?? (async () => ({}))),
     requestRaw: vi.fn(),
     uploadMultipart: vi.fn(overrides?.uploadMultipart ?? (async () => ({}))),
+    uploadBinary: vi.fn(),
+    putPresignedUrl: vi.fn(),
     streamSse: vi.fn()
   };
 }
@@ -113,6 +115,22 @@ describe('Dataset Subdomain Services (Collection & Data OpenAPI)', () => {
     });
     expect(localRes.changed).toBe(true);
     expect(uploadedFormData?.get('data')).toContain(VALID_DATASET_ID);
+    expect((uploadedFormData?.get('file') as File | null)?.name).toBe('guide.md');
+
+    const chineseFilePayload = {
+      filename: '中文-AIGC报告.pdf',
+      size: 4,
+      mimeType: 'application/pdf',
+      data: new Uint8Array([37, 80, 68, 70])
+    };
+    await collectionService.createLocalFile({
+      client,
+      file: chineseFilePayload,
+      input: { datasetId: VALID_DATASET_ID }
+    });
+    expect((uploadedFormData?.get('file') as File | null)?.name).toBe(
+      encodeURIComponent('中文-AIGC报告.pdf')
+    );
 
     const updateRes = await collectionService.update({
       client,

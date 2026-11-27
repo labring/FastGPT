@@ -74,6 +74,10 @@ function createServices(dir: string, fetchFn: CliFetchFn) {
       baseClient.requestRaw({ ...params, auth }),
     uploadMultipart: <T = unknown>(params: Parameters<typeof baseClient.uploadMultipart>[0]) =>
       baseClient.uploadMultipart<T>({ ...params, auth }),
+    uploadBinary: <T = unknown>(params: Parameters<typeof baseClient.uploadBinary>[0]) =>
+      baseClient.uploadBinary<T>({ ...params, auth }),
+    putPresignedUrl: (params: Parameters<typeof baseClient.putPresignedUrl>[0]) =>
+      baseClient.putPresignedUrl(params),
     streamSse: (params: Parameters<typeof baseClient.streamSse>[0]) =>
       baseClient.streamSse({ ...params, auth })
   };
@@ -845,5 +849,165 @@ describe('WorkflowSyncService', () => {
     await expect(sync.test({ client, dir, casesSource: casesFile })).rejects.toBeInstanceOf(
       CliApiError
     );
+  });
+
+  it('serializes expanded remote Agent V2 selectedTools before chatTest, rejects malformed tool payloads, and fails on incomplete or post-[DONE] error SSE streams', async () => {
+    const dir = await makeDir();
+    let capturedChatTestBody: any;
+    let streamMode: 'ok' | 'missingDone' | 'postDoneError' = 'ok';
+    let malformedTool = false;
+
+    const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+      if (url.includes('/api/core/app/detail')) {
+        return jsonResponse({
+          _id: APP_ID,
+          name: 'Remote Agent V2',
+          type: 'chatAgent',
+          permission: { hasWritePer: true },
+          chatConfig: {},
+          edges: [],
+          nodes: [
+            {
+              nodeId: 'agent-node',
+              name: 'Agent',
+              flowNodeType: 'agent',
+              inputs: [
+                {
+                  key: 'agent_selectedTools',
+                  renderTypeList: ['hidden'],
+                  valueType: 'any',
+                  label: 'selectedTools',
+                  value: malformedTool
+                    ? [{ inputs: 'not-valid-schema', pluginData: { error: 'broken' } }]
+                    : [
+                        {
+                          id: 'mcp-65f000000000000000000099/read_wiki',
+                          pluginId: 'mcp-65f000000000000000000099/read_wiki',
+                          name: 'read_wiki',
+                          avatar: 'core/app/type/mcpToolsFill',
+                          flowNodeType: 'tool',
+                          source: 'mcp',
+                          toolConfig: {
+                            mcpTool: { toolId: 'mcp-65f000000000000000000099/read_wiki' }
+                          },
+                          // Display-state expanded NodeIO inputs (as returned by /core/app/detail, missing top-level `config`)
+                          inputs: [
+                            {
+                              key: 'repoName',
+                              label: 'repoName',
+                              renderTypeList: ['agentGenerated', 'input'],
+                              selectedType: 'input',
+                              valueType: 'string',
+                              value: 'labring/FastGPT'
+                            },
+                            {
+                              key: 'query',
+                              label: 'query',
+                              renderTypeList: ['agentGenerated', 'input'],
+                              selectedType: 'agentGenerated',
+                              valueType: 'string'
+                            }
+                          ],
+                          outputs: []
+                        }
+                      ]
+                }
+              ],
+              outputs: []
+            }
+          ]
+        });
+      }
+
+      if (url.includes('/api/core/chat/chatTest')) {
+        capturedChatTestBody =
+          input instanceof Request
+            ? await input.clone().json()
+            : JSON.parse(String(init?.body ?? '{}'));
+        const chunks = [
+          'event: answer\n',
+          'data: {"choices":[{"delta":{"content":"Hello from V2"},"finish_reason":"stop"}]}\n\n',
+          ...(streamMode === 'ok' || streamMode === 'postDoneError' ? ['data: [DONE]\n\n'] : []),
+          ...(streamMode === 'postDoneError'
+            ? ['event: error\n', 'data: {"message":"Failed to persist chat round"}\n\n']
+            : [])
+        ].join('');
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode(chunks));
+            controller.close();
+          }
+        });
+        return new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' }
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const { sync, client } = createServices(dir, fetchFn);
+    const res = await sync.chatTest({
+      client,
+      dir,
+      appId: APP_ID,
+      remote: true,
+      messages: [{ role: 'user', content: 'ping' }],
+      detail: true
+    });
+    expect(res.changed).toBe(true);
+    expect(res.data).toMatchObject({
+      source: 'remote',
+      completed: true,
+      finishReason: 'stop',
+      answerText: 'Hello from V2'
+    });
+    const sentTools = capturedChatTestBody?.nodes?.[0]?.inputs?.[0]?.value;
+    expect(sentTools).toHaveLength(1);
+    expect(sentTools[0]).toMatchObject({
+      id: 'mcp-65f000000000000000000099/read_wiki',
+      config: { repoName: 'labring/FastGPT' }
+    });
+
+    // Premature EOF without [DONE] must fail instead of succeeding
+    streamMode = 'missingDone';
+    await expect(
+      sync.chatTest({
+        client,
+        dir,
+        appId: APP_ID,
+        remote: true,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    ).rejects.toThrow(/before receiving completion signal/);
+
+    // Post-[DONE] persistence error frame from chatTest.ts must still fail instead of returning completed: true
+    streamMode = 'postDoneError';
+    await expect(
+      sync.chatTest({
+        client,
+        dir,
+        appId: APP_ID,
+        remote: true,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    ).rejects.toThrow('Failed to persist chat round');
+
+    // Malformed remote selectedTools payload must fail deterministically via SelectedToolItemTypeSchema
+    streamMode = 'ok';
+    malformedTool = true;
+    await expect(
+      sync.chatTest({
+        client,
+        dir,
+        appId: APP_ID,
+        remote: true,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    ).rejects.toThrow(/malformed selectedTools/);
   });
 });

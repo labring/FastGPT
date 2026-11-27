@@ -37,6 +37,7 @@ export type FastGptHttpClient = {
     auth?: HttpRequestAuth;
     headers?: Record<string, string>;
     timeoutMs?: number;
+    rawJson?: boolean;
   }) => Promise<T>;
   requestRaw: (params: {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -55,6 +56,21 @@ export type FastGptHttpClient = {
     headers?: Record<string, string>;
     timeoutMs?: number;
   }) => Promise<T>;
+  uploadBinary: <T = unknown>(params: {
+    path: string;
+    body: Uint8Array;
+    contentType: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    auth?: HttpRequestAuth;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<T>;
+  putPresignedUrl: (params: {
+    url: string;
+    body: Uint8Array;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<void>;
   streamSse: (params: {
     method?: 'GET' | 'POST';
     path: string;
@@ -66,6 +82,12 @@ export type FastGptHttpClient = {
     timeoutMs?: number;
   }) => AsyncIterable<SseEvent>;
 };
+
+export type HttpClientFactory = (params: {
+  baseUrl: string;
+  insecure: boolean;
+  caCertPath?: string;
+}) => FastGptHttpClient;
 
 function getRuntimeTag(): string {
   const bunVersion = (process.versions as Record<string, string | undefined>).bun;
@@ -203,11 +225,13 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl
+  displayUrl,
+  rawJson = false
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
+  rawJson?: boolean;
 }): T {
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
@@ -217,20 +241,41 @@ function unpackFastGptResponse<T>({
     );
   }
 
-  let parsed: unknown = undefined;
-  if (rawText.trim().length > 0) {
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      if (response.status >= 400) {
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: displayUrl
-        });
-      }
-      return rawText as T;
+  const trimmedText = rawText.trim();
+  if (trimmedText.length === 0) {
+    if (response.status >= 400) {
+      throw mapServerError({
+        httpStatus: response.status,
+        message: `Request failed (HTTP ${response.status})`,
+        url: displayUrl
+      });
     }
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    throw new CliNetworkError(
+      `Expected JSON response from ${redactText(displayUrl)}, but received an empty HTTP ${response.status} body.`,
+      'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmedText);
+  } catch {
+    if (response.status >= 400) {
+      throw mapServerError({
+        httpStatus: response.status,
+        message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+        url: displayUrl
+      });
+    }
+    throw new CliNetworkError(
+      `Expected JSON response from ${redactText(displayUrl)}, but received non-JSON HTTP ${response.status} body.`,
+      'Verify FASTGPT_BASE_URL and check whether a proxy/SSO login page intercepted the request.',
+      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+    );
   }
 
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -257,8 +302,20 @@ function unpackFastGptResponse<T>({
       });
     }
 
-    if ('code' in envelope && 'data' in envelope) {
-      return envelope.data as T;
+    if (serverCode !== undefined) {
+      if (serverCode === 200 && 'data' in envelope) {
+        return envelope.data as T;
+      }
+      throw new CliNetworkError(
+        `Expected FastGPT success code 200 from ${redactText(displayUrl)}, but received code ${serverCode}.`,
+        'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+        {
+          url: redactText(displayUrl),
+          httpStatus: response.status,
+          serverCode,
+          phase: 'invalid_response'
+        }
+      );
     }
   }
 
@@ -270,10 +327,118 @@ function unpackFastGptResponse<T>({
     });
   }
 
-  return parsed as T;
+  // FastGPT 标准接口统一返回 `{ code: 200, data }` 信封；仅 OpenAI 兼容等显式声明 `rawJson: true` 的接口原样返回 JSON。
+  if (rawJson) {
+    return parsed as T;
+  }
+
+  throw new CliNetworkError(
+    `Expected a FastGPT JSON envelope ({ code: 200, data }) from ${redactText(displayUrl)}, but received an unrecognized HTTP ${response.status} payload.`,
+    'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+    { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+  );
 }
 
-async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
+function sanitizePresignedUrlForError(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return redactText(rawUrl.split(/[?#]/, 1)[0] ?? rawUrl);
+  }
+}
+
+/**
+ * 读取 HTTP 响应体；若在收到响应头后发生断连或流超时，统一转换为 `CliNetworkError`（调用方据此识别写入结果未知）。
+ */
+async function readResponseTextOrThrow(response: Response, url: string): Promise<string> {
+  try {
+    return await response.text();
+  } catch (error) {
+    if (error instanceof CliNetworkError) throw error;
+    const msg = redactText(error instanceof Error ? error.message : String(error));
+    throw new CliNetworkError(
+      `Failed to read response body from ${redactText(url)}: ${msg}`,
+      'The server may have already processed the request; inspect authoritative state before retrying.',
+      { url: redactText(url), httpStatus: response.status, phase: 'response_body' }
+    );
+  }
+}
+
+/**
+ * 统一为写操作（非 GET）的未确认异常（网络断连/超时/无效信封/5xx/408）标记 `outcome: "unknown"`，
+ * 避免每个领域命令各自重复判断网关或传输层不确定状态。
+ */
+function rethrowWithWriteOutcome(method: 'GET' | 'POST' | 'PUT' | 'DELETE', error: unknown): never {
+  if (method === 'GET') {
+    throw error;
+  }
+  const unknownHint =
+    'The server may have already processed this write; inspect authoritative state before retrying.';
+  if (error instanceof CliNetworkError) {
+    throw new CliNetworkError(error.message, error.hint ?? unknownHint, {
+      ...error.details,
+      outcome: 'unknown'
+    });
+  }
+  if (
+    error instanceof CliApiError &&
+    (error.httpStatus === undefined || error.httpStatus === 408 || error.httpStatus >= 500)
+  ) {
+    throw new CliApiError({
+      message: error.message,
+      hint: error.hint ?? unknownHint,
+      httpStatus: error.httpStatus,
+      serverCode: error.serverCode,
+      statusText: error.statusText,
+      details: {
+        ...error.details,
+        outcome: 'unknown'
+      }
+    });
+  }
+  throw error;
+}
+
+async function readChunkWithAbort(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal?: AbortSignal
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (!signal) {
+    return reader.read();
+  }
+  if (signal.aborted) {
+    void reader.cancel(signal.reason).catch(() => {});
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new CliNetworkError('SSE stream aborted.');
+  }
+
+  return await new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
+    const onAbort = () => {
+      void reader.cancel(signal.reason).catch(() => {});
+      reject(
+        signal.reason instanceof Error ? signal.reason : new CliNetworkError('SSE stream aborted.')
+      );
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    reader.read().then(
+      (result) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(result);
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(signal.aborted && signal.reason instanceof Error ? signal.reason : err);
+      }
+    );
+  });
+}
+
+async function* parseSseStream(
+  stream: ReadableStream<Uint8Array>,
+  signal?: AbortSignal
+): AsyncIterable<SseEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
@@ -281,10 +446,13 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
   let currentId: string | undefined;
   let currentDataLines: string[] = [];
 
+  let streamDone = false;
+
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readChunkWithAbort(reader, signal);
       if (done) {
+        streamDone = true;
         break;
       }
       buffer += decoder.decode(value, { stream: true });
@@ -298,9 +466,6 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
         if (line === '') {
           if (currentDataLines.length > 0) {
             const data = currentDataLines.join('\n');
-            if (data === '[DONE]') {
-              return;
-            }
             yield {
               ...(currentEvent !== undefined ? { event: currentEvent } : {}),
               ...(currentId !== undefined ? { id: currentId } : {}),
@@ -328,18 +493,33 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterabl
       }
     }
 
-    // 处理末尾残留块
-    if (currentDataLines.length > 0) {
-      const data = currentDataLines.join('\n');
-      if (data !== '[DONE]') {
-        yield {
-          ...(currentEvent !== undefined ? { event: currentEvent } : {}),
-          ...(currentId !== undefined ? { id: currentId } : {}),
-          data
-        };
+    // 处理末尾无换行或无空行的残留内容（含 [DONE] 或后置 error 帧）
+    const remaining = `${buffer}${decoder.decode()}`.trim();
+    if (remaining) {
+      const line = remaining.endsWith('\r') ? remaining.slice(0, -1) : remaining;
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        const content = line.startsWith('data: ') ? line.slice(6) : line.slice(5);
+        currentDataLines.push(content);
+      } else if (line.startsWith('id:')) {
+        currentId = line.slice(3).trim();
       }
     }
+
+    if (currentDataLines.length > 0) {
+      const data = currentDataLines.join('\n');
+      yield {
+        ...(currentEvent !== undefined ? { event: currentEvent } : {}),
+        ...(currentId !== undefined ? { id: currentId } : {}),
+        data
+      };
+    }
   } finally {
+    // 消费方提前 break 或抛出异常时主动取消底层可读流，避免连接泄漏
+    if (!streamDone) {
+      await reader.cancel().catch(() => {});
+    }
     reader.releaseLock();
   }
 }
@@ -440,6 +620,7 @@ export function createFastGptHttpClient({
     jsonBody,
     rawBody,
     contentType,
+    contentLength,
     signal
   }: {
     client: any;
@@ -449,6 +630,7 @@ export function createFastGptHttpClient({
     jsonBody?: unknown;
     rawBody?: BodyInit | null;
     contentType?: string;
+    contentLength?: number;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
     const baseWithSlash = normalizedBaseUrl.endsWith('/')
@@ -459,10 +641,20 @@ export function createFastGptHttpClient({
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
     let currentContentType = contentType;
+    let currentContentLength = contentLength;
     let currentSearchParams = searchParams;
 
     for (let hop = 0; hop <= 5; hop += 1) {
       let response: Response;
+      const bodyHeaders: Record<string, string> = {};
+      if (currentRawBody !== undefined && currentRawBody !== null) {
+        if (currentContentType !== undefined) {
+          bodyHeaders['content-type'] = currentContentType;
+        }
+        if (currentContentLength !== undefined) {
+          bodyHeaders['content-length'] = String(currentContentLength);
+        }
+      }
       try {
         response = await client(currentUrl, {
           method: currentMethod,
@@ -472,11 +664,7 @@ export function createFastGptHttpClient({
           ...(currentRawBody !== undefined && currentRawBody !== null
             ? { body: currentRawBody }
             : {}),
-          ...(currentRawBody !== undefined &&
-          currentRawBody !== null &&
-          currentContentType !== undefined
-            ? { headers: { 'content-type': currentContentType } }
-            : {})
+          ...(Object.keys(bodyHeaders).length > 0 ? { headers: bodyHeaders } : {})
         });
       } catch (error) {
         if (error instanceof CliNetworkError) throw error;
@@ -527,6 +715,7 @@ export function createFastGptHttpClient({
             currentJson = undefined;
             currentRawBody = null;
             currentContentType = undefined;
+            currentContentLength = undefined;
           }
         } else if (response.status === 301 || response.status === 302) {
           // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
@@ -535,6 +724,7 @@ export function createFastGptHttpClient({
             currentJson = undefined;
             currentRawBody = null;
             currentContentType = undefined;
+            currentContentLength = undefined;
           }
         }
         // 307 与 308 保留原始 HTTP 方法与请求载荷
@@ -556,7 +746,8 @@ export function createFastGptHttpClient({
       body,
       auth,
       headers: extraHeaders,
-      timeoutMs: requestTimeout = timeoutMs
+      timeoutMs: requestTimeout = timeoutMs,
+      rawJson = false
     }: {
       method: 'GET' | 'POST' | 'PUT' | 'DELETE';
       path: string;
@@ -565,25 +756,31 @@ export function createFastGptHttpClient({
       auth?: HttpRequestAuth;
       headers?: Record<string, string>;
       timeoutMs?: number;
+      rawJson?: boolean;
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
       const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method,
-        searchParams,
-        jsonBody: body
-      });
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method,
+          searchParams,
+          jsonBody: body
+        });
 
-      const rawText = await response.text();
-      return unpackFastGptResponse<T>({
-        response,
-        rawText,
-        displayUrl: finalUrl
-      });
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl,
+          rawJson
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome(method, error);
+      }
     },
 
     requestRaw: async ({
@@ -608,7 +805,7 @@ export function createFastGptHttpClient({
       });
 
       if (response.status >= 400) {
-        const rawText = await response.text();
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
         throw mapServerError({
           httpStatus: response.status,
           message: rawText.slice(0, 300) || `HTTP ${response.status}`,
@@ -654,21 +851,122 @@ export function createFastGptHttpClient({
       const multipartContentType = serializedForm.headers.get('content-type') ?? undefined;
       const multipartBody = new Uint8Array(await serializedForm.arrayBuffer());
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method: 'POST',
-        searchParams,
-        rawBody: multipartBody,
-        contentType: multipartContentType
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method: 'POST',
+          searchParams,
+          rawBody: multipartBody,
+          contentType: multipartContentType
+        });
+
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome('POST', error);
+      }
+    },
+
+    uploadBinary: async <T = unknown>({
+      path,
+      body,
+      contentType,
+      query,
+      auth,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = LONG_OPERATION_TIMEOUT_MS
+    }: {
+      path: string;
+      body: Uint8Array;
+      contentType: string;
+      query?: Record<string, string | number | boolean | undefined>;
+      auth?: HttpRequestAuth;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    }): Promise<T> => {
+      const relativePath = path.replace(/^\/+/, '');
+      const searchParams = filterQuery(query);
+      const client = await buildKyClient({
+        timeout: requestTimeout,
+        auth,
+        extraHeaders
       });
 
-      const rawText = await response.text();
-      return unpackFastGptResponse<T>({
-        response,
-        rawText,
-        displayUrl: finalUrl
-      });
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method: 'POST',
+          searchParams,
+          rawBody: body as BodyInit,
+          contentType,
+          contentLength: body.byteLength
+        });
+
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome('POST', error);
+      }
+    },
+
+    putPresignedUrl: async ({
+      url,
+      body,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = LONG_OPERATION_TIMEOUT_MS
+    }): Promise<void> => {
+      const targetUrl = new URL(url, normalizedBaseUrl).toString();
+      const safeTargetUrl = sanitizePresignedUrlForError(targetUrl);
+      const activeFetch = await resolveTransportFetch();
+      const requestHeaders: Record<string, string> = {
+        ...extraHeaders,
+        'content-length': String(body.byteLength)
+      };
+
+      // 预签名直传地址可能是跨域对象存储，绝不注入 FastGPT token/Authorization 凭据头，避免凭据泄漏或破坏 S3 签名。
+      let response: Response;
+      try {
+        response = await activeFetch(targetUrl, {
+          method: 'PUT',
+          headers: requestHeaders,
+          body: body as BodyInit,
+          signal: AbortSignal.timeout(requestTimeout)
+        });
+      } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
+        throw new CliNetworkError(
+          `Presigned upload failed for ${safeTargetUrl}: ${msg}`,
+          isTls
+            ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
+            : 'Verify the presigned upload URL is reachable from this machine.',
+          { url: safeTargetUrl }
+        );
+      }
+
+      if (!response.ok) {
+        const rawText = await response.text().catch(() => '');
+        // 对象存储错误 XML 可能包含签名字符串或请求细节，仅提取安全错误码并输出状态摘要。
+        const xmlCode = rawText.match(/<Code>([A-Za-z0-9._-]{1,64})<\/Code>/)?.[1];
+        throw new CliApiError({
+          message: xmlCode
+            ? `Presigned upload failed with HTTP ${response.status} (${xmlCode})`
+            : `Presigned upload failed with HTTP ${response.status}`,
+          httpStatus: response.status,
+          details: { url: safeTargetUrl, ...(xmlCode ? { errorCode: xmlCode } : {}) }
+        });
+      }
     },
 
     streamSse: async function* ({
@@ -683,38 +981,61 @@ export function createFastGptHttpClient({
     }): AsyncIterable<SseEvent> {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const client = await buildKyClient({
-        timeout: requestTimeout,
-        auth,
-        extraHeaders: {
-          accept: 'text/event-stream',
-          ...extraHeaders
-        }
-      });
+      const streamController = new AbortController();
+      const timer =
+        Number.isFinite(requestTimeout) && requestTimeout > 0
+          ? setTimeout(() => {
+              streamController.abort(
+                new CliNetworkError(
+                  `SSE stream timed out after ${requestTimeout}ms.`,
+                  'Increase --timeout or verify the server completed execution.'
+                )
+              );
+            }, requestTimeout)
+          : undefined;
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method,
-        searchParams,
-        jsonBody: body,
-        signal
-      });
+      const combinedSignal = signal
+        ? AbortSignal.any([signal, streamController.signal])
+        : streamController.signal;
 
-      if (response.status >= 400) {
-        const rawText = await response.text();
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: finalUrl
+      try {
+        const client = await buildKyClient({
+          timeout: requestTimeout,
+          auth,
+          extraHeaders: {
+            accept: 'text/event-stream',
+            ...extraHeaders
+          }
         });
-      }
 
-      if (!response.body) {
-        return;
-      }
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method,
+          searchParams,
+          jsonBody: body,
+          signal: combinedSignal
+        });
 
-      yield* parseSseStream(response.body);
+        if (response.status >= 400) {
+          const rawText = await readResponseTextOrThrow(response, finalUrl);
+          throw mapServerError({
+            httpStatus: response.status,
+            message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+            url: finalUrl
+          });
+        }
+
+        if (!response.body) {
+          return;
+        }
+
+        yield* parseSseStream(response.body, combinedSignal);
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      }
     }
   };
 }

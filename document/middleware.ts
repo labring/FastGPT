@@ -494,8 +494,8 @@ function createGoneResponse(params: { lang: string; isOwnerMode: boolean }): Nex
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Pass static CLI skill specification straight through without locale routing.
-  if (pathname === '/cli/skill.md') {
+  // Pass static CLI and public skill specifications straight through without locale routing.
+  if (pathname === '/cli/skill.md' || pathname.startsWith('/skills/')) {
     return NextResponse.next();
   }
 
@@ -784,6 +784,6 @@ export default function middleware(request: NextRequest) {
 // Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|cli/skill\\.md$|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|cli/skill\\.md$|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*|skills/.*).*)'
   ]
 };
