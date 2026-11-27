@@ -9,7 +9,7 @@ import {
   getConfiguredDbRuntime,
   type DbRuntime
 } from '@fastgpt/dal/db/runtime';
-import { createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
+import { createContractBackends, createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
 import { createManagedDbSession, runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 
@@ -303,5 +303,108 @@ describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
     expect(obClose).toHaveBeenCalledTimes(1);
     expect(mongoClose).toHaveBeenCalledTimes(1);
     expect(getConfiguredDbRuntime('mongo')).toBeUndefined();
+  });
+
+  it('allows Mongo-first tokens without oceanbase provider and fails closed under pure oceanbase dialect without fallbackMongo', async () => {
+    const mongoOnlyToken = defineRepoToken('MongoFirstDemoToken', {
+      mongo: () => ({ kind: () => 'mongo-only' })
+    });
+    const proxy = injectRepo(mongoOnlyToken);
+
+    configureDbRuntime({ dialect: 'mongo', mainWriteUrl: 'mongodb://localhost:27017/app' });
+    expect(proxy.kind()).toBe('mongo-only');
+
+    await closeDbRuntime();
+    configureDbRuntime({ dialect: 'oceanbase', mainWriteUrl: 'mysql://root@127.0.0.1:2881/app' });
+    expect(() => proxy.kind()).toThrowError(DbConfigurationError);
+    expect(() => proxy.kind()).toThrow(/MongoFirstDemoToken/);
+  });
+
+  it('requires both non-empty oceanBaseTables and oceanBaseDdls together when enabling OceanBase contract backend', () => {
+    const mongoOnlyBackends = createContractBackends({
+      mongoCollections: [],
+      env: {
+        FASTGPT_TEST_OCEANBASE_URI: 'mysql://root@127.0.0.1:2881/test',
+        FASTGPT_TEST_REQUIRED_OCEANBASE: '1'
+      }
+    });
+    expect(mongoOnlyBackends.map((entry) => entry.name)).toEqual(['mongo']);
+
+    // 只传 oceanBaseTables 缺 oceanBaseDdls（无论有无 SeekDB URI）必须在注册后端前立即报错
+    expect(() =>
+      // @ts-expect-error oceanBaseTables and oceanBaseDdls must be provided together
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: ['demo_items'],
+        env: { FASTGPT_TEST_OCEANBASE_URI: 'mysql://root@127.0.0.1:2881/test' }
+      })
+    ).toThrow(/oceanBaseDdls/);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: ['demo_items'],
+        oceanBaseDdls: [],
+        env: {}
+      })
+    ).toThrow(/oceanBaseDdls/);
+
+    // 只传 oceanBaseDdls 缺 oceanBaseTables 或传入空数组同样在注册前报错
+    expect(() =>
+      // @ts-expect-error oceanBaseTables and oceanBaseDdls must be provided together
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseDdls: ['CREATE TABLE t (_id VARCHAR(24) PRIMARY KEY);'],
+        env: {}
+      })
+    ).toThrow(/oceanBaseTables/);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: [],
+        oceanBaseDdls: ['CREATE TABLE t (_id VARCHAR(24) PRIMARY KEY);'],
+        env: {}
+      })
+    ).toThrow(/oceanBaseTables/);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: [],
+        oceanBaseDdls: [],
+        env: {}
+      })
+    ).toThrow(/oceanBaseTables.*oceanBaseDdls/);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: ['demo_items'],
+        oceanBaseDdls: ['   '],
+        env: {}
+      })
+    ).toThrow(/oceanBaseDdls/);
+
+    // 表名与 DDL 齐全但设置强门禁却缺少 URI 时，抛 FASTGPT_TEST_OCEANBASE_URI 配置错
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: ['demo_items'],
+        oceanBaseDdls: ['CREATE TABLE IF NOT EXISTS demo_items (_id VARCHAR(24) PRIMARY KEY);'],
+        env: { FASTGPT_TEST_REQUIRED_OCEANBASE: '1' }
+      })
+    ).toThrow(/FASTGPT_TEST_OCEANBASE_URI/);
+
+    const dualBackends = createContractBackends({
+      mongoCollections: [],
+      oceanBaseTables: ['demo_items'],
+      oceanBaseDdls: ['CREATE TABLE IF NOT EXISTS demo_items (_id VARCHAR(24) PRIMARY KEY);'],
+      env: {
+        FASTGPT_TEST_OCEANBASE_URI: 'mysql://root@127.0.0.1:2881/test',
+        FASTGPT_TEST_REQUIRED_OCEANBASE: '1'
+      }
+    });
+    expect(dualBackends.map((entry) => entry.name)).toEqual(['mongo', 'oceanbase']);
   });
 });
