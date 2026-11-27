@@ -189,6 +189,35 @@ describe('plugin metadata response schemas', () => {
     expect(upload.name).toBe('Legacy plugin');
     expect(version.versionDescription).toEqual(metadata);
   });
+
+  it('strips unknown locale keys from readmeUrls without overwriting en', () => {
+    const readmeUrls = {
+      en: 'https://example.com/en.md',
+      'tr-TR': 'https://example.com/tr.md'
+    };
+
+    const detail = SystemToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      readmeUrls
+    });
+    const marketplace = MarketplaceToolBaseSchema.parse({
+      type: 'tool',
+      id: 'search-record',
+      toolId: 'search',
+      pluginId: 'search',
+      version: '1.0.0',
+      etag: 'etag',
+      isToolset: false,
+      name: 'Search',
+      description: 'Search tool',
+      icon: 'search.svg',
+      readmeUrls,
+      downloadCount: 0
+    });
+
+    expect(detail.readmeUrls).toEqual({ en: 'https://example.com/en.md' });
+    expect(marketplace.readmeUrls).toEqual({ en: 'https://example.com/en.md' });
+  });
 });
 
 describe('TeamToolDetailSchema', () => {

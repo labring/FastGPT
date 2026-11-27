@@ -18,7 +18,8 @@ export enum LangEnum {
 export type localeType = `${LangEnum}`;
 export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
 
-export const LanguageSchema = z.enum(LocaleList).meta({ description: '用户语言偏好' });
+// 兼容未来新增或历史遗留的未知语言标识，无法识别时回退为英文，避免阻断会话恢复与数据读取。
+export const LanguageSchema = z.enum(LocaleList).catch('en').meta({ description: '用户语言偏好' });
 
 export const langMap = {
   [LangEnum.en]: {

@@ -118,6 +118,23 @@ describe('tokenLogin API', () => {
     expect(res.data.team.notificationAccount).toBeNull();
   });
 
+  it('falls back to en when stored user language is unrecognized', async () => {
+    await MongoUser.collection.updateOne({ _id: testUser._id }, { $set: { language: 'tr-TR' } });
+
+    const res = await Call(tokenLoginApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.language).toBe('en');
+  });
+
   it('should return owner permissions for root session', async () => {
     const res = await Call(tokenLoginApi.default, {
       auth: {
