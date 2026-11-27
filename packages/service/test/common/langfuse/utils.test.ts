@@ -376,16 +376,26 @@ describe('serializeLangfuseTraceOutput', () => {
   });
 
   it('keeps a JSON object array when the serialized output exceeds the size limit', () => {
-    const items: AIChatItemValueItemType[] = Array.from({ length: 12 }, (_, index) => ({
-      tools: [buildToolItem({ id: `tool-${index}`, response: 'x'.repeat(10000) })]
-    }));
+    // 工具投影已剔除 response 载荷，超限场景改用上报仍保留的 text/reasoning 长文本构造；
+    // 两种类型交替阻止纯文本合并，保证 12 个独立项超出 LANGFUSE_MAX_SERIALIZED_LENGTH，
+    // 走到总长裁剪分支。
+    const items: AIChatItemValueItemType[] = Array.from({ length: 12 }, (_, index) => {
+      if (index === 11) return { text: { content: 'final-answer-11' } };
+      if (index % 2 === 0) {
+        return { reasoning: { content: `r-${index}-`.padEnd(10000, 'r') } };
+      }
+      return { text: { content: `x-${index}-`.padEnd(10000, 'x') } };
+    });
 
     const serialized = serializeLangfuseTraceOutput(items);
     const parsed = JSON.parse(serialized);
 
     expect(Array.isArray(parsed)).toBe(true);
     expect(parsed.length).toBeGreaterThan(0);
+    expect(parsed.length).toBeLessThan(12);
     expect(parsed.every((item: unknown) => !!item && typeof item === 'object')).toBe(true);
+    // 裁剪丢弃较早项，必须保留最后一项的完整内容。
+    expect(parsed[parsed.length - 1]).toEqual({ text: { content: 'final-answer-11' } });
     expect(serialized.length).toBeLessThanOrEqual(100000);
   });
 
