@@ -1,66 +1,35 @@
-import { PassThrough } from 'node:stream';
-import { buffer as readBuffer } from 'node:stream/consumers';
 import { expect, it } from 'vitest';
-import { writeXlsx } from '@fastgpt/global/common/file/xlsx/write-xlsx';
-import { parseDatasetBackupRows } from '@fastgpt/service/core/dataset/read';
-import {
-  readXlsxRawText,
-  XLSX_PARSE_LIMITS
-} from '@fastgpt/service/worker/readFile/extension/xlsx';
+import { XLSX_PARSE_LIMITS } from '@fastgpt/service/worker/readFile/extension/xlsx';
+import { backupXlsxLayouts, createBackupXlsxFixture } from './backupXlsx.fixture';
 
-it.each(['sparse', 'legacy explicit blanks', 'dense'] as const)(
-  'restores 50,000 data rows with a 20-column header (%s)',
+const rowCount = 4;
+
+it.each(backupXlsxLayouts)(
+  'restores at the data cell limit and rejects one cell over it (%s)',
   async (layout) => {
-    const dense = layout === 'dense';
-    const indexes = Array.from({ length: 17 }, (_, index) => `Index ${index + 1}`);
-    const destination = new PassThrough();
-    const [, buffer] = await Promise.all([
-      writeXlsx({
-        sheets: [
-          {
-            name: 'Dataset',
-            omitEmptyCells: layout !== 'legacy explicit blanks',
-            *rows() {
-              yield ['q', 'a', ...indexes.map(() => 'index'), 'metadata'];
-              for (let index = 1; index <= 50_000; index += 1) {
-                yield [
-                  `Question ${index}`,
-                  `Answer ${index}`,
-                  ...indexes.map((value) => (dense ? value : '')),
-                  dense || index === 50_000 ? JSON.stringify({ index }) : ''
-                ];
-              }
-            }
-          }
-        ],
-        destination
-      }),
-      readBuffer(destination)
-    ]);
+    const { restore, expectedChunk, columnCount, dataCellCount } = await createBackupXlsxFixture(
+      layout,
+      rowCount
+    );
+    const previousLimits = { ...XLSX_PARSE_LIMITS };
 
-    const previousMaxCells = XLSX_PARSE_LIMITS.maxCells;
-    // 稀疏样本只给 100,001 个数据格额度，全填满的样本用 1,000,000 格，各加实际的 20 格表头。
-    Object.assign(XLSX_PARSE_LIMITS, { maxCells: dense ? 1_000_000 : 100_001 });
     try {
-      const { xlsxRows = [] } = await readXlsxRawText(
-        { extension: 'xlsx', buffer, encoding: 'utf-8' },
-        { sparseRows: true }
+      // 行列上限包含表头，单元格上限只计非空数据。稀疏场景只有问答和最后一行的元数据。
+      Object.assign(XLSX_PARSE_LIMITS, {
+        maxRows: rowCount + 1,
+        maxColumns: columnCount,
+        maxCells: dataCellCount
+      });
+      expect(await restore()).toEqual(
+        Array.from({ length: rowCount }, (_, index) => expectedChunk(index + 1))
       );
-      const chunks = parseDatasetBackupRows({ rows: xlsxRows });
-      expect(chunks).toHaveLength(50_000);
-      expect(
-        chunks.every(
-          ({ q, a, indexes: restoredIndexes, metadata }, index) =>
-            q === `Question ${index + 1}` &&
-            a === `Answer ${index + 1}` &&
-            restoredIndexes.length === (dense ? 17 : 0) &&
-            restoredIndexes.every((value, column) => value === indexes[column]) &&
-            metadata?.index === (dense || index === 49_999 ? index + 1 : undefined)
-        )
-      ).toBe(true);
+
+      Object.assign(XLSX_PARSE_LIMITS, { maxCells: dataCellCount - 1 });
+      await expect(restore()).rejects.toThrow(
+        `XLSX workbook exceeds the maximum data cell limit of ${dataCellCount - 1}`
+      );
     } finally {
-      Object.assign(XLSX_PARSE_LIMITS, { maxCells: previousMaxCells });
+      Object.assign(XLSX_PARSE_LIMITS, previousLimits);
     }
-  },
-  120_000
+  }
 );
