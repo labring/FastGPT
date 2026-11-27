@@ -2,13 +2,14 @@
 
 状态：当前实现
 
-最后核对：2026-11-23
+最后核对：2026-11-27
 
 ## 1. 测试架构与环境配置
 
 Agent Sandbox 集成测试统一收敛在 [`packages/service/test/integrations/sandbox/`](../../../../../packages/service/test/integrations/sandbox)，通过独立配置 [`packages/service/vitest.sandbox.integration.config.ts`](../../../../../packages/service/vitest.sandbox.integration.config.ts) 运行，不混入日常单元测试。
 
 - **基础设施装配**：
+  - `vitest.sandbox.integration.config.ts` 启动时会自动加载仓库根目录 `test/.env.test.local`（若存在，通过 `process.loadEnvFile`），并将 `SANDBOX_INTEGRATION_REDIS_URL` 映射为 `REDIS_URL`。
   - `globalSetup.ts` 读取 `SANDBOX_INTEGRATION_MONGODB_URI`（缺省回退 `MONGODB_URI` 或本地副本集默认连接），为每个测试文件提供独立的 Mongo 副本集测试数据库隔离。
   - `setup.ts` 与 `config.ts` 从环境变量装配内存 `systemInstanceConfig`（`subservice.agentSandbox`）、真实 Redis 与 RustFS/S3 连接，无需手工启动主站 Web 进程。
   - `fixtures.ts` 提供单测例级的远端容器、持久卷、Mongo 记录与 S3 归档清理逻辑，确保并发或失败重跑后不残留脏资源。
@@ -43,7 +44,8 @@ Kubernetes 套件默认跳过，仅在同时满足以下条件时激活：
 | 套件文件 | 适用范围 | 核心覆盖场景 |
 | --- | --- | --- |
 | `fastgpt.integration.test.ts` | 核心业务工具与生命周期故障恢复 | 8 个沙盒工具分发耗时、`sandbox_get_file_url` 真实 Redis 链接、非法 JSON/Schema/路径边界隔离（不污染 runtime）、App 软删拒执行、异常 `provisioning` 回滚、`restoring` 配额保持与 `/archive/extract` 失败同租约立即回滚、停机态保护、超期 `stopping`/`deleting` 状态接管与 S3 失败续删、同用户多 Chat 复用、APT 只读/可写源备份恢复 |
-| `opensandbox-pvc-s3.integration.test.ts` | Docker + 原生卷 + RustFS `.tar.zst` + IDE Agent | `>5 MiB` `$HOME` 经 RustFS Multipart 归档（保留缓存/dotfiles/软链/PAX、容器 `/tmp` 零落盘、S3 `sandbox/archive-v2/` 旧 CoW 世代归档清理与遗留 `sandbox/archive/` 前缀隔离）、空 `$HOME` `204` 短路、`fastgpt-ide-agent` `0600` 口令校验与目录越界拦截、`running`/`stopped` 同卷原地镜像升级与 `aptMirror`、`volume-manager` 鉴权/所有权与两阶段孤儿卷/容器 GC、`agent_sandbox_instances_v2` 未迁移记录 409 拦截与 `agent_sandbox_instances_v3` 运行期物理删除（不写墓碑、不修改 `v2`）、Skill `.zip -> .tar.zst` 导入部署/导出及逃逸软链拒绝 |
+| `opensandbox-pvc-s3.integration.test.ts` | Docker + 原生卷 + RustFS `.tar.zst` + IDE Agent | `>5 MiB` `$HOME` 经 RustFS Multipart 归档（保留缓存/dotfiles/软链/PAX、容器 `/tmp` 零落盘、S3 `sandbox/archive-v2/` 旧 CoW 世代归档清理与遗留 `sandbox/archive/` 前缀隔离）、空 `$HOME` `204` 短路、`fastgpt-ide-agent` `0600` 口令校验与目录越界拦截、`running`/`stopped` 同卷原地镜像升级与 `aptMirror`、`volume-manager` 鉴权/所有权与两阶段孤儿卷/容器 GC、`agent_sandbox_instances_v2` 未迁移记录 409 拦截与 `agent_sandbox_instances_v3` 运行期物理删除（不写墓碑、不修改 `v2`）、Skill `.zip -> .tar.zst` 导入部署/导出及软链跳过/拒绝 |
+| `disk-soft-limit.integration.test.ts` | Docker 持久卷软配额与自救闭环 | `entrypoint.sh` 无 `/tmp/ide-agent.log`、`GET /disk-usage` 仅计量 `$HOME`（排除 `/tmp`）、用户态写守卫 `510007` 与 `sandbox_write_file`/`sandbox_edit_file` 拦截指引、Kubernetes 运行时零开销跳过、IDE WS `/fs` `-32005` 拦截（放行只读）、`/terminal` 超限 `[Disk Quota Exceeded]` 与 `RLIMIT_FSIZE=0` 自救降级、`sandbox_shell` `prlimit --fsize=0:0`（退出码 `153` 与清理自救）及清理后容器侧自动重扫即时解锁、异步 `pty-process` `pre_exec` `RLIMIT_FSIZE` 生效验证 |
 | `opensandbox-k8s.integration.test.ts` | Kubernetes 真集群 | Pod limits 与超售 `resourceRequests`、下发省略 `ephemeral-storage`、PVC 挂载 `/home/sandbox` 与 `fsGroup=10001`、无 egress sidecar、local-path PV 跨停机/唤醒持久化与删 PVC 后冷恢复、`CiliumNetworkPolicy` 封堵内网/元数据 CIDR 并放行 CoreDNS、`K8sVolumeDriver` `Terminating` 等待/存量兼容及两阶段孤儿 PVC/Pod GC |
 | `migration-4180.integration.test.ts` | 4.18.0 升级迁移与清理 | 真实 Mongo 副本集 + RustFS 下的第 7 步迁移（只读读取 `agent_sandbox_instances_v2`，将 `running`/`stopped` Devbox 静止化打包、历史 S3 `sandbox/archive/*/package.zip`（含空包/PAX/UTF-8/修剪规则）流式转码及旧 `/workspace` 卷打包写入 `agent_sandbox_instances_v3` 与 `sandbox/archive-v2/`，全程保留 `v2` 记录、远端 `pause` Devbox、旧持久卷与旧 `package.zip` 不动）与 Skill 包升级，并在 Docker OpenSandbox 基于 `v3` 冷恢复验收后执行第 8 步清理任务（删除远端 Devbox、旧 `/workspace` 卷与旧 `package.zip`，跳过 `v3` 在用 PVC/容器并保留 `v2` 集合只读不删）；覆盖部分失败写入 `failedRecords` 及幂等重试 |
 | `skill-import.integration.test.ts` | Skill 导入编辑态初始化 | 导入未携带 `.gitignore` 的 Skill 包后首次进入 Skill Edit Sandbox 的工作区初始化验证 |
