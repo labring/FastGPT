@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildTeamMemberNameSortKey,
-  isValidTeamMemberNameSortKey
-} from '@fastgpt/service/support/user/team/sortKey';
+import { isValidPinyinNameSortKey } from '@fastgpt/service/common/string/sortKey';
+import { buildTeamMemberNameSortKey } from '@fastgpt/service/support/user/team/sortKey';
 
 const sortByKey = (names: string[]) =>
   [...names].sort((a, b) => {
@@ -81,6 +79,14 @@ describe('buildTeamMemberNameSortKey', () => {
       'li',
       'lily'
     ]);
+    expect(sortByKey(['A中说明', 'Ab说明', '2阿明', '2B', '#中', '#b'])).toEqual([
+      'Ab说明',
+      'A中说明',
+      '2B',
+      '2阿明',
+      '#b',
+      '#中'
+    ]);
   });
 
   it('normalizes whitespace, control characters, empty/non-string values, and caps index key size', () => {
@@ -96,10 +102,10 @@ describe('buildTeamMemberNameSortKey', () => {
 
     const longKey = buildTeamMemberNameSortKey('张'.repeat(500));
     expect(Buffer.byteLength(longKey, 'utf8')).toBeLessThan(512);
-    expect(isValidTeamMemberNameSortKey(longKey)).toBe(true);
-    expect(isValidTeamMemberNameSortKey('')).toBe(false);
-    expect(isValidTeamMemberNameSortKey(null)).toBe(false);
-    expect(isValidTeamMemberNameSortKey('0:legacy')).toBe(false);
-    expect(isValidTeamMemberNameSortKey('9:invalid')).toBe(false);
+    expect(isValidPinyinNameSortKey(longKey)).toBe(true);
+    expect(isValidPinyinNameSortKey('')).toBe(false);
+    expect(isValidPinyinNameSortKey(null)).toBe(false);
+    expect(isValidPinyinNameSortKey('0:legacy')).toBe(false);
+    expect(isValidPinyinNameSortKey('9:invalid')).toBe(false);
   });
 });

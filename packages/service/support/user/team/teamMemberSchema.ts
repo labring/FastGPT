@@ -1,4 +1,3 @@
-import type { UpdateQuery, UpdateWithAggregationPipeline } from 'mongoose';
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type';
@@ -9,6 +8,7 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { attachNameSortKeyHooks } from '../../../common/mongo/nameSortKeyHook';
 import { buildTeamMemberNameSortKey } from './sortKey';
 
 const TeamMemberSchema = new Schema({
@@ -92,50 +92,7 @@ TeamMemberSchema.virtual('user', {
   justOne: true
 });
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const hasExplicitSortKey = (target: unknown): boolean =>
-  isPlainObject(target) && Object.hasOwn(target, 'nameSortKey') && target.nameSortKey !== undefined;
-
-const syncSortKeyOnOperatorPayload = (target: unknown) => {
-  if (!isPlainObject(target)) return;
-  if (typeof target.name === 'string' && !hasExplicitSortKey(target)) {
-    target.nameSortKey = buildTeamMemberNameSortKey(target.name);
-  }
-};
-
-/**
- * 在 Mongoose 更新载荷包含 `name` 时自动补齐 `nameSortKey`，防止未显式传排序键的写操作造成漂移。
- * 注意：`bulkWrite` 与聚合管道更新不走此分支，批写入口仍须显式写入 `nameSortKey`。
- */
-const syncNameSortKeyInUpdate = (
-  update: UpdateQuery<TeamMemberType> | UpdateWithAggregationPipeline | null
-) => {
-  if (!update || Array.isArray(update)) return;
-
-  if (
-    typeof update.name === 'string' &&
-    update.nameSortKey === undefined &&
-    !hasExplicitSortKey(update.$set)
-  ) {
-    update.nameSortKey = buildTeamMemberNameSortKey(update.name);
-  }
-  syncSortKeyOnOperatorPayload(update.$set);
-  syncSortKeyOnOperatorPayload(update.$setOnInsert);
-};
-
-TeamMemberSchema.pre('save', function (next) {
-  if (this.isModified('name') || !this.nameSortKey) {
-    this.nameSortKey = buildTeamMemberNameSortKey(this.name);
-  }
-  next();
-});
-
-TeamMemberSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function (next) {
-  syncNameSortKeyInUpdate(this.getUpdate());
-  next();
-});
+attachNameSortKeyHooks<TeamMemberType>(TeamMemberSchema, buildTeamMemberNameSortKey);
 
 defineIndex(TeamMemberSchema, {
   key: { teamId: 1 },

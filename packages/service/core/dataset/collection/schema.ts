@@ -7,8 +7,19 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { attachNameSortKeyHooks } from '../../../common/mongo/nameSortKeyHook';
+import { buildDatasetCollectionNameSortKey } from './sortKey';
 
 export const DatasetColCollectionName = 'dataset_collections';
+
+/**
+ * MongoDB 持久化层集合文档类型。
+ * `nameSortKey` 仅作内部排序索引字段，不加入对外共享的 `DatasetCollectionSchema`（避免透出至详情/引用出参与 SDK）。
+ * v4.18.0 后台迁移过渡期暂保持可选，下一版本确认全量回填后改为必填。
+ */
+export type DatasetCollectionMongoSchemaType = DatasetCollectionSchemaType & {
+  nameSortKey?: string;
+};
 
 const DatasetCollectionSchema = new Schema({
   parentId: {
@@ -41,6 +52,16 @@ const DatasetCollectionSchema = new Schema({
   name: {
     type: String,
     required: true
+  },
+  /**
+   * 基于集合名生成的规范化拼音排序键（0:字母/拼音、1:数字、2:其他），用于集合列表按名称索引排序分页。
+   * 存量文档由自动系统迁移任务分批回填。
+   */
+  nameSortKey: {
+    type: String,
+    default: function (this: { name?: string } | null | undefined) {
+      return buildDatasetCollectionNameSortKey(this?.name);
+    }
   },
   tags: {
     type: [],
@@ -101,6 +122,11 @@ DatasetCollectionSchema.virtual('dataset', {
   justOne: true
 });
 
+attachNameSortKeyHooks<DatasetCollectionMongoSchemaType>(
+  DatasetCollectionSchema,
+  buildDatasetCollectionNameSortKey
+);
+
 // auth file
 defineIndex(DatasetCollectionSchema, { key: { teamId: 1, fileId: 1 } });
 
@@ -111,6 +137,21 @@ defineIndex(DatasetCollectionSchema, {
     datasetId: 1,
     parentId: 1,
     updateTime: -1
+  }
+});
+
+// 集合列表按名称拼音排序分页（目录浏览正向/逆向索引扫描，过渡期 null 探测复用同前缀）
+defineIndex(DatasetCollectionSchema, {
+  key: {
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    nameSortKey: 1,
+    _id: 1
+  },
+  options: {
+    name: 'fg_dataset_col_parent_name_sort',
+    background: true
   }
 });
 
@@ -155,7 +196,7 @@ defineIndex(DatasetCollectionSchema, {
   options: { partialFilterExpression: { forbid: true } }
 });
 
-export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(
+export const MongoDatasetCollection = getMongoModel<DatasetCollectionMongoSchemaType>(
   DatasetColCollectionName,
   DatasetCollectionSchema
 );

@@ -120,9 +120,10 @@
   "migrations.20261127_cleanup_agent_engine_config.cleanup": "Eski motor yapılandırmasını temizle",
   "migrations.20261127_cleanup_agent_engine_config.validation": "Temizleme sonucunu doğrula",
   "migrations.20261127_cleanup_agent_engine_config.result": "{{cleanedDocumentCount}} özellik yapılandırması belgesi temizlendi, {{removedFieldCount}} eski motor yapılandırması kaldırıldı.",
-  "migrations.20261127_backfill_team_member_sort_key.name": "Ekip üyesi pinyin sıralama anahtarlarını geriye dönük doldur",
-  "migrations.20261127_backfill_team_member_sort_key.description": "Başlangıçtan sonra arka planda bağımsız olarak mevcut ekip üyelerini gruplar halinde tarar ve nameSortKey alanını geriye dönük doldurur (harf/pinyin öncelikli, aynı baş harfte Çince karakterler önce, rakam ve semboller sonda olacak şekilde kodlanır); üye listesinin dizinle verimli sıralanması ve sayfalanması için kontrol noktasından devam etmeyi ve eşzamanlı ad değişikliklerinde üzerine yazmayı önlemeyi destekler.",
-  "migrations.20261127_backfill_team_member_sort_key.members": "Üye sıralama anahtarlarını geriye dönük doldur",
-  "migrations.20261127_backfill_team_member_sort_key.validation": "Sıralama anahtarı geriye dönük doldurma sonucunu doğrula",
-  "migrations.20261127_backfill_team_member_sort_key.result": "{{scannedCount}} ekip üyesi kaydı tarandı, {{backfilledCount}} sıralama anahtarı geriye dönük dolduruldu."
+  "migrations.20261127_backfill_name_sort_key.name": "Ad pinyin sıralama anahtarlarını geriye dönük doldur",
+  "migrations.20261127_backfill_name_sort_key.description": "Başlangıçtan sonra arka planda bağımsız olarak mevcut ekip üyelerini ve veri kümesi koleksiyonlarını gruplar halinde tarar ve nameSortKey alanını geriye dönük doldurur (harf/pinyin öncelikli, aynı baş harfte Çince karakterler önce, rakam ve semboller sonda olacak şekilde kodlanır); üye ve koleksiyon listelerinin dizinle verimli sıralanması ve sayfalanması için kontrol noktasından devam etmeyi ve eşzamanlı ad değişikliklerinde üzerine yazmayı önlemeyi destekler.",
+  "migrations.20261127_backfill_name_sort_key.members": "Üye sıralama anahtarlarını geriye dönük doldur",
+  "migrations.20261127_backfill_name_sort_key.collections": "Koleksiyon sıralama anahtarlarını geriye dönük doldur",
+  "migrations.20261127_backfill_name_sort_key.validation": "Sıralama anahtarı geriye dönük doldurma sonucunu doğrula",
+  "migrations.20261127_backfill_name_sort_key.result": "{{memberScannedCount}} ekip üyesi ({{memberBackfilledCount}} geriye dönük dolduruldu) ve {{collectionScannedCount}} veri kümesi koleksiyonu ({{collectionBackfilledCount}} geriye dönük dolduruldu) tarandı."
 }

@@ -18,7 +18,7 @@ import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandb
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
 import { cleanupAgentEngineConfig } from './tasks/4180/20261127_cleanup_agent_engine_config';
-import { backfillTeamMemberSortKey } from './tasks/4180/20261127_backfill_team_member_sort_key';
+import { backfillNameSortKey } from './tasks/4180/20261127_backfill_name_sort_key';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -435,30 +435,30 @@ export const systemMigrations = [
     run: cleanupAgentEngineConfig
   },
   {
-    id: '20261127_backfill_team_member_sort_key',
+    id: '20261127_backfill_name_sort_key',
     version: '4.18.0',
-    // 独立后台分批回填成员拼音排序键，不阻塞业务启动；回填完成前列表查询自动兼容兜底。
+    // 独立后台分批回填团队成员与知识库集合的拼音排序键，不阻塞业务启动；回填完成前查询自动兼容兜底。
     independent: true,
-    nameKey: i18nT('system_migration:migrations.20261127_backfill_team_member_sort_key.name'),
+    nameKey: i18nT('system_migration:migrations.20261127_backfill_name_sort_key.name'),
     descriptionKey: i18nT(
-      'system_migration:migrations.20261127_backfill_team_member_sort_key.description'
+      'system_migration:migrations.20261127_backfill_name_sort_key.description'
     ),
-    resultKey: i18nT('system_migration:migrations.20261127_backfill_team_member_sort_key.result'),
+    resultKey: i18nT('system_migration:migrations.20261127_backfill_name_sort_key.result'),
     progressSteps: [
       {
         key: 'members',
-        labelKey: i18nT(
-          'system_migration:migrations.20261127_backfill_team_member_sort_key.members'
-        )
+        labelKey: i18nT('system_migration:migrations.20261127_backfill_name_sort_key.members')
+      },
+      {
+        key: 'collections',
+        labelKey: i18nT('system_migration:migrations.20261127_backfill_name_sort_key.collections')
       },
       {
         key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20261127_backfill_team_member_sort_key.validation'
-        )
+        labelKey: i18nT('system_migration:migrations.20261127_backfill_name_sort_key.validation')
       }
     ],
-    run: backfillTeamMemberSortKey
+    run: backfillNameSortKey
   }
 ] as const satisfies readonly SystemMigration[];
 

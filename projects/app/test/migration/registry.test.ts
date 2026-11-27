@@ -27,7 +27,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261125_backfill_model_reasoning_effort_list',
       '20261120_clean_api_dataset_system_root',
       '20261127_cleanup_agent_engine_config',
-      '20261127_backfill_team_member_sort_key'
+      '20261127_backfill_name_sort_key'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -69,7 +69,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261125_backfill_model_reasoning_effort_list',
       '20261120_clean_api_dataset_system_root',
       '20261127_cleanup_agent_engine_config',
-      '20261127_backfill_team_member_sort_key'
+      '20261127_backfill_name_sort_key'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -207,13 +207,13 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
   });
 
-  it('registers v4.18.0 team member sort key backfill at tail as an independent task', () => {
+  it('registers v4.18.0 name sort key backfill at tail as an independent multi-step task', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
-      id: '20261127_backfill_team_member_sort_key',
+      id: '20261127_backfill_name_sort_key',
       version: '4.18.0',
       independent: true,
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
+      progressSteps: [{ key: 'members' }, { key: 'collections' }, { key: 'validation' }]
     });
     expect(task).not.toHaveProperty('blockStartup', true);
     expect(task).not.toHaveProperty('dependsOn');
@@ -229,7 +229,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes',
       '20261127_cleanup_agent_engine_config',
-      '20261127_backfill_team_member_sort_key'
+      '20261127_backfill_name_sort_key'
     ]);
   });
 

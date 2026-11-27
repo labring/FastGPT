@@ -16,6 +16,7 @@ import {
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { queryDatasetCollectionListPage } from '@fastgpt/service/core/dataset/collection/mongo/collectionQuery';
 import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
 import { buildCollectionListTagMatch } from '@fastgpt/service/core/dataset/collection/tagFilter';
 import {
@@ -396,42 +397,17 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     externalFileId: 1,
     apiFileId: 1,
     syncChildren: 1
-  };
+  } as const;
 
-  const sortDirection = sortOrder === 'desc' ? -1 : 1;
-
-  /**
-   * 当前页集合。
-   * 名称排序用 lower(name) 聚合排序：大小写不敏感，中文按字符码点排序。
-   * 不使用 query 级 collation，避免它同时改变标签/搜索的匹配语义，导致列表与 countDocuments 不一致。
-   */
-  const queryCollectionPage = async (): Promise<DatasetCollectionSchemaType[]> => {
-    if (sortBy === 'name') {
-      return MongoDatasetCollection.aggregate<DatasetCollectionSchemaType>(
-        [
-          { $match: match },
-          { $addFields: { nameSortKey: { $toLower: '$name' } } },
-          // 名称忽略大小写后可能相同，用唯一 ID 固定同值顺序，避免跨页重复或漏项。
-          { $sort: { nameSortKey: sortDirection, _id: sortDirection } },
-          { $skip: offset },
-          { $limit: pageSize },
-          { $project: selectField }
-        ],
-        { ...readFromSecondary }
-      );
-    }
-
-    return (
-      MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
-        .select(selectField)
-        // 不加 _id 兜底键：默认 updateTime 排序依赖 (teamId,datasetId,parentId,updateTime) 索引，
-        // 追加非索引字段会让 Mongo 退化为阻塞排序，分页越深代价越高。
-        .sort({ [sortBy]: sortDirection })
-        .skip(offset)
-        .limit(pageSize)
-        .lean()
-    );
-  };
+  const queryCollectionPage = () =>
+    queryDatasetCollectionListPage({
+      match,
+      selectField,
+      sortBy,
+      sortOrder,
+      offset,
+      pageSize
+    });
 
   /** 分页后批量读取逐 Collection 权限，避免权限查询随 Dataset 集合总量增长。 */
   const loadCollectionPermissionMap = async (collections: DatasetCollectionSchemaType[]) => {

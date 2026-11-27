@@ -44,6 +44,13 @@ describe('team member query & schema update hook', () => {
     await expect(
       MongoTeamMember.updateOne({ _id: created._id }, [{ $set: { updateTime: new Date() } }])
     ).resolves.toBeDefined();
+
+    // insertMany 未显式传 name 时应回落到 Schema default ('Member') 再生成 nameSortKey，避免被预写为 '2:'
+    const [insertedDefault] = await MongoTeamMember.insertMany([
+      { teamId, userId: new Types.ObjectId(), status: 'active' }
+    ]);
+    expect(insertedDefault.name).toBe('Member');
+    expect(insertedDefault.nameSortKey).toBe(buildTeamMemberNameSortKey('Member'));
   });
 
   it('normalizes uppercase ObjectIds for pinning/filtering, projects narrow fields, and uses index-only sort for legacy waiting bucket', async () => {

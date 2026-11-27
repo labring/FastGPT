@@ -120,9 +120,10 @@
   "migrations.20261127_cleanup_agent_engine_config.cleanup": "清理历史引擎配置",
   "migrations.20261127_cleanup_agent_engine_config.validation": "校验清理结果",
   "migrations.20261127_cleanup_agent_engine_config.result": "已清理 {{cleanedDocumentCount}} 条功能配置文档，移除 {{removedFieldCount}} 项历史引擎配置。",
-  "migrations.20261127_backfill_team_member_sort_key.name": "回填团队成员拼音排序键",
-  "migrations.20261127_backfill_team_member_sort_key.description": "启动后在后台独立分批扫描存量团队成员并回填 nameSortKey（按字母/拼音优先、同首字母中文在前、数字与符号沉底编码），支持断点续跑与并发改名防覆盖，用于成员列表按索引高效排序分页。",
-  "migrations.20261127_backfill_team_member_sort_key.members": "回填成员排序键",
-  "migrations.20261127_backfill_team_member_sort_key.validation": "校验排序键回填结果",
-  "migrations.20261127_backfill_team_member_sort_key.result": "已扫描 {{scannedCount}} 条团队成员记录，回填排序键 {{backfilledCount}} 条。"
+  "migrations.20261127_backfill_name_sort_key.name": "回填名称拼音排序键",
+  "migrations.20261127_backfill_name_sort_key.description": "启动后在后台独立分批扫描存量团队成员与知识库集合并回填 nameSortKey（按字母/拼音优先、同首字母中文在前、数字与符号沉底编码），支持断点续跑与并发改名防覆盖，用于成员列表与集合列表按索引高效排序分页。",
+  "migrations.20261127_backfill_name_sort_key.members": "回填成员排序键",
+  "migrations.20261127_backfill_name_sort_key.collections": "回填集合排序键",
+  "migrations.20261127_backfill_name_sort_key.validation": "校验排序键回填结果",
+  "migrations.20261127_backfill_name_sort_key.result": "已扫描 {{memberScannedCount}} 条团队成员（回填 {{memberBackfilledCount}} 条）及 {{collectionScannedCount}} 条知识库集合（回填 {{collectionBackfilledCount}} 条）。"
 }
