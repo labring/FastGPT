@@ -1,6 +1,12 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  extractDeepestInteractive,
+  isValidInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 
 const LANGFUSE_MAX_STRING_LENGTH = 10000;
 const LANGFUSE_MAX_ARRAY_LENGTH = 100;
@@ -195,56 +201,78 @@ export const getLangfuseTraceOutput = (
 };
 
 /**
- * 叶子交互 params 的展示字段白名单：上报时只投影这些字段。
- * 覆盖全部叶子交互类型（userSelect / userInput / paymentPause / agentAsk / workflowBuilderPreview）；
- * 未在白名单内的字段（含未来新增类型携带的未知载荷）一律不上报，按遥测脱敏规范默认拒绝。
+ * trace.output 中交互的上报形状：type + 结构化 params。
+ * 这是投影后的独立形状，不承载调度字段，也不等同完整运行时交互。
  */
-const langfuseInteractiveDisplayParamsKeys = new Set([
-  // userSelect / userInput / paymentPause 的展示说明
-  'description',
-  // userSelect
-  'userSelectOptions',
-  'userSelectedVal',
-  // userInput
-  'inputForm',
-  'submitted',
-  // paymentPause
-  'continue',
-  // agentAsk / workflowBuilderPreview：前端展示解析的原始工具参数
-  'toolCallId',
-  'arguments'
-]);
+type LangfuseTraceInteractiveType = {
+  type: InteractiveNodeResponseType['type'];
+  params: Record<string, unknown>;
+};
 
 /**
- * 上报出口只投影“最终展示交互”所需字段，不变量：任何续跑快照与调度状态不得进入 trace.output。
+ * 按叶子类型投影遥测所需的结构信息，剔除运行时值。
+ *
+ * 动态选项（userSelectOptions）与表单字段可引用上游文本（如工作流开始节点的完整用户输入），
+ * 模型工具参数（arguments）可携带会话上下文，一律不上报；只保留静态配置结构：
+ * - userSelect / userInput / paymentPause：description 为工作流编辑器中的静态文案；
+ *   userInput 的 inputForm 仅保留字段名/标签/类型/必填。
+ * - agentAsk / workflowBuilderPreview：仅保留工具调用 ID。
+ */
+const projectLangfuseInteractiveParams = (
+  leaf: InteractiveNodeResponseType
+): Record<string, unknown> => {
+  switch (leaf.type) {
+    case 'userSelect':
+      return { description: leaf.params.description };
+    case 'userInput':
+      return {
+        description: leaf.params.description,
+        inputForm: leaf.params.inputForm.map(({ key, label, type, required }) => ({
+          key,
+          label,
+          type,
+          required
+        }))
+      };
+    case 'paymentPause':
+      return { description: leaf.params.description, continue: leaf.params.continue };
+    case 'agentAsk':
+    case 'workflowBuilderPreview':
+      return { toolCallId: leaf.params.toolCallId };
+    default:
+      return {};
+  }
+};
+
+/**
+ * 交互载荷判别：消息项 interactive 字段是宽联合（含旧版字符串副本、plan 状态等形状），
+ * 只有“对象且带字符串 type”的载荷才进入解包与叶子校验。
+ */
+const isLangfuseInteractivePayload = (value: unknown): value is WorkflowInteractiveResponseType =>
+  !!value &&
+  typeof value === 'object' &&
+  !Array.isArray(value) &&
+  typeof (value as { type?: unknown }).type === 'string';
+
+/**
+ * 上报出口只投影“最终展示交互”的结构信息，不变量：续跑快照、调度状态与运行时用户输入
+ * 不得进入 trace.output。
  *
  * 1. 复用 extractDeepestInteractive 解包嵌套包装（childrenInteractive / loopInteractive /
- *    loopRunInteractive 等），loopHistory / loopResult 等内部续跑快照（可携带上游用户输入）
- *    随整层包装一起丢弃。
- * 2. 叶子交互按 type + params 白名单重建；entryNodeIds / nodeOutputs / memoryEdges 等调度字段
- *    与未列入白名单的 params 字段一律不上报。
+ *    loopRunInteractive 等），loopHistory / loopResult 等内部续跑快照随整层包装一起丢弃。
+ * 2. 用 isValidInteractive（叶子 Schema 校验）收窄解包结果，非叶子或载荷不完整的交互不上报。
+ * 3. 按叶子类型投影结构化 params（见 projectLangfuseInteractiveParams）。
  */
-const projectLangfuseInteractive = (value: unknown): AIChatItemValueItemType['interactive'] => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+const projectLangfuseInteractive = (value: unknown): LangfuseTraceInteractiveType | undefined => {
+  if (!isLangfuseInteractivePayload(value)) return undefined;
 
-  const leaf = extractDeepestInteractive(value as WorkflowInteractiveResponseType);
-  if (!leaf || typeof leaf !== 'object' || Array.isArray(leaf) || typeof leaf.type !== 'string') {
-    return undefined;
-  }
-
-  const params =
-    leaf.params && typeof leaf.params === 'object' && !Array.isArray(leaf.params)
-      ? Object.fromEntries(
-          Object.entries(leaf.params as Record<string, unknown>).filter(([key]) =>
-            langfuseInteractiveDisplayParamsKeys.has(key)
-          )
-        )
-      : undefined;
+  const leaf = extractDeepestInteractive(value);
+  if (!isValidInteractive(leaf)) return undefined;
 
   return {
     type: leaf.type,
-    ...(params && Object.keys(params).length > 0 ? { params } : {})
-  } as AIChatItemValueItemType['interactive'];
+    params: projectLangfuseInteractiveParams(leaf)
+  };
 };
 
 /** 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。 */

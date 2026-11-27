@@ -171,27 +171,24 @@ describe('serializeLangfuseTraceOutput', () => {
 
     const serialized = serializeLangfuseTraceOutput([{ interactive }]);
 
+    // 动态选项可引用上游文本，只保留静态结构信息，选项值不上报。
     expect(JSON.parse(serialized)).toEqual([
       {
         interactive: {
           type: 'userSelect',
-          params: {
-            description: '请选择下一步操作',
-            userSelectOptions: [
-              { key: 'optionA', value: 'A' },
-              { key: 'optionB', value: 'B' }
-            ]
-          }
+          params: { description: '请选择下一步操作' }
         }
       }
     ]);
-    // 脱敏不变量：续跑快照、上游用户输入与调度状态不得出现在序列化结果中。
+    // 脱敏不变量：续跑快照、上游用户输入、选项值与调度状态不得出现在序列化结果中。
     expect(serialized).not.toContain('loopHistory');
     expect(serialized).not.toContain('上一轮用户输入');
     expect(serialized).not.toContain('customOutputs');
     expect(serialized).not.toContain('pendingIterationSummary');
     expect(serialized).not.toContain('entryNodeIds');
     expect(serialized).not.toContain('nodeOutputs');
+    expect(serialized).not.toContain('userSelectOptions');
+    expect(serialized).not.toContain('optionA');
   });
 
   it('drops loopResult snapshots for loopInteractive and keeps only the leaf params', () => {
@@ -231,20 +228,57 @@ describe('serializeLangfuseTraceOutput', () => {
           type: 'userInput',
           params: {
             description: '请补充表单',
+            // 表单只保留结构信息：字段名/标签/类型/必填；valueType 等载荷与 submitted 状态不上报。
             inputForm: [
               {
                 key: 'name',
                 label: '姓名',
                 type: FlowNodeInputTypeEnum.input,
-                valueType: WorkflowIOValueTypeEnum.string,
                 required: true
               }
-            ],
-            submitted: false
+            ]
           }
         }
       }
     ]);
+  });
+
+  it('drops agentAsk tool arguments and keeps only the tool call id', () => {
+    const interactive: WorkflowInteractiveResponseType = {
+      type: 'agentAsk',
+      entryNodeIds: ['agentNodeId'],
+      memoryEdges: [],
+      nodeOutputs: [
+        {
+          nodeId: 'agentNodeId',
+          key: NodeOutputKeyEnum.userChatInput,
+          value: '上游用户输入'
+        }
+      ],
+      params: {
+        toolCallId: 'call-1',
+        // 模型原始工具参数可携带会话上下文，不得进入 trace。
+        arguments: JSON.stringify({
+          reason: '需要用户补充信息',
+          blockerType: 'missing_required_input',
+          question: '请确认目标城市',
+          options: ['北京', '上海']
+        })
+      }
+    };
+
+    const serialized = serializeLangfuseTraceOutput([{ interactive }]);
+
+    expect(JSON.parse(serialized)).toEqual([
+      {
+        interactive: {
+          type: 'agentAsk',
+          params: { toolCallId: 'call-1' }
+        }
+      }
+    ]);
+    expect(serialized).not.toContain('arguments');
+    expect(serialized).not.toContain('目标城市');
   });
 
   it('keeps recent complete items when the count exceeds the array limit', () => {
