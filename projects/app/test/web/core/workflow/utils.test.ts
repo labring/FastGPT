@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildToolNodeVersionUpdatePatch,
   filterSensitiveNodesData,
-  mergeToolNodeVersionTemplate,
   splitToolInputsByMode
 } from '@/web/core/workflow/utils';
 import {
@@ -272,7 +272,7 @@ describe('filterSensitiveNodesData', () => {
   });
 });
 
-describe('mergeToolNodeVersionTemplate', () => {
+describe('buildToolNodeVersionUpdatePatch', () => {
   const baseTemplate: FlowNodeTemplateType = {
     id: 'template-id',
     pluginId: 'systemTool-search',
@@ -282,43 +282,82 @@ describe('mergeToolNodeVersionTemplate', () => {
     avatar: '/template.svg',
     metadataLocale: 'en',
     version: '2.0.0',
-    inputs: [],
+    courseUrl: 'https://example.com/course',
+    readmeUrl: 'https://example.com/readme.md',
+    userGuide: 'guide',
+    inputs: [
+      {
+        key: 'query',
+        label: 'Template Query',
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        value: ''
+      }
+    ],
     outputs: []
   };
 
-  it('preserves existing unrecognized metadataLocale when switching tool versions on an older instance', () => {
-    const merged = mergeToolNodeVersionTemplate({
+  it('preserves submission-time metadataLocale, migrated inputs, and strips view-only fields', () => {
+    const patch = buildToolNodeVersionUpdatePatch({
       current: {
+        nodeId: 'tool-node-1',
+        pluginId: 'systemTool-search',
+        flowNodeType: FlowNodeTypeEnum.tool,
         name: 'Custom Name',
         intro: 'Custom Intro',
         avatar: '/custom.svg',
         metadataLocale: 'tr-TR',
-        toolConfig: undefined
+        version: '1.0.0',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Saved Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.input,
+            value: 'saved-value'
+          }
+        ],
+        outputs: []
       },
       template: baseTemplate
     });
 
-    expect(merged).toMatchObject({
+    expect(patch).toMatchObject({
+      nodeId: 'tool-node-1',
       name: 'Custom Name',
       intro: 'Custom Intro',
       avatar: '/custom.svg',
       metadataLocale: 'tr-TR',
-      version: '2.0.0'
+      version: '2.0.0',
+      inputs: [
+        expect.objectContaining({
+          key: 'query',
+          label: 'Saved Query',
+          value: 'saved-value'
+        })
+      ]
     });
+    expect(patch).not.toHaveProperty('courseUrl');
+    expect(patch).not.toHaveProperty('readmeUrl');
+    expect(patch).not.toHaveProperty('userGuide');
   });
 
   it('adopts template metadataLocale when legacy node has no metadataLocale', () => {
-    const merged = mergeToolNodeVersionTemplate({
+    const patch = buildToolNodeVersionUpdatePatch({
       current: {
+        nodeId: 'tool-node-2',
+        pluginId: 'systemTool-search',
+        flowNodeType: FlowNodeTypeEnum.tool,
         name: 'Legacy Node',
         intro: 'Legacy Intro',
         avatar: '/legacy.svg',
         metadataLocale: undefined,
-        toolConfig: undefined
+        version: '1.0.0',
+        inputs: [],
+        outputs: []
       },
       template: baseTemplate
     });
 
-    expect(merged.metadataLocale).toBe('en');
+    expect(patch.metadataLocale).toBe('en');
   });
 });

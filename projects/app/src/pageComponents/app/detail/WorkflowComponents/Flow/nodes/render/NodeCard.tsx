@@ -13,7 +13,7 @@ import {
   useWorkflowOverlayValue,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
-import { mergeToolNodeVersionTemplate, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { buildToolNodeVersionUpdatePatch, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
   getWorkflowIssueUIStatus,
   useWorkflowIssueTranslation
@@ -31,7 +31,6 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import type {
-  DeepReadonly,
   WorkflowNodeData,
   WorkflowNodeSnapshot
 } from '@fastgpt/global/core/workflow/editor/types';
@@ -74,8 +73,6 @@ import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { omit } from 'lodash-es';
-import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
@@ -856,31 +853,16 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
         });
 
         if (!!template) {
-          const versionTemplate = mergeToolNodeVersionTemplate({
-            current: node,
-            template
-          });
-          // 切换版本 = 用新版本模板整体覆盖节点数据，保留位置、折叠与已配置的工具输入。
+          // 切换版本 = 用新版本模板整体覆盖节点数据，保留位置、折叠、原语言与已配置的工具输入。
           // adapter 没有整节点替换句柄，这里拼出完整 patch 走 updateNode：Runtime 会用当前
           // Node View 覆盖 patch 里的 position/isFolded，教程地址等视图字段也不进文档。
-          // 覆盖基线取派发瞬间的记录：拉模板是异步的，用渲染期快照会把期间的其他写入冲掉。
-          nodeActions?.updateNode((current) => {
-            const sourceInputMap = new Map(current.inputs.map((input) => [input.key, input]));
-            return omit(
-              {
-                ...current,
-                ...versionTemplate,
-                metadataLocale: current.metadataLocale ?? template.metadataLocale,
-                inputs: versionTemplate.inputs.map((input) =>
-                  migrateToolInputConfig({
-                    input,
-                    sourceInput: sourceInputMap.get(input.key) as FlowNodeInputItemType | undefined
-                  })
-                )
-              },
-              ['debugResult', 'searchedText', 'courseUrl', 'readmeUrl', 'userGuide']
-            ) as Partial<DeepReadonly<WorkflowNodeData>>;
-          });
+          // 覆盖基线取派发瞬间的 current：拉模板是异步的，用渲染期快照会把期间的其他写入冲掉。
+          nodeActions?.updateNode((current) =>
+            buildToolNodeVersionUpdatePatch({
+              current,
+              template
+            })
+          );
         }
       }
     },

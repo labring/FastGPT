@@ -1,5 +1,6 @@
 import { AppToolSourceEnum } from '../tool/constants';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
+import type { DeepReadonly } from '../../workflow/editor/types';
 import type { NodeToolConfigType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
@@ -256,7 +257,7 @@ export const mergeToolSetChildDescriptions = ({
   savedToolConfig,
   templateToolConfig
 }: {
-  savedToolConfig?: NodeToolConfigType;
+  savedToolConfig?: DeepReadonly<NodeToolConfigType>;
   templateToolConfig?: NodeToolConfigType;
 }) => {
   if (!templateToolConfig) return templateToolConfig;
@@ -267,8 +268,8 @@ export const mergeToolSetChildDescriptions = ({
     getKey
   }: {
     templateList: T[];
-    savedList: T[] | undefined;
-    getKey: (tool: T) => string;
+    savedList: readonly DeepReadonly<T>[] | undefined;
+    getKey: (tool: T | DeepReadonly<T>) => string;
   }) => {
     const savedDescriptionMap = new Map(savedList?.map((tool) => [getKey(tool), tool.description]));
 
