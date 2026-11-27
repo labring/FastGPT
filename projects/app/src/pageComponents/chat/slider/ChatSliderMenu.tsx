@@ -136,15 +136,21 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
+  const handleNewChat = () => {
+    clearChatRecords();
+    onChangeChatId();
+    setCiteModalData(undefined);
+  };
+
   const ClearHistoryTrigger = (
     <Box h={'100%'}>
       <IconButton
         variant={'whiteBase'}
         size={'mdSquare'}
         aria-label={''}
-        boxSize={'36px'}
-        minW={'36px'}
-        p={'10px'}
+        boxSize={isPc ? '36px' : '32px'}
+        minW={isPc ? '36px' : '32px'}
+        p={isPc ? '10px' : '8px'}
         borderRadius={'999px'}
         borderColor={'myGray.250'}
         bg={'white'}
@@ -167,7 +173,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       pb={['12px', 0]}
       justify={['space-between', '']}
       alignItems={'center'}
-      gap={isPc ? 2 : 0}
+      gap={2}
     >
       {!isPc && (
         <Flex height={'100%'} align={'center'} justify={'center'}>
@@ -200,25 +206,49 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
               />
             }
             overflow={'hidden'}
-            onClick={() => {
-              clearChatRecords();
-              onChangeChatId();
-              setCiteModalData(undefined);
-            }}
+            onClick={handleNewChat}
           >
             {t('common:core.chat.New Chat')}
           </Button>
         </MyTooltip>
       ) : (
-        histories.length > 0 && (
-          <MobileClearHistoryConfirm
-            Trigger={ClearHistoryTrigger}
-            onConfirm={() => {
-              clearChatRecords();
-              return onClearHistory();
-            }}
-          />
-        )
+        <Flex alignItems={'center'} gap={2} flexShrink={0}>
+          <Button
+            variant={'whitePrimary'}
+            h={'32px'}
+            minH={'32px'}
+            px={'10px'}
+            py={'6px'}
+            fontSize={'xs'}
+            color={'primary.600'}
+            borderRadius={'9999px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            bg={'white'}
+            boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+            leftIcon={
+              <MyIcon
+                name={'core/chat/chatLight'}
+                w={'14px'}
+                h={'14px'}
+                color={'primary.600'}
+                fill={'primary.600'}
+              />
+            }
+            onClick={handleNewChat}
+          >
+            {t('common:core.chat.New Chat')}
+          </Button>
+          {histories.length > 0 && (
+            <MobileClearHistoryConfirm
+              Trigger={ClearHistoryTrigger}
+              onConfirm={() => {
+                clearChatRecords();
+                return onClearHistory();
+              }}
+            />
+          )}
+        </Flex>
       )}
 
       {isPc && histories.length > 0 && (

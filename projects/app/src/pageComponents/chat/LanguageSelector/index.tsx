@@ -1,9 +1,11 @@
 import React, { useCallback } from 'react';
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import PhoneDrawer from '@fastgpt/web/components/common/PhoneDrawer';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { mobileChatHeaderIconButtonStyle } from '@/pageComponents/chat/ChatWindow/headerIconButtonStyle';
 import LanguageMenuItems from './LanguageMenuItems';
 import LanguageMenuTrigger from './LanguageMenuTrigger';
 import { type ChatLanguageSelectorMode, useChatLanguageSwitch } from './useChatLanguageSwitch';
@@ -11,10 +13,11 @@ import { type ChatLanguageSelectorMode, useChatLanguageSwitch } from './useChatL
 type Props = {
   mode: ChatLanguageSelectorMode;
   isCollapsed?: boolean;
+  placement?: Parameters<typeof MyPopover>[0]['placement'];
   onSelected?: () => void;
 };
 
-const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) => {
+const ChatLanguageSelector = ({ mode, isCollapsed = false, placement, onSelected }: Props) => {
   const { isPc } = useSystem();
   const { isOpen, onOpen, onClose: onCloseDrawer } = useDisclosure();
   const { currentLang, currentLabel, onChangeLanguage } = useChatLanguageSwitch(mode);
@@ -45,7 +48,7 @@ const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) 
           </Box>
         }
         trigger="click"
-        placement={isCollapsed ? 'right-end' : 'top-start'}
+        placement={placement ?? (isCollapsed ? 'right-end' : 'top-start')}
         w="178px"
         closeOnBlur
       >
@@ -64,9 +67,19 @@ const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) 
 
   return (
     <>
-      <Box cursor="pointer" onClick={onOpen} {...triggerBoxProps}>
-        {entry}
-      </Box>
+      {isCollapsed ? (
+        <IconButton
+          aria-label={currentLabel}
+          icon={<MyIcon name={entryIcon} w="18px" h="18px" color="currentColor" />}
+          variant="unstyled"
+          {...mobileChatHeaderIconButtonStyle}
+          onClick={onOpen}
+        />
+      ) : (
+        <Box cursor="pointer" onClick={onOpen} {...triggerBoxProps}>
+          {entry}
+        </Box>
+      )}
 
       <PhoneDrawer isOpen={isOpen} onClose={onCloseDrawer}>
         <Flex flexDirection="column" w="100%">
