@@ -5,6 +5,8 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
@@ -114,6 +116,132 @@ describe('serializeLangfuseTraceOutput', () => {
         interactive: {
           type: 'userInput',
           params: { description: '请补充信息', inputForm: [] }
+        }
+      }
+    ]);
+  });
+
+  it('drops loop continuation snapshots and keeps only the final display interactive', () => {
+    const interactive: WorkflowInteractiveResponseType = {
+      type: 'loopRunInteractive',
+      entryNodeIds: ['loopRunNodeId'],
+      memoryEdges: [],
+      nodeOutputs: [
+        {
+          nodeId: 'loopRunNodeId',
+          key: NodeOutputKeyEnum.userChatInput,
+          value: 'internal resume input'
+        }
+      ],
+      params: {
+        // 前序轮次快照：包含上游用户输入与各轮原始 customOutputs，不得进入 trace。
+        loopHistory: [
+          {
+            iteration: 0,
+            success: true,
+            customOutputs: {
+              [NodeOutputKeyEnum.userChatInput]: '上一轮用户输入',
+              answer: '上一轮模型回复'
+            }
+          }
+        ],
+        childrenResponse: {
+          type: 'userSelect',
+          entryNodeIds: ['userSelectNodeId'],
+          memoryEdges: [],
+          nodeOutputs: [
+            {
+              nodeId: 'userSelectNodeId',
+              key: NodeOutputKeyEnum.userChatInput,
+              value: 'internal select input'
+            }
+          ],
+          params: {
+            description: '请选择下一步操作',
+            userSelectOptions: [
+              { key: 'optionA', value: 'A' },
+              { key: 'optionB', value: 'B' }
+            ]
+          }
+        },
+        iteration: 1,
+        pendingIterationSummary: { internal: 'state' }
+      }
+    };
+
+    const serialized = serializeLangfuseTraceOutput([{ interactive }]);
+
+    expect(JSON.parse(serialized)).toEqual([
+      {
+        interactive: {
+          type: 'userSelect',
+          params: {
+            description: '请选择下一步操作',
+            userSelectOptions: [
+              { key: 'optionA', value: 'A' },
+              { key: 'optionB', value: 'B' }
+            ]
+          }
+        }
+      }
+    ]);
+    // 脱敏不变量：续跑快照、上游用户输入与调度状态不得出现在序列化结果中。
+    expect(serialized).not.toContain('loopHistory');
+    expect(serialized).not.toContain('上一轮用户输入');
+    expect(serialized).not.toContain('customOutputs');
+    expect(serialized).not.toContain('pendingIterationSummary');
+    expect(serialized).not.toContain('entryNodeIds');
+    expect(serialized).not.toContain('nodeOutputs');
+  });
+
+  it('drops loopResult snapshots for loopInteractive and keeps only the leaf params', () => {
+    const interactive: WorkflowInteractiveResponseType = {
+      type: 'loopInteractive',
+      entryNodeIds: ['loopNodeId'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        loopResult: [{ answer: '上一轮模型回复' }],
+        childrenResponse: {
+          type: 'userInput',
+          entryNodeIds: ['formNodeId'],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            description: '请补充表单',
+            inputForm: [
+              {
+                key: 'name',
+                label: '姓名',
+                type: FlowNodeInputTypeEnum.input,
+                valueType: WorkflowIOValueTypeEnum.string,
+                required: true
+              }
+            ],
+            submitted: false
+          }
+        },
+        currentIndex: 1
+      }
+    };
+
+    expect(JSON.parse(serializeLangfuseTraceOutput([{ interactive }]))).toEqual([
+      {
+        interactive: {
+          type: 'userInput',
+          params: {
+            description: '请补充表单',
+            inputForm: [
+              {
+                key: 'name',
+                label: '姓名',
+                type: FlowNodeInputTypeEnum.input,
+                valueType: WorkflowIOValueTypeEnum.string,
+                required: true
+              }
+            ],
+            submitted: false
+          }
         }
       }
     ]);

@@ -1,4 +1,6 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const LANGFUSE_MAX_STRING_LENGTH = 10000;
 const LANGFUSE_MAX_ARRAY_LENGTH = 100;
@@ -192,35 +194,57 @@ export const getLangfuseTraceOutput = (
   return result;
 };
 
-/** 交互对象里的续跑快照字段：上报时一律剔除，避免把节点输入/输出带进 trace。 */
-const langfuseInteractiveSnapshotKeys = new Set([
-  'nodeOutputs',
-  'memoryEdges',
-  'entryNodeIds',
-  'skipNodeQueue',
-  'usageId',
-  'nodeResponseId',
-  'interactiveId'
+/**
+ * 叶子交互 params 的展示字段白名单：上报时只投影这些字段。
+ * 覆盖全部叶子交互类型（userSelect / userInput / paymentPause / agentAsk / workflowBuilderPreview）；
+ * 未在白名单内的字段（含未来新增类型携带的未知载荷）一律不上报，按遥测脱敏规范默认拒绝。
+ */
+const langfuseInteractiveDisplayParamsKeys = new Set([
+  // userSelect / userInput / paymentPause 的展示说明
+  'description',
+  // userSelect
+  'userSelectOptions',
+  'userSelectedVal',
+  // userInput
+  'inputForm',
+  'submitted',
+  // paymentPause
+  'continue',
+  // agentAsk / workflowBuilderPreview：前端展示解析的原始工具参数
+  'toolCallId',
+  'arguments'
 ]);
 
-/** 递归保留交互的展示字段（type / params 等），剔除续跑快照（nodeOutputs 等）。 */
-const sanitizeLangfuseInteractive = (value: unknown, depth = 0): unknown => {
-  if (depth > LANGFUSE_MAX_DEPTH) return undefined;
-  if (Array.isArray(value)) {
-    return value
-      .slice(0, LANGFUSE_MAX_ARRAY_LENGTH)
-      .map((item) => sanitizeLangfuseInteractive(item, depth + 1));
+/**
+ * 上报出口只投影“最终展示交互”所需字段，不变量：任何续跑快照与调度状态不得进入 trace.output。
+ *
+ * 1. 复用 extractDeepestInteractive 解包嵌套包装（childrenInteractive / loopInteractive /
+ *    loopRunInteractive 等），loopHistory / loopResult 等内部续跑快照（可携带上游用户输入）
+ *    随整层包装一起丢弃。
+ * 2. 叶子交互按 type + params 白名单重建；entryNodeIds / nodeOutputs / memoryEdges 等调度字段
+ *    与未列入白名单的 params 字段一律不上报。
+ */
+const projectLangfuseInteractive = (value: unknown): AIChatItemValueItemType['interactive'] => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+  const leaf = extractDeepestInteractive(value as WorkflowInteractiveResponseType);
+  if (!leaf || typeof leaf !== 'object' || Array.isArray(leaf) || typeof leaf.type !== 'string') {
+    return undefined;
   }
-  if (value && typeof value === 'object') {
-    const result: Record<string, unknown> = {};
-    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
-      if (langfuseInteractiveSnapshotKeys.has(key)) return;
-      const sanitized = sanitizeLangfuseInteractive(entry, depth + 1);
-      if (sanitized !== undefined) result[key] = sanitized;
-    });
-    return result;
-  }
-  return value;
+
+  const params =
+    leaf.params && typeof leaf.params === 'object' && !Array.isArray(leaf.params)
+      ? Object.fromEntries(
+          Object.entries(leaf.params as Record<string, unknown>).filter(([key]) =>
+            langfuseInteractiveDisplayParamsKeys.has(key)
+          )
+        )
+      : undefined;
+
+  return {
+    type: leaf.type,
+    ...(params && Object.keys(params).length > 0 ? { params } : {})
+  } as AIChatItemValueItemType['interactive'];
 };
 
 /** 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。 */
@@ -229,7 +253,12 @@ const projectLangfuseTraceOutputItem = (item: AIChatItemValueItemType): AIChatIt
   for (const key of langfuseTraceOutputItemKeys) {
     const value = item[key];
     if (value === undefined || value === null) continue;
-    projected[key] = key === 'interactive' ? sanitizeLangfuseInteractive(value) : value;
+    if (key === 'interactive') {
+      const projectedInteractive = projectLangfuseInteractive(value);
+      if (projectedInteractive !== undefined) projected.interactive = projectedInteractive;
+      continue;
+    }
+    projected[key] = value;
   }
   return projected as AIChatItemValueItemType;
 };
