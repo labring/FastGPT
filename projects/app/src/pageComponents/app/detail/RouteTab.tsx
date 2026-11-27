@@ -58,16 +58,27 @@ const RouteTab = () => {
   );
 
   return (
-    <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} backdropBlur={'blur(5px)'} p={1}>
+    <Box
+      display={'inline-grid'}
+      gridAutoFlow={'column'}
+      gridAutoColumns={'1fr'}
+      gap={1}
+      borderRadius={'md'}
+      bg={'rgba(244, 244, 245, 0.63)'}
+      backdropBlur={'blur(5px)'}
+      p={1}
+    >
       {tabList.map((tab) => (
         <HStack
           key={tab.value}
           justifyContent={'center'}
           cursor={'pointer'}
-          w={'196px'}
+          minW={['96px', '132px']}
+          px={[3, 4]}
           h={8}
-          fontSize={'12px'}
+          fontSize={'sm'}
           fontWeight={'medium'}
+          whiteSpace={'nowrap'}
           userSelect={'none'}
           {...(currentTab === tab.value
             ? {
@@ -84,7 +95,7 @@ const RouteTab = () => {
           <Box>{tab.label}</Box>
         </HStack>
       ))}
-    </HStack>
+    </Box>
   );
 };
 
