@@ -257,7 +257,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 - **四大定时调度任务（[`application/cron.ts`](../../../../../packages/service/core/ai/sandbox/application/cron.ts)，各自持有独立 `TimerIdEnum` 锁）**：
   - **`*/10 * * * *`（`stopInactiveSandboxes`）**：停用超 `suspendMinutes` 的活跃 `running` 实例。
   - **`*/10 * * * *`（`recoverStaleSandboxOperations`）**：并发恢复或回滚超期/失败的 `archiving`、`stopping`、`deleting`、`provisioning`、`restoring`。
-  - **`0 */12 * * *`（`archiveInactiveSandboxes`）**：以 `SANDBOX_ARCHIVE_CONCURRENCY = 2`（游标批大小 `100`）对超 `archiveInactiveDays` 的 `stopped` 实例执行冷归档。
+  - **`0 */1 * * *`（`archiveInactiveSandboxes`）**：配合 `55 分钟` 整点去重定时锁与可自动续租的全局扫盘租约（`agent-sandbox:archive-sweep`，单轮未结束时跳过跨整点重入、失租即停止派发后续批次），以 `SANDBOX_ARCHIVE_CONCURRENCY = 2`（游标批大小 `100`）对超 `archiveInactiveDays` 的 `stopped` 实例执行冷归档。
   - **`*/30 * * * *`（`reconcileOrphanSandboxResources`）**：双向孤儿 GC——① **孤儿容器**：无对应 `v3`/`v2` Mongo 记录的容器满 `10 分钟` 宽限（或容器 `metadata.operationId` 已落后于当前文档）立即销毁（`v3` 未命中时只读回查 `v2`，防止误杀未迁移运行中的 4.17.x 容器）；② **孤儿存储卷**：仅凭当前 `listSessionVolumes` 写入 Redis 观察标记（TTL **`2 小时`**，`ORPHAN_VOLUME_OBSERVATION_TTL_SECONDS`），观测间隔满 **`30 分钟`**（`ORPHAN_VOLUME_GRACE_PERIOD_MS`）且再次对账确认仍无 `v3` 与 `v2` 并集 `storage.volumes.claimName` 引用时执行销毁（防止并发新建尚未落库及未迁移 `v2` 卷被误删）。
 
 ### 6.4 磁盘配额软限制与统一写满处理
