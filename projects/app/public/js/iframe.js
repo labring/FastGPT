@@ -39,7 +39,7 @@ function embedChatbot() {
   iframe.name = 'fastgpt-chatbot-window';
   iframe.src = botSrc;
   iframe.style.cssText =
-    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; min-width: min(240px, 90vw); min-height: min(240px, 85vh); max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
+    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; min-width: min(375px, 90vw); min-height: min(240px, max(0px, calc(100vh - 60px))); max-width: 90vw; max-height: max(0px, calc(100vh - 60px)); border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
   iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
 
   document.body.appendChild(iframe);
@@ -87,7 +87,34 @@ function embedChatbot() {
   resizeHandle.type = 'button';
   resizeHandle.setAttribute('aria-label', 'Resize chat window');
   resizeHandle.style.cssText =
-    'position: fixed; width: 16px; height: 16px; padding: 0; background: transparent; border: none; border-top: 2px solid #94a3b8; border-left: 2px solid #94a3b8; border-radius: 0.75rem 0 0 0; cursor: nwse-resize; touch-action: none; z-index: 2147483647;';
+    'position: fixed; width: 18px; height: 18px; padding: 4px 0 0 4px; box-sizing: border-box; margin: 0; background: transparent; border: none; border-radius: 0.75rem 0 0 0; display: flex; align-items: flex-start; justify-content: flex-start; cursor: nwse-resize; touch-action: none; color: #94a3b8; z-index: 2147483647;';
+  const resizeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  resizeIcon.setAttribute('width', '10');
+  resizeIcon.setAttribute('height', '10');
+  resizeIcon.setAttribute('viewBox', '0 0 10 10');
+  resizeIcon.setAttribute('aria-hidden', 'true');
+  resizeIcon.style.cssText = 'display: block; pointer-events: none;';
+  [
+    ['1.5', '6.5', '6.5', '1.5'],
+    ['4.5', '8.5', '8.5', '4.5']
+  ].forEach(([x1, y1, x2, y2]) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('stroke', 'currentColor');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-linecap', 'round');
+    resizeIcon.appendChild(line);
+  });
+  resizeHandle.appendChild(resizeIcon);
+  resizeHandle.addEventListener('pointerenter', () => {
+    resizeHandle.style.color = '#475569';
+  });
+  resizeHandle.addEventListener('pointerleave', () => {
+    resizeHandle.style.color = '#94a3b8';
+  });
   document.body.appendChild(resizeHandle);
 
   const updateResizeHandlePosition = () => {
@@ -105,13 +132,20 @@ function embedChatbot() {
     resizeHandle.style.visibility = iframe.style.visibility;
   };
 
-  /** 保持右下角固定，并将调整后的窗口限制在可视区域内。 */
+  const minWindowWidth = 375;
+  const minWindowHeight = 240;
+  const verticalEdgeGap = 30;
+
+  /** 保持右下角固定，并将调整后的窗口限制在可视区域内（上下预留对称边距）。 */
   const resizeChatWindow = (width, height) => {
     const rect = iframe.getBoundingClientRect();
     const maxWidth = Math.min(window.innerWidth * 0.9, rect.right);
-    const maxHeight = Math.min(window.innerHeight * 0.85, rect.bottom);
-    iframe.style.width = `${Math.max(Math.min(240, maxWidth), Math.min(maxWidth, width))}px`;
-    iframe.style.height = `${Math.max(Math.min(240, maxHeight), Math.min(maxHeight, height))}px`;
+    const maxHeight = Math.max(
+      0,
+      Math.min(window.innerHeight - verticalEdgeGap * 2, rect.bottom - verticalEdgeGap)
+    );
+    iframe.style.width = `${Math.max(Math.min(minWindowWidth, maxWidth), Math.min(maxWidth, width))}px`;
+    iframe.style.height = `${Math.max(Math.min(minWindowHeight, maxHeight), Math.min(maxHeight, height))}px`;
     updateResizeHandlePosition();
   };
 

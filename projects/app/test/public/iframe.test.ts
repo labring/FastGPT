@@ -166,13 +166,16 @@ describe('floating chat window resizing', () => {
     expect(handle().setPointerCapture).toHaveBeenCalledWith(1);
   });
 
-  it('limits resizing to usable minimum dimensions and the viewport', () => {
+  it('limits resizing to usable minimum dimensions and symmetric vertical viewport bounds', () => {
     pointer({ type: 'pointerdown', x: 1000, y: 500 });
     pointer({ type: 'pointermove', x: -1000, y: -1000 });
     expect(iframe().offsetWidth).toBe(1260);
-    expect(iframe().offsetHeight).toBe(850);
+    expect(iframe().offsetHeight).toBe(940);
+    const maxRect = iframe().getBoundingClientRect();
+    expect(maxRect.top).toBe(30);
+    expect(dom.window.innerHeight - maxRect.bottom).toBe(30);
     pointer({ type: 'pointermove', x: 3000, y: 3000 });
-    expect(iframe().offsetWidth).toBe(240);
+    expect(iframe().offsetWidth).toBe(375);
     expect(iframe().offsetHeight).toBe(240);
   });
 
@@ -209,9 +212,9 @@ describe('floating chat window resizing', () => {
     pointer({ type: 'pointerdown', x: 130, y: 130 });
     pointer({ type: 'pointermove', x: -100, y: -100 });
     expect(iframe().offsetWidth).toBe(500);
-    expect(iframe().offsetHeight).toBe(500);
+    expect(iframe().offsetHeight).toBe(470);
     expect(handle().style.left).toBe('0px');
-    expect(handle().style.top).toBe('0px');
+    expect(handle().style.top).toBe('30px');
   });
 
   it('ignores other pointers during an active gesture', () => {
