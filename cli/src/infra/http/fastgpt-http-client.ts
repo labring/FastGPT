@@ -55,6 +55,21 @@ export type FastGptHttpClient = {
     headers?: Record<string, string>;
     timeoutMs?: number;
   }) => Promise<T>;
+  uploadBinary: <T = unknown>(params: {
+    path: string;
+    body: Uint8Array;
+    contentType: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    auth?: HttpRequestAuth;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<T>;
+  putPresignedUrl: (params: {
+    url: string;
+    body: Uint8Array;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<void>;
   streamSse: (params: {
     method?: 'GET' | 'POST';
     path: string;
@@ -440,6 +455,7 @@ export function createFastGptHttpClient({
     jsonBody,
     rawBody,
     contentType,
+    contentLength,
     signal
   }: {
     client: any;
@@ -449,6 +465,7 @@ export function createFastGptHttpClient({
     jsonBody?: unknown;
     rawBody?: BodyInit | null;
     contentType?: string;
+    contentLength?: number;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
     const baseWithSlash = normalizedBaseUrl.endsWith('/')
@@ -459,10 +476,20 @@ export function createFastGptHttpClient({
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
     let currentContentType = contentType;
+    let currentContentLength = contentLength;
     let currentSearchParams = searchParams;
 
     for (let hop = 0; hop <= 5; hop += 1) {
       let response: Response;
+      const bodyHeaders: Record<string, string> = {};
+      if (currentRawBody !== undefined && currentRawBody !== null) {
+        if (currentContentType !== undefined) {
+          bodyHeaders['content-type'] = currentContentType;
+        }
+        if (currentContentLength !== undefined) {
+          bodyHeaders['content-length'] = String(currentContentLength);
+        }
+      }
       try {
         response = await client(currentUrl, {
           method: currentMethod,
@@ -472,11 +499,7 @@ export function createFastGptHttpClient({
           ...(currentRawBody !== undefined && currentRawBody !== null
             ? { body: currentRawBody }
             : {}),
-          ...(currentRawBody !== undefined &&
-          currentRawBody !== null &&
-          currentContentType !== undefined
-            ? { headers: { 'content-type': currentContentType } }
-            : {})
+          ...(Object.keys(bodyHeaders).length > 0 ? { headers: bodyHeaders } : {})
         });
       } catch (error) {
         if (error instanceof CliNetworkError) throw error;
@@ -527,6 +550,7 @@ export function createFastGptHttpClient({
             currentJson = undefined;
             currentRawBody = null;
             currentContentType = undefined;
+            currentContentLength = undefined;
           }
         } else if (response.status === 301 || response.status === 302) {
           // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
@@ -535,6 +559,7 @@ export function createFastGptHttpClient({
             currentJson = undefined;
             currentRawBody = null;
             currentContentType = undefined;
+            currentContentLength = undefined;
           }
         }
         // 307 与 308 保留原始 HTTP 方法与请求载荷
@@ -669,6 +694,96 @@ export function createFastGptHttpClient({
         rawText,
         displayUrl: finalUrl
       });
+    },
+
+    uploadBinary: async <T = unknown>({
+      path,
+      body,
+      contentType,
+      query,
+      auth,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = LONG_OPERATION_TIMEOUT_MS
+    }: {
+      path: string;
+      body: Uint8Array;
+      contentType: string;
+      query?: Record<string, string | number | boolean | undefined>;
+      auth?: HttpRequestAuth;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    }): Promise<T> => {
+      const relativePath = path.replace(/^\/+/, '');
+      const searchParams = filterQuery(query);
+      const client = await buildKyClient({
+        timeout: requestTimeout,
+        auth,
+        extraHeaders
+      });
+
+      const { response, finalUrl } = await executeWithRedirects({
+        client,
+        initialPath: relativePath,
+        method: 'POST',
+        searchParams,
+        rawBody: body as BodyInit,
+        contentType,
+        contentLength: body.byteLength
+      });
+
+      const rawText = await response.text();
+      return unpackFastGptResponse<T>({
+        response,
+        rawText,
+        displayUrl: finalUrl
+      });
+    },
+
+    putPresignedUrl: async ({
+      url,
+      body,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = LONG_OPERATION_TIMEOUT_MS
+    }): Promise<void> => {
+      const targetUrl = new URL(url, normalizedBaseUrl).toString();
+      const activeFetch = await resolveTransportFetch();
+      const requestHeaders: Record<string, string> = {
+        ...extraHeaders,
+        'content-length': String(body.byteLength)
+      };
+
+      // 预签名直传地址可能是跨域对象存储，绝不注入 FastGPT token/Authorization 凭据头，避免凭据泄漏或破坏 S3 签名。
+      let response: Response;
+      try {
+        response = await activeFetch(targetUrl, {
+          method: 'PUT',
+          headers: requestHeaders,
+          body: body as BodyInit,
+          signal: AbortSignal.timeout(requestTimeout)
+        });
+      } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
+        throw new CliNetworkError(
+          `Presigned upload failed for ${redactText(targetUrl)}: ${msg}`,
+          isTls
+            ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
+            : 'Verify the presigned upload URL is reachable from this machine.',
+          { url: redactText(targetUrl) }
+        );
+      }
+
+      if (!response.ok) {
+        const rawText = await response.text().catch(() => '');
+        throw new CliApiError({
+          message:
+            redactText(rawText.trim().slice(0, 300)) ||
+            `Presigned upload failed with HTTP ${response.status}`,
+          httpStatus: response.status,
+          details: { url: redactText(targetUrl) }
+        });
+      }
     },
 
     streamSse: async function* ({

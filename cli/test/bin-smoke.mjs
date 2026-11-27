@@ -134,7 +134,9 @@ try {
   assert.equal(logoutOut.data.purged, true);
 
   const wfDir = join(configDir, 'wf-smoke');
-  const wfInitOut = JSON.parse(await run(['workflow-build', 'init', '--offline', '--dir', wfDir, '--name', 'Smoke Flow']));
+  const wfInitOut = JSON.parse(
+    await run(['workflow-build', 'init', '--offline', '--dir', wfDir, '--name', 'Smoke Flow'])
+  );
   assert.equal(wfInitOut.ok, true);
   assert.equal(wfInitOut.command, 'workflow-build init');
   const wfAddOut = JSON.parse(
@@ -158,12 +160,18 @@ try {
   assert.equal(wfValidateOut.data.valid, true);
 
   const skillOut = JSON.parse(await run(['workflow-build', 'skills', '--format', 'json']));
-  const skill = JSON.parse(await readFile(join(packageRoot, 'dist', 'workflow-build-skill.json'), 'utf8'));
+  const skill = JSON.parse(
+    await readFile(join(packageRoot, 'dist', 'workflow-build-skill.json'), 'utf8')
+  );
   assert.equal(skillOut.data.markdown, skill.markdown);
   assert.deepEqual(skillOut.data.references, Object.keys(skill.references));
   assert.ok(skillOut.data.references.includes('changesets-and-plans'));
   const reference = await run([
-    'workflow-build', 'skills', 'changesets-and-plans', '--format', 'text'
+    'workflow-build',
+    'skills',
+    'changesets-and-plans',
+    '--format',
+    'text'
   ]);
   assert.equal(reference.trimEnd(), skill.references['changesets-and-plans'].trimEnd());
 

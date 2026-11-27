@@ -74,6 +74,10 @@ function createServices(dir: string, fetchFn: CliFetchFn) {
       baseClient.requestRaw({ ...params, auth }),
     uploadMultipart: <T = unknown>(params: Parameters<typeof baseClient.uploadMultipart>[0]) =>
       baseClient.uploadMultipart<T>({ ...params, auth }),
+    uploadBinary: <T = unknown>(params: Parameters<typeof baseClient.uploadBinary>[0]) =>
+      baseClient.uploadBinary<T>({ ...params, auth }),
+    putPresignedUrl: (params: Parameters<typeof baseClient.putPresignedUrl>[0]) =>
+      baseClient.putPresignedUrl(params),
     streamSse: (params: Parameters<typeof baseClient.streamSse>[0]) =>
       baseClient.streamSse({ ...params, auth })
   };

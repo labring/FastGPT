@@ -75,12 +75,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           description: 'Sort order: asc or desc'
         },
         {
-          name: 'simple',
-          flags: '--simple',
-          takesValue: false,
-          description: 'Simple mode (skip data count)'
-        },
-        {
           name: 'page',
           flags: '--page <n>',
           takesValue: true,
@@ -90,9 +84,8 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           name: 'pageSize',
           flags: '--page-size <n>',
           takesValue: true,
-          description: 'Items per page'
-        },
-        { name: 'offset', flags: '--offset <n>', takesValue: true, description: 'Offset start' }
+          description: 'Items per page (default 20)'
+        }
       ],
       examples: [
         {
@@ -127,10 +120,8 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
             selectFolder: options.selectFolder === true ? true : undefined,
             sortBy,
             sortOrder,
-            simple: options.simple === true ? true : undefined,
             page: parseOptionalNumber(options.page),
-            pageSize: parseOptionalNumber(options.pageSize),
-            offset: parseOptionalNumber(options.offset)
+            pageSize: parseOptionalNumber(options.pageSize)
           }
         });
       }
@@ -272,7 +263,12 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Dataset ObjectId'
         },
-        { name: 'name', flags: '--name <name>', takesValue: true, description: 'Collection name' },
+        {
+          name: 'name',
+          flags: '--name <name>',
+          takesValue: true,
+          description: 'Collection name (auto-inferred from --file basename when omitted)'
+        },
         {
           name: 'text',
           flags: '--text <content>',
@@ -296,19 +292,13 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           name: 'trainingType',
           flags: '--training-type <mode>',
           takesValue: true,
-          description: 'Training mode: chunk, qa, imageParse, etc.'
+          description: 'Training mode (defaults to team/server default)'
         },
         {
           name: 'chunkSize',
           flags: '--chunk-size <n>',
           takesValue: true,
-          description: 'Chunk token size'
-        },
-        {
-          name: 'configFile',
-          flags: '--config-file <path>',
-          takesValue: true,
-          description: 'Optional JSON file with full chunk/training settings'
+          description: 'Chunk token size (defaults to team/server default)'
         },
         {
           name: 'dryRun',
@@ -319,14 +309,12 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
       ],
       examples: [
         {
-          description: 'Create text collection from local markdown file',
+          description: 'Create text collection from local markdown file (auto-uses filename)',
           args: [
             'dataset',
             'collection',
             'create-text',
             '68ad85a7463006c963799a05',
-            '--name',
-            'Architecture Notes',
             '--file',
             './README.md'
           ]
@@ -341,9 +329,16 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset collection create-text <datasetId> --name <name> --text <text>'
         });
 
-        const name = typeof options.name === 'string' ? options.name.trim() : '';
+        const explicitName = typeof options.name === 'string' ? options.name.trim() : '';
+        const rawFileName =
+          typeof options.file === 'string' && options.file.trim() !== '-'
+            ? (options.file.trim().split(/[\\/]/).filter(Boolean).pop() ?? '')
+            : '';
+        // 服务端 create/text 会统一拼接 .txt 后缀，推断本地 .txt 文件名时去掉重复后缀
+        const inferredFileName = rawFileName.replace(/\.txt$/i, '') || rawFileName;
+        const name = explicitName || inferredFileName;
         if (!name) {
-          throw new CliArgumentError('Collection --name is required.');
+          throw new CliArgumentError('Collection --name is required when not reading from a file.');
         }
 
         const text = await resolveTextInput({
@@ -363,13 +358,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           );
         }
 
-        const extraConfig = await resolveJsonObjectPayload({
-          filePath: typeof options.configFile === 'string' ? options.configFile : undefined,
-          readTextFile: container.fileIo.readTextFile,
-          readStdin: container.readStdin,
-          fieldLabel: 'collection config JSON'
-        });
-
         const trainingType =
           typeof options.trainingType === 'string'
             ? z.enum(DatasetCollectionDataProcessModeEnum).parse(options.trainingType)
@@ -378,7 +366,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
         return container.datasetCollectionService.createText({
           client: activeClient,
           input: {
-            ...(extraConfig ?? {}),
             datasetId,
             name,
             text,
@@ -525,19 +512,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           name: 'chunkSize',
           flags: '--chunk-size <n>',
           takesValue: true,
-          description: 'Chunk token size'
-        },
-        {
-          name: 'customPdfParse',
-          flags: '--custom-pdf-parse',
-          takesValue: false,
-          description: 'Enable custom PDF parsing'
-        },
-        {
-          name: 'configFile',
-          flags: '--config-file <path>',
-          takesValue: true,
-          description: 'Optional JSON file with full chunk/training settings'
+          description: 'Chunk token size (defaults to team/server default)'
         },
         {
           name: 'dryRun',
@@ -568,20 +543,12 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
         });
 
         const file = await container.fileIo.readBinaryFile(filePath);
-        const extraConfig = await resolveJsonObjectPayload({
-          filePath: typeof options.configFile === 'string' ? options.configFile : undefined,
-          readTextFile: container.fileIo.readTextFile,
-          readStdin: container.readStdin,
-          fieldLabel: 'collection config JSON'
-        });
-
         const trainingType =
           typeof options.trainingType === 'string'
             ? z.enum(DatasetCollectionDataProcessModeEnum).parse(options.trainingType)
             : undefined;
 
         const input = {
-          ...(extraConfig ?? {}),
           datasetId,
           ...(options.parentId !== undefined
             ? { parentId: parseParentIdOption(options.parentId) }
@@ -589,8 +556,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           ...(trainingType !== undefined ? { trainingType } : {}),
           ...(options.chunkSize !== undefined
             ? { chunkSize: parseOptionalNumber(options.chunkSize) }
-            : {}),
-          ...(options.customPdfParse === true ? { customPdfParse: true } : {})
+            : {})
         };
 
         return container.datasetCollectionService.createLocalFile({

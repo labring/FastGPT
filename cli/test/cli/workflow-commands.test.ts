@@ -66,31 +66,45 @@ async function exec({
 }
 
 describe('Workflow CLI commands', () => {
-  it('registers workflow, App, plugin, and code sandbox commands under their public paths', () => {
+  it('registers workflow, Agent, plugin, and code sandbox commands under their public paths', () => {
     const specs = getCliCommandSpecs().filter(({ path: [domain] }) =>
-      ['app', 'workflow', 'workflow-build', 'code-sandbox', 'plugin'].includes(domain)
+      ['agent', 'workflow', 'workflow-build', 'code-sandbox', 'plugin'].includes(domain)
     );
     const byPath = new Map(specs.map((spec) => [spec.path.join(' '), spec]));
 
     expect(byPath.get('workflow-build init')?.authModes).toEqual(['token', 'personalKey']);
     expect(byPath.get('workflow-build template load')?.authModes).toEqual(['token', 'personalKey']);
     expect(byPath.get('workflow-build changeset apply')?.authModes).toEqual(['none']);
-    expect(byPath.get('app list')?.authModes).toEqual(['token', 'personalKey']);
+    expect(byPath.get('agent list')?.authModes).toEqual(['token', 'personalKey']);
     expect(byPath.get('plugin tool list')?.authModes).toEqual(['token', 'personalKey']);
     const remotePaths = specs
       .filter(({ authModes }) => authModes.includes('token'))
       .map(({ path }) => path.join(' '));
     expect(remotePaths.sort()).toEqual([
-      'app list',
-      'app publish',
-      'app pull',
-      'app run',
-      'app save',
-      'app test',
+      'agent create',
+      'agent delete',
+      'agent folder create',
+      'agent folder delete',
+      'agent folder list',
+      'agent folder update',
+      'agent get',
+      'agent list',
+      'agent logs list',
+      'agent logs users',
+      'agent publish',
+      'agent pull',
+      'agent run',
+      'agent save',
+      'agent test',
+      'agent update',
+      'agent version get',
+      'agent version list',
+      'agent version update',
       'code-sandbox packages',
       'plugin tool list',
       'workflow debug',
       'workflow diff',
+      'workflow test',
       'workflow-build init',
       'workflow-build template load'
     ]);
@@ -102,11 +116,11 @@ describe('Workflow CLI commands', () => {
     }
   });
 
-  it('blocks personalKey on token-only App commands before issuing HTTP requests', async () => {
+  it('blocks personalKey on token-only Agent commands before issuing HTTP requests', async () => {
     const dir = await makeDir();
     const fetchFn = vi.fn();
     const res = await exec({
-      args: ['app', 'pull', APP_ID],
+      args: ['agent', 'pull', APP_ID],
       cwd: dir,
       auth: ['--base-url', 'http://127.0.0.1:3000', '--api-key', 'fastgpt-personal-123'],
       fetchFn
@@ -431,7 +445,7 @@ describe('Workflow CLI commands', () => {
     });
   });
 
-  it('supports app test --dry-run and JSON test cases end-to-end', async () => {
+  it('supports workflow test --dry-run and JSON test cases end-to-end', async () => {
     const dir = await makeDir();
     await exec({ args: ['workflow-build', 'init', '--offline', '--name', 'Test Flow'], cwd: dir });
     await exec({
@@ -461,7 +475,7 @@ describe('Workflow CLI commands', () => {
     );
 
     const dryRunRes = await exec({
-      args: ['app', 'test', APP_ID, '--cases', casesPath, '--dry-run'],
+      args: ['workflow', 'test', APP_ID, '--cases', casesPath, '--dry-run'],
       cwd: dir,
       auth: ['--base-url', 'http://127.0.0.1:3000/api', '--token', 'tok-123']
     });
@@ -489,7 +503,7 @@ describe('Workflow CLI commands', () => {
     );
 
     const testRes = await exec({
-      args: ['app', 'test', APP_ID, '--cases', casesPath],
+      args: ['workflow', 'test', APP_ID, '--cases', casesPath],
       cwd: dir,
       auth: ['--base-url', 'http://127.0.0.1:3000/api', '--token', 'tok-123'],
       fetchFn

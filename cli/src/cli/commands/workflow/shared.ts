@@ -102,7 +102,7 @@ export function resolveWorkflowAppId(
   options: Record<string, unknown>
 ): string | undefined {
   const pos = positional[0];
-  const flag = optionalNonEmptyOption(options, 'appId');
+  const flag = optionalNonEmptyOption(options, 'id');
   return pos ?? flag;
 }
 

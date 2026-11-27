@@ -9,10 +9,10 @@ Use the installed `fastgpt workflow-build` commands to work with `workflow.json`
 
 ## Workflow
 
-1. For a new workspace, run `fastgpt workflow-build init --dir ./flow`. It fetches the template bundle for the authenticated member. Use `--offline` with the built-in templates when working offline. To edit an existing App, run `fastgpt app pull <appId> --dir ./flow`.
+1. For a new workspace, run `fastgpt workflow-build init --dir ./flow`. It fetches the template bundle for the authenticated member. Use `--offline` with the built-in templates when working offline. To edit an existing App, run `fastgpt agent pull <appId> --dir ./flow`.
 2. Run `workflow-build inspect` and `config list` for the workspace. Match application entry points and conversation capabilities to the user request. Use `template list` and `template show` to find the actual templates and inspect their constraints. Refresh a workspace bundle with `workflow-build template load` when you need the server's current catalog.
 3. Check the impact of edits on existing nodes, outputs, and dependent configuration. For a batch edit, put the intended commands and the current checksum in a ChangeSet. Run `workflow-build changeset plan --input changeset.json --output plan.json`, review diagnostics and changes, then run `workflow-build changeset apply --plan plan.json --confirm <targetChecksum>`. Use the same workspace for both commands. Local editing commands also have their own help and dry-run options.
-4. Run `workflow-build validate` and check that the resulting workflow covers the requested behavior. Use `workflow-build build --output store-workflow.json` to export a compiled artifact. With an existing App ID and the appropriate authorization, `workflow diff`, `workflow debug`, and `app test` help verify remote behavior. Use `app save` for a requested draft save and `app publish` for a requested release.
+4. Run `workflow-build validate` and check that the resulting workflow covers the requested behavior. Use `workflow-build build --output store-workflow.json` to export a compiled artifact. With an existing Agent ID and the appropriate authorization, `workflow diff`, `workflow debug`, `workflow test` (single-step assertions), and `agent test` (full draft chat test) help verify remote behavior. Use `agent save` for a requested draft save and `agent publish` for a requested release.
 
 ## Reference reading
 

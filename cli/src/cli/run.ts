@@ -183,10 +183,29 @@ export async function runCli({
       }
 
       const cleanMessage = error.message.replace(/^error:\s*/i, '').trim();
+      const skillMisuseAction = (() => {
+        const skillIdx = argv.indexOf('skill');
+        const nextArg = skillIdx >= 0 ? argv[skillIdx + 1] : undefined;
+        if (nextArg === 'install' || nextArg === 'uninstall' || nextArg === 'catalog') {
+          return nextArg;
+        }
+        return undefined;
+      })();
+      const appMisuseAction = (() => {
+        const appIdx = argv.indexOf('app');
+        if (appIdx < 0) return undefined;
+        const nextArg = argv[appIdx + 1];
+        return nextArg && !nextArg.startsWith('-') ? nextArg : 'list';
+      })();
       const hint =
-        safeCommandName !== 'fastgpt' && specs.some((s) => s.path.join(' ') === safeCommandName)
-          ? `Run: fastgpt commands --command "${safeCommandName}" --format json`
-          : 'Run: fastgpt commands --compact --format json';
+        skillMisuseAction !== undefined
+          ? `Did you mean "fastgpt skills ${skillMisuseAction}" for local agent skill packages?`
+          : appMisuseAction !== undefined
+            ? `The "app" command group has been replaced by "agent". Try "fastgpt agent ${appMisuseAction}".`
+            : safeCommandName !== 'fastgpt' &&
+                specs.some((s) => s.path.join(' ') === safeCommandName)
+              ? `Run: fastgpt commands --command "${safeCommandName}" --format json`
+              : 'Run: fastgpt commands --compact --format json';
       const argError = new CliArgumentError(cleanMessage, undefined, hint);
       stderr(renderer.renderError({ command: safeCommandName, error: argError }));
       return argError.exitCode;

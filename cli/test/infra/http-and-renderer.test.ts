@@ -352,6 +352,102 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(await rawRes.text()).toBe('file-content-raw');
   });
 
+  it('supports uploadBinary with content-type/length headers and unified FastGPT error mapping', async () => {
+    let capturedContentType: string | null = null;
+    let capturedContentLength: string | null = null;
+    let capturedBytes: Uint8Array | undefined;
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        if (req.url.includes('/skill/import-ok')) {
+          capturedContentType = req.headers.get('content-type');
+          capturedContentLength = req.headers.get('content-length');
+          capturedBytes = new Uint8Array(await req.arrayBuffer());
+          return jsonResponse({ code: 200, data: '68ad85a7463006c963799a21' });
+        }
+        return jsonResponse(
+          { code: 514, statusText: 'unAuthApiKey', message: 'Invalid API key', data: null },
+          500
+        );
+      }
+    });
+
+    const payload = new Uint8Array([80, 75, 3, 4]);
+    const skillId = await client.uploadBinary<string>({
+      path: '/skill/import-ok',
+      query: { filename: 'demo.zip' },
+      body: payload,
+      contentType: 'application/zip'
+    });
+    expect(skillId).toBe('68ad85a7463006c963799a21');
+    expect(capturedContentType).toBe('application/zip');
+    expect(capturedContentLength).toBe('4');
+    expect(Array.from(capturedBytes ?? [])).toEqual([80, 75, 3, 4]);
+
+    await expect(
+      client.uploadBinary({
+        path: '/skill/import-auth-fail',
+        body: payload,
+        contentType: 'application/zip'
+      })
+    ).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth
+    });
+  });
+
+  it('supports putPresignedUrl for relative and cross-origin URLs without attaching auth headers', async () => {
+    const seen: Array<{ url: string; method: string; headers: Headers; size: number }> = [];
+    const client = createFastGptHttpClient({
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input, init) => {
+        const req = input instanceof Request ? input : new Request(input, init);
+        const buf = await req.arrayBuffer();
+        seen.push({ url: req.url, method: req.method, headers: req.headers, size: buf.byteLength });
+        if (req.url.includes('fail')) {
+          return new Response('AccessDenied', { status: 403 });
+        }
+        return new Response(null, { status: 200 });
+      }
+    });
+
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    await client.putPresignedUrl({
+      url: '/api/system/file/u/abc',
+      body: bytes,
+      headers: { 'content-type': 'image/png' }
+    });
+    await client.putPresignedUrl({
+      url: 'https://oss.example.com/bucket/avatar.png?sig=1',
+      body: bytes,
+      headers: { 'content-type': 'image/png' }
+    });
+
+    expect(seen[0]).toMatchObject({
+      url: 'https://cloud.fastgpt.cn/api/system/file/u/abc',
+      method: 'PUT',
+      size: 4
+    });
+    expect(seen[1]).toMatchObject({
+      url: 'https://oss.example.com/bucket/avatar.png?sig=1',
+      method: 'PUT',
+      size: 4
+    });
+    expect(seen[1].headers.get('token')).toBeNull();
+    expect(seen[1].headers.get('authorization')).toBeNull();
+
+    await expect(
+      client.putPresignedUrl({
+        url: 'https://oss.example.com/fail',
+        body: bytes
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
+  });
+
   it('blocks cross-origin redirects in beforeRequest and prevents credential leakage', async () => {
     let foreignReqHeaders: Headers | undefined;
     const client = createFastGptHttpClient({

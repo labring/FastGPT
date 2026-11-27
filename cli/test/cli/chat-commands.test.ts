@@ -63,18 +63,22 @@ async function exec({
 }
 
 describe('createChatCommandSpecs', () => {
-  it('registers App conversation commands and makes both run paths discoverable', async () => {
+  it('registers Agent conversation commands in kebab-case and makes both run paths discoverable', async () => {
     const specs = createChatCommandSpecs();
     expect(specs.filter(({ path }) => path[0] === 'chat')).toHaveLength(10);
-    const appRun = specs.find(({ path }) => path.join(' ') === 'app run');
+    const agentRun = specs.find(({ path }) => path.join(' ') === 'agent run');
     const chatRun = specs.find(({ path }) => path.join(' ') === 'chat run');
-    expect(appRun).toBeDefined();
-    expect(appRun?.execute).toBe(chatRun?.execute);
-    expect(appRun?.options).toBe(chatRun?.options);
+    expect(agentRun).toBeDefined();
+    expect(agentRun?.execute).toBe(chatRun?.execute);
+    expect(agentRun?.options).toBe(chatRun?.options);
+    expect(agentRun?.positionalArgs?.[0]?.name).toBe('agentId');
     expect(
       specs.every(
         (spec) =>
-          spec.summary.includes('App') && spec.examples?.length && spec.authModes.includes('appKey')
+          spec.summary.includes('Agent') &&
+          spec.examples?.length &&
+          spec.authModes.includes('appKey') &&
+          spec.options.every((opt) => !/[A-Z]/.test(opt.flags.split(' ')[0]))
       )
     ).toBe(true);
     const manifest = await exec({ args: ['commands'], auth: [] });
@@ -103,7 +107,7 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['stop'],
-      flags: ['--chatId', 'chat'],
+      flags: ['--chat-id', 'chat'],
       path: '/v2/chat/stop',
       method: 'POST',
       payload: { chatId: 'chat' },
@@ -111,28 +115,28 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['init'],
-      flags: ['--chatId', 'chat'],
+      flags: ['--chat-id', 'chat'],
       path: '/core/chat/init',
       method: 'GET',
       payload: { chatId: 'chat' },
-      data: { title: 'App title', variables: {} }
+      data: { title: 'Agent title', variables: {} }
     },
     {
       command: ['history', 'list'],
       flags: [
-        '--pageNum',
+        '--page',
         '2',
-        '--pageSize',
+        '--page-size',
         '10',
         '--source',
         'api',
-        '--startCreateTime',
+        '--start-create-time',
         '2026-11-01',
-        '--endCreateTime',
+        '--end-create-time',
         '2026-11-11',
-        '--startUpdateTime',
+        '--start-update-time',
         '2026-11-02',
-        '--endUpdateTime',
+        '--end-update-time',
         '2026-11-12'
       ],
       path: '/core/chat/history/getHistories',
@@ -150,7 +154,7 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['history', 'status'],
-      flags: ['--chatIds', ' chat-1,chat-2 '],
+      flags: ['--chat-ids', ' chat-1,chat-2 '],
       path: '/core/chat/history/getHistoryStatus',
       method: 'POST',
       payload: { chatIds: ['chat-1', 'chat-2'] },
@@ -158,7 +162,7 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['history', 'mark-read'],
-      flags: ['--chatId', 'chat'],
+      flags: ['--chat-id', 'chat'],
       path: '/core/chat/history/markRead',
       method: 'POST',
       payload: { chatId: 'chat' },
@@ -166,7 +170,7 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['history', 'update'],
-      flags: ['--chatId', 'chat', '--top', 'false', '--customTitle', '', '--title', 'new'],
+      flags: ['--chat-id', 'chat', '--top', 'false', '--custom-title', '', '--title', 'new'],
       path: '/core/chat/history/updateHistory',
       method: 'PUT',
       payload: { chatId: 'chat', top: false, customTitle: '', title: 'new' },
@@ -174,7 +178,7 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['history', 'delete'],
-      flags: ['--chatId', 'chat /?&', '--yes'],
+      flags: ['--chat-id', 'chat /?&', '--yes'],
       path: '/core/chat/history/delHistory',
       method: 'DELETE',
       payload: { chatId: 'chat /?&' },
@@ -183,14 +187,14 @@ describe('createChatCommandSpecs', () => {
     {
       command: ['record', 'list'],
       flags: [
-        '--chatId',
+        '--chat-id',
         'chat',
-        '--pageSize',
+        '--page-size',
         '2',
-        '--prevId',
+        '--prev-id',
         'oldest-id',
-        '--loadCustomFeedbacks',
-        '--includeDeleted'
+        '--load-custom-feedbacks',
+        '--include-deleted'
       ],
       path: '/core/chat/record/getRecords_v2',
       method: 'POST',
@@ -215,11 +219,11 @@ describe('createChatCommandSpecs', () => {
     },
     {
       command: ['record', 'detail'],
-      flags: ['--chatId', 'chat', '--dataId', 'response-data-id'],
+      flags: ['--chat-id', 'chat', '--data-id', 'response-data-id'],
       path: '/core/chat/record/getResData',
       method: 'GET',
       payload: { chatId: 'chat', dataId: 'response-data-id' },
-      data: [{ moduleName: 'App answer', runningTime: 1 }]
+      data: [{ moduleName: 'Agent answer', runningTime: 1 }]
     }
   ])(
     'maps $command to $method $path and preserves the response',
@@ -241,10 +245,11 @@ describe('createChatCommandSpecs', () => {
           ? new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } })
           : response(data);
       });
-      const domains = command[0] === 'run' ? ['chat', 'app'] : ['chat'];
+      const domains = command[0] === 'run' ? ['chat', 'agent'] : ['chat'];
       for (const domain of domains) {
+        const idArgs = domain === 'agent' ? [APP_ID] : ['--id', APP_ID];
         const result = await exec({
-          args: [domain, ...command, '--appId', APP_ID, ...flags],
+          args: [domain, ...command, ...idArgs, ...flags],
           fetchFn
         });
         expect(result.stderr).toBe('');
@@ -263,11 +268,11 @@ describe('createChatCommandSpecs', () => {
       args: [
         'chat',
         'init',
-        '--appId',
+        '--id',
         APP_ID,
-        '--chatId',
+        '--chat-id',
         'id?&/',
-        '--authProxy',
+        '--auth-proxy',
         '{"username":"alice"}'
       ],
       auth: ['--api-key', 'fastgpt-personal-key-123456789012345678'],
@@ -276,14 +281,14 @@ describe('createChatCommandSpecs', () => {
         const url = new URL(input instanceof Request ? input.url : String(input));
         expect(url.searchParams.get('chatId')).toBe('id?&/');
         expect(JSON.parse(url.searchParams.get('authProxy')!)).toEqual({ username: 'alice' });
-        return response({ title: 'App title', chatId: 'id?&/' });
+        return response({ title: 'Agent title', chatId: 'id?&/' });
       }
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('App title');
+    expect(result.stdout).toContain('Agent title');
   });
 
-  it('loads a JSON request file relative to cwd and maps all generation flags', async () => {
+  it('loads a JSON request file relative to cwd with advanced fields and maps kebab-case flags', async () => {
     const dir = await makeDir();
     const messages = [
       {
@@ -294,29 +299,32 @@ describe('createChatCommandSpecs', () => {
         ]
       }
     ];
-    await writeFile(join(dir, 'request.json'), JSON.stringify({ messages }));
+    await writeFile(
+      join(dir, 'request.json'),
+      JSON.stringify({
+        messages,
+        metadata: { tag: 'sample' },
+        responseChatItemId: 'answer-id',
+        retainDatasetCite: true,
+        showSkillReferences: true
+      })
+    );
     const result = await exec({
       dir,
       args: [
         'chat',
         'run',
-        '--appId',
+        '--id',
         APP_ID,
         '--file',
         'request.json',
-        '--chatId',
+        '--chat-id',
         'existing',
         '--variables',
         '{"count":0}',
-        '--metadata',
-        '{"tag":"sample"}',
-        '--responseChatItemId',
-        'answer-id',
-        '--retainDatasetCite',
-        '--showSkillReferences',
-        '--customUid',
+        '--custom-uid',
         'visitor',
-        '--timeoutMs',
+        '--timeout',
         '600000'
       ],
       auth: ['--api-key', 'fastgpt-raw-key-123456789012345678'],
@@ -369,17 +377,16 @@ describe('createChatCommandSpecs', () => {
   );
 
   it.each([
-    ['chat', 'run', '--appId', APP_ID, '--text', 'hello', '--messages', '[]'],
-    ['chat', 'run', '--appId', APP_ID, '--variables', '{bad-json'],
-    ['chat', 'run', '--appId', APP_ID, '--metadata', '[]'],
+    ['chat', 'run', '--id', APP_ID, '--text', 'hello', '--messages', '[]'],
+    ['chat', 'run', '--id', APP_ID, '--variables', '{bad-json'],
     ['chat', 'run', '--stdin', '--file', '-'],
     ['chat', 'run', '--file', 'does-not-exist.json'],
     ['chat', 'run', '--stdin'],
-    ['chat', 'init', '--chatId', 'chat'],
-    ['chat', 'record', 'list', '--appId', APP_ID],
-    ['chat', 'history', 'update', '--appId', APP_ID, '--chatId', 'chat', '--top', 'nonsense'],
-    ['chat', 'history', 'status', '--appId', APP_ID, '--chatIds', 'a,,b'],
-    ['chat', 'history', 'delete', '--appId', APP_ID, '--chatId', 'chat'],
+    ['chat', 'init', '--chat-id', 'chat'],
+    ['chat', 'record', 'list', '--id', APP_ID],
+    ['chat', 'history', 'update', '--id', APP_ID, '--chat-id', 'chat', '--top', 'nonsense'],
+    ['chat', 'history', 'status', '--id', APP_ID, '--chat-ids', 'a,,b'],
+    ['chat', 'history', 'delete', '--id', APP_ID, '--chat-id', 'chat'],
     ['chat', 'record', 'list-cursor']
   ])('rejects invalid command arguments without HTTP: %j', async (...args) => {
     const fetchFn = vi.fn();
@@ -408,7 +415,7 @@ describe('createChatCommandSpecs', () => {
 
   it('rejects ambiguous duplicate fields across file input and flags', async () => {
     const result = await exec({
-      args: ['chat', 'run', '--stdin', '--appId', APP_ID],
+      args: ['chat', 'run', '--stdin', '--id', APP_ID],
       readStdin: async () => JSON.stringify({ appId: APP_ID })
     });
     expect(result.exitCode).toBe(2);
@@ -444,7 +451,7 @@ describe('createChatCommandSpecs', () => {
     const rejected = await exec({
       dir,
       auth: [],
-      args: ['chat', 'history', 'list', '--appId', '68ad85a7463006c963799a06'],
+      args: ['chat', 'history', 'list', '--id', '68ad85a7463006c963799a06'],
       fetchFn
     });
     expect(rejected.exitCode).toBe(2);
@@ -454,7 +461,7 @@ describe('createChatCommandSpecs', () => {
   it('requires login before any request', async () => {
     const fetchFn = vi.fn();
     const result = await exec({
-      args: ['chat', 'history', 'list', '--appId', APP_ID],
+      args: ['chat', 'history', 'list', '--id', APP_ID],
       auth: [],
       fetchFn
     });
@@ -467,7 +474,7 @@ describe('createChatCommandSpecs', () => {
     const prompter = { ...createNonTtyPrompter(), isInteractive: true, confirm };
     const fetchFn = vi.fn<CliFetchFn>(async () => response(null));
     const result = await exec({
-      args: ['chat', 'history', 'delete', '--appId', APP_ID, '--chatId', 'chat'],
+      args: ['chat', 'history', 'delete', '--id', APP_ID, '--chat-id', 'chat'],
       format: 'text',
       prompter,
       fetchFn
@@ -482,7 +489,7 @@ describe('createChatCommandSpecs', () => {
   it('allows deletion dry-run without confirmation or HTTP', async () => {
     const fetchFn = vi.fn();
     const result = await exec({
-      args: ['chat', 'history', 'delete', '--appId', APP_ID, '--chatId', 'chat', '--dry-run'],
+      args: ['chat', 'history', 'delete', '--id', APP_ID, '--chat-id', 'chat', '--dry-run'],
       fetchFn
     });
     expect(result.exitCode).toBe(0);
@@ -503,13 +510,13 @@ describe('createChatCommandSpecs', () => {
     async ({ status, code, exitCode }) => {
       const fetchFn = vi.fn<CliFetchFn>(
         async () =>
-          new Response(JSON.stringify({ code, message: 'App request rejected' }), {
+          new Response(JSON.stringify({ code, message: 'Agent request rejected' }), {
             status,
             headers: { 'content-type': 'application/json' }
           })
       );
       const result = await exec({
-        args: ['chat', 'run', '--appId', APP_ID, '--text', 'hello'],
+        args: ['chat', 'run', '--id', APP_ID, '--text', 'hello'],
         fetchFn
       });
       expect(result.exitCode).toBe(exitCode);
@@ -520,7 +527,7 @@ describe('createChatCommandSpecs', () => {
   it('maps a network failure without retrying generation', async () => {
     const fetchFn = vi.fn<CliFetchFn>().mockRejectedValue(new Error('Connection refused'));
     const result = await exec({
-      args: ['chat', 'run', '--appId', APP_ID, '--text', 'hello'],
+      args: ['chat', 'run', '--id', APP_ID, '--text', 'hello'],
       fetchFn
     });
     expect(result.exitCode).toBe(5);

@@ -17,7 +17,7 @@ import {
   resolveWorkflowDir
 } from './shared';
 
-/** 注册工作流图的远端对比和单步调试命令。 */
+/** 注册工作流图的远端对比、单步调试和单步断言回归命令。 */
 export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {
   return [
     {
@@ -35,10 +35,10 @@ export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {
       options: [
         WORKFLOW_DIR_OPTION,
         {
-          name: 'appId',
-          flags: '--app-id <appId>',
+          name: 'id',
+          flags: '--id <agentId>',
           takesValue: true,
-          description: 'Target App ObjectId'
+          description: 'Target Agent ObjectId'
         }
       ],
       examples: [
@@ -71,10 +71,10 @@ export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {
       options: [
         WORKFLOW_DIR_OPTION,
         {
-          name: 'appId',
-          flags: '--app-id <appId>',
+          name: 'id',
+          flags: '--id <agentId>',
           takesValue: true,
-          description: 'Target App ObjectId'
+          description: 'Target Agent ObjectId'
         },
         {
           name: 'remote',
@@ -170,6 +170,101 @@ export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {
           entryNodes: parseIdListOption(options.entryNodes),
           chatId: optionalNonEmptyOption(options, 'chatId'),
           usageId: optionalNonEmptyOption(options, 'usageId'),
+          timeoutMs: parseWorkflowTimeoutMs(options.timeout),
+          dryRun: options.dryRun === true
+        });
+      }
+    },
+
+    {
+      path: ['workflow', 'test'],
+      summary:
+        'Run single-step debug assertions against local workflow.json or the remote draft via /core/workflow/debug',
+      risk: 'write',
+      authModes: ['token'],
+      positionalArgs: [
+        {
+          name: 'appId',
+          required: false,
+          description: 'Target Agent ObjectId (defaults to synced appId or cases file appId)'
+        }
+      ],
+      options: [
+        WORKFLOW_DIR_OPTION,
+        {
+          name: 'id',
+          flags: '--id <agentId>',
+          takesValue: true,
+          description: 'Target Agent ObjectId'
+        },
+        {
+          name: 'remote',
+          flags: '--remote',
+          takesValue: false,
+          description: 'Test remote draft instead of local workflow.json'
+        },
+        {
+          name: 'cases',
+          flags: '--cases <path>',
+          takesValue: true,
+          description: 'Test cases JSON file path ("-" for stdin)'
+        },
+        {
+          name: 'query',
+          flags: '--query <text>',
+          takesValue: true,
+          description: 'Run a quick single-case smoke test with query text'
+        },
+        {
+          name: 'variables',
+          flags: '--variables <json>',
+          takesValue: true,
+          description: 'Default variables JSON object merged into each case'
+        },
+        {
+          name: 'failFast',
+          flags: '--fail-fast',
+          takesValue: false,
+          description: 'Stop after the first failed test case'
+        },
+        {
+          name: 'timeout',
+          flags: '--timeout <ms>',
+          takesValue: true,
+          description: 'Per-case debug timeout in milliseconds (default 300000)'
+        },
+        WORKFLOW_DRY_RUN_OPTION
+      ],
+      examples: [
+        {
+          description: 'Run single-step assertion suite from cases.json',
+          args: ['workflow', 'test', '--cases', './workflow-tests.json', '--format', 'json']
+        },
+        {
+          description: 'Run single-query smoke test',
+          args: ['workflow', 'test', '--query', 'Hello']
+        }
+      ],
+      execute: async ({ positional, options, client, container }) => {
+        const activeClient = requireActiveClient(client, 'workflow test');
+        if (options.cases !== undefined && options.query !== undefined) {
+          throw new CliArgumentError('--cases and --query are mutually exclusive.');
+        }
+        const variables = await resolveJsonObjectPayload({
+          inlineJson: typeof options.variables === 'string' ? options.variables : undefined,
+          readTextFile: container.fileIo.readTextFile,
+          readStdin: container.readStdin,
+          fieldLabel: 'variables'
+        });
+        return container.workflowSyncService.test({
+          client: activeClient,
+          dir: resolveWorkflowDir(options, container.env),
+          appId: resolveWorkflowAppId(positional, options),
+          remote: options.remote === true,
+          casesSource: optionalNonEmptyOption(options, 'cases'),
+          query: typeof options.query === 'string' ? options.query : undefined,
+          variables,
+          failFast: options.failFast === true,
           timeoutMs: parseWorkflowTimeoutMs(options.timeout),
           dryRun: options.dryRun === true
         });

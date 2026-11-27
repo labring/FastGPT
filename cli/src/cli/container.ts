@@ -1,3 +1,9 @@
+import { createAgentLogsService, type AgentLogsService } from '../domain/agent/agent-logs-service';
+import { createAgentService, type AgentService } from '../domain/agent/agent-service';
+import {
+  createAgentVersionService,
+  type AgentVersionService
+} from '../domain/agent/agent-version-service';
 import {
   createAuthService,
   type AuthService,
@@ -25,9 +31,20 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createFileService, type FileService } from '../domain/file/file-service';
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
+import {
+  createPlatformSkillService,
+  type PlatformSkillService
+} from '../domain/skill/platform-skill-service';
+import { createHttpToolService, type HttpToolService } from '../domain/tool/http-tool-service';
+import { createMcpToolService, type McpToolService } from '../domain/tool/mcp-tool-service';
+import {
+  createToolFolderService,
+  type ToolFolderService
+} from '../domain/tool/tool-folder-service';
 import {
   createWorkflowLocalService,
   type WorkflowLocalService
@@ -83,8 +100,16 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
+  readonly fileService: FileService;
+  readonly agentService: AgentService;
+  readonly agentVersionService: AgentVersionService;
+  readonly agentLogsService: AgentLogsService;
   readonly chatService: ChatService;
   readonly modelService: ModelService;
+  readonly platformSkillService: PlatformSkillService;
+  readonly toolFolderService: ToolFolderService;
+  readonly mcpToolService: McpToolService;
+  readonly httpToolService: HttpToolService;
   readonly workflowLocalService: WorkflowLocalService;
   readonly workflowSyncService: WorkflowSyncService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
@@ -216,8 +241,16 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
+    fileService: createFileService(),
+    agentService: createAgentService(),
+    agentVersionService: createAgentVersionService(),
+    agentLogsService: createAgentLogsService(),
     chatService: createChatService(),
     modelService: createModelService(),
+    platformSkillService: createPlatformSkillService(),
+    toolFolderService: createToolFolderService(),
+    mcpToolService: createMcpToolService(),
+    httpToolService: createHttpToolService(),
     workflowLocalService,
     workflowSyncService,
     readJsonInput: (params) =>

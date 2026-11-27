@@ -134,6 +134,8 @@ function createBoundHttpClient({
     request: (params) => baseClient.request({ auth: authPayload, ...params }),
     requestRaw: (params) => baseClient.requestRaw({ auth: authPayload, ...params }),
     uploadMultipart: (params) => baseClient.uploadMultipart({ auth: authPayload, ...params }),
+    uploadBinary: (params) => baseClient.uploadBinary({ auth: authPayload, ...params }),
+    putPresignedUrl: (params) => baseClient.putPresignedUrl(params),
     streamSse: (params) => baseClient.streamSse({ auth: authPayload, ...params })
   };
 }

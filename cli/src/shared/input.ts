@@ -205,7 +205,12 @@ export function buildPaginationMeta({
     };
   }
 
-  const page = typeof validatedBody.pageNum === 'number' ? validatedBody.pageNum : DEFAULT_PAGE_NUM;
+  const page =
+    typeof validatedBody.pageNum === 'number'
+      ? validatedBody.pageNum
+      : typeof validatedBody.page === 'number'
+        ? validatedBody.page
+        : DEFAULT_PAGE_NUM;
   const hasMore = page * pageSize < total;
   return {
     total,

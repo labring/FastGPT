@@ -1,8 +1,11 @@
 import z from 'zod';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
+import { AppTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '@fastgpt/global/core/chat/type';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges
@@ -15,6 +18,7 @@ import {
   type GetAppVersionDetailResponseType,
   type PublishAppResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import type { WorkflowDebugResponse } from '@fastgpt/global/openapi/core/workflow/api';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { ensureSystemConfigNode } from '@fastgpt/workflow-core/domain/defaults';
@@ -31,6 +35,8 @@ import type { FileIoAdapter } from '../../infra/fs/file-io';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import type { WorkflowTemplateLoader } from '../../infra/workflow/template-loader';
 import { CliApiError, CliArgumentError, CliAuthError } from '../../shared/errors';
+import { isPlainObject } from '../../shared/input';
+import { redactValue } from '../../shared/redact';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import { formatWorkflowWarnings, withWorkflowErrorMapping } from './workflow-error';
@@ -127,6 +133,20 @@ export type WorkflowSyncService = {
     query?: string;
     variables?: Record<string, unknown>;
     failFast?: boolean;
+    timeoutMs?: number;
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
+  chatTest: (params: {
+    client: FastGptHttpClient;
+    dir: string;
+    appId?: string;
+    local?: boolean;
+    remote?: boolean;
+    messages: unknown[];
+    chatId?: string;
+    variables?: Record<string, unknown>;
+    responseChatItemId?: string;
+    detail?: boolean;
     timeoutMs?: number;
     dryRun?: boolean;
   }) => Promise<CliResult>;
@@ -426,7 +446,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     throw new CliArgumentError(
       'App ID is required.',
       undefined,
-      'Pass <appId> / --app-id <id>, or pull a workflow first with: fastgpt app pull <appId>'
+      'Pass <agentId> / --id <id>, or pull a workflow first with: fastgpt agent pull <agentId>'
     );
   }
 
@@ -578,7 +598,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       return {
         checksum: submittedChecksum,
         warnings: [
-          'The server did not return a saved workflow snapshot. The sync baseline uses submitted content; if the server normalized it, inspect with "fastgpt workflow diff" and run "fastgpt app pull" before the next write.'
+          'The server did not return a saved workflow snapshot. The sync baseline uses submitted content; if the server normalized it, inspect with "fastgpt workflow diff" and run "fastgpt agent pull" before the next write.'
         ]
       };
     }
@@ -659,7 +679,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'app pull',
+            operation: 'agent pull',
             risk: 'write',
             preview: {
               appId,
@@ -797,7 +817,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'app save',
+            operation: 'agent save',
             risk: 'write',
             preview: {
               appId,
@@ -886,7 +906,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'app publish',
+            operation: 'agent publish',
             risk: 'write',
             preview: {
               appId,
@@ -1071,9 +1091,9 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             };
           }
           throw new CliArgumentError(
-            'Either --cases <path> or --query <text> is required for app test.',
+            'Either --cases <path> or --query <text> is required for workflow test.',
             undefined,
-            'Run: fastgpt app test --cases ./cases.json or --query "Hello"'
+            'Run: fastgpt workflow test --cases ./cases.json or --query "Hello"'
           );
         })();
 
@@ -1103,7 +1123,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'app test',
+            operation: 'workflow test',
             risk: 'write',
             preview: {
               appId,
@@ -1205,6 +1225,243 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             passed: passedCount,
             failed: 0,
             results
+          }
+        });
+      }),
+
+    chatTest: ({
+      client,
+      dir,
+      appId: explicitAppId,
+      local,
+      remote,
+      messages,
+      chatId,
+      variables,
+      responseChatItemId,
+      detail,
+      timeoutMs,
+      dryRun
+    }) =>
+      withWorkflowErrorMapping(async () => {
+        if (local && remote) {
+          throw new CliArgumentError('--local and --remote are mutually exclusive.');
+        }
+        if (!Array.isArray(messages) || messages.length === 0) {
+          throw new CliArgumentError(
+            'At least one message is required for agent test.',
+            undefined,
+            'Pass --text "<message>" or --messages \'[{"role":"user","content":"Hello"}]\'.'
+          );
+        }
+
+        const appId = await resolveAppId({ explicitAppId, dir });
+        const hasLocalWorkflow = await fileIo.exists(WORKFLOW_FILE_NAME, dir);
+        const resolvedSource: 'local' | 'remote' = local
+          ? 'local'
+          : remote
+            ? 'remote'
+            : hasLocalWorkflow
+              ? 'local'
+              : 'remote';
+
+        const resolvedWorkflow = await (async () => {
+          if (resolvedSource === 'local') {
+            const document = await readWorkflowDocument({ fileIo, dir });
+            const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' });
+            if (diagnostics.some((item) => item.severity === 'error')) {
+              throw new WorkflowValidationError(diagnostics);
+            }
+            const compiled = compileStoreWorkflow(document);
+            return {
+              appName: document.app.name?.trim() || 'Workflow Test',
+              nodes: compiled.nodes,
+              edges: compiled.edges,
+              chatConfig: compiled.chatConfig ?? {}
+            };
+          }
+
+          const appDetail = await fetchAppDetailOrThrow(client, appId);
+          if (!AppTypeList.includes(appDetail.type as AppTypeEnum)) {
+            throw new CliArgumentError(
+              `Resource "${appId}" has type "${appDetail.type}", expected an agent (${AppTypeList.join(', ')}).`
+            );
+          }
+          return {
+            appName: appDetail.name || 'Agent Test',
+            nodes: appDetail.nodes ?? [],
+            edges: appDetail.edges ?? [],
+            chatConfig: appDetail.chatConfig ?? {}
+          };
+        })();
+
+        const resolvedChatId = chatId?.trim() || getNanoid(24);
+        const body = ChatTestPropsSchema.parse({
+          appId,
+          appName: resolvedWorkflow.appName,
+          chatId: resolvedChatId,
+          messages,
+          nodes: resolvedWorkflow.nodes,
+          edges: resolvedWorkflow.edges,
+          chatConfig: resolvedWorkflow.chatConfig,
+          variables: variables ?? {},
+          ...(responseChatItemId ? { responseChatItemId } : {})
+        });
+
+        if (dryRun) {
+          return createDryRunResult({
+            operation: 'agent test',
+            risk: 'write',
+            preview: redactValue({
+              method: 'POST',
+              path: '/core/chat/chatTest',
+              source: resolvedSource,
+              appId: body.appId,
+              appName: body.appName,
+              chatId: body.chatId,
+              nodeCount: body.nodes.length,
+              edgeCount: body.edges.length,
+              messages: body.messages,
+              variables: body.variables
+            })
+          });
+        }
+
+        const answerParts: string[] = [];
+        const reasoningParts: string[] = [];
+        const nodeResponses: unknown[] = [];
+        const toolCallMap = new Map<string, Record<string, unknown>>();
+        let flowResponses: unknown;
+        let newVariables: Record<string, unknown> | undefined;
+        let interactive: unknown;
+        let durationSeconds: number | undefined;
+        let title: string | undefined;
+
+        for await (const sse of client.streamSse({
+          method: 'POST',
+          path: '/core/chat/chatTest',
+          body,
+          timeoutMs: timeoutMs ?? 300_000
+        })) {
+          if (sse.data === '[DONE]') {
+            continue;
+          }
+
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(sse.data);
+          } catch {
+            continue;
+          }
+
+          const eventName = sse.event ?? '';
+          if (eventName === SseResponseEventEnum.error) {
+            const errObj = isPlainObject(parsed) ? parsed : { message: String(parsed) };
+            const errMsg =
+              (typeof errObj.message === 'string' && errObj.message) ||
+              (typeof errObj.statusText === 'string' && errObj.statusText) ||
+              'Agent chatTest execution failed.';
+            throw new CliApiError({
+              message: errMsg,
+              details: errObj
+            });
+          }
+
+          if (
+            eventName === SseResponseEventEnum.answer ||
+            eventName === SseResponseEventEnum.fastAnswer
+          ) {
+            const delta = isPlainObject(parsed)
+              ? (parsed.choices as Array<{ delta?: Record<string, unknown> }> | undefined)?.[0]
+                  ?.delta
+              : undefined;
+            if (typeof delta?.content === 'string') {
+              answerParts.push(delta.content);
+            }
+            if (typeof delta?.reasoning_content === 'string') {
+              reasoningParts.push(delta.reasoning_content);
+            }
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.flowNodeResponse) {
+            nodeResponses.push(parsed);
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.flowResponses) {
+            flowResponses = parsed;
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.updateVariables && isPlainObject(parsed)) {
+            newVariables = parsed;
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.interactive && isPlainObject(parsed)) {
+            interactive = parsed.interactive ?? parsed;
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.workflowDuration && isPlainObject(parsed)) {
+            if (typeof parsed.durationSeconds === 'number') {
+              durationSeconds = parsed.durationSeconds;
+            }
+            continue;
+          }
+
+          if (eventName === SseResponseEventEnum.chatTitle && isPlainObject(parsed)) {
+            if (typeof parsed.title === 'string') {
+              title = parsed.title;
+            }
+            continue;
+          }
+
+          if (
+            (eventName === SseResponseEventEnum.toolCall ||
+              eventName === SseResponseEventEnum.toolParams ||
+              eventName === SseResponseEventEnum.toolResponse) &&
+            isPlainObject(parsed) &&
+            isPlainObject(parsed.tool)
+          ) {
+            const toolId = String(parsed.tool.id ?? sse.id ?? toolCallMap.size);
+            const prev = toolCallMap.get(toolId) ?? {};
+            toolCallMap.set(toolId, { ...prev, ...parsed.tool });
+          }
+        }
+
+        const effectiveNodeResponses =
+          nodeResponses.length > 0
+            ? nodeResponses
+            : Array.isArray(flowResponses)
+              ? flowResponses
+              : [];
+        const answerText = answerParts.join('');
+        const reasoningText = reasoningParts.join('');
+        const toolCalls = [...toolCallMap.values()];
+
+        return createChangedResult({
+          message: `Completed chat test on Agent "${resolvedWorkflow.appName}" (${appId})`,
+          data: {
+            appId,
+            appName: resolvedWorkflow.appName,
+            chatId: resolvedChatId,
+            source: resolvedSource,
+            answerText,
+            ...(reasoningText ? { reasoningText } : {}),
+            ...(title ? { title } : {}),
+            ...(durationSeconds !== undefined ? { durationSeconds } : {}),
+            ...(interactive !== undefined ? { interactive } : {}),
+            ...(newVariables !== undefined ? { newVariables } : {}),
+            ...(toolCalls.length > 0 ? { toolCalls } : {}),
+            executedNodeCount: effectiveNodeResponses.length,
+            ...(detail
+              ? {
+                  nodeResponses: effectiveNodeResponses,
+                  ...(flowResponses !== undefined ? { flowResponses } : {})
+                }
+              : {})
           }
         });
       })

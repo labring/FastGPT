@@ -150,7 +150,7 @@ export function createChatService(): ChatService {
         credential?.kind !== 'appKey' &&
         credential?.kind !== 'unknownApiKey'
       ) {
-        throw new CliArgumentError('--appId is required for a user session or personal API Key.');
+        throw new CliArgumentError('--id is required for a user session or personal API Key.');
       }
       if (
         credential?.kind === 'appKey' &&
@@ -158,16 +158,16 @@ export function createChatService(): ChatService {
         payload.appId !== undefined &&
         payload.appId !== credential.boundAppId
       ) {
-        throw new CliArgumentError('--appId does not match the App bound to the active API Key.');
+        throw new CliArgumentError('--id does not match the Agent bound to the active API Key.');
       }
       if (
         payload.authProxy !== undefined &&
         (credential?.kind === 'appKey' || credential?.kind === 'token')
       ) {
-        throw new CliArgumentError('--authProxy requires an enabled personal API Key.');
+        throw new CliArgumentError('--auth-proxy requires an enabled personal API Key.');
       }
       if (payload.customUid !== undefined && credential?.kind === 'token') {
-        throw new CliArgumentError('--customUid requires an API Key.');
+        throw new CliArgumentError('--custom-uid requires an API Key.');
       }
 
       if (operation === 'run') {
@@ -195,7 +195,7 @@ export function createChatService(): ChatService {
           (key) => payload[key] !== undefined
         );
         if (cursors.length > 1) {
-          throw new CliArgumentError('Use only one of --initialId, --prevId, or --nextId.');
+          throw new CliArgumentError('Use only one of --initial-id, --prev-id, or --next-id.');
         }
         for (const key of cursors) payload[key] = z.string().min(1).parse(payload[key]);
       }
@@ -204,7 +204,7 @@ export function createChatService(): ChatService {
         ['title', 'customTitle', 'top'].every((key) => payload[key] === undefined)
       ) {
         throw new CliArgumentError(
-          'Provide --title, --customTitle, or --top to update the App conversation.'
+          'Provide --title, --custom-title, or --top to update the Agent conversation.'
         );
       }
 
