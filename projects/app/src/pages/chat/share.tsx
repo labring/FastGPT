@@ -341,7 +341,7 @@ const OutLink = (props: Props & BrandingPageProps) => {
         minH={0}
         minW={0}
         gap={datasetCiteData ? 0 : 4}
-        {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
+        {...(isEmbed ? { p: '0 !important' } : { p: [0, 5] })}
       >
         {showChatContainer && (
           <PageContainer
@@ -351,11 +351,17 @@ const OutLink = (props: Props & BrandingPageProps) => {
             minW={0}
             p={'0 !important'}
             insertProps={
-              datasetCiteData
+              isEmbed
                 ? {
-                    borderRadius: [0, '16px 0 0 16px']
+                    borderWidth: 0,
+                    borderRadius: 0,
+                    boxShadow: 'none'
                   }
-                : undefined
+                : datasetCiteData
+                  ? {
+                      borderRadius: [0, '16px 0 0 16px']
+                    }
+                  : undefined
             }
           >
             <Flex h={'100%'} minH={0} minW={0} flexDirection={['column', 'row']}>
@@ -564,11 +570,22 @@ const OutLink = (props: Props & BrandingPageProps) => {
             w={0}
             maxW={'560px'}
             p={'0 !important'}
-            insertProps={{
-              borderLeft: '1px solid',
-              borderLeftColor: 'myGray.200',
-              borderRadius: [0, '0 16px 16px 0']
-            }}
+            insertProps={
+              isEmbed
+                ? {
+                    borderWidth: 0,
+                    borderLeftWidth: '1px',
+                    borderLeftStyle: 'solid',
+                    borderLeftColor: 'myGray.200',
+                    borderRadius: 0,
+                    boxShadow: 'none'
+                  }
+                : {
+                    borderLeft: '1px solid',
+                    borderLeftColor: 'myGray.200',
+                    borderRadius: [0, '0 16px 16px 0']
+                  }
+            }
           >
             <ChatQuoteList
               rawSearch={datasetCiteData.rawSearch}
