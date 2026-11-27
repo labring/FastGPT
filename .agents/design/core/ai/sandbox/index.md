@@ -2,10 +2,10 @@
 
 状态：当前实现
 
-最后核对：2026-11-23
+最后核对：2026-11-27
 
 > 本文档定义 AI Agent / WorkflowBuilder / Skill 编辑所使用的持久化 **Agent Sandbox** 完整架构、不变量、状态机与安全/运维契约；工作流「代码运行」节点使用的无状态 Code Sandbox（`projects/code-sandbox`）不在本文档范围内。
-> 集成测试环境与 5 个测试套件说明见 [Agent Sandbox 集成测试](./integration-testing.md)。
+> 集成测试环境与 6 个测试套件说明见 [Agent Sandbox 集成测试](./integration-testing.md)。
 
 ---
 
@@ -23,7 +23,7 @@ Agent Sandbox 统一基于 **OpenSandbox（`@alibaba-group/opensandbox@^1.2.1`�
 ```mermaid
 flowchart LR
   Browser["浏览器（对话 / IDE / HTML 预览 / 终端）"] -->|"HTTP API（会话 / 文件 / Ticket / 提取）"| App["FastGPT 主站（多副本）"]
-  Browser -->|"WS /fs, /terminal & GET /preview/:sessionId/*"| Proxy["agent-sandbox-proxy（Rust 复用）"]
+  Browser -->|"WS /fs, /terminal & GET /preview/:sessionId/*"| Proxy["agent-sandbox-proxy（Rust :1006，可拆 PREVIEW_PORT）"]
   Proxy -->|"verifyTicket（x-proxy-token + upstream_headers）& keepalive"| App
   App <-->|"实例状态 / Checkpoint / Archive 指针（v3）"| Mongo[("MongoDB")]
   App <-->|"30s 自动续租可重入 Sandbox Lease / Preview Session / 孤儿卷标记"| Redis[("Redis")]
@@ -52,7 +52,7 @@ infrastructure（instance repository / opensandbox SDK & runtimeProfile / volume
 
 - **外部调用边界**：生产业务仅引用 `interface/*` 或显式公开模块，禁止直接跨层读写 `infrastructure/instance/schema.ts` 或直接发 Provider 请求；Mongo 读写集中于 `infrastructure/instance/repository.ts`。
 - **运行客户端 vs 资源管理**：`SandboxClient` 仅服务运行态（可能触发新建或唤醒）；历史资源 `stop` / `archive` / `delete` / `keepalive` / `checkExist` 必须走 `resource` 或 `session` 服务，严禁隐式拉起 `archived` 实例。
-- **4.18.0 过渡兼容层（[`legacy/index.ts`](../../../../../packages/service/core/ai/sandbox/legacy/index.ts)）**：严格隔离旧工作区路径转换、只读检查遗留 `agent_sandbox_instances_v2` 的未迁移门禁，以及旧卷/旧容器/旧 Preview 会话兼容；移除窗口为 `>= 4.19.0`。系统升级迁移脚本位于 `projects/app/src/migration/tasks/4180/`，只读读取 `v2` 并写入 `agent_sandbox_instances_v3`，不向运行期新增迁移转导接口。
+- **4.18.0 过渡兼容层（[`legacy/index.ts`](../../../../../packages/service/core/ai/sandbox/legacy/index.ts)）**：严格隔离 `LEGACY_DEVBOX_PROVIDER` 常量、Task 7/8 存量卷 `shouldForwardAllowLegacyUnlabeled` 门控、旧容器 `assertLegacyCompatibleSessionSandboxOwner` / `listLegacyCompatibleSandboxesBySessionId` 归属兼容，以及旧版 `<sandboxId>:<sessionId>` Preview 凭证解析（`parseLegacySandboxPreviewCredential`）；移除窗口为 `>= 4.19.0`。只读回查遗留 `agent_sandbox_instances_v2` 的未迁移门禁（`hasPendingLegacySandboxInstance`）位于 [`infrastructure/instance/repository.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/instance/repository.ts)；系统升级迁移脚本位于 `projects/app/src/migration/tasks/4180/`，只读读取 `v2` 并写入 `agent_sandbox_instances_v3`，不向运行期新增迁移转导接口。
 
 ---
 
@@ -77,7 +77,7 @@ infrastructure（instance repository / opensandbox SDK & runtimeProfile / volume
 
 以下环境变量仅由独立容器/微服务自身读取，不纳入主站 `system_instance_configs`：
 
-- **`projects/agent-sandbox-proxy`**：`PORT`、`FASTGPT_APP_URL`、`FASTGPT_APP_REQUEST_TIMEOUT_SECS`、`AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS`、`AGENT_SANDBOX_PROXY_REWRITE_HOST`、`RUST_LOG`。
+- **`projects/agent-sandbox-proxy`**：`PORT`（默认 `1006`）、`PREVIEW_PORT`（默认复用 `PORT` 单端口模式；显式设为不同端口如 `1007` 时拆分为 WS `/fs`·`/terminal` 与 HTTP `/preview` 双端口监听）、`FASTGPT_APP_URL`、`FASTGPT_APP_REQUEST_TIMEOUT_SECS`、`AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS`、`AGENT_SANDBOX_PROXY_REWRITE_HOST`、`RUST_LOG`。
 - **`projects/volume-manager`**：`PORT`、`VM_AUTH_TOKEN`、`VM_RUNTIME`（`docker | kubernetes`）、`VM_DOCKER_SOCKET`、`VM_DOCKER_API_VERSION`、`VM_K8S_NAMESPACE`、`VM_K8S_PVC_STORAGE_CLASS`、`LOG_ENABLE_CONSOLE`、`LOG_CONSOLE_LEVEL`、`LOG_ENABLE_OTEL`、`LOG_OTEL_*`。
 - **`projects/fastgpt-ide-agent` 与沙盒镜像入口（`/usr/local/bin/entrypoint.sh`）**：`FASTGPT_WORKDIR`（默认 `/home/sandbox/workspace`）、`FASTGPT_RUNTIME_DIR`（默认 `/var/lib/fastgpt-runtime`）、`HOME`（默认 `/home/sandbox`）、`SHELL`、`FASTGPT_DISK_SOFT_LIMIT_BYTES`、`FASTGPT_IDE_MAX_FILE_BYTES`、`FASTGPT_IDE_WS_MAX_MESSAGE_BYTES`、`FASTGPT_IDE_WS_MAX_FRAME_BYTES`；`entrypoint.sh` 校验目录可写后直接 `exec fastgpt-ide-agent` 作为前景进程（`stdout/stderr` 交由容器运行时收集），`/terminal` 拉起子 shell 时由 `src/terminal/bridge.rs` 清理这 6 个启动控制变量；镜像同时固化 `PIP_BREAK_SYSTEM_PACKAGES=1` 与 `PIP_NO_CACHE_DIR=1`，避免在持久 `$HOME` 产生冗余 pip 缓存。
 
@@ -109,7 +109,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 - **会话目录编码**：App / WorkflowBuilder 对 `chatId` 调用 `getSandboxSessionPathSegment`——常规 `encodeURIComponent(chatId)`（非 `.` / `..` 且 ≤ 200 字节）原样使用，超长或特殊输入降级为 `chat-<sha256_40>`。
 - **App / WorkflowBuilder 边界**：Sandbox 工具（相对路径锚定）、对话输入文件（写入 `<sessionWorkDirectory>/user_files/`）与浏览器 `SandboxEditor` 默认锁定在 `sessionWorkDirectory`（编辑器当前不提供切回 `workspaceRoot` 的 UI）。注意：`sessions/<segment>` 是**默认工作目录隔离，不是同一用户沙盒内的硬安全边界**。
-- **Skill Edit 边界**：`sessionWorkDirectory === workspaceRoot`，直接编辑 `/home/sandbox/workspace/`（`skills/<skillName>/SKILL.md`）。
+- **Skill Edit 边界**：`sessionWorkDirectory === workspaceRoot`，直接编辑 `/home/sandbox/workspace/`（默认模板布局为 `skills/<skillName>/SKILL.md`，校验时允许 `SKILL.md` 位于工作区内任意层级）。
 - **路径解析约束（`resolveSandboxRuntimePath`）**：拦截 `..` 路径穿越；相对路径以 `sessionWorkDirectory` 为基准；`allowOutsideWorkspace` 默认 `false`，显式允许绝对路径时默认严格限制在 `workspaceRoot` 内；仅受控只读入口（如 `ls` / `readFile` 读取容器内内置 Skill）显式传入 `allowOutsideWorkspace: true`；写入文件前统一经 `prepareSandboxFileParentDirectories` 批量创建父目录。
 - **用户输入文件去重（`runtime/files.ts`）**：同一会话沙盒内多节点/子应用并发注入 `user_files/` 时，按会话级分配表以文件 URL 去重：相同 URL 复用原分配文件名，不同 URL 同名文件自动递增后缀并同步回写 `file.name` 与 `file.sandboxPath`。
 
@@ -136,7 +136,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 | 稳态 | `operation` | `instanceId`（远端容器） | `storage.volumes`（PVC/卷） | `storage.archive`（S3 `.tar.zst`） | 计入 Quota |
 | --- | --- | --- | --- | --- | --- |
-| `running` | ❌ 禁止存在 | ✅ 有值（缺失时运行态懒回填） | ✅ 非空（含完整 `claimName`） | 可保留上一代历史归档指针（CoW 热备） | ✅ 是 |
+| `running` | ❌ 禁止存在 | ✅ 有值（在 `provisioning`/`restoring`/自愈阶段原子写入） | ✅ 非空（含完整 `claimName`） | 可保留上一代历史归档指针（CoW 热备） | ✅ 是 |
 | `stopped` | ❌ 禁止存在 | ❌ 清空（`$unset`） | ✅ 非空（温态 PVC） | 可保留上一代历史归档指针 | ❌ 否 |
 | `archived` | ❌ 禁止存在 | ❌ 清空（`$unset`） | ❌ 清空（0 持久卷） | ✅ 非空（`objectKey`、`generation`、`format: 'tar.zst'`、`sizeBytes`、`archivedAt`） | ❌ 否 |
 
@@ -160,7 +160,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 | 操作（`type`） | 起始态 | 过渡态 | 正向 `phase` 序列 | 终态 | 失败回滚与说明 |
 | --- | --- | --- | --- | --- | --- |
 | 新建 / 唤醒（`provision`） | 无记录 / `stopped` | `provisioning` | `claimed -> providerEnsured` | `running` | 回滚序列：`rollbackClaimed -> rollbackProviderReleased -> rollbackVolumeReleased -> stopped`（保留 PVC 与业务元数据） |
-| 暂停 / 换镜像停机（`stop`） | `running` | `stopping` | `claimed -> providerDeleted` | `stopped` | 删除远端容器并清空 `instanceId`，保留完整 `storage.volumes` PVC |
+| 暂停 / 换镜像停机（`stop`） | `running` | `stopping` | `claimed -> providerStopped` | `stopped` | 删除远端容器并清空 `instanceId`，保留完整 `storage.volumes` PVC |
 | 冷归档（`archive`） | `stopped` | `archiving` | `claimed -> archiveUploaded -> providerDeleted -> volumeDeleted` | `archived` | 仅 `claimed` 失败/抢占可退回 `stopped`；过 `archiveUploaded` 必须推完删容器/删卷进入 `archived` |
 | 冷恢复（`restore`） | `archived` | `restoring` | `claimed -> volumeAssigned -> archiveInstalled` | `running` | 未到 `archiveInstalled` 前任一失败走回滚序列回到 `archived`，必须删容器+删刚分配空 PVC |
 | 彻底删除（`delete`） | 任意可抢占态 | `deleting` | `claimed -> providerDeleted -> volumeDeleted -> archiveDeleted` | 删除 Mongo 文档 | 幂等清理容器 -> 卷 -> S3 `sandbox/archive-v2/` 全世代归档，物理删除 `v3` 文档（不写墓碑、不修改 `v2`） |
@@ -178,7 +178,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 ### 5.3 `running` 稳态快路径与跨代际保护
 
-- **无锁快路径（`application/runtime/client.ts` + `service.ts`）**：命中 `running` 记录时（工具执行、`keepalive`、IDE 连接），直接构造客户端并在 Mongo 执行 **带 `expectedWorkspaceClaimName` 条件的 CAS `touch`** 刷新 `lastActiveAt`（若历史记录缺 `instanceId` 则同步惰性回填），随后调用 **`Sandbox.connect({ sandboxId: instanceId, skipHealthCheck: true })`** 直连；不抢占 Redis 锁、不扫控制面列表。
+- **无锁快路径（`application/runtime/client.ts` + `service.ts`）**：命中 `running` 记录时（工具执行、`keepalive`、IDE 连接），直接构造客户端并在 Mongo 执行 **带 `expectedWorkspaceClaimName` 条件的 CAS `touch`** 仅刷新 `lastActiveAt`（`instanceId` 已在 `provisioning`/`restoring`/`archiving` 与自愈阶段原子写入，快路径不做惰性回填），随后调用 **`Sandbox.connect({ sandboxId: instanceId, skipHealthCheck: true })`** 直连；不抢占 Redis 锁、不扫控制面列表。
 - **并发防篡改约束**：快路径严禁覆写 `storage`；一旦 `expectedWorkspaceClaimName` CAS 失配（说明期间发生过 `archive -> restore` 新代次卷切换）或远端返回 `404` / 非 Running / `502`，立即降级进入 `withSandboxLease` 重读实例并按最新 `storage` 重建/自愈。
 
 ### 5.4 三大崩溃恢复不变量与原地静默换镜像
@@ -211,12 +211,12 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 ### 6.1 安全与隔离边界总览
 
-1. **非 root 容器与卷权限**：容器以 `sandbox`（`uid=10001`）运行；Kubernetes Pod 与 PVC 绑定 `fsGroup: 10001` 与 `fsGroupChangePolicy: "OnRootMismatch"` 确保挂卷可写且大目录不反复 `chown`。Docker 模式下 `opensandbox-server` 读写挂载 `/var/run/docker.sock`，`volume-manager` 仅只读挂载（`:ro`）。
+1. **非 root 容器镜像（含 `root` 目标）与卷权限**：[`projects/agent-sandbox/Dockerfile`](../../../../../projects/agent-sandbox/Dockerfile) 默认 `nonroot` 目标以 `sandbox`（`uid=10001`）运行；同时提供 `root` 目标（将 `/etc/passwd` 中 `root` 家目录改写为 `/home/sandbox` 并创建 `/root -> /home/sandbox` 软链，用于需要写入 `/etc/apt` 配置 `aptMirror` 等场景）。Kubernetes Pod 与 PVC 绑定 `fsGroup: 10001` 与 `fsGroupChangePolicy: "OnRootMismatch"` 确保挂卷可写且大目录不反复 `chown`。Docker 模式下 `opensandbox-server` 读写挂载 `/var/run/docker.sock`，`volume-manager` 仅只读挂载（`:ro`）。
 2. **网络出站策略**：
    - Docker 运行时网络策略与代理聚合在 [`network.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/opensandbox/network.ts)：固定注入完整 `OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES`（`defaultAction: 'allow'`），封堵 `localhost`、`127.0.0.0/8`、`::1/128`、RFC1918 私网、CGNAT `100.64.0.0/10`、链路本地及云元数据段 `169.254.0.0/16`、IPv6 环回/私网/组播（`224.0.0.0/4`、`fc00::/7`、`fe80::/10`）、`*.local` 以及 Docker/OrbStack 宿主机别名，调用方仅允许追加 `deny` 规则且禁止绕过或改成 `allow`；Docker 出网代理通过 OpenSandbox 服务端 `config.toml` 的 `[egress.upstream_proxy]` 实现，并在管理端开启 `opensandbox.enableUpstreamProxy` 时下发 `credentialProxy: { enabled: true }`（开启透明 MITM 时 TCP 80/443 会经 `nat OUTPUT` 转发至上游代理，因此企业上游代理自身也必须配置禁止回访私网与云元数据 CIDR 的 ACL）。两端切换需在维护窗口内按序操作以避免 OpenSandbox 返回 HTTP 400：启用时先确保 OpenSandbox 支持 `dns+nft` 并在 FastGPT 开启 `enableUpstreamProxy`，再配置 `[egress.upstream_proxy]` 并重启 OpenSandbox；停用或回滚旧版 FastGPT 前，必须先从 `config.toml` 移除 `[egress.upstream_proxy]` 并重启 OpenSandbox，再关闭 FastGPT 开关。
    - Kubernetes 运行时不启用 OpenSandbox Egress Sidecar（不传 `networkPolicy` 与 `credentialProxy`），仅在配置了 `common.httpProxy` / `common.httpsProxy` 时注入容器出网代理环境变量（自动合并去重 `localhost,127.0.0.1,::1`），由部署侧 `CiliumNetworkPolicy` / `NetworkPolicy` 统一拦截集群内网/节点/元数据 CIDR 并按 `IP:Port` 放行 CoreDNS、代理与公网出口（同时由企业上游代理侧拦截目标为私网及云元数据 CIDR 的请求）。
 3. **逐实例随机口令与通道隔离**：已移除 `secureAccess` 端点令牌；`getEndpoint` 仅按 `useServerProxy` 附带控制面代理头 `OPEN-SANDBOX-API-KEY`。`fastgpt-ide-agent` 启动生成逐实例随机口令写至 `/var/lib/fastgpt-runtime/.fastgpt-ide-agent-password`（`0600`），所有 WS（`1318`）与 HTTP（`1319`）请求校验 `x-fastgpt-agent-token`；`agent-sandbox-proxy` 从 `verifyTicket.upstream_headers` 取得该口令及控制面代理头，仅做 Header 语法校验并无条件保护 `Host`/WS 握手头/`x-fastgpt-preview-method` 后透传；`preview.rs` 仅放行携带 `x-fastgpt-preview-origin: ide-agent` 的响应（非 `ide-agent` 来源的 4xx/5xx 一律拒收转 502）。
-4. **`fs/*` 与 `GET /preview/*` 边界分治**：`fastgpt-ide-agent` 无 `fs/exec`（压缩包原地解压由 `/api/core/ai/sandbox/extractZip` 在 `runWithRecovery` 内探测配额，按需以 `prlimit --fsize` 包裹 OpenSandbox `execd` 执行 `unzip -oq ... </dev/null`）；`fs/*` 与终端/Shell 同 uid，支持工作区内合法软链读写，拦截 `..`、绝对路径、`\`、NUL/控制字符和根目录 `lost+found`；直接暴露浏览器的 `GET /preview/*` 使用 `cap-std` 将文件打开与软链解析严格锁在工作区目录内，返回 `x-fastgpt-preview-origin: ide-agent`。
+4. **`fs/*` 与 `GET /preview/*` 边界分治**：`fastgpt-ide-agent` 无 `fs/exec`（压缩包原地解压由 `/api/core/ai/sandbox/extractZip` 在 `runWithRecovery` 内探测配额，Docker 下以 `prlimit --fsize` 包裹 OpenSandbox `execd` 执行 `unzip -oq ... </dev/null`，Docker/K8s 双端统一映射磁盘写满与 `unzip 50`/`SIGXFSZ(153)`）；`fs/*` 与终端/Shell 同 uid，支持工作区内合法软链读写，拦截 `..`、绝对路径、`\`、NUL/控制字符和根目录 `lost+found`，并将 Docker 软限与 OS `StorageFull`/`QuotaExceeded` 统一映射为 JSON-RPC `-32005`；直接暴露浏览器的 `GET /preview/*` 使用 `cap-std` 将文件打开与软链解析严格锁在工作区目录内，返回 `x-fastgpt-preview-origin: ide-agent`。
 
 ### 6.2 归档信任边界与 HTTP / 条目规范
 
@@ -224,26 +224,27 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 | 层级 | 明确承担职责 | 明确不承担 |
 | --- | --- | --- |
-| `fastgpt-ide-agent`（[`archive.rs`](../../../../../projects/fastgpt-ide-agent/src/archive.rs)） | `tokio::io::duplex` + `tar` + `zstd(level=1)` 零 `/tmp` 流式收发。打包：单遍遍历、按主站下发规则跳过（`.gitignore` 语法）、固定忽略根 `lost+found`、原子写临时文件与 socket/FIFO/设备；文件在打包期间变化时按 header 长度截断或补零防中途失败；软链原样写入。解包：完全交由 `tar::Archive::unpack`（跳 `..`、拒绝经软链父目录/硬链逃逸、目录权限延后、覆盖同名）并排空校验 zstd checksum。 | 条目数/体积上限、软/硬链接策略、缓存目录硬编码名单、自研清盘/回滚 |
+| `fastgpt-ide-agent`（[`archive.rs`](../../../../../projects/fastgpt-ide-agent/src/archive.rs)） | `tokio::io::duplex` + `tar` + `zstd(level=1)` 零 `/tmp` 流式收发。打包：单遍遍历、按主站下发规则跳过（`.gitignore` 语法）、固定忽略根 `lost+found`、原子写临时文件与 socket/FIFO/设备；文件在打包期间变化时按 header 长度截断或补零防中途失败；默认原样写入软链，传 `skipSymlinks: true` 时跳过软链。解包：完全交由 `tar::Archive::unpack`（跳 `..`、拒绝经软链父目录/硬链逃逸、目录权限延后、覆盖同名）并排空校验 zstd checksum，成功后失效 `disk.rs` 缓存。 | 条目数/体积上限、软/硬链接业务策略、缓存目录硬编码名单、自研清盘/回滚 |
 | 主站流式编解码（[`tarZst.ts`](../../../../../packages/service/common/file/tarZst.ts)、[`zip.ts`](../../../../../packages/service/common/file/zip.ts)） | 不可信输入校验边界：header 数与总解压字节上限；`normalizeArchiveEntryPath` 统一拦截绝对路径、Windows 盘符、`..`、NUL；仅产出 `file`/`directory`/`symlink`。ZIP 经 HTTP Range（512 KiB LRU 块缓存 + 大条目直通）→ `yauzl` → tar/PAX → `zstd` 实时转码（拒绝加密条目）。 | 解析软链目标文件、按 MIME 拒整包 |
-| 主站业务策略 | 决定打包目标与排除集；冷归档全量打包 `$HOME`；Skill 发布/导出只包 `workspace` 并做 `.gitignore` 与目录结构合法性/逃逸软链校验。 | — |
+| 主站业务策略 | 决定打包目标、软链策略与排除集；冷归档全量打包 `$HOME`（保留软链）；Skill 发布只包 `workspace`、应用 `.gitignore`、跳过并拒绝任何软链且校验任意层级 `SKILL.md`；Skill 导出打包完整 `workspace`（不应用 `.gitignore`、不校验 `SKILL.md`、跳过软链）。 | — |
 
-**IDE Agent 1319 端口 HTTP 契约**（主站统一经 [`ideAgent.ts`](../../../../../packages/service/core/ai/sandbox/application/ideAgent.ts) `packSandboxDirectory` / `extractToSandboxDirectory` 调用，内置 `401` 刷新口令重读、`502/503/504` 退避及请求体重开）：
+**IDE Agent 1319 端口 HTTP 契约**（主站统一经 [`ideAgent.ts`](../../../../../packages/service/core/ai/sandbox/application/ideAgent.ts) `fetchIdeAgentRoute` 封装 `packSandboxDirectory` / `extractToSandboxDirectory` / `getSandboxDiskUsage` 调用，内置 `401` 刷新口令重读；归档路由支持 `502/503/504` 退避与请求体重开，`GET /disk-usage` 使用短超时且 `maxAttempts: 1` 快速返回）：
 
 | 路由 | 请求输入 | 响应与异常语义 |
 | --- | --- | --- |
-| `POST /archive/pack` | JSON `{ targetDir?, excludePatterns? }`（`targetDir` 相对 `$HOME`） | `200` `.tar.zst` 流；`204` 目录不存在或排除后全空；`400` 参数非法；首个条目前失败返回 `500`；流式中途失败立即截断 chunked body，防止上传残包 |
-| `POST /archive/extract` | 请求头 `x-fastgpt-archive-target-dir-b64`（可选，相对 `$HOME`），请求体 `.tar.zst` 流 | `204` 解包成功；`400` 参数非法；`500` 解包错误文本 |
+| `POST /archive/pack` | JSON `{ targetDir?, excludePatterns?, skipSymlinks? }`（`targetDir` 相对 `$HOME`；`skipSymlinks` 默认 `false`） | `200` `.tar.zst` 流；`204` 目录不存在或排除后全空；`400` 参数非法；首个条目前失败返回 `500`；流式中途失败立即截断 chunked body，防止上传残包 |
+| `POST /archive/extract` | 请求头 `x-fastgpt-archive-target-dir-b64`（可选，相对 `$HOME`），请求体 `.tar.zst` 流 | `204` 解包成功（同时触发 `invalidate_disk_usage_cache()`）；`400` 参数非法；`500` 解包错误文本 |
+| `GET /disk-usage[?refresh=1]` | 可选查询参数 `refresh=1\|true`（绕过缓存与防抖强制重扫） | `200` JSON `{ usedBytes, limitBytes }`（按 `$HOME` `lstat` + Unix `blocks * 512` 计量并对硬链去重）；`500` 扫盘错误 |
 
 **全场景链路矩阵**：
 
 | 场景 | 执行链路 | 主站校验与排除策略 |
 | --- | --- | --- |
 | 工作区冷归档 / 恢复（[`archive.ts`](../../../../../packages/service/core/ai/sandbox/application/archive.ts)） | `pack(不传 targetDir)` → `S3SandboxSource` Multipart 上传；恢复：`S3 GetObject` → Web `ReadableStream` (`duplex: 'half'`) → `extract(根)`；`sizeBytes === 0` 跳过下载 | **冷归档不剔除任何缓存目录**（保留 `$HOME` 完整依赖/环境/软链），字节直通，容器零 S3 AK/SK |
-| Skill 保存发布（`skillEdit/deploy.ts`、`runtime.ts`） | `pack(targetDir='workspace', gitignore)` → 单流 `pipe` 并行送达 S3 上传与 `parseTarZstStream` | 排除默认 `.gitignore` + 根 `.gitignore` + `package.zip` + `.fastgpt/`；校验总大小、目录结构（`skills/<name>/SKILL.md`）并**拒绝逃逸工作区软链**，失败删未绑定 S3 对象 |
-| Skill 导出（`api/core/ai/skill/export.ts`） | `pack(workspace)` → `parseTarZstStream` → `archiver` 实时流出 `.zip`（保留软链条目） | 同上校验条目上限、规范路径、禁止逃逸软链与 `SKILL.md` 校验 |
+| Skill 保存发布（`skillEdit/deploy.ts`、`runtime.ts`） | `pack(targetDir='workspace', gitignore, skipSymlinks: true)` → 单流 `pipe` 并行送达 S3 上传与 `parseTarZstStream` | 排除默认 `.gitignore` + 根 `.gitignore` + `package.zip` + `.fastgpt/`；校验总大小、任意层级 `SKILL.md` 合法元数据并**拒绝任何软链条目**（`archiveSymlinkNotAllowed`），失败删未绑定 S3 对象 |
+| Skill 导出（`api/core/ai/skill/export.ts`、`skillEdit/runtime.ts`） | `pack(targetDir='workspace', applyIgnoreRules: false, skipSymlinks: true)` → `parseTarZstStream` → `archiver` 实时流出 `.zip` | 不应用 `.gitignore`（仅排除 `package.zip` 与 `.fastgpt/`）、不校验 `SKILL.md`；容器与解析侧均跳过软链（空工作区含仅剩软链返回 `archiveEmpty`）；强制校验总字节上限与路径规范化 |
 | Skill 部署注入（`runtime/skill/core.ts`、`prepare.ts`） | `openSkillPackageTarZstStream`（`.tar.zst` 直传；`.zip` Range 实时转码）→ `extract(targetDir)` | 压缩/解压总大小上限、路径规范化、支持兼容导入包与历史 `.zip` |
-| 用户界面 ZIP 解压（`extractZip.ts`） | 在 `runWithRecovery` 内探测 Docker 配额，按需通过 `prlimit --fsize` 调用 `execd` 执行 `unzip -oq ... </dev/null` | 按业务鉴权后原样解压 |
+| 用户界面 ZIP 解压（`extractZip.ts`） | 在 `runWithRecovery` 内探测配额，Docker 下通过 `prlimit --fsize` 调用 `execd` 执行 `unzip -oq ... </dev/null`（失败自动 `rm -rf` 清理半成品目录） | 鉴权后单级 `mkdir` 原子占位解压；Docker/K8s 双端将 `unzip` 退出码 `50`（`PK_DISK`）、`SIGXFSZ(153)` 与 OS 满盘诊断统一映射为 `510007` |
 
 **S3 CoW 归档通道（[`common/s3/sources/sandbox/index.ts`](../../../../../packages/service/common/s3/sources/sandbox/index.ts)）**：使用 `sandbox/archive-v2/<sandboxId>/<12位hex generation>.tar.zst` 不可变键（与 4.17.x 遗留 `sandbox/archive/<sandboxId>/package.zip` 严格前缀隔离，运行期 `deleteSandboxArchives` 仅清理 `sandbox/archive-v2/` 前缀而绝不删除旧 `sandbox/archive/` 历史键）；流式上传采用 **`5 MiB` 惰性分片阈值**（`<= 5 MiB` 单次 `uploadObject`，`> 5 MiB` 自动切换多厂商统一 `IStorage` Multipart 接口，失败自动 `abortMultipartUpload`）；`restoring` 成功切换或再次冷归档提交新 `storage.archive` 并删完旧卷后，异步尽力清理被覆盖的旧代 S3 对象；后台归档 Cron 使用 `matchLastActiveAt` CAS 与 `waitTimeoutMs: 0`，前台并发请求随时抢占让路。
 
@@ -253,10 +254,31 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
   - K8s 中 `DELETE PVC` 返回 `2xx` 仅代表标记 `deletionTimestamp`，旧 PVC 处于 `Terminating` 时新 Pod 无法调度。因此主站预生成并持久化完整 **`claimName`（`${volumeNamePrefix}-${sandboxId}-${8位hex|0}`）**，`volume-manager` 只负责底层操作而不推导业务 ID；**删除时永远消费 Mongo 已持久化的 `claimName`，即使修改前缀配置也能正确回收历史卷**。
   - `K8sVolumeDriver` 只解析 `metadata.uid` 与 `deletionTimestamp` 收敛为 `absent`、`active(uid)`、`deleting(uid)`：`ensure` 不返回任何带 `deletionTimestamp` 的 PVC（遇删除中先等待 UID 消失再创建，409 退避重读）；`remove` 携带 **`preconditions.uid`** 发起删除并按 **`500ms`** 间隔最长轮询 **`5 分钟`** 直至当前 UID 消失或被替换（说明：保证 PVC API generation 结束，不承诺底层 CSI detach 同步完成）。
 - **所有权标签与兼容过渡**：托管卷统一标注 `app=fastgpt`、`managed-by=fastgpt-volume-manager`；4.18.0 过渡期仅对 Task 7/8 迁移与清理任务保留 `allowLegacyUnlabeled`（经 `legacy/index.ts` `shouldForwardAllowLegacyUnlabeled` 门控，移除窗口 `>= 4.19.0`）接管未完整打标的 4.17.x 存量卷，同时 `canAdoptLegacyLabels` 严格拒接 `app.kubernetes.io/`、`com.docker.compose.`、`k8s-app`、`helm.sh/chart` 等外部平台卷。
-- **三大定时调度任务（[`application/cron.ts`](../../../../../packages/service/core/ai/sandbox/application/cron.ts)）**：
-  - **`*/10 * * * *`**：停用超 `suspendMinutes` 的活跃 `running` 实例；恢复或回滚超期/失败的 `archiving`、`stopping`、`deleting`、`provisioning`、`restoring`。
-  - **`0 */12 * * *`**：以 `SANDBOX_ARCHIVE_CONCURRENCY = 2`（游标批大小 `100`）对超 `archiveInactiveDays` 的 `stopped` 实例及需要规范化升级的记录执行冷归档。
-  - **`*/30 * * * *`**：双向孤儿 GC——① **孤儿容器**：无对应 `v3`/`v2` Mongo 记录的容器满 `10 分钟` 宽限（或容器 `metadata.operationId` 已落后于当前文档）立即销毁（`v3` 未命中时只读回查 `v2`，防止误杀未迁移运行中的 4.17.x 容器）；② **孤儿存储卷**：仅凭当前 `listSessionVolumes` 写入 Redis 观察标记（TTL **`2 小时`**，`ORPHAN_VOLUME_OBSERVATION_TTL_SECONDS`），观测间隔满 **`30 分钟`**（`ORPHAN_VOLUME_GRACE_PERIOD_MS`）且再次对账确认仍无 `v3` 与 `v2` 并集 `storage.volumes.claimName` 引用时执行销毁（防止并发新建尚未落库及未迁移 `v2` 卷被误删）。
+- **四大定时调度任务（[`application/cron.ts`](../../../../../packages/service/core/ai/sandbox/application/cron.ts)，各自持有独立 `TimerIdEnum` 锁）**：
+  - **`*/10 * * * *`（`stopInactiveSandboxes`）**：停用超 `suspendMinutes` 的活跃 `running` 实例。
+  - **`*/10 * * * *`（`recoverStaleSandboxOperations`）**：并发恢复或回滚超期/失败的 `archiving`、`stopping`、`deleting`、`provisioning`、`restoring`。
+  - **`0 */12 * * *`（`archiveInactiveSandboxes`）**：以 `SANDBOX_ARCHIVE_CONCURRENCY = 2`（游标批大小 `100`）对超 `archiveInactiveDays` 的 `stopped` 实例执行冷归档。
+  - **`*/30 * * * *`（`reconcileOrphanSandboxResources`）**：双向孤儿 GC——① **孤儿容器**：无对应 `v3`/`v2` Mongo 记录的容器满 `10 分钟` 宽限（或容器 `metadata.operationId` 已落后于当前文档）立即销毁（`v3` 未命中时只读回查 `v2`，防止误杀未迁移运行中的 4.17.x 容器）；② **孤儿存储卷**：仅凭当前 `listSessionVolumes` 写入 Redis 观察标记（TTL **`2 小时`**，`ORPHAN_VOLUME_OBSERVATION_TTL_SECONDS`），观测间隔满 **`30 分钟`**（`ORPHAN_VOLUME_GRACE_PERIOD_MS`）且再次对账确认仍无 `v3` 与 `v2` 并集 `storage.volumes.claimName` 引用时执行销毁（防止并发新建尚未落库及未迁移 `v2` 卷被误删）。
+
+### 6.4 磁盘配额软限制与统一写满处理
+
+Agent Sandbox 对 Kubernetes 与 Docker 两种运行时按“PVC 硬限制 vs Docker 卷软限制 + 双端统一写满映射”分工，**不新增配置项、不在主站维护二级磁盘缓存**；其中 Docker 软限制区分两层边界：① **用量统计（`disk.rs`）**仅扫描 `/home/sandbox`（`$HOME`）挂载卷，不统计容器临时层（如 `/tmp`）；② **进程级单文件上限（`RLIMIT_FSIZE`）**作用于子 shell 与 PTY 进程本身，对该进程写入任意路径（包括 `/tmp`）均生效：
+
+- **双运行时开关边界（[`runtimeProfile.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile.ts)）**：
+  - **Kubernetes**：`/home/sandbox` 上限由原生 RWO PVC（`storageSizeGi`）在存储层硬执行，写满原生返回 `ENOSPC`；`buildBaseSandboxRuntimeEnv` **不注入** `FASTGPT_DISK_SOFT_LIMIT_BYTES`，`quota.ts` 零扫描、零 RPC、零 `RLIMIT_FSIZE` 副作用直接放行。
+  - **Docker**：Docker named volume 默认不强制容量上限，因此仅在 `opensandbox.runtime === 'docker'` 时注入 `FASTGPT_DISK_SOFT_LIMIT_BYTES = String(getAgentSandboxDiskBytes())`，开启容器内卷软限与 `RLIMIT_FSIZE` 单文件防爆。
+- **容器侧单点缓存探针、WS 拦截与异步 PTY（`projects/fastgpt-ide-agent/`）**：
+  - **单点用量探针（[`disk.rs`](../../../../../projects/fastgpt-ide-agent/src/disk.rs)）**：递归遍历 `$HOME`（`symlink_metadata`/`lstat` 不跟随软链，Unix 下按 `blocks * 512` 计量并对 `nlink > 1` 的非目录硬链按 `(st_dev, st_ino)` 去重）。全系统仅在 `disk.rs` 维护一份内存缓存：未超限 **15s TTL** 零盘扫描返回；超限态附加 **1s 短防抖**（`OVER_QUOTA_DEBOUNCE`）吸收突发探针；通过单飞 `scan_lock` + 单调递增 `generation` 围栏串行化扫盘并防止并发回填过期快照；`GET /disk-usage?refresh=1` 以及 `fs/delete`、`/archive/extract` 成功后的 `invalidate_disk_usage_cache()` 无条件清缓存即时解锁。
+  - **IDE WS `/fs` 与 `/terminal`（[`fs.rs`](../../../../../projects/fastgpt-ide-agent/src/fs.rs)、[`fs/error.rs`](../../../../../projects/fastgpt-ide-agent/src/fs/error.rs)、[`terminal.rs`](../../../../../projects/fastgpt-ide-agent/src/terminal.rs)、[`terminal/bridge.rs`](../../../../../projects/fastgpt-ide-agent/src/terminal/bridge.rs)）**：
+    - `fs/write_file`、`fs/mkdir` 写前校验软限，`fs/delete`、`fs/move` 与全部只读方法始终放行；`FsError::DiskQuotaExceeded` 与 `FsError::Io` 中的 OS `StorageFull`/`QuotaExceeded`（`ENOSPC`/`EDQUOT`，同时覆盖 K8s 硬满盘与 Docker 宿主机满盘）统一映射为 JSON-RPC 错误码 **`-32005`**。前端 [`SandboxEditor/hook.tsx`](../../../../../projects/app/src/pageComponents/chat/SandboxEditor/hook.tsx) 识别 `-32005` 及 API `510007`（`isDiskQuotaExceededApiError`），直接反馈本地化超限提示并在 `getTicket` 上停止无意义重试。
+    - `/terminal` 基于纯异步 **`pty-process 0.5.4`**（替换同步 `portable-pty`，省去每终端 2 条专用 OS 线程），派生子 shell 前剥离 6 个 `FASTGPT_*` 启动变量；Docker 下仅在 WebSocket 建连时探测一次配额并在 `pre_exec` 设置进程硬上限（正常态 `RLIMIT_FSIZE = limit:limit`；超限态**不关闭连接**，推送 `[Disk Quota Exceeded]` 黄色 ANSI 警告横幅并降级为只读自救 PTY `RLIMIT_FSIZE = 0:0`、`HISTFILE=/dev/null`，对包括 `/tmp` 在内的文件写入均生效）。用户在自救终端用 `du`/`ls`/`rm` 将 `$HOME` 清理至限额以下后：WS `/fs` 与下一次 `sandbox_shell` 调用在缓存刷新（`fs/delete` 即时清缓存，终端 `rm` 最多 1s 防抖或 `refresh=1`）后自动恢复可写；**原只读 PTY 进程因硬上限已设为 `0` 不会原地恢复，须重开终端**新建连接后恢复写入。
+- **主站统一写满映射与工具/用户入口收敛（Docker + K8s）**：
+  - **底层写满识别（[`infrastructure/opensandbox/errors.ts`](../../../../../packages/service/core/ai/sandbox/infrastructure/opensandbox/errors.ts)）**：`isSandboxDiskFullError` 沿 `cause` 链识别 `ENOSPC` / `EDQUOT` / `No space left on device` / `Disk quota exceeded`；`getSandboxCommandDiskFullReason` 仅在命令 `exitCode` 非零时区分 `fileSizeLimit`（`exitCode === 153` 或 `SIGXFSZ`/`file size limit exceeded`）与 `diskFull`（避免 `grep`/`cat` 正常输出误判）。
+  - **用户态写入口（[`application/quota.ts`](../../../../../packages/service/core/ai/sandbox/application/quota.ts)）**：Docker 探针（`getSandboxDiskQuotaStatus`）在网络/超时异常时默认 **fail-open** 放行（`runWithRecovery` 内传 `rethrowRecoverable: true` 时透传可恢复传输异常触发自愈）；超限或执行期命中 `rethrowSandboxDiskQuotaExceededError` 统一抛 **`510007` `agentSandboxDiskQuotaExceeded`（HTTP 403）**。覆盖 [`upload.ts`](../../../../../projects/app/src/pages/api/core/ai/sandbox/upload.ts)、[`file.ts`](../../../../../packages/service/core/ai/sandbox/application/file.ts)（`writeUrlFilesToSandbox`，先判超限再下载 URL，`runtime/files.ts` 直接复用）、[`runtime/prepare.ts`](../../../../../packages/service/core/ai/sandbox/application/runtime/prepare.ts)（`prepareWorkDirectory`）、[`getTicket.ts`](../../../../../projects/app/src/pages/api/core/ai/sandbox/getTicket.ts)（建会话目录）与 [`extractZip.ts`](../../../../../projects/app/src/pages/api/core/ai/sandbox/extractZip.ts)（Docker 启用 `prlimit --fsize`，双端统一映射 `unzip` 退出码 `50`/`153` 与 OS 满盘诊断）。
+  - **Agent 工具守卫与禁自动删指引（[`toolCall/type.ts`](../../../../../packages/service/core/ai/sandbox/application/toolCall/type.ts)、[`shell.tool.ts`](../../../../../packages/service/core/ai/sandbox/application/toolCall/shell.tool.ts)）**：
+    - `writeFile.tool.ts` 与 `editFile.tool.ts` 声明 `requiresWritableDisk: true`，由 `createToolRunner` 在 `runWithRecovery` 内统一执行 Docker 写前配额门禁及 Docker/K8s 执行期 `isSandboxDiskFullError` 捕获，超限时返回 `{ success: false, error: formatAgentDiskQuotaNotice(...) }`（不中断 Agent Loop）；
+    - `shell.tool.ts` 直接执行 `/bin/bash -c`（输出由 `OpenSandboxClient.execute` `BoundedOutputBuffer` 与 `truncateSandboxToolOutput` 尾部截断保护）；Docker 正常态包裹 `prlimit --fsize=L:L -- /bin/bash -c ... 2>&1; exit $?`（避免 `exec` 导致 `SIGXFSZ` 丢失退出码 `153`），超限态降级 `prlimit --fsize=0:0 -- /bin/bash -c ... 2>&1 | cat; exit "${PIPESTATUS[0]}"`（经管道转交 `cat` 避免直接写 `execd` 日志触发 `SIGXFSZ`）；执行后统一结合 `quotaStatus.exceeded` 与 `getSandboxCommandDiskFullReason` 追加 `formatAgentDiskQuotaNotice`；
+    - **严禁自动删除原则**：`formatAgentDiskQuotaNotice` 明确要求模型 **`Do NOT delete files automatically`**，仅允许用 `du -sh` 排查空间占用并向用户说明，必须获得用户明确确认后再删除文件。
 
 ---
 
@@ -277,11 +299,11 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
 
 ### 7.2 Sandbox 工具集（`application/toolCall/` & `packages/global/core/ai/sandbox/tools/`）
 
-共提供 8 个内置工具，由 `runSandboxTools` 统一执行 JSON 解析、Zod 参数校验、工具路由及标准结果封装（已彻底移除旧 `sandbox_search` 入口）：
+共提供 8 个内置工具，由 `runSandboxTools` 与 `createToolRunner`（[`toolCall/type.ts`](../../../../../packages/service/core/ai/sandbox/application/toolCall/type.ts)）统一执行 JSON 解析、Zod 参数校验、容器就绪恢复、写入磁盘配额门禁及标准结果封装（已彻底移除旧 `sandbox_search` 入口）：
 
-- `sandbox_shell`：在默认工作目录执行命令（超时 `1..600s`），采用尾部保留截断（`direction: 'tail'`）；
-- `sandbox_read_file`：支持 `offset`/`limit`，文件读取采用头部保留截断；
-- `sandbox_write_file` / `sandbox_edit_file`：写入前自动建父目录；
+- `sandbox_shell`：在默认工作目录直接经 `/bin/bash -c` 执行命令（超时 `1..600s`），采用尾部保留截断（`direction: 'tail'`），Docker 下按配额状态包裹 `prlimit --fsize`（详见 §6.4）；
+- `sandbox_read_file`（[`readFile.tool.ts`](../../../../../packages/service/core/ai/sandbox/application/toolCall/readFile.tool.ts)）：显式设置 `allowOutsideWorkspace: true`（允许读取内置只读 Skill 等受控目录），通过 `readFileStream(..., { offset, limit: requestLimit + 1 })` 流式读取并在原始字节达 `50 KiB + 1` 时断流，以 `<lineNo>→<content>` 格式化输出并在空文件、超 EOF `offset` 与单行超 `50 KiB` 场景返回结构化提示；
+- `sandbox_write_file` / `sandbox_edit_file`：声明 `requiresWritableDisk: true` 接入统一磁盘写满/软限守卫（详见 §6.4），写入前自动建父目录；
 - `sandbox_grep` / `sandbox_find` / `sandbox_ls`：共享默认限制（`DEFAULT_GREP_LIMIT=100`、`MAX_GREP_LINE_CHARS=500`、`DEFAULT_FIND_LIMIT=1000`、`DEFAULT_LS_LIMIT=500`），文本输出统一受 **`2000` 行 / `50 KiB`**（按 UTF-8 字符边界截断）上限保护；
 - `sandbox_get_file_url`：在工作区内验证路径后创建 Redis preview session 并返回短期只读代理 URL，不再上传 S3 临时文件。
 
@@ -313,7 +335,7 @@ sessionWorkDirectory = /home/sandbox/workspace/sessions/<segment>
   - `510004` `agentSandboxLimitReached`（409，超全局活跃上限）
   - `510005` `agentSandboxTeamLimitReached`（409，超团队活跃上限）
   - `510006` `agentSandboxMigrationInProgress`（409，命中未完成 4.18.0 迁移实例）
-  - `510007` `agentSandboxDiskQuotaExceeded`（403，Docker 工作区磁盘用量达到软限制）
+  - `510007` `agentSandboxDiskQuotaExceeded`（403，工作区磁盘空间已满——Docker 卷软限超额或 Docker/K8s 运行期触发 `ENOSPC`/`EDQUOT`/`SIGXFSZ`/`unzip 50`）
   - （`510002`、`510003` 已退役保留号段）
 - **删除清理边界（[`interface/resource/sourceCleanup.ts`](../../../../../packages/service/core/ai/sandbox/interface/resource/sourceCleanup.ts)）**：
   - **Chat 删除（App Chat 或 Skill Edit Chat）**：仅删除聊天记录与 chat S3 文件，**不删除共享 Sandbox 实例，也不单独清理沙盒内的 `sessions/<chatSegment>` 目录**。

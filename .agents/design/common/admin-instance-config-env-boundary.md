@@ -103,7 +103,7 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | 跳过文件类型检查 | `SKIP_FILE_TYPE_CHECK` | `config.security` | 建议高风险操作单独审计 |
 | 禁用缓存 | `DISABLE_CACHE` | `config.feature.disableCache` | 可配置，但要提示需要重新加载进程缓存 |
 | 新团队默认权限 | `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED` | `config.auth` | 只影响新建团队 |
-| Agent Sandbox 免费提示 | `AGENT_SANDBOX_FREE_TIP` | `config.commercial` | 商业能力展示配置 |
+| Agent Sandbox 免费提示 | `AGENT_SANDBOX_SHOW_FREE_TIP` | **环境变量** | ENV 独占，不进入实例配置表单（旧 `AGENT_SANDBOX_FREE_TIP` 已废弃） |
 
 `TRUSTED_PROXY_ENABLE` 和 `TRUSTED_PROXY_IPS` 继续保留为部署 ENV。Cookie Secure 已按最新决策迁入 `security.authCookieSecure`，共享 HTTP 响应上限迁入 `resource.serviceAxiosMaxContentLength`；旧 ENV 仅由启动迁移读取，运行时以实例配置为准。
 
@@ -169,7 +169,7 @@ config.resource
 | Code Sandbox 开关、地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN`（仅迁移读取） | `config.subservice.codeSandbox.enabled/url/token` | Token 是敏感字段 | 无旧配置时默认关闭；启用且地址、Token 完整时才提供相关业务入口，管理页可测试连通性。Sandbox 进程自身的监听认证仍由进程 ENV 配置 |
 | MCP SSE 服务开关和代理地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT`（仅迁移读取） | `config.subservice.mcp.enabled/sseProxyUrl` | 否 | 无旧配置时默认关闭；关闭或地址缺失时隐藏 SSE 发布入口 |
 | AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 两项均有效才使用代理；缺一时不使用代理，无管理页或实例配置开关 |
-| Agent Sandbox 开关与参数 | `AGENT_SANDBOX_*`、`AGENT_SANDBOX_OPENSANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的启用开关、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置（`AGENT_SANDBOX_PROVIDER` 已下线且不再读取）；独立 Sandbox 进程自身的启动参数见第 5 节 |
+| Agent Sandbox 开关与参数 | `AGENT_SANDBOX_*`、`AGENT_SANDBOX_OPENSANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的启用开关、地址、CPU、内存、存储、镜像、超时、代理地址及出网代理（`httpProxy`/`httpsProxy`/`noProxy`/`enableUpstreamProxy`，纯 DB 配置无 ENV seed）均属于实例配置；旧 `AGENT_SANDBOX_PROVIDER` 仅在 `20261116_migrate_system_configs` 首次迁移时读取一次，用于区分 `opensandbox` 与 `none`/`sealosdevbox`/空值的禁用语义，运行期不再读取；独立 Sandbox 进程自身的启动参数见第 5 节 |
 | Agent Sandbox 代理配置 | `AGENT_SANDBOX_PROXY_SECRET/URL/PREVIEW_PROXY_URL`（仅一次性迁移） | `config.subservice.agentSandbox.proxy` | 密钥为 secret 字段 | 主站页面统一维护三项；独立 Rust Proxy 的部署密钥须与页面一致 |
 | PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 加密存储，UI/API 仅显示已配置状态 |
 | Sangfor 文档解析和智能分块 | `DOCUMENT_PARSE_PROVIDER`、`SANGFOR_*`、`CUSTOM_PDF_PARSE_URL/KEY` | `config.providers.documentParse` / `config.providers.chunk` | Key 是敏感字段 | 当前 Sangfor 复用 `CUSTOM_PDF_PARSE_URL/KEY` 作为服务地址和 Bearer Token，迁移时需要兼容复制，详见第 10 章 |
@@ -328,7 +328,7 @@ TRACING_OTEL_SAMPLE_RATIO
 Admin config.subservice
 ├── 记录 FastGPT 调用子服务所需的地址、业务参数和可轮换凭据
 ├── 由主站读取并生成运行时配置快照
-└── 通过配置版本或 change stream 通知主站刷新客户端配置
+└── 通过配置版本轮询触发主站刷新客户端配置
 
 子服务环境变量
 ├── 自身监听端口
@@ -433,7 +433,7 @@ MONGODB_URI 环境变量
         +--> 初始化 subservice 客户端
         |
         v
-运行时配置快照 + revision/change stream 刷新
+运行时配置快照 + revision 轮询刷新
 ```
 
 建议顺序：
@@ -833,12 +833,15 @@ RUST_LOG
 ```text
 FASTGPT_WORKDIR
 FASTGPT_RUNTIME_DIR
+FASTGPT_DISK_SOFT_LIMIT_BYTES
 FASTGPT_IDE_MAX_FILE_BYTES
 FASTGPT_IDE_WS_MAX_MESSAGE_BYTES
 FASTGPT_IDE_WS_MAX_FRAME_BYTES
+HOME
+SHELL
 ```
 
-这些变量决定独立 IDE Agent 的工作目录、运行时口令/状态目录、文件上限和 WebSocket 限制，暂不纳入主站配置中心。
+这些变量决定独立 IDE Agent 的工作目录、`$HOME` 根路径、默认终端 Shell、运行时口令/状态目录、Docker 磁盘配额软限制、文件上限和 WebSocket 限制，暂不纳入主站配置中心。
 
 #### Volume Manager
 
@@ -850,10 +853,15 @@ VM_DOCKER_SOCKET
 VM_DOCKER_API_VERSION
 VM_K8S_NAMESPACE
 VM_K8S_PVC_STORAGE_CLASS
-VM_LOG_LEVEL
+LOG_ENABLE_CONSOLE
+LOG_CONSOLE_LEVEL
+LOG_ENABLE_OTEL
+LOG_OTEL_LEVEL
+LOG_OTEL_SERVICE_NAME
+LOG_OTEL_URL
 ```
 
-这些变量控制持久卷管理微服务自身的监听端口、鉴权 Token（须与主站页面 `volumeManagerToken` 一致）及 Docker / Kubernetes 驱动参数，暂不纳入主站配置中心。
+这些变量控制持久卷管理微服务自身的监听端口、鉴权 Token（须与主站页面 `volumeManagerToken` 一致）、Docker / Kubernetes 驱动参数及 `@fastgpt-sdk/otel/logger` 日志输出，暂不纳入主站配置中心。
 
 ### 10.4 Worker 迁移注意事项
 
@@ -1086,7 +1094,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
-- 页面路径指当前实例配置表单；“只读”仅展示根据地址生成的健康检查链接，不能编辑地址。旧 `basic/user` 页面仍写旧 `system_configs`，不算本表的有效编辑入口。
+- 页面路径指当前实例配置表单；“只读”仅展示根据地址生成的健康检查链接，不能编辑地址。旧 `basic`/`user` 路由已重定向至当前实例配置页，不再写旧 `system_configs`。
 - 全部字段属于数据库实例配置；“仅 API”不表示回落 ENV。保留在 ENV 的连接、密钥根及部署参数不混入本表。
 - “业务未接入”表示注册／表单存在但当前消费者未使用；版本勾选不代表热更新已生效，也不代表该字段应继续保留。
 
@@ -1277,7 +1285,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `subservice.agentSandbox.common.storageSizeGi` | 存储卷大小 (Gi) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.suspendMinutes` | 无操作自动挂起 (分钟) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.archiveInactiveDays` | 不活跃自动归档 (天) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.maxEditDebug` | 编辑调试实例上限 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.maxEditDebug` | 系统 Sandbox 活跃实例总上限（`app`/`workflowBuilder`/`skillEdit` 共享池） | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.maxPerTeam` | 单团队 Sandbox 活跃实例配额 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.npmRegistry` | npm Registry 源 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.pypiIndexUrl` | PyPI 镜像源地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
