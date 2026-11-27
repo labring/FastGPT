@@ -36,6 +36,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ### 部署模板变更
 
+- **Compose 停机宽限期**：`fastgpt-app` 的默认模板设置 `stop_grace_period: 30s`，给在途 HTTP 请求和 Redis、数据库连接清理留出时间。已有或自定义 Compose 部署请在 `fastgpt-app` 以及单独部署的商业版 Admin 服务下设置同一字段。30 秒是强制终止前的最长等待时间，不保证更长的请求能完成。
 - **国内镜像源**：FastGPT 停止向阿里云发布镜像，国内 Docker Compose 模板改用 `ghcr.dockerproxy.net/labring/` 获取 FastGPT、Plugin、Code Sandbox 与 Agent Sandbox 系列服务镜像；`install.sh` 同步调整为「国内镜像源 / 全球镜像源」。
 - **默认对象存储改为 RustFS**：默认 Docker Compose 模板改用 `fastgpt-rustfs`（`rustfs:1.0.4`，单盘 `/data` 拓扑，命名卷 `fastgpt-rustfs`）替换 `fastgpt-minio`，`STORAGE_S3_ENDPOINT` 与 `NO_PROXY` 同步指向 `fastgpt-rustfs`；已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs)。
 - **MongoDB 默认版本与初始化升级**：`main` Compose 模板默认 MongoDB 升级为 `8.3.17`（`x86_64` CPU 需满足 MongoDB 8.x 指令集要求），初始化与健康检查统一改用 `mongosh` 检查副本集可写主节点就绪后再放行依赖服务，并完善停机信号转发。
