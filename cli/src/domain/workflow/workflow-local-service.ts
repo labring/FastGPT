@@ -79,8 +79,6 @@ import {
   writeWorkflowDocument
 } from './workflow-workspace';
 
-export type { WorkflowValueInput } from '../../shared/types';
-
 export type WorkflowLocalServiceDeps = {
   fileIo: FileIoAdapter;
   templateLoader: WorkflowTemplateLoader;

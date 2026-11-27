@@ -8,8 +8,6 @@ import { createLinuxSecretToolStore } from './linux-secret-tool-store';
 import { createMacosKeychainStore } from './macos-keychain-store';
 import type { SecretStore, SecretStoreStrategy } from './types';
 
-export type { SecretStore, SecretStoreStrategy } from './types';
-
 /**
  * 组合模式凭据存储：优先尝试主 Keychain 策略，不可用或写入失败时优雅降级到 0600 文件策略，
  * 并确保主/备存储之间不会因残留旧凭据造成跨后端读取错配。

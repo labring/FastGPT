@@ -2,6 +2,7 @@ import { AgentSkillCategoryEnum } from '@fastgpt/global/core/ai/skill/constants'
 import { CliArgumentError } from '../../shared/errors';
 import {
   parseIdListOption,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload
 } from '../../shared/input';
@@ -16,7 +17,6 @@ import {
   createParentIdOption,
   createSearchOption,
   createYesOption,
-  parseOptionalNumber,
   requireActiveClient,
   resolveIdArg,
   resolveStringOption

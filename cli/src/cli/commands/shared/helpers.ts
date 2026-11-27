@@ -1,14 +1,8 @@
 import type { FastGptHttpClient } from '../../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../../shared/errors';
-import {
-  parseOptionalBooleanFlag,
-  parseOptionalNumber,
-  parseParentIdOption
-} from '../../../shared/input';
+import { parseParentIdOption } from '../../../shared/input';
 import type { CommandOptionMeta, CommandPositionalMeta } from '../../../shared/types';
 import type { CommandExecutionContext } from '../../pipeline';
-
-export { parseOptionalBooleanFlag, parseOptionalNumber };
 
 /**
  * 断言当前命令上下文存在已绑定鉴权的 HTTP 客户端。

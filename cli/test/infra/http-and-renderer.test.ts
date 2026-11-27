@@ -277,14 +277,16 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(errJson.error.message).toBe('Authorization: Bearer [REDACTED]');
   });
 
-  it('streams SSE events with chunk parsing and termination', async () => {
+  it('streams SSE events past [DONE] until EOF and cancels reader on early consumer break', async () => {
     const sseBody = [
       ': ping comment\n\n',
       'event: answer\n',
       'data: Hello\n\n',
       'data: World\n',
       'id: msg-1\n\n',
-      'data: [DONE]\n\n'
+      'data: [DONE]\n\n',
+      'event: error\n',
+      'data: {"message":"persist failed"}\n\n'
     ].join('');
 
     const encoder = new TextEncoder();
@@ -313,8 +315,30 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(events).toEqual([
       { event: 'answer', data: 'Hello' },
       { data: 'World', id: 'msg-1' },
-      { data: '[DONE]' }
+      { data: '[DONE]' },
+      { event: 'error', data: '{"message":"persist failed"}' }
     ]);
+
+    let earlyCancelled = false;
+    const infiniteStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('event: answer\ndata: first\n\n'));
+      },
+      cancel() {
+        earlyCancelled = true;
+      }
+    });
+    const breakClient = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(infiniteStream, { headers: { 'content-type': 'text/event-stream' } })
+    });
+    for await (const evt of breakClient.streamSse({ path: '/v2/chat/completions', body: {} })) {
+      expect(evt.data).toBe('first');
+      break;
+    }
+    expect(earlyCancelled).toBe(true);
   });
 
   it('aborts stalled SSE body stream when timeoutMs expires after headers arrive', async () => {
@@ -352,13 +376,17 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(cancelled).toBe(true);
   });
 
-  it('strips signed query parameters from presigned upload errors', async () => {
+  it('strips signed query parameters and raw XML error bodies from presigned upload errors', async () => {
     const signedUrl =
       'https://s3.example.com/bucket/avatar.png?X-Amz-Signature=super-secret-sig&X-Amz-Credential=ak-123';
     const client = createFastGptHttpClient({
       baseUrl: 'http://127.0.0.1:3000/api',
       cliVersion: '0.1.0',
-      fetchFn: async () => new Response('AccessDenied', { status: 403 })
+      fetchFn: async () =>
+        new Response(
+          '<Error><Code>AccessDenied</Code><StringToSign>sensitive-canonical-sig</StringToSign></Error>',
+          { status: 403 }
+        )
     });
 
     try {
@@ -368,9 +396,11 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
       });
       expect.unreachable('should fail');
     } catch (error: any) {
+      expect(error.message).toContain('HTTP 403 (AccessDenied)');
       expect(error.details?.url).toBe('https://s3.example.com/bucket/avatar.png');
       expect(JSON.stringify(error)).not.toContain('super-secret-sig');
       expect(JSON.stringify(error)).not.toContain('ak-123');
+      expect(JSON.stringify(error)).not.toContain('sensitive-canonical-sig');
     }
   });
 

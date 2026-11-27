@@ -1,6 +1,6 @@
 import { CommanderError } from 'commander';
 import type { ConfigRepository } from '../infra/config/config-repository';
-import type { SecretStore } from '../infra/secrets/secret-store';
+import type { SecretStore } from '../infra/secrets/types';
 import type { Prompter } from '../infra/ui/prompter';
 import { createOutputRenderer } from '../infra/ui/renderer';
 import { CliArgumentError, CliError } from '../shared/errors';

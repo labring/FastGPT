@@ -1,6 +1,10 @@
 import type { AppFolderService } from '../../../domain/shared/app-folder-service';
 import { CliArgumentError } from '../../../shared/errors';
-import { parseParentIdOption, resolveJsonObjectPayload } from '../../../shared/input';
+import {
+  parseOptionalNumber,
+  parseParentIdOption,
+  resolveJsonObjectPayload
+} from '../../../shared/input';
 import type { CliContainer } from '../../container';
 import type { CliCommandSpec } from '../../pipeline';
 import {
@@ -13,7 +17,6 @@ import {
   createParentIdOption,
   createSearchOption,
   createYesOption,
-  parseOptionalNumber,
   requireActiveClient,
   resolveCommonAppMetadata,
   resolveIdArg

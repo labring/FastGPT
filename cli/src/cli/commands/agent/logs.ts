@@ -1,7 +1,7 @@
 import { CliArgumentError } from '../../../shared/errors';
-import { parseIdListOption } from '../../../shared/input';
+import { parseIdListOption, parseOptionalNumber } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import { parseOptionalNumber, requireActiveClient } from '../shared/helpers';
+import { requireActiveClient } from '../shared/helpers';
 
 function parseOptionalCursorOption(raw: unknown): unknown {
   if (raw === undefined) return undefined;

@@ -4,6 +4,7 @@ import { createHttpToolService } from '../../src/domain/tool/http-tool-service';
 import { createMcpToolService } from '../../src/domain/tool/mcp-tool-service';
 import { createToolFolderService } from '../../src/domain/tool/tool-folder-service';
 import type { FastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
+import { CliNetworkError } from '../../src/shared/errors';
 
 const FOLDER_ID = '68ad85a7463006c963799a10';
 const MCP_ID = '68ad85a7463006c963799a11';
@@ -477,7 +478,7 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       })
     ).rejects.toThrow('Upstream 502 error');
 
-    // 5. Partial failure recovery on HTTP create when follow-up configure fails
+    // 5. Partial failure recovery on HTTP create when follow-up configure fails (server reject vs network unknown)
     try {
       await httpService.create({
         client: httpClient,
@@ -493,11 +494,224 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
     } catch (error: any) {
       expect(error.details).toMatchObject({
         partialSuccess: true,
+        outcome: 'failed',
         appId: HTTP_ID,
         completedSteps: ['create'],
         failedStep: 'configure'
       });
       expect(error.hint).toContain(HTTP_ID);
     }
+
+    const lostResponseClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/httpTools/create') return HTTP_ID;
+      if (path === '/core/app/httpTools/update') {
+        throw new CliNetworkError('Socket hung up after write');
+      }
+      return undefined;
+    });
+    try {
+      await httpService.create({
+        client: lostResponseClient,
+        input: { name: 'AmbiguousHTTP' },
+        config: {
+          baseUrl: 'https://trusted.api.example',
+          toolList: [
+            { name: 'get_item', description: 'Get item', path: '/v1/items', method: 'GET' }
+          ]
+        }
+      });
+      expect.unreachable('should fail with unknown outcome');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(CliNetworkError);
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        uncertainStep: 'configure'
+      });
+      expect(error.details.failedStep).toBeUndefined();
+      expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
+    }
+  });
+
+  it('guards sub-tool credentials on HTTP baseUrl change, supports manual full-URL tools, disambiguates multi-method paths, and narrows MCP/HTTP schema boundaries', async () => {
+    // 1. Sub-tool credential isolation when updating toolset baseUrl without --tool-list
+    const subToolCredClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'SubCredHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'https://old.api.example',
+                  toolList: [
+                    {
+                      name: 'secret_tool',
+                      description: 'Uses sub-tool static header',
+                      path: '/v1/secret',
+                      method: 'GET',
+                      staticHeaders: [{ key: 'X-Sub-Auth', value: 'sub-secret' }]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      return undefined;
+    });
+
+    await expect(
+      httpService.update({
+        client: subToolCredClient,
+        appId: HTTP_ID,
+        metadata: {},
+        config: { baseUrl: 'https://new.api.example' }
+      })
+    ).rejects.toThrow(/Refusing to retain saved sub-tool headerSecret\/staticHeaders/);
+
+    // 2. Manual HTTP toolset saved with full URL in tool.path and empty toolset baseUrl
+    let manualCapturedBody: any;
+    const manualClient = createMockClient(async ({ path, body }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'ManualHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: '',
+                  toolList: [
+                    {
+                      name: 'manual_hook',
+                      description: 'Web manual tool',
+                      path: 'https://manual.example.com/v1/hook',
+                      method: 'get',
+                      headerSecret: { Authorization: { value: 'Bearer manual-token' } }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      if (path === '/core/app/httpTools/runTool') {
+        manualCapturedBody = body;
+        return { data: { ok: true } };
+      }
+      return undefined;
+    });
+
+    const manualRes = await httpService.run({
+      client: manualClient,
+      input: { appId: HTTP_ID, toolPath: 'manual_hook' }
+    });
+    expect(manualRes.changed).toBe(true);
+    expect(manualCapturedBody).toMatchObject({
+      baseUrl: '',
+      toolPath: 'https://manual.example.com/v1/hook',
+      method: 'GET',
+      headerSecret: { Authorization: { value: 'Bearer manual-token' } }
+    });
+
+    // Overriding manual tool target via --target-url must still block saved sub-tool credentials
+    await expect(
+      httpService.run({
+        client: manualClient,
+        input: { appId: HTTP_ID, toolPath: 'manual_hook', baseUrl: 'https://evil.example.com' }
+      })
+    ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    // 3. Multi-method same-path disambiguation: refuse ambiguity and mismatched method instead of borrowing first item
+    let multiCapturedBody: any;
+    const multiMethodClient = createMockClient(async ({ path, body }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'MultiMethodHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'https://api.example.com',
+                  toolList: [
+                    { name: 'list_items', description: 'List', path: '/items', method: 'GET' },
+                    {
+                      name: 'create_item',
+                      description: 'Create',
+                      path: '/items',
+                      method: 'POST',
+                      staticHeaders: [{ key: 'X-Mode', value: 'create' }]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      if (path === '/core/app/httpTools/runTool') {
+        multiCapturedBody = body;
+        return { data: { created: true } };
+      }
+      return undefined;
+    });
+
+    await expect(
+      httpService.run({
+        client: multiMethodClient,
+        input: { appId: HTTP_ID, toolPath: '/items' }
+      })
+    ).rejects.toThrow(/Multiple HTTP tools share path/);
+
+    await expect(
+      httpService.run({
+        client: multiMethodClient,
+        input: { appId: HTTP_ID, toolPath: '/items', method: 'DELETE' }
+      })
+    ).rejects.toThrow(/No HTTP tool at path "\/items" matches method "DELETE"/);
+
+    await httpService.run({
+      client: multiMethodClient,
+      input: { appId: HTTP_ID, toolPath: '/items', method: 'POST' }
+    });
+    expect(multiCapturedBody).toMatchObject({
+      method: 'POST',
+      staticHeaders: [{ key: 'X-Mode', value: 'create' }]
+    });
+
+    // 4. Malformed MCP error envelope (non-array content) fails cleanly without TypeError
+    const malformedMcpClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/mcpTools/runTool') {
+        return { isError: true, content: 'non-array-error-payload' };
+      }
+      return undefined;
+    });
+    await expect(
+      mcpService.run({
+        client: malformedMcpClient,
+        input: { url: 'https://mcp.example.com/mcp', toolName: 'broken' }
+      })
+    ).rejects.toThrow('MCP tool execution failed');
+
+    // 5. HTTP update dry-run validates toolList against UpdateHttpToolsBodySchema instead of blind casting
+    await expect(
+      httpService.update({
+        client: createMockClient(async () => undefined),
+        appId: HTTP_ID,
+        metadata: {},
+        config: { toolList: [{ invalid: true }] },
+        dryRun: true
+      })
+    ).rejects.toThrow();
   });
 });

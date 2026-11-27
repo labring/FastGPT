@@ -349,10 +349,13 @@ async function* parseSseStream(
   let currentId: string | undefined;
   let currentDataLines: string[] = [];
 
+  let streamDone = false;
+
   try {
     while (true) {
       const { done, value } = await readChunkWithAbort(reader, signal);
       if (done) {
+        streamDone = true;
         break;
       }
       buffer += decoder.decode(value, { stream: true });
@@ -371,9 +374,6 @@ async function* parseSseStream(
               ...(currentId !== undefined ? { id: currentId } : {}),
               data
             };
-            if (data === '[DONE]') {
-              return;
-            }
             currentEvent = undefined;
             currentId = undefined;
             currentDataLines = [];
@@ -396,7 +396,7 @@ async function* parseSseStream(
       }
     }
 
-    // 处理末尾无换行或无空行的残留内容（含 [DONE] 终结信号）
+    // 处理末尾无换行或无空行的残留内容（含 [DONE] 或后置 error 帧）
     const remaining = `${buffer}${decoder.decode()}`.trim();
     if (remaining) {
       const line = remaining.endsWith('\r') ? remaining.slice(0, -1) : remaining;
@@ -419,6 +419,10 @@ async function* parseSseStream(
       };
     }
   } finally {
+    // 消费方提前 break 或抛出异常时主动取消底层可读流，避免连接泄漏
+    if (!streamDone) {
+      await reader.cancel().catch(() => {});
+    }
     reader.releaseLock();
   }
 }
@@ -841,12 +845,14 @@ export function createFastGptHttpClient({
 
       if (!response.ok) {
         const rawText = await response.text().catch(() => '');
+        // 对象存储错误 XML 可能包含签名字符串或请求细节，仅提取安全错误码并输出状态摘要。
+        const xmlCode = rawText.match(/<Code>([A-Za-z0-9._-]{1,64})<\/Code>/)?.[1];
         throw new CliApiError({
-          message:
-            redactText(rawText.trim().slice(0, 300)) ||
-            `Presigned upload failed with HTTP ${response.status}`,
+          message: xmlCode
+            ? `Presigned upload failed with HTTP ${response.status} (${xmlCode})`
+            : `Presigned upload failed with HTTP ${response.status}`,
           httpStatus: response.status,
-          details: { url: safeTargetUrl }
+          details: { url: safeTargetUrl, ...(xmlCode ? { errorCode: xmlCode } : {}) }
         });
       }
     },

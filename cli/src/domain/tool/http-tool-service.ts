@@ -1,6 +1,10 @@
+import z from 'zod';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { HttpToolTypeEnum } from '@fastgpt/global/core/app/tool/httpTool/constants';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import {
+  HttpToolConfigTypeSchema,
+  type HttpToolConfigType
+} from '@fastgpt/global/core/app/tool/httpTool/type';
 import {
   UpdateAppQuerySchema,
   type CreateAppResponseType,
@@ -34,11 +38,14 @@ import {
 } from '../shared/app-resource';
 import {
   hasSavedCredentials,
+  hasStaticHeaders,
+  isAbsoluteHttpUrl,
   isSameToolEndpoint,
   normalizeHeaderSecretInput,
   redactCustomHeadersPreview,
   redactHeaderSecretPreview,
   redactStaticHeadersPreview,
+  resolveHttpToolEffectiveUrl,
   sanitizeHttpToolListPreview,
   validateHttpToolPath,
   validateToolEndpointUrl,
@@ -47,6 +54,11 @@ import {
 
 const HTTP_TOOL_APP_TYPES = [AppTypeEnum.httpToolSet, AppTypeEnum.httpPlugin] as const;
 const PLACEHOLDER_OBJECT_ID = '000000000000000000000000';
+
+// 详情读边界：兼容历史上缺失 description 的已保存 HTTP 子工具记录，避免未校验断言。
+const SavedHttpToolItemReadSchema = HttpToolConfigTypeSchema.extend({
+  description: z.string().optional().default('')
+});
 
 type ExtractedHttpConfig = {
   baseUrl?: string;
@@ -64,6 +76,12 @@ function extractHttpToolSetConfig(detail: GetAppDetailResponseType): ExtractedHt
   if (!isPlainObject(httpToolSet)) {
     return {};
   }
+  const parsedToolList = Array.isArray(httpToolSet.toolList)
+    ? httpToolSet.toolList.flatMap((item) => {
+        const parsed = SavedHttpToolItemReadSchema.safeParse(item);
+        return parsed.success ? [parsed.data] : [];
+      })
+    : undefined;
   return {
     baseUrl: typeof httpToolSet.baseUrl === 'string' ? httpToolSet.baseUrl : undefined,
     apiSchemaStr:
@@ -71,9 +89,7 @@ function extractHttpToolSetConfig(detail: GetAppDetailResponseType): ExtractedHt
     customHeaders:
       typeof httpToolSet.customHeaders === 'string' ? httpToolSet.customHeaders : undefined,
     headerSecret: isPlainObject(httpToolSet.headerSecret) ? httpToolSet.headerSecret : undefined,
-    toolList: Array.isArray(httpToolSet.toolList)
-      ? (httpToolSet.toolList as HttpToolConfigType[])
-      : undefined
+    toolList: parsedToolList
   };
 }
 
@@ -95,6 +111,99 @@ function normalizeHttpToolListSecrets(toolList: unknown): unknown {
       headerSecret: normalizeHeaderSecretInput(item.headerSecret)
     };
   });
+}
+
+function tryResolveEffectiveUrl({
+  baseUrl,
+  toolPath
+}: {
+  baseUrl?: string;
+  toolPath: string;
+}): string | undefined {
+  try {
+    return resolveHttpToolEffectiveUrl({
+      baseUrl,
+      toolPath,
+      allowAbsoluteWithBaseUrl: true
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 在已保存的 HTTP 子工具列表中唯一定位目标子工具：
+ * 1. 先按唯一工具名匹配，再按路径精确匹配；
+ * 2. 同路径存在多个方法时禁止静默取第一项，也禁止在显式方法不匹配时借用其他方法的配置。
+ */
+function resolveSavedHttpTool({
+  toolList,
+  selector,
+  explicitMethod
+}: {
+  toolList?: readonly HttpToolConfigType[];
+  selector: string;
+  explicitMethod?: string;
+}): HttpToolConfigType | undefined {
+  if (!Array.isArray(toolList) || toolList.length === 0) {
+    return undefined;
+  }
+
+  const byName = toolList.filter((item) => item.name === selector);
+  if (byName.length > 0) {
+    if (explicitMethod) {
+      const matched = byName.filter((item) => item.method.toUpperCase() === explicitMethod);
+      if (matched.length === 1) return matched[0];
+      if (matched.length === 0) {
+        throw new CliArgumentError(
+          `HTTP tool "${selector}" uses method ${byName.map((t) => t.method.toUpperCase()).join('/')}, not "${explicitMethod}".`,
+          undefined,
+          `Omit --method or pass --method ${byName[0].method.toUpperCase()}.`
+        );
+      }
+      throw new CliArgumentError(
+        `Multiple HTTP tools match name "${selector}" with method "${explicitMethod}".`
+      );
+    }
+    if (byName.length === 1) return byName[0];
+    throw new CliArgumentError(
+      `Multiple HTTP tools share name "${selector}" (${byName.map((t) => t.method.toUpperCase()).join(', ')}).`,
+      undefined,
+      'Pass --method to disambiguate.'
+    );
+  }
+
+  const byPath = toolList.filter((item) => item.path === selector);
+  if (byPath.length === 0) {
+    return undefined;
+  }
+
+  if (explicitMethod) {
+    const matched = byPath.filter((item) => item.method.toUpperCase() === explicitMethod);
+    if (matched.length === 1) return matched[0];
+    if (matched.length === 0) {
+      throw new CliArgumentError(
+        `No HTTP tool at path "${selector}" matches method "${explicitMethod}". Available: ${byPath.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ')}.`,
+        undefined,
+        'Pass a matching --method or specify the unique tool name in --tool-path.'
+      );
+    }
+    throw new CliArgumentError(
+      `Multiple HTTP tools match "${explicitMethod} ${selector}" (${matched.map((t) => t.name).join(', ')}).`,
+      undefined,
+      'Pass the unique tool name to --tool-path.'
+    );
+  }
+
+  if (byPath.length === 1) {
+    return byPath[0];
+  }
+
+  throw new CliArgumentError(
+    `Multiple HTTP tools share path "${selector}" (${byPath.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ')}).`,
+    undefined,
+    'Pass --method or specify the unique tool name in --tool-path.'
+  );
 }
 
 export type HttpToolConfigPatch = {
@@ -364,8 +473,9 @@ export function createHttpToolService(): HttpToolService {
             operation: 'tool http create',
             appId,
             completedSteps: ['create'],
-            failedStep: 'configure',
-            recoveryHint: `HTTP toolset was created (${appId}) without config. Resume by running: fastgpt tool http update ${appId} ...`
+            step: 'configure',
+            failedHint: `HTTP toolset was created (${appId}) without config. Resume by running: fastgpt tool http update ${appId} ...`,
+            unknownHint: `HTTP toolset was created (${appId}), but the configuration write response was lost. Run "fastgpt tool http get ${appId}" to verify its authoritative config before retrying.`
           });
         }
       }
@@ -411,9 +521,12 @@ export function createHttpToolService(): HttpToolService {
         );
       }
 
-      const previewToolList = Array.isArray(config.toolList)
-        ? (normalizeHttpToolListSecrets(config.toolList) as HttpToolConfigType[])
-        : undefined;
+      const validatedExplicitToolList =
+        config.toolList !== undefined
+          ? UpdateHttpToolsBodySchema.shape.toolList.parse(
+              normalizeHttpToolListSecrets(config.toolList)
+            )
+          : undefined;
 
       if (dryRun) {
         return createDryRunResult({
@@ -448,10 +561,10 @@ export function createHttpToolService(): HttpToolService {
                       ...(customHeaders !== undefined
                         ? { customHeaders: redactCustomHeadersPreview(customHeaders) }
                         : {}),
-                      ...(previewToolList !== undefined
+                      ...(validatedExplicitToolList !== undefined
                         ? {
-                            toolCount: previewToolList.length,
-                            tools: sanitizeHttpToolListPreview(previewToolList)
+                            toolCount: validatedExplicitToolList.length,
+                            tools: sanitizeHttpToolListPreview(validatedExplicitToolList)
                           }
                         : {})
                     }
@@ -469,7 +582,7 @@ export function createHttpToolService(): HttpToolService {
         resourceLabel: 'HTTP toolset'
       });
 
-      // 先完成全部本地契约与改址凭据校验，再执行首次写库。
+      // 先完成全部本地契约与改址凭据隔离校验（含集级与每个继承子工具的凭据/静态头），再执行首次写库。
       let mergedConfigBody: ReturnType<typeof UpdateHttpToolsBodySchema.parse> | undefined;
       if (hasConfigUpdate) {
         const existing = extractHttpToolSetConfig(detail);
@@ -491,9 +604,41 @@ export function createHttpToolService(): HttpToolService {
           }
         }
 
+        // 未显式提交 toolList 时会原样保留已有子工具；若改址导致含独立凭据/静态头的子工具实际目标变更，必须阻断。
+        if (validatedBaseUrl !== undefined && validatedExplicitToolList === undefined) {
+          const affectedTools = (existing.toolList ?? [])
+            .filter((tool) => {
+              if (
+                !hasSavedCredentials(tool.headerSecret) &&
+                !hasStaticHeaders(tool.staticHeaders)
+              ) {
+                return false;
+              }
+              const oldTarget = tryResolveEffectiveUrl({
+                baseUrl: existing.baseUrl,
+                toolPath: tool.path
+              });
+              const newTarget = tryResolveEffectiveUrl({
+                baseUrl: validatedBaseUrl,
+                toolPath: tool.path
+              });
+              return !oldTarget || !newTarget || !isSameToolEndpoint(newTarget, oldTarget);
+            })
+            .map((tool) => tool.name || tool.path);
+
+          if (affectedTools.length > 0) {
+            throw new CliArgumentError(
+              `Refusing to retain saved sub-tool headerSecret/staticHeaders for [${affectedTools.join(', ')}] after changing target URL to "${validatedBaseUrl}".`,
+              undefined,
+              'Pass --tool-list explicitly with updated or cleared sub-tool headerSecret/staticHeaders for the new target URL.'
+            );
+          }
+        }
+
         mergedConfigBody = UpdateHttpToolsBodySchema.parse({
           appId: validatedQuery.appId,
-          toolList: normalizeHttpToolListSecrets(config.toolList ?? existing.toolList ?? []),
+          toolList:
+            validatedExplicitToolList ?? normalizeHttpToolListSecrets(existing.toolList ?? []),
           ...(validatedBaseUrl !== undefined
             ? { baseUrl: validatedBaseUrl }
             : existing.baseUrl !== undefined
@@ -541,8 +686,9 @@ export function createHttpToolService(): HttpToolService {
               operation: 'tool http update',
               appId: validatedQuery.appId,
               completedSteps: ['metadata'],
-              failedStep: 'config',
-              recoveryHint: `Metadata was updated for ${validatedQuery.appId}. Fix the HTTP config and re-run: fastgpt tool http update ${validatedQuery.appId} ...`
+              step: 'config',
+              failedHint: `Metadata was updated for ${validatedQuery.appId}. Fix the HTTP config and re-run: fastgpt tool http update ${validatedQuery.appId} ...`,
+              unknownHint: `Metadata was updated for ${validatedQuery.appId}, but the HTTP config update response was lost. Run "fastgpt tool http get ${validatedQuery.appId}" to verify authoritative state before retrying.`
             });
           }
           throw error;
@@ -569,16 +715,29 @@ export function createHttpToolService(): HttpToolService {
       const explicitBaseUrl = explicitBaseUrlRaw
         ? validateToolEndpointUrl(explicitBaseUrlRaw, 'HTTP target URL')
         : '';
-      const rawToolPath = validateHttpToolPath(input.toolPath);
+      const rawToolSelector = trimIfString(input.toolPath);
+      if (!rawToolSelector) {
+        throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
+      }
+      if (rawToolSelector.startsWith('//') || /[\r\n\\]/.test(rawToolSelector)) {
+        throw new CliArgumentError(`Invalid HTTP tool path "${rawToolSelector}".`);
+      }
+
       const explicitMethod = input.method ? trimIfString(input.method).toUpperCase() : undefined;
       const normalizedHeaders = normalizeHeaderSecretInput(input.headerSecret);
 
-      if (!explicitBaseUrl && !appId) {
-        throw new CliArgumentError(
-          'Either --id <appId> or --target-url <url> is required.',
-          undefined,
-          'Pass --id <httpToolsetId> to reuse saved config, or --target-url <url>.'
-        );
+      if (!appId) {
+        if (explicitBaseUrl) {
+          validateHttpToolPath(rawToolSelector);
+        } else if (isAbsoluteHttpUrl(rawToolSelector)) {
+          validateToolEndpointUrl(rawToolSelector, 'HTTP tool URL');
+        } else {
+          throw new CliArgumentError(
+            'Either --id <appId> or --target-url <url> is required.',
+            undefined,
+            'Pass --id <httpToolsetId> to reuse saved config, or --target-url <url>.'
+          );
+        }
       }
 
       if (dryRun) {
@@ -591,7 +750,7 @@ export function createHttpToolService(): HttpToolService {
             payload: {
               ...(appId ? { appId, resolveFromToolset: !explicitBaseUrl } : {}),
               ...(explicitBaseUrl ? { baseUrl: explicitBaseUrl } : {}),
-              toolPath: rawToolPath,
+              toolPath: rawToolSelector,
               method: explicitMethod ?? (appId ? '<resolvedFromTool>' : 'POST'),
               params: input.params ?? {},
               ...(input.apiSchemaStr !== undefined
@@ -622,58 +781,90 @@ export function createHttpToolService(): HttpToolService {
           )
         : undefined;
 
-      // 按 --id 试调用时优先匹配已保存的子工具配置（继承 method / 子工具凭据 / staticParams / staticHeaders / staticBody）。
-      const matchedTool = (() => {
-        const list = existingConfig?.toolList;
-        if (!Array.isArray(list) || list.length === 0) return undefined;
-        const byPath = list.filter((item) => item.path === rawToolPath);
-        if (byPath.length > 0) {
-          if (explicitMethod) {
-            return (
-              byPath.find((item) => item.method?.toUpperCase() === explicitMethod) ?? byPath[0]
-            );
-          }
-          return byPath[0];
-        }
-        return list.find((item) => item.name === rawToolPath);
-      })();
+      // 1. 先在已保存子工具中唯一定位目标子工具（支持工具名、相对路径或手动工具完整 URL；有歧义或方法不匹配直接报错）。
+      const matchedTool = resolveSavedHttpTool({
+        toolList: existingConfig?.toolList,
+        selector: rawToolSelector,
+        explicitMethod
+      });
 
-      const resolvedToolPath = validateHttpToolPath(matchedTool?.path ?? rawToolPath);
-      const resolvedMethod = explicitMethod ?? matchedTool?.method?.toUpperCase() ?? 'POST';
-      const resolvedBaseUrl = explicitBaseUrl || existingConfig?.baseUrl || '';
-      if (!resolvedBaseUrl) {
+      const resolvedMethod = explicitMethod ?? matchedTool?.method.toUpperCase() ?? 'POST';
+      const savedBaseUrl = existingConfig?.baseUrl?.trim() ?? '';
+      const candidatePath = matchedTool ? matchedTool.path.trim() : rawToolSelector;
+
+      // 2. 按已保存配置与显式覆盖解析最终请求地址（兼容 OpenAPI baseUrl+相对路径 与 Web 手动工具完整 URL）。
+      let resolvedBaseUrl: string;
+      let resolvedToolPath: string;
+      let finalEffectiveUrl: string;
+
+      if (explicitBaseUrl) {
+        resolvedBaseUrl = explicitBaseUrl;
+        if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
+          const parsedSaved = new URL(validateToolEndpointUrl(candidatePath, 'HTTP tool URL'));
+          resolvedToolPath = `${parsedSaved.pathname}${parsedSaved.search}`;
+          finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+        } else {
+          resolvedToolPath = validateHttpToolPath(candidatePath);
+          finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+        }
+      } else if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
+        resolvedBaseUrl = '';
+        resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
+        finalEffectiveUrl = new URL(resolvedToolPath).toString();
+      } else if (savedBaseUrl) {
+        resolvedBaseUrl = validateToolEndpointUrl(savedBaseUrl, 'HTTP target URL');
+        resolvedToolPath = validateHttpToolPath(candidatePath);
+        finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+      } else if (isAbsoluteHttpUrl(candidatePath)) {
+        resolvedBaseUrl = '';
+        resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
+        finalEffectiveUrl = new URL(resolvedToolPath).toString();
+      } else {
         throw new CliArgumentError(
           'Unable to resolve HTTP target URL from toolset.',
           undefined,
           'Pass --target-url explicitly.'
         );
       }
-      validateToolEndpointUrl(resolvedBaseUrl, 'HTTP target URL');
 
       const savedHeaderSecret = matchedTool?.headerSecret ?? existingConfig?.headerSecret;
       const savedStaticHeaders = matchedTool?.staticHeaders;
 
-      // 防止通过 --id 加载已保存工具集/子工具凭据后被 --target-url 覆盖发送到未授权地址。
-      if (
-        appId &&
-        explicitBaseUrl &&
-        existingConfig?.baseUrl &&
-        !isSameToolEndpoint(explicitBaseUrl, existingConfig.baseUrl)
-      ) {
-        const wouldLeakHeaderSecret =
-          hasSavedCredentials(savedHeaderSecret) && normalizedHeaders === undefined;
-        const wouldLeakCustomHeaders =
-          hasSavedCredentials(existingConfig.customHeaders) && input.customHeaders === undefined;
-        const wouldLeakStaticHeaders =
-          Array.isArray(savedStaticHeaders) &&
-          savedStaticHeaders.length > 0 &&
-          input.staticHeaders === undefined;
-        if (wouldLeakHeaderSecret || wouldLeakCustomHeaders || wouldLeakStaticHeaders) {
-          throw new CliArgumentError(
-            `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to overridden target URL "${explicitBaseUrl}".`,
-            undefined,
-            'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
-          );
+      // 3. 按实际最终目标地址校验凭据隔离：凡相对已保存目标发生改址，禁止携带工具集或子工具的任意已保存凭据/请求头。
+      if (appId) {
+        const targetChanged = (() => {
+          if (matchedTool) {
+            const savedTargetUrl = tryResolveEffectiveUrl({
+              baseUrl: savedBaseUrl,
+              toolPath: matchedTool.path
+            });
+            return !savedTargetUrl || !isSameToolEndpoint(finalEffectiveUrl, savedTargetUrl);
+          }
+          if (savedBaseUrl) {
+            const validSavedBase = validateToolEndpointUrl(savedBaseUrl, 'HTTP target URL');
+            if (explicitBaseUrl && !isSameToolEndpoint(explicitBaseUrl, validSavedBase)) {
+              return true;
+            }
+            return new URL(finalEffectiveUrl).origin !== new URL(validSavedBase).origin;
+          }
+          // 工具集未保存 baseUrl 且未命中已保存子工具：目标地址未经工具集授权，禁止复用已保存凭据。
+          return true;
+        })();
+
+        if (targetChanged) {
+          const wouldLeakHeaderSecret =
+            hasSavedCredentials(savedHeaderSecret) && normalizedHeaders === undefined;
+          const wouldLeakCustomHeaders =
+            hasSavedCredentials(existingConfig?.customHeaders) && input.customHeaders === undefined;
+          const wouldLeakStaticHeaders =
+            hasStaticHeaders(savedStaticHeaders) && input.staticHeaders === undefined;
+          if (wouldLeakHeaderSecret || wouldLeakCustomHeaders || wouldLeakStaticHeaders) {
+            throw new CliArgumentError(
+              `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to overridden target URL "${finalEffectiveUrl}".`,
+              undefined,
+              'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
+            );
+          }
         }
       }
 
@@ -724,7 +915,7 @@ export function createHttpToolService(): HttpToolService {
       if (typeof data?.errorMsg === 'string' && data.errorMsg.trim().length > 0) {
         throw new CliApiError({
           message: data.errorMsg.trim(),
-          details: data
+          details: isPlainObject(data) ? data : { rawResponse: data }
         });
       }
 

@@ -1,5 +1,6 @@
 import {
   parseIdListOption,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload
 } from '../../../shared/input';
@@ -13,7 +14,6 @@ import {
   createParentIdOption,
   createSearchOption,
   createYesOption,
-  parseOptionalNumber,
   requireActiveClient,
   resolveCommonAppMetadata,
   resolveIdArg

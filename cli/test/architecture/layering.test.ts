@@ -153,4 +153,50 @@ describe('CLI Architecture Layering & DAG Guard', () => {
 
     expect(cycles).toEqual([]);
   });
+
+  it('forbids module re-exports across cli/src/', () => {
+    const violations: string[] = [];
+    const reExportFromRegex = /^\s*export\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\s+["'][^"']+["']/gm;
+    const importIdentRegex = /^\s*import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+["'][^"']+["']/gm;
+    const localExportRegex = /^\s*export\s+(?:type\s+)?\{([^}]*)\}\s*;?\s*$/gm;
+
+    for (const file of files) {
+      const content = readFileSync(join(SRC_ROOT, file), 'utf8');
+      if (reExportFromRegex.test(content)) {
+        violations.push(`${file}: export ... from`);
+      }
+      reExportFromRegex.lastIndex = 0;
+
+      const importedNames = new Set<string>();
+      let importMatch: RegExpExecArray | null;
+      while ((importMatch = importIdentRegex.exec(content)) !== null) {
+        for (const rawSpec of importMatch[1].split(',')) {
+          const cleaned = rawSpec
+            .replace(/^type\s+/, '')
+            .trim()
+            .split(/\s+as\s+/);
+          const localName = (cleaned[1] ?? cleaned[0])?.trim();
+          if (localName) importedNames.add(localName);
+        }
+      }
+      importIdentRegex.lastIndex = 0;
+
+      let exportMatch: RegExpExecArray | null;
+      while ((exportMatch = localExportRegex.exec(content)) !== null) {
+        for (const rawSpec of exportMatch[1].split(',')) {
+          const localName = rawSpec
+            .replace(/^type\s+/, '')
+            .trim()
+            .split(/\s+as\s+/)[0]
+            ?.trim();
+          if (localName && importedNames.has(localName)) {
+            violations.push(`${file}: re-exported imported symbol "${localName}"`);
+          }
+        }
+      }
+      localExportRegex.lastIndex = 0;
+    }
+
+    expect(violations).toEqual([]);
+  });
 });

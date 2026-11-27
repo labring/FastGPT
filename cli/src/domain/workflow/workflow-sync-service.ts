@@ -4,7 +4,7 @@ import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { AppTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { serializeAgentTool } from '@fastgpt/global/core/app/formEdit/utils';
 import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -1292,7 +1292,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             );
           }
           // /core/app/detail 会将 Agent V2 已挂载的 selectedTools 展开成展示态（含完整 NodeIO inputs 且移除 config）；
-          // 送入 /core/chat/chatTest 前复用编辑器官方 serializeAgentTool 还原为持久化可执行契约。
+          // 送入 /core/chat/chatTest 前复用共享 SelectedToolItemTypeSchema 收窄并用 serializeAgentTool 还原为持久化可执行契约。
           const normalizedNodes = (appDetail.nodes ?? []).map((node) => {
             if (!Array.isArray(node.inputs)) return node;
             let changed = false;
@@ -1305,18 +1305,19 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
               }
               changed = true;
               const serializedTools = input.value.map((tool) => {
-                if (CanonicalSelectedToolsValueSchema.safeParse([tool]).success) {
-                  return tool;
+                const canonicalParsed = CanonicalSelectedToolsValueSchema.safeParse([tool]);
+                if (canonicalParsed.success) {
+                  return canonicalParsed.data[0];
                 }
-                if (isPlainObject(tool) && (Array.isArray(tool.inputs) || tool.pluginData)) {
-                  return serializeAgentTool({
-                    tool: {
-                      ...tool,
-                      inputs: Array.isArray(tool.inputs) ? tool.inputs : []
-                    } as unknown as SelectedToolItemType
-                  });
+                const displayToolParsed = SelectedToolItemTypeSchema.safeParse(tool);
+                if (displayToolParsed.success) {
+                  return serializeAgentTool({ tool: displayToolParsed.data });
                 }
-                return tool;
+                throw new CliApiError({
+                  message:
+                    'Remote Agent draft contains a malformed selectedTools entry that cannot be serialized for chatTest.',
+                  hint: 'Open and re-save the Agent in FastGPT, or run "fastgpt agent test --local" against a local workflow.json.'
+                });
               });
               return {
                 ...input,
@@ -1383,9 +1384,10 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
           body,
           timeoutMs: timeoutMs ?? 300_000
         })) {
+          // 服务端先输出 [DONE]，随后等待会话落库并在失败时追加 error 帧；必须持续消费至流结束。
           if (sse.data === '[DONE]') {
             streamCompleted = true;
-            break;
+            continue;
           }
 
           let parsed: unknown;

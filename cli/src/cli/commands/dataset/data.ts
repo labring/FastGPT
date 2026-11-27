@@ -1,12 +1,12 @@
 import { CliArgumentError } from '../../../shared/errors';
-import { isPlainObject, resolveJsonObjectPayload, resolveJsonPayload } from '../../../shared/input';
-import type { CliCommandSpec } from '../../pipeline';
 import {
-  confirmDestructiveAction,
+  isPlainObject,
   parseOptionalNumber,
-  requireActiveClient,
-  resolveIdArg
-} from '../shared/helpers';
+  resolveJsonObjectPayload,
+  resolveJsonPayload
+} from '../../../shared/input';
+import type { CliCommandSpec } from '../../pipeline';
+import { confirmDestructiveAction, requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /**
  * 知识库分块数据命令组（System OpenAPI）：list / get / push / update / delete。

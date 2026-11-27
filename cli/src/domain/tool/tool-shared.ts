@@ -1,6 +1,6 @@
 import { StoreSecretValueTypeApiInputSchema } from '@fastgpt/global/common/secret/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { CliApiError, CliArgumentError, CliError } from '../../shared/errors';
+import { CliApiError, CliArgumentError, CliError, CliNetworkError } from '../../shared/errors';
 import { isPlainObject } from '../../shared/input';
 
 export type HeaderSecretInput = Record<string, { value?: string; secret?: string }>;
@@ -46,7 +46,7 @@ export function normalizeHeaderSecretInput(
  * 脱敏 `headerSecret` 预览：仅输出是否配置及 header 名称列表，不回显任何凭据值。
  */
 export function redactHeaderSecretPreview(
-  headerSecret?: Record<string, unknown>
+  headerSecret?: Record<string, unknown> | null
 ): HeaderSummaryPreview | undefined {
   if (!headerSecret) return undefined;
   const headerNames = Object.keys(headerSecret);
@@ -106,7 +106,11 @@ export function redactStaticHeadersPreview(
  * 脱敏 HTTP 子工具列表预览：剥离各子工具内嵌的 `headerSecret` 与 `staticHeaders` 值，仅保留结构摘要。
  */
 export function sanitizeHttpToolListPreview(
-  toolList: HttpToolConfigType[]
+  toolList: ReadonlyArray<
+    Pick<HttpToolConfigType, 'name' | 'path' | 'method' | 'staticHeaders'> & {
+      headerSecret?: Record<string, unknown> | null;
+    }
+  >
 ): Array<Record<string, unknown>> {
   return toolList.map((tool) => ({
     name: tool.name,
@@ -141,6 +145,25 @@ export function hasSavedCredentials(raw: unknown): boolean {
 }
 
 /**
+ * 判断 `staticHeaders` 列表是否包含至少一个有效请求头项。
+ */
+export function hasStaticHeaders(raw: unknown): boolean {
+  return (
+    Array.isArray(raw) &&
+    raw.some(
+      (item) => isPlainObject(item) && typeof item.key === 'string' && item.key.trim() !== ''
+    )
+  );
+}
+
+/**
+ * 判断地址字符串是否以 `http://` 或 `https://` 开头。
+ */
+export function isAbsoluteHttpUrl(raw: string): boolean {
+  return /^https?:\/\//i.test(raw.trim());
+}
+
+/**
  * 校验外部工具的目标 HTTP/HTTPS 地址格式，禁止非 http/https 协议或空主机。
  */
 export function validateToolEndpointUrl(rawUrl: string, label: string): string {
@@ -164,7 +187,7 @@ export function validateToolEndpointUrl(rawUrl: string, label: string): string {
 }
 
 /**
- * 校验 HTTP 子工具路径，防止通过绝对 URL、协议相对路径或换行字符劫持最终请求目标。
+ * 校验相对 HTTP 子工具路径，防止通过绝对 URL、协议相对路径或换行字符劫持最终请求目标。
  */
 export function validateHttpToolPath(rawPath: string): string {
   const trimmed = rawPath.trim();
@@ -186,6 +209,43 @@ export function validateHttpToolPath(rawPath: string): string {
 }
 
 /**
+ * 计算 HTTP 子工具的实际目标 URL（兼容 OpenAPI 相对路径 + baseUrl，以及 Web 手动工具完整 URL）。
+ */
+export function resolveHttpToolEffectiveUrl({
+  baseUrl,
+  toolPath,
+  allowAbsoluteWithBaseUrl = false
+}: {
+  baseUrl?: string;
+  toolPath: string;
+  allowAbsoluteWithBaseUrl?: boolean;
+}): string {
+  const trimmedPath = toolPath.trim();
+  const trimmedBase = baseUrl?.trim() ?? '';
+
+  if (!trimmedPath) {
+    throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
+  }
+  if (trimmedPath.startsWith('//') || /[\r\n\\]/.test(trimmedPath)) {
+    throw new CliArgumentError(`Invalid HTTP tool path "${trimmedPath}".`);
+  }
+
+  if (trimmedBase) {
+    const validBase = validateToolEndpointUrl(trimmedBase, 'HTTP target URL');
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath)) {
+      if (!allowAbsoluteWithBaseUrl) {
+        validateHttpToolPath(trimmedPath);
+      }
+      return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
+    }
+    const validPath = validateHttpToolPath(trimmedPath);
+    return new URL(validPath, validBase).toString();
+  }
+
+  return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
+}
+
+/**
  * 比较两个工具端点 URL 是否指向同一授权目标（规范化 origin + pathname + search，忽略末尾斜线差异）。
  */
 export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
@@ -201,40 +261,61 @@ export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
 }
 
 /**
- * 包装多步写操作中后置步骤失败的错误，清晰暴露已提交步骤与资源 ID 便于幂等恢复。
+ * 包装多步写操作中后置步骤异常：
+ * - 网络超时/断连（`CliNetworkError`）保留网络错误类别并标记为 `outcome: "unknown"`（`uncertainStep`），避免把服务端可能已提交的写入误报为失败；
+ * - 明确的业务/服务端拒绝标记为 `outcome: "failed"`（`failedStep`）。
  */
 export function wrapPartialWriteError({
   error,
   operation,
   appId,
   completedSteps,
-  failedStep,
-  recoveryHint
+  step,
+  failedHint,
+  unknownHint
 }: {
   error: unknown;
   operation: string;
   appId: string;
   completedSteps: string[];
-  failedStep: string;
-  recoveryHint: string;
-}): CliApiError {
+  step: string;
+  failedHint: string;
+  unknownHint: string;
+}): CliApiError | CliNetworkError {
   const baseMessage = error instanceof Error ? error.message : String(error);
+  const causeDetails = error instanceof CliError ? error.details : undefined;
+
+  if (error instanceof CliNetworkError) {
+    return new CliNetworkError(
+      `${operation} committed [${completedSteps.join(', ')}] for ${appId}, but step "${step}" lost its response and its outcome is unknown: ${baseMessage}`,
+      unknownHint,
+      {
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId,
+        completedSteps,
+        uncertainStep: step,
+        ...(causeDetails !== undefined ? { cause: causeDetails } : {})
+      }
+    );
+  }
+
   const httpStatus = error instanceof CliApiError ? error.httpStatus : undefined;
   const serverCode = error instanceof CliApiError ? error.serverCode : undefined;
   const statusText = error instanceof CliApiError ? error.statusText : undefined;
-  const causeDetails = error instanceof CliError ? error.details : undefined;
 
   return new CliApiError({
-    message: `${operation} partially succeeded (${completedSteps.join(', ')} committed for ${appId}), but step "${failedStep}" failed: ${baseMessage}`,
-    hint: recoveryHint,
+    message: `${operation} partially succeeded (${completedSteps.join(', ')} committed for ${appId}), but step "${step}" failed: ${baseMessage}`,
+    hint: failedHint,
     httpStatus,
     serverCode,
     statusText,
     details: {
       partialSuccess: true,
+      outcome: 'failed',
       appId,
       completedSteps,
-      failedStep,
+      failedStep: step,
       ...(causeDetails !== undefined ? { cause: causeDetails } : {})
     }
   });

@@ -1,3 +1,4 @@
+import z from 'zod';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
@@ -38,6 +39,16 @@ import {
   validateToolEndpointUrl,
   wrapPartialWriteError
 } from './tool-shared';
+
+const McpToolResultEnvelopeSchema = z.object({
+  isError: z.boolean().optional(),
+  content: z.unknown().optional()
+});
+
+const McpContentBlockSchema = z.object({
+  type: z.string(),
+  text: z.string().optional()
+});
 
 type ExtractedMcpConfig = {
   url?: string;
@@ -447,8 +458,9 @@ export function createMcpToolService(): McpToolService {
               operation: 'tool mcp update',
               appId: validatedQuery.appId,
               completedSteps: ['metadata'],
-              failedStep: 'config',
-              recoveryHint: `Metadata was updated for ${validatedQuery.appId}. Fix the MCP config and re-run: fastgpt tool mcp update ${validatedQuery.appId} ...`
+              step: 'config',
+              failedHint: `Metadata was updated for ${validatedQuery.appId}. Fix the MCP config and re-run: fastgpt tool mcp update ${validatedQuery.appId} ...`,
+              unknownHint: `Metadata was updated for ${validatedQuery.appId}, but the MCP config update response was lost. Run "fastgpt tool mcp get ${validatedQuery.appId}" to verify authoritative state before retrying.`
             });
           }
           throw error;
@@ -569,15 +581,27 @@ export function createMcpToolService(): McpToolService {
         body: validatedBody
       });
 
-      const mcpErrorText = isPlainObject(data)
-        ? getMCPToolErrorText(
-            data as { isError?: boolean; content?: Array<{ type: string; text?: string }> }
-          )
-        : undefined;
+      const parsedMcpResult = McpToolResultEnvelopeSchema.safeParse(data);
+      const mcpErrorText = (() => {
+        if (!parsedMcpResult.success || parsedMcpResult.data.isError !== true) {
+          return undefined;
+        }
+        const rawContent = parsedMcpResult.data.content;
+        const validBlocks = Array.isArray(rawContent)
+          ? rawContent.flatMap((item) => {
+              const block = McpContentBlockSchema.safeParse(item);
+              return block.success ? [block.data] : [];
+            })
+          : [];
+        return getMCPToolErrorText({
+          isError: true,
+          content: validBlocks
+        });
+      })();
       if (mcpErrorText) {
         throw new CliApiError({
           message: mcpErrorText,
-          details: data
+          details: isPlainObject(data) ? data : { rawResponse: data }
         });
       }
 

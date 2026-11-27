@@ -8,7 +8,7 @@ import type {
   HttpClientFactory,
   HttpRequestAuth
 } from '../../../infra/http/fastgpt-http-client';
-import type { SecretStore } from '../../../infra/secrets/secret-store';
+import type { SecretStore } from '../../../infra/secrets/types';
 import {
   getCliVersion,
   type GlobalCliOptions,

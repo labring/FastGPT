@@ -7,18 +7,14 @@ import z from 'zod';
 import { CliArgumentError } from '../../../shared/errors';
 import {
   parseIdListOption,
+  parseOptionalBooleanFlag,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload,
   resolveTextInput
 } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import {
-  confirmDestructiveAction,
-  parseOptionalBooleanFlag,
-  parseOptionalNumber,
-  requireActiveClient,
-  resolveIdArg
-} from '../shared/helpers';
+import { confirmDestructiveAction, requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /**
  * 知识库集合命令组（System OpenAPI）：list / get / create / create-text / create-link / create-file / update / delete。

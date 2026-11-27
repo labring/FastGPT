@@ -1,6 +1,6 @@
 import type { ConfigRepository } from '../../infra/config/config-repository';
 import type { HttpClientFactory } from '../../infra/http/fastgpt-http-client';
-import type { SecretStore } from '../../infra/secrets/secret-store';
+import type { SecretStore } from '../../infra/secrets/types';
 import type { CliResult, GlobalCliOptions } from '../../shared/types';
 import type {
   DoctorAuthPort,

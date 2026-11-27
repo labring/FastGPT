@@ -1,6 +1,7 @@
 import { CliArgumentError } from '../../../shared/errors';
+import { parseOptionalBooleanFlag } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import { parseOptionalBooleanFlag, requireActiveClient } from '../shared/helpers';
+import { requireActiveClient } from '../shared/helpers';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,

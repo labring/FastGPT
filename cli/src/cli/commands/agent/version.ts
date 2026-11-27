@@ -1,6 +1,7 @@
 import { CliArgumentError } from '../../../shared/errors';
+import { parseOptionalNumber } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import { parseOptionalNumber, requireActiveClient, resolveIdArg } from '../shared/helpers';
+import { requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /** 注册 FastGPT Agent 版本历史命令：list / get / update。 */
 export function createAgentVersionCommandSpecs(): CliCommandSpec[] {

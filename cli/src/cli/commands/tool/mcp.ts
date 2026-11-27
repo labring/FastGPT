@@ -2,6 +2,7 @@ import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
   parseInlineJsonValue,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload,
   resolveJsonPayload
@@ -17,7 +18,6 @@ import {
   createParentIdOption,
   createSearchOption,
   createYesOption,
-  parseOptionalNumber,
   requireActiveClient,
   resolveCommonAppMetadata,
   resolveIdArg,

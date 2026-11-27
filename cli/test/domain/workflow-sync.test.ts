@@ -851,10 +851,11 @@ describe('WorkflowSyncService', () => {
     );
   });
 
-  it('serializes expanded remote Agent V2 selectedTools before chatTest and rejects incomplete SSE streams without [DONE]', async () => {
+  it('serializes expanded remote Agent V2 selectedTools before chatTest, rejects malformed tool payloads, and fails on incomplete or post-[DONE] error SSE streams', async () => {
     const dir = await makeDir();
     let capturedChatTestBody: any;
-    let includeDone = true;
+    let streamMode: 'ok' | 'missingDone' | 'postDoneError' = 'ok';
+    let malformedTool = false;
 
     const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
       const url =
@@ -878,38 +879,40 @@ describe('WorkflowSyncService', () => {
                   renderTypeList: ['hidden'],
                   valueType: 'any',
                   label: 'selectedTools',
-                  value: [
-                    {
-                      id: 'mcp-65f000000000000000000099/read_wiki',
-                      pluginId: 'mcp-65f000000000000000000099/read_wiki',
-                      name: 'read_wiki',
-                      avatar: 'core/app/type/mcpToolsFill',
-                      flowNodeType: 'tool',
-                      source: 'mcp',
-                      toolConfig: {
-                        mcpTool: { toolId: 'mcp-65f000000000000000000099/read_wiki' }
-                      },
-                      // Display-state expanded NodeIO inputs (as returned by /core/app/detail, missing top-level `config`)
-                      inputs: [
+                  value: malformedTool
+                    ? [{ inputs: 'not-valid-schema', pluginData: { error: 'broken' } }]
+                    : [
                         {
-                          key: 'repoName',
-                          label: 'repoName',
-                          renderTypeList: ['agentGenerated', 'input'],
-                          selectedType: 'input',
-                          valueType: 'string',
-                          value: 'labring/FastGPT'
-                        },
-                        {
-                          key: 'query',
-                          label: 'query',
-                          renderTypeList: ['agentGenerated', 'input'],
-                          selectedType: 'agentGenerated',
-                          valueType: 'string'
+                          id: 'mcp-65f000000000000000000099/read_wiki',
+                          pluginId: 'mcp-65f000000000000000000099/read_wiki',
+                          name: 'read_wiki',
+                          avatar: 'core/app/type/mcpToolsFill',
+                          flowNodeType: 'tool',
+                          source: 'mcp',
+                          toolConfig: {
+                            mcpTool: { toolId: 'mcp-65f000000000000000000099/read_wiki' }
+                          },
+                          // Display-state expanded NodeIO inputs (as returned by /core/app/detail, missing top-level `config`)
+                          inputs: [
+                            {
+                              key: 'repoName',
+                              label: 'repoName',
+                              renderTypeList: ['agentGenerated', 'input'],
+                              selectedType: 'input',
+                              valueType: 'string',
+                              value: 'labring/FastGPT'
+                            },
+                            {
+                              key: 'query',
+                              label: 'query',
+                              renderTypeList: ['agentGenerated', 'input'],
+                              selectedType: 'agentGenerated',
+                              valueType: 'string'
+                            }
+                          ],
+                          outputs: []
                         }
-                      ],
-                      outputs: []
-                    }
-                  ]
+                      ]
                 }
               ],
               outputs: []
@@ -926,7 +929,10 @@ describe('WorkflowSyncService', () => {
         const chunks = [
           'event: answer\n',
           'data: {"choices":[{"delta":{"content":"Hello from V2"},"finish_reason":"stop"}]}\n\n',
-          ...(includeDone ? ['data: [DONE]\n\n'] : [])
+          ...(streamMode === 'ok' || streamMode === 'postDoneError' ? ['data: [DONE]\n\n'] : []),
+          ...(streamMode === 'postDoneError'
+            ? ['event: error\n', 'data: {"message":"Failed to persist chat round"}\n\n']
+            : [])
         ].join('');
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
@@ -968,7 +974,7 @@ describe('WorkflowSyncService', () => {
     });
 
     // Premature EOF without [DONE] must fail instead of succeeding
-    includeDone = false;
+    streamMode = 'missingDone';
     await expect(
       sync.chatTest({
         client,
@@ -978,5 +984,30 @@ describe('WorkflowSyncService', () => {
         messages: [{ role: 'user', content: 'ping' }]
       })
     ).rejects.toThrow(/before receiving completion signal/);
+
+    // Post-[DONE] persistence error frame from chatTest.ts must still fail instead of returning completed: true
+    streamMode = 'postDoneError';
+    await expect(
+      sync.chatTest({
+        client,
+        dir,
+        appId: APP_ID,
+        remote: true,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    ).rejects.toThrow('Failed to persist chat round');
+
+    // Malformed remote selectedTools payload must fail deterministically via SelectedToolItemTypeSchema
+    streamMode = 'ok';
+    malformedTool = true;
+    await expect(
+      sync.chatTest({
+        client,
+        dir,
+        appId: APP_ID,
+        remote: true,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    ).rejects.toThrow(/malformed selectedTools/);
   });
 });

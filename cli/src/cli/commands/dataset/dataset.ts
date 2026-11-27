@@ -3,17 +3,13 @@ import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
   parseIdListOption,
+  parseOptionalBooleanFlag,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload
 } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import {
-  confirmDestructiveAction,
-  parseOptionalBooleanFlag,
-  parseOptionalNumber,
-  requireActiveClient,
-  resolveIdArg
-} from '../shared/helpers';
+import { confirmDestructiveAction, requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /**
  * 知识库主资源命令组（System OpenAPI）：list / get / create / update / delete / search / batch-move / batch-delete。
