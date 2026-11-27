@@ -107,8 +107,12 @@ describe('floating chat window resizing', () => {
       function (this: HTMLElement) {
         const width = this.offsetWidth;
         const height = this.offsetHeight;
-        const right = dom.window.innerWidth - (parseFloat(this.style.right) || 0);
-        const bottom = dom.window.innerHeight - (parseFloat(this.style.bottom) || 0);
+        const viewportWidth =
+          dom.window.document.documentElement.clientWidth || dom.window.innerWidth;
+        const viewportHeight =
+          dom.window.document.documentElement.clientHeight || dom.window.innerHeight;
+        const right = viewportWidth - (parseFloat(this.style.right) || 0);
+        const bottom = viewportHeight - (parseFloat(this.style.bottom) || 0);
         return {
           x: right - width,
           y: bottom - height,
@@ -281,5 +285,34 @@ describe('floating chat window resizing', () => {
     });
     resizeCallback([], {} as ResizeObserver);
     expect(handle().style.visibility).toBe('hidden');
+  });
+
+  it('keeps enlarged window and handle inside viewport when host shrinks with a classic scrollbar', () => {
+    const setViewport = (innerWidth: number, clientWidth: number, innerHeight = 1000) => {
+      Object.defineProperties(dom.window, {
+        innerWidth: { configurable: true, writable: true, value: innerWidth },
+        innerHeight: { configurable: true, writable: true, value: innerHeight }
+      });
+      Object.defineProperties(dom.window.document.documentElement, {
+        clientWidth: { configurable: true, writable: true, value: clientWidth },
+        clientHeight: { configurable: true, writable: true, value: innerHeight }
+      });
+    };
+
+    setViewport(1400, 1383);
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const before = iframe().getBoundingClientRect();
+    pointer({ type: 'pointerdown', x: before.left + 8, y: before.top + 8 });
+    pointer({ type: 'pointermove', x: before.left - 112, y: before.top + 8 });
+    pointer({ type: 'lostpointercapture', x: 0, y: 0 });
+    expect(iframe().offsetWidth).toBe(495);
+
+    setViewport(620, 603);
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    expect(iframe().style.right).toBe('108px');
+    expect(iframe().getBoundingClientRect().left).toBe(0);
+    expect(handle().style.left).toBe('0px');
   });
 });

@@ -39,7 +39,7 @@ function embedChatbot() {
   iframe.name = 'fastgpt-chatbot-window';
   iframe.src = botSrc;
   iframe.style.cssText =
-    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; min-width: min(375px, 90vw); min-height: min(240px, max(0px, calc(100vh - 60px))); max-width: 90vw; max-height: max(0px, calc(100vh - 60px)); border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
+    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; min-width: min(375px, 90%); min-height: min(240px, max(0px, calc(100% - 60px))); max-width: 90%; max-height: max(0px, calc(100% - 60px)); border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
   iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
 
   document.body.appendChild(iframe);
@@ -136,13 +136,20 @@ function embedChatbot() {
   const minWindowHeight = 240;
   const verticalEdgeGap = 30;
 
+  /** 获取扣除占位滚动条后的可用视口尺寸，与 position: fixed 定位坐标系保持一致。 */
+  const getViewportSize = () => ({
+    width: document.documentElement?.clientWidth || window.innerWidth,
+    height: document.documentElement?.clientHeight || window.innerHeight
+  });
+
   /** 保持右下角固定，并将调整后的窗口限制在可视区域内（上下预留对称边距）。 */
   const resizeChatWindow = (width, height) => {
+    const { width: vw, height: vh } = getViewportSize();
     const rect = iframe.getBoundingClientRect();
-    const maxWidth = Math.min(window.innerWidth * 0.9, rect.right);
+    const maxWidth = Math.min(vw * 0.9, rect.right);
     const maxHeight = Math.max(
       0,
-      Math.min(window.innerHeight - verticalEdgeGap * 2, rect.bottom - verticalEdgeGap)
+      Math.min(vh - verticalEdgeGap * 2, rect.bottom - verticalEdgeGap)
     );
     iframe.style.width = `${Math.max(Math.min(minWindowWidth, maxWidth), Math.min(maxWidth, width))}px`;
     iframe.style.height = `${Math.max(Math.min(minWindowHeight, maxHeight), Math.min(maxHeight, height))}px`;
@@ -215,12 +222,8 @@ function embedChatbot() {
     const chatWindow = document.getElementById(chatWindowId);
     if (!chatWindow) return;
     const btn = ChatBtn.getBoundingClientRect();
-    const [vw, vh, ww, wh] = [
-      window.innerWidth,
-      window.innerHeight,
-      chatWindow.offsetWidth,
-      chatWindow.offsetHeight
-    ];
+    const { width: vw, height: vh } = getViewportSize();
+    const [ww, wh] = [chatWindow.offsetWidth, chatWindow.offsetHeight];
 
     let right = 0;
     if (btn.left >= ww) {
@@ -281,8 +284,9 @@ function embedChatbot() {
     let newRight = ChatBtn.initialRight - deltaX;
     let newBottom = ChatBtn.initialBottom - deltaY;
 
-    newRight = Math.max(20, Math.min(window.innerWidth - 60, newRight));
-    newBottom = Math.max(30, Math.min(window.innerHeight - 70, newBottom));
+    const { width: vw, height: vh } = getViewportSize();
+    newRight = Math.max(20, Math.min(vw - 60, newRight));
+    newBottom = Math.max(30, Math.min(vh - 70, newBottom));
 
     ChatBtn.style.right = `${newRight}px`;
     ChatBtn.style.bottom = `${newBottom}px`;
