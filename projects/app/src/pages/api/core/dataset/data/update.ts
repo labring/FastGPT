@@ -26,6 +26,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { addHours } from 'date-fns';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
   const { dataId, q, a, indexes } = parseApiInput({
@@ -64,8 +65,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     authorizedIds
   });
   const vectorModel = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
-  const nextQ = q ?? datasetData.q ?? '';
-  const nextA = a ?? datasetData.a ?? '';
+  const normalized = await normalizeDatasetDataImages({
+    teamId: String(teamId),
+    datasetId: String(collection.datasetId),
+    collectionId: String(collection._id),
+    data: [{ q: q ?? datasetData.q ?? '', a: a ?? datasetData.a ?? '' }]
+  });
+  const { q: nextQ, a: nextA } = normalized.data[0];
   const pushUpdateDataAuditLog = () => {
     addAuditLog({
       tmbId,
@@ -90,6 +96,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       dataId,
       q: nextQ,
       a: nextA,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       indexes: manualIndexes || [],
@@ -111,6 +118,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       dataId,
       q: nextQ,
       a: nextA,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       model: vectorModel,

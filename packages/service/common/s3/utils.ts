@@ -155,6 +155,7 @@ export function removeS3TTL({
   }
 }
 
+/** 上传图片并透传可选截止时间；调用方可在上传前登记临时回收记录。 */
 export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams
@@ -165,7 +166,8 @@ export async function uploadImage2S3Bucket(
     filename,
     mimetype,
     uploadKey,
-    expiredTime
+    expiredTime,
+    uploadTimeoutMs
   } = UploadImage2S3BucketParamsSchema.parse(params);
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
@@ -182,6 +184,7 @@ export async function uploadImage2S3Bucket(
   await bucket.client.uploadObject({
     key: uploadKey,
     body: buffer,
+    ...(uploadTimeoutMs !== undefined && { abortSignal: AbortSignal.timeout(uploadTimeoutMs) }),
     contentType: mimetype,
     contentDisposition: getS3UploadContentDisposition({ filename, type: 'attachment' }),
     metadata: {

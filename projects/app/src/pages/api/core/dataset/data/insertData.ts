@@ -28,6 +28,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -54,8 +55,6 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   ]);
   const datasetId = dataset._id;
 
-  const formatQ = simpleText(q);
-  const formatA = simpleText(a);
   const formatIndexes = indexes?.map((item) => ({
     ...item,
     text: simpleText(item.text)
@@ -72,6 +71,16 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     authorizedIds
   });
   const vectorModelData = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
+
+  // 在权限、配额与模型可用性校验通过后再上传图片，避免无效请求产生临时对象。
+  const normalized = await normalizeDatasetDataImages({
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    collectionId,
+    data: [{ q: simpleText(q), a: simpleText(a) }]
+  });
+  const formatQ = normalized.data[0].q;
+  const formatA = normalized.data[0].a;
 
   await hasSameValue({
     teamId,
@@ -96,6 +105,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
       imageIndex: !!imageIndex,
       indexes: formatIndexes,
       metadata,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       session
     })
   );

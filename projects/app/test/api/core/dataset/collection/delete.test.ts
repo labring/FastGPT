@@ -16,22 +16,10 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-
-// delCollection 会调用 deleteDatasetFilesByKeys，而全局 s3 mock 未提供该方法；本地补齐。
-const { mockDeleteDatasetFilesByKeys } = vi.hoisted(() => ({
-  mockDeleteDatasetFilesByKeys: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    createGetDatasetFileURL: vi.fn(),
-    createUploadDatasetFileURL: vi.fn(),
-    deleteDatasetFile: vi.fn(),
-    deleteDatasetFilesByKeys: mockDeleteDatasetFilesByKeys
-  })
-}));
+import { s3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 /**
  * 建立 dataset 与一个 file collection：dataset owner 与 collection owner 分离，用于验证删除门槛。
@@ -69,9 +57,9 @@ const createDatasetWithCollection = async ({
 
 describe('delete collection permission', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it('records each selected collection once without expanding implicitly deleted descendants', async () => {
     const { owner } = await getFakeUsers(1);
@@ -147,34 +135,44 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     // 外库 key 不进入删除名单，避免跨库物理删除
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([]);
+    expect(s3FileDeleteMQService.addJob).not.toHaveBeenCalled();
     expect(String(dataset._id)).toBeTruthy();
   });
 
-  it('deletes S3 files owned by the collection dataset', async () => {
-    const users = await getFakeUsers(1);
-    const member = users.members[0];
-    const { dataset, collection } = await createDatasetWithCollection({
-      teamId: users.owner.teamId,
-      datasetTmbId: member.tmbId,
-      collectionTmbId: member.tmbId
-    });
-    const ownFileId = `dataset/${dataset._id}/own.pdf`;
-    await MongoDatasetCollection.updateOne(
-      { _id: collection._id },
-      { $set: { fileId: ownFileId } }
-    );
+  it.each([false, true])(
+    'keeps source-file deletion separate from another collection image (managed: %s)',
+    async (managed) => {
+      const users = await getFakeUsers(1);
+      const member = users.members[0];
+      const { dataset, collection } = await createDatasetWithCollection({
+        teamId: users.owner.teamId,
+        datasetTmbId: member.tmbId,
+        collectionTmbId: member.tmbId
+      });
+      const ownFileId = managed
+        ? `dataset/${dataset._id}/chunk-images/${'1'.repeat(24)}/file/${'a'.repeat(32)}.png`
+        : `dataset/${dataset._id}/own.pdf`;
+      await MongoDatasetCollection.updateOne(
+        { _id: collection._id },
+        { $set: { fileId: ownFileId } }
+      );
 
-    const response = await Call(deleteHandler, {
-      auth: member,
-      body: { collectionIds: [String(collection._id)] }
-    });
+      const response = await Call(deleteHandler, {
+        auth: member,
+        body: { collectionIds: [String(collection._id)] }
+      });
 
-    expect(response.code).toBe(200);
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([ownFileId]);
-  });
+      expect(response.code, JSON.stringify(response)).toBe(200);
+      if (managed) expect(s3FileDeleteMQService.addJob).not.toHaveBeenCalled();
+      else
+        expect(s3FileDeleteMQService.addJob).toHaveBeenCalledWith({
+          bucketName: S3Buckets.private,
+          keys: [ownFileId]
+        });
+    }
+  );
 
   it('deletes S3 images owned by the image collection and excludes foreign images', async () => {
     const users = await getFakeUsers(1);
@@ -223,9 +221,12 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(imgCollection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     // 仅删除自有 dataset 的 imageId，排除外库 key
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([ownImageId]);
+    expect(s3FileDeleteMQService.addJob).toHaveBeenCalledWith({
+      bucketName: S3Buckets.private,
+      keys: [ownImageId]
+    });
   });
 
   it('deletes the collection when the caller is the collection owner (permission enabled)', async () => {
@@ -250,7 +251,7 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
     // 删除只作用于集合同身，dataset 保留
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.not.toBeNull();
@@ -279,7 +280,7 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
   });
 
@@ -343,9 +344,9 @@ describe('delete collection permission', () => {
 
 describe('delete collection by body locating mode', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   const fixture = async () => {
     const users = await getFakeUsers(1);
@@ -509,9 +510,9 @@ describe('delete collection by body locating mode', () => {
 
 describe('delete collection by apiFileId', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   const fixture = async () => {
     const users = await getFakeUsers(1);

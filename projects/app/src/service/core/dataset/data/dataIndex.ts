@@ -1,3 +1,4 @@
+import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   deleteDatasetDataVector,
@@ -787,6 +788,13 @@ export class DatasetDataIndexOperation {
       }
 
       await mongoSessionRun(async (session) => {
+        await persistChunkImageReferences({
+          teamId: String(sourceData.teamId),
+          datasetId: String(sourceData.datasetId),
+          collectionId: String(sourceData.collectionId),
+          data: [{ indexes: [{ text: trimText }] }],
+          session
+        });
         const updateResult = targetIndex
           ? await MongoDatasetData.updateOne(
               {
@@ -835,7 +843,7 @@ export class DatasetDataIndexOperation {
         }
       });
     } catch (error) {
-      if (synonymContext && newIndex) {
+      if (newIndex) {
         await this.deleteVectors({
           teamId: sourceData.teamId,
           datasetId: sourceData.datasetId,

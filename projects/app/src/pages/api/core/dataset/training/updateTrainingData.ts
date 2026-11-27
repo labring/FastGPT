@@ -21,7 +21,6 @@ import {
   getTrainingTaskReadyUpdate
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   bridgeClientSessionToDbSession,
   mongoSessionRun
@@ -34,6 +33,8 @@ import {
   buildCollectionAuditResource,
   buildDatasetAuditResource
 } from '@fastgpt/global/support/user/audit/type';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
+import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -162,7 +163,24 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       : undefined;
 
   const readyUpdate = getTrainingTaskReadyUpdate();
+  const normalized = await normalizeDatasetDataImages({
+    teamId: String(collection.teamId),
+    datasetId: String(collection.datasetId),
+    collectionId: String(collection._id),
+    data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }]
+  });
   await mongoSessionRun(async (session) => {
+    // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属校验。
+    const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();
+    if (!current) throw new Error('Training data no longer exists');
+    await persistChunkImageReferences({
+      teamId: String(collection.teamId),
+      datasetId: String(collection.datasetId),
+      collectionId: String(collection._id),
+      data: [{ ...current, ...normalized.data[0] }],
+      imageUploadKeys: normalized.imageUploadKeys,
+      session
+    });
     if (data.dataId) {
       await MongoDatasetData.updateOne(
         {
@@ -189,8 +207,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         $set: {
           ...readyUpdate.$set,
           ...(nextMode && { mode: nextMode }),
-          ...(q !== undefined && { q }),
-          ...(a !== undefined && { a }),
+          ...(q !== undefined && { q: normalized.data[0].q }),
+          ...(a !== undefined && { a: normalized.data[0].a }),
           ...(chunkIndex !== undefined && { chunkIndex })
         }
       },
