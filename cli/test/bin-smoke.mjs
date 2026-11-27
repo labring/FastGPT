@@ -128,6 +128,8 @@ try {
   const doctorOut = JSON.parse(await run(['doctor']));
   assert.equal(doctorOut.ok, true);
   assert.equal(doctorOut.data.ok, true);
+  const connectivityCheck = doctorOut.data.checks.find((c) => c.name === 'server_connectivity');
+  assert.equal(connectivityCheck?.status, 'pass');
 
   const logoutOut = JSON.parse(await run(['logout', '--purge']));
   assert.equal(logoutOut.ok, true);

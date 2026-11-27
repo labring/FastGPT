@@ -173,6 +173,43 @@ export function validateRelativeToolPath(rawPath: string): string {
 }
 
 /**
+ * 按服务端 Axios 合并契约计算 HTTP 子工具的最终出站 URL（保留 `baseUrl` 路径前缀并兼容历史无协议基址）。
+ */
+export function resolveHttpOutboundUrl(baseUrl: string, toolPath: string): string {
+  const trimmedPath = toolPath.trim();
+  const trimmedBase = baseUrl.trim();
+  if (!trimmedBase || isAbsoluteHttpUrl(trimmedPath)) {
+    return new URL(parseHttpUrl(trimmedPath, 'HTTP tool URL')).toString();
+  }
+  const cleanBase = parseHttpUrl(trimmedBase, 'HTTP target URL', {
+    allowSchemeLess: true
+  }).replace(/\/+$/, '');
+  const cleanRelative = trimmedPath.replace(/^\/+/, '');
+  const combined = cleanRelative ? `${cleanBase}/${cleanRelative}` : cleanBase;
+  return new URL(combined).toString();
+}
+
+/**
+ * 判断规范化后的出站 URL 是否仍落在已授权基址的同源与路径前缀范围内。
+ */
+export function isUrlWithinBasePrefix(targetUrl: string, authorizedBaseUrl: string): boolean {
+  try {
+    const target = new URL(targetUrl.trim());
+    const base = new URL(
+      parseHttpUrl(authorizedBaseUrl, 'HTTP target URL', { allowSchemeLess: true })
+    );
+    if (target.origin !== base.origin) return false;
+    const basePrefix = base.pathname.replace(/\/+$/, '') || '/';
+    const targetPath = target.pathname.replace(/\/+$/, '') || '/';
+    return (
+      basePrefix === '/' || targetPath === basePrefix || targetPath.startsWith(`${basePrefix}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 比较两个工具端点是否指向同一目标（规范化 origin + pathname + search，兼容历史无协议基址与末尾斜线差异）。
  */
 export function isSameToolEndpoint(urlA: string, urlB: string): boolean {

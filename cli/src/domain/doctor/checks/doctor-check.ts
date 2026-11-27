@@ -212,7 +212,8 @@ export function createServerConnectivityCheck(): DoctorCheck {
       try {
         const devApi = await client.request<{ paths?: Record<string, unknown> }>({
           method: 'GET',
-          path: '/apidoc/devapi.json'
+          path: '/apidoc/devapi.json',
+          rawJson: true
         });
         const hasWhoami = Boolean(devApi?.paths?.['/support/user/account/whoami']);
         return {

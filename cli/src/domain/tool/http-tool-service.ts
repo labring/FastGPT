@@ -41,8 +41,11 @@ import {
   assertCredentialTargetUnchanged,
   hasConfiguredHeaders,
   isAbsoluteHttpUrl,
+  isSameToolEndpoint,
+  isUrlWithinBasePrefix,
   normalizeHeaderSecretInput,
   parseHttpUrl,
+  resolveHttpOutboundUrl,
   runToolWriteStep,
   sanitizeHttpToolListPreview,
   summarizeHeaders,
@@ -733,31 +736,7 @@ export function createHttpToolService(): HttpToolService {
       const savedHeaderSecret = matchedTool?.headerSecret ?? existingConfig?.headerSecret;
       const savedStaticHeaders = matchedTool?.staticHeaders;
 
-      // 显式覆盖目标地址（或无 savedBaseUrl 且直接调用未保存完整 URL）时，禁止携带旧凭据与请求头。
-      if (appId) {
-        const savedTarget =
-          savedBaseUrl ||
-          (matchedTool && isAbsoluteHttpUrl(matchedTool.path) ? matchedTool.path.trim() : '');
-        const overrideTarget =
-          explicitBaseUrl ||
-          (!matchedTool && !savedBaseUrl && isAbsoluteHttpUrl(candidatePath) ? candidatePath : '');
-        if (overrideTarget) {
-          const hasUnoverriddenCreds =
-            (hasConfiguredHeaders(savedHeaderSecret) && normalizedHeaders === undefined) ||
-            (hasConfiguredHeaders(existingConfig?.customHeaders) &&
-              input.customHeaders === undefined) ||
-            (hasConfiguredHeaders(savedStaticHeaders) && input.staticHeaders === undefined);
-          assertCredentialTargetUnchanged({
-            fromUrl: savedTarget,
-            toUrl: overrideTarget,
-            hasSavedCredentials: hasUnoverriddenCreds,
-            hasOverride: false,
-            message: `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to overridden target URL "${overrideTarget}".`,
-            hint: 'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
-          });
-        }
-      }
-
+      // 1. 先按服务端请求语义解析最终出站目标（兼容手动完整 URL 子工具及换基址覆盖）。
       const { resolvedBaseUrl, resolvedToolPath } = (() => {
         if (!explicitBaseUrl && isAbsoluteHttpUrl(candidatePath)) {
           return {
@@ -789,6 +768,33 @@ export function createHttpToolService(): HttpToolService {
           resolvedToolPath: validateRelativeToolPath(relativePath)
         };
       })();
+
+      // 2. 基于最终出站 URL 统一校验已保存凭据授权，防止通过绝对 URL、换基址或越界路径泄漏请求头。
+      if (appId) {
+        const hasUnoverriddenCreds =
+          (hasConfiguredHeaders(savedHeaderSecret) && normalizedHeaders === undefined) ||
+          (hasConfiguredHeaders(existingConfig?.customHeaders) &&
+            input.customHeaders === undefined) ||
+          (hasConfiguredHeaders(savedStaticHeaders) && input.staticHeaders === undefined);
+
+        if (hasUnoverriddenCreds) {
+          const actualOutboundUrl = resolveHttpOutboundUrl(resolvedBaseUrl, resolvedToolPath);
+          const authorized = matchedTool
+            ? isSameToolEndpoint(
+                actualOutboundUrl,
+                resolveHttpOutboundUrl(savedBaseUrl, matchedTool.path)
+              )
+            : Boolean(savedBaseUrl && isUrlWithinBasePrefix(actualOutboundUrl, savedBaseUrl));
+
+          if (!authorized) {
+            throw new CliArgumentError(
+              `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to unauthorized target URL "${actualOutboundUrl}".`,
+              undefined,
+              'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
+            );
+          }
+        }
+      }
 
       const resolvedCustomHeaders = (() => {
         if (input.customHeaders !== undefined) return input.customHeaders;

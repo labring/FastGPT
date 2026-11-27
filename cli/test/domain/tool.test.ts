@@ -458,6 +458,13 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
     await expect(
       httpService.run({
         client: httpClient,
+        input: { appId: HTTP_ID, toolPath: 'https://evil.example/steal' }
+      })
+    ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    await expect(
+      httpService.run({
+        client: httpClient,
         input: { baseUrl: 'https://trusted.api.example', toolPath: 'https://evil.example/steal' }
       })
     ).rejects.toThrow(/Invalid HTTP tool path/);
