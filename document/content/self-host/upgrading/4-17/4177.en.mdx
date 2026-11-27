@@ -1,6 +1,6 @@
 ---
 title: V4.17.7
-description: FastGPT V4.17.7 release notes covering a fix for unrecognized language codes breaking login restore, API calls, and workflow loading.
+description: FastGPT V4.17.7 release notes improving compatibility for unrecognized language codes so login restore, API calls, and workflow loading fall back cleanly to English.
 sidebarTag: In dev
 ---
 
@@ -10,6 +10,6 @@ sidebarTag: In dev
 
 This update requires no new environment variables or app upgrade scripts.
 
-## 🐛 Fixes
+## ⚙️ Improvements
 
-1. Fixed login restore, API calls, and workflow loading failing validation when a user's language preference, an API language parameter, or a workflow node's plugin language used a language this version doesn't recognize (for example, a language added in a newer version or data left behind after a rollback). Unrecognized languages now fall back to English, and unrecognized languages in a plugin's per-language README URLs no longer cause validation errors.
+1. Improved language code validation compatibility: when a user's language preference, an API language parameter, or a workflow node's plugin language uses a language this version doesn't recognize (for example, a language added in a newer version or data left behind after a rollback), it now falls back to English instead of interrupting login restore, API calls, or workflow loading. Unrecognized languages in a plugin's per-language README URLs also no longer cause validation errors.
