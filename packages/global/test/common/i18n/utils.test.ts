@@ -11,7 +11,6 @@ import {
   I18nStringSchema,
   LanguageSchema,
   LocaleList,
-  StoredLocaleSchema,
   type I18nStringType
 } from '@fastgpt/global/common/i18n/type';
 
@@ -29,13 +28,6 @@ describe('LanguageSchema', () => {
       expect(LanguageSchema.safeParse(invalid).success).toBe(false);
     }
     expect(LanguageSchema.optional().safeParse(123).success).toBe(false);
-  });
-
-  it('preserves unknown non-empty locales in StoredLocaleSchema for workflow round-trips', () => {
-    expect(StoredLocaleSchema.parse('tr-TR')).toBe('tr-TR');
-    expect(StoredLocaleSchema.safeParse('').success).toBe(false);
-    expect(StoredLocaleSchema.safeParse('   ').success).toBe(false);
-    expect(StoredLocaleSchema.safeParse(123).success).toBe(false);
   });
 
   it('keeps I18nStringSchema keys aligned with LocaleList', () => {

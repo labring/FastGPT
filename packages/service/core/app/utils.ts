@@ -146,7 +146,7 @@ export async function rewriteAppWorkflowToDetail({
     versionId?: string;
     source?: string;
     resourceType?: 'agent' | 'tool';
-    metadataLocale?: string;
+    metadataLocale?: localeType;
   }) => {
     const authError = await authSnapshotExternalTool({ id, resourceType });
     if (authError) {

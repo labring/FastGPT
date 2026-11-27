@@ -1,19 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildToolNodeVersionUpdatePatch,
-  filterSensitiveNodesData,
-  splitToolInputsByMode
-} from '@/web/core/workflow/utils';
+import { splitToolInputsByMode } from '@/web/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import type {
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 
 describe('splitToolInputsByMode', () => {
   it('keeps Agent-generated editable inputs out of common inputs', () => {
@@ -269,95 +263,5 @@ describe('filterSensitiveNodesData', () => {
     expect(selectedTools).toEqual([]);
     secrets.forEach((secret) => expect(JSON.stringify(exported)).not.toContain(secret));
     expect(JSON.stringify(nodes)).toContain(secrets[0]);
-  });
-});
-
-describe('buildToolNodeVersionUpdatePatch', () => {
-  const baseTemplate: FlowNodeTemplateType = {
-    id: 'template-id',
-    pluginId: 'systemTool-search',
-    flowNodeType: FlowNodeTypeEnum.tool,
-    name: 'Template Name',
-    intro: 'Template Intro',
-    avatar: '/template.svg',
-    metadataLocale: 'en',
-    version: '2.0.0',
-    courseUrl: 'https://example.com/course',
-    readmeUrl: 'https://example.com/readme.md',
-    userGuide: 'guide',
-    inputs: [
-      {
-        key: 'query',
-        label: 'Template Query',
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        value: ''
-      }
-    ],
-    outputs: []
-  };
-
-  it('preserves submission-time metadataLocale, migrated inputs, and strips view-only fields', () => {
-    const patch = buildToolNodeVersionUpdatePatch({
-      current: {
-        nodeId: 'tool-node-1',
-        pluginId: 'systemTool-search',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        name: 'Custom Name',
-        intro: 'Custom Intro',
-        avatar: '/custom.svg',
-        metadataLocale: 'tr-TR',
-        version: '1.0.0',
-        inputs: [
-          {
-            key: 'query',
-            label: 'Saved Query',
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.input,
-            value: 'saved-value'
-          }
-        ],
-        outputs: []
-      },
-      template: baseTemplate
-    });
-
-    expect(patch).toMatchObject({
-      nodeId: 'tool-node-1',
-      name: 'Custom Name',
-      intro: 'Custom Intro',
-      avatar: '/custom.svg',
-      metadataLocale: 'tr-TR',
-      version: '2.0.0',
-      inputs: [
-        expect.objectContaining({
-          key: 'query',
-          label: 'Saved Query',
-          value: 'saved-value'
-        })
-      ]
-    });
-    expect(patch).not.toHaveProperty('courseUrl');
-    expect(patch).not.toHaveProperty('readmeUrl');
-    expect(patch).not.toHaveProperty('userGuide');
-  });
-
-  it('adopts template metadataLocale when legacy node has no metadataLocale', () => {
-    const patch = buildToolNodeVersionUpdatePatch({
-      current: {
-        nodeId: 'tool-node-2',
-        pluginId: 'systemTool-search',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        name: 'Legacy Node',
-        intro: 'Legacy Intro',
-        avatar: '/legacy.svg',
-        metadataLocale: undefined,
-        version: '1.0.0',
-        inputs: [],
-        outputs: []
-      },
-      template: baseTemplate
-    });
-
-    expect(patch.metadataLocale).toBe('en');
   });
 });

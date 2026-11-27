@@ -436,28 +436,4 @@ describe('getClientToolPreviewNode', () => {
       expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', data);
     }
   );
-
-  it('forwards non-empty unknown lang to the server and drops blank lang', async () => {
-    await getClientToolPreviewNode({
-      appId: 'systemTool-search',
-      versionId: '1.0.0',
-      lang: 'tr-TR'
-    });
-    expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', {
-      appId: 'systemTool-search',
-      versionId: '1.0.0',
-      lang: 'tr-TR'
-    });
-
-    await getClientToolPreviewNode({
-      appId: 'systemTool-search',
-      versionId: '1.0.0',
-      lang: '   '
-    });
-    expect(mocks.GET).toHaveBeenLastCalledWith('/core/app/tool/getPreviewNode', {
-      appId: 'systemTool-search',
-      versionId: '1.0.0',
-      lang: undefined
-    });
-  });
 });

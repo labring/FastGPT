@@ -30,9 +30,6 @@ export const LanguageSchema = z
   )
   .meta({ description: '用户语言偏好' });
 
-// 持久化语言标识：工作流节点/工具往返保存时保留原始非空语言标签，选取译文时再按支持列表回退。
-export const StoredLocaleSchema = z.string().trim().min(1).meta({ description: '持久化语言标识' });
-
 export const langMap = {
   [LangEnum.en]: {
     label: 'English(US)',

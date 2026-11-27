@@ -149,18 +149,8 @@ export const getAppToolPaths = (data: GetToolPathQueryType) => {
   return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };
 
-type ClientToolPreviewQuery = GetPreviewNodeQuery extends infer T
-  ? T extends GetPreviewNodeQuery
-    ? Omit<T, 'lang'> & { lang?: string }
-    : never
-  : never;
-
-// 原样透传非空 lang，避免旧前端提前覆盖为 en 导致新后端失去原语言；未知值统一由服务端契约回退。
-export const getClientToolPreviewNode = (data: ClientToolPreviewQuery) =>
-  GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', {
-    ...data,
-    ...(data.lang !== undefined ? { lang: data.lang.trim() || undefined } : {})
-  });
+export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
+  GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
 
 /**
  * 添加工具时，个人工作流和 Agent 默认跟随最新发布版本；系统工具保留固定最新版本的策略。

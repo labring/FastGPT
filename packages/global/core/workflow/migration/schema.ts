@@ -4,7 +4,7 @@ import { FlowNodeInputItemTypeSchema, WorkflowReferenceSnapshotsSchema } from '.
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
 import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
-import { StoredLocaleSchema } from '../../../common/i18n/type';
+import { LanguageSchema } from '../../../common/i18n/type';
 import { AgentToolConfigSchema } from '../../app/tool/config';
 
 /**
@@ -33,7 +33,7 @@ const CanonicalAvailableAgentToolSchema = z.object({
   avatar: z.string().optional(),
   version: z.string().optional(),
   source: z.string().optional(),
-  metadataLocale: StoredLocaleSchema.optional(),
+  metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: AgentToolConfigSchema

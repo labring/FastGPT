@@ -1,8 +1,7 @@
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import {
   parseI18nString,
-  parseLocale,
   selectPluginText,
   selectReadmeUrl
 } from '@fastgpt/global/common/i18n/utils';
@@ -120,18 +119,17 @@ export async function getClientSystemToolPreviewNode({
   pluginId,
   versionId,
   getLatestVersion,
-  lang: rawLang,
+  lang = 'en',
   source: toolSource = 'system',
   teamId
 }: {
   pluginId: string;
   versionId?: string;
   getLatestVersion?: boolean;
-  lang?: string;
+  lang?: localeType;
   source?: string;
   teamId?: string;
 }): Promise<FlowNodeTemplateType> {
-  const lang = parseLocale(rawLang) ?? LangEnum.en;
   const systemToolRepo = SystemToolRepo.getInstance();
   const runtimeSource = await (async () => {
     if (!isTeamPluginSource(toolSource)) return toolSource;
@@ -263,18 +261,17 @@ export async function getClientToolPreviewNode({
   appId,
   versionId,
   getLatestVersion,
-  lang: rawLang,
+  lang = 'en',
   source: toolSource = 'system',
   teamId
 }: {
   appId: string;
   versionId?: string;
   getLatestVersion?: boolean;
-  lang?: string;
+  lang?: localeType;
   source?: string;
   teamId?: string;
 }): Promise<FlowNodeTemplateType> {
-  const lang = parseLocale(rawLang) ?? LangEnum.en;
   const untypedChildLookup = parseUntypedV2ChildToolLookupId(appId);
   const { source: idSource, pluginId } = untypedChildLookup
     ? { source: AppToolSourceEnum.personal, pluginId: appId }

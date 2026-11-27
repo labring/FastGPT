@@ -11,10 +11,7 @@ import {
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
-import {
-  migrateToolInputConfig,
-  normalizeFlowNodeInputType
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { isToolParamInput } from '@fastgpt/global/common/workflow/editor/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
@@ -51,13 +48,7 @@ import type {
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
-import { mergeToolSetChildDescriptions } from '@fastgpt/global/core/app/tool/utils';
-import type { DeepReadonly, WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
-import {
-  formatEditorVariablePickerIcon,
-  getColorSchemaByFlowNodeType
-} from '@fastgpt/web/core/workflow/utils';
-import { omit } from 'lodash-es';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import type { Node, Edge, XYPosition } from '@xyflow/react';
 import type { TFunction } from 'next-i18next';
 import { getGlobalVariableNode } from './adapt';
@@ -801,42 +792,4 @@ export const getWorkflowGlobalVariables = ({
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
   return formatEditorVariablePickerIcon(getWorkflowReferenceVariables({ chatConfig }));
-};
-
-/**
- * 切换工具节点版本时以提交瞬间的 current 构造节点更新补丁：
- * 保留节点展示字段、子工具描述、已配置输入和原 metadataLocale，避免旧实例按英文预览回退时覆写原语言标识，
- * 并剥离仅用于画布展示/调试的临时字段。
- */
-export const buildToolNodeVersionUpdatePatch = ({
-  current,
-  template
-}: {
-  current: DeepReadonly<WorkflowNodeData>;
-  template: FlowNodeTemplateType;
-}): Partial<DeepReadonly<WorkflowNodeData>> => {
-  const sourceInputMap = new Map(current.inputs.map((input) => [input.key, input]));
-
-  return omit(
-    {
-      ...current,
-      ...template,
-      colorSchema: template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
-      name: current.name,
-      intro: current.intro,
-      avatar: current.avatar,
-      metadataLocale: current.metadataLocale ?? template.metadataLocale,
-      toolConfig: mergeToolSetChildDescriptions({
-        savedToolConfig: current.toolConfig,
-        templateToolConfig: template.toolConfig
-      }),
-      inputs: template.inputs.map((input) =>
-        migrateToolInputConfig({
-          input,
-          sourceInput: sourceInputMap.get(input.key)
-        })
-      )
-    },
-    ['debugResult', 'searchedText', 'courseUrl', 'readmeUrl', 'userGuide', 'issues']
-  );
 };

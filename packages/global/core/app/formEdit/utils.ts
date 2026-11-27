@@ -1,6 +1,5 @@
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
-import type { DeepReadonly } from '../../workflow/editor/types';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
@@ -268,11 +267,11 @@ export const migrateToolInputConfig = ({
   sourceInput
 }: {
   input: FlowNodeInputItemType;
-  sourceInput?: DeepReadonly<FlowNodeInputItemType>;
+  sourceInput?: FlowNodeInputItemType;
 }): FlowNodeInputItemType => {
   if (!sourceInput) return input;
 
-  const getConstrainedSelectedType = (targetInput: DeepReadonly<FlowNodeInputItemType>) => {
+  const getConstrainedSelectedType = (targetInput: FlowNodeInputItemType) => {
     const selectedType = getSelectedInputRenderType(targetInput);
     return selectedType && targetInput.renderTypeList.includes(selectedType)
       ? selectedType
