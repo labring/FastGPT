@@ -1,5 +1,5 @@
 import { DEFAULT_PROFILE_NAME, type ConfigRepository } from '../../infra/config/config-repository';
-import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
+import type { HttpClientFactory } from '../../infra/http/fastgpt-http-client';
 import type { SecretStore } from '../../infra/secrets/secret-store';
 import type { CaptchaPreviewer } from '../../infra/ui/captcha-preview';
 import type { Prompter } from '../../infra/ui/prompter';
@@ -18,11 +18,7 @@ import { buildProfileFromProbe, upsertProfileInConfig } from './profile-mapper';
 import { runWhoamiProbeChain, type WhoamiProbeHandler } from './probe/probe-chain';
 import type { LoginInputOptions, LoginMethod, LoginStrategy } from './strategies/login-strategy';
 
-export type HttpClientFactory = (params: {
-  baseUrl: string;
-  insecure: boolean;
-  caCertPath?: string;
-}) => FastGptHttpClient;
+export type { HttpClientFactory } from '../../infra/http/fastgpt-http-client';
 
 export type AuthService = {
   login: (params: {

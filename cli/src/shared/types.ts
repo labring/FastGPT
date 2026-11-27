@@ -15,6 +15,23 @@ export type CliExitCodeValue = (typeof CliExitCode)[keyof typeof CliExitCode];
 
 export type AuthCredentialKind = 'token' | 'personalKey' | 'appKey';
 
+export type ResolvedCredential = {
+  source: 'flag' | 'env' | 'profile';
+  authType: 'token' | 'apikey';
+  secret: string;
+  kind: AuthCredentialKind | 'unknownApiKey';
+  apiKeyType?: 'personal' | 'app';
+  boundAppId?: string;
+  sessionExpiresAt?: number;
+};
+
+export type WorkflowValueInput = {
+  value?: string;
+  valueJson?: string;
+  valueFile?: string;
+  valueEnv?: string;
+};
+
 export type CliAuthModeRequirement = AuthCredentialKind | 'none';
 
 export type CliRiskLevel = 'read' | 'write' | 'destructive' | 'admin';

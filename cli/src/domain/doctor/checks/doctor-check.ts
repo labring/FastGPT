@@ -1,13 +1,60 @@
-import type { ConfigLoadResult, ConfigRepository } from '../../../infra/config/config-repository';
+import type {
+  CliConfigFile,
+  ConfigLoadResult,
+  ConfigRepository
+} from '../../../infra/config/config-repository';
+import type {
+  FastGptHttpClient,
+  HttpClientFactory,
+  HttpRequestAuth
+} from '../../../infra/http/fastgpt-http-client';
 import type { SecretStore } from '../../../infra/secrets/secret-store';
-import { getCliVersion, type GlobalCliOptions } from '../../../shared/types';
-import { resolveEffectiveAuth, type ResolvedAuthContext } from '../../auth/auth-resolver';
-import type { HttpClientFactory } from '../../auth/auth-service';
 import {
-  runWhoamiProbeChain,
-  type WhoamiProbeHandler,
-  type WhoamiProbeResult
-} from '../../auth/probe/probe-chain';
+  getCliVersion,
+  type GlobalCliOptions,
+  type ResolvedCredential
+} from '../../../shared/types';
+
+export type DoctorResolvedAuth = {
+  profileName: string;
+  baseUrl: string;
+  credential?: ResolvedCredential;
+  warnings: string[];
+};
+
+export type DoctorIdentityProbeResult = {
+  source: string;
+  authType: 'token' | 'apikey';
+  apiKeyType?: 'personal' | 'app';
+  sessionExpiresAt?: number;
+  apiKeyRemainingPoints?: number | null;
+  apiKeyExpiredTime?: string | null;
+  warnings: string[];
+};
+
+export type DoctorCapabilitySummary = {
+  credentialKind: string;
+  availableScopes: string[];
+  restrictedScopes: string[];
+};
+
+/**
+ * 诊断领域向组合根声明的认证能力端口：避免 `doctor` 领域直接跨领域依赖 `auth`。
+ */
+export type DoctorAuthPort = {
+  resolveAuth: (params: {
+    global: GlobalCliOptions;
+    existingConfig?: CliConfigFile;
+  }) => Promise<DoctorResolvedAuth>;
+  probeIdentity: (params: {
+    client: FastGptHttpClient;
+    auth: HttpRequestAuth;
+  }) => Promise<DoctorIdentityProbeResult>;
+  summarizeCapabilities: (params: {
+    probe?: DoctorIdentityProbeResult;
+    resolved?: DoctorResolvedAuth;
+  }) => DoctorCapabilitySummary;
+};
 
 export type DoctorCheckResult = {
   name: string;
@@ -18,15 +65,14 @@ export type DoctorCheckResult = {
 
 export type DoctorRunContext = {
   global: GlobalCliOptions;
-  env: NodeJS.ProcessEnv;
   configRepo: ConfigRepository;
   secretStore: SecretStore;
   createHttpClient: HttpClientFactory;
-  probeHandlers: readonly WhoamiProbeHandler[];
+  authPort: DoctorAuthPort;
   warnings: string[];
   configLoaded?: ConfigLoadResult;
-  resolved?: ResolvedAuthContext;
-  probeResult?: WhoamiProbeResult;
+  resolved?: DoctorResolvedAuth;
+  probeResult?: DoctorIdentityProbeResult;
 };
 
 export type DoctorCheck = {
@@ -115,11 +161,8 @@ export function createAuthResolutionCheck(): DoctorCheck {
     name: 'auth_resolution',
     run: async (ctx) => {
       try {
-        const resolved = await resolveEffectiveAuth({
-          options: ctx.global,
-          env: ctx.env,
-          configRepo: ctx.configRepo,
-          secretStore: ctx.secretStore,
+        const resolved = await ctx.authPort.resolveAuth({
+          global: ctx.global,
           existingConfig: ctx.configLoaded?.config
         });
         ctx.resolved = resolved;
@@ -204,8 +247,7 @@ export function createIdentityProbeCheck(): DoctorCheck {
       });
 
       try {
-        const probeResult = await runWhoamiProbeChain({
-          handlers: ctx.probeHandlers,
+        const probeResult = await ctx.authPort.probeIdentity({
           client,
           auth: {
             authType: ctx.resolved.credential.authType,
@@ -216,8 +258,8 @@ export function createIdentityProbeCheck(): DoctorCheck {
         ctx.warnings.push(...probeResult.warnings);
 
         const expiryHints: string[] = [];
-        if (probeResult.detail?.authType === 'token') {
-          const remainingMs = probeResult.detail.session.expiresAt - Date.now();
+        if (probeResult.authType === 'token' && probeResult.sessionExpiresAt !== undefined) {
+          const remainingMs = probeResult.sessionExpiresAt - Date.now();
           if (remainingMs <= 0) {
             expiryHints.push('Session expired');
           } else if (remainingMs < SESSION_EXPIRING_SOON_MS) {
@@ -225,15 +267,18 @@ export function createIdentityProbeCheck(): DoctorCheck {
               `Session expires within ${Math.max(1, Math.round(remainingMs / 3_600_000))}h`
             );
           }
-        } else if (probeResult.detail?.authType === 'apikey') {
-          const { remainingPoints, expiredTime } = probeResult.detail.apiKey.limit;
-          if (remainingPoints !== null && remainingPoints <= 0) {
+        } else if (probeResult.authType === 'apikey') {
+          if (
+            probeResult.apiKeyRemainingPoints !== undefined &&
+            probeResult.apiKeyRemainingPoints !== null &&
+            probeResult.apiKeyRemainingPoints <= 0
+          ) {
             expiryHints.push('API Key quota exhausted (remainingPoints=0)');
           }
-          if (expiredTime) {
-            const msLeft = new Date(expiredTime).getTime() - Date.now();
+          if (probeResult.apiKeyExpiredTime) {
+            const msLeft = new Date(probeResult.apiKeyExpiredTime).getTime() - Date.now();
             if (msLeft > 0 && msLeft < KEY_EXPIRING_SOON_MS) {
-              expiryHints.push(`API Key expires at ${expiredTime}`);
+              expiryHints.push(`API Key expires at ${probeResult.apiKeyExpiredTime}`);
             }
           }
         }

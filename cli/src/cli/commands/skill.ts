@@ -8,10 +8,19 @@ import {
 import type { CliCommandSpec } from '../pipeline';
 import {
   confirmDestructiveAction,
+  createDryRunOption,
+  createIdOption,
+  createIdPositionalArg,
+  createJsonInputOptions,
+  createPaginationOptions,
+  createParentIdOption,
+  createSearchOption,
+  createYesOption,
   parseOptionalNumber,
   requireActiveClient,
-  resolveIdArg
-} from './dataset/shared';
+  resolveIdArg,
+  resolveStringOption
+} from './shared/helpers';
 
 function parseSkillCategories(raw: unknown): AgentSkillCategoryEnum[] | undefined {
   const list = parseIdListOption(raw);
@@ -29,7 +38,7 @@ function parseSkillCategories(raw: unknown): AgentSkillCategoryEnum[] | undefine
   return list as AgentSkillCategoryEnum[];
 }
 
-/** 注册 FastGPT 平台 AI Skill 管理命令（列表、详情、创建、ZIP 导入、删除）。 */
+/** 注册 FastGPT 平台 AI Skill 与目录管理命令。 */
 export function createSkillCommandSpecs(): CliCommandSpec[] {
   return [
     {
@@ -44,12 +53,7 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Filter by skill source: mine (default) or store'
         },
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Search skill names and descriptions'
-        },
+        createSearchOption('Search skill names and descriptions'),
         {
           name: 'category',
           flags: '--category <category>',
@@ -63,30 +67,14 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Filter by type: skill or folder'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent folder ID ("null" for root)'
-        },
+        createParentIdOption('Parent folder ID ("null" for root)'),
         {
           name: 'ids',
           flags: '--ids <skillIds>',
           takesValue: true,
           description: 'Comma-separated skill IDs to fetch directly'
         },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        ...createPaginationOptions()
       ],
       examples: [
         {
@@ -119,17 +107,8 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
       summary: 'Get details of a FastGPT platform AI Skill',
       risk: 'read',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'skillId', required: false, description: 'Skill ObjectId (or use --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <skillId>',
-          takesValue: true,
-          description: 'Skill ObjectId (alternative to positional argument)'
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('skillId', 'Skill')],
+      options: [createIdOption('skillId', 'Skill')],
       examples: [
         {
           description: 'Inspect platform skill details',
@@ -182,30 +161,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Skill avatar path or URL'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent skill folder ID ("null" for root)'
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read create JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read create JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate parameters and preview payload without creating'
-        }
+        createParentIdOption('Parent skill folder ID ("null" for root)'),
+        ...createJsonInputOptions('create'),
+        createDryRunOption('Validate parameters and preview payload without creating')
       ],
       examples: [
         {
@@ -233,9 +191,7 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
         });
 
         const name = await (async () => {
-          const flagName = typeof options.name === 'string' ? options.name.trim() : '';
-          const payloadName = typeof filePayload?.name === 'string' ? filePayload.name.trim() : '';
-          const direct = flagName || payloadName;
+          const direct = (resolveStringOption(options, filePayload, 'name') ?? '').trim();
           if (direct) return direct;
           if (container.prompter.isInteractive && options.format !== 'json') {
             return (await container.prompter.text({ message: 'Enter skill name:' })).trim();
@@ -305,18 +261,8 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Skill avatar path or URL'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Target parent skill folder ID'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate archive and preview import without uploading'
-        }
+        createParentIdOption('Target parent skill folder ID'),
+        createDryRunOption('Validate archive and preview import without uploading')
       ],
       examples: [
         {
@@ -355,16 +301,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
         'Update metadata (name, description, category, avatar) or folder of a platform AI Skill',
       risk: 'write',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'skillId', required: false, description: 'Skill ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('skillId', 'Skill')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <skillId>',
-          takesValue: true,
-          description: 'Skill ObjectId (alternative to positional argument)'
-        },
+        createIdOption('skillId', 'Skill'),
         {
           name: 'name',
           flags: '--name <name>',
@@ -389,30 +328,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New skill avatar path (e.g. from "fastgpt file upload-avatar")'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Move to target skill folder ID ("null" for root)'
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read update JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read update JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate parameters and preview update without applying'
-        }
+        createParentIdOption('Move to target skill folder ID ("null" for root)'),
+        ...createJsonInputOptions('update'),
+        createDryRunOption('Validate parameters and preview update without applying')
       ],
       examples: [
         {
@@ -467,31 +385,14 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['skill', 'delete'],
-      summary: 'Delete a FastGPT platform AI Skill or folder',
+      summary: 'Delete a FastGPT platform AI Skill',
       risk: 'destructive',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'skillId', required: false, description: 'Skill ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('skillId', 'Skill')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <skillId>',
-          takesValue: true,
-          description: 'Skill ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('skillId', 'Skill'),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {
@@ -527,30 +428,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       options: [
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Search skill folders by name or description'
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent skill folder ID ("null" for root)'
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        createSearchOption('Search skill folders by name or description'),
+        createParentIdOption('Parent skill folder ID ("null" for root)'),
+        ...createPaginationOptions()
       ],
       examples: [
         {
@@ -588,30 +468,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Skill folder description'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent skill folder ID ("null" for root)'
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read create JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read create JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview creation without executing'
-        }
+        createParentIdOption('Parent skill folder ID ("null" for root)'),
+        ...createJsonInputOptions('create'),
+        createDryRunOption('Validate and preview creation without executing')
       ],
       examples: [
         {
@@ -629,9 +488,7 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           fieldLabel: 'skill folder create payload'
         });
 
-        const name =
-          (typeof options.name === 'string' ? options.name.trim() : '') ||
-          (typeof filePayload?.name === 'string' ? filePayload.name.trim() : '');
+        const name = (resolveStringOption(options, filePayload, 'name') ?? '').trim();
         if (!name) {
           throw new CliArgumentError(
             'Skill folder name is required.',
@@ -644,12 +501,7 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           client: activeClient,
           input: {
             name,
-            description:
-              typeof options.description === 'string'
-                ? options.description
-                : typeof filePayload?.description === 'string'
-                  ? filePayload.description
-                  : undefined,
+            description: resolveStringOption(options, filePayload, 'description'),
             parentId:
               options.parentId !== undefined
                 ? parseParentIdOption(options.parentId)
@@ -671,16 +523,9 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
       summary: 'Rename, update description, or move a FastGPT platform skill folder',
       risk: 'write',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'folderId', required: false, description: 'Skill folder ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('folderId', 'Skill folder')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <folderId>',
-          takesValue: true,
-          description: 'Skill folder ObjectId (alternative to positional argument)'
-        },
+        createIdOption('folderId', 'Skill folder'),
         {
           name: 'name',
           flags: '--name <name>',
@@ -693,18 +538,8 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New folder description'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Move to target skill folder ID ("null" for root)'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview update without applying'
-        }
+        createParentIdOption('Move to target skill folder ID ("null" for root)'),
+        createDryRunOption('Validate and preview update without applying')
       ],
       examples: [
         {
@@ -741,28 +576,11 @@ export function createSkillCommandSpecs(): CliCommandSpec[] {
         'Recursively delete a FastGPT platform skill folder and all nested skills and subfolders',
       risk: 'destructive',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'folderId', required: false, description: 'Skill folder ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('folderId', 'Skill folder')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <folderId>',
-          takesValue: true,
-          description: 'Skill folder ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('folderId', 'Skill folder'),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {

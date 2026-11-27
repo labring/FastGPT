@@ -7,7 +7,7 @@ import {
   resolveJsonPayload
 } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import { requireActiveClient } from '../dataset/shared';
+import { requireActiveClient } from '../shared/helpers';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -15,7 +15,7 @@ import {
   parseWorkflowTimeoutMs,
   resolveWorkflowAppId,
   resolveWorkflowDir
-} from './shared';
+} from '../shared/workflow-options';
 
 /** 注册工作流图的远端对比、单步调试和单步断言回归命令。 */
 export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {

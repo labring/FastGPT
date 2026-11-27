@@ -13,7 +13,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from '../workflow/shared';
+} from '../shared/workflow-options';
 
 const VALUE_TYPE_SET = new Set<string>(Object.values(WorkflowIOValueTypeEnum));
 const INPUT_MODE_SET = new Set<string>(['literal', 'reference', 'both']);

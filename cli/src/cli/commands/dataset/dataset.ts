@@ -13,7 +13,7 @@ import {
   parseOptionalNumber,
   requireActiveClient,
   resolveIdArg
-} from './shared';
+} from '../shared/helpers';
 
 /**
  * 知识库主资源命令组（System OpenAPI）：list / get / create / update / delete / search / batch-move / batch-delete。

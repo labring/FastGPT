@@ -1,6 +1,7 @@
 import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
+  parseInlineJsonValue,
   parseParentIdOption,
   resolveJsonObjectPayload,
   resolveJsonPayload
@@ -8,22 +9,20 @@ import {
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
+  createDryRunOption,
+  createIdOption,
+  createIdPositionalArg,
+  createJsonInputOptions,
+  createPaginationOptions,
+  createParentIdOption,
+  createSearchOption,
+  createYesOption,
   parseOptionalNumber,
   requireActiveClient,
-  resolveIdArg
-} from '../dataset/shared';
-
-function parseInlineJsonValue(raw: unknown, flagLabel: string): unknown {
-  if (typeof raw !== 'string') return undefined;
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    throw new CliArgumentError(`Invalid JSON for ${flagLabel}: ${msg}`);
-  }
-}
+  resolveCommonAppMetadata,
+  resolveIdArg,
+  resolveStringOption
+} from '../shared/helpers';
 
 /** 注册 FastGPT HTTP 工具集命令：list / get / children / parse / create / update / run / delete。 */
 export function createToolHttpCommandSpecs(): CliCommandSpec[] {
@@ -34,30 +33,9 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       options: [
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Search HTTP toolsets by name or intro'
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Filter by parent tool folder ID ("null" for root)'
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        createSearchOption('Search HTTP toolsets by name or intro'),
+        createParentIdOption('Filter by parent tool folder ID ("null" for root)'),
+        ...createPaginationOptions()
       ],
       examples: [
         { description: 'List HTTP toolsets', args: ['tool', 'http', 'list'] },
@@ -83,17 +61,8 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
       summary: 'Get details and configuration of a FastGPT HTTP toolset',
       risk: 'read',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'HTTP toolset ObjectId (or use --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'HTTP toolset ObjectId (alternative to positional argument)'
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'HTTP toolset')],
+      options: [createIdOption('appId', 'HTTP toolset')],
       examples: [
         {
           description: 'Inspect an HTTP toolset configuration',
@@ -121,34 +90,11 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
       summary: 'List child tools of an HTTP toolset with pagination and search',
       risk: 'read',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'HTTP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'HTTP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'HTTP toolset ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Filter child tools by name or description'
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        createIdOption('appId', 'HTTP toolset'),
+        createSearchOption('Filter child tools by name or description'),
+        ...createPaginationOptions()
       ],
       examples: [
         {
@@ -239,12 +185,7 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Avatar path (e.g. from "fastgpt file upload-avatar")'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Target parent tool folder ID ("null" for root)'
-        },
+        createParentIdOption('Target parent tool folder ID ("null" for root)'),
         {
           name: 'targetUrl',
           flags: '--target-url <url>',
@@ -275,24 +216,8 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Custom headers JSON string or object'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read create JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read create JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview creation without executing'
-        }
+        ...createJsonInputOptions('create'),
+        createDryRunOption('Validate and preview creation without executing')
       ],
       examples: [
         {
@@ -313,10 +238,7 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           readStdin: container.readStdin,
           fieldLabel: 'tool http create payload'
         });
-
-        const name =
-          (typeof options.name === 'string' ? options.name.trim() : '') ||
-          (typeof filePayload?.name === 'string' ? filePayload.name.trim() : '');
+        const metadata = resolveCommonAppMetadata(options, filePayload);
 
         const headerSecret =
           options.headerSecret !== undefined
@@ -326,18 +248,8 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           options.toolList !== undefined
             ? parseInlineJsonValue(options.toolList, '--tool-list')
             : filePayload?.toolList;
-        const targetBaseUrl =
-          typeof options.targetUrl === 'string'
-            ? options.targetUrl
-            : typeof filePayload?.baseUrl === 'string'
-              ? filePayload.baseUrl
-              : undefined;
-        const apiSchemaStr =
-          typeof options.apiSchema === 'string'
-            ? options.apiSchema
-            : typeof filePayload?.apiSchemaStr === 'string'
-              ? filePayload.apiSchemaStr
-              : undefined;
+        const targetBaseUrl = resolveStringOption(options, filePayload, 'targetUrl', 'baseUrl');
+        const apiSchemaStr = resolveStringOption(options, filePayload, 'apiSchema', 'apiSchemaStr');
         const customHeaders =
           options.customHeaders !== undefined ? options.customHeaders : filePayload?.customHeaders;
 
@@ -351,29 +263,14 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
         return container.httpToolService.create({
           client: activeClient,
           input: {
-            name,
+            name: (metadata.name ?? '').trim(),
             createType:
               typeof filePayload?.createType === 'string'
                 ? filePayload.createType.trim()
                 : undefined,
-            intro:
-              typeof options.intro === 'string'
-                ? options.intro
-                : typeof filePayload?.intro === 'string'
-                  ? filePayload.intro
-                  : undefined,
-            avatar:
-              typeof options.avatar === 'string'
-                ? options.avatar
-                : typeof filePayload?.avatar === 'string'
-                  ? filePayload.avatar
-                  : undefined,
-            parentId:
-              options.parentId !== undefined
-                ? parseParentIdOption(options.parentId)
-                : filePayload?.parentId !== undefined
-                  ? parseParentIdOption(filePayload.parentId)
-                  : undefined,
+            intro: metadata.intro,
+            avatar: metadata.avatar,
+            parentId: metadata.parentId,
             inheritPermission:
               typeof filePayload?.inheritPermission === 'boolean'
                 ? filePayload.inheritPermission
@@ -398,16 +295,9 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
       summary: 'Update HTTP toolset metadata (name/intro/avatar/folder) and/or API config/tools',
       risk: 'write',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'HTTP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'HTTP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'HTTP toolset ObjectId (alternative to positional argument)'
-        },
+        createIdOption('appId', 'HTTP toolset'),
         {
           name: 'name',
           flags: '--name <name>',
@@ -426,12 +316,7 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New avatar path'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Move to target tool folder ID ("null" for root)'
-        },
+        createParentIdOption('Move to target tool folder ID ("null" for root)'),
         {
           name: 'targetUrl',
           flags: '--target-url <url>',
@@ -462,24 +347,8 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New custom headers JSON string or object'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read update JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read update JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview update without applying'
-        }
+        ...createJsonInputOptions('update'),
+        createDryRunOption('Validate and preview update without applying')
       ],
       examples: [
         {
@@ -512,59 +381,21 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt tool http update <appId> --avatar <path> | --file <spec.json>'
         });
 
-        const headerSecret =
-          options.headerSecret !== undefined
-            ? parseInlineJsonValue(options.headerSecret, '--header-secret')
-            : filePayload?.headerSecret;
-        const toolList =
-          options.toolList !== undefined
-            ? parseInlineJsonValue(options.toolList, '--tool-list')
-            : filePayload?.toolList;
-
         return container.httpToolService.update({
           client: activeClient,
           appId,
-          metadata: {
-            name:
-              typeof options.name === 'string'
-                ? options.name
-                : typeof filePayload?.name === 'string'
-                  ? filePayload.name
-                  : undefined,
-            intro:
-              typeof options.intro === 'string'
-                ? options.intro
-                : typeof filePayload?.intro === 'string'
-                  ? filePayload.intro
-                  : undefined,
-            avatar:
-              typeof options.avatar === 'string'
-                ? options.avatar
-                : typeof filePayload?.avatar === 'string'
-                  ? filePayload.avatar
-                  : undefined,
-            parentId:
-              options.parentId !== undefined
-                ? parseParentIdOption(options.parentId)
-                : filePayload?.parentId !== undefined
-                  ? parseParentIdOption(filePayload.parentId)
-                  : undefined
-          },
+          metadata: resolveCommonAppMetadata(options, filePayload),
           config: {
-            baseUrl:
-              typeof options.targetUrl === 'string'
-                ? options.targetUrl
-                : typeof filePayload?.baseUrl === 'string'
-                  ? filePayload.baseUrl
-                  : undefined,
-            apiSchemaStr:
-              typeof options.apiSchema === 'string'
-                ? options.apiSchema
-                : typeof filePayload?.apiSchemaStr === 'string'
-                  ? filePayload.apiSchemaStr
-                  : undefined,
-            toolList,
-            headerSecret,
+            baseUrl: resolveStringOption(options, filePayload, 'targetUrl', 'baseUrl'),
+            apiSchemaStr: resolveStringOption(options, filePayload, 'apiSchema', 'apiSchemaStr'),
+            toolList:
+              options.toolList !== undefined
+                ? parseInlineJsonValue(options.toolList, '--tool-list')
+                : filePayload?.toolList,
+            headerSecret:
+              options.headerSecret !== undefined
+                ? parseInlineJsonValue(options.headerSecret, '--header-secret')
+                : filePayload?.headerSecret,
             customHeaders:
               options.customHeaders !== undefined
                 ? options.customHeaders
@@ -629,24 +460,8 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Secret headers JSON object'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read run JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read run JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview HTTP tool call without executing'
-        }
+        ...createJsonInputOptions('run'),
+        createDryRunOption('Validate and preview HTTP tool call without executing')
       ],
       examples: [
         {
@@ -697,36 +512,22 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('--custom-headers must be a JSON object.');
         }
 
-        const headerSecret =
-          options.headerSecret !== undefined
-            ? parseInlineJsonValue(options.headerSecret, '--header-secret')
-            : filePayload?.headerSecret;
-
         return container.httpToolService.run({
           client: activeClient,
           input: {
-            appId:
-              (typeof options.id === 'string' ? options.id : undefined) ??
-              (typeof filePayload?.appId === 'string' ? filePayload.appId : undefined),
-            baseUrl:
-              (typeof options.targetUrl === 'string' ? options.targetUrl : undefined) ??
-              (typeof filePayload?.baseUrl === 'string' ? filePayload.baseUrl : undefined),
-            toolPath:
-              (typeof options.toolPath === 'string' ? options.toolPath : undefined) ??
-              (typeof filePayload?.toolPath === 'string' ? filePayload.toolPath : ''),
-            method:
-              (typeof options.method === 'string' ? options.method : undefined) ??
-              (typeof filePayload?.method === 'string' ? filePayload.method : undefined),
+            appId: resolveStringOption(options, filePayload, 'id', 'appId'),
+            baseUrl: resolveStringOption(options, filePayload, 'targetUrl', 'baseUrl'),
+            toolPath: resolveStringOption(options, filePayload, 'toolPath') ?? '',
+            method: resolveStringOption(options, filePayload, 'method'),
             params: rawParams,
-            apiSchemaStr:
-              (typeof options.apiSchema === 'string' ? options.apiSchema : undefined) ??
-              (typeof filePayload?.apiSchemaStr === 'string'
-                ? filePayload.apiSchemaStr
-                : undefined),
+            apiSchemaStr: resolveStringOption(options, filePayload, 'apiSchema', 'apiSchemaStr'),
             customHeaders: rawCustomHeaders as
               | Record<string, string | number | boolean>
               | undefined,
-            headerSecret,
+            headerSecret:
+              options.headerSecret !== undefined
+                ? parseInlineJsonValue(options.headerSecret, '--header-secret')
+                : filePayload?.headerSecret,
             staticParams: filePayload?.staticParams,
             staticHeaders: filePayload?.staticHeaders,
             staticBody: filePayload?.staticBody
@@ -741,28 +542,11 @@ export function createToolHttpCommandSpecs(): CliCommandSpec[] {
       summary: 'Delete a FastGPT HTTP toolset',
       risk: 'destructive',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'HTTP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'HTTP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'HTTP toolset ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('appId', 'HTTP toolset'),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {

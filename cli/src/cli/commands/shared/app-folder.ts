@@ -5,10 +5,19 @@ import type { CliContainer } from '../../container';
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
+  createDryRunOption,
+  createIdOption,
+  createIdPositionalArg,
+  createJsonInputOptions,
+  createPaginationOptions,
+  createParentIdOption,
+  createSearchOption,
+  createYesOption,
   parseOptionalNumber,
   requireActiveClient,
+  resolveCommonAppMetadata,
   resolveIdArg
-} from '../dataset/shared';
+} from './helpers';
 
 /**
  * 统一的 App 目录命令规范工厂：由 `agent folder` 与 `tool folder` 共用同一组参数解析、确认与执行契约。
@@ -41,30 +50,9 @@ export function createAppFolderCommandSpecs({
       risk: 'read',
       authModes: ['token', 'personalKey'],
       options: [
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: `Search ${label}s by name or intro`
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: `Filter by parent ${label} ID ("null" for root)`
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        createSearchOption(`Search ${label}s by name or intro`),
+        createParentIdOption(`Filter by parent ${label} ID ("null" for root)`),
+        ...createPaginationOptions()
       ],
       examples: [
         { description: `List root ${label}s`, args: [domain, 'folder', 'list'] },
@@ -109,30 +97,9 @@ export function createAppFolderCommandSpecs({
           takesValue: true,
           description: 'Optional custom folder avatar path'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: `Parent ${label} ID ("null" for root)`
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read create JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read create JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview creation without executing'
-        }
+        createParentIdOption(`Parent ${label} ID ("null" for root)`),
+        ...createJsonInputOptions('create'),
+        createDryRunOption('Validate and preview creation without executing')
       ],
       examples: [
         {
@@ -149,44 +116,19 @@ export function createAppFolderCommandSpecs({
           readStdin: container.readStdin,
           fieldLabel: `${prefix} create payload`
         });
-
-        const name =
-          typeof options.name === 'string'
-            ? options.name
-            : typeof filePayload?.name === 'string'
-              ? filePayload.name
-              : '';
-        const intro =
-          typeof options.intro === 'string'
-            ? options.intro
-            : typeof filePayload?.intro === 'string'
-              ? filePayload.intro
-              : undefined;
-        const avatar =
-          typeof options.avatar === 'string'
-            ? options.avatar
-            : typeof filePayload?.avatar === 'string'
-              ? filePayload.avatar
-              : undefined;
-        const parentId =
-          options.parentId !== undefined
-            ? parseParentIdOption(options.parentId)
-            : filePayload?.parentId === null || typeof filePayload?.parentId === 'string'
-              ? filePayload.parentId
-              : undefined;
-        const inheritPermission =
-          typeof filePayload?.inheritPermission === 'boolean'
-            ? filePayload.inheritPermission
-            : undefined;
+        const metadata = resolveCommonAppMetadata(options, filePayload);
 
         return getService(container).create({
           client: activeClient,
           input: {
-            name,
-            intro,
-            avatar,
-            parentId,
-            inheritPermission
+            name: metadata.name ?? '',
+            intro: metadata.intro,
+            avatar: metadata.avatar,
+            parentId: metadata.parentId,
+            inheritPermission:
+              typeof filePayload?.inheritPermission === 'boolean'
+                ? filePayload.inheritPermission
+                : undefined
           },
           dryRun: options.dryRun === true
         });
@@ -198,20 +140,9 @@ export function createAppFolderCommandSpecs({
       summary: `Update a FastGPT ${label} (name, intro, avatar, or parent folder)`,
       risk: 'write',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        {
-          name: 'folderId',
-          required: false,
-          description: `${capitalizedLabel} ObjectId (or use --id)`
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('folderId', capitalizedLabel)],
       options: [
-        {
-          name: 'id',
-          flags: '--id <folderId>',
-          takesValue: true,
-          description: `${capitalizedLabel} ObjectId (alternative to positional argument)`
-        },
+        createIdOption('folderId', capitalizedLabel),
         {
           name: 'name',
           flags: '--name <name>',
@@ -230,18 +161,8 @@ export function createAppFolderCommandSpecs({
           takesValue: true,
           description: `New ${label} avatar path`
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: `Move to parent ${label} ID ("null" for root)`
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview update without executing'
-        }
+        createParentIdOption(`Move to parent ${label} ID ("null" for root)`),
+        createDryRunOption('Validate and preview update without executing')
       ],
       examples: [
         {
@@ -257,13 +178,13 @@ export function createAppFolderCommandSpecs({
           label: `${capitalizedLabel} ID`,
           usage: `fastgpt ${prefix} update <folderId> --name <newName>`
         });
-        const parentId = parseParentIdOption(options.parentId);
+        const metadata = resolveCommonAppMetadata(options);
 
         if (
-          options.name === undefined &&
-          options.intro === undefined &&
-          options.avatar === undefined &&
-          parentId === undefined
+          metadata.name === undefined &&
+          metadata.intro === undefined &&
+          metadata.avatar === undefined &&
+          metadata.parentId === undefined
         ) {
           throw new CliArgumentError(
             'At least one field to update is required.',
@@ -275,12 +196,7 @@ export function createAppFolderCommandSpecs({
         return getService(container).update({
           client: activeClient,
           folderId,
-          input: {
-            name: typeof options.name === 'string' ? options.name : undefined,
-            intro: typeof options.intro === 'string' ? options.intro : undefined,
-            avatar: typeof options.avatar === 'string' ? options.avatar : undefined,
-            parentId
-          },
+          input: metadata,
           dryRun: options.dryRun === true
         });
       }
@@ -291,32 +207,11 @@ export function createAppFolderCommandSpecs({
       summary: `Recursively delete a FastGPT ${label} and all nested ${childNoun}`,
       risk: 'destructive',
       authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        {
-          name: 'folderId',
-          required: false,
-          description: `${capitalizedLabel} ObjectId (or use --id)`
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('folderId', capitalizedLabel)],
       options: [
-        {
-          name: 'id',
-          flags: '--id <folderId>',
-          takesValue: true,
-          description: `${capitalizedLabel} ObjectId (alternative to positional argument)`
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('folderId', capitalizedLabel),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {
@@ -330,10 +225,7 @@ export function createAppFolderCommandSpecs({
           positional: ctx.positional[0],
           flagValue: ctx.options.id,
           label: `${capitalizedLabel} ID`,
-          usage: `fastgpt ${prefix} folder delete <folderId> --yes`.replace(
-            `${prefix} folder`,
-            prefix
-          )
+          usage: `fastgpt ${prefix} delete <folderId> --yes`
         });
 
         await confirmDestructiveAction({

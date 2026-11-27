@@ -6,10 +6,18 @@ import {
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
+  createDryRunOption,
+  createIdOption,
+  createIdPositionalArg,
+  createPaginationOptions,
+  createParentIdOption,
+  createSearchOption,
+  createYesOption,
   parseOptionalNumber,
   requireActiveClient,
+  resolveCommonAppMetadata,
   resolveIdArg
-} from '../dataset/shared';
+} from '../shared/helpers';
 
 /** 注册 FastGPT Agent 核心生命周期命令：list / get / create / update / delete。 */
 export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
@@ -20,36 +28,17 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       options: [
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Search names and descriptions'
-        },
+        createSearchOption('Search names and descriptions'),
         {
           name: 'type',
           flags: '--type <types>',
           takesValue: true,
           description: 'Comma-separated agent tree types: chatAgent, simple, advanced, folder'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Browse an agent folder or restrict search to its subtree ("null" for root)'
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20, max 500)'
-        }
+        createParentIdOption(
+          'Browse an agent folder or restrict search to its subtree ("null" for root)'
+        ),
+        ...createPaginationOptions('Items per page (default 20, max 500)')
       ],
       examples: [
         { description: 'List accessible root agents and folders', args: ['agent', 'list'] },
@@ -76,17 +65,8 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
       summary: 'Get full details of a FastGPT agent (chatAgent, simple, or advanced)',
       risk: 'read',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'agentId', required: false, description: 'Agent ObjectId (or use --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <agentId>',
-          takesValue: true,
-          description: 'Agent ObjectId (alternative to positional argument)'
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('agentId', 'Agent')],
+      options: [createIdOption('agentId', 'Agent')],
       examples: [
         {
           description: 'Inspect an agent detail',
@@ -139,12 +119,7 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Agent avatar path (e.g. from "fastgpt file upload-avatar")'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent agent folder ID ("null" for root)'
-        },
+        createParentIdOption('Parent agent folder ID ("null" for root)'),
         {
           name: 'file',
           flags: '--file <path>',
@@ -158,12 +133,7 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
           takesValue: false,
           description: 'Read create JSON payload from stdin'
         },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview creation without executing'
-        }
+        createDryRunOption('Validate and preview creation without executing')
       ],
       examples: [
         {
@@ -193,18 +163,15 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
           readStdin: container.readStdin,
           fieldLabel: 'agent create payload'
         });
+        const metadata = resolveCommonAppMetadata(options, filePayload);
 
         const mergedInput: Record<string, unknown> = {
           ...(filePayload ?? {}),
-          ...(typeof options.name === 'string' ? { name: options.name } : {}),
+          ...(metadata.name !== undefined ? { name: metadata.name } : {}),
           ...(typeof options.type === 'string' ? { type: options.type } : {}),
-          ...(typeof options.intro === 'string' ? { intro: options.intro } : {}),
-          ...(typeof options.avatar === 'string' ? { avatar: options.avatar } : {}),
-          ...(options.parentId !== undefined
-            ? { parentId: parseParentIdOption(options.parentId) }
-            : filePayload?.parentId !== undefined
-              ? { parentId: parseParentIdOption(filePayload.parentId) }
-              : {})
+          ...(metadata.intro !== undefined ? { intro: metadata.intro } : {}),
+          ...(metadata.avatar !== undefined ? { avatar: metadata.avatar } : {}),
+          ...(metadata.parentId !== undefined ? { parentId: metadata.parentId } : {})
         };
 
         return container.agentService.create({
@@ -220,16 +187,9 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
       summary: 'Update name, intro, avatar, or parent folder of a FastGPT agent',
       risk: 'write',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'agentId', required: false, description: 'Agent ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('agentId', 'Agent')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <agentId>',
-          takesValue: true,
-          description: 'Agent ObjectId (alternative to positional argument)'
-        },
+        createIdOption('agentId', 'Agent'),
         {
           name: 'name',
           flags: '--name <name>',
@@ -248,18 +208,8 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New agent avatar path'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Move to target agent folder ID ("null" for root)'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview update without applying'
-        }
+        createParentIdOption('Move to target agent folder ID ("null" for root)'),
+        createDryRunOption('Validate and preview update without applying')
       ],
       examples: [
         {
@@ -287,13 +237,7 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
         return container.agentService.update({
           client: activeClient,
           agentId,
-          input: {
-            name: typeof options.name === 'string' ? options.name : undefined,
-            intro: typeof options.intro === 'string' ? options.intro : undefined,
-            avatar: typeof options.avatar === 'string' ? options.avatar : undefined,
-            parentId:
-              options.parentId !== undefined ? parseParentIdOption(options.parentId) : undefined
-          },
+          input: resolveCommonAppMetadata(options),
           dryRun: options.dryRun === true
         });
       }
@@ -304,28 +248,11 @@ export function createAgentLifecycleCommandSpecs(): CliCommandSpec[] {
       summary: 'Delete a FastGPT agent',
       risk: 'destructive',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'agentId', required: false, description: 'Agent ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('agentId', 'Agent')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <agentId>',
-          takesValue: true,
-          description: 'Agent ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('agentId', 'Agent'),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {

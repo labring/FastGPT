@@ -1,15 +1,7 @@
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { StoreSecretValueTypeApiInputSchema } from '@fastgpt/global/common/secret/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import {
-  GetAppDetailQuerySchema,
-  UpdateAppBodySchema,
-  type GetAppDetailResponseType,
-  type UpdateAppBodyType
-} from '@fastgpt/global/openapi/core/app/common/api';
-import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliApiError, CliArgumentError, CliError } from '../../shared/errors';
-import { isPlainObject, trimIfString } from '../../shared/input';
+import { isPlainObject } from '../../shared/input';
 
 export type HeaderSecretInput = Record<string, { value?: string; secret?: string }>;
 
@@ -246,58 +238,4 @@ export function wrapPartialWriteError({
       ...(causeDetails !== undefined ? { cause: causeDetails } : {})
     }
   });
-}
-
-/**
- * 读取指定应用详情并校验其 `type` 属于预期工具类型，防止跨资源类型误改或误删。
- */
-export async function fetchAndAssertAppType({
-  client,
-  appId,
-  allowedTypes,
-  resourceLabel
-}: {
-  client: FastGptHttpClient;
-  appId: string;
-  allowedTypes: readonly AppTypeEnum[];
-  resourceLabel: string;
-}): Promise<GetAppDetailResponseType> {
-  const validatedQuery = GetAppDetailQuerySchema.parse({
-    appId: trimIfString(appId)
-  });
-
-  const detail = await client.request<GetAppDetailResponseType>({
-    method: 'GET',
-    path: '/core/app/detail',
-    query: validatedQuery
-  });
-
-  if (!allowedTypes.includes(detail.type as AppTypeEnum)) {
-    throw new CliArgumentError(
-      `Resource "${validatedQuery.appId}" has type "${detail.type}", expected ${resourceLabel} (${allowedTypes.join(' or ')}).`
-    );
-  }
-
-  return detail;
-}
-
-/**
- * 构造并校验工具/目录的基础元信息更新载荷（`PUT /core/app/update`）。
- */
-export function parseToolMetadataUpdate(input: {
-  name?: unknown;
-  intro?: unknown;
-  avatar?: unknown;
-  parentId?: unknown;
-}): UpdateAppBodyType | undefined {
-  const raw: Record<string, unknown> = {
-    ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.intro !== undefined ? { intro: input.intro } : {}),
-    ...(input.avatar !== undefined ? { avatar: input.avatar } : {}),
-    ...(input.parentId !== undefined ? { parentId: input.parentId } : {})
-  };
-  if (Object.keys(raw).length === 0) {
-    return undefined;
-  }
-  return UpdateAppBodySchema.parse(raw);
 }

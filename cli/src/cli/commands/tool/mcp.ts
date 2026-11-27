@@ -1,6 +1,7 @@
 import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
+  parseInlineJsonValue,
   parseParentIdOption,
   resolveJsonObjectPayload,
   resolveJsonPayload
@@ -8,22 +9,20 @@ import {
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
+  createDryRunOption,
+  createIdOption,
+  createIdPositionalArg,
+  createJsonInputOptions,
+  createPaginationOptions,
+  createParentIdOption,
+  createSearchOption,
+  createYesOption,
   parseOptionalNumber,
   requireActiveClient,
-  resolveIdArg
-} from '../dataset/shared';
-
-function parseInlineJsonValue(raw: unknown, flagLabel: string): unknown {
-  if (typeof raw !== 'string') return undefined;
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    throw new CliArgumentError(`Invalid JSON for ${flagLabel}: ${msg}`);
-  }
-}
+  resolveCommonAppMetadata,
+  resolveIdArg,
+  resolveStringOption
+} from '../shared/helpers';
 
 /** 注册 FastGPT 外部 MCP 工具集命令：list / get / children / parse / create / update / run / delete。 */
 export function createToolMcpCommandSpecs(): CliCommandSpec[] {
@@ -34,30 +33,9 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       options: [
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Search MCP toolsets by name or intro'
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Filter by parent tool folder ID ("null" for root)'
-        },
-        {
-          name: 'page',
-          flags: '--page <n>',
-          takesValue: true,
-          description: 'Page number (default 1)'
-        },
-        {
-          name: 'pageSize',
-          flags: '--page-size <n>',
-          takesValue: true,
-          description: 'Items per page (default 20)'
-        }
+        createSearchOption('Search MCP toolsets by name or intro'),
+        createParentIdOption('Filter by parent tool folder ID ("null" for root)'),
+        ...createPaginationOptions()
       ],
       examples: [
         { description: 'List MCP toolsets', args: ['tool', 'mcp', 'list'] },
@@ -83,17 +61,8 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
       summary: 'Get details and configuration of a FastGPT MCP toolset',
       risk: 'read',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'MCP toolset ObjectId (or use --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'MCP toolset ObjectId (alternative to positional argument)'
-        }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'MCP toolset')],
+      options: [createIdOption('appId', 'MCP toolset')],
       examples: [
         {
           description: 'Inspect an MCP toolset configuration',
@@ -121,22 +90,10 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
       summary: 'List child tools exposed by an MCP toolset (with workflow reference IDs)',
       risk: 'read',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'MCP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'MCP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'MCP toolset ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'search',
-          flags: '--search <keyword>',
-          takesValue: true,
-          description: 'Filter child tools by tool name'
-        }
+        createIdOption('appId', 'MCP toolset'),
+        createSearchOption('Filter child tools by tool name')
       ],
       examples: [
         {
@@ -237,12 +194,7 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Avatar path (e.g. from "fastgpt file upload-avatar")'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Target parent tool folder ID ("null" for root)'
-        },
+        createParentIdOption('Target parent tool folder ID ("null" for root)'),
         {
           name: 'headerSecret',
           flags: '--header-secret <json>',
@@ -256,24 +208,8 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           description:
             'Explicit toolList JSON array (if omitted, automatically fetched via MCP parse)'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read create JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read create JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview creation without executing'
-        }
+        ...createJsonInputOptions('create'),
+        createDryRunOption('Validate and preview creation without executing')
       ],
       examples: [
         {
@@ -298,53 +234,28 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           readStdin: container.readStdin,
           fieldLabel: 'tool mcp create payload'
         });
-
-        const name =
-          (typeof options.name === 'string' ? options.name.trim() : '') ||
-          (typeof filePayload?.name === 'string' ? filePayload.name.trim() : '');
-        const url =
-          (typeof options.url === 'string' ? options.url.trim() : '') ||
-          (typeof filePayload?.url === 'string' ? filePayload.url.trim() : '');
-
-        const headerSecret =
-          options.headerSecret !== undefined
-            ? parseInlineJsonValue(options.headerSecret, '--header-secret')
-            : filePayload?.headerSecret;
-
-        const toolList =
-          options.toolList !== undefined
-            ? parseInlineJsonValue(options.toolList, '--tool-list')
-            : filePayload?.toolList;
+        const metadata = resolveCommonAppMetadata(options, filePayload);
 
         return container.mcpToolService.create({
           client: activeClient,
           input: {
-            name,
-            url,
-            intro:
-              typeof options.intro === 'string'
-                ? options.intro
-                : typeof filePayload?.intro === 'string'
-                  ? filePayload.intro
-                  : undefined,
-            avatar:
-              typeof options.avatar === 'string'
-                ? options.avatar
-                : typeof filePayload?.avatar === 'string'
-                  ? filePayload.avatar
-                  : undefined,
-            parentId:
-              options.parentId !== undefined
-                ? parseParentIdOption(options.parentId)
-                : filePayload?.parentId !== undefined
-                  ? parseParentIdOption(filePayload.parentId)
-                  : undefined,
+            name: (metadata.name ?? '').trim(),
+            url: (resolveStringOption(options, filePayload, 'url') ?? '').trim(),
+            intro: metadata.intro,
+            avatar: metadata.avatar,
+            parentId: metadata.parentId,
             inheritPermission:
               typeof filePayload?.inheritPermission === 'boolean'
                 ? filePayload.inheritPermission
                 : undefined,
-            headerSecret,
-            toolList
+            headerSecret:
+              options.headerSecret !== undefined
+                ? parseInlineJsonValue(options.headerSecret, '--header-secret')
+                : filePayload?.headerSecret,
+            toolList:
+              options.toolList !== undefined
+                ? parseInlineJsonValue(options.toolList, '--tool-list')
+                : filePayload?.toolList
           },
           dryRun: options.dryRun === true
         });
@@ -356,16 +267,9 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
       summary: 'Update MCP toolset metadata (name/intro/avatar/folder) and/or MCP config/tools',
       risk: 'write',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'MCP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'MCP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'MCP toolset ObjectId (alternative to positional argument)'
-        },
+        createIdOption('appId', 'MCP toolset'),
         {
           name: 'name',
           flags: '--name <name>',
@@ -384,12 +288,7 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'New avatar path'
         },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Move to target tool folder ID ("null" for root)'
-        },
+        createParentIdOption('Move to target tool folder ID ("null" for root)'),
         {
           name: 'url',
           flags: '--url <url>',
@@ -414,24 +313,8 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           takesValue: false,
           description: 'Re-fetch toolList from the remote MCP server'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read update JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read update JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview update without applying'
-        }
+        ...createJsonInputOptions('update'),
+        createDryRunOption('Validate and preview update without applying')
       ],
       examples: [
         {
@@ -468,54 +351,20 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt tool mcp update <appId> --avatar <path> | --refresh'
         });
 
-        const headerSecret =
-          options.headerSecret !== undefined
-            ? parseInlineJsonValue(options.headerSecret, '--header-secret')
-            : filePayload?.headerSecret;
-
-        const toolList =
-          options.toolList !== undefined
-            ? parseInlineJsonValue(options.toolList, '--tool-list')
-            : filePayload?.toolList;
-
         return container.mcpToolService.update({
           client: activeClient,
           appId,
-          metadata: {
-            name:
-              typeof options.name === 'string'
-                ? options.name
-                : typeof filePayload?.name === 'string'
-                  ? filePayload.name
-                  : undefined,
-            intro:
-              typeof options.intro === 'string'
-                ? options.intro
-                : typeof filePayload?.intro === 'string'
-                  ? filePayload.intro
-                  : undefined,
-            avatar:
-              typeof options.avatar === 'string'
-                ? options.avatar
-                : typeof filePayload?.avatar === 'string'
-                  ? filePayload.avatar
-                  : undefined,
-            parentId:
-              options.parentId !== undefined
-                ? parseParentIdOption(options.parentId)
-                : filePayload?.parentId !== undefined
-                  ? parseParentIdOption(filePayload.parentId)
-                  : undefined
-          },
+          metadata: resolveCommonAppMetadata(options, filePayload),
           config: {
-            url:
-              typeof options.url === 'string'
-                ? options.url
-                : typeof filePayload?.url === 'string'
-                  ? filePayload.url
-                  : undefined,
-            headerSecret,
-            toolList,
+            url: resolveStringOption(options, filePayload, 'url'),
+            headerSecret:
+              options.headerSecret !== undefined
+                ? parseInlineJsonValue(options.headerSecret, '--header-secret')
+                : filePayload?.headerSecret,
+            toolList:
+              options.toolList !== undefined
+                ? parseInlineJsonValue(options.toolList, '--tool-list')
+                : filePayload?.toolList,
             refresh: options.refresh === true || filePayload?.refresh === true
           },
           dryRun: options.dryRun === true
@@ -559,24 +408,8 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'JSON object of MCP request headers'
         },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read run JSON payload from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read run JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Validate and preview MCP tool call without executing'
-        }
+        ...createJsonInputOptions('run'),
+        createDryRunOption('Validate and preview MCP tool call without executing')
       ],
       examples: [
         {
@@ -617,25 +450,17 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('--params must be a JSON object.');
         }
 
-        const headerSecret =
-          options.headerSecret !== undefined
-            ? parseInlineJsonValue(options.headerSecret, '--header-secret')
-            : filePayload?.headerSecret;
-
         return container.mcpToolService.run({
           client: activeClient,
           input: {
-            appId:
-              (typeof options.id === 'string' ? options.id : undefined) ??
-              (typeof filePayload?.appId === 'string' ? filePayload.appId : undefined),
-            url:
-              (typeof options.url === 'string' ? options.url : undefined) ??
-              (typeof filePayload?.url === 'string' ? filePayload.url : undefined),
-            toolName:
-              (typeof options.tool === 'string' ? options.tool : undefined) ??
-              (typeof filePayload?.toolName === 'string' ? filePayload.toolName : ''),
+            appId: resolveStringOption(options, filePayload, 'id', 'appId'),
+            url: resolveStringOption(options, filePayload, 'url'),
+            toolName: resolveStringOption(options, filePayload, 'tool', 'toolName') ?? '',
             params: rawParams,
-            headerSecret
+            headerSecret:
+              options.headerSecret !== undefined
+                ? parseInlineJsonValue(options.headerSecret, '--header-secret')
+                : filePayload?.headerSecret
           },
           dryRun: options.dryRun === true
         });
@@ -647,28 +472,11 @@ export function createToolMcpCommandSpecs(): CliCommandSpec[] {
       summary: 'Delete a FastGPT MCP toolset',
       risk: 'destructive',
       authModes: ['token'],
-      positionalArgs: [
-        { name: 'appId', required: false, description: 'MCP toolset ObjectId (or use --id)' }
-      ],
+      positionalArgs: [createIdPositionalArg('appId', 'MCP toolset')],
       options: [
-        {
-          name: 'id',
-          flags: '--id <appId>',
-          takesValue: true,
-          description: 'MCP toolset ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm destructive deletion'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview deletion without executing'
-        }
+        createIdOption('appId', 'MCP toolset'),
+        createYesOption(),
+        createDryRunOption('Preview deletion without executing')
       ],
       examples: [
         {

@@ -18,7 +18,7 @@ import {
   parseOptionalNumber,
   requireActiveClient,
   resolveIdArg
-} from './shared';
+} from '../shared/helpers';
 
 /**
  * 知识库集合命令组（System OpenAPI）：list / get / create / create-text / create-link / create-file / update / delete。

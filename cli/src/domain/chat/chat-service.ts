@@ -27,12 +27,11 @@ import {
   GetResDataQueryRawSchema,
   type GetRecordsV2ResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
-import type { ResolvedCredential } from '../auth/auth-resolver';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../shared/errors';
 import { redactValue } from '../../shared/redact';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
-import type { CliResult, CliRiskLevel } from '../../shared/types';
+import type { CliResult, CliRiskLevel, ResolvedCredential } from '../../shared/types';
 
 const CHAT_OPERATIONS = {
   run: {

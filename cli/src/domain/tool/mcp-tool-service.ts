@@ -1,11 +1,8 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
-  DeleteAppQuerySchema,
-  ListAppV2BodySchema,
   UpdateAppQuerySchema,
   type CreateAppResponseType,
-  type DeleteAppResponseType,
   type GetAppDetailResponseType,
   type ListAppV2ResponseType,
   type UpdateAppResponseType
@@ -24,15 +21,19 @@ import {
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliApiError, CliArgumentError } from '../../shared/errors';
-import { buildPaginationMeta, isPlainObject, trimIfString } from '../../shared/input';
+import { isPlainObject, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import {
+  deleteAppResource,
   fetchAndAssertAppType,
+  listAppResources,
+  parseAppMetadataUpdate
+} from '../shared/app-resource';
+import {
   hasSavedCredentials,
   isSameToolEndpoint,
   normalizeHeaderSecretInput,
-  parseToolMetadataUpdate,
   redactHeaderSecretPreview,
   validateToolEndpointUrl,
   wrapPartialWriteError
@@ -139,30 +140,12 @@ export type McpToolService = {
  */
 export function createMcpToolService(): McpToolService {
   return {
-    list: async ({ client, input }) => {
-      const validatedBody = ListAppV2BodySchema.parse({
-        type: [AppTypeEnum.mcpToolSet],
-        ...(input.searchKey !== undefined ? { searchKey: input.searchKey } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {})
-      });
-
-      const data = await client.request<ListAppV2ResponseType>({
-        method: 'POST',
-        path: '/core/app/listV2',
-        body: validatedBody
-      });
-
-      return createSuccessResult({
-        data,
-        meta: buildPaginationMeta({
-          validatedBody: validatedBody as Record<string, unknown>,
-          total: data.total,
-          count: data.list.length
-        })
-      });
-    },
+    list: ({ client, input }) =>
+      listAppResources({
+        client,
+        types: [AppTypeEnum.mcpToolSet],
+        input
+      }),
 
     getDetail: async ({ client, appId }) => {
       const detail = await fetchAndAssertAppType({
@@ -310,7 +293,7 @@ export function createMcpToolService(): McpToolService {
       const validatedQuery = UpdateAppQuerySchema.parse({
         appId: trimIfString(appId)
       });
-      const metadataBody = parseToolMetadataUpdate(metadata);
+      const metadataBody = parseAppMetadataUpdate(metadata);
       const normalizedHeaders = normalizeHeaderSecretInput(config.headerSecret);
       const hasConfigUpdate =
         config.url !== undefined ||
@@ -604,44 +587,16 @@ export function createMcpToolService(): McpToolService {
       });
     },
 
-    delete: async ({ client, appId, dryRun }) => {
-      const validatedQuery = DeleteAppQuerySchema.parse({
-        appId: trimIfString(appId)
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'tool mcp delete',
-          risk: 'destructive',
-          preview: {
-            method: 'DELETE',
-            path: '/core/app/del',
-            query: validatedQuery
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    delete: ({ client, appId, dryRun }) =>
+      deleteAppResource({
         client,
-        appId: validatedQuery.appId,
+        appId,
         allowedTypes: [AppTypeEnum.mcpToolSet],
-        resourceLabel: 'MCP toolset'
-      });
-
-      const deletedAppIds = await client.request<DeleteAppResponseType>({
-        method: 'DELETE',
-        path: '/core/app/del',
-        query: validatedQuery
-      });
-
-      return createChangedResult({
-        data: {
-          deleted: true,
-          appId: validatedQuery.appId,
-          deletedAppIds
-        },
-        message: `MCP toolset "${validatedQuery.appId}" deleted.`
-      });
-    }
+        resourceLabel: 'MCP toolset',
+        capitalizedLabel: 'MCP toolset',
+        idField: 'appId',
+        operation: 'tool mcp delete',
+        dryRun
+      })
   };
 }

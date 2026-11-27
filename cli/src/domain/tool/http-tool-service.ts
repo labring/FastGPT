@@ -2,11 +2,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { HttpToolTypeEnum } from '@fastgpt/global/core/app/tool/httpTool/constants';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import {
-  DeleteAppQuerySchema,
-  ListAppV2BodySchema,
   UpdateAppQuerySchema,
   type CreateAppResponseType,
-  type DeleteAppResponseType,
   type GetAppDetailResponseType,
   type ListAppV2ResponseType,
   type UpdateAppResponseType
@@ -30,11 +27,15 @@ import { buildPaginationMeta, isPlainObject, trimIfString } from '../../shared/i
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import {
+  deleteAppResource,
   fetchAndAssertAppType,
+  listAppResources,
+  parseAppMetadataUpdate
+} from '../shared/app-resource';
+import {
   hasSavedCredentials,
   isSameToolEndpoint,
   normalizeHeaderSecretInput,
-  parseToolMetadataUpdate,
   redactCustomHeadersPreview,
   redactHeaderSecretPreview,
   redactStaticHeadersPreview,
@@ -185,30 +186,12 @@ export type HttpToolService = {
  */
 export function createHttpToolService(): HttpToolService {
   return {
-    list: async ({ client, input }) => {
-      const validatedBody = ListAppV2BodySchema.parse({
-        type: [...HTTP_TOOL_APP_TYPES],
-        ...(input.searchKey !== undefined ? { searchKey: input.searchKey } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {})
-      });
-
-      const data = await client.request<ListAppV2ResponseType>({
-        method: 'POST',
-        path: '/core/app/listV2',
-        body: validatedBody
-      });
-
-      return createSuccessResult({
-        data,
-        meta: buildPaginationMeta({
-          validatedBody: validatedBody as Record<string, unknown>,
-          total: data.total,
-          count: data.list.length
-        })
-      });
-    },
+    list: ({ client, input }) =>
+      listAppResources({
+        client,
+        types: HTTP_TOOL_APP_TYPES,
+        input
+      }),
 
     getDetail: async ({ client, appId }) => {
       const detail = await fetchAndAssertAppType({
@@ -406,7 +389,7 @@ export function createHttpToolService(): HttpToolService {
       const validatedQuery = UpdateAppQuerySchema.parse({
         appId: trimIfString(appId)
       });
-      const metadataBody = parseToolMetadataUpdate(metadata);
+      const metadataBody = parseAppMetadataUpdate(metadata);
       const normalizedHeaders = normalizeHeaderSecretInput(config.headerSecret);
       const customHeaders = normalizeCustomHeadersString(config.customHeaders);
       const validatedBaseUrl =
@@ -751,44 +734,16 @@ export function createHttpToolService(): HttpToolService {
       });
     },
 
-    delete: async ({ client, appId, dryRun }) => {
-      const validatedQuery = DeleteAppQuerySchema.parse({
-        appId: trimIfString(appId)
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'tool http delete',
-          risk: 'destructive',
-          preview: {
-            method: 'DELETE',
-            path: '/core/app/del',
-            query: validatedQuery
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    delete: ({ client, appId, dryRun }) =>
+      deleteAppResource({
         client,
-        appId: validatedQuery.appId,
+        appId,
         allowedTypes: HTTP_TOOL_APP_TYPES,
-        resourceLabel: 'HTTP toolset'
-      });
-
-      const deletedAppIds = await client.request<DeleteAppResponseType>({
-        method: 'DELETE',
-        path: '/core/app/del',
-        query: validatedQuery
-      });
-
-      return createChangedResult({
-        data: {
-          deleted: true,
-          appId: validatedQuery.appId,
-          deletedAppIds
-        },
-        message: `HTTP toolset "${validatedQuery.appId}" deleted.`
-      });
-    }
+        resourceLabel: 'HTTP toolset',
+        capitalizedLabel: 'HTTP toolset',
+        idField: 'appId',
+        operation: 'tool http delete',
+        dryRun
+      })
   };
 }

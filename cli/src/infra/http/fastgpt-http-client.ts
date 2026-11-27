@@ -82,6 +82,12 @@ export type FastGptHttpClient = {
   }) => AsyncIterable<SseEvent>;
 };
 
+export type HttpClientFactory = (params: {
+  baseUrl: string;
+  insecure: boolean;
+  caCertPath?: string;
+}) => FastGptHttpClient;
+
 function getRuntimeTag(): string {
   const bunVersion = (process.versions as Record<string, string | undefined>).bun;
   if (bunVersion) {

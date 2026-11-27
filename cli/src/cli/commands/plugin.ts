@@ -1,7 +1,7 @@
 import { listPluginTools } from '../../domain/plugin/plugin-tool-service';
 import { parseIdListOption } from '../../shared/input';
 import type { CliCommandSpec } from '../pipeline';
-import { requireActiveClient } from './dataset/shared';
+import { requireActiveClient } from './shared/helpers';
 
 /** 注册画布可用插件工具与子工具的查询命令。 */
 export function createPluginToolListCommandSpec(): CliCommandSpec {

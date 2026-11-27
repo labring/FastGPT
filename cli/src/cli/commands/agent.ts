@@ -1,11 +1,11 @@
 import { CliArgumentError } from '../../shared/errors';
-import { resolveJsonObjectPayload } from '../../shared/input';
+import { parseInlineJsonValue, resolveJsonObjectPayload } from '../../shared/input';
 import type { CliCommandSpec } from '../pipeline';
 import { createAgentFolderCommandSpecs } from './agent/folder';
 import { createAgentLifecycleCommandSpecs } from './agent/lifecycle';
 import { createAgentLogsCommandSpecs } from './agent/logs';
 import { createAgentVersionCommandSpecs } from './agent/version';
-import { requireActiveClient } from './dataset/shared';
+import { requireActiveClient } from './shared/helpers';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -15,7 +15,7 @@ import {
   resolveWorkflowAppId,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './workflow/shared';
+} from './shared/workflow-options';
 
 /** 注册 FastGPT Agent 全部命令：生命周期、目录、版本历史、对话日志，以及工作流拉取/保存/发布/测试。 */
 export function createAgentCommandSpecs(): CliCommandSpec[] {
@@ -298,12 +298,7 @@ export function createAgentCommandSpecs(): CliCommandSpec[] {
             return [{ role: 'user', content: options.text }];
           }
           if (typeof options.messages === 'string') {
-            let parsed: unknown;
-            try {
-              parsed = JSON.parse(options.messages);
-            } catch {
-              throw new CliArgumentError('--messages must be valid JSON.');
-            }
+            const parsed = parseInlineJsonValue(options.messages, '--messages');
             if (!Array.isArray(parsed)) {
               throw new CliArgumentError('--messages must be a JSON array.');
             }

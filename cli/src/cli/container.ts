@@ -4,13 +4,12 @@ import {
   createAgentVersionService,
   type AgentVersionService
 } from '../domain/agent/agent-version-service';
-import {
-  createAuthService,
-  type AuthService,
-  type HttpClientFactory
-} from '../domain/auth/auth-service';
+import { resolveEffectiveAuth } from '../domain/auth/auth-resolver';
+import { createAuthService, type AuthService } from '../domain/auth/auth-service';
+import { buildCapabilitySummary } from '../domain/auth/capability';
 import { createDatasetProbeHandler } from '../domain/auth/probe/dataset-probe';
 import { createOpenApiHealthProbeHandler } from '../domain/auth/probe/openapi-health-probe';
+import { runWhoamiProbeChain } from '../domain/auth/probe/probe-chain';
 import { createTokenLoginProbeHandler } from '../domain/auth/probe/token-login-probe';
 import { createWhoamiProbeHandler } from '../domain/auth/probe/whoami-probe';
 import { createApiKeyLoginStrategy } from '../domain/auth/strategies/api-key-login';
@@ -60,7 +59,7 @@ import {
   type ConfigRepository
 } from '../infra/config/config-repository';
 import { createNodeFileIoAdapter, type FileIoAdapter } from '../infra/fs/file-io';
-import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
+import { createFastGptHttpClient, type HttpClientFactory } from '../infra/http/fastgpt-http-client';
 import { readJsonInput } from '../infra/input/json-input';
 import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
 import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
@@ -199,11 +198,41 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
       createServerConnectivityCheck(),
       createIdentityProbeCheck()
     ],
-    env: deps.env,
     configRepo,
     secretStore,
     createHttpClient,
-    probeHandlers
+    authPort: {
+      resolveAuth: ({ global, existingConfig }) =>
+        resolveEffectiveAuth({
+          options: global,
+          env: deps.env,
+          configRepo,
+          secretStore,
+          existingConfig
+        }),
+      probeIdentity: async ({ client, auth }) => {
+        const probe = await runWhoamiProbeChain({
+          handlers: probeHandlers,
+          client,
+          auth
+        });
+        return {
+          source: probe.source,
+          authType: probe.authType,
+          apiKeyType: probe.apiKeyType,
+          sessionExpiresAt:
+            probe.detail?.authType === 'token' ? probe.detail.session.expiresAt : undefined,
+          apiKeyRemainingPoints:
+            probe.detail?.authType === 'apikey'
+              ? probe.detail.apiKey.limit.remainingPoints
+              : undefined,
+          apiKeyExpiredTime:
+            probe.detail?.authType === 'apikey' ? probe.detail.apiKey.limit.expiredTime : undefined,
+          warnings: probe.warnings
+        };
+      },
+      summarizeCapabilities: ({ probe, resolved }) => buildCapabilitySummary({ probe, resolved })
+    }
   });
 
   const fileIo = createNodeFileIoAdapter({ cwd: deps.cwd });

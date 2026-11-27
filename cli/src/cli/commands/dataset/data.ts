@@ -6,7 +6,7 @@ import {
   parseOptionalNumber,
   requireActiveClient,
   resolveIdArg
-} from './shared';
+} from '../shared/helpers';
 
 /**
  * 知识库分块数据命令组（System OpenAPI）：list / get / push / update / delete。

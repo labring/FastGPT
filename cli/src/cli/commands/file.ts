@@ -1,5 +1,5 @@
 import type { CliCommandSpec } from '../pipeline';
-import { requireActiveClient, resolveIdArg } from './dataset/shared';
+import { requireActiveClient, resolveIdArg } from './shared/helpers';
 
 /** 注册 FastGPT 通用文件管理命令（当前支持预签名头像上传）。 */
 export function createFileCommandSpecs(): CliCommandSpec[] {

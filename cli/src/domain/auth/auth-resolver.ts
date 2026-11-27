@@ -8,21 +8,13 @@ import type { SecretStore } from '../../infra/secrets/secret-store';
 import { assertValidProfileName } from '../../shared/crypto';
 import { CliArgumentError, CliAuthError } from '../../shared/errors';
 import type {
-  AuthCredentialKind,
   CliAuthModeRequirement,
-  GlobalCliOptions
+  GlobalCliOptions,
+  ResolvedCredential
 } from '../../shared/types';
 import { DEFAULT_FASTGPT_BASE_URL, normalizeBaseUrl } from '../../shared/url';
 
-export type ResolvedCredential = {
-  source: 'flag' | 'env' | 'profile';
-  authType: 'token' | 'apikey';
-  secret: string;
-  kind: AuthCredentialKind | 'unknownApiKey';
-  apiKeyType?: 'personal' | 'app';
-  boundAppId?: string;
-  sessionExpiresAt?: number;
-};
+export type { ResolvedCredential } from '../../shared/types';
 
 export type ResolvedAuthContext = {
   profileName: string;

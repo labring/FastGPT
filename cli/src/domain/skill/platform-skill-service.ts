@@ -23,6 +23,56 @@ import type { CliResult } from '../../shared/types';
 const MAX_SKILL_NAME_LENGTH = 50;
 const MAX_SKILL_DESCRIPTION_LENGTH = 500;
 
+function assertSkillTextLimits({
+  name,
+  description,
+  label,
+  allowEmptyName = false
+}: {
+  name?: string;
+  description?: string;
+  label: string;
+  allowEmptyName?: boolean;
+}): void {
+  if (name !== undefined) {
+    const trimmedName = name.trim();
+    if (!allowEmptyName && trimmedName.length === 0) {
+      throw new CliArgumentError(`${label} name cannot be empty.`);
+    }
+    if (trimmedName.length > MAX_SKILL_NAME_LENGTH) {
+      throw new CliArgumentError(
+        `${label} name cannot exceed ${MAX_SKILL_NAME_LENGTH} characters (got ${trimmedName.length}).`,
+        undefined,
+        `Shorten --name to ${MAX_SKILL_NAME_LENGTH} characters or fewer.`
+      );
+    }
+  }
+  if (description !== undefined) {
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length > MAX_SKILL_DESCRIPTION_LENGTH) {
+      throw new CliArgumentError(
+        `${label} description cannot exceed ${MAX_SKILL_DESCRIPTION_LENGTH} characters (got ${trimmedDescription.length}).`,
+        undefined,
+        `Shorten --description to ${MAX_SKILL_DESCRIPTION_LENGTH} characters or fewer.`
+      );
+    }
+  }
+}
+
+async function fetchSkillDetail({
+  client,
+  skillId
+}: {
+  client: FastGptHttpClient;
+  skillId: string;
+}): Promise<GetSkillDetailResponse> {
+  return client.request<GetSkillDetailResponse>({
+    method: 'GET',
+    path: '/core/ai/skill/detail',
+    query: GetSkillDetailQuerySchema.parse({ skillId })
+  });
+}
+
 export type SkillListParams = {
   source?: string;
   searchKey?: string;
@@ -162,21 +212,11 @@ export function createPlatformSkillService(): PlatformSkillService {
 
     create: async ({ client, input, dryRun }) => {
       const validatedBody = CreateSkillBodySchema.parse(input);
-      if (validatedBody.name.length > MAX_SKILL_NAME_LENGTH) {
-        throw new CliArgumentError(
-          `Skill name cannot exceed ${MAX_SKILL_NAME_LENGTH} characters (got ${validatedBody.name.length}).`,
-          undefined,
-          `Shorten --name to ${MAX_SKILL_NAME_LENGTH} characters or fewer.`
-        );
-      }
-      const trimmedDescription = validatedBody.description?.trim() ?? '';
-      if (trimmedDescription.length > MAX_SKILL_DESCRIPTION_LENGTH) {
-        throw new CliArgumentError(
-          `Skill description cannot exceed ${MAX_SKILL_DESCRIPTION_LENGTH} characters (got ${trimmedDescription.length}).`,
-          undefined,
-          `Shorten --description to ${MAX_SKILL_DESCRIPTION_LENGTH} characters or fewer.`
-        );
-      }
+      assertSkillTextLimits({
+        name: validatedBody.name,
+        description: validatedBody.description,
+        label: 'Skill'
+      });
 
       if (dryRun) {
         return createDryRunResult({
@@ -282,30 +322,11 @@ export function createPlatformSkillService(): PlatformSkillService {
         );
       }
 
-      if (validatedBody.name !== undefined) {
-        const trimmedName = validatedBody.name.trim();
-        if (trimmedName.length === 0) {
-          throw new CliArgumentError('Skill name cannot be empty.');
-        }
-        if (trimmedName.length > MAX_SKILL_NAME_LENGTH) {
-          throw new CliArgumentError(
-            `Skill name cannot exceed ${MAX_SKILL_NAME_LENGTH} characters (got ${trimmedName.length}).`,
-            undefined,
-            `Shorten --name to ${MAX_SKILL_NAME_LENGTH} characters or fewer.`
-          );
-        }
-      }
-
-      if (
-        validatedBody.description !== undefined &&
-        validatedBody.description.trim().length > MAX_SKILL_DESCRIPTION_LENGTH
-      ) {
-        throw new CliArgumentError(
-          `Skill description cannot exceed ${MAX_SKILL_DESCRIPTION_LENGTH} characters (got ${validatedBody.description.trim().length}).`,
-          undefined,
-          `Shorten --description to ${MAX_SKILL_DESCRIPTION_LENGTH} characters or fewer.`
-        );
-      }
+      assertSkillTextLimits({
+        name: validatedBody.name,
+        description: validatedBody.description,
+        label: 'Skill'
+      });
 
       if (dryRun) {
         return createDryRunResult({
@@ -351,11 +372,7 @@ export function createPlatformSkillService(): PlatformSkillService {
         });
       }
 
-      const detail = await client.request<GetSkillDetailResponse>({
-        method: 'GET',
-        path: '/core/ai/skill/detail',
-        query: GetSkillDetailQuerySchema.parse({ skillId: validatedQuery.skillId })
-      });
+      const detail = await fetchSkillDetail({ client, skillId: validatedQuery.skillId });
       if (detail.type === AgentSkillTypeEnum.folder) {
         throw new CliArgumentError(
           `Resource "${validatedQuery.skillId}" is a skill folder, not a single skill. Deleting a folder recursively removes all nested skills and subfolders.`,
@@ -414,17 +431,11 @@ export function createPlatformSkillService(): PlatformSkillService {
           'Pass --name "<folderName>".'
         );
       }
-      if (trimmedName.length > MAX_SKILL_NAME_LENGTH) {
-        throw new CliArgumentError(
-          `Skill folder name cannot exceed ${MAX_SKILL_NAME_LENGTH} characters (got ${trimmedName.length}).`
-        );
-      }
-      const trimmedDescription = input.description?.trim() ?? '';
-      if (trimmedDescription.length > MAX_SKILL_DESCRIPTION_LENGTH) {
-        throw new CliArgumentError(
-          `Skill folder description cannot exceed ${MAX_SKILL_DESCRIPTION_LENGTH} characters (got ${trimmedDescription.length}).`
-        );
-      }
+      assertSkillTextLimits({
+        name: trimmedName,
+        description: input.description,
+        label: 'Skill folder'
+      });
 
       const validatedBody = CreateSkillFolderBodySchema.parse({
         parentId: input.parentId ?? null,
@@ -482,25 +493,11 @@ export function createPlatformSkillService(): PlatformSkillService {
           'Provide --name, --description, or --parent-id.'
         );
       }
-      if (validatedBody.name !== undefined) {
-        const trimmedName = validatedBody.name.trim();
-        if (trimmedName.length === 0) {
-          throw new CliArgumentError('Skill folder name cannot be empty.');
-        }
-        if (trimmedName.length > MAX_SKILL_NAME_LENGTH) {
-          throw new CliArgumentError(
-            `Skill folder name cannot exceed ${MAX_SKILL_NAME_LENGTH} characters (got ${trimmedName.length}).`
-          );
-        }
-      }
-      if (
-        validatedBody.description !== undefined &&
-        validatedBody.description.trim().length > MAX_SKILL_DESCRIPTION_LENGTH
-      ) {
-        throw new CliArgumentError(
-          `Skill folder description cannot exceed ${MAX_SKILL_DESCRIPTION_LENGTH} characters (got ${validatedBody.description.trim().length}).`
-        );
-      }
+      assertSkillTextLimits({
+        name: validatedBody.name,
+        description: validatedBody.description,
+        label: 'Skill folder'
+      });
 
       if (dryRun) {
         return createDryRunResult({
@@ -514,11 +511,7 @@ export function createPlatformSkillService(): PlatformSkillService {
         });
       }
 
-      const detail = await client.request<GetSkillDetailResponse>({
-        method: 'GET',
-        path: '/core/ai/skill/detail',
-        query: GetSkillDetailQuerySchema.parse({ skillId: validatedBody.skillId })
-      });
+      const detail = await fetchSkillDetail({ client, skillId: validatedBody.skillId });
       if (detail.type !== AgentSkillTypeEnum.folder) {
         throw new CliArgumentError(
           `Resource "${validatedBody.skillId}" has type "${detail.type ?? 'skill'}", expected skill folder.`
@@ -560,11 +553,7 @@ export function createPlatformSkillService(): PlatformSkillService {
         });
       }
 
-      const detail = await client.request<GetSkillDetailResponse>({
-        method: 'GET',
-        path: '/core/ai/skill/detail',
-        query: GetSkillDetailQuerySchema.parse({ skillId: validatedQuery.skillId })
-      });
+      const detail = await fetchSkillDetail({ client, skillId: validatedQuery.skillId });
       if (detail.type !== AgentSkillTypeEnum.folder) {
         throw new CliArgumentError(
           `Resource "${validatedQuery.skillId}" has type "${detail.type ?? 'skill'}", expected skill folder.`

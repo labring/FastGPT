@@ -1,7 +1,6 @@
 import { CliArgumentError } from '../../../shared/errors';
 import type { CliCommandSpec } from '../../pipeline';
-import { requireActiveClient } from '../dataset/shared';
-import { parseOptionalBooleanFlag } from '../dataset/shared';
+import { parseOptionalBooleanFlag, requireActiveClient } from '../shared/helpers';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -10,7 +9,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from '../workflow/shared';
+} from '../shared/workflow-options';
 
 const TEMPLATE_KIND_SET = new Set<string>(['builtin', 'teamApp', 'systemTool', 'tool']);
 

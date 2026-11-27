@@ -16,7 +16,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from '../workflow/shared';
+} from '../shared/workflow-options';
 
 const VARIABLE_TYPE_VALUES = [...Object.values(VariableInputEnum), 'external'] as const;
 const VARIABLE_TYPE_SET = new Set<string>(VARIABLE_TYPE_VALUES);

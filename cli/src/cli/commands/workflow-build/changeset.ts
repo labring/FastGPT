@@ -7,7 +7,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from '../workflow/shared';
+} from '../shared/workflow-options';
 
 /**
  * ChangeSet 事务计划与校验应用命令组：changeset plan / changeset apply。

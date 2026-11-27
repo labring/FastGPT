@@ -1,6 +1,5 @@
-import type { WorkflowValueInput } from '../../../domain/workflow/workflow-local-service';
 import { CliArgumentError } from '../../../shared/errors';
-import type { CommandOptionMeta } from '../../../shared/types';
+import type { CommandOptionMeta, WorkflowValueInput } from '../../../shared/types';
 
 export const WORKFLOW_DIR_OPTION: CommandOptionMeta = {
   name: 'dir',

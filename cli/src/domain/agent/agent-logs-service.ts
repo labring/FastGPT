@@ -5,12 +5,11 @@ import {
   type GetLogUsersResponse,
   type SearchAppChatLogsResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
-import type { ResolvedCredential } from '../auth/auth-resolver';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../shared/errors';
 import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createSuccessResult } from '../../shared/result';
-import type { CliResult } from '../../shared/types';
+import type { CliResult, ResolvedCredential } from '../../shared/types';
 
 const DEFAULT_LOG_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 

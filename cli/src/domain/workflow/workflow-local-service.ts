@@ -68,7 +68,7 @@ import {
 } from '../../infra/workflow/template-loader';
 import { CliArgumentError } from '../../shared/errors';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
-import type { CliResult } from '../../shared/types';
+import type { CliResult, WorkflowValueInput } from '../../shared/types';
 import { formatWorkflowWarnings, withWorkflowErrorMapping } from './workflow-error';
 import { fetchWorkflowTemplateBundle } from './workflow-template-service';
 import {
@@ -79,12 +79,7 @@ import {
   writeWorkflowDocument
 } from './workflow-workspace';
 
-export type WorkflowValueInput = {
-  value?: string;
-  valueJson?: string;
-  valueFile?: string;
-  valueEnv?: string;
-};
+export type { WorkflowValueInput } from '../../shared/types';
 
 export type WorkflowLocalServiceDeps = {
   fileIo: FileIoAdapter;

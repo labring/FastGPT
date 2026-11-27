@@ -2,30 +2,25 @@ import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   CreateAppRequestBodySchema,
-  DeleteAppQuerySchema,
-  ListAppV2BodySchema,
-  UpdateAppQuerySchema,
   type CreateAppResponseType,
-  type DeleteAppResponseType,
-  type ListAppV2ResponseType,
-  type UpdateAppResponseType
+  type ListAppV2ResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../shared/errors';
-import { buildPaginationMeta, trimIfString } from '../../shared/input';
-import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
+import { trimIfString } from '../../shared/input';
+import { createChangedResult, createDryRunResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
-import { fetchAndAssertAppType, parseToolMetadataUpdate } from '../tool/tool-shared';
+import {
+  deleteAppResource,
+  listAppResources,
+  updateAppMetadataResource,
+  type AppListInput
+} from './app-resource';
 
 export type AppFolderService = {
   list: (params: {
     client: FastGptHttpClient;
-    input: {
-      searchKey?: string;
-      parentId?: string | null;
-      page?: number;
-      pageSize?: number;
-    };
+    input: AppListInput;
   }) => Promise<CliResult<ListAppV2ResponseType>>;
   create: (params: {
     client: FastGptHttpClient;
@@ -71,30 +66,12 @@ export function createAppFolderService({
   capitalizedLabel: string;
 }): AppFolderService {
   return {
-    list: async ({ client, input }) => {
-      const validatedBody = ListAppV2BodySchema.parse({
-        type: [folderType],
-        ...(input.searchKey !== undefined ? { searchKey: input.searchKey } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {})
-      });
-
-      const data = await client.request<ListAppV2ResponseType>({
-        method: 'POST',
-        path: '/core/app/listV2',
-        body: validatedBody
-      });
-
-      return createSuccessResult({
-        data,
-        meta: buildPaginationMeta({
-          validatedBody: validatedBody as Record<string, unknown>,
-          total: data.total,
-          count: data.list.length
-        })
-      });
-    },
+    list: ({ client, input }) =>
+      listAppResources({
+        client,
+        types: [folderType],
+        input
+      }),
 
     create: async ({ client, input, dryRun }) => {
       const name = trimIfString(input.name);
@@ -145,96 +122,30 @@ export function createAppFolderService({
       });
     },
 
-    update: async ({ client, folderId, input, dryRun }) => {
-      const validatedQuery = UpdateAppQuerySchema.parse({
-        appId: trimIfString(folderId)
-      });
-      const validatedBody = parseToolMetadataUpdate(input);
-
-      if (!validatedBody) {
-        throw new CliArgumentError(
-          'At least one field to update is required.',
-          undefined,
-          'Provide --name, --intro, --avatar, or --parent-id.'
-        );
-      }
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: `${commandPrefix} update`,
-          risk: 'write',
-          preview: {
-            method: 'PUT',
-            path: '/core/app/update',
-            query: validatedQuery,
-            payload: validatedBody
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    update: ({ client, folderId, input, dryRun }) =>
+      updateAppMetadataResource({
         client,
-        appId: validatedQuery.appId,
+        appId: folderId,
+        input,
         allowedTypes: [folderType],
-        resourceLabel: label
-      });
+        resourceLabel: label,
+        capitalizedLabel,
+        idField: 'folderId',
+        operation: `${commandPrefix} update`,
+        dryRun
+      }),
 
-      await client.request<UpdateAppResponseType>({
-        method: 'PUT',
-        path: '/core/app/update',
-        query: validatedQuery,
-        body: validatedBody
-      });
-
-      return createChangedResult({
-        data: {
-          updated: true,
-          folderId: validatedQuery.appId,
-          ...validatedBody
-        },
-        message: `${capitalizedLabel} "${validatedQuery.appId}" updated.`
-      });
-    },
-
-    delete: async ({ client, folderId, dryRun }) => {
-      const validatedQuery = DeleteAppQuerySchema.parse({
-        appId: trimIfString(folderId)
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: `${commandPrefix} delete`,
-          risk: 'destructive',
-          preview: {
-            method: 'DELETE',
-            path: '/core/app/del',
-            query: validatedQuery,
-            recursive: true
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    delete: ({ client, folderId, dryRun }) =>
+      deleteAppResource({
         client,
-        appId: validatedQuery.appId,
+        appId: folderId,
         allowedTypes: [folderType],
-        resourceLabel: label
-      });
-
-      const deletedAppIds = await client.request<DeleteAppResponseType>({
-        method: 'DELETE',
-        path: '/core/app/del',
-        query: validatedQuery
-      });
-
-      return createChangedResult({
-        data: {
-          deleted: true,
-          folderId: validatedQuery.appId,
-          deletedAppIds
-        },
-        message: `${capitalizedLabel} "${validatedQuery.appId}" deleted.`
-      });
-    }
+        resourceLabel: label,
+        capitalizedLabel,
+        idField: 'folderId',
+        operation: `${commandPrefix} delete`,
+        recursive: true,
+        dryRun
+      })
   };
 }

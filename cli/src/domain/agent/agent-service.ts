@@ -1,22 +1,22 @@
 import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import {
   CreateAppRequestBodySchema,
-  DeleteAppQuerySchema,
-  ListAppV2BodySchema,
-  UpdateAppQuerySchema,
   type CreateAppResponseType,
-  type DeleteAppResponseType,
   type GetAppDetailResponseType,
-  type ListAppV2ResponseType,
-  type UpdateAppResponseType
+  type ListAppV2ResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../shared/errors';
-import { buildPaginationMeta, isPlainObject, trimIfString } from '../../shared/input';
+import { isPlainObject, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import { createAppFolderService } from '../shared/app-folder-service';
-import { fetchAndAssertAppType, parseToolMetadataUpdate } from '../tool/tool-shared';
+import {
+  deleteAppResource,
+  fetchAndAssertAppType,
+  listAppResources,
+  updateAppMetadataResource
+} from '../shared/app-resource';
 
 const AGENT_TREE_TYPES = [
   AppTypeEnum.chatAgent,
@@ -188,31 +188,12 @@ export function createAgentService(): AgentService {
   });
 
   return {
-    list: async ({ client, input }) => {
-      const types = validateAgentListTypes(input.type);
-      const validatedBody = ListAppV2BodySchema.parse({
-        type: types,
-        ...(input.searchKey !== undefined ? { searchKey: input.searchKey } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {})
-      });
-
-      const data = await client.request<ListAppV2ResponseType>({
-        method: 'POST',
-        path: '/core/app/listV2',
-        body: validatedBody
-      });
-
-      return createSuccessResult({
-        data,
-        meta: buildPaginationMeta({
-          validatedBody: validatedBody as Record<string, unknown>,
-          total: data.total,
-          count: data.list.length
-        })
-      });
-    },
+    list: async ({ client, input }) =>
+      listAppResources({
+        client,
+        types: validateAgentListTypes(input.type),
+        input
+      }),
 
     getDetail: async ({ client, agentId }) => {
       const detail = await fetchAndAssertAppType({
@@ -283,96 +264,30 @@ export function createAgentService(): AgentService {
       });
     },
 
-    update: async ({ client, agentId, input, dryRun }) => {
-      const validatedQuery = UpdateAppQuerySchema.parse({
-        appId: trimIfString(agentId)
-      });
-      const validatedBody = parseToolMetadataUpdate(input);
-
-      if (!validatedBody) {
-        throw new CliArgumentError(
-          'At least one field to update is required.',
-          undefined,
-          'Provide --name, --intro, --avatar, or --parent-id.'
-        );
-      }
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'agent update',
-          risk: 'write',
-          preview: {
-            method: 'PUT',
-            path: '/core/app/update',
-            query: validatedQuery,
-            payload: validatedBody
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    update: ({ client, agentId, input, dryRun }) =>
+      updateAppMetadataResource({
         client,
-        appId: validatedQuery.appId,
+        appId: agentId,
+        input,
         allowedTypes: AppTypeList,
-        resourceLabel: 'agent'
-      });
+        resourceLabel: 'agent',
+        capitalizedLabel: 'Agent',
+        idField: 'agentId',
+        operation: 'agent update',
+        dryRun
+      }),
 
-      await client.request<UpdateAppResponseType>({
-        method: 'PUT',
-        path: '/core/app/update',
-        query: validatedQuery,
-        body: validatedBody
-      });
-
-      return createChangedResult({
-        data: {
-          updated: true,
-          agentId: validatedQuery.appId,
-          ...validatedBody
-        },
-        message: `Agent "${validatedQuery.appId}" updated.`
-      });
-    },
-
-    delete: async ({ client, agentId, dryRun }) => {
-      const validatedQuery = DeleteAppQuerySchema.parse({
-        appId: trimIfString(agentId)
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'agent delete',
-          risk: 'destructive',
-          preview: {
-            method: 'DELETE',
-            path: '/core/app/del',
-            query: validatedQuery
-          }
-        });
-      }
-
-      await fetchAndAssertAppType({
+    delete: ({ client, agentId, dryRun }) =>
+      deleteAppResource({
         client,
-        appId: validatedQuery.appId,
+        appId: agentId,
         allowedTypes: AppTypeList,
-        resourceLabel: 'agent'
-      });
-
-      const deletedAppIds = await client.request<DeleteAppResponseType>({
-        method: 'DELETE',
-        path: '/core/app/del',
-        query: validatedQuery
-      });
-
-      return createChangedResult({
-        data: {
-          deleted: true,
-          agentId: validatedQuery.appId,
-          deletedAppIds
-        },
-        message: `Agent "${validatedQuery.appId}" deleted.`
-      });
-    },
+        resourceLabel: 'agent',
+        capitalizedLabel: 'Agent',
+        idField: 'agentId',
+        operation: 'agent delete',
+        dryRun
+      }),
 
     listFolders: folderService.list,
     createFolder: folderService.create,
