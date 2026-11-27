@@ -9,8 +9,6 @@ import {
 } from '../../shared/errors';
 import { isPlainObject } from '../../shared/input';
 
-export type HeaderSecretInput = Record<string, { value?: string; secret?: string }>;
-
 export type HeaderSummaryPreview = {
   configured: boolean;
   headerNames: string[];
@@ -38,39 +36,28 @@ export function normalizeHeaderSecretInput(
     if (!trimmedKey) {
       throw new CliArgumentError('headerSecret cannot contain an empty header name.');
     }
-    if (typeof val === 'string') {
-      normalized[trimmedKey] = { value: val };
-    } else {
-      normalized[trimmedKey] = val;
-    }
+    normalized[trimmedKey] = typeof val === 'string' ? { value: val } : val;
   }
 
   return StoreSecretValueTypeApiInputSchema.parse(normalized);
 }
 
 /**
- * 脱敏 `headerSecret` 预览：仅输出是否配置及 header 名称列表，不回显任何凭据值。
+ * 统一脱敏各类请求头/凭据配置（`headerSecret` 对象、`customHeaders` JSON 字符串/对象、`staticHeaders` 键值数组），
+ * 仅输出是否配置及键名列表，不回显任何值。
  */
-export function redactHeaderSecretPreview(
-  headerSecret?: Record<string, unknown> | null
-): HeaderSummaryPreview | undefined {
-  if (!headerSecret) return undefined;
-  const headerNames = Object.keys(headerSecret);
-  return {
-    configured: headerNames.length > 0,
-    headerNames
-  };
-}
+export function summarizeHeaders(raw: unknown): HeaderSummaryPreview | undefined {
+  if (raw === undefined || raw === null) return undefined;
 
-/**
- * 脱敏 `customHeaders` 预览（支持 JSON 字符串或键值对象），仅输出是否配置与 header 名称，避免任意自定义认证头泄漏。
- */
-export function redactCustomHeadersPreview(
-  customHeaders?: string | Record<string, unknown>
-): HeaderSummaryPreview | undefined {
-  if (customHeaders === undefined) return undefined;
-  if (typeof customHeaders === 'string') {
-    const trimmed = customHeaders.trim();
+  if (Array.isArray(raw)) {
+    const headerNames = raw
+      .map((item) => (isPlainObject(item) && typeof item.key === 'string' ? item.key.trim() : ''))
+      .filter(Boolean);
+    return { configured: headerNames.length > 0, headerNames };
+  }
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
     if (!trimmed) {
       return { configured: false, headerNames: [] };
     }
@@ -85,27 +72,20 @@ export function redactCustomHeadersPreview(
     }
     return { configured: true, headerNames: [] };
   }
-  const headerNames = Object.keys(customHeaders);
-  return {
-    configured: headerNames.length > 0,
-    headerNames
-  };
+
+  if (isPlainObject(raw)) {
+    const headerNames = Object.keys(raw);
+    return { configured: headerNames.length > 0, headerNames };
+  }
+
+  return undefined;
 }
 
 /**
- * 脱敏 `staticHeaders` 预览，仅保留键名，不输出 header 值。
+ * 判断一个或多个请求头/凭据配置源中是否存在任意已配置项。
  */
-export function redactStaticHeadersPreview(
-  staticHeaders?: unknown
-): HeaderSummaryPreview | undefined {
-  if (!Array.isArray(staticHeaders)) return undefined;
-  const headerNames = staticHeaders
-    .map((item) => (isPlainObject(item) && typeof item.key === 'string' ? item.key : ''))
-    .filter(Boolean);
-  return {
-    configured: headerNames.length > 0,
-    headerNames
-  };
+export function hasConfiguredHeaders(...sources: unknown[]): boolean {
+  return sources.some((source) => summarizeHeaders(source)?.configured === true);
 }
 
 /**
@@ -122,44 +102,11 @@ export function sanitizeHttpToolListPreview(
     name: tool.name,
     path: tool.path,
     method: tool.method,
-    ...(tool.headerSecret ? { headerSecret: redactHeaderSecretPreview(tool.headerSecret) } : {}),
+    ...(tool.headerSecret ? { headerSecret: summarizeHeaders(tool.headerSecret) } : {}),
     ...(tool.staticHeaders && tool.staticHeaders.length > 0
-      ? { staticHeaders: redactStaticHeadersPreview(tool.staticHeaders) }
+      ? { staticHeaders: summarizeHeaders(tool.staticHeaders) }
       : {})
   }));
-}
-
-/**
- * 判断对象或 JSON 字符串形式的请求头/凭据集合是否包含至少一个非空键。
- */
-export function hasSavedCredentials(raw: unknown): boolean {
-  if (!raw) return false;
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    if (!trimmed) return false;
-    try {
-      const parsed = JSON.parse(trimmed);
-      return isPlainObject(parsed) && Object.keys(parsed).length > 0;
-    } catch {
-      return true;
-    }
-  }
-  if (isPlainObject(raw)) {
-    return Object.keys(raw).length > 0;
-  }
-  return false;
-}
-
-/**
- * 判断 `staticHeaders` 列表是否包含至少一个有效请求头项。
- */
-export function hasStaticHeaders(raw: unknown): boolean {
-  return (
-    Array.isArray(raw) &&
-    raw.some(
-      (item) => isPlainObject(item) && typeof item.key === 'string' && item.key.trim() !== ''
-    )
-  );
 }
 
 /**
@@ -170,13 +117,22 @@ export function isAbsoluteHttpUrl(raw: string): boolean {
 }
 
 /**
- * 校验外部工具的目标 HTTP/HTTPS 地址格式，禁止非 http/https 协议或空主机。
+ * 校验并规范化 HTTP/HTTPS 端点地址；`allowSchemeLess` 用于兼容服务端历史无协议基址（如 `api.example.com:8443/v1`）。
  */
-export function validateToolEndpointUrl(rawUrl: string, label: string): string {
+export function parseHttpUrl(
+  rawUrl: string,
+  label: string,
+  options?: { allowSchemeLess?: boolean }
+): string {
   const trimmed = rawUrl.trim();
+  const candidate =
+    options?.allowSchemeLess && trimmed && !/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
+      ? `https://${trimmed}`
+      : trimmed;
+
   let parsed: URL;
   try {
-    parsed = new URL(trimmed);
+    parsed = new URL(candidate);
   } catch {
     throw new CliArgumentError(
       `Invalid ${label}: "${trimmed}".`,
@@ -189,13 +145,13 @@ export function validateToolEndpointUrl(rawUrl: string, label: string): string {
       `Invalid ${label}: "${trimmed}". Only http:// and https:// URLs with a hostname are allowed.`
     );
   }
-  return trimmed;
+  return candidate;
 }
 
 /**
- * 校验相对 HTTP 子工具路径，防止通过绝对 URL、协议相对路径或换行字符劫持最终请求目标。
+ * 校验相对 HTTP 子工具路径，禁止传入绝对 URL、协议相对路径或换行字符。
  */
-export function validateHttpToolPath(rawPath: string): string {
+export function validateRelativeToolPath(rawPath: string): string {
   const trimmed = rawPath.trim();
   if (!trimmed) {
     throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
@@ -215,99 +171,12 @@ export function validateHttpToolPath(rawPath: string): string {
 }
 
 /**
- * 与服务端 `packages/service/core/app/http.ts` 对齐的历史基址补全规则：
- * 仅将带 `://` 的前缀识别为显式协议（避免把 `api.example.com:8443/v1` 的端口分隔符误判为协议），
- * 无协议历史基址统一按 `https://` 补全后再做协议与主机校验。
- */
-export function normalizeSavedHttpBaseUrl(rawUrl: string): string {
-  const trimmed = rawUrl.trim();
-  if (!trimmed) return '';
-  const normalized =
-    /^https?:\/\//i.test(trimmed) || /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
-      ? trimmed
-      : `https://${trimmed}`;
-  return validateToolEndpointUrl(normalized, 'HTTP target URL');
-}
-
-/**
- * 与 Axios `combineURLs(baseURL, relativeURL)` 保持一致的拼接契约：保留 `baseUrl` 路径前缀（如 `/v1`），
- * 避免 WHATWG `new URL('/search', 'https://host/v1')` 丢弃 `/v1` 导致改址凭据校验漏判。
- */
-function combineAxiosBaseAndPath(baseUrl: string, relativePath: string): string {
-  if (!relativePath) {
-    return baseUrl;
-  }
-  const cleanBase = baseUrl.replace(/\/+$/, '');
-  const cleanRelative = relativePath.replace(/^\/+/, '');
-  return cleanRelative ? `${cleanBase}/${cleanRelative}` : cleanBase;
-}
-
-/**
- * 计算 HTTP 子工具的实际出站目标 URL（与 `packages/service/core/app/http.ts` 中 Axios 的合并契约严格对齐）。
- */
-export function resolveHttpToolEffectiveUrl({
-  baseUrl,
-  toolPath,
-  allowAbsoluteWithBaseUrl = false,
-  allowSchemeLessBaseUrl = false
-}: {
-  baseUrl?: string;
-  toolPath: string;
-  allowAbsoluteWithBaseUrl?: boolean;
-  allowSchemeLessBaseUrl?: boolean;
-}): string {
-  const trimmedPath = toolPath.trim();
-  const trimmedBase = baseUrl?.trim() ?? '';
-
-  if (!trimmedPath) {
-    throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
-  }
-  if (trimmedPath.startsWith('//') || /[\r\n\\]/.test(trimmedPath)) {
-    throw new CliArgumentError(`Invalid HTTP tool path "${trimmedPath}".`);
-  }
-
-  if (trimmedBase) {
-    const validBase = allowSchemeLessBaseUrl
-      ? normalizeSavedHttpBaseUrl(trimmedBase)
-      : validateToolEndpointUrl(trimmedBase, 'HTTP target URL');
-    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath)) {
-      if (!allowAbsoluteWithBaseUrl) {
-        validateHttpToolPath(trimmedPath);
-      }
-      return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
-    }
-    const validPath = validateHttpToolPath(trimmedPath);
-    return new URL(combineAxiosBaseAndPath(validBase, validPath)).toString();
-  }
-
-  return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
-}
-
-/**
- * 判断实际出站目标是否仍落在已授权 `baseUrl` 的同源与路径前缀范围内，防止通过 `../` 越出基址前缀。
- */
-export function isUrlWithinAuthorizedBase(targetUrl: string, authorizedBaseUrl: string): boolean {
-  try {
-    const target = new URL(targetUrl.trim());
-    const base = new URL(authorizedBaseUrl.trim());
-    if (target.origin !== base.origin) return false;
-    const basePrefix = base.pathname.replace(/\/+$/, '') || '/';
-    const targetPath = target.pathname.replace(/\/+$/, '') || '/';
-    return (
-      basePrefix === '/' || targetPath === basePrefix || targetPath.startsWith(`${basePrefix}/`)
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 比较两个工具端点 URL 是否指向同一授权目标（规范化 origin + pathname + search，忽略末尾斜线差异）。
+ * 比较两个工具端点是否指向同一目标（规范化 origin + pathname + search，兼容历史无协议基址与末尾斜线差异）。
  */
 export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
   try {
-    const a = new URL(urlA.trim());
-    const b = new URL(urlB.trim());
+    const a = new URL(parseHttpUrl(urlA, 'URL', { allowSchemeLess: true }));
+    const b = new URL(parseHttpUrl(urlB, 'URL', { allowSchemeLess: true }));
     const normPathA = a.pathname.replace(/\/+$/, '') || '/';
     const normPathB = b.pathname.replace(/\/+$/, '') || '/';
     return a.origin === b.origin && normPathA === normPathB && a.search === b.search;
@@ -317,115 +186,103 @@ export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
 }
 
 /**
- * 校验工具配置写入接口（`PUT /core/app/{httpTools,mcpTools}/update`）的解包返回值：
- * FastGPT 成功确认信封的 `data` 固定为 `null`（或单测替身 `undefined`），非空字符串/对象视为代理拦截或异常响应。
+ * 统一的改址凭据隔离守卫：当调用方修改或覆盖已保存工具集目标地址时，禁止隐式携带旧目标的凭据或请求头。
  */
-export function assertEmptyConfigUpdateAck(response: unknown, operation: string): void {
-  if (response !== undefined && response !== null) {
-    throw new CliNetworkError(
-      `${operation} received an unexpected non-empty response payload instead of a FastGPT confirmation envelope.`,
-      'Inspect authoritative resource state on the server before retrying.'
-    );
+export function assertCredentialTargetUnchanged({
+  fromUrl,
+  toUrl,
+  hasSavedCredentials,
+  hasOverride,
+  message,
+  hint
+}: {
+  fromUrl?: string;
+  toUrl: string;
+  hasSavedCredentials: boolean;
+  hasOverride: boolean;
+  message: string;
+  hint: string;
+}): void {
+  if (!hasSavedCredentials || hasOverride) return;
+  const saved = fromUrl?.trim() ?? '';
+  if (!saved || !isSameToolEndpoint(saved, toUrl)) {
+    throw new CliArgumentError(message, undefined, hint);
   }
 }
 
 /**
- * 判断异常是否属于明确的前置写入拒绝信号：
- * - 仅认可本地参数/鉴权拒绝，以及 4xx（非 408 请求超时）前置拒绝；
- * - 任何 5xx（含 JSON 502/503/504 与服务端 500）、408 超时、网络/响应体中断或非 FastGPT 信封一律归为结果未知。
+ * 统一包装工具集写入步骤（兼容单步与多步写入）：
+ * - 明确的前置拒绝且无已提交步骤时直接透传原错误；
+ * - 一旦涉及已提交前置步骤，或出现网络/5xx/无效确认等未确认异常（`outcome: "unknown"`），
+ *   统一保留 `appId`、已提交步骤（若有）与 `fastgpt <resourceCmd> get <appId>` 核查提示。
  */
-function isConfirmedWriteRejection(error: unknown): boolean {
-  if (error instanceof CliArgumentError || error instanceof CliAuthError) {
-    return true;
-  }
-  if (error instanceof CliApiError) {
-    if (
-      error.httpStatus !== undefined &&
-      error.httpStatus >= 400 &&
-      error.httpStatus < 500 &&
-      error.httpStatus !== 408
-    ) {
-      return true;
-    }
-    if (
-      (error.httpStatus === undefined || (error.httpStatus >= 200 && error.httpStatus < 300)) &&
-      error.serverCode !== undefined &&
-      error.serverCode >= 400 &&
-      error.serverCode < 500 &&
-      error.serverCode !== 408
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * 包装多步写操作中后置步骤异常：
- * - 仅在获得明确服务端拒绝依据时标记为 `outcome: "failed"`（`failedStep`）；
- * - 响应头前后断连、响应体中断、网关 502/503/504 等未获得写入确认的异常一律标记为 `outcome: "unknown"`（`uncertainStep`），
- *   保留已提交步骤与资源 ID，引导先查询服务端权威状态后再决策。
- */
-export function wrapPartialWriteError({
-  error,
+export async function runToolWriteStep<T>({
   operation,
   appId,
-  completedSteps,
+  resourceCmd,
+  completedSteps = [],
   step,
-  failedHint,
-  unknownHint
+  run
 }: {
-  error: unknown;
   operation: string;
   appId: string;
-  completedSteps: string[];
+  resourceCmd: string;
+  completedSteps?: string[];
   step: string;
-  failedHint: string;
-  unknownHint: string;
-}): CliApiError | CliNetworkError {
-  const baseMessage = error instanceof Error ? error.message : String(error);
-  const causeDetails = error instanceof CliError ? error.details : undefined;
+  run: () => Promise<T>;
+}): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    const isClientRejection =
+      error instanceof CliArgumentError ||
+      error instanceof CliAuthError ||
+      (error instanceof CliApiError &&
+        error.details?.outcome !== 'unknown' &&
+        error.httpStatus !== undefined &&
+        error.httpStatus >= 400 &&
+        error.httpStatus < 500 &&
+        error.httpStatus !== 408);
 
-  if (!isConfirmedWriteRejection(error)) {
-    const unknownMessage = `${operation} committed [${completedSteps.join(', ')}] for ${appId}, but step "${step}" did not return an authoritative confirmation and its outcome is unknown: ${baseMessage}`;
-    const unknownDetails = {
-      partialSuccess: true,
-      outcome: 'unknown',
+    if (completedSteps.length === 0 && isClientRejection) {
+      throw error;
+    }
+
+    const baseMessage = error instanceof Error ? error.message : String(error);
+    const causeDetails = error instanceof CliError ? error.details : undefined;
+    const outcome = isClientRejection ? 'failed' : 'unknown';
+    const hasCompleted = completedSteps.length > 0;
+    const hint = hasCompleted
+      ? `Steps [${completedSteps.join(', ')}] committed for ${appId}. Run "fastgpt ${resourceCmd} get ${appId}" to inspect authoritative state before retrying.`
+      : `Run "fastgpt ${resourceCmd} get ${appId}" to inspect authoritative state before retrying.`;
+    const details = {
+      ...(hasCompleted ? { partialSuccess: true, completedSteps } : {}),
+      outcome,
       appId,
-      completedSteps,
-      uncertainStep: step,
+      failedStep: step,
       ...(causeDetails !== undefined ? { cause: causeDetails } : {})
     };
+    const prefix = hasCompleted
+      ? `${operation} committed [${completedSteps.join(', ')}] for ${appId}, but step "${step}"`
+      : `${operation} step "${step}" for ${appId}`;
+    const message =
+      outcome === 'unknown'
+        ? `${prefix} did not return confirmation (outcome unknown): ${baseMessage}`
+        : `${prefix} failed: ${baseMessage}`;
+
     if (error instanceof CliApiError) {
-      return new CliApiError({
-        message: unknownMessage,
-        hint: unknownHint,
+      throw new CliApiError({
+        message,
+        hint,
         httpStatus: error.httpStatus,
         serverCode: error.serverCode,
         statusText: error.statusText,
-        details: unknownDetails
+        details
       });
     }
-    return new CliNetworkError(unknownMessage, unknownHint, unknownDetails);
-  }
-
-  const httpStatus = error instanceof CliApiError ? error.httpStatus : undefined;
-  const serverCode = error instanceof CliApiError ? error.serverCode : undefined;
-  const statusText = error instanceof CliApiError ? error.statusText : undefined;
-
-  return new CliApiError({
-    message: `${operation} partially succeeded (${completedSteps.join(', ')} committed for ${appId}), but step "${step}" failed: ${baseMessage}`,
-    hint: failedHint,
-    httpStatus,
-    serverCode,
-    statusText,
-    details: {
-      partialSuccess: true,
-      outcome: 'failed',
-      appId,
-      completedSteps,
-      failedStep: step,
-      ...(causeDetails !== undefined ? { cause: causeDetails } : {})
+    if (!isClientRejection) {
+      throw new CliNetworkError(message, hint, details);
     }
-  });
+    throw new CliApiError({ message, hint, details });
+  }
 }

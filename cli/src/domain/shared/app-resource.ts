@@ -1,5 +1,6 @@
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
+  CreateAppResponseSchema,
   DeleteAppQuerySchema,
   GetAppDetailQuerySchema,
   ListAppV2BodySchema,
@@ -12,7 +13,7 @@ import {
   type UpdateAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
-import { CliArgumentError } from '../../shared/errors';
+import { CliArgumentError, CliNetworkError } from '../../shared/errors';
 import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
@@ -98,6 +99,21 @@ export async function fetchAndAssertAppType({
   }
 
   return detail;
+}
+
+/**
+ * 校验创建接口返回的 App / 工具集 / 目录 ID；服务端未返回合法 ObjectId 时视为写入确认缺失（outcome: "unknown"）。
+ */
+export function parseCreatedAppId(raw: unknown, resourceLabel: string): string {
+  const parsed = CreateAppResponseSchema.safeParse(raw);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  throw new CliNetworkError(
+    `Creating ${resourceLabel} did not return a valid resource ID; write outcome is unknown.`,
+    'List existing resources on the server to confirm whether it was created before retrying.',
+    { outcome: 'unknown', phase: 'invalid_response' }
+  );
 }
 
 /**

@@ -34,25 +34,19 @@ import {
   deleteAppResource,
   fetchAndAssertAppType,
   listAppResources,
-  parseAppMetadataUpdate
+  parseAppMetadataUpdate,
+  parseCreatedAppId
 } from '../shared/app-resource';
 import {
-  assertEmptyConfigUpdateAck,
-  hasSavedCredentials,
-  hasStaticHeaders,
+  assertCredentialTargetUnchanged,
+  hasConfiguredHeaders,
   isAbsoluteHttpUrl,
-  isSameToolEndpoint,
-  isUrlWithinAuthorizedBase,
   normalizeHeaderSecretInput,
-  normalizeSavedHttpBaseUrl,
-  redactCustomHeadersPreview,
-  redactHeaderSecretPreview,
-  redactStaticHeadersPreview,
-  resolveHttpToolEffectiveUrl,
+  parseHttpUrl,
+  runToolWriteStep,
   sanitizeHttpToolListPreview,
-  validateHttpToolPath,
-  validateToolEndpointUrl,
-  wrapPartialWriteError
+  summarizeHeaders,
+  validateRelativeToolPath
 } from './tool-shared';
 
 const HTTP_TOOL_APP_TYPES = [AppTypeEnum.httpToolSet, AppTypeEnum.httpPlugin] as const;
@@ -116,29 +110,44 @@ function normalizeHttpToolListSecrets(toolList: unknown): unknown {
   });
 }
 
-function tryResolveEffectiveUrl({
-  baseUrl,
-  toolPath
+function pickSingleToolMatch({
+  candidates,
+  explicitMethod,
+  label,
+  selector
 }: {
-  baseUrl?: string;
-  toolPath: string;
-}): string | undefined {
-  try {
-    return resolveHttpToolEffectiveUrl({
-      baseUrl,
-      toolPath,
-      allowAbsoluteWithBaseUrl: true,
-      allowSchemeLessBaseUrl: true
-    });
-  } catch {
-    return undefined;
+  candidates: readonly HttpToolConfigType[];
+  explicitMethod?: string;
+  label: 'name' | 'path';
+  selector: string;
+}): HttpToolConfigType {
+  const matched = explicitMethod
+    ? candidates.filter((item) => item.method.toUpperCase() === explicitMethod)
+    : candidates;
+
+  if (matched.length === 1) {
+    return matched[0];
   }
+  if (matched.length === 0) {
+    const available = candidates.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ');
+    throw new CliArgumentError(
+      `No HTTP tool matching ${label} "${selector}" uses method "${explicitMethod}". Available: ${available}.`,
+      undefined,
+      'Pass a matching --method or specify the unique tool name in --tool-path.'
+    );
+  }
+  const summary = matched.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ');
+  throw new CliArgumentError(
+    `Multiple HTTP tools share ${label} "${selector}" (${summary}).`,
+    undefined,
+    explicitMethod
+      ? 'Pass the unique tool name to --tool-path.'
+      : 'Pass --method or specify the unique tool name in --tool-path.'
+  );
 }
 
 /**
- * 在已保存的 HTTP 子工具列表中唯一定位目标子工具：
- * 1. 先按唯一工具名匹配，再按路径精确匹配；
- * 2. 同路径存在多个方法时禁止静默取第一项，也禁止在显式方法不匹配时借用其他方法的配置。
+ * 在已保存的 HTTP 子工具列表中唯一定位目标子工具（先按工具名、再按路径精确匹配；有歧义或方法不匹配直接报错）。
  */
 function resolveSavedHttpTool({
   toolList,
@@ -155,59 +164,15 @@ function resolveSavedHttpTool({
 
   const byName = toolList.filter((item) => item.name === selector);
   if (byName.length > 0) {
-    if (explicitMethod) {
-      const matched = byName.filter((item) => item.method.toUpperCase() === explicitMethod);
-      if (matched.length === 1) return matched[0];
-      if (matched.length === 0) {
-        throw new CliArgumentError(
-          `HTTP tool "${selector}" uses method ${byName.map((t) => t.method.toUpperCase()).join('/')}, not "${explicitMethod}".`,
-          undefined,
-          `Omit --method or pass --method ${byName[0].method.toUpperCase()}.`
-        );
-      }
-      throw new CliArgumentError(
-        `Multiple HTTP tools match name "${selector}" with method "${explicitMethod}".`
-      );
-    }
-    if (byName.length === 1) return byName[0];
-    throw new CliArgumentError(
-      `Multiple HTTP tools share name "${selector}" (${byName.map((t) => t.method.toUpperCase()).join(', ')}).`,
-      undefined,
-      'Pass --method to disambiguate.'
-    );
+    return pickSingleToolMatch({ candidates: byName, explicitMethod, label: 'name', selector });
   }
 
   const byPath = toolList.filter((item) => item.path === selector);
-  if (byPath.length === 0) {
-    return undefined;
+  if (byPath.length > 0) {
+    return pickSingleToolMatch({ candidates: byPath, explicitMethod, label: 'path', selector });
   }
 
-  if (explicitMethod) {
-    const matched = byPath.filter((item) => item.method.toUpperCase() === explicitMethod);
-    if (matched.length === 1) return matched[0];
-    if (matched.length === 0) {
-      throw new CliArgumentError(
-        `No HTTP tool at path "${selector}" matches method "${explicitMethod}". Available: ${byPath.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ')}.`,
-        undefined,
-        'Pass a matching --method or specify the unique tool name in --tool-path.'
-      );
-    }
-    throw new CliArgumentError(
-      `Multiple HTTP tools match "${explicitMethod} ${selector}" (${matched.map((t) => t.name).join(', ')}).`,
-      undefined,
-      'Pass the unique tool name to --tool-path.'
-    );
-  }
-
-  if (byPath.length === 1) {
-    return byPath[0];
-  }
-
-  throw new CliArgumentError(
-    `Multiple HTTP tools share path "${selector}" (${byPath.map((t) => `${t.method.toUpperCase()} (${t.name})`).join(', ')}).`,
-    undefined,
-    'Pass --method or specify the unique tool name in --tool-path.'
-  );
+  return undefined;
 }
 
 export type HttpToolConfigPatch = {
@@ -395,9 +360,7 @@ export function createHttpToolService(): HttpToolService {
           customHeaders !== undefined);
 
       const validatedBaseUrl =
-        config?.baseUrl !== undefined
-          ? validateToolEndpointUrl(config.baseUrl, 'HTTP target URL')
-          : undefined;
+        config?.baseUrl !== undefined ? parseHttpUrl(config.baseUrl, 'HTTP target URL') : undefined;
 
       const validatedConfigPreview = hasConfig
         ? UpdateHttpToolsBodySchema.parse({
@@ -433,16 +396,12 @@ export function createHttpToolService(): HttpToolService {
                         : {}),
                       ...(validatedConfigPreview.headerSecret !== undefined
                         ? {
-                            headerSecret: redactHeaderSecretPreview(
-                              validatedConfigPreview.headerSecret
-                            )
+                            headerSecret: summarizeHeaders(validatedConfigPreview.headerSecret)
                           }
                         : {}),
                       ...(validatedConfigPreview.customHeaders !== undefined
                         ? {
-                            customHeaders: redactCustomHeadersPreview(
-                              validatedConfigPreview.customHeaders
-                            )
+                            customHeaders: summarizeHeaders(validatedConfigPreview.customHeaders)
                           }
                         : {}),
                       toolCount: validatedConfigPreview.toolList.length,
@@ -455,36 +414,30 @@ export function createHttpToolService(): HttpToolService {
         });
       }
 
-      const appId = await client.request<CreateAppResponseType>({
+      const rawAppId = await client.request<CreateAppResponseType>({
         method: 'POST',
         path: '/core/app/httpTools/create',
-        body: validatedCreateBody,
-        requireFastGptEnvelope: true
+        body: validatedCreateBody
       });
+      const appId = parseCreatedAppId(rawAppId, 'HTTP toolset');
 
       if (validatedConfigPreview) {
-        try {
-          const ack = await client.request<UpdateHttpToolsResponseType>({
-            method: 'PUT',
-            path: '/core/app/httpTools/update',
-            body: {
-              ...validatedConfigPreview,
-              appId
-            },
-            requireFastGptEnvelope: true
-          });
-          assertEmptyConfigUpdateAck(ack, 'tool http create');
-        } catch (error) {
-          throw wrapPartialWriteError({
-            error,
-            operation: 'tool http create',
-            appId,
-            completedSteps: ['create'],
-            step: 'configure',
-            failedHint: `HTTP toolset was created (${appId}) without config. Resume by running: fastgpt tool http update ${appId} ...`,
-            unknownHint: `HTTP toolset was created (${appId}), but the configuration write response was lost. Run "fastgpt tool http get ${appId}" to verify its authoritative config before retrying.`
-          });
-        }
+        await runToolWriteStep({
+          operation: 'tool http create',
+          appId,
+          resourceCmd: 'tool http',
+          completedSteps: ['create'],
+          step: 'configure',
+          run: () =>
+            client.request<UpdateHttpToolsResponseType>({
+              method: 'PUT',
+              path: '/core/app/httpTools/update',
+              body: {
+                ...validatedConfigPreview,
+                appId
+              }
+            })
+        });
       }
 
       return createChangedResult({
@@ -510,9 +463,7 @@ export function createHttpToolService(): HttpToolService {
       const normalizedHeaders = normalizeHeaderSecretInput(config.headerSecret);
       const customHeaders = normalizeCustomHeadersString(config.customHeaders);
       const validatedBaseUrl =
-        config.baseUrl !== undefined
-          ? validateToolEndpointUrl(config.baseUrl, 'HTTP target URL')
-          : undefined;
+        config.baseUrl !== undefined ? parseHttpUrl(config.baseUrl, 'HTTP target URL') : undefined;
       const hasConfigUpdate =
         validatedBaseUrl !== undefined ||
         config.apiSchemaStr !== undefined ||
@@ -563,10 +514,10 @@ export function createHttpToolService(): HttpToolService {
                         ? { apiSchemaStrLength: config.apiSchemaStr.length }
                         : {}),
                       ...(normalizedHeaders !== undefined
-                        ? { headerSecret: redactHeaderSecretPreview(normalizedHeaders) }
+                        ? { headerSecret: summarizeHeaders(normalizedHeaders) }
                         : {}),
                       ...(customHeaders !== undefined
-                        ? { customHeaders: redactCustomHeadersPreview(customHeaders) }
+                        ? { customHeaders: summarizeHeaders(customHeaders) }
                         : {}),
                       ...(validatedExplicitToolList !== undefined
                         ? {
@@ -589,55 +540,39 @@ export function createHttpToolService(): HttpToolService {
         resourceLabel: 'HTTP toolset'
       });
 
-      // 先完成全部本地契约与改址凭据隔离校验（含集级与每个继承子工具的凭据/静态头），再执行首次写库。
+      // 先完成全部本地契约与改址凭据隔离校验（含集级与继承相对路径子工具），再执行首次写库。
       let mergedConfigBody: ReturnType<typeof UpdateHttpToolsBodySchema.parse> | undefined;
       if (hasConfigUpdate) {
         const existing = extractHttpToolSetConfig(detail);
         if (validatedBaseUrl !== undefined && existing.baseUrl) {
-          const normalizedExistingBaseUrl = normalizeSavedHttpBaseUrl(existing.baseUrl);
-          if (!isSameToolEndpoint(validatedBaseUrl, normalizedExistingBaseUrl)) {
-            const reusingSavedHeaderSecret =
-              hasSavedCredentials(existing.headerSecret) && normalizedHeaders === undefined;
-            const reusingSavedCustomHeaders =
-              hasSavedCredentials(existing.customHeaders) && customHeaders === undefined;
-            if (reusingSavedHeaderSecret || reusingSavedCustomHeaders) {
-              throw new CliArgumentError(
-                `Refusing to forward saved HTTP headers/credentials from "${existing.baseUrl}" to new target URL "${validatedBaseUrl}".`,
-                undefined,
-                'Pass --header-secret / --custom-headers explicitly for the new target URL (or "{}" to clear).'
-              );
-            }
-          }
-        }
+          assertCredentialTargetUnchanged({
+            fromUrl: existing.baseUrl,
+            toUrl: validatedBaseUrl,
+            hasSavedCredentials:
+              (hasConfiguredHeaders(existing.headerSecret) && normalizedHeaders === undefined) ||
+              (hasConfiguredHeaders(existing.customHeaders) && customHeaders === undefined),
+            hasOverride: false,
+            message: `Refusing to forward saved HTTP headers/credentials from "${existing.baseUrl}" to new target URL "${validatedBaseUrl}".`,
+            hint: 'Pass --header-secret / --custom-headers explicitly for the new target URL (or "{}" to clear).'
+          });
 
-        // 未显式提交 toolList 时会原样保留已有子工具；若改址导致含独立凭据/静态头的子工具实际目标变更，必须阻断。
-        if (validatedBaseUrl !== undefined && validatedExplicitToolList === undefined) {
-          const affectedTools = (existing.toolList ?? [])
-            .filter((tool) => {
-              if (
-                !hasSavedCredentials(tool.headerSecret) &&
-                !hasStaticHeaders(tool.staticHeaders)
-              ) {
-                return false;
-              }
-              const oldTarget = tryResolveEffectiveUrl({
-                baseUrl: existing.baseUrl,
-                toolPath: tool.path
-              });
-              const newTarget = tryResolveEffectiveUrl({
-                baseUrl: validatedBaseUrl,
-                toolPath: tool.path
-              });
-              return !oldTarget || !newTarget || !isSameToolEndpoint(newTarget, oldTarget);
-            })
-            .map((tool) => tool.name || tool.path);
+          if (validatedExplicitToolList === undefined) {
+            const affectedTools = (existing.toolList ?? [])
+              .filter(
+                (tool) =>
+                  !isAbsoluteHttpUrl(tool.path) &&
+                  hasConfiguredHeaders(tool.headerSecret, tool.staticHeaders)
+              )
+              .map((tool) => tool.name || tool.path);
 
-          if (affectedTools.length > 0) {
-            throw new CliArgumentError(
-              `Refusing to retain saved sub-tool headerSecret/staticHeaders for [${affectedTools.join(', ')}] after changing target URL to "${validatedBaseUrl}".`,
-              undefined,
-              'Pass --tool-list explicitly with updated or cleared sub-tool headerSecret/staticHeaders for the new target URL.'
-            );
+            assertCredentialTargetUnchanged({
+              fromUrl: existing.baseUrl,
+              toUrl: validatedBaseUrl,
+              hasSavedCredentials: affectedTools.length > 0,
+              hasOverride: false,
+              message: `Refusing to retain saved sub-tool headerSecret/staticHeaders for [${affectedTools.join(', ')}] after changing target URL to "${validatedBaseUrl}".`,
+              hint: 'Pass --tool-list explicitly with updated or cleared sub-tool headerSecret/staticHeaders for the new target URL.'
+            });
           }
         }
 
@@ -669,40 +604,36 @@ export function createHttpToolService(): HttpToolService {
       }
 
       if (metadataBody) {
-        const metaAck = await client.request<UpdateAppResponseType>({
-          method: 'PUT',
-          path: '/core/app/update',
-          query: validatedQuery,
-          body: metadataBody,
-          requireFastGptEnvelope: true
+        await runToolWriteStep({
+          operation: 'tool http update',
+          appId: validatedQuery.appId,
+          resourceCmd: 'tool http',
+          step: 'metadata',
+          run: () =>
+            client.request<UpdateAppResponseType>({
+              method: 'PUT',
+              path: '/core/app/update',
+              query: validatedQuery,
+              body: metadataBody
+            })
         });
-        assertEmptyConfigUpdateAck(metaAck, 'tool http update');
       }
 
       let updatedToolCount: number | undefined;
       if (mergedConfigBody) {
-        try {
-          const ack = await client.request<UpdateHttpToolsResponseType>({
-            method: 'PUT',
-            path: '/core/app/httpTools/update',
-            body: mergedConfigBody,
-            requireFastGptEnvelope: true
-          });
-          assertEmptyConfigUpdateAck(ack, 'tool http update');
-        } catch (error) {
-          if (metadataBody) {
-            throw wrapPartialWriteError({
-              error,
-              operation: 'tool http update',
-              appId: validatedQuery.appId,
-              completedSteps: ['metadata'],
-              step: 'config',
-              failedHint: `Metadata was updated for ${validatedQuery.appId}. Fix the HTTP config and re-run: fastgpt tool http update ${validatedQuery.appId} ...`,
-              unknownHint: `Metadata was updated for ${validatedQuery.appId}, but the HTTP config update response was lost. Run "fastgpt tool http get ${validatedQuery.appId}" to verify authoritative state before retrying.`
-            });
-          }
-          throw error;
-        }
+        await runToolWriteStep({
+          operation: 'tool http update',
+          appId: validatedQuery.appId,
+          resourceCmd: 'tool http',
+          completedSteps: metadataBody ? ['metadata'] : [],
+          step: 'config',
+          run: () =>
+            client.request<UpdateHttpToolsResponseType>({
+              method: 'PUT',
+              path: '/core/app/httpTools/update',
+              body: mergedConfigBody
+            })
+        });
         updatedToolCount = mergedConfigBody.toolList.length;
       }
 
@@ -723,14 +654,11 @@ export function createHttpToolService(): HttpToolService {
       const appId = trimIfString(input.appId);
       const explicitBaseUrlRaw = trimIfString(input.baseUrl);
       const explicitBaseUrl = explicitBaseUrlRaw
-        ? validateToolEndpointUrl(explicitBaseUrlRaw, 'HTTP target URL')
+        ? parseHttpUrl(explicitBaseUrlRaw, 'HTTP target URL')
         : '';
       const rawToolSelector = trimIfString(input.toolPath);
       if (!rawToolSelector) {
         throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
-      }
-      if (rawToolSelector.startsWith('//') || /[\r\n\\]/.test(rawToolSelector)) {
-        throw new CliArgumentError(`Invalid HTTP tool path "${rawToolSelector}".`);
       }
 
       const explicitMethod = input.method ? trimIfString(input.method).toUpperCase() : undefined;
@@ -738,9 +666,9 @@ export function createHttpToolService(): HttpToolService {
 
       if (!appId) {
         if (explicitBaseUrl) {
-          validateHttpToolPath(rawToolSelector);
+          validateRelativeToolPath(rawToolSelector);
         } else if (isAbsoluteHttpUrl(rawToolSelector)) {
-          validateToolEndpointUrl(rawToolSelector, 'HTTP tool URL');
+          parseHttpUrl(rawToolSelector, 'HTTP tool URL');
         } else {
           throw new CliArgumentError(
             'Either --id <appId> or --target-url <url> is required.',
@@ -767,13 +695,13 @@ export function createHttpToolService(): HttpToolService {
                 ? { apiSchemaStrLength: input.apiSchemaStr.length }
                 : {}),
               ...(input.customHeaders !== undefined
-                ? { customHeaders: redactCustomHeadersPreview(input.customHeaders) }
+                ? { customHeaders: summarizeHeaders(input.customHeaders) }
                 : {}),
               ...(normalizedHeaders !== undefined
-                ? { headerSecret: redactHeaderSecretPreview(normalizedHeaders) }
+                ? { headerSecret: summarizeHeaders(normalizedHeaders) }
                 : {}),
               ...(input.staticHeaders !== undefined
-                ? { staticHeaders: redactStaticHeadersPreview(input.staticHeaders) }
+                ? { staticHeaders: summarizeHeaders(input.staticHeaders) }
                 : {})
             }
           }
@@ -791,101 +719,66 @@ export function createHttpToolService(): HttpToolService {
           )
         : undefined;
 
-      // 1. 先在已保存子工具中唯一定位目标子工具（支持工具名、相对路径或手动工具完整 URL；有歧义或方法不匹配直接报错）。
       const matchedTool = resolveSavedHttpTool({
         toolList: existingConfig?.toolList,
         selector: rawToolSelector,
         explicitMethod
       });
-
       const resolvedMethod = explicitMethod ?? matchedTool?.method.toUpperCase() ?? 'POST';
       const savedBaseUrl = existingConfig?.baseUrl?.trim() ?? '';
       const candidatePath = matchedTool ? matchedTool.path.trim() : rawToolSelector;
-
-      // 2. 按服务端 Axios 合并契约解析最终请求地址（兼容 OpenAPI baseUrl+路径前缀+相对路径 与 Web 手动工具完整 URL）。
-      let resolvedBaseUrl: string;
-      let resolvedToolPath: string;
-      let finalEffectiveUrl: string;
-
-      if (explicitBaseUrl) {
-        resolvedBaseUrl = explicitBaseUrl;
-        if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
-          const parsedSaved = new URL(validateToolEndpointUrl(candidatePath, 'HTTP tool URL'));
-          resolvedToolPath = `${parsedSaved.pathname}${parsedSaved.search}`;
-          finalEffectiveUrl = resolveHttpToolEffectiveUrl({
-            baseUrl: resolvedBaseUrl,
-            toolPath: resolvedToolPath
-          });
-        } else {
-          resolvedToolPath = validateHttpToolPath(candidatePath);
-          finalEffectiveUrl = resolveHttpToolEffectiveUrl({
-            baseUrl: resolvedBaseUrl,
-            toolPath: resolvedToolPath
-          });
-        }
-      } else if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
-        resolvedBaseUrl = '';
-        resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
-        finalEffectiveUrl = resolveHttpToolEffectiveUrl({ toolPath: resolvedToolPath });
-      } else if (savedBaseUrl) {
-        resolvedBaseUrl = normalizeSavedHttpBaseUrl(savedBaseUrl);
-        resolvedToolPath = validateHttpToolPath(candidatePath);
-        finalEffectiveUrl = resolveHttpToolEffectiveUrl({
-          baseUrl: resolvedBaseUrl,
-          toolPath: resolvedToolPath
-        });
-      } else if (isAbsoluteHttpUrl(candidatePath)) {
-        resolvedBaseUrl = '';
-        resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
-        finalEffectiveUrl = resolveHttpToolEffectiveUrl({ toolPath: resolvedToolPath });
-      } else {
-        throw new CliArgumentError(
-          'Unable to resolve HTTP target URL from toolset.',
-          undefined,
-          'Pass --target-url explicitly.'
-        );
-      }
-
       const savedHeaderSecret = matchedTool?.headerSecret ?? existingConfig?.headerSecret;
       const savedStaticHeaders = matchedTool?.staticHeaders;
 
-      // 3. 按实际最终出站地址校验凭据隔离：凡相对已保存目标发生改址或越出基址前缀，禁止携带工具集或子工具凭据/请求头。
+      // 显式覆盖目标地址（或无 savedBaseUrl 且直接调用未保存完整 URL）时，禁止携带旧凭据与请求头。
       if (appId) {
-        const targetChanged = (() => {
-          if (matchedTool) {
-            const savedTargetUrl = tryResolveEffectiveUrl({
-              baseUrl: savedBaseUrl,
-              toolPath: matchedTool.path
-            });
-            return !savedTargetUrl || !isSameToolEndpoint(finalEffectiveUrl, savedTargetUrl);
-          }
-          if (savedBaseUrl) {
-            const validSavedBase = normalizeSavedHttpBaseUrl(savedBaseUrl);
-            if (explicitBaseUrl && !isSameToolEndpoint(explicitBaseUrl, validSavedBase)) {
-              return true;
-            }
-            return !isUrlWithinAuthorizedBase(finalEffectiveUrl, validSavedBase);
-          }
-          // 工具集未保存 baseUrl 且未命中已保存子工具：目标地址未经工具集授权，禁止复用已保存凭据。
-          return true;
-        })();
-
-        if (targetChanged) {
-          const wouldLeakHeaderSecret =
-            hasSavedCredentials(savedHeaderSecret) && normalizedHeaders === undefined;
-          const wouldLeakCustomHeaders =
-            hasSavedCredentials(existingConfig?.customHeaders) && input.customHeaders === undefined;
-          const wouldLeakStaticHeaders =
-            hasStaticHeaders(savedStaticHeaders) && input.staticHeaders === undefined;
-          if (wouldLeakHeaderSecret || wouldLeakCustomHeaders || wouldLeakStaticHeaders) {
-            throw new CliArgumentError(
-              `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to overridden target URL "${finalEffectiveUrl}".`,
-              undefined,
-              'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
-            );
-          }
+        const savedTarget =
+          savedBaseUrl ||
+          (matchedTool && isAbsoluteHttpUrl(matchedTool.path) ? matchedTool.path.trim() : '');
+        const overrideTarget =
+          explicitBaseUrl ||
+          (!matchedTool && !savedBaseUrl && isAbsoluteHttpUrl(candidatePath) ? candidatePath : '');
+        if (overrideTarget) {
+          const hasUnoverriddenCreds =
+            (hasConfiguredHeaders(savedHeaderSecret) && normalizedHeaders === undefined) ||
+            (hasConfiguredHeaders(existingConfig?.customHeaders) &&
+              input.customHeaders === undefined) ||
+            (hasConfiguredHeaders(savedStaticHeaders) && input.staticHeaders === undefined);
+          assertCredentialTargetUnchanged({
+            fromUrl: savedTarget,
+            toUrl: overrideTarget,
+            hasSavedCredentials: hasUnoverriddenCreds,
+            hasOverride: false,
+            message: `Refusing to send saved credentials/headers from HTTP toolset "${appId}" to overridden target URL "${overrideTarget}".`,
+            hint: 'Omit --target-url to invoke the saved endpoint, or pass credentials/headers explicitly for the new URL.'
+          });
         }
       }
+
+      const { resolvedBaseUrl, resolvedToolPath } = (() => {
+        if (!explicitBaseUrl && isAbsoluteHttpUrl(candidatePath)) {
+          return {
+            resolvedBaseUrl: '',
+            resolvedToolPath: parseHttpUrl(candidatePath, 'HTTP tool URL')
+          };
+        }
+        const base =
+          explicitBaseUrl ||
+          (savedBaseUrl
+            ? parseHttpUrl(savedBaseUrl, 'HTTP target URL', { allowSchemeLess: true })
+            : '');
+        if (!base) {
+          throw new CliArgumentError(
+            'Unable to resolve HTTP target URL from toolset.',
+            undefined,
+            'Pass --target-url explicitly.'
+          );
+        }
+        return {
+          resolvedBaseUrl: base,
+          resolvedToolPath: validateRelativeToolPath(candidatePath)
+        };
+      })();
 
       const resolvedCustomHeaders = (() => {
         if (input.customHeaders !== undefined) return input.customHeaders;

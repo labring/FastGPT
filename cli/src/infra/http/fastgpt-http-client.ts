@@ -37,7 +37,6 @@ export type FastGptHttpClient = {
     auth?: HttpRequestAuth;
     headers?: Record<string, string>;
     timeoutMs?: number;
-    requireFastGptEnvelope?: boolean;
   }) => Promise<T>;
   requestRaw: (params: {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -225,13 +224,11 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl,
-  requireFastGptEnvelope = false
+  displayUrl
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
-  requireFastGptEnvelope?: boolean;
 }): T {
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
@@ -241,27 +238,41 @@ function unpackFastGptResponse<T>({
     );
   }
 
-  let parsed: unknown = undefined;
-  if (rawText.trim().length > 0) {
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      if (response.status >= 400) {
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: displayUrl
-        });
-      }
-      if (requireFastGptEnvelope) {
-        throw new CliNetworkError(
-          `Expected a FastGPT JSON confirmation envelope from ${redactText(displayUrl)}, but received non-JSON HTTP ${response.status} response.`,
-          'Verify FASTGPT_BASE_URL and check whether a proxy/SSO login page intercepted the request.',
-          { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_envelope' }
-        );
-      }
-      return rawText as T;
+  const trimmedText = rawText.trim();
+  if (trimmedText.length === 0) {
+    if (response.status >= 400) {
+      throw mapServerError({
+        httpStatus: response.status,
+        message: `Request failed (HTTP ${response.status})`,
+        url: displayUrl
+      });
     }
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    throw new CliNetworkError(
+      `Expected JSON response from ${redactText(displayUrl)}, but received an empty HTTP ${response.status} body.`,
+      'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmedText);
+  } catch {
+    if (response.status >= 400) {
+      throw mapServerError({
+        httpStatus: response.status,
+        message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+        url: displayUrl
+      });
+    }
+    throw new CliNetworkError(
+      `Expected JSON response from ${redactText(displayUrl)}, but received non-JSON HTTP ${response.status} body.`,
+      'Verify FASTGPT_BASE_URL and check whether a proxy/SSO login page intercepted the request.',
+      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+    );
   }
 
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -288,8 +299,20 @@ function unpackFastGptResponse<T>({
       });
     }
 
-    if (serverCode !== undefined && 'data' in envelope) {
-      return envelope.data as T;
+    if (serverCode !== undefined) {
+      if (serverCode === 200 && 'data' in envelope) {
+        return envelope.data as T;
+      }
+      throw new CliNetworkError(
+        `Expected FastGPT success code 200 from ${redactText(displayUrl)}, but received code ${serverCode}.`,
+        'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+        {
+          url: redactText(displayUrl),
+          httpStatus: response.status,
+          serverCode,
+          phase: 'invalid_response'
+        }
+      );
     }
   }
 
@@ -299,14 +322,6 @@ function unpackFastGptResponse<T>({
       message: `Request failed (HTTP ${response.status})`,
       url: displayUrl
     });
-  }
-
-  if (requireFastGptEnvelope) {
-    throw new CliNetworkError(
-      `Expected a FastGPT JSON confirmation envelope from ${redactText(displayUrl)}, but received an unrecognized HTTP ${response.status} payload.`,
-      'Verify FASTGPT_BASE_URL and check whether an upstream proxy intercepted the request.',
-      { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_envelope' }
-    );
   }
 
   return parsed as T;
@@ -336,6 +351,41 @@ async function readResponseTextOrThrow(response: Response, url: string): Promise
       { url: redactText(url), httpStatus: response.status, phase: 'response_body' }
     );
   }
+}
+
+/**
+ * 统一为写操作（非 GET）的未确认异常（网络断连/超时/无效信封/5xx/408）标记 `outcome: "unknown"`，
+ * 避免每个领域命令各自重复判断网关或传输层不确定状态。
+ */
+function rethrowWithWriteOutcome(method: 'GET' | 'POST' | 'PUT' | 'DELETE', error: unknown): never {
+  if (method === 'GET') {
+    throw error;
+  }
+  const unknownHint =
+    'The server may have already processed this write; inspect authoritative state before retrying.';
+  if (error instanceof CliNetworkError) {
+    throw new CliNetworkError(error.message, error.hint ?? unknownHint, {
+      ...error.details,
+      outcome: 'unknown'
+    });
+  }
+  if (
+    error instanceof CliApiError &&
+    (error.httpStatus === undefined || error.httpStatus === 408 || error.httpStatus >= 500)
+  ) {
+    throw new CliApiError({
+      message: error.message,
+      hint: error.hint ?? unknownHint,
+      httpStatus: error.httpStatus,
+      serverCode: error.serverCode,
+      statusText: error.statusText,
+      details: {
+        ...error.details,
+        outcome: 'unknown'
+      }
+    });
+  }
+  throw error;
 }
 
 async function readChunkWithAbort(
@@ -684,8 +734,7 @@ export function createFastGptHttpClient({
       body,
       auth,
       headers: extraHeaders,
-      timeoutMs: requestTimeout = timeoutMs,
-      requireFastGptEnvelope = false
+      timeoutMs: requestTimeout = timeoutMs
     }: {
       method: 'GET' | 'POST' | 'PUT' | 'DELETE';
       path: string;
@@ -694,27 +743,29 @@ export function createFastGptHttpClient({
       auth?: HttpRequestAuth;
       headers?: Record<string, string>;
       timeoutMs?: number;
-      requireFastGptEnvelope?: boolean;
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
       const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method,
-        searchParams,
-        jsonBody: body
-      });
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method,
+          searchParams,
+          jsonBody: body
+        });
 
-      const rawText = await readResponseTextOrThrow(response, finalUrl);
-      return unpackFastGptResponse<T>({
-        response,
-        rawText,
-        displayUrl: finalUrl,
-        requireFastGptEnvelope
-      });
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome(method, error);
+      }
     },
 
     requestRaw: async ({
@@ -785,21 +836,25 @@ export function createFastGptHttpClient({
       const multipartContentType = serializedForm.headers.get('content-type') ?? undefined;
       const multipartBody = new Uint8Array(await serializedForm.arrayBuffer());
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method: 'POST',
-        searchParams,
-        rawBody: multipartBody,
-        contentType: multipartContentType
-      });
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method: 'POST',
+          searchParams,
+          rawBody: multipartBody,
+          contentType: multipartContentType
+        });
 
-      const rawText = await readResponseTextOrThrow(response, finalUrl);
-      return unpackFastGptResponse<T>({
-        response,
-        rawText,
-        displayUrl: finalUrl
-      });
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome('POST', error);
+      }
     },
 
     uploadBinary: async <T = unknown>({
@@ -827,22 +882,26 @@ export function createFastGptHttpClient({
         extraHeaders
       });
 
-      const { response, finalUrl } = await executeWithRedirects({
-        client,
-        initialPath: relativePath,
-        method: 'POST',
-        searchParams,
-        rawBody: body as BodyInit,
-        contentType,
-        contentLength: body.byteLength
-      });
+      try {
+        const { response, finalUrl } = await executeWithRedirects({
+          client,
+          initialPath: relativePath,
+          method: 'POST',
+          searchParams,
+          rawBody: body as BodyInit,
+          contentType,
+          contentLength: body.byteLength
+        });
 
-      const rawText = await readResponseTextOrThrow(response, finalUrl);
-      return unpackFastGptResponse<T>({
-        response,
-        rawText,
-        displayUrl: finalUrl
-      });
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
+        return unpackFastGptResponse<T>({
+          response,
+          rawText,
+          displayUrl: finalUrl
+        });
+      } catch (error) {
+        rethrowWithWriteOutcome('POST', error);
+      }
     },
 
     putPresignedUrl: async ({
@@ -944,7 +1003,7 @@ export function createFastGptHttpClient({
         });
 
         if (response.status >= 400) {
-          const rawText = await response.text();
+          const rawText = await readResponseTextOrThrow(response, finalUrl);
           throw mapServerError({
             httpStatus: response.status,
             message: rawText.slice(0, 300) || `HTTP ${response.status}`,

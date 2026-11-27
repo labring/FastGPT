@@ -15,6 +15,7 @@ import {
   deleteAppResource,
   fetchAndAssertAppType,
   listAppResources,
+  parseCreatedAppId,
   updateAppMetadataResource
 } from '../shared/app-resource';
 
@@ -247,11 +248,12 @@ export function createAgentService(): AgentService {
         });
       }
 
-      const agentId = await client.request<CreateAppResponseType>({
+      const rawAgentId = await client.request<CreateAppResponseType>({
         method: 'POST',
         path: '/core/app/create',
         body: validatedBody
       });
+      const agentId = parseCreatedAppId(rawAgentId, 'agent');
 
       return createChangedResult({
         data: {

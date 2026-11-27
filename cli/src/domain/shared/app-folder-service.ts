@@ -13,6 +13,7 @@ import type { CliResult } from '../../shared/types';
 import {
   deleteAppResource,
   listAppResources,
+  parseCreatedAppId,
   updateAppMetadataResource,
   type AppListInput
 } from './app-resource';
@@ -106,11 +107,12 @@ export function createAppFolderService({
         });
       }
 
-      const folderId = await client.request<CreateAppResponseType>({
+      const rawFolderId = await client.request<CreateAppResponseType>({
         method: 'POST',
         path: '/core/app/create',
         body: validatedBody
       });
+      const folderId = parseCreatedAppId(rawFolderId, label);
 
       return createChangedResult({
         data: {

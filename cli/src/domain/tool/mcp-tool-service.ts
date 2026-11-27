@@ -29,26 +29,21 @@ import {
   deleteAppResource,
   fetchAndAssertAppType,
   listAppResources,
-  parseAppMetadataUpdate
+  parseAppMetadataUpdate,
+  parseCreatedAppId
 } from '../shared/app-resource';
 import {
-  assertEmptyConfigUpdateAck,
-  hasSavedCredentials,
-  isSameToolEndpoint,
+  assertCredentialTargetUnchanged,
+  hasConfiguredHeaders,
   normalizeHeaderSecretInput,
-  redactHeaderSecretPreview,
-  validateToolEndpointUrl,
-  wrapPartialWriteError
+  parseHttpUrl,
+  runToolWriteStep,
+  summarizeHeaders
 } from './tool-shared';
 
-const McpToolResultEnvelopeSchema = z.object({
-  isError: z.boolean().optional(),
-  content: z.unknown().optional()
-});
-
-const McpContentBlockSchema = z.object({
-  type: z.string(),
-  text: z.string().optional()
+const McpErrorEnvelopeSchema = z.object({
+  isError: z.literal(true),
+  content: z.array(z.object({ type: z.string(), text: z.string().optional() })).catch([])
 });
 
 type ExtractedMcpConfig = {
@@ -260,7 +255,7 @@ export function createMcpToolService(): McpToolService {
             payload: {
               ...previewBody,
               ...(previewBody.headerSecret
-                ? { headerSecret: redactHeaderSecretPreview(previewBody.headerSecret) }
+                ? { headerSecret: summarizeHeaders(previewBody.headerSecret) }
                 : {})
             }
           }
@@ -283,11 +278,12 @@ export function createMcpToolService(): McpToolService {
         toolList: resolvedToolList
       });
 
-      const appId = await client.request<CreateAppResponseType>({
+      const rawAppId = await client.request<CreateAppResponseType>({
         method: 'POST',
         path: '/core/app/mcpTools/create',
         body: finalBody
       });
+      const appId = parseCreatedAppId(rawAppId, 'MCP toolset');
 
       return createChangedResult({
         data: {
@@ -322,9 +318,7 @@ export function createMcpToolService(): McpToolService {
       }
 
       const validatedUrl =
-        config.url !== undefined
-          ? validateToolEndpointUrl(config.url, 'MCP server URL')
-          : undefined;
+        config.url !== undefined ? parseHttpUrl(config.url, 'MCP server URL') : undefined;
 
       if (dryRun) {
         return createDryRunResult({
@@ -352,7 +346,7 @@ export function createMcpToolService(): McpToolService {
                       appId: validatedQuery.appId,
                       ...(validatedUrl !== undefined ? { url: validatedUrl } : {}),
                       ...(normalizedHeaders !== undefined
-                        ? { headerSecret: redactHeaderSecretPreview(normalizedHeaders) }
+                        ? { headerSecret: summarizeHeaders(normalizedHeaders) }
                         : {}),
                       ...(Array.isArray(config.toolList)
                         ? { toolCount: config.toolList.length }
@@ -384,20 +378,17 @@ export function createMcpToolService(): McpToolService {
             'Pass --url explicitly.'
           );
         }
-        validateToolEndpointUrl(targetUrl, 'MCP server URL');
+        parseHttpUrl(targetUrl, 'MCP server URL');
 
-        if (
-          validatedUrl !== undefined &&
-          existing.url &&
-          !isSameToolEndpoint(validatedUrl, existing.url) &&
-          hasSavedCredentials(existing.headerSecret) &&
-          normalizedHeaders === undefined
-        ) {
-          throw new CliArgumentError(
-            `Refusing to forward saved headerSecret from "${existing.url}" to new MCP URL "${validatedUrl}".`,
-            undefined,
-            'Pass --header-secret explicitly for the new URL (or "{}" to clear saved headers).'
-          );
+        if (validatedUrl !== undefined && existing.url) {
+          assertCredentialTargetUnchanged({
+            fromUrl: existing.url,
+            toUrl: validatedUrl,
+            hasSavedCredentials: hasConfiguredHeaders(existing.headerSecret),
+            hasOverride: normalizedHeaders !== undefined,
+            message: `Refusing to forward saved headerSecret from "${existing.url}" to new MCP URL "${validatedUrl}".`,
+            hint: 'Pass --header-secret explicitly for the new URL (or "{}" to clear saved headers).'
+          });
         }
 
         const effectiveHeaderSecret =
@@ -435,41 +426,37 @@ export function createMcpToolService(): McpToolService {
       }
 
       if (metadataBody) {
-        const metaAck = await client.request<UpdateAppResponseType>({
-          method: 'PUT',
-          path: '/core/app/update',
-          query: validatedQuery,
-          body: metadataBody,
-          requireFastGptEnvelope: true
+        await runToolWriteStep({
+          operation: 'tool mcp update',
+          appId: validatedQuery.appId,
+          resourceCmd: 'tool mcp',
+          step: 'metadata',
+          run: () =>
+            client.request<UpdateAppResponseType>({
+              method: 'PUT',
+              path: '/core/app/update',
+              query: validatedQuery,
+              body: metadataBody
+            })
         });
-        assertEmptyConfigUpdateAck(metaAck, 'tool mcp update');
       }
 
       let updatedUrl: string | undefined;
       let updatedToolCount: number | undefined;
       if (validatedConfigBody) {
-        try {
-          const ack = await client.request<UpdateMcpToolsResponseType>({
-            method: 'PUT',
-            path: '/core/app/mcpTools/update',
-            body: validatedConfigBody,
-            requireFastGptEnvelope: true
-          });
-          assertEmptyConfigUpdateAck(ack, 'tool mcp update');
-        } catch (error) {
-          if (metadataBody) {
-            throw wrapPartialWriteError({
-              error,
-              operation: 'tool mcp update',
-              appId: validatedQuery.appId,
-              completedSteps: ['metadata'],
-              step: 'config',
-              failedHint: `Metadata was updated for ${validatedQuery.appId}. Fix the MCP config and re-run: fastgpt tool mcp update ${validatedQuery.appId} ...`,
-              unknownHint: `Metadata was updated for ${validatedQuery.appId}, but the MCP config update response was lost. Run "fastgpt tool mcp get ${validatedQuery.appId}" to verify authoritative state before retrying.`
-            });
-          }
-          throw error;
-        }
+        await runToolWriteStep({
+          operation: 'tool mcp update',
+          appId: validatedQuery.appId,
+          resourceCmd: 'tool mcp',
+          completedSteps: metadataBody ? ['metadata'] : [],
+          step: 'config',
+          run: () =>
+            client.request<UpdateMcpToolsResponseType>({
+              method: 'PUT',
+              path: '/core/app/mcpTools/update',
+              body: validatedConfigBody
+            })
+        });
 
         updatedUrl = validatedConfigBody.url;
         updatedToolCount = validatedConfigBody.toolList.length;
@@ -492,9 +479,7 @@ export function createMcpToolService(): McpToolService {
     run: async ({ client, input, dryRun }) => {
       const appId = trimIfString(input.appId);
       const explicitUrlRaw = trimIfString(input.url);
-      const explicitUrl = explicitUrlRaw
-        ? validateToolEndpointUrl(explicitUrlRaw, 'MCP server URL')
-        : '';
+      const explicitUrl = explicitUrlRaw ? parseHttpUrl(explicitUrlRaw, 'MCP server URL') : '';
       const toolName = trimIfString(input.toolName);
       const normalizedHeaders = normalizeHeaderSecretInput(input.headerSecret);
 
@@ -516,7 +501,7 @@ export function createMcpToolService(): McpToolService {
           toolName,
           params: input.params ?? {},
           ...(normalizedHeaders !== undefined
-            ? { headerSecret: redactHeaderSecretPreview(normalizedHeaders) }
+            ? { headerSecret: summarizeHeaders(normalizedHeaders) }
             : {})
         };
         return createDryRunResult({
@@ -549,22 +534,17 @@ export function createMcpToolService(): McpToolService {
           'Pass --url explicitly.'
         );
       }
-      validateToolEndpointUrl(resolvedUrl, 'MCP server URL');
+      parseHttpUrl(resolvedUrl, 'MCP server URL');
 
-      // 防止通过 --id 加载已保存凭据后被 --url 覆盖发送到未授权地址。
-      if (
-        appId &&
-        explicitUrl &&
-        existingConfig?.url &&
-        !isSameToolEndpoint(explicitUrl, existingConfig.url) &&
-        hasSavedCredentials(existingConfig.headerSecret) &&
-        normalizedHeaders === undefined
-      ) {
-        throw new CliArgumentError(
-          `Refusing to send saved headerSecret from MCP toolset "${appId}" to overridden URL "${explicitUrl}".`,
-          undefined,
-          'Omit --url to invoke the saved endpoint, or pass --header-secret explicitly for the new URL.'
-        );
+      if (appId && explicitUrl) {
+        assertCredentialTargetUnchanged({
+          fromUrl: existingConfig?.url,
+          toUrl: explicitUrl,
+          hasSavedCredentials: hasConfiguredHeaders(existingConfig?.headerSecret),
+          hasOverride: normalizedHeaders !== undefined,
+          message: `Refusing to send saved headerSecret from MCP toolset "${appId}" to overridden URL "${explicitUrl}".`,
+          hint: 'Omit --url to invoke the saved endpoint, or pass --header-secret explicitly for the new URL.'
+        });
       }
 
       const resolvedHeaders =
@@ -586,23 +566,10 @@ export function createMcpToolService(): McpToolService {
         body: validatedBody
       });
 
-      const parsedMcpResult = McpToolResultEnvelopeSchema.safeParse(data);
-      const mcpErrorText = (() => {
-        if (!parsedMcpResult.success || parsedMcpResult.data.isError !== true) {
-          return undefined;
-        }
-        const rawContent = parsedMcpResult.data.content;
-        const validBlocks = Array.isArray(rawContent)
-          ? rawContent.flatMap((item) => {
-              const block = McpContentBlockSchema.safeParse(item);
-              return block.success ? [block.data] : [];
-            })
-          : [];
-        return getMCPToolErrorText({
-          isError: true,
-          content: validBlocks
-        });
-      })();
+      const parsedMcpError = McpErrorEnvelopeSchema.safeParse(data);
+      const mcpErrorText = parsedMcpError.success
+        ? getMCPToolErrorText(parsedMcpError.data)
+        : undefined;
       if (mcpErrorText) {
         throw new CliApiError({
           message: mcpErrorText,

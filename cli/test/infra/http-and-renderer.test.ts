@@ -404,27 +404,79 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     }
   });
 
-  it('classifies post-header response body disconnects as CliNetworkError', async () => {
+  it('classifies post-header body drops, invalid envelopes, and mutating 5xx responses as outcome unknown', async () => {
     const client = createFastGptHttpClient({
       baseUrl: 'http://127.0.0.1:3000/api',
       cliVersion: '0.1.0',
-      fetchFn: async () =>
-        new Response(
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.endsWith('/proxy-html')) {
+          return new Response('<html><body>SSO Login</body></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' }
+          });
+        }
+        if (url.endsWith('/non-200-code')) {
+          return jsonResponse({ code: 0, data: null }, 200);
+        }
+        if (url.endsWith('/empty-200')) {
+          return new Response('', { status: 200 });
+        }
+        if (url.endsWith('/no-content')) {
+          return new Response(null, { status: 204 });
+        }
+        if (url.endsWith('/gateway-502')) {
+          return jsonResponse({ code: 502, message: 'Bad Gateway' }, 502);
+        }
+        return new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
               controller.error(new TypeError('socket closed mid-body'));
             }
           }),
           { status: 200 }
-        )
+        );
+      }
     });
 
     await expect(
       client.request({ method: 'PUT', path: '/core/app/httpTools/update' })
     ).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
-      details: expect.objectContaining({ httpStatus: 200, phase: 'response_body' })
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'response_body',
+        outcome: 'unknown'
+      })
     });
+    await expect(client.request({ method: 'POST', path: '/proxy-html' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(client.request({ method: 'PUT', path: '/non-200-code' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        serverCode: 0,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(client.request({ method: 'GET', path: '/empty-200' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({ httpStatus: 200, phase: 'invalid_response' })
+    });
+    await expect(client.request({ method: 'PUT', path: '/gateway-502' })).rejects.toMatchObject({
+      code: 'API_ERROR',
+      httpStatus: 502,
+      details: expect.objectContaining({ outcome: 'unknown' })
+    });
+    await expect(
+      client.request({ method: 'DELETE', path: '/no-content' })
+    ).resolves.toBeUndefined();
   });
 
   it('supports uploadMultipart and requestRaw methods', async () => {
