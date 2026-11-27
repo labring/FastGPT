@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   onError: vi.fn(),
   dnd: undefined as DndProps | undefined,
+  activeDragRubric: undefined as { draggableId: string; index: number } | undefined,
   addModelDisabled: undefined as boolean | undefined,
   confirmDelete: undefined as (() => void) | undefined,
   currentModels: [] as ModelConfigListItem[],
@@ -102,6 +103,35 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
 vi.mock('@fastgpt/web/components/common/DndDrag', () => ({
   default: (props: DndProps) => {
     mocks.dnd = props;
+    const clone =
+      mocks.activeDragRubric && props.renderClone
+        ? props.renderClone(
+            {
+              innerRef: () => {},
+              draggableProps: {
+                'data-rbd-draggable-context-id': '0',
+                'data-rbd-draggable-id': mocks.activeDragRubric.draggableId
+              },
+              dragHandleProps: null
+            },
+            {
+              isDragging: true,
+              isDropAnimating: false,
+              draggingOver: 'droppable',
+              combineWith: null,
+              combineTargetFor: null,
+              mode: 'SNAP'
+            },
+            {
+              draggableId: mocks.activeDragRubric.draggableId,
+              type: 'DEFAULT',
+              source: {
+                droppableId: 'droppable',
+                index: mocks.activeDragRubric.index
+              }
+            }
+          )
+        : null;
     return React.createElement(
       'tbody',
       null,
@@ -111,11 +141,12 @@ vi.mock('@fastgpt/web/components/common/DndDrag', () => ({
           { key: model.modelId },
           React.createElement('td', null, model.model)
         )
-      )
+      ),
+      clone
     );
   },
   Draggable: () => null,
-  getDraggableItemProps: vi.fn()
+  getDraggableItemProps: () => ({ draggableItemProps: {}, dragHandleProps: {} })
 }));
 vi.mock('@/components/core/ai/ModelTabHeader', () => ({
   default: ({ children }: React.PropsWithChildren) => children
@@ -235,6 +266,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   mocks.dnd = undefined;
+  mocks.activeDragRubric = undefined;
   mocks.addModelDisabled = undefined;
   mocks.confirmDelete = undefined;
   mocks.currentModels = [...models];
@@ -330,7 +362,7 @@ describe('ModelConfigTable sorting', () => {
       mocks.setMockModels?.([models[1], models[2]]);
     });
 
-    // 删除进行中进入排序并拖拽剩余项，随后删除刷新到达时自动剔除已删模型 A 且保留 C 在 B 前的拖拽顺序。
+    // 删除进行中进入排序并拖拽最后一行 C；拖拽尚未放下时删除刷新到达，克隆预览与索引保持在本次拖拽快照上不越界，放下后再按 ID 与最新目录合并。
     await act(async () => {
       mocks.confirmDelete?.();
     });
@@ -339,11 +371,26 @@ describe('ModelConfigTable sorting', () => {
     });
     expect(sortNames()).toEqual(['A', 'B', 'C']);
 
-    await act(async () => mocks.dnd!.onDragEndCb([models[0], models[2], models[1]]));
-    expect(sortNames()).toEqual(['A', 'C', 'B']);
+    await act(async () => {
+      mocks.activeDragRubric = { draggableId: models[2].modelId, index: 2 };
+      mocks.dnd!.onBeforeCapture?.({ draggableId: models[2].modelId });
+    });
 
+    // 删除刷新在拖拽中途将 modelItems 缩短为 [B, C]，renderClone 仍按 source.index = 2 渲染 C 而不报错。
     await act(async () => {
       resolveDelete();
+    });
+    expect(mocks.dnd!.dataList.map((item) => item.model)).toEqual(['A', 'B', 'C']);
+    expect(sortNames().at(-1)).toBe('C');
+
+    // 模拟 DndDrag.handleDragEnd：按本次拖拽快照将 index 2 的 C 移至 index 0，并触发 onDragEnd + onDragEndCb。
+    await act(async () => {
+      const nextList = Array.from(mocks.dnd!.dataList);
+      const [moved] = nextList.splice(2, 1);
+      nextList.splice(0, 0, moved);
+      mocks.activeDragRubric = undefined;
+      mocks.dnd!.onDragEnd?.();
+      mocks.dnd!.onDragEndCb(nextList);
     });
     expect(sortNames()).toEqual(['C', 'B']);
 

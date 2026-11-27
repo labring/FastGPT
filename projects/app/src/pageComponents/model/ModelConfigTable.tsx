@@ -385,6 +385,8 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   const [showModelId, setShowModelId] = useState(true);
   // 排序草稿只记录用户拖拽后的 modelId 顺序，列表实体始终由最新 modelItems 派生，避免并发删除后残留已删 ID。
   const [draftOrderIds, setDraftOrderIds] = useState<string[] | null>(null);
+  // 单次拖拽期间冻结行快照，避免后台目录刷新缩短列表导致 renderClone 与拖拽索引越界；结束后按 ID 与最新目录合并。
+  const [dragSortSnapshot, setDragSortSnapshot] = useState<ModelConfigListItem[] | null>(null);
   const isSortMode = draftOrderIds !== null;
   const [isSortBusy, setIsSortBusy] = useState(false);
   const sortModels = useMemo(() => {
@@ -398,13 +400,14 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     const added = modelItems.filter((item) => !orderedIds.has(item.modelId));
     return [...added, ...ordered];
   }, [draftOrderIds, modelItems]);
+  const displaySortModels = isSortMode && dragSortSnapshot ? dragSortSnapshot : sortModels;
   const {
     containerRef: sortModelListContainerRef,
     virtualDataList: virtualSortModels,
     topPlaceholderHeight: sortTopPlaceholderHeight,
     bottomPlaceholderHeight: sortBottomPlaceholderHeight
   } = useStaticVirtualList({
-    data: sortModels,
+    data: displaySortModels,
     itemHeight: sortModelRowHeight,
     overscan: 10
   });
@@ -434,6 +437,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
 
   const cancelSortMode = useCallback(() => {
     if (isSortBusy) return;
+    setDragSortSnapshot(null);
     setDraftOrderIds(null);
   }, [isSortBusy]);
 
@@ -455,6 +459,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
         throw error;
       }
       await refreshModels();
+      setDragSortSnapshot(null);
       setDraftOrderIds(null);
     } finally {
       setIsSortBusy(false);
@@ -613,7 +618,13 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       <col />
                     </colgroup>
                     <DndDrag<ModelConfigListItem>
-                      dataList={sortModels}
+                      dataList={displaySortModels}
+                      onBeforeCapture={() => {
+                        setDragSortSnapshot(sortModels);
+                      }}
+                      onDragEnd={() => {
+                        setDragSortSnapshot(null);
+                      }}
                       onDragEndCb={(models) => {
                         if (!isSortBusy) setDraftOrderIds(models.map((model) => model.modelId));
                       }}
@@ -621,10 +632,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       getContainerForClone={getSortModelCloneContainer}
                       renderClone={(provided, snapshot, rubric) => (
                         <SortModelRow
-                          item={sortModels[rubric.source.index]}
+                          item={displaySortModels[rubric.source.index]}
                           provided={provided}
                           snapshot={snapshot}
-                          canDrag={!isSortBusy && sortModels.length > 1}
+                          canDrag={!isSortBusy && displaySortModels.length > 1}
                         />
                       )}
                     >
@@ -651,14 +662,14 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                 <Draggable
                                   draggableId={item.modelId}
                                   index={index}
-                                  isDragDisabled={isSortBusy || sortModels.length < 2}
+                                  isDragDisabled={isSortBusy || displaySortModels.length < 2}
                                 >
                                   {(provided, snapshot) => (
                                     <SortModelRow
                                       item={item}
                                       provided={provided}
                                       snapshot={snapshot}
-                                      canDrag={!isSortBusy && sortModels.length > 1}
+                                      canDrag={!isSortBusy && displaySortModels.length > 1}
                                     />
                                   )}
                                 </Draggable>
