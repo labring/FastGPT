@@ -154,12 +154,37 @@ describe('persistChunkImageReferences', () => {
   it('deduplicates plain links and full image syntax without changing text', async () => {
     const { key } = await setup();
     const fakeKey = key.replace(/a{32}/, 'b'.repeat(32));
+    const followingKey = key.replace(/a{32}/, 'c'.repeat(32));
     const escapedKey = key.replace(/[./-]/g, '\\$&');
     const text = [
       `![Figure [1]](${key})`,
       `[two](<${escapedKey}> "title")`,
-      `<img alt="[fake](${fakeKey})" src='${key}'>`
+      `<img alt="[fake](${fakeKey})" src='${key}'>`,
+      `<img src="${key}" alt="Photo [draft"> [Source](${followingKey})`
     ].join(' ');
-    expect([...getChunkImageReferences([{ q: text }, { imageId: key }])]).toEqual([key]);
+    expect([...getChunkImageReferences([{ q: text }, { imageId: key }])]).toEqual([
+      key,
+      followingKey
+    ]);
+  });
+
+  it('still validates ownership for a plain link immediately following an img tag with an unclosed bracket in alt', async () => {
+    const { root, scope, key } = await setup();
+    const { scope: other } = await createDatasetCollectionFixture({ user: root });
+    await MongoDatasetCollection.updateOne(
+      { _id: other.collectionId },
+      { datasetId: scope.datasetId, chunkImagePrefixId: other.collectionId }
+    );
+    const otherKey = `dataset/${scope.datasetId}/chunk-images/${other.collectionId}/file/${'d'.repeat(32)}.png`;
+    await expect(
+      mongoSessionRun((session) =>
+        persistChunkImageReferences({
+          ...other,
+          datasetId: scope.datasetId,
+          data: [{ q: `<img src="${otherKey}" alt="Photo [draft"> [Source](${key})` }],
+          tx: bridgeClientSessionToDbSession(session)
+        })
+      )
+    ).rejects.toThrow('does not belong');
   });
 });

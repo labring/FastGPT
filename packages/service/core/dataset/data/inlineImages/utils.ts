@@ -1,9 +1,7 @@
-import {
-  matchDocumentImages,
-  unescapeMarkdownImageUrl
-} from '@fastgpt/global/common/string/markdown';
+import { unescapeMarkdownImageUrl } from '@fastgpt/global/common/string/markdown';
 import { createOpaqueS3FileKey } from '../../../../common/s3/opaqueKey';
 import { S3Buckets } from '../../../../common/s3/config/constants';
+import { forEachDocumentImageAndGap } from '../../../../common/s3/utils/textReferences';
 import type { S3MQJobData } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
 
 export type ChunkImageContent = {
@@ -22,29 +20,22 @@ const markdownChunkLinkRegex =
 const collectChunkImageKeysFromText = (text: string, keys: Set<string>) => {
   if (!text || !possibleChunkImageHintRegex.test(text)) return;
 
-  const occupiedSpans: Array<[number, number]> = [];
-  for (const image of matchDocumentImages(text)) {
-    occupiedSpans.push([image.index, image.index + image.fullMatch.length]);
-    const url = image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url;
-    if (parseChunkImageKey(url)) keys.add(url);
-  }
+  forEachDocumentImageAndGap(text, {
+    onImage: (image) => {
+      const url = image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url;
+      if (parseChunkImageKey(url)) keys.add(url);
+    },
+    onGap: (gapText) => {
+      if (!gapText.includes('](') || !possibleChunkImageHintRegex.test(gapText)) return;
 
-  let spanCursor = 0;
-  for (const match of text.matchAll(markdownChunkLinkRegex)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    while (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![1] <= start) {
-      spanCursor++;
+      for (const match of gapText.matchAll(markdownChunkLinkRegex)) {
+        const rawDest = match[2] ?? match[3];
+        if (!rawDest) continue;
+        const url = unescapeMarkdownImageUrl(rawDest);
+        if (parseChunkImageKey(url)) keys.add(url);
+      }
     }
-    if (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![0] < end) {
-      continue;
-    }
-
-    const rawDest = match[2] ?? match[3];
-    if (!rawDest) continue;
-    const url = unescapeMarkdownImageUrl(rawDest);
-    if (parseChunkImageKey(url)) keys.add(url);
-  }
+  });
 };
 
 /** 按预览支持的语法临时提取受管图片，仅对命中的目标地址反转义，不在 data/task 中持久化第二份引用清单。 */

@@ -41,78 +41,77 @@ const replaceMarkdownImageForPreview = (item: DocumentImageItem, nextUrl: string
 };
 
 /**
+ * 按位置顺序遍历文本中的已识别图片节点与图片之间的纯文本空隙。
+ * 补充扫描仅运行在各空隙切片上，避免 HTML 属性或图片描述中未闭合的 `[` 越过图片边界吞掉后续普通链接。
+ */
+export const forEachDocumentImageAndGap = (
+  text: string,
+  visitors: {
+    onImage?: (image: DocumentImageItem) => void;
+    onGap?: (gapText: string, gapOffset: number) => void;
+  }
+) => {
+  if (!text || typeof text !== 'string') return;
+
+  const images = matchDocumentImages(text);
+  let cursor = 0;
+
+  for (const image of images) {
+    if (image.index > cursor) {
+      visitors.onGap?.(text.slice(cursor, image.index), cursor);
+    }
+    visitors.onImage?.(image);
+    cursor = image.index + image.fullMatch.length;
+  }
+
+  if (cursor < text.length) {
+    visitors.onGap?.(cursor === 0 ? text : text.slice(cursor), cursor);
+  }
+};
+
+/**
  * 统一提取文本中的 S3 对象引用及替换函数，供预览提取与预览替换共用。
  * 图片节点复用 `matchDocumentImages`（支持嵌套/转义方括号 alt 与完整 HTML `<img>` 边界），
- * 普通 Markdown 链接及历史非规范尖括号 key 通过单调游标在 O(N) 内按位置合并。
+ * 普通 Markdown 链接及历史非规范尖括号 key 仅在图片之间的空隙切片中按顺序补扫（总复杂度 O(N)）。
  */
 export const getS3TextReferences = (text: string): S3TextReference[] => {
   if (!text || typeof text !== 'string') return [];
 
-  const imageRefs: S3TextReference[] = [];
-  const occupiedSpans: Array<[number, number]> = [];
+  const references: S3TextReference[] = [];
 
-  for (const item of matchDocumentImages(text)) {
-    const start = item.index;
-    const end = start + item.fullMatch.length;
-    // 所有已识别图片节点（含非 S3 的 HTML <img>）都占位，防止兜底正则误扫标签属性中的假语法。
-    occupiedSpans.push([start, end]);
+  forEachDocumentImageAndGap(text, {
+    onImage: (item) => {
+      if (!s3SourcePrefixRegex.test(item.url)) return;
 
-    if (!s3SourcePrefixRegex.test(item.url)) continue;
+      references.push({
+        objectKey: item.url,
+        format: item.format,
+        index: item.index,
+        fullMatch: item.fullMatch,
+        replace:
+          item.format === 'markdown'
+            ? (nextUrl: string) => replaceMarkdownImageForPreview(item, nextUrl)
+            : item.replace
+      });
+    },
+    onGap: (gapText, gapOffset) => {
+      if (!gapText.includes('](')) return;
 
-    imageRefs.push({
-      objectKey: item.url,
-      format: item.format,
-      index: start,
-      fullMatch: item.fullMatch,
-      replace:
-        item.format === 'markdown'
-          ? (nextUrl: string) => replaceMarkdownImageForPreview(item, nextUrl)
-          : item.replace
-    });
-  }
+      for (const match of gapText.matchAll(s3MarkdownFallbackRegex)) {
+        const [, bang, alt, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = match;
+        const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
+        if (!objectKey) continue;
 
-  const fallbackRefs: S3TextReference[] = [];
-  let spanCursor = 0;
-
-  for (const match of text.matchAll(s3MarkdownFallbackRegex)) {
-    const start = match.index;
-    const fullMatch = match[0];
-    const end = start + fullMatch.length;
-    // 两路序列均按起始偏移递增，单调推进游标跳过已结束区间，避免平方级重叠检查。
-    while (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![1] <= start) {
-      spanCursor++;
+        references.push({
+          objectKey,
+          format: 'markdown',
+          index: gapOffset + match.index,
+          fullMatch: match[0],
+          replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
+        });
+      }
     }
-    if (spanCursor < occupiedSpans.length && occupiedSpans[spanCursor]![0] < end) {
-      continue;
-    }
+  });
 
-    const [, bang, alt, wrappedObjectKey, unwrappedObjectKey, markdownTitle] = match;
-    const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
-    if (!objectKey) continue;
-
-    fallbackRefs.push({
-      objectKey,
-      format: 'markdown',
-      index: start,
-      fullMatch,
-      replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
-    });
-  }
-
-  if (fallbackRefs.length === 0) return imageRefs;
-  if (imageRefs.length === 0) return fallbackRefs;
-
-  const merged: S3TextReference[] = [];
-  let imageIndex = 0;
-  let fallbackIndex = 0;
-  while (imageIndex < imageRefs.length && fallbackIndex < fallbackRefs.length) {
-    if (imageRefs[imageIndex]!.index <= fallbackRefs[fallbackIndex]!.index) {
-      merged.push(imageRefs[imageIndex++]!);
-    } else {
-      merged.push(fallbackRefs[fallbackIndex++]!);
-    }
-  }
-  while (imageIndex < imageRefs.length) merged.push(imageRefs[imageIndex++]!);
-  while (fallbackIndex < fallbackRefs.length) merged.push(fallbackRefs[fallbackIndex++]!);
-  return merged;
+  return references;
 };

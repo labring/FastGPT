@@ -758,6 +758,39 @@ describe('批量 S3 预览 URL 格式化', () => {
       'dataset/team/a>b.png'
     ]);
 
+    // 图片属性中的未闭合 `[` 不应吞掉紧随其后的有效普通链接
+    const unclosedBracketHtml =
+      '<img src="dataset/sample/photo.png" alt="Photo [draft"> [Source](dataset/sample/report.pdf)';
+    expect(getS3ObjectKeysFromTexts([unclosedBracketHtml])).toEqual([
+      'dataset/sample/photo.png',
+      'dataset/sample/report.pdf'
+    ]);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        unclosedBracketHtml,
+        new Map([
+          ['dataset/sample/photo.png', 'https://preview.test/photo'],
+          ['dataset/sample/report.pdf', 'https://preview.test/report']
+        ])
+      )
+    ).toBe(
+      '<img src="https://preview.test/photo" alt="Photo [draft"> [Source](https://preview.test/report)'
+    );
+
+    const externalUnclosedBracketHtml =
+      '<img alt="Photo [draft" src="https://example.com/photo.png"> [Source](dataset/sample/report.pdf)';
+    expect(getS3ObjectKeysFromTexts([externalUnclosedBracketHtml])).toEqual([
+      'dataset/sample/report.pdf'
+    ]);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        externalUnclosedBracketHtml,
+        new Map([['dataset/sample/report.pdf', 'https://preview.test/report']])
+      )
+    ).toBe(
+      '<img alt="Photo [draft" src="https://example.com/photo.png"> [Source](https://preview.test/report)'
+    );
+
     const largeLines = Array.from({ length: 2000 }, (_, i) =>
       i % 2 === 0
         ? `![img ${i}](dataset/team/chunk-images/col1/file/${i}.png)`
