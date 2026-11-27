@@ -217,7 +217,7 @@ describe('@fastgpt/service/common/db/dalRuntime', () => {
     emit('SIGTERM');
     expect(prior).toHaveBeenCalledWith('SIGTERM');
 
-    // 资源关闭失败时仍等待全部资源 settle 并以 1 退出
+    // 资源关闭失败时仍等待全部资源 settle，通过 error 字段上报原始异常并以 1 退出
     processRef.removeListener('SIGTERM', prior);
     const secondClose = vi.fn(async () => undefined);
     const failError = new Error('db close failed');
@@ -234,9 +234,37 @@ describe('@fastgpt/service/common/db/dalRuntime', () => {
     expect(secondClose).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
       'DAL runtime close failed after process shutdown signal',
-      { errors: [failError] }
+      { error: failError }
     );
     expect(processRef.exit).toHaveBeenCalledWith(1);
+
+    // 多个资源同时关闭失败时用 AggregateError 经 error 字段一次保留全部异常
+    const multiMock = createProcessMock();
+    const multiLogger = { info: vi.fn(), error: vi.fn() };
+    const redisError = new Error('redis close failed');
+    const dbError = new Error('db close failed');
+    registerDalRuntimeShutdown({
+      processRef: multiMock.processRef,
+      logger: multiLogger,
+      closeResources: [
+        vi.fn(async () => Promise.reject(redisError)),
+        vi.fn(async () => Promise.reject(dbError))
+      ],
+      signals: ['SIGTERM']
+    });
+    multiMock.emit('SIGTERM');
+    await flushAsync();
+
+    expect(multiLogger.error).toHaveBeenCalledWith(
+      'DAL runtime close failed after process shutdown signal',
+      expect.objectContaining({ error: expect.any(AggregateError) })
+    );
+    const loggedError: unknown = multiLogger.error.mock.calls[0]?.[1]?.error;
+    expect(loggedError).toBeInstanceOf(AggregateError);
+    if (loggedError instanceof AggregateError) {
+      expect(loggedError.errors).toEqual([redisError, dbError]);
+    }
+    expect(multiMock.processRef.exit).toHaveBeenCalledWith(1);
   });
 
   it('drains an in-flight HTTP request and survives duplicate OS SIGTERM signals in a real child process', async () => {

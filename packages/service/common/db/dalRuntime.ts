@@ -190,7 +190,11 @@ export const registerDalRuntimeShutdown = ({
           result.status === 'rejected' ? [result.reason] : []
         );
         if (errors.length > 0) {
-          logger.error('DAL runtime close failed after process shutdown signal', { errors });
+          const error =
+            errors.length === 1
+              ? errors[0]
+              : new AggregateError(errors, 'Multiple DAL runtimes failed to close');
+          logger.error('DAL runtime close failed after process shutdown signal', { error });
         } else {
           logger.info('DAL runtimes closed after process shutdown signal');
           exitCode = exitGate?.requestedCode() ?? 0;
