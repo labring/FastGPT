@@ -69,7 +69,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'} gap={3}>
         <Box flex={'1'} minW={0} overflow={'hidden'}>
           <FolderPath
-            rootName={t('common:navbar.Tools')}
+            rootName={t('app:tools')}
             paths={paths}
             currentName={appName}
             hoverStyle={{ color: 'primary.600' }}

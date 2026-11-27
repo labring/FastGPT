@@ -192,7 +192,7 @@ const Header = ({
       >
         <Box flex={isPc ? undefined : '1'} minW={0} ml={'16px'} overflow={'hidden'}>
           <FolderPath
-            rootName={t('app:my_agents')}
+            rootName={t('common:navbar.Agent')}
             paths={paths}
             currentName={appName}
             hoverStyle={{ color: 'primary.600' }}

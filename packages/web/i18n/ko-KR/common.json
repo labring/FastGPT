@@ -1013,6 +1013,7 @@
   "navbar.Account": "계정",
   "navbar.Chat": "포털",
   "navbar.Config": "관리",
+  "navbar.Agent": "에이전트",
   "navbar.Datasets": "데이터셋",
   "navbar.Skill": "스킬",
   "navbar.Studio": "스튜디오",
