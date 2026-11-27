@@ -230,6 +230,7 @@ export function createChatService(): ChatService {
           : { body: validated }),
         ...(operation === 'run'
           ? {
+              rawJson: true,
               timeoutMs: IntSchema.positive()
                 .max(2_147_483_647)
                 .parse(timeoutMs ?? 300_000)

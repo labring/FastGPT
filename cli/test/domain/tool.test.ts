@@ -535,8 +535,9 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
         outcome: 'unknown',
         appId: HTTP_ID,
         completedSteps: ['create'],
-        failedStep: 'configure'
+        uncertainStep: 'configure'
       });
+      expect(error.details.failedStep).toBeUndefined();
       expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
     }
   });
@@ -628,13 +629,28 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       headerSecret: { Authorization: { value: 'Bearer manual-token' } }
     });
 
-    // Overriding manual tool target via --target-url must still block saved sub-tool credentials
+    // Overriding manual tool target via --target-url blocks saved credentials, while explicit override extracts path cleanly
     await expect(
       httpService.run({
         client: manualClient,
         input: { appId: HTTP_ID, toolPath: 'manual_hook', baseUrl: 'https://evil.example.com' }
       })
     ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    await httpService.run({
+      client: manualClient,
+      input: {
+        appId: HTTP_ID,
+        toolPath: 'manual_hook',
+        baseUrl: 'https://staging.example.com',
+        headerSecret: { Authorization: 'Bearer staging-token' }
+      }
+    });
+    expect(manualCapturedBody).toMatchObject({
+      baseUrl: 'https://staging.example.com',
+      toolPath: '/v1/hook',
+      method: 'GET'
+    });
 
     // 3. Multi-method same-path disambiguation: refuse ambiguity and mismatched method instead of borrowing first item
     let multiCapturedBody: any;
@@ -766,6 +782,13 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       })
     ).rejects.toThrow(/Refusing to send saved credentials/);
 
+    await expect(
+      httpService.run({
+        client: prefixClient,
+        input: { appId: HTTP_ID, toolPath: '/../v2/admin' }
+      })
+    ).rejects.toThrow(/Invalid HTTP tool path/);
+
     // 7. Create rejects null/invalid resource ID without issuing follow-up write; standalone & multi-step writes preserve outcome: unknown + get hint
     let nullCreateFollowUpCalled = false;
     const nullCreateClient = createFastGptHttpClient({
@@ -861,7 +884,7 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
         outcome: 'unknown',
         appId: HTTP_ID,
         completedSteps: ['create'],
-        failedStep: 'configure'
+        uncertainStep: 'configure'
       })
     });
 
@@ -878,7 +901,7 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       details: expect.objectContaining({
         outcome: 'unknown',
         appId: HTTP_ID,
-        failedStep: 'config'
+        uncertainStep: 'config'
       })
     });
 
@@ -895,7 +918,7 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
       details: expect.objectContaining({
         outcome: 'unknown',
         appId: MCP_ID,
-        failedStep: 'config'
+        uncertainStep: 'config'
       })
     });
 

@@ -431,6 +431,7 @@ export function createMcpToolService(): McpToolService {
           appId: validatedQuery.appId,
           resourceCmd: 'tool mcp',
           step: 'metadata',
+          expectEmpty: true,
           run: () =>
             client.request<UpdateAppResponseType>({
               method: 'PUT',
@@ -450,6 +451,7 @@ export function createMcpToolService(): McpToolService {
           resourceCmd: 'tool mcp',
           completedSteps: metadataBody ? ['metadata'] : [],
           step: 'config',
+          expectEmpty: true,
           run: () =>
             client.request<UpdateMcpToolsResponseType>({
               method: 'PUT',

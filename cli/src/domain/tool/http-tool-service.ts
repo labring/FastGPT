@@ -428,6 +428,7 @@ export function createHttpToolService(): HttpToolService {
           resourceCmd: 'tool http',
           completedSteps: ['create'],
           step: 'configure',
+          expectEmpty: true,
           run: () =>
             client.request<UpdateHttpToolsResponseType>({
               method: 'PUT',
@@ -609,6 +610,7 @@ export function createHttpToolService(): HttpToolService {
           appId: validatedQuery.appId,
           resourceCmd: 'tool http',
           step: 'metadata',
+          expectEmpty: true,
           run: () =>
             client.request<UpdateAppResponseType>({
               method: 'PUT',
@@ -627,6 +629,7 @@ export function createHttpToolService(): HttpToolService {
           resourceCmd: 'tool http',
           completedSteps: metadataBody ? ['metadata'] : [],
           step: 'config',
+          expectEmpty: true,
           run: () =>
             client.request<UpdateHttpToolsResponseType>({
               method: 'PUT',
@@ -774,9 +777,16 @@ export function createHttpToolService(): HttpToolService {
             'Pass --target-url explicitly.'
           );
         }
+        const relativePath =
+          explicitBaseUrl && matchedTool && isAbsoluteHttpUrl(candidatePath)
+            ? (() => {
+                const parsed = new URL(parseHttpUrl(candidatePath, 'HTTP tool URL'));
+                return `${parsed.pathname}${parsed.search}`;
+              })()
+            : candidatePath;
         return {
           resolvedBaseUrl: base,
-          resolvedToolPath: validateRelativeToolPath(candidatePath)
+          resolvedToolPath: validateRelativeToolPath(relativePath)
         };
       })();
 

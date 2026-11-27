@@ -37,6 +37,7 @@ export type FastGptHttpClient = {
     auth?: HttpRequestAuth;
     headers?: Record<string, string>;
     timeoutMs?: number;
+    rawJson?: boolean;
   }) => Promise<T>;
   requestRaw: (params: {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -224,11 +225,13 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl
+  displayUrl,
+  rawJson = false
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
+  rawJson?: boolean;
 }): T {
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
@@ -324,7 +327,16 @@ function unpackFastGptResponse<T>({
     });
   }
 
-  return parsed as T;
+  // FastGPT 标准接口统一返回 `{ code: 200, data }` 信封；仅 OpenAI 兼容等显式声明 `rawJson: true` 的接口原样返回 JSON。
+  if (rawJson) {
+    return parsed as T;
+  }
+
+  throw new CliNetworkError(
+    `Expected a FastGPT JSON envelope ({ code: 200, data }) from ${redactText(displayUrl)}, but received an unrecognized HTTP ${response.status} payload.`,
+    'Verify FASTGPT_BASE_URL and check whether a proxy intercepted the request.',
+    { url: redactText(displayUrl), httpStatus: response.status, phase: 'invalid_response' }
+  );
 }
 
 function sanitizePresignedUrlForError(rawUrl: string): string {
@@ -734,7 +746,8 @@ export function createFastGptHttpClient({
       body,
       auth,
       headers: extraHeaders,
-      timeoutMs: requestTimeout = timeoutMs
+      timeoutMs: requestTimeout = timeoutMs,
+      rawJson = false
     }: {
       method: 'GET' | 'POST' | 'PUT' | 'DELETE';
       path: string;
@@ -743,6 +756,7 @@ export function createFastGptHttpClient({
       auth?: HttpRequestAuth;
       headers?: Record<string, string>;
       timeoutMs?: number;
+      rawJson?: boolean;
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
@@ -761,7 +775,8 @@ export function createFastGptHttpClient({
         return unpackFastGptResponse<T>({
           response,
           rawText,
-          displayUrl: finalUrl
+          displayUrl: finalUrl,
+          rawJson
         });
       } catch (error) {
         rethrowWithWriteOutcome(method, error);

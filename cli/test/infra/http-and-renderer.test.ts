@@ -419,6 +419,9 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
         if (url.endsWith('/non-200-code')) {
           return jsonResponse({ code: 0, data: null }, 200);
         }
+        if (url.endsWith('/plain-json-no-envelope')) {
+          return jsonResponse({ ok: true }, 200);
+        }
         if (url.endsWith('/empty-200')) {
           return new Response('', { status: 200 });
         }
@@ -465,6 +468,19 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
         outcome: 'unknown'
       })
     });
+    await expect(
+      client.request({ method: 'PUT', path: '/plain-json-no-envelope' })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(
+      client.request({ method: 'POST', path: '/plain-json-no-envelope', rawJson: true })
+    ).resolves.toEqual({ ok: true });
     await expect(client.request({ method: 'GET', path: '/empty-200' })).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
       details: expect.objectContaining({ httpStatus: 200, phase: 'invalid_response' })

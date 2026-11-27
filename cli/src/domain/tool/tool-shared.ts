@@ -149,22 +149,24 @@ export function parseHttpUrl(
 }
 
 /**
- * 校验相对 HTTP 子工具路径，禁止传入绝对 URL、协议相对路径或换行字符。
+ * 校验相对 HTTP 子工具路径，禁止绝对 URL、协议相对路径、换行符或 `..` 路径穿越片段。
  */
 export function validateRelativeToolPath(rawPath: string): string {
   const trimmed = rawPath.trim();
   if (!trimmed) {
     throw new CliArgumentError('HTTP tool path is required.', undefined, 'Pass --tool-path.');
   }
+  const pathOnly = trimmed.split(/[?#]/, 1)[0] ?? '';
   if (
     /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ||
     trimmed.startsWith('//') ||
-    /[\r\n\\]/.test(trimmed)
+    /[\r\n\\]/.test(trimmed) ||
+    /(?:^|\/)\.\.(?:\/|$)/.test(pathOnly)
   ) {
     throw new CliArgumentError(
       `Invalid HTTP tool path "${trimmed}".`,
       undefined,
-      'Pass a relative endpoint path such as "/v1/search" instead of a full URL.'
+      'Pass a clean relative endpoint path such as "/v1/search" without full URLs or ".." segments.'
     );
   }
   return trimmed;
@@ -222,6 +224,7 @@ export async function runToolWriteStep<T>({
   resourceCmd,
   completedSteps = [],
   step,
+  expectEmpty = false,
   run
 }: {
   operation: string;
@@ -229,10 +232,19 @@ export async function runToolWriteStep<T>({
   resourceCmd: string;
   completedSteps?: string[];
   step: string;
+  expectEmpty?: boolean;
   run: () => Promise<T>;
 }): Promise<T> {
   try {
-    return await run();
+    const result = await run();
+    if (expectEmpty && result !== null && result !== undefined) {
+      throw new CliNetworkError(
+        `${operation} step "${step}" received an unexpected non-empty payload instead of an empty confirmation.`,
+        undefined,
+        { outcome: 'unknown', phase: 'invalid_response' }
+      );
+    }
+    return result;
   } catch (error) {
     const isClientRejection =
       error instanceof CliArgumentError ||
@@ -259,7 +271,7 @@ export async function runToolWriteStep<T>({
       ...(hasCompleted ? { partialSuccess: true, completedSteps } : {}),
       outcome,
       appId,
-      failedStep: step,
+      ...(outcome === 'unknown' ? { uncertainStep: step } : { failedStep: step }),
       ...(causeDetails !== undefined ? { cause: causeDetails } : {})
     };
     const prefix = hasCompleted
