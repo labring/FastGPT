@@ -83,20 +83,27 @@ function embedChatbot() {
   const iframeStyleObserver = new MutationObserver(sendHostVisibility);
   iframeStyleObserver.observe(iframe, { attributes: true, attributeFilter: ['style'] });
 
+  const handleSize = 18;
+  const btnGap = 10;
+  const minWindowWidth = 375;
+  const minWindowHeight = 240;
+  const verticalEdgeGap = 30;
+  let horizontalAnchor = 'right';
+  let verticalAnchor = 'bottom';
+
   const resizeHandle = document.createElement('button');
   resizeHandle.type = 'button';
   resizeHandle.setAttribute('aria-label', 'Resize chat window');
-  resizeHandle.style.cssText =
-    'position: fixed; width: 18px; height: 18px; padding: 4px 0 0 4px; box-sizing: border-box; margin: 0; background: transparent; border: none; border-radius: 0.75rem 0 0 0; display: flex; align-items: flex-start; justify-content: flex-start; cursor: nwse-resize; touch-action: none; color: #94a3b8; z-index: 2147483647;';
+  resizeHandle.style.cssText = `position: fixed; width: ${handleSize}px; height: ${handleSize}px; padding: 0; box-sizing: border-box; margin: 0; background: transparent; border: none; border-radius: 0.75rem 0 0 0; display: flex; align-items: center; justify-content: center; cursor: nwse-resize; touch-action: none; color: #94a3b8; z-index: 2147483647;`;
   const resizeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  resizeIcon.setAttribute('width', '10');
-  resizeIcon.setAttribute('height', '10');
-  resizeIcon.setAttribute('viewBox', '0 0 10 10');
+  resizeIcon.setAttribute('width', `${handleSize}`);
+  resizeIcon.setAttribute('height', `${handleSize}`);
+  resizeIcon.setAttribute('viewBox', `0 0 ${handleSize} ${handleSize}`);
   resizeIcon.setAttribute('aria-hidden', 'true');
   resizeIcon.style.cssText = 'display: block; pointer-events: none;';
   [
-    ['1.5', '6.5', '6.5', '1.5'],
-    ['4.5', '8.5', '8.5', '4.5']
+    ['4.5', '9.5', '9.5', '4.5'],
+    ['7.5', '11.5', '11.5', '7.5']
   ].forEach(([x1, y1, x2, y2]) => {
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', x1);
@@ -117,6 +124,11 @@ function embedChatbot() {
   });
   document.body.appendChild(resizeHandle);
 
+  const getResizeAxisSigns = () => ({
+    xSign: horizontalAnchor === 'right' ? -1 : 1,
+    ySign: verticalAnchor === 'bottom' ? -1 : 1
+  });
+
   const updateResizeHandlePosition = () => {
     if (!iframe.isConnected) {
       resizeHandle.style.visibility = 'hidden';
@@ -127,14 +139,23 @@ function embedChatbot() {
       resizeHandle.style.visibility = 'hidden';
       return;
     }
-    resizeHandle.style.left = `${rect.left}px`;
-    resizeHandle.style.top = `${rect.top}px`;
+    const { xSign, ySign } = getResizeAxisSigns();
+    const isLeftHandle = horizontalAnchor === 'right';
+    const isTopHandle = verticalAnchor === 'bottom';
+    resizeHandle.style.left = `${isLeftHandle ? rect.left : rect.right - handleSize}px`;
+    resizeHandle.style.top = `${isTopHandle ? rect.top : rect.bottom - handleSize}px`;
+    resizeHandle.style.cursor = xSign * ySign > 0 ? 'nwse-resize' : 'nesw-resize';
+    resizeHandle.style.borderRadius = isTopHandle
+      ? isLeftHandle
+        ? '0.75rem 0 0 0'
+        : '0 0.75rem 0 0'
+      : isLeftHandle
+        ? '0 0 0 0.75rem'
+        : '0 0 0.75rem 0';
+    const rotation = isTopHandle ? (isLeftHandle ? 0 : 90) : isLeftHandle ? -90 : 180;
+    resizeIcon.style.transform = `rotate(${rotation}deg)`;
     resizeHandle.style.visibility = iframe.style.visibility;
   };
-
-  const minWindowWidth = 375;
-  const minWindowHeight = 240;
-  const verticalEdgeGap = 30;
 
   /** 获取扣除占位滚动条后的可用视口尺寸，与 position: fixed 定位坐标系保持一致。 */
   const getViewportSize = () => {
@@ -146,15 +167,15 @@ function embedChatbot() {
     };
   };
 
-  /** 保持右下角固定，并将调整后的窗口限制在可视区域内（上下预留对称边距）。 */
+  /** 保持贴近入口按钮的对角锚点固定，并将调整后的窗口限制在可视区域内（上下预留对称边距）。 */
   const resizeChatWindow = (width, height) => {
     const { width: vw, height: vh } = getViewportSize();
     const rect = iframe.getBoundingClientRect();
-    const maxWidth = Math.min(vw * 0.9, rect.right);
-    const maxHeight = Math.max(
-      0,
-      Math.min(vh - verticalEdgeGap * 2, rect.bottom - verticalEdgeGap)
-    );
+    const availableWidth = horizontalAnchor === 'right' ? rect.right : vw - rect.left;
+    const availableHeight =
+      verticalAnchor === 'bottom' ? rect.bottom - verticalEdgeGap : vh - rect.top - verticalEdgeGap;
+    const maxWidth = Math.max(0, Math.min(vw * 0.9, availableWidth));
+    const maxHeight = Math.max(0, Math.min(vh - verticalEdgeGap * 2, availableHeight));
     iframe.style.width = `${Math.max(Math.min(minWindowWidth, maxWidth), Math.min(maxWidth, width))}px`;
     iframe.style.height = `${Math.max(Math.min(minWindowHeight, maxHeight), Math.min(maxHeight, height))}px`;
     updateResizeHandlePosition();
@@ -178,8 +199,9 @@ function embedChatbot() {
   });
   resizeHandle.addEventListener('pointermove', (event) => {
     if (!resizeStart || event.pointerId !== resizeStart.pointerId) return;
-    const width = resizeStart.rect.width + resizeStart.x - event.clientX;
-    const height = resizeStart.rect.height + resizeStart.y - event.clientY;
+    const { xSign, ySign } = getResizeAxisSigns();
+    const width = resizeStart.rect.width + (event.clientX - resizeStart.x) * xSign;
+    const height = resizeStart.rect.height + (event.clientY - resizeStart.y) * ySign;
     resizeChatWindow(width, height);
   });
   resizeHandle.addEventListener('lostpointercapture', (event) => {
@@ -189,11 +211,12 @@ function embedChatbot() {
   });
   resizeHandle.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const { xSign, ySign } = getResizeAxisSigns();
     const deltas = {
-      ArrowLeft: [20, 0],
-      ArrowRight: [-20, 0],
-      ArrowUp: [0, 20],
-      ArrowDown: [0, -20]
+      ArrowLeft: [-20 * xSign, 0],
+      ArrowRight: [20 * xSign, 0],
+      ArrowUp: [0, -20 * ySign],
+      ArrowDown: [0, 20 * ySign]
     };
     const delta = deltas[event.key];
     if (!delta) return;
@@ -222,6 +245,7 @@ function embedChatbot() {
   let chatBtnMouseX;
   let chatBtnMouseY;
 
+  /** 按入口按钮在视口中的剩余空间自动选择展开象限，并始终将窗口钳制在可视区域内。 */
   const updateChatWindowPosition = () => {
     const chatWindow = document.getElementById(chatWindowId);
     if (!chatWindow) return;
@@ -229,20 +253,37 @@ function embedChatbot() {
     const { width: vw, height: vh } = getViewportSize();
     const [ww, wh] = [chatWindow.offsetWidth, chatWindow.offsetHeight];
 
-    let right = 0;
-    if (btn.left >= ww) {
-      right = vw - btn.left + 10; // 左侧有空间则放在左侧，间距 10
-    } else if (vw - btn.right >= ww) {
-      right = vw - btn.right - ww - 10; // 右侧有空间则放在右侧
+    const leftSpace = btn.left - btnGap;
+    const rightSpace = vw - btn.right - btnGap;
+    horizontalAnchor = leftSpace >= rightSpace ? 'right' : 'left';
+
+    if (horizontalAnchor === 'right') {
+      const right = Math.max(0, Math.min(vw - btn.left + btnGap, vw - ww));
+      chatWindow.style.left = 'unset';
+      chatWindow.style.right = `${right}px`;
+    } else {
+      const left = Math.max(0, Math.min(btn.right + btnGap, vw - ww));
+      chatWindow.style.right = 'unset';
+      chatWindow.style.left = `${left}px`;
     }
 
-    let bottom = Math.max(30, vh - btn.bottom); // 聊天窗口底部和按钮对齐，最少 30
-    if (btn.top < wh) {
-      bottom = Math.min(bottom, vh - wh - 30); // 确保聊天窗口不超出顶部
+    const upSpace = btn.bottom - verticalEdgeGap;
+    const downSpace = vh - btn.top - verticalEdgeGap;
+    verticalAnchor = upSpace >= downSpace ? 'bottom' : 'top';
+    const maxVerticalOffset = Math.max(0, vh - wh - verticalEdgeGap);
+
+    if (verticalAnchor === 'bottom') {
+      const desiredBottom = Math.max(verticalEdgeGap, vh - btn.bottom);
+      const bottom = Math.max(0, Math.min(desiredBottom, maxVerticalOffset));
+      chatWindow.style.top = 'unset';
+      chatWindow.style.bottom = `${bottom}px`;
+    } else {
+      const desiredTop = Math.max(verticalEdgeGap, btn.top);
+      const top = Math.max(0, Math.min(desiredTop, maxVerticalOffset));
+      chatWindow.style.bottom = 'unset';
+      chatWindow.style.top = `${top}px`;
     }
 
-    chatWindow.style.right = `${Math.max(0, Math.min(right, vw - ww))}px`;
-    chatWindow.style.bottom = `${Math.max(0, Math.min(bottom, vh - wh))}px`;
     updateResizeHandlePosition();
   };
 
@@ -258,27 +299,34 @@ function embedChatbot() {
     if (visibilityVal === 'hidden') {
       chatWindow.style.visibility = 'unset';
       ChatBtnDiv.src = CloseIcon;
+      updateChatWindowPosition();
     } else {
       chatWindow.style.visibility = 'hidden';
       ChatBtnDiv.src = MessageIcon;
+      updateResizeHandlePosition();
     }
-    updateResizeHandlePosition();
     sendHostVisibility();
   });
 
+  const isChatWindowOpen = () => iframe.style.visibility !== 'hidden';
+
   ChatBtn.addEventListener('mousedown', (e) => {
     e.stopPropagation();
+    chatBtnDragged = false;
+    if (!canDrag || isChatWindowOpen()) return;
     chatBtnMouseX = e.clientX;
     chatBtnMouseY = e.clientY;
     chatBtnDown = true;
 
-    ChatBtn.initialRight = parseInt(ChatBtn.style.right) || 60;
-    ChatBtn.initialBottom = parseInt(ChatBtn.style.bottom) || 30;
+    const { width: vw, height: vh } = getViewportSize();
+    const btnRect = ChatBtn.getBoundingClientRect();
+    ChatBtn.initialRight = vw - btnRect.right;
+    ChatBtn.initialBottom = vh - btnRect.bottom;
   });
 
   window.addEventListener('mousemove', (e) => {
     e.stopPropagation();
-    if (!canDrag || !chatBtnDown) return;
+    if (!canDrag || !chatBtnDown || isChatWindowOpen()) return;
 
     chatBtnDragged = true;
 
@@ -292,6 +340,8 @@ function embedChatbot() {
     newRight = Math.max(20, Math.min(vw - 60, newRight));
     newBottom = Math.max(30, Math.min(vh - 70, newBottom));
 
+    ChatBtn.style.left = 'auto';
+    ChatBtn.style.top = 'auto';
     ChatBtn.style.right = `${newRight}px`;
     ChatBtn.style.bottom = `${newBottom}px`;
 
