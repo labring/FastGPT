@@ -14,7 +14,9 @@ const mocks = vi.hoisted(() => ({
   onError: vi.fn(),
   dnd: undefined as DndProps | undefined,
   addModelDisabled: undefined as boolean | undefined,
-  confirmDelete: undefined as (() => void) | undefined
+  confirmDelete: undefined as (() => void) | undefined,
+  currentModels: [] as ModelConfigListItem[],
+  setMockModels: undefined as ((next: ModelConfigListItem[]) => void) | undefined
 }));
 
 vi.mock('@chakra-ui/react', async (importOriginal) => ({
@@ -151,15 +153,19 @@ const models: ModelConfigListItem[] = ['A', 'B', 'C'].map((model, index) => ({
   channels: []
 }));
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
-  useModelConfig: () => ({
-    data: { models },
-    models,
-    channels: [],
-    providers: [],
-    getModelProvider: () => ({}),
-    refresh: mocks.refresh,
-    loading: false
-  })
+  useModelConfig: () => {
+    const [list, setList] = React.useState<ModelConfigListItem[]>(() => mocks.currentModels);
+    mocks.setMockModels = setList;
+    return {
+      data: { models: list },
+      models: list,
+      channels: [],
+      providers: [],
+      getModelProvider: () => ({}),
+      refresh: mocks.refresh,
+      loading: false
+    };
+  }
 }));
 
 let dom: JSDOM;
@@ -212,6 +218,9 @@ beforeEach(async () => {
   mocks.dnd = undefined;
   mocks.addModelDisabled = undefined;
   mocks.confirmDelete = undefined;
+  mocks.currentModels = [...models];
+  mocks.setMockModels = undefined;
+  mocks.refresh.mockResolvedValue(undefined);
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -275,6 +284,59 @@ describe('ModelConfigTable sorting', () => {
 
     await act(async () => {
       resolveDelete();
+    });
+  });
+
+  it('waits for in-flight deletion and catalog refresh before snapshotting sort draft so saving excludes deleted IDs', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    let resolveRefresh!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    mocks.refresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = () => {
+            mocks.setMockModels?.([models[1], models[2]]);
+            resolve();
+          };
+        })
+    );
+
+    // 发起单条删除后在请求完成前点击自定义排序：按钮可用但暂不按旧列表进入排序草稿。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    expect(button('custom_sort').disabled).toBe(false);
+    expect(mocks.addModelDisabled).toBeUndefined();
+
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
+
+    // 删除完成但目录刷新尚未完成前仍等待刷新快照。
+    await act(async () => {
+      resolveDelete();
+    });
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
+
+    // 刷新完成后自动按剩余模型进入排序并可成功保存完整顺序。
+    await act(async () => {
+      resolveRefresh();
+    });
+    expect(sortNames()).toEqual(['B', 'C']);
+
+    await act(async () => mocks.dnd!.onDragEndCb([models[2], models[1]]));
+    await act(async () => button('save_sort').click());
+    expect(mocks.save).toHaveBeenCalledWith({
+      channelType: 'system',
+      modelIds: [models[2].modelId, models[1].modelId]
     });
   });
 });

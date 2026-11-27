@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => ({
         isConfigured: boolean;
         onChange?: (value: string) => void;
       },
+  toast: vi.fn(),
   submit: async () => {}
 }));
 vi.mock('@/web/core/ai/model/channel', () => ({
@@ -57,6 +58,9 @@ vi.mock('@/web/core/ai/model/channel', () => ({
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: mocks.language } })
 }));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: mocks.toast })
+}));
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
   useModelConfig: (params: { channelType: string; language?: string; manual?: boolean }) => {
     mocks.useModelConfigCalls.push(params);
@@ -64,9 +68,19 @@ vi.mock('@/web/core/ai/model/useModelConfig', () => ({
   }
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (request: (...args: any[]) => Promise<unknown>) => ({
+  useRequest: (
+    request: (...args: any[]) => Promise<unknown>,
+    options?: { onSuccess?: () => void }
+  ) => ({
     data: request === getChannelProviders ? mocks.metadata : undefined,
-    runAsync: request === getChannelProviders ? vi.fn() : request,
+    runAsync:
+      request === getChannelProviders
+        ? vi.fn()
+        : async (...args: any[]) => {
+            const res = await request(...args);
+            options?.onSuccess?.();
+            return res;
+          },
     loading: request === getChannelProviders ? mocks.loadingProviders : false
   })
 }));
@@ -166,11 +180,15 @@ describe('EditChannelModal channel metadata', () => {
   const render = ({
     channelType,
     config = {},
-    compact = false
+    compact = false,
+    onClose = vi.fn(),
+    onSuccess = vi.fn()
   }: {
     channelType: 'system' | 'team';
     config?: Partial<ChannelInfoType>;
     compact?: boolean;
+    onClose?: () => void;
+    onSuccess?: () => unknown | Promise<unknown>;
   }) =>
     renderToStaticMarkup(
       React.createElement(
@@ -180,8 +198,8 @@ describe('EditChannelModal channel metadata', () => {
           defaultConfig: { ...defaultChannel, type: 1, ...config },
           ...(compact ? { fixedModel: { model: 'gpt-5.4-nano' } } : {}),
           channelType,
-          onClose: vi.fn(),
-          onSuccess: vi.fn()
+          onClose,
+          onSuccess
         })
       )
     );
@@ -420,5 +438,26 @@ describe('EditChannelModal channel metadata', () => {
     expect(mocks.modalIsLoading).toBeUndefined();
     expect(mocks.providerSelectLoading).toBe(true);
     expect(mocks.useModelConfigCalls.at(-1)?.manual).toBe(true);
+  });
+
+  it('closes the modal and warns separately when post-update refresh fails after putChannel succeeds', async () => {
+    const onClose = vi.fn();
+    const onSuccess = vi.fn().mockRejectedValueOnce(new Error('Refresh failed'));
+
+    render({
+      channelType: 'system',
+      config: { id: 12, name: 'existing', models: ['gpt-4o'] },
+      onClose,
+      onSuccess
+    });
+
+    await expect(mocks.submit()).resolves.toBeUndefined();
+    expect(putChannel).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'warning',
+      title: 'Refresh failed'
+    });
   });
 });

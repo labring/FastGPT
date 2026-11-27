@@ -26,6 +26,7 @@ type Props = {
   value: string;
   placeholder: string;
   onChange: (next: string) => void;
+  autoFocus?: boolean;
 };
 
 /** 输入框显示组合中的文本，搜索只接收已确认的值。 */
@@ -65,12 +66,15 @@ export const useComposedSearchInput = (value: string, onChange: (next: string) =
   };
 };
 
-/** TagFilter 下拉里 32px 搜索框，有内容时显示清空，并在中文输入法组合结束后再触发搜索。 */
+/** 下拉菜单内 32px 搜索框，有内容时显示清空，并在中文输入法组合结束后再触发搜索。 */
 const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSearchInput(
-  { value, placeholder, onChange },
+  { value, placeholder, onChange, autoFocus },
   ref
 ) {
-  const { inputValue, resetInput, compositionProps } = useComposedSearchInput(value, onChange);
+  const { inputValue, isComposingRef, resetInput, compositionProps } = useComposedSearchInput(
+    value,
+    onChange
+  );
 
   return (
     <Flex
@@ -89,13 +93,19 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
       }}
       onKeyDown={(e) => {
         // 组合输入期间按键均交给输入法候选框；非组合状态下方向键和 Escape 交给外层菜单。
-        if (e.nativeEvent.isComposing || !['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
+        if (
+          isComposingRef.current ||
+          e.nativeEvent.isComposing ||
+          e.keyCode === 229 ||
+          !['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)
+        ) {
           e.stopPropagation();
         }
       }}
     >
       <Input
         ref={ref}
+        autoFocus={autoFocus}
         flex={'1 1 0'}
         w={0}
         minW={0}
@@ -116,6 +126,7 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
           zIndex={1}
           size={'14px'}
           hoverColor={'myGray.700'}
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             resetInput();
             onChange('');

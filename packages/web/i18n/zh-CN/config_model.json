@@ -61,7 +61,7 @@
   "mapping_value_placeholder": "目标模型名（如 gpt-4o-test）",
   "mapping_add_row": "添加映射",
   "mapping_key_duplicate": "模型名重复，请修改后再保存",
-  "actual_upstream_model_id": "实际上游 ID",
+  "channel_configured_mapping": "渠道配置映射",
   "maxToken_tip": "模型 max_tokens 参数",
   "rerank_max_token": "最大 Tokens",
   "rerank_max_token_tip": "Rerank 阶段单次请求的 token 上限（query + 单个文档），超出限制的文档会被自动切分",

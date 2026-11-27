@@ -66,7 +66,13 @@ export const useModelEditWorkflow = ({
 
   /** 即时渠道写入同时刷新详情和父列表；取消编辑不能撤销已经提交的渠道关联。 */
   const refreshChannelBindings = async () => {
-    await Promise.all([refreshDetail(), onSuccess()]);
+    const results = await Promise.allSettled([refreshDetail(), onSuccess()]);
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (rejected) {
+      throw rejected.reason;
+    }
   };
 
   /** 即时解除渠道与当前模型的关联，由服务端原子清理渠道内的模型映射 */

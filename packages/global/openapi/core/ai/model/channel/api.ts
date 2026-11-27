@@ -3,6 +3,7 @@ import { PaginationPageSizeSchema, PaginationResponseSchema } from '../../../../
 import { IntSchema, NumSchema, queryArrayParam } from '../../../../../common/zod';
 import {
   ChannelConfigSchema,
+  ChannelInfoSchema,
   ChannelManualStatusSchema
 } from '../../../../../core/ai/model/channel';
 import { ChannelTypeSchema } from '../../../../../core/ai/model/scope';
@@ -160,10 +161,7 @@ export const ChannelListItemSchema = z.object({
   name: z.string(),
   type: z.number().int().meta({ description: '提供商类型' }),
   status: z.number().int().meta({ description: '1=启用 / 2=禁用' }),
-  keyConfigured: z
-    .boolean()
-    .optional()
-    .meta({ description: '是否已配置 API 密钥；列表接口不回传密钥原文' }),
+  keyConfigured: ChannelInfoSchema.shape.keyConfigured,
   models: z.array(z.string()).meta({ description: '上游模型名列表' }),
   model_mapping: z.record(z.string(), z.string()).optional(),
   configs: ChannelConfigSchema.shape.configs.meta({

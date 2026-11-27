@@ -42,7 +42,13 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
         setLoading(false);
       }
     }, []);
-    return { runAsync, loading };
+    const run = React.useCallback(
+      (...args: any[]) => {
+        void runAsync(...args).catch(() => {});
+      },
+      [runAsync]
+    );
+    return { run, runAsync, loading };
   }
 }));
 vi.mock('@chakra-ui/react', () => ({
@@ -139,8 +145,8 @@ describe('Channel ModelTest auto-start', () => {
     });
   };
 
-  it('automatically starts testing once models are ready, renders model ID and actual upstream ID, and allows manual re-test', async () => {
-    const modelMapping = { 'gpt-4o': 'gpt-4o-upstream' };
+  it('automatically starts testing once models are ready, renders model ID and configured channel mapping verbatim, and allows manual re-test', async () => {
+    const modelMapping = { 'gpt-4o': 'gpt-4o-upstream ' };
     mocks.loadingModels = true;
     await renderModal(['gpt-4o', 'qwen-plus'], modelMapping);
     expect(mocks.testModel).not.toHaveBeenCalled();
@@ -162,15 +168,15 @@ describe('Channel ModelTest auto-start', () => {
     const headers = [...container.querySelectorAll('th')].map((th) => th.textContent?.trim());
     expect(headers).toEqual([
       'config_model:model.model_id',
-      'config_model:actual_upstream_model_id',
+      'config_model:channel_configured_mapping',
       'config_model:channel_status',
       ''
     ]);
     const bodyRows = [...container.querySelectorAll('tbody tr')].map((tr) =>
-      [...tr.querySelectorAll('td')].slice(0, 2).map((td) => td.textContent?.trim())
+      [...tr.querySelectorAll('td')].slice(0, 2).map((td) => td.textContent)
     );
     expect(bodyRows).toEqual([
-      ['gpt-4o', 'gpt-4o-upstream'],
+      ['gpt-4o', 'gpt-4o-upstream '],
       ['qwen-plus', 'qwen-plus']
     ]);
 

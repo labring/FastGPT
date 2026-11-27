@@ -61,7 +61,7 @@
   "mapping_value_placeholder": "Target model (e.g. gpt-4o-test)",
   "mapping_add_row": "Add mapping",
   "mapping_key_duplicate": "Duplicate model name. Please resolve before saving.",
-  "actual_upstream_model_id": "Actual upstream ID",
+  "channel_configured_mapping": "Channel Mapping",
   "maxToken_tip": "Model max_tokens parameter",
   "rerank_max_token": "Max Tokens Limit",
   "rerank_max_token_tip": "Tokens limit per rerank request (query + single document). Documents exceeding the limit will be automatically split.",

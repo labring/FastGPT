@@ -2,7 +2,9 @@ import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
+import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
 const mocks = vi.hoisted(() => ({
@@ -187,11 +189,22 @@ describe('ModelEditModal linked channel edit action', () => {
 
   it('opens EditChannelModal with full channel config and refreshes after saving', async () => {
     const onSuccess = vi.fn();
+    const targetModel: ModelConfigListItem = {
+      modelId: 'm-1',
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      scope: ModelScopeEnum.system,
+      isActive: true,
+      config: { maxContext: 8192, maxResponse: 4096, quoteMaxToken: 2048 },
+      channels: []
+    };
 
     await act(async () => {
       root.render(
         React.createElement(ModelEditModal, {
-          model: { modelId: 'm-1', model: 'gpt-4o' } as any,
+          model: targetModel,
           providers: [],
           channelType: 'system',
           onSuccess,

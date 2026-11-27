@@ -20,18 +20,20 @@ type ModelTestItem = {
   avatar: string;
   modelId: string;
   model: string;
-  upstreamModel: string;
+  mappedModel: string;
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
   loading?: boolean; // 单个模型的loading状态
 };
 
-const getActualUpstreamModelId = (model: string, modelMapping?: Record<string, string>): string => {
+/** 按渠道持久化 model_mapping 展示配置映射；非空目标按原字符串使用，与 AIProxy 行为一致。 */
+const getConfiguredMappedModel = (model: string, modelMapping?: Record<string, string>): string => {
   if (!modelMapping || !Object.prototype.hasOwnProperty.call(modelMapping, model)) {
     return model;
   }
-  return modelMapping[model]?.trim() || model;
+  const mapped = modelMapping[model];
+  return mapped !== '' ? mapped : model;
 };
 
 const ModelTest = ({
@@ -122,7 +124,7 @@ const ModelTest = ({
     }
   };
 
-  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest(
+  const { run: onStartTest, loading: isAnyModelLoading } = useRequest(
     async (targetList?: ModelTestItem[]) => {
       const listToRun = targetList ?? testModelList;
       if (listToRun.length === 0) return;
@@ -166,7 +168,7 @@ const ModelTest = ({
           avatar: provider.avatar || HUGGING_FACE_ICON,
           modelId: modelData.modelId,
           model: modelData.model,
-          upstreamModel: getActualUpstreamModelId(modelData.model, modelMapping),
+          mappedModel: getConfiguredMappedModel(modelData.model, modelMapping),
           status: 'waiting' as const,
           loading: false
         }
@@ -177,7 +179,7 @@ const ModelTest = ({
     // 弹窗打开且模型元数据就绪后自动执行一次批量测试，无需用户再手动点击。
     if (list.length > 0) {
       hasAutoStartedRef.current = true;
-      void onStartTest(list);
+      onStartTest(list);
     }
   }, [
     availableModels,
@@ -189,7 +191,7 @@ const ModelTest = ({
     onStartTest
   ]);
 
-  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
+  const { run: onTestOneModel, loading: testingOneModel } = useRequest(
     async (modelId: string) => {
       if (!testModelList.some((item) => item.modelId === modelId)) return;
       await executeSingleModelTest(modelId);
@@ -244,7 +246,7 @@ const ModelTest = ({
               <Thead>
                 <Tr>
                   <Th>{t('config_model:model.model_id')}</Th>
-                  <Th>{t('config_model:actual_upstream_model_id')}</Th>
+                  <Th>{t('config_model:channel_configured_mapping')}</Th>
                   <Th>{t('config_model:channel_status')}</Th>
                   <Th></Th>
                 </Tr>
@@ -270,7 +272,7 @@ const ModelTest = ({
                           <Box>{item.model}</Box>
                         </HStack>
                       </Td>
-                      <Td>{item.upstreamModel}</Td>
+                      <Td>{item.mappedModel}</Td>
                       <Td>
                         <Flex alignItems={'center'}>
                           <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema}>

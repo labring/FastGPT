@@ -61,7 +61,7 @@
   "mapping_value_placeholder": "대상 모델명 (예: gpt-4o-test)",
   "mapping_add_row": "매핑 추가",
   "mapping_key_duplicate": "중복된 모델 이름이 있습니다. 수정 후 저장해 주세요.",
-  "actual_upstream_model_id": "실제 업스트림 ID",
+  "channel_configured_mapping": "채널 구성 매핑",
   "maxToken_tip": "모델 max_tokens 파라미터",
   "rerank_max_token": "최대 토큰 제한",
   "rerank_max_token_tip": "리랭크 요청당(질의 + 단일 문서) 토큰 제한입니다. 제한을 초과하는 문서는 자동으로 분할됩니다.",

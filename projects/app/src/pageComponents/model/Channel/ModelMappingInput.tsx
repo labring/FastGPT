@@ -12,6 +12,8 @@ export type ModelMappingRow = {
   id: string;
   key: string;
   value: string;
+  /** 仅标记用户实际编辑过目标值的行，避免修改某一行时重写其他历史映射原值 */
+  valueTouched?: boolean;
 };
 
 export type ModelMappingValidationState = {
@@ -41,7 +43,8 @@ export const recordToMappingRows = (
   return Object.entries(record).map(([key, value]) => ({
     id: createId(),
     key,
-    value: typeof value === 'string' ? value : String(value ?? '')
+    value: typeof value === 'string' ? value : String(value ?? ''),
+    valueTouched: false
   }));
 };
 
@@ -69,16 +72,21 @@ export const getDuplicateMappingKeys = (rows: Pick<ModelMappingRow, 'key'>[]): S
   return duplicates;
 };
 
-/** 将映射行序列化为普通对象，忽略空键行并对键值去首尾空白。 */
+/**
+ * 将映射行序列化为普通对象：
+ * - 键或目标为空白的行视为本地草稿不写入，避免保存空目标导致 AIProxy 关闭协议默认映射；
+ * - 未编辑过的历史行保留原始键值，仅对本次编辑过的目标值做首尾空白裁剪。
+ */
 export const mappingRowsToRecord = (
-  rows: Pick<ModelMappingRow, 'key' | 'value'>[]
+  rows: Pick<ModelMappingRow, 'key' | 'value' | 'valueTouched'>[]
 ): Record<string, string> => {
   const entries: [string, string][] = [];
 
   for (const row of rows) {
-    const trimmedKey = row.key.trim();
-    if (!trimmedKey) continue;
-    entries.push([trimmedKey, row.value.trim()]);
+    if (row.key.trim() === '') continue;
+    const normalizedValue = row.valueTouched ? row.value.trim() : row.value;
+    if (normalizedValue.trim() === '') continue;
+    entries.push([row.key, normalizedValue]);
   }
 
   return Object.fromEntries(entries);
@@ -162,11 +170,29 @@ const ModelMappingInput = ({
   };
 
   const handleAddRow = () => {
-    commitRows([...rows, { id: getNanoid(), key: '', value: '' }]);
+    commitRows([...rows, { id: getNanoid(), key: '', value: '', valueTouched: false }]);
   };
 
-  const handleUpdateRow = (id: string, field: 'key' | 'value', nextVal: string) => {
-    commitRows(rows.map((row) => (row.id === id ? { ...row, [field]: nextVal } : row)));
+  const handleUpdateRow = ({
+    id,
+    field,
+    nextValue
+  }: {
+    id: string;
+    field: 'key' | 'value';
+    nextValue: string;
+  }) => {
+    commitRows(
+      rows.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              [field]: nextValue,
+              ...(field === 'value' ? { valueTouched: true } : {})
+            }
+          : row
+      )
+    );
   };
 
   const handleDeleteRow = (id: string) => {
@@ -208,7 +234,9 @@ const ModelMappingInput = ({
                     }
                     list={rowOptions}
                     placeholder={t('config_model:mapping_key_placeholder')}
-                    onChange={(val) => handleUpdateRow(row.id, 'key', val)}
+                    onChange={(val) =>
+                      handleUpdateRow({ id: row.id, field: 'key', nextValue: val })
+                    }
                   />
                 </Box>
                 <Input
@@ -217,7 +245,9 @@ const ModelMappingInput = ({
                   h={inputHeight}
                   value={row.value}
                   placeholder={t('config_model:mapping_value_placeholder')}
-                  onChange={(e) => handleUpdateRow(row.id, 'value', e.target.value)}
+                  onChange={(e) =>
+                    handleUpdateRow({ id: row.id, field: 'value', nextValue: e.target.value })
+                  }
                 />
                 <MyDeleteIconButton
                   tip={t('common:Delete')}

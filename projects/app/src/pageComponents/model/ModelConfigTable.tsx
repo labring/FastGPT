@@ -315,14 +315,32 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     await refreshModels().catch(() => {});
   };
 
+  const pendingDeleteCountRef = React.useRef(0);
+  const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
+  const [waitingEnterSort, setWaitingEnterSort] = useState(false);
+  const runTrackedDelete = (operation: () => Promise<unknown>) =>
+    runChannelMutation(async () => {
+      pendingDeleteCountRef.current += 1;
+      setPendingDeleteCount(pendingDeleteCountRef.current);
+      try {
+        await operation();
+        try {
+          await refreshModels();
+        } catch {
+          // 删除成功但目录刷新失败时取消待进入排序，避免按旧快照生成含已删 ID 的草稿。
+          setWaitingEnterSort(false);
+        }
+      } finally {
+        pendingDeleteCountRef.current -= 1;
+        setPendingDeleteCount(pendingDeleteCountRef.current);
+      }
+    });
+
   const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
-    onSuccess: () => {
-      refreshModels();
-    },
     successToast: t('common:delete_success')
   });
   const handleDeleteModel = (data: Parameters<typeof deleteModel>[0]) =>
-    runChannelMutation(() => deleteModelRequest(data));
+    runTrackedDelete(() => deleteModelRequest(data));
   const clearSelection = useCallback(() => {
     setSelectedItems([]);
   }, [setSelectedItems]);
@@ -344,14 +362,13 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   );
   const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(deleteModels, {
     manual: true,
-    onSuccess: () => {
-      clearSelection();
-      refreshModels();
-    },
     successToast: t('common:delete_success')
   });
   const handleDeleteModels = (data: Parameters<typeof deleteModels>[0]) =>
-    runChannelMutation(() => deleteModelsRequest(data));
+    runTrackedDelete(async () => {
+      await deleteModelsRequest(data);
+      clearSelection();
+    });
   const { openConfirm: openBatchDeleteConfirm, ConfirmModal: BatchDeleteConfirmModal } = useConfirm(
     {
       type: 'delete'
@@ -415,14 +432,34 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   // 入口级粗筛：root 或拥有“安装模型”权限才展示管理操作；单个模型的最终判定以服务端 authModelConfig（action: config）为准
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
 
-  /** 从未过滤的完整列表创建排序草稿，避免把搜索/筛选结果误当成完整顺序提交。 */
-  const enterSortMode = useCallback(() => {
+  /** 从未过滤的完整列表创建排序草稿；若有删除及目录刷新在进行中，先等待刷新完成再取快照，避免草稿带入已删 ID。 */
+  const openSortModeWithCurrentModels = useCallback(() => {
     if (isSortBusy) return;
     setSelectedItems([]);
     setSortModels([...modelItems]);
     setInitialSortModelIds(modelItems.map((model) => model.modelId));
     setIsSortMode(true);
   }, [isSortBusy, modelItems, setSelectedItems]);
+
+  const enterSortMode = useCallback(() => {
+    if (isSortBusy) return;
+    if (pendingDeleteCountRef.current > 0) {
+      setWaitingEnterSort(true);
+      return;
+    }
+    openSortModeWithCurrentModels();
+  }, [isSortBusy, openSortModeWithCurrentModels]);
+
+  // 删除及目录刷新结束后立即用最新 modelItems 进入排序，避免在 effect 中二次渲染或快照旧列表。
+  if (waitingEnterSort && pendingDeleteCount === 0) {
+    setWaitingEnterSort(false);
+    if (!isSortBusy) {
+      setSelectedItems([]);
+      setSortModels([...modelItems]);
+      setInitialSortModelIds(modelItems.map((model) => model.modelId));
+      setIsSortMode(true);
+    }
+  }
 
   const cancelSortMode = useCallback(() => {
     if (isSortBusy) return;
@@ -506,6 +543,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
+                  isLoading={waitingEnterSort}
                   onClick={enterSortMode}
                 >
                   {t('config_model:model.custom_sort')}

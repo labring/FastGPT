@@ -11,9 +11,11 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ModelMappingInput from './ModelMappingInput';
@@ -58,6 +60,7 @@ const EditChannelModal = ({
   onSuccess: (createdChannelData?: CreateChannelResponse) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useSafeTranslation();
+  const { toast } = useToast();
   const isEdit = defaultConfig.id !== 0;
   const currentModels = useMemo(
     () => fixedModels ?? (fixedModel ? [fixedModel] : []),
@@ -230,25 +233,35 @@ const EditChannelModal = ({
       if (!allowEmptyModels && data.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
-      if (isEdit) {
-        await putChannel({
-          ...data,
-          // 未修改已保存密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
-          ...(defaultConfig.keyConfigured && !hasEditedKeyRef.current ? { key: undefined } : {}),
-          status: data.status === 1 || data.status === 2 ? data.status : undefined,
-          channelType
-        });
-        await onSuccess();
-        return;
-      }
+      const createdChannel = await (async () => {
+        if (isEdit) {
+          await putChannel({
+            ...data,
+            // 未修改已保存密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
+            ...(defaultConfig.keyConfigured && !hasEditedKeyRef.current ? { key: undefined } : {}),
+            status: data.status === 1 || data.status === 2 ? data.status : undefined,
+            channelType
+          });
+          return undefined;
+        }
 
-      const createdChannel = await postCreateChannel({
-        ...data,
-        status: data.status === 1 || data.status === 2 ? data.status : undefined,
-        channelType,
-        model_mapping: data.model_mapping ?? {}
-      });
-      await onSuccess(createdChannel);
+        return postCreateChannel({
+          ...data,
+          status: data.status === 1 || data.status === 2 ? data.status : undefined,
+          channelType,
+          model_mapping: data.model_mapping ?? {}
+        });
+      })();
+
+      try {
+        await onSuccess(createdChannel);
+      } catch (error) {
+        // 渠道写入已成功，后续列表或详情刷新失败单独提醒，避免误报写入失败导致重复提交。
+        toast({
+          status: 'warning',
+          title: getErrText(error)
+        });
+      }
     },
     {
       onSuccess() {
@@ -337,6 +350,7 @@ const EditChannelModal = ({
                 list={providerList}
                 isLoading={loadingChannelProviderMetas}
                 placeholder={t('config_model:select_provider_placeholder')}
+                searchPlaceholder={t('config_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
                 onChange={(val) => setValue('type', val)}
@@ -432,6 +446,7 @@ const EditChannelModal = ({
                 list={providerList}
                 isLoading={loadingChannelProviderMetas}
                 placeholder={t('config_model:select_provider_placeholder')}
+                searchPlaceholder={t('config_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
                 onChange={(val) => {

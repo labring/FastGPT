@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Root } from 'react-dom/client';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@chakra-ui/react', () => ({
   Box: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
@@ -86,25 +86,26 @@ import ModelMappingInput, {
 } from '@/pageComponents/model/Channel/ModelMappingInput';
 
 describe('ModelMappingInput utils', () => {
-  it('converts between Record<string, string> and editable rows', () => {
+  it('converts between Record<string, string> and editable rows while preserving untouched values and skipping incomplete drafts', () => {
     let seq = 0;
-    const rows = recordToMappingRows({ 'gpt-4o': 'gpt-4o-test', claude: 'claude-3' }, () =>
+    const rows = recordToMappingRows({ 'gpt-4o': 'gpt-4o-test ', claude: 'claude-3' }, () =>
       String(++seq)
     );
     expect(rows).toEqual([
-      { id: '1', key: 'gpt-4o', value: 'gpt-4o-test' },
-      { id: '2', key: 'claude', value: 'claude-3' }
+      { id: '1', key: 'gpt-4o', value: 'gpt-4o-test ', valueTouched: false },
+      { id: '2', key: 'claude', value: 'claude-3', valueTouched: false }
     ]);
     expect(recordToMappingRows(undefined)).toEqual([]);
     expect(
       mappingRowsToRecord([
-        { key: '  gpt-4o ', value: ' upstream-4o ' },
-        { key: '   ', value: 'ignored' },
-        { key: 'qwen', value: '' }
+        { key: 'gpt-4o', value: 'vendor-raw ', valueTouched: false },
+        { key: 'claude', value: '  upstream-claude  ', valueTouched: true },
+        { key: '   ', value: 'ignored', valueTouched: true },
+        { key: 'qwen', value: '   ', valueTouched: true }
       ])
     ).toEqual({
-      'gpt-4o': 'upstream-4o',
-      qwen: ''
+      'gpt-4o': 'vendor-raw ',
+      claude: 'upstream-claude'
     });
   });
 
@@ -127,22 +128,32 @@ describe('ModelMappingInput utils', () => {
 
 describe('ModelMappingInput component', () => {
   let dom: JSDOM;
+  let createRoot: typeof import('react-dom/client').createRoot;
   let container: HTMLDivElement;
   let root: Root;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
     dom = new JSDOM('<!doctype html><html><body></body></html>');
-    vi.stubGlobal('window', dom.window);
-    vi.stubGlobal('document', dom.window.document);
-    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
-    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
-    vi.stubGlobal('HTMLSelectElement', dom.window.HTMLSelectElement);
-    vi.stubGlobal('Event', dom.window.Event);
-    vi.stubGlobal('MouseEvent', dom.window.MouseEvent);
+    for (const key of [
+      'window',
+      'document',
+      'Element',
+      'Node',
+      'HTMLElement',
+      'HTMLInputElement',
+      'HTMLSelectElement',
+      'Event',
+      'MouseEvent'
+    ] as const) {
+      vi.stubGlobal(key, key === 'window' ? dom.window : dom.window[key]);
+    }
     vi.stubGlobal('React', React);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    ({ createRoot } = await import('react-dom/client'));
+  });
 
+  beforeEach(() => {
+    vi.clearAllMocks();
     container = dom.window.document.createElement('div');
     dom.window.document.body.appendChild(container);
     root = createRoot(container);
@@ -152,6 +163,10 @@ describe('ModelMappingInput component', () => {
     await act(async () => {
       root.unmount();
     });
+    container.remove();
+  });
+
+  afterAll(() => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
@@ -177,7 +192,7 @@ describe('ModelMappingInput component', () => {
     ];
 
     await renderInput({
-      value: { 'legacy-model': 'legacy-upstream', 'gpt-4o': 'up-4o' },
+      value: { 'legacy-model': 'legacy-upstream ', 'gpt-4o': 'up-4o ' },
       modelOptions,
       getModelAvatar: () => 'model/custom-avatar',
       onChange,
@@ -198,7 +213,7 @@ describe('ModelMappingInput component', () => {
     expect(getOptionValues(selects[0])).toEqual(['qwen-plus', 'deepseek-v4']);
     expect(getOptionValues(selects[1])).toEqual(['gpt-4o', 'qwen-plus', 'deepseek-v4']);
 
-    // 第 1 行改选 qwen-plus 后，第 2 行同步排除 qwen-plus，并输出更新后的映射对象。
+    // 第 1 行改选 qwen-plus 后，第 2 行同步排除 qwen-plus，且未编辑行的原始尾部空格保持不变。
     await act(async () => {
       const select = selects[0] as HTMLSelectElement;
       const nativeSetter = Object.getOwnPropertyDescriptor(
@@ -213,12 +228,12 @@ describe('ModelMappingInput component', () => {
       duplicateKeys: []
     });
     expect(onChange).toHaveBeenLastCalledWith({
-      'qwen-plus': 'legacy-upstream',
-      'gpt-4o': 'up-4o'
+      'qwen-plus': 'legacy-upstream ',
+      'gpt-4o': 'up-4o '
     });
     expect(getOptionValues(selects[1])).toEqual(['gpt-4o', 'deepseek-v4']);
 
-    // 新增第 3 行不触发空键写入，仅剩未选中的 deepseek-v4 可选。
+    // 新增第 3 行并仅选择模型不填目标时，视为草稿不写入空目标。
     const addButton = [...container.querySelectorAll('button')].find(
       (btn) => btn.textContent === 'config_model:mapping_add_row'
     );
@@ -230,11 +245,56 @@ describe('ModelMappingInput component', () => {
     expect(updatedSelects).toHaveLength(3);
     expect(getOptionValues(updatedSelects[2])).toEqual(['deepseek-v4']);
 
-    // 删除第 1 行后同步输出剩余映射。
+    await act(async () => {
+      const select = updatedSelects[2] as HTMLSelectElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLSelectElement.prototype,
+        'value'
+      )?.set;
+      nativeSetter?.call(select, 'deepseek-v4');
+      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    // 填写第 3 行目标值后写入裁剪后的值，同时保留未编辑行的原值。
+    const inputs = container.querySelectorAll('input');
+    await act(async () => {
+      const input = inputs[2] as HTMLInputElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      nativeSetter?.call(input, '  deepseek-upstream  ');
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      'qwen-plus': 'legacy-upstream ',
+      'gpt-4o': 'up-4o ',
+      'deepseek-v4': 'deepseek-upstream'
+    });
+
+    // 清空第 3 行目标值后退回草稿态并从输出对象移除，不影响其余未编辑行。
+    await act(async () => {
+      const input = inputs[2] as HTMLInputElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      nativeSetter?.call(input, '   ');
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      'qwen-plus': 'legacy-upstream ',
+      'gpt-4o': 'up-4o '
+    });
+
+    // 删除第 1 行后同步输出剩余映射，且第 2 行原值不受影响。
     const deleteButtons = container.querySelectorAll('button[aria-label="common:Delete"]');
     await act(async () => {
       deleteButtons[0].dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
     });
-    expect(onChange).toHaveBeenLastCalledWith({ 'gpt-4o': 'up-4o' });
+    expect(onChange).toHaveBeenLastCalledWith({
+      'gpt-4o': 'up-4o '
+    });
   });
 });
