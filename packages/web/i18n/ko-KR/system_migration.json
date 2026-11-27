@@ -120,9 +120,10 @@
   "migrations.20261127_cleanup_agent_engine_config.cleanup": "레거시 엔진 설정 정리",
   "migrations.20261127_cleanup_agent_engine_config.validation": "정리 결과 검증",
   "migrations.20261127_cleanup_agent_engine_config.result": "기능 설정 문서 {{cleanedDocumentCount}}개를 정리하고 레거시 엔진 항목 {{removedFieldCount}}개를 제거했습니다.",
-  "migrations.20261127_backfill_team_member_sort_key.name": "팀 멤버 병음 정렬 키 백필",
-  "migrations.20261127_backfill_team_member_sort_key.description": "시작 후 백그라운드에서 독립적으로 기존 팀 멤버의 nameSortKey(같은 첫 글자 내 중국어 병음 우선·영문 후순위, 숫자 및 기타 문자 맨 뒤)를 배치 단위로 백필합니다. 체크포인트 재개와 동시 이름 변경 덮어쓰기 방지를 지원합니다.",
-  "migrations.20261127_backfill_team_member_sort_key.members": "멤버 정렬 키 백필",
-  "migrations.20261127_backfill_team_member_sort_key.validation": "정렬 키 백필 검증",
-  "migrations.20261127_backfill_team_member_sort_key.result": "팀 멤버 {{scannedCount}}건을 검사하고 정렬 키 {{backfilledCount}}건을 백필했습니다."
+  "migrations.20261127_backfill_name_sort_key.name": "이름 병음 정렬 키 백필",
+  "migrations.20261127_backfill_name_sort_key.description": "시작 후 백그라운드에서 독립적으로 기존 팀 멤버와 지식 베이스 컬렉션의 nameSortKey(같은 첫 글자 내 중국어 병음 우선·영문 후순위, 숫자 및 기타 문자 맨 뒤)를 배치 단위로 백필합니다. 체크포인트 재개와 동시 이름 변경 덮어쓰기 방지를 지원합니다.",
+  "migrations.20261127_backfill_name_sort_key.members": "멤버 정렬 키 백필",
+  "migrations.20261127_backfill_name_sort_key.collections": "컬렉션 정렬 키 백필",
+  "migrations.20261127_backfill_name_sort_key.validation": "정렬 키 백필 검증",
+  "migrations.20261127_backfill_name_sort_key.result": "팀 멤버 {{memberScannedCount}}건(백필 {{memberBackfilledCount}}건)과 지식 베이스 컬렉션 {{collectionScannedCount}}건(백필 {{collectionBackfilledCount}}건)을 검사했습니다."
 }

@@ -120,9 +120,10 @@
   "migrations.20261127_cleanup_agent_engine_config.cleanup": "Remove legacy engine configuration",
   "migrations.20261127_cleanup_agent_engine_config.validation": "Validate cleanup results",
   "migrations.20261127_cleanup_agent_engine_config.result": "Cleaned {{cleanedDocumentCount}} feature configuration documents and removed {{removedFieldCount}} legacy engine entries.",
-  "migrations.20261127_backfill_team_member_sort_key.name": "Backfill team member pinyin sort keys",
-  "migrations.20261127_backfill_team_member_sort_key.description": "Runs independently in the background after startup to backfill nameSortKey for existing team members (Chinese pinyin ahead of English per initial letter, followed by digits and other characters) with checkpoint resume and concurrent-rename protection for indexed member list pagination.",
-  "migrations.20261127_backfill_team_member_sort_key.members": "Backfill member sort keys",
-  "migrations.20261127_backfill_team_member_sort_key.validation": "Validate sort key backfill",
-  "migrations.20261127_backfill_team_member_sort_key.result": "Scanned {{scannedCount}} team member records and backfilled {{backfilledCount}} sort keys."
+  "migrations.20261127_backfill_name_sort_key.name": "Backfill name pinyin sort keys",
+  "migrations.20261127_backfill_name_sort_key.description": "Runs independently in the background after startup to backfill nameSortKey for existing team members and dataset collections (Chinese pinyin ahead of English per initial letter, followed by digits and other characters) with checkpoint resume and concurrent-rename protection for indexed pagination.",
+  "migrations.20261127_backfill_name_sort_key.members": "Backfill member sort keys",
+  "migrations.20261127_backfill_name_sort_key.collections": "Backfill collection sort keys",
+  "migrations.20261127_backfill_name_sort_key.validation": "Validate sort key backfill",
+  "migrations.20261127_backfill_name_sort_key.result": "Scanned {{memberScannedCount}} team members (backfilled {{memberBackfilledCount}}) and {{collectionScannedCount}} dataset collections (backfilled {{collectionBackfilledCount}})."
 }

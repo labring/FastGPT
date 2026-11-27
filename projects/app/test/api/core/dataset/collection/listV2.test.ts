@@ -6,6 +6,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import pathsHandler from '@/pages/api/core/dataset/collection/paths';
@@ -333,6 +334,71 @@ describe('collection listV2 sort', () => {
     ]);
     // 默认 updateTime desc
     expect(await names()).toEqual(['Apple', 'banana', 'cherry']);
+  });
+
+  it('sorts Chinese, English, digits, and symbols by pinyin (normal mode) in asc and strict-reverse desc, and reflects renames', async () => {
+    const { root, createCollection, list } = await createFixture();
+    const renamedDoc = await createCollection('资料库');
+    await createCollection('Apple.pdf');
+    await createCollection('安全规范');
+    await createCollection('单据管理');
+    await createCollection('Doc.md');
+    await createCollection('2号文件');
+    await createCollection('#符号文件');
+
+    const expectedAsc = [
+      '安全规范',
+      'Apple.pdf',
+      '单据管理',
+      'Doc.md',
+      '资料库',
+      '2号文件',
+      '#符号文件'
+    ];
+    expect((await list({ sortBy: 'name', sortOrder: 'asc' })).map((item) => item.name)).toEqual(
+      expectedAsc
+    );
+    expect((await list({ sortBy: 'name', sortOrder: 'desc' })).map((item) => item.name)).toEqual(
+      [...expectedAsc].reverse()
+    );
+
+    // 改名后 nameSortKey 自动同步，排序立即更新
+    await MongoDatasetCollection.updateOne({ _id: renamedDoc._id }, { $set: { name: '阿凡达' } });
+    expect((await list({ sortBy: 'name', sortOrder: 'asc' })).map((item) => item.name)[0]).toBe(
+      '阿凡达'
+    );
+
+    // 公开详情接口不得透出内部排序键 nameSortKey
+    const detailResponse = await Call(detailHandler, {
+      auth: root,
+      query: { id: String(renamedDoc._id) }
+    });
+    expect(detailResponse.code).toBe(200);
+    expect(detailResponse.data).not.toHaveProperty('nameSortKey');
+  });
+
+  it('falls back to lower(name) sorting while unmigrated collections exist in the folder', async () => {
+    const { root, dataset, createCollection, list } = await createFixture();
+    await createCollection('安全规范');
+    await createCollection('Apple');
+
+    // 绕过 Mongoose 写入缺失 nameSortKey 的存量集合
+    await MongoDatasetCollection.collection.insertOne({
+      _id: new Types.ObjectId(),
+      teamId: new Types.ObjectId(root.teamId),
+      tmbId: new Types.ObjectId(root.tmbId),
+      datasetId: new Types.ObjectId(dataset._id),
+      parentId: null,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'beta',
+      createTime: new Date(),
+      updateTime: new Date()
+    });
+
+    const fallbackNames = (await list({ sortBy: 'name', sortOrder: 'asc' })).map(
+      (item) => item.name
+    );
+    expect(fallbackNames).toEqual(['Apple', 'beta', '安全规范']);
   });
 
   it('supports sorting in simple mode', async () => {
