@@ -287,7 +287,7 @@
       },
       {
         "zh": ["额外积分/知识库索引量"],
-        "target": ["ek paket"],
+        "target": ["ek paket", "ek puan / veri kümesi dizin kapasitesi"],
         "forbidden": []
       },
       {
@@ -327,7 +327,7 @@
       },
       {
         "zh": ["发布渠道"],
-        "target": ["yayın kanalı"],
+        "target": ["yayın kanalı", "yayın kanalları"],
         "forbidden": []
       },
       {
@@ -407,12 +407,12 @@
       },
       {
         "zh": ["工作流"],
-        "target": ["iş akışı"],
+        "target": ["iş akışı", "iş akışları"],
         "forbidden": []
       },
       {
         "zh": ["知识库"],
-        "target": ["veri kümesi"],
+        "target": ["veri kümesi", "veri kümeleri"],
         "forbidden": ["bilgi bankası", "bilgi tabanı"]
       },
       {
@@ -437,7 +437,7 @@
       },
       {
         "zh": ["技能"],
-        "target": ["yetenek"],
+        "target": ["yetenek", "yeteneğ"],
         "forbidden": []
       },
       {
@@ -457,7 +457,7 @@
       },
       {
         "zh": ["团队"],
-        "target": ["ekip"],
+        "target": ["ekip", "ekib"],
         "forbidden": ["takım", "çalışma alanı"]
       },
       {
@@ -517,7 +517,7 @@
       },
       {
         "zh": ["订阅"],
-        "target": ["abonelik"],
+        "target": ["abonelik", "abone"],
         "forbidden": []
       },
       {

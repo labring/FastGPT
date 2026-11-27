@@ -16,6 +16,12 @@ describe('createWorkflowTemplateBundle', () => {
     ['zh-Hant', '流程開始', '此 AI 節點使用的模型', ['打招呼', '關於 xxx 的問題', '其他問題']],
     ['ko-KR', '시작', '이 AI 노드에서 사용하는 모델', ['인사', 'xxx 관련 질문', '기타 질문']],
     [
+      'tr-TR',
+      'Akış başlangıcı',
+      'Bu AI düğümünün kullandığı model',
+      ['Selamlaşma', 'xxx hakkında sorular', 'Diğer sorular']
+    ],
+    [
       'unknown',
       'Start',
       'Model used by this AI node',

@@ -120,7 +120,7 @@ describe('tokenLogin API', () => {
   });
 
   it('falls back to en when stored user language is unrecognized', async () => {
-    await MongoUser.collection.updateOne({ _id: testUser._id }, { $set: { language: 'tr-TR' } });
+    await MongoUser.collection.updateOne({ _id: testUser._id }, { $set: { language: 'ja-JP' } });
 
     const res = await Call(tokenLoginApi.default, {
       auth: {

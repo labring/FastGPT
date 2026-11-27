@@ -6,7 +6,7 @@
   "delete_tag": "Etiketi sil",
   "delete_tag_confirm": "Bu etiket silinsin mi? Silindikten sonra bağlı olduğu API anahtarlarından kaldırılır.",
   "edit_tag": "Etiketi düzenle",
-  "key_tips": "API anahtarıyla bazı belirli arayüzlere erişebilirsin (uygulamalara erişemez; uygulamalara erişmek için uygulamanın kendi API anahtarı gerekir)",
+  "key_tips": "API anahtarıyla bazı belirli API uç noktalarına erişebilirsin (uygulamalara erişemezsin; uygulamalara erişmek için uygulamanın kendi API anahtarı gerekir)",
   "last_used_at": "Son kullanım",
   "last_used_time": "Son kullanım zamanı",
   "no_tags": "Henüz etiket yok",
@@ -35,12 +35,12 @@
   "app_key": "Uygulama anahtarı",
   "personal_key": "Kişisel anahtar",
   "app_key_tip": "Yalnızca mevcut uygulamanın sohbetleri ve sohbet yönetimi için kullanılabilir. Üye ekipten ayrılırsa uygulama sorumlusu devralır.",
-  "personal_key_tip": "Açık arayüzleri üye kimliğinle çağırır. Erişebileceklerin izinlerine bağlıdır.",
+  "personal_key_tip": "Açık API'leri üye kimliğinle çağırır. Erişebileceklerin izinlerine bağlıdır.",
   "app_key_manage_required": "Uygulama anahtarlarını yalnızca uygulama yöneticileri görüntüleyebilir, oluşturabilir ve yönetebilir.",
   "create_app_key": "Yeni uygulama anahtarı",
   "owner_member": "Sahip üye",
   "bound_app_id": "Bağlı uygulama ID'si",
-  "app_key_empty": "Henüz uygulama anahtarı yok. Oluşturduktan sonra iş arka ucun mevcut uygulamaya bağlanabilir.",
+  "app_key_empty": "Henüz uygulama anahtarı yok. Oluşturduktan sonra arka uç servisini bu uygulamaya bağlayabilirsin.",
   "call_example": "Çağrı örneği",
   "delete_key_tip": "Silindikten sonra bu anahtarı kullanan çağrılar hemen geçersiz olur."
 }

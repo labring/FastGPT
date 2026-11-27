@@ -20,7 +20,7 @@
   "invoice_detail": "Fatura detayı",
   "invoice_sending_info": "Fatura 3-7 iş günü içinde e-posta adresine gönderilecek. Lütfen bekle.",
   "need_special_invoice": "Özel fatura gerekli mi",
-  "no_invoice_record": "Ödeme kaydı yok~",
+  "no_invoice_record": "Ödeme kaydı yok",
   "no_invoice_record_tip": "Henüz fatura kaydı yok",
   "organization_name": "Kuruluş adı",
   "payway_coupon": "Kupon kodu",

@@ -1,7 +1,7 @@
 {
   "app_description": "Uygulama açıklaması",
   "app_name": "Uygulama adı",
-  "apps": "Açılan uygulamalar",
+  "apps": "Sunulan uygulamalar",
   "auth_proxy": "Kimlik vekili",
   "auth_proxy_tip": "Çağıranın istek başlığı üzerinden ekip üyesi kimliğiyle araçları çalıştırmasına izin verir. Yalnızca ekip sahibi açabilir.",
   "create_mcp": "MCP hizmeti oluştur",

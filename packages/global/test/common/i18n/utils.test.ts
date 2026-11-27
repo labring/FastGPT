@@ -20,9 +20,9 @@ describe('LanguageSchema', () => {
       expect(LanguageSchema.parse(locale)).toBe(locale);
     }
 
-    expect(LanguageSchema.parse('tr-TR')).toBe('en');
+    expect(LanguageSchema.parse('ja-JP')).toBe('en');
     expect(LanguageSchema.optional().parse(undefined)).toBeUndefined();
-    expect(LanguageSchema.optional().parse('tr-TR')).toBe('en');
+    expect(LanguageSchema.optional().parse('ja-JP')).toBe('en');
 
     for (const invalid of [undefined, null, '', '   ', 123]) {
       expect(LanguageSchema.safeParse(invalid).success).toBe(false);

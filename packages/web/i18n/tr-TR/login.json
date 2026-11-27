@@ -9,7 +9,7 @@
   "no_remind": "Bir daha hatırlatma",
   "password_condition": "Şifre en fazla 60 karakter olabilir",
   "password_tip": "En az 8 karakter olmalı ve rakam, küçük harf, büyük harf veya özel karakterden en az ikisini içermeli. Boşluk kullanılamaz.",
-  "policy_tip": "Kullanarak<lineBreak/><termsLink> Hizmet Sözleşmemizi </termsLink> ve <privacyLink> Gizlilik Sözleşmemizi</privacyLink> okuyup kabul etmiş olursun",
+  "policy_tip": "Bu hizmeti kullanarak<lineBreak/><termsLink> Hizmet Sözleşmemizi </termsLink> ve <privacyLink> Gizlilik Sözleşmemizi</privacyLink> okuyup kabul etmiş olursun",
   "privacy_policy": "Gizlilik politikası",
   "redirect": "Git",
   "register": "Hesap oluştur",

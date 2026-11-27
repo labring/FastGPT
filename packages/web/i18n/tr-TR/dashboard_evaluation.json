@@ -33,7 +33,7 @@
   "evaluation_export_title": "Soru,Standart cevap,Gerçek cevap,Durum,Genel puan",
   "export": "Verileri dışa aktar",
   "file_required": "Değerlendirme dosyasını seç",
-  "file_uploading": "Dosya yükleniyor: {{num}}%",
+  "file_uploading": "Dosya yükleniyor: %{{num}}",
   "paused": "Duraklatıldı",
   "question": "Kullanıcı sorusu",
   "queuing": "Sırada",

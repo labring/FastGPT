@@ -11,7 +11,7 @@
   "domain_verify.content": "Dosya içeriği",
   "domain_verify.desc": "Kaydettikten sonra {{domain}}/{{path}} adresi {{content}} döndürür",
   "domain_verify.path": "Dosya yolu",
-  "provider": "ICP kayıt sağlayıcısı",
+  "provider": "Alan adı sağlayıcısı",
   "provider.aliyun": "Alibaba Cloud",
   "provider.tencent": "Tencent Cloud",
   "provider.volcengine": "Volcengine",

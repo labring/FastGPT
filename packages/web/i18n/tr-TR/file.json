@@ -1,6 +1,6 @@
 {
   "Image_Preview": "Görsel önizleme",
-  "Image_dataset_requires_VLM_model_to_be_configured": "Görsel veri kümesini kullanmak için bir görsel anlama modeli veya çok modlu embedding modeli yapılandırılmalı. Önce model yapılandırmasından uygun bir model ekle.",
+  "Image_dataset_requires_VLM_model_to_be_configured": "Görsel koleksiyonunu kullanmak için bir görsel anlama modeli veya çok modlu embedding modeli yapılandırılmalı. Önce model yapılandırmasından uygun bir model ekle.",
   "file_name": "Dosya adı",
   "file_size": "Dosya boyutu",
   "image": "Görsel",
@@ -8,7 +8,7 @@
   "image_description_tip": "Görselin açıklamasını gir",
   "reached_max_file_count": "Maksimum dosya sayısına ulaşıldı",
   "release_the_mouse_to_upload_the_file": "Dosyayı yüklemek için fareyi bırak",
-  "select_and_drag_file_tip": "Yüklemek için dosyaları tıkla veya buraya sürükle",
+  "select_and_drag_file_tip": "Yüklemek için buraya tıkla veya dosyaları sürükle",
   "select_file_amount_limit": "En fazla {{max}} dosya seçilebilir",
   "some_file_count_exceeds_limit": "{{maxCount}} dosya sınırı aşıldı, fazlası otomatik olarak kesildi",
   "some_file_size_exceeds_limit": "Bazı dosyalar {{maxSize}} sınırını aştığı için elendi",
