@@ -76,7 +76,6 @@ const RouteTab = () => {
           minW={['96px', '132px']}
           px={[3, 4]}
           h={8}
-          fontSize={'sm'}
           fontWeight={'medium'}
           whiteSpace={'nowrap'}
           userSelect={'none'}

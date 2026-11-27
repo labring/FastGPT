@@ -41,7 +41,7 @@ const Logs = () => {
           borderColor={'myGray.200'}
           alignItems={'center'}
         >
-          <Flex flex={'1 0 0'} gap={2} overflowX={'auto'} fontSize={'sm'}>
+          <Flex flex={'1 0 0'} gap={2} overflowX={'auto'}>
             <Flex
               flexShrink={0}
               px={2}
