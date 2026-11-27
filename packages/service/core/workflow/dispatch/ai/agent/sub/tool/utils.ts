@@ -9,7 +9,7 @@ import {
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { resolveSupportedLocale, type localeType } from '@fastgpt/global/common/i18n/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -162,9 +162,9 @@ export const getAgentRuntimeTools = async ({
     idSource: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial;
     runtimeSource?: string;
     versionId?: string;
-    metadataLocale?: localeType;
+    metadataLocale?: string;
   }): Promise<AgentRuntimeNode> => {
-    const uiLocale = metadataLocale ?? 'en';
+    const uiLocale = resolveSupportedLocale(metadataLocale);
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolConfigSource = (() => {
       if (isDebugToolSource(runtimeSource)) return runtimeSource;
@@ -449,7 +449,7 @@ export const getAgentRuntimeTools = async ({
     pluginId: string;
     toolId: string;
     versionId?: string;
-    metadataLocale?: localeType;
+    metadataLocale?: string;
     app?: AppSchemaType;
   }): Promise<AgentRuntimeNode> => {
     // Agent 运行时只需要节点执行和 schema 信息，不能依赖面向前端展示的 preview controller。

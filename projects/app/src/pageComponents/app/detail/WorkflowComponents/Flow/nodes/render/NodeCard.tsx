@@ -20,6 +20,7 @@ import {
 } from '@/web/core/workflow/issueView';
 import { getToolErrorMessage } from '@/web/core/workflow/check/message';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
+import { resolveSupportedLocale } from '@fastgpt/global/common/i18n/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
@@ -142,7 +143,7 @@ const getCurrentSystemToolTemplate = async (node?: WorkflowNodeData) => {
       appId: node.pluginId,
       versionId: node.version ?? '',
       source: node.source,
-      lang: node.metadataLocale ?? 'en'
+      lang: resolveSupportedLocale(node.metadataLocale)
     });
   } catch {
     return;
@@ -854,7 +855,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
           appId: node.pluginId,
           versionId,
           source: node.source,
-          lang: node.metadataLocale ?? 'en'
+          lang: resolveSupportedLocale(node.metadataLocale)
         });
 
         if (!!template) {

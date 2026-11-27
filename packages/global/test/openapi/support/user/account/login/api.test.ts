@@ -319,12 +319,11 @@ describe('user account OpenAPI contracts', () => {
   });
 
   it('falls back unrecognized language preferences to en without blocking session recovery', () => {
-    const parsedUser = OpenAPIUserSchema.parse({
+    const baseUser = {
       _id: objectIdLike,
       username: 'user@example.com',
       avatar: '/icon/avatar.svg',
       timezone: 'Asia/Shanghai',
-      language: 'tr-TR',
       hasPassword: true,
       status: 'active',
       team: {
@@ -338,9 +337,12 @@ describe('user account OpenAPI contracts', () => {
         permission: {}
       },
       permission: {}
-    });
+    };
 
-    expect(parsedUser.language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: 'tr-TR' }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: null }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse({ ...baseUser, language: '' }).language).toBe('en');
+    expect(OpenAPIUserSchema.parse(baseUser).language).toBeUndefined();
     expect(
       LoginByPasswordBodySchema.parse({
         username: 'admin',

@@ -13,7 +13,7 @@ import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 import { WorkflowIssueCodeSchema } from '../editor/issueCode';
-import { LanguageSchema } from '../../../common/i18n/type';
+import { StoredLocaleSchema } from '../../../common/i18n/type';
 
 export const McpToolSetRuntimeConfigSchema = z.object({
   url: z.string().meta({
@@ -265,7 +265,7 @@ export const FlowNodeCommonTypeSchema = z.object({
   intro: z.string().optional(), // template list intro
   showStatus: BoolSchema.optional(), // chatting response step status
 
-  metadataLocale: LanguageSchema.optional(), // Plugin UI metadata locale captured when added
+  metadataLocale: StoredLocaleSchema.optional(), // Plugin UI metadata locale captured when added
   version: z.string().optional(), // version
   versionLabel: z.string().optional(), // Just ui show
   isLatestVersion: BoolSchema.optional(), // Just ui show

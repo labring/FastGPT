@@ -17,9 +17,23 @@ export enum LangEnum {
 
 export type localeType = `${LangEnum}`;
 export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
+const localeSet: ReadonlySet<string> = new Set(LocaleList);
 
-// 兼容未来新增或历史遗留的未知语言标识，无法识别时回退为英文，避免阻断会话恢复与数据读取。
-export const LanguageSchema = z.enum(LocaleList).catch('en').meta({ description: '用户语言偏好' });
+/** 将任意语言标识归一化为当前支持的 locale；缺失或无法识别时回退为英文。 */
+export const resolveSupportedLocale = (value?: string): localeType =>
+  value && localeSet.has(value) ? (value as localeType) : LangEnum.en;
+
+// 保留必填与字符串类型校验，仅将当前版本不识别的非空语言标识回退为英文。
+export const LanguageSchema = z
+  .preprocess(
+    (value) =>
+      typeof value === 'string' && value.length > 0 && !localeSet.has(value) ? 'en' : value,
+    z.enum(LocaleList)
+  )
+  .meta({ description: '用户语言偏好' });
+
+// 持久化语言标识：工作流节点/工具往返保存时保留原始非空语言标签，选取译文时再按支持列表回退。
+export const StoredLocaleSchema = z.string().trim().min(1).meta({ description: '持久化语言标识' });
 
 export const langMap = {
   [LangEnum.en]: {

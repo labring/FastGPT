@@ -216,4 +216,86 @@ describe('get app detail api', () => {
     expect(res.data.edges).toEqual([]);
     expect(res.data.chatConfig).toEqual({});
   });
+
+  it('preserves unrecognized Agent tool metadataLocale across detail hydration and unrelated auto-save', async () => {
+    const owner = await getUser(`detail-locale-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'Agent metadataLocale round-trip',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'start-1',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'agent-1',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-missing-locale-tool',
+                  metadataLocale: 'tr-TR',
+                  config: {}
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    });
+
+    const detailRes = await Call<
+      Record<string, never>,
+      GetAppDetailQueryType,
+      GetAppDetailResponseType
+    >(handler, {
+      auth: owner,
+      headers: {},
+      query: { appId }
+    });
+
+    expect(detailRes.code).toBe(200);
+    const detailTools = detailRes.data.nodes
+      .find((node) => node.nodeId === 'agent-1')
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as
+      | Array<{ id: string; metadataLocale?: string }>
+      | undefined;
+    expect(detailTools?.[0]?.metadataLocale).toBe('tr-TR');
+
+    const editedNodes = detailRes.data.nodes.map((node) =>
+      node.nodeId === 'start-1' ? { ...node, name: 'Start renamed' } : node
+    );
+    const saveRes = await Call<PublishAppBodyType>(publishHandler, {
+      auth: owner,
+      query: { appId },
+      body: {
+        isPublish: false,
+        autoSave: true,
+        nodes: editedNodes,
+        edges: detailRes.data.edges,
+        chatConfig: detailRes.data.chatConfig
+      }
+    });
+
+    expect(saveRes.code).toBe(200);
+    const draft = await MongoAppVersion.findOne({ appId, isAutoSave: true }).lean();
+    const savedTools = draft?.nodes
+      .find((node) => node.nodeId === 'agent-1')
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as
+      | Array<{ id: string; metadataLocale?: string }>
+      | undefined;
+    expect(savedTools?.[0]?.metadataLocale).toBe('tr-TR');
+  });
 });

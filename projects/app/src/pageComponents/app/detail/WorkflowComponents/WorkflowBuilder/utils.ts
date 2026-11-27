@@ -1,3 +1,4 @@
+import { resolveSupportedLocale } from '@fastgpt/global/common/i18n/type';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import type {
   StoreNodeItemType,
@@ -31,7 +32,7 @@ export const prepareWorkflowBuilderToolSecrets = async ({
         appId,
         source: node.source ?? systemTool?.source,
         versionId: node.version ?? '',
-        lang: node.metadataLocale
+        lang: node.metadataLocale ? resolveSupportedLocale(node.metadataLocale) : undefined
       };
       const key = JSON.stringify(query);
       if (!previewRequests.has(key)) {

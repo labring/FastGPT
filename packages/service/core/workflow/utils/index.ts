@@ -3,6 +3,7 @@ import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { resolveSupportedLocale } from '@fastgpt/global/common/i18n/type';
 import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
@@ -54,7 +55,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   >;
   teamId?: string;
 }): Promise<RuntimeNodeItemType[]> {
-  const metadataLocale = toolSetNode.metadataLocale ?? 'en';
+  const metadataLocale = resolveSupportedLocale(toolSetNode.metadataLocale);
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
   const toolConfigSource = (() => {
     const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;

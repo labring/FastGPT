@@ -1,3 +1,4 @@
+import { resolveSupportedLocale } from '@fastgpt/global/common/i18n/type';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -158,7 +159,7 @@ export const beforeUpdateAppFormat = async ({
               appId: selectedTool.id,
               versionId: selectedTool.version,
               source: selectedTool.source,
-              lang: selectedTool.metadataLocale ?? 'en',
+              lang: resolveSupportedLocale(selectedTool.metadataLocale),
               teamId
             });
             const inputMap = new Map(preview.inputs.map((input) => [input.key, input]));
