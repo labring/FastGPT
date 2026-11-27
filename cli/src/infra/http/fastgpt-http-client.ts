@@ -303,6 +303,23 @@ function sanitizePresignedUrlForError(rawUrl: string): string {
   }
 }
 
+/**
+ * 读取 HTTP 响应体；若在收到响应头后发生断连或流超时，统一转换为 `CliNetworkError`（调用方据此识别写入结果未知）。
+ */
+async function readResponseTextOrThrow(response: Response, url: string): Promise<string> {
+  try {
+    return await response.text();
+  } catch (error) {
+    if (error instanceof CliNetworkError) throw error;
+    const msg = redactText(error instanceof Error ? error.message : String(error));
+    throw new CliNetworkError(
+      `Failed to read response body from ${redactText(url)}: ${msg}`,
+      'The server may have already processed the request; inspect authoritative state before retrying.',
+      { url: redactText(url), httpStatus: response.status, phase: 'response_body' }
+    );
+  }
+}
+
 async function readChunkWithAbort(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   signal?: AbortSignal
@@ -671,7 +688,7 @@ export function createFastGptHttpClient({
         jsonBody: body
       });
 
-      const rawText = await response.text();
+      const rawText = await readResponseTextOrThrow(response, finalUrl);
       return unpackFastGptResponse<T>({
         response,
         rawText,
@@ -701,7 +718,7 @@ export function createFastGptHttpClient({
       });
 
       if (response.status >= 400) {
-        const rawText = await response.text();
+        const rawText = await readResponseTextOrThrow(response, finalUrl);
         throw mapServerError({
           httpStatus: response.status,
           message: rawText.slice(0, 300) || `HTTP ${response.status}`,
@@ -756,7 +773,7 @@ export function createFastGptHttpClient({
         contentType: multipartContentType
       });
 
-      const rawText = await response.text();
+      const rawText = await readResponseTextOrThrow(response, finalUrl);
       return unpackFastGptResponse<T>({
         response,
         rawText,
@@ -799,7 +816,7 @@ export function createFastGptHttpClient({
         contentLength: body.byteLength
       });
 
-      const rawText = await response.text();
+      const rawText = await readResponseTextOrThrow(response, finalUrl);
       return unpackFastGptResponse<T>({
         response,
         rawText,

@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createHttpToolService } from '../../src/domain/tool/http-tool-service';
 import { createMcpToolService } from '../../src/domain/tool/mcp-tool-service';
 import { createToolFolderService } from '../../src/domain/tool/tool-folder-service';
-import type { FastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
-import { CliNetworkError } from '../../src/shared/errors';
+import {
+  createFastGptHttpClient,
+  type FastGptHttpClient
+} from '../../src/infra/http/fastgpt-http-client';
+import { CliApiError, CliNetworkError } from '../../src/shared/errors';
 
 const FOLDER_ID = '68ad85a7463006c963799a10';
 const MCP_ID = '68ad85a7463006c963799a11';
@@ -436,7 +439,11 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
         return HTTP_ID;
       }
       if (path === '/core/app/httpTools/update') {
-        throw new Error('config rejected by server');
+        throw new CliApiError({
+          message: 'config rejected by server',
+          httpStatus: 400,
+          serverCode: 400
+        });
       }
       return undefined;
     });
@@ -713,5 +720,166 @@ describe('Tool Domain Services (folder / mcp / http)', () => {
         dryRun: true
       })
     ).rejects.toThrow();
+
+    // 6. Axios path-prefix outbound URL parity: changing /v1 -> /v2 on relative tool /search must refuse inherited sub-tool credentials
+    const prefixClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'PrefixHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'https://api.example.com/v1',
+                  toolList: [
+                    {
+                      name: 'search',
+                      description: 'Search',
+                      path: '/search',
+                      method: 'GET',
+                      headerSecret: { Authorization: { value: 'Bearer v1-token' } }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        };
+      }
+      return undefined;
+    });
+
+    await expect(
+      httpService.update({
+        client: prefixClient,
+        appId: HTTP_ID,
+        metadata: {},
+        config: { baseUrl: 'https://api.example.com/v2' }
+      })
+    ).rejects.toThrow(/Refusing to retain saved sub-tool headerSecret\/staticHeaders/);
+
+    await expect(
+      httpService.run({
+        client: prefixClient,
+        input: { appId: HTTP_ID, baseUrl: 'https://api.example.com/v2', toolPath: '/search' }
+      })
+    ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    // Path traversal escaping authorized /v1 base prefix must block toolset-level saved credentials
+    const prefixEscapeClient = createMockClient(async ({ path }) => {
+      if (path === '/core/app/detail') {
+        return {
+          _id: HTTP_ID,
+          name: 'PrefixEscapeHTTP',
+          type: 'httpToolSet',
+          nodes: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  baseUrl: 'https://api.example.com/v1',
+                  headerSecret: { Authorization: { value: 'Bearer prefix-only-token' } },
+                  toolList: []
+                }
+              }
+            }
+          ]
+        };
+      }
+      return undefined;
+    });
+
+    await expect(
+      httpService.run({
+        client: prefixEscapeClient,
+        input: { appId: HTTP_ID, toolPath: '/../v2/admin' }
+      })
+    ).rejects.toThrow(/Refusing to send saved credentials/);
+
+    // 7. Post-header body disconnect and non-FastGPT gateway 502 on follow-up configure write both report outcome: unknown
+    const bodyDropHttpClient = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes('/core/app/httpTools/create')) {
+          return new Response(JSON.stringify({ code: 200, data: HTTP_ID }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        const brokenStream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.error(new TypeError('terminated'));
+          }
+        });
+        return new Response(brokenStream, { status: 200 });
+      }
+    });
+
+    try {
+      await httpService.create({
+        client: bodyDropHttpClient,
+        input: { name: 'BodyDropHTTP' },
+        config: {
+          baseUrl: 'https://api.example.com/v1',
+          toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+        }
+      });
+      expect.unreachable('should report unknown outcome on post-header disconnect');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(CliNetworkError);
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        uncertainStep: 'configure'
+      });
+      expect(error.details.failedStep).toBeUndefined();
+      expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
+    }
+
+    const gateway502HttpClient = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes('/core/app/httpTools/create')) {
+          return new Response(JSON.stringify({ code: 200, data: HTTP_ID }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return new Response('<html>502 Bad Gateway</html>', {
+          status: 502,
+          headers: { 'content-type': 'text/html' }
+        });
+      }
+    });
+
+    try {
+      await httpService.create({
+        client: gateway502HttpClient,
+        input: { name: 'Gateway502HTTP' },
+        config: {
+          baseUrl: 'https://api.example.com/v1',
+          toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+        }
+      });
+      expect.unreachable('should report unknown outcome on gateway 502');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(CliApiError);
+      expect(error.details).toMatchObject({
+        partialSuccess: true,
+        outcome: 'unknown',
+        appId: HTTP_ID,
+        completedSteps: ['create'],
+        uncertainStep: 'configure'
+      });
+      expect(error.details.failedStep).toBeUndefined();
+      expect(error.hint).toContain(`fastgpt tool http get ${HTTP_ID}`);
+    }
   });
 });

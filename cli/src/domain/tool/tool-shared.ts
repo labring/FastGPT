@@ -1,6 +1,12 @@
 import { StoreSecretValueTypeApiInputSchema } from '@fastgpt/global/common/secret/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { CliApiError, CliArgumentError, CliError, CliNetworkError } from '../../shared/errors';
+import {
+  CliApiError,
+  CliArgumentError,
+  CliAuthError,
+  CliError,
+  CliNetworkError
+} from '../../shared/errors';
 import { isPlainObject } from '../../shared/input';
 
 export type HeaderSecretInput = Record<string, { value?: string; secret?: string }>;
@@ -209,16 +215,43 @@ export function validateHttpToolPath(rawPath: string): string {
 }
 
 /**
- * 计算 HTTP 子工具的实际目标 URL（兼容 OpenAPI 相对路径 + baseUrl，以及 Web 手动工具完整 URL）。
+ * 与服务端 `runHTTPTool` 对齐的基址补全规则：历史已保存的无协议 `baseUrl` 默认按 `https://` 补全。
+ */
+export function normalizeSavedHttpBaseUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+    return validateToolEndpointUrl(trimmed, 'HTTP target URL');
+  }
+  return validateToolEndpointUrl(`https://${trimmed}`, 'HTTP target URL');
+}
+
+/**
+ * 与 Axios `combineURLs(baseURL, relativeURL)` 保持一致的拼接契约：保留 `baseUrl` 路径前缀（如 `/v1`），
+ * 避免 WHATWG `new URL('/search', 'https://host/v1')` 丢弃 `/v1` 导致改址凭据校验漏判。
+ */
+function combineAxiosBaseAndPath(baseUrl: string, relativePath: string): string {
+  if (!relativePath) {
+    return baseUrl;
+  }
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const cleanRelative = relativePath.replace(/^\/+/, '');
+  return cleanRelative ? `${cleanBase}/${cleanRelative}` : cleanBase;
+}
+
+/**
+ * 计算 HTTP 子工具的实际出站目标 URL（与 `packages/service/core/app/http.ts` 中 Axios 的合并契约严格对齐）。
  */
 export function resolveHttpToolEffectiveUrl({
   baseUrl,
   toolPath,
-  allowAbsoluteWithBaseUrl = false
+  allowAbsoluteWithBaseUrl = false,
+  allowSchemeLessBaseUrl = false
 }: {
   baseUrl?: string;
   toolPath: string;
   allowAbsoluteWithBaseUrl?: boolean;
+  allowSchemeLessBaseUrl?: boolean;
 }): string {
   const trimmedPath = toolPath.trim();
   const trimmedBase = baseUrl?.trim() ?? '';
@@ -231,7 +264,9 @@ export function resolveHttpToolEffectiveUrl({
   }
 
   if (trimmedBase) {
-    const validBase = validateToolEndpointUrl(trimmedBase, 'HTTP target URL');
+    const validBase = allowSchemeLessBaseUrl
+      ? normalizeSavedHttpBaseUrl(trimmedBase)
+      : validateToolEndpointUrl(trimmedBase, 'HTTP target URL');
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath)) {
       if (!allowAbsoluteWithBaseUrl) {
         validateHttpToolPath(trimmedPath);
@@ -239,10 +274,28 @@ export function resolveHttpToolEffectiveUrl({
       return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
     }
     const validPath = validateHttpToolPath(trimmedPath);
-    return new URL(validPath, validBase).toString();
+    return new URL(combineAxiosBaseAndPath(validBase, validPath)).toString();
   }
 
   return new URL(validateToolEndpointUrl(trimmedPath, 'HTTP tool URL')).toString();
+}
+
+/**
+ * 判断实际出站目标是否仍落在已授权 `baseUrl` 的同源与路径前缀范围内，防止通过 `../` 越出基址前缀。
+ */
+export function isUrlWithinAuthorizedBase(targetUrl: string, authorizedBaseUrl: string): boolean {
+  try {
+    const target = new URL(targetUrl.trim());
+    const base = new URL(authorizedBaseUrl.trim());
+    if (target.origin !== base.origin) return false;
+    const basePrefix = base.pathname.replace(/\/+$/, '') || '/';
+    const targetPath = target.pathname.replace(/\/+$/, '') || '/';
+    return (
+      basePrefix === '/' || targetPath === basePrefix || targetPath.startsWith(`${basePrefix}/`)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -261,9 +314,35 @@ export function isSameToolEndpoint(urlA: string, urlB: string): boolean {
 }
 
 /**
+ * 判断异常是否携带 FastGPT 服务端明确的写入拒绝依据：
+ * - 参数/鉴权拒绝，或 4xx（非 408 请求超时）HTTP 拒绝，或解析出 FastGPT 标准 JSON 信封 `serverCode`（非 408）属于明确失败；
+ * - 网络断连/响应体中断、网关 502/503/504 等无 FastGPT 确认应答的异常一律归为结果未知。
+ */
+function isConfirmedWriteRejection(error: unknown): boolean {
+  if (error instanceof CliArgumentError || error instanceof CliAuthError) {
+    return true;
+  }
+  if (error instanceof CliApiError) {
+    if (
+      error.httpStatus !== undefined &&
+      error.httpStatus >= 400 &&
+      error.httpStatus < 500 &&
+      error.httpStatus !== 408
+    ) {
+      return true;
+    }
+    if (error.serverCode !== undefined && error.serverCode !== 408) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * 包装多步写操作中后置步骤异常：
- * - 网络超时/断连（`CliNetworkError`）保留网络错误类别并标记为 `outcome: "unknown"`（`uncertainStep`），避免把服务端可能已提交的写入误报为失败；
- * - 明确的业务/服务端拒绝标记为 `outcome: "failed"`（`failedStep`）。
+ * - 仅在获得明确服务端拒绝依据时标记为 `outcome: "failed"`（`failedStep`）；
+ * - 响应头前后断连、响应体中断、网关 502/503/504 等未获得写入确认的异常一律标记为 `outcome: "unknown"`（`uncertainStep`），
+ *   保留已提交步骤与资源 ID，引导先查询服务端权威状态后再决策。
  */
 export function wrapPartialWriteError({
   error,
@@ -285,19 +364,27 @@ export function wrapPartialWriteError({
   const baseMessage = error instanceof Error ? error.message : String(error);
   const causeDetails = error instanceof CliError ? error.details : undefined;
 
-  if (error instanceof CliNetworkError) {
-    return new CliNetworkError(
-      `${operation} committed [${completedSteps.join(', ')}] for ${appId}, but step "${step}" lost its response and its outcome is unknown: ${baseMessage}`,
-      unknownHint,
-      {
-        partialSuccess: true,
-        outcome: 'unknown',
-        appId,
-        completedSteps,
-        uncertainStep: step,
-        ...(causeDetails !== undefined ? { cause: causeDetails } : {})
-      }
-    );
+  if (!isConfirmedWriteRejection(error)) {
+    const unknownMessage = `${operation} committed [${completedSteps.join(', ')}] for ${appId}, but step "${step}" did not return an authoritative confirmation and its outcome is unknown: ${baseMessage}`;
+    const unknownDetails = {
+      partialSuccess: true,
+      outcome: 'unknown',
+      appId,
+      completedSteps,
+      uncertainStep: step,
+      ...(causeDetails !== undefined ? { cause: causeDetails } : {})
+    };
+    if (error instanceof CliApiError) {
+      return new CliApiError({
+        message: unknownMessage,
+        hint: unknownHint,
+        httpStatus: error.httpStatus,
+        serverCode: error.serverCode,
+        statusText: error.statusText,
+        details: unknownDetails
+      });
+    }
+    return new CliNetworkError(unknownMessage, unknownHint, unknownDetails);
   }
 
   const httpStatus = error instanceof CliApiError ? error.httpStatus : undefined;

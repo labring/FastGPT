@@ -404,6 +404,29 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     }
   });
 
+  it('classifies post-header response body disconnects as CliNetworkError', async () => {
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(new TypeError('socket closed mid-body'));
+            }
+          }),
+          { status: 200 }
+        )
+    });
+
+    await expect(
+      client.request({ method: 'PUT', path: '/core/app/httpTools/update' })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({ httpStatus: 200, phase: 'response_body' })
+    });
+  });
+
   it('supports uploadMultipart and requestRaw methods', async () => {
     let capturedFormData: FormData | undefined;
     const client = createFastGptHttpClient({

@@ -41,7 +41,9 @@ import {
   hasStaticHeaders,
   isAbsoluteHttpUrl,
   isSameToolEndpoint,
+  isUrlWithinAuthorizedBase,
   normalizeHeaderSecretInput,
+  normalizeSavedHttpBaseUrl,
   redactCustomHeadersPreview,
   redactHeaderSecretPreview,
   redactStaticHeadersPreview,
@@ -124,7 +126,8 @@ function tryResolveEffectiveUrl({
     return resolveHttpToolEffectiveUrl({
       baseUrl,
       toolPath,
-      allowAbsoluteWithBaseUrl: true
+      allowAbsoluteWithBaseUrl: true,
+      allowSchemeLessBaseUrl: true
     });
   } catch {
     return undefined;
@@ -586,10 +589,13 @@ export function createHttpToolService(): HttpToolService {
       let mergedConfigBody: ReturnType<typeof UpdateHttpToolsBodySchema.parse> | undefined;
       if (hasConfigUpdate) {
         const existing = extractHttpToolSetConfig(detail);
+        const normalizedExistingBaseUrl = existing.baseUrl
+          ? normalizeSavedHttpBaseUrl(existing.baseUrl)
+          : undefined;
         if (
           validatedBaseUrl !== undefined &&
-          existing.baseUrl &&
-          !isSameToolEndpoint(validatedBaseUrl, existing.baseUrl)
+          normalizedExistingBaseUrl &&
+          !isSameToolEndpoint(validatedBaseUrl, normalizedExistingBaseUrl)
         ) {
           const reusingSavedHeaderSecret =
             hasSavedCredentials(existing.headerSecret) && normalizedHeaders === undefined;
@@ -792,7 +798,7 @@ export function createHttpToolService(): HttpToolService {
       const savedBaseUrl = existingConfig?.baseUrl?.trim() ?? '';
       const candidatePath = matchedTool ? matchedTool.path.trim() : rawToolSelector;
 
-      // 2. 按已保存配置与显式覆盖解析最终请求地址（兼容 OpenAPI baseUrl+相对路径 与 Web 手动工具完整 URL）。
+      // 2. 按服务端 Axios 合并契约解析最终请求地址（兼容 OpenAPI baseUrl+路径前缀+相对路径 与 Web 手动工具完整 URL）。
       let resolvedBaseUrl: string;
       let resolvedToolPath: string;
       let finalEffectiveUrl: string;
@@ -802,23 +808,32 @@ export function createHttpToolService(): HttpToolService {
         if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
           const parsedSaved = new URL(validateToolEndpointUrl(candidatePath, 'HTTP tool URL'));
           resolvedToolPath = `${parsedSaved.pathname}${parsedSaved.search}`;
-          finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+          finalEffectiveUrl = resolveHttpToolEffectiveUrl({
+            baseUrl: resolvedBaseUrl,
+            toolPath: resolvedToolPath
+          });
         } else {
           resolvedToolPath = validateHttpToolPath(candidatePath);
-          finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+          finalEffectiveUrl = resolveHttpToolEffectiveUrl({
+            baseUrl: resolvedBaseUrl,
+            toolPath: resolvedToolPath
+          });
         }
       } else if (matchedTool && isAbsoluteHttpUrl(candidatePath)) {
         resolvedBaseUrl = '';
         resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
-        finalEffectiveUrl = new URL(resolvedToolPath).toString();
+        finalEffectiveUrl = resolveHttpToolEffectiveUrl({ toolPath: resolvedToolPath });
       } else if (savedBaseUrl) {
-        resolvedBaseUrl = validateToolEndpointUrl(savedBaseUrl, 'HTTP target URL');
+        resolvedBaseUrl = normalizeSavedHttpBaseUrl(savedBaseUrl);
         resolvedToolPath = validateHttpToolPath(candidatePath);
-        finalEffectiveUrl = new URL(resolvedToolPath, resolvedBaseUrl).toString();
+        finalEffectiveUrl = resolveHttpToolEffectiveUrl({
+          baseUrl: resolvedBaseUrl,
+          toolPath: resolvedToolPath
+        });
       } else if (isAbsoluteHttpUrl(candidatePath)) {
         resolvedBaseUrl = '';
         resolvedToolPath = validateToolEndpointUrl(candidatePath, 'HTTP tool URL');
-        finalEffectiveUrl = new URL(resolvedToolPath).toString();
+        finalEffectiveUrl = resolveHttpToolEffectiveUrl({ toolPath: resolvedToolPath });
       } else {
         throw new CliArgumentError(
           'Unable to resolve HTTP target URL from toolset.',
@@ -830,7 +845,7 @@ export function createHttpToolService(): HttpToolService {
       const savedHeaderSecret = matchedTool?.headerSecret ?? existingConfig?.headerSecret;
       const savedStaticHeaders = matchedTool?.staticHeaders;
 
-      // 3. 按实际最终目标地址校验凭据隔离：凡相对已保存目标发生改址，禁止携带工具集或子工具的任意已保存凭据/请求头。
+      // 3. 按实际最终出站地址校验凭据隔离：凡相对已保存目标发生改址或越出基址前缀，禁止携带工具集或子工具凭据/请求头。
       if (appId) {
         const targetChanged = (() => {
           if (matchedTool) {
@@ -841,11 +856,11 @@ export function createHttpToolService(): HttpToolService {
             return !savedTargetUrl || !isSameToolEndpoint(finalEffectiveUrl, savedTargetUrl);
           }
           if (savedBaseUrl) {
-            const validSavedBase = validateToolEndpointUrl(savedBaseUrl, 'HTTP target URL');
+            const validSavedBase = normalizeSavedHttpBaseUrl(savedBaseUrl);
             if (explicitBaseUrl && !isSameToolEndpoint(explicitBaseUrl, validSavedBase)) {
               return true;
             }
-            return new URL(finalEffectiveUrl).origin !== new URL(validSavedBase).origin;
+            return !isUrlWithinAuthorizedBase(finalEffectiveUrl, validSavedBase);
           }
           // 工具集未保存 baseUrl 且未命中已保存子工具：目标地址未经工具集授权，禁止复用已保存凭据。
           return true;
