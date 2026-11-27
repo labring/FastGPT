@@ -351,25 +351,36 @@ export type ContractBackendEntry = {
   teardown: () => Promise<void>;
 };
 
+export type ContractBackendsOceanBaseConfig =
+  | {
+      oceanBaseTables?: undefined;
+      oceanBaseDdls?: undefined;
+    }
+  | {
+      oceanBaseTables: readonly string[];
+      oceanBaseDdls: readonly string[];
+    };
+
+export type CreateContractBackendsOptions = {
+  mongoCollections: readonly MongoCollectionDefinition<any>[];
+  env?: Record<string, string | undefined>;
+} & ContractBackendsOceanBaseConfig;
+
 /**
  * 构建 MongoDB + 可选真实 OceanBase/SeekDB 契约测试后端列表。
  *
- * - Phase 1A 仅验证 MongoDB 仓储时可省略 `oceanBaseTables`/`oceanBaseDdls`，仅返回 `mongo` 后端，
+ * - Phase 1A 仅验证 MongoDB 仓储时同时省略 `oceanBaseTables` 与 `oceanBaseDdls`，仅返回 `mongo` 后端，
  *   避免 CI 启用 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 时误阻断；
- * - 传入非空 `oceanBaseTables` 时（如 Pilot 0 `AppRegistration` 及 Phase 1B 双引擎仓储），
- *   设置 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 且缺少 `FASTGPT_TEST_OCEANBASE_URI` 会立即抛错防静默跳过。
+ * - 启用 OceanBase 契约后端时（如 Pilot 0 `AppRegistration` 及 Phase 1B 双引擎仓储），
+ *   `oceanBaseTables` 与 `oceanBaseDdls` 必须作为同一份后端配置齐全且均非空（否则在注册后端前立即抛错），
+ *   且设置 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 却缺少 `FASTGPT_TEST_OCEANBASE_URI` 时立即抛错防静默跳过。
  */
 export const createContractBackends = ({
   mongoCollections,
   oceanBaseTables,
   oceanBaseDdls,
   env = process.env
-}: {
-  mongoCollections: readonly MongoCollectionDefinition<any>[];
-  oceanBaseTables?: readonly string[];
-  oceanBaseDdls?: readonly string[];
-  env?: Record<string, string | undefined>;
-}): ContractBackendEntry[] => {
+}: CreateContractBackendsOptions): ContractBackendEntry[] => {
   const backends: ContractBackendEntry[] = [];
 
   let mongoHarness: MongoTestHarness | undefined;
@@ -392,15 +403,32 @@ export const createContractBackends = ({
     }
   });
 
-  const hasOceanBaseTables = oceanBaseTables !== undefined && oceanBaseTables.length > 0;
-  const hasOceanBaseDdls = oceanBaseDdls !== undefined && oceanBaseDdls.length > 0;
-  if (!hasOceanBaseTables) {
-    if (hasOceanBaseDdls) {
-      throw new DbConfigurationError(
-        'createContractBackends received oceanBaseDdls without non-empty oceanBaseTables'
-      );
-    }
+  if (oceanBaseTables === undefined && oceanBaseDdls === undefined) {
     return backends;
+  }
+
+  const hasValidOceanBaseTables =
+    oceanBaseTables !== undefined &&
+    oceanBaseTables.length > 0 &&
+    oceanBaseTables.every((table) => table.trim().length > 0);
+  const hasValidOceanBaseDdls =
+    oceanBaseDdls !== undefined &&
+    oceanBaseDdls.length > 0 &&
+    oceanBaseDdls.every((ddl) => ddl.trim().length > 0);
+
+  if (
+    !hasValidOceanBaseTables ||
+    !hasValidOceanBaseDdls ||
+    oceanBaseTables === undefined ||
+    oceanBaseDdls === undefined
+  ) {
+    const missingFields = [
+      ...(!hasValidOceanBaseTables ? ['non-empty oceanBaseTables'] : []),
+      ...(!hasValidOceanBaseDdls ? ['non-empty oceanBaseDdls'] : [])
+    ];
+    throw new DbConfigurationError(
+      `createContractBackends requires ${missingFields.join(' and ')} when OceanBase backend is enabled`
+    );
   }
 
   const obUri = env.FASTGPT_TEST_OCEANBASE_URI?.trim() ?? '';
@@ -420,7 +448,7 @@ export const createContractBackends = ({
         obHarness = await createOceanBaseTestHarness({
           uri: obUri,
           tables: oceanBaseTables,
-          ddls: oceanBaseDdls ?? []
+          ddls: oceanBaseDdls
         });
         const active = obHarness;
         return {

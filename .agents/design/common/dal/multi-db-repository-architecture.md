@@ -23,7 +23,7 @@
 ```text
 packages/dal/db/repos/<domain>/
 ├── repo.type.ts           # 【公开】契约 type、Write/Read Zod Schema、.pick() 窄 DTO
-├── repo.ts                # 【公开】defineRepoToken({ mongo, oceanbase })
+├── repo.ts                # 【公开】defineRepoToken({ mongo, oceanbase? })
 ├── mongo/                 # 【私有】defineMongoCollection + MongoRepositoryBase
 │   ├── schema.ts
 │   └── repo.ts
@@ -51,14 +51,14 @@ packages/dal/db/repos/<domain>/
    - 删除 `watch.ts` 与 `volumnMongoWatch.ts`；`@fastgpt/dal/redis` 增加 `subscriber` 角色与 `SignalPubSubChannel`，写操作通过 `afterMongoCommit` 发布轻量信号，丢消息由周期 Cron 对账兜底。
 6. **生产生效 vs OceanBase 预置能力解耦（三步演进）**：
    - **当前基线（Phase 0 — Mongo 生产 + OceanBase 底座与 Pilot 0 验通）**：Mongo 侧禁用 `autoIndex` + 独立无超时 DDL 连接后台只增补建 + 清零 `deprecated: true` 墓碑；OceanBase 侧建立极简 `mysql2 + Kysely` 运行时与 Pilot 0（`AppRegistration`），并在 CI 保持 SeekDB 真库回归门禁；
-   - **Phase 1A（MongoDB 先行收口重构）**：逐域将 81 张存量业务表收敛至 **DB 无关领域契约 `repo.type.ts` + `mongo/{schema.ts,repo.ts}` + `XxxService` 构造函数注入**，删旧 `schema.ts` 并清退 `packages/service/common/mongo/`。此阶段 `defineRepoToken` 允许暂缺 `oceanbase`（切到 `oceanbase` 方言时 fail-closed 抛 `DbConfigurationError`），`createContractBackends` 仅对显式提供 `oceanBaseTables` 的仓储运行 SeekDB 套件，避免提前堆砌或误报错，同时保证 `AppRegistration` 与 `schema-drift-guard` 持续绿灯；
-   - **Phase 1B（OceanBase 集中补齐）**：在 MongoDB 仓储全部收敛验证后，基于已定型的 DB 无关契约按 Wave 拓扑逐域补齐 `oceanbase/{table.ts,repo.ts}`、接入 `repo.ts` 与 `coreOceanBaseDdls`/`proOceanBaseDdls`、并在 `repo.contract.test.ts` 补齐 `oceanBaseTables` 跑通 SeekDB 双引擎等价验证（`packages/service` 与业务调用方零返工）；
+   - **Phase 1A（MongoDB 先行收口重构）**：逐域将 81 张存量业务表收敛至 **DB 无关领域契约 `repo.type.ts` + `mongo/{schema.ts,repo.ts}` + `XxxService` 构造函数注入**，删旧 `schema.ts` 并清退 `packages/service/common/mongo/`。此阶段 `defineRepoToken` 允许暂缺 `oceanbase`：在**未挂载伴生 `fallbackMongo` 的纯 OceanBase** 运行时下拒绝访问并 fail-closed 抛 `DbConfigurationError`；在**已挂载 `fallbackMongo` 的混合模式**下，Mongo-only 仓储自动路由至伴生 Mongo，而默认 `runInTransaction(fn)` 仍走主 OceanBase 方言，因此涉及 Mongo-only 写入的事务编排必须由编排层显式使用 `runInTransaction(fn, { dialect: 'mongo' })` 以防 `DbSession` 方言不匹配。`createContractBackends` 支持同时省略 `oceanBaseTables` 与 `oceanBaseDdls` 仅跑 Mongo 套件，仅对同时显式提供非空 `oceanBaseTables` 与 `oceanBaseDdls` 的仓储运行 SeekDB 套件，避免提前堆砌或误报错，同时保证 `AppRegistration` 与 `schema-drift-guard` 持续绿灯；
+   - **Phase 1B（OceanBase 集中补齐）**：在 MongoDB 仓储全部收敛验证后，基于已定型的 DB 无关契约按 Wave 拓扑逐域补齐 `oceanbase/{table.ts,repo.ts}`、接入 `repo.ts` 与 `coreOceanBaseDdls`/`proOceanBaseDdls`、在 `repo.contract.test.ts` 同时传入非空 `oceanBaseTables` 与 `oceanBaseDdls` 跑通 SeekDB 双引擎等价验证，并将编排层显式 `{ dialect: 'mongo' }` 事务切回默认主方言事务（领域契约与上层业务零返工）；
    - **Phase 2（OceanBase 上生产前置阶段）**：补齐版本化 OceanBase DDL 迁移器（Redis 租约锁 + `_fg_migrations` 账本 + 向前兼容回滚）、OceanBase 读写分离/事务超时/慢查询观测，以及带过期时间表的后台分批 TTL 清理。
 
 ## 4. 测试体系与演进路线
 
 - **L0 纯内存单测**：Service 构造函数注入 Fake Repo（零 DB）；OceanBase Repo 使用 `createMockOceanBaseKysely` 验证 SQL 与归一化边界；
-- **L1/L2 契约测试**：`MongoMemoryReplSet` + 按需/Phase 1B 挂载真实 **SeekDB / OceanBase**（配置 `FASTGPT_TEST_OCEANBASE_URI` 自动运行，`FASTGPT_TEST_REQUIRED_OCEANBASE=1` 对显式声明 `oceanBaseTables` 的仓储与 DDL 守卫强门禁）。
+- **L1/L2 契约测试**：`MongoMemoryReplSet` + 按需/Phase 1B 挂载真实 **SeekDB / OceanBase**（配置 `FASTGPT_TEST_OCEANBASE_URI` 自动运行，`FASTGPT_TEST_REQUIRED_OCEANBASE=1` 对同时显式声明非空 `oceanBaseTables` 与 `oceanBaseDdls` 的仓储与 DDL 守卫强门禁）。
 
 ### TODO 路线
 - [x] **Phase 0（已合入 — 生产生效 + 测试态 OB 试点）**：极简 DAL 双引擎核心（`mongo` + `oceanbase`）、24-hex `EntityId`、去 Change Streams 切 Redis Pub/Sub、Mongo 异步只增同步与 18 条墓碑清理迁移、Pilot 0（`AppRegistration`）与双轨 `test-dal` CI。
