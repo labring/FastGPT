@@ -6,6 +6,7 @@ import {
   notLeaveStatus
 } from '@fastgpt/global/support/user/team/constant';
 import { MongoTeamMember } from './teamMemberSchema';
+import { buildTeamMemberNameSortKey } from './sortKey';
 import { MongoTeam } from './teamSchema';
 import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
 import { getTmbPermission } from '../../permission/controller';
@@ -187,6 +188,7 @@ export async function createUserLoginTeam({
         teamId: team._id,
         userId,
         name: memberName ?? username,
+        nameSortKey: buildTeamMemberNameSortKey(memberName ?? username),
         // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
         isSetMemberName: true,
         role: TeamMemberRoleEnum.owner,
@@ -251,6 +253,7 @@ export async function createDefaultTeam({
           teamId: insertedId,
           userId,
           name: 'Owner',
+          nameSortKey: buildTeamMemberNameSortKey('Owner'),
           // root/默认团队初始化规则不变：系统常量名视为已设置
           isSetMemberName: true,
           role: TeamMemberRoleEnum.owner,
@@ -418,6 +421,7 @@ export async function ensureRootTeamMember({
           $set: updateSet,
           $setOnInsert: {
             name: 'root',
+            nameSortKey: buildTeamMemberNameSortKey('root'),
             avatar: LOGO_ICON,
             isSetMemberName: true,
             createTime: new Date()

@@ -67,6 +67,7 @@
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.10.38",
     "pg": "^8.10.0",
+    "pinyin-pro": "^3.29.5",
     "pino": "^9.7.0",
     "pino-opentelemetry-transport": "^1.0.1",
     "proxy-addr": "catalog:",

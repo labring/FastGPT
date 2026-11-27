@@ -1,3 +1,4 @@
+import type { UpdateQuery, UpdateWithAggregationPipeline } from 'mongoose';
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type';
@@ -8,6 +9,7 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { buildTeamMemberNameSortKey } from './sortKey';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -29,6 +31,16 @@ const TeamMemberSchema = new Schema({
     required: true,
     trim: true,
     default: 'Member'
+  },
+  /**
+   * 基于成员名生成的规范化拼音排序键（0:字母/拼音、1:数字、2:其他），用于团队成员列表按索引排序分页。
+   * 存量文档由自动系统迁移任务分批回填。
+   */
+  nameSortKey: {
+    type: String,
+    default: function (this: { name?: string } | null | undefined) {
+      return buildTeamMemberNameSortKey(this?.name ?? 'Member');
+    }
   },
   /**
    * 成员名是否由显式来源设置（本人/管理员/邀请/第三方有效下发）。
@@ -80,6 +92,51 @@ TeamMemberSchema.virtual('user', {
   justOne: true
 });
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasExplicitSortKey = (target: unknown): boolean =>
+  isPlainObject(target) && Object.hasOwn(target, 'nameSortKey') && target.nameSortKey !== undefined;
+
+const syncSortKeyOnOperatorPayload = (target: unknown) => {
+  if (!isPlainObject(target)) return;
+  if (typeof target.name === 'string' && !hasExplicitSortKey(target)) {
+    target.nameSortKey = buildTeamMemberNameSortKey(target.name);
+  }
+};
+
+/**
+ * 在 Mongoose 更新载荷包含 `name` 时自动补齐 `nameSortKey`，防止未显式传排序键的写操作造成漂移。
+ * 注意：`bulkWrite` 与聚合管道更新不走此分支，批写入口仍须显式写入 `nameSortKey`。
+ */
+const syncNameSortKeyInUpdate = (
+  update: UpdateQuery<TeamMemberType> | UpdateWithAggregationPipeline | null
+) => {
+  if (!update || Array.isArray(update)) return;
+
+  if (
+    typeof update.name === 'string' &&
+    update.nameSortKey === undefined &&
+    !hasExplicitSortKey(update.$set)
+  ) {
+    update.nameSortKey = buildTeamMemberNameSortKey(update.name);
+  }
+  syncSortKeyOnOperatorPayload(update.$set);
+  syncSortKeyOnOperatorPayload(update.$setOnInsert);
+};
+
+TeamMemberSchema.pre('save', function (next) {
+  if (this.isModified('name') || !this.nameSortKey) {
+    this.nameSortKey = buildTeamMemberNameSortKey(this.name);
+  }
+  next();
+});
+
+TeamMemberSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function (next) {
+  syncNameSortKeyInUpdate(this.getUpdate());
+  next();
+});
+
 defineIndex(TeamMemberSchema, {
   key: { teamId: 1 },
   options: { background: true }
@@ -88,6 +145,11 @@ defineIndex(TeamMemberSchema, {
 defineIndex(TeamMemberSchema, {
   key: { userId: 1, teamId: 1 },
   options: { unique: true, background: true }
+});
+
+defineIndex(TeamMemberSchema, {
+  key: { teamId: 1, status: 1, nameSortKey: 1, _id: 1 },
+  options: { name: 'fg_team_member_status_sort', background: true }
 });
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

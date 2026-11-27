@@ -825,6 +825,9 @@ importers:
       pino-opentelemetry-transport:
         specifier: ^1.0.1
         version: 1.0.1(@opentelemetry/api@1.9.0)(pino@9.7.0)
+      pinyin-pro:
+        specifier: ^3.29.5
+        version: 3.29.5
       proxy-addr:
         specifier: 'catalog:'
         version: 2.0.8
@@ -11964,6 +11967,9 @@ packages:
   pino@9.7.0:
     resolution: {integrity: sha512-vnMCM6xZTb1WDmLvtG2lE/2p+t9hDEIvTWJsu6FejkE62vB7gDhvzrpFR4Cw2to+9JNQxVnkAKVPA1KPB98vWg==}
     hasBin: true
+
+  pinyin-pro@3.29.5:
+    resolution: {integrity: sha512-Fk5YoRmtdHqJWqAuzYVG/NzvzeCbaG+ZEwbY6Nbps3QAIrvQQEtcm49frcyCM8i2b5najnzPDtYqrHRYTTiuwQ==}
 
   pirates@4.0.6:
     resolution: {integrity: sha512-saLsH7WeYYPiD25LDuLRRY/i+6HaPYr6G1OUlN39otzkSTxKnubR9RTxS3/Kk50s1g2JTgFwWQDQyplC5/SHZg==}
@@ -26562,6 +26568,8 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.0
       thread-stream: 3.1.0
+
+  pinyin-pro@3.29.5: {}
 
   pirates@4.0.6: {}
 

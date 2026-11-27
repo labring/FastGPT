@@ -119,5 +119,10 @@
   "migrations.20261127_cleanup_agent_engine_config.description": "系統配置遷移完成後在背景獨立清理實例功能配置（feature）中已下線的 agentEngine 覆蓋項與預設值標記，保留其餘功能開關配置；已乾淨時唯讀跳過。",
   "migrations.20261127_cleanup_agent_engine_config.cleanup": "清理歷史引擎配置",
   "migrations.20261127_cleanup_agent_engine_config.validation": "驗證清理結果",
-  "migrations.20261127_cleanup_agent_engine_config.result": "已清理 {{cleanedDocumentCount}} 筆功能配置記錄，移除 {{removedFieldCount}} 項歷史引擎配置。"
+  "migrations.20261127_cleanup_agent_engine_config.result": "已清理 {{cleanedDocumentCount}} 筆功能配置記錄，移除 {{removedFieldCount}} 項歷史引擎配置。",
+  "migrations.20261127_backfill_team_member_sort_key.name": "回填團隊成員拼音排序鍵",
+  "migrations.20261127_backfill_team_member_sort_key.description": "啟動後於背景獨立分批掃描存量團隊成員並回填 nameSortKey（字母與中文拼音優先、同首字母中文在前，數字與其他字元排後），支援斷點續跑與併發改名防覆蓋，供成員列表依索引高效排序分頁。",
+  "migrations.20261127_backfill_team_member_sort_key.members": "回填成員排序鍵",
+  "migrations.20261127_backfill_team_member_sort_key.validation": "驗證排序鍵回填結果",
+  "migrations.20261127_backfill_team_member_sort_key.result": "已掃描 {{scannedCount}} 筆團隊成員記錄，回填排序鍵 {{backfilledCount}} 筆。"
 }
