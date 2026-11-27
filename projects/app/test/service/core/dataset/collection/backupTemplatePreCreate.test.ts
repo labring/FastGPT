@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import type { DatasetImportTable } from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -149,16 +150,19 @@ const createDataset = async () => {
 const insertCollection = async ({
   trainingType,
   rawText,
+  importedTable,
   name
 }: {
   trainingType: DatasetCollectionDataProcessModeEnum;
-  rawText: string;
+  rawText?: string;
+  importedTable?: DatasetImportTable;
   name: string;
 }) => {
   const { dataset } = await createDataset();
   const result = await createCollectionAndInsertData({
     dataset,
     rawText,
+    importedTable,
     // 与生产一致：backup 与 template 都按备份格式切分。
     backupParse:
       trainingType === DatasetCollectionDataProcessModeEnum.backup ||
@@ -199,16 +203,26 @@ describe('backup / template pre-created data', () => {
   });
 
   /** 备份导入的内容在请求内已切好，应先落库再更新索引。 */
-  it('persists backup chunks before indexing', async () => {
+  it('persists structured backup chunks and metadata before indexing', async () => {
     const { collectionId } = await insertCollection({
       trainingType: DatasetCollectionDataProcessModeEnum.backup,
-      name: 'backup.csv',
-      rawText: buildBackupCsv([{ q: '备份问题一' }, { q: '备份问题二', a: '备份答案二' }])
+      name: 'backup.xlsx',
+      importedTable: {
+        chunks: [
+          { q: '备份问题一', a: '', indexes: [] },
+          { q: '备份问题二', a: '备份答案二', indexes: [], metadata: { rank: 1 } }
+        ],
+        rawTextLength: 42
+      }
     });
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
+    expect(rows.find(({ q }) => q === '备份问题二')?.metadata).toEqual({ rank: 1 });
+    expect(await MongoDatasetCollection.findById(collectionId).lean()).toMatchObject({
+      rawTextLength: 42
+    });
     // 待索引数据尚无向量，索引数组应为空。
     expect(rows.every((row) => (row.indexes ?? []).length === 0)).toBe(true);
 

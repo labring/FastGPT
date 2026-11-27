@@ -8,15 +8,13 @@ import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { responseWriteController } from '@fastgpt/service/common/response';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { iterateCursor, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
-import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { writeXlsxResponse } from '@fastgpt/service/common/file/xlsx/response';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { getStorageFileUrlExpiredTime } from '@fastgpt/service/common/s3/config/constants';
@@ -24,8 +22,6 @@ import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionExportAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
-const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
-
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const parseBody = parseApiInput({ req, bodySchema: ExportCollectionBodySchema }).body;
   const collectionId = parseBody.collectionId;
@@ -115,75 +111,40 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       : {})
   };
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader('Content-Disposition', 'attachment; filename=data.csv; ');
-
-  const cursor = MongoDatasetData.find(where, 'q a', {
-    ...readFromSecondary,
-    batchSize: 1000
-  })
-    .sort({ chunkIndex: 1 })
-    .limit(50000)
-    .cursor();
-
-  const write = responseWriteController({
-    res,
-    readStream: cursor
-  });
-  // 流式导出没有统一完成点，用一次性开关保证成功/失败只落一条审计
-  let auditFinished = false;
-  const recordExportAudit = () => {
-    if (auditFinished) return;
-
-    auditFinished = true;
-    if (!shouldAuditExport) return;
-
-    void addAuditLog(
-      buildCollectionExportAuditLog({
-        tmbId,
-        collection,
-        event: DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT
-      })
-    );
-  };
-
-  write(`\uFEFFq,a`);
-
-  cursor.on('data', async (doc) => {
-    cursor.pause();
-
-    try {
-      const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
-        [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
+  async function* rows(signal: AbortSignal) {
+    yield ['q', 'a'];
+    const cursor = MongoDatasetData.find(where, 'q a', {
+      ...readFromSecondary,
+      batchSize: 1000
+    })
+      .sort({ chunkIndex: 1 })
+      .limit(50000)
+      .cursor();
+    for await (const doc of iterateCursor(cursor, signal)) {
+      yield await replaceS3KeysToPreviewUrls(
+        [doc.q || '', doc.a || ''],
         getStorageFileUrlExpiredTime(),
         {
           filter: createDatasetFileS3KeyFilter(collection.datasetId)
         }
       );
-
-      write(`\n${sanitizedQ},${sanitizedA}`);
-    } catch (error) {
-      logger.error(`export usage error`, { error });
-      recordExportAudit();
-      cursor.destroy();
-      return;
     }
+  }
 
-    cursor.resume();
-  });
-
-  cursor.on('end', () => {
-    cursor.close();
-    recordExportAudit();
-    res.end();
-  });
-
-  cursor.on('error', (err) => {
-    logger.error(`export usage error`, { error: err });
-    recordExportAudit();
-    res.status(500);
-    res.end();
-  });
+  try {
+    await writeXlsxResponse({ res, filename: 'data.xlsx', sheet: { name: 'Data', rows } });
+  } finally {
+    if (shouldAuditExport) {
+      void addAuditLog(
+        buildCollectionExportAuditLog({
+          tmbId,
+          collection,
+          event: DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT
+        })
+      );
+    }
+  }
 }
 
+export const config = { api: { responseLimit: false } };
 export default NextAPI(handler);

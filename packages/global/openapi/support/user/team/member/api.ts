@@ -63,12 +63,13 @@ export type DeleteTeamMemberQueryType = z.infer<typeof DeleteTeamMemberQuerySche
  * API: 导出团队成员
  * Route: GET /api/proApi/support/user/team/member/export
  * Method: GET
- * Description: 将当前团队成员信息导出为 CSV 文件。
+ * Description: 将当前团队成员信息导出为 XLSX 文件。
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
 
 export const ExportTeamMembersResponseSchema = z.string().meta({
-  description: '导出的团队成员 CSV 文件内容'
+  description: '导出的团队成员 XLSX 文件',
+  format: 'binary'
 });
 export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResponseSchema>;
 

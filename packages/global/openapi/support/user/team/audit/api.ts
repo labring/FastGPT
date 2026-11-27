@@ -124,11 +124,11 @@ export type AuditListResponseType = z.infer<typeof AuditListResponseSchema>;
  * Tags: ['团队管理']
  * ============================================================================ */
 export const AuditExportBodySchema = AuditFilterSchema.extend({
-  locale: LanguageSchema.meta({ example: 'zh-CN', description: 'CSV 表头、事件和详情的语言' })
+  locale: LanguageSchema.meta({ example: 'zh-CN', description: '导出表头、事件和详情的语言' })
 }).superRefine(validateAuditRange);
 export type AuditExportBodyType = z.infer<typeof AuditExportBodySchema>;
 export const AuditExportResponseSchema = z.string().meta({
-  description: '带 UTF-8 BOM 的 CSV 文件流',
-  example: '\uFEFF操作时间,操作人员,操作类型,资源,详情'
+  description: '团队审计日志 XLSX 文件流',
+  format: 'binary'
 });
 export type AuditExportResponseType = z.infer<typeof AuditExportResponseSchema>;

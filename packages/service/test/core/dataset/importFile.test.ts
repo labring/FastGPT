@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Papa from 'papaparse';
 
-const mockReadFileContentBySource = vi.hoisted(() => vi.fn());
+const { mockReadFileContentBySource, mockReadRawContentFromSource } = vi.hoisted(() => ({
+  mockReadFileContentBySource: vi.fn(),
+  mockReadRawContentFromSource: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/common/file/read/utils', () => ({
   readFileContentBySource: mockReadFileContentBySource
+}));
+
+vi.mock('@fastgpt/service/worker/function', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/worker/function')>()),
+  readRawContentFromSource: mockReadRawContentFromSource
 }));
 
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
@@ -31,7 +39,7 @@ describe('parseDatasetImportFile', () => {
       rawText: 'q,a,index,metadata\n"question, one","line 1\nline 2",tag,"{""rank"":1}"'
     });
 
-    const rawText = await parseDatasetImportFile({
+    const { rawText } = await parseDatasetImportFile({
       ...defaultParams,
       filename: 'template.CSV'
     });
@@ -43,47 +51,67 @@ describe('parseDatasetImportFile', () => {
       getFormatText: false,
       forceSystemParse: true
     });
-    expect(Papa.parse(rawText).data).toEqual([
+    expect(Papa.parse(rawText ?? '').data).toEqual([
       ['q', 'a', 'index', 'metadata'],
       ['question, one', 'line 1\nline 2', 'tag', '{"rank":1}']
     ]);
   });
 
-  it('accepts a single-sheet Excel result without merged cells', async () => {
-    mockReadFileContentBySource.mockResolvedValue({
-      rawText: 'q,a,index,metadata\n"question, one","line 1\nline 2",tag,"{""source"":""excel""}"',
-      tableInfo: {
-        sheetCount: 1,
-        mergedCellCount: 0
+  it('restores sparse indexes and metadata using the actual header coordinates', async () => {
+    mockReadRawContentFromSource.mockResolvedValueOnce({
+      xlsxRows: [
+        new Map([
+          [0, 'q'],
+          [1, 'a'],
+          [4, 'index'],
+          [17, 'index'],
+          [19, 'metadata']
+        ]),
+        new Map([
+          [0, 'question, one'],
+          [1, 'line 1\nline 2'],
+          [17, 'second'],
+          [4, 'first'],
+          [19, '{"source":"excel"}']
+        ])
+      ]
+    });
+
+    const result = await parseDatasetImportFile({ ...defaultParams, filename: 'template.xlsx' });
+    expect(mockReadRawContentFromSource).toHaveBeenCalledWith({
+      source: defaultParams.source,
+      sparseXlsxRows: true
+    });
+    expect(result.importedTable?.chunks).toEqual([
+      {
+        q: 'question, one',
+        a: 'line 1\nline 2',
+        indexes: ['first', 'second'],
+        metadata: { source: 'excel' }
       }
-    });
-
-    const rawText = await parseDatasetImportFile({
-      ...defaultParams,
-      filename: 'template.xlsx'
-    });
-
-    expect(Papa.parse(rawText).data).toEqual([
-      ['q', 'a', 'index', 'metadata'],
-      ['question, one', 'line 1\nline 2', 'tag', '{"source":"excel"}']
     ]);
   });
 
-  it('accepts legacy headers returned by the Excel worker', async () => {
-    mockReadFileContentBySource.mockResolvedValue({
-      rawText: 'q,a,indexes\nquestion,answer,tag',
-      tableInfo: {
-        sheetCount: 1,
-        mergedCellCount: 0
-      }
+  it('restores the trailing indexes in a legacy workbook', async () => {
+    mockReadRawContentFromSource.mockResolvedValueOnce({
+      xlsxRows: [
+        new Map([
+          [0, 'q'],
+          [1, 'a'],
+          [2, 'indexes']
+        ]),
+        new Map([
+          [0, 'Question'],
+          [1, 'Answer'],
+          [2, 'first'],
+          [7, 'last']
+        ])
+      ]
     });
 
     await expect(
-      parseDatasetImportFile({
-        ...defaultParams,
-        filename: 'backup.xlsx'
-      })
-    ).resolves.toContain('indexes');
+      parseDatasetImportFile({ ...defaultParams, filename: 'backup.xlsx' })
+    ).resolves.toMatchObject({ importedTable: { chunks: [{ indexes: ['first', 'last'] }] } });
   });
 
   it('rejects unsupported extensions before reading the file', async () => {
@@ -157,9 +185,9 @@ describe('parseDatasetImportFile', () => {
   ])('normalizes $name', async ({ rawText, expectedRows }) => {
     mockReadFileContentBySource.mockResolvedValue({ rawText });
 
-    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+    const { rawText: normalizedCsv } = await parseDatasetImportFile(defaultParams);
 
-    expect(Papa.parse(normalizedCsv).data).toEqual(expectedRows);
+    expect(Papa.parse(normalizedCsv ?? '').data).toEqual(expectedRows);
   });
 
   it('drops fully blank records while preserving rows with either q or a', async () => {
@@ -167,9 +195,9 @@ describe('parseDatasetImportFile', () => {
       rawText: 'q,a\r\n,\r\nQ1,\r\n,A1\r\n" "," "\r\n'
     });
 
-    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+    const { rawText: normalizedCsv } = await parseDatasetImportFile(defaultParams);
 
-    expect(Papa.parse(normalizedCsv).data).toEqual([
+    expect(Papa.parse(normalizedCsv ?? '').data).toEqual([
       ['q', 'a'],
       ['Q1', ''],
       ['', 'A1']
@@ -181,29 +209,27 @@ describe('parseDatasetImportFile', () => {
       rawText: 'q;a\r\nQ1;A1\r\n'
     });
 
-    const normalizedCsv = await parseDatasetImportFile(defaultParams);
+    const { rawText: normalizedCsv } = await parseDatasetImportFile(defaultParams);
 
-    expect(Papa.parse(normalizedCsv).data).toEqual([
+    expect(Papa.parse(normalizedCsv ?? '').data).toEqual([
       ['q', 'a'],
       ['Q1', 'A1']
     ]);
   });
 
-  it('accepts a header-only Excel result with trailing blank rows', async () => {
-    mockReadFileContentBySource.mockResolvedValue({
-      rawText: 'q,a\r\n\r\n',
-      tableInfo: {
-        sheetCount: 1,
-        mergedCellCount: 0
-      }
+  it('accepts a header-only workbook', async () => {
+    mockReadRawContentFromSource.mockResolvedValueOnce({
+      xlsxRows: [
+        new Map([
+          [0, 'q'],
+          [1, 'a']
+        ])
+      ]
     });
 
-    const normalizedCsv = await parseDatasetImportFile({
-      ...defaultParams,
-      filename: 'empty-backup.xlsx'
-    });
-
-    expect(Papa.parse(normalizedCsv).data).toEqual([['q', 'a']]);
+    await expect(
+      parseDatasetImportFile({ ...defaultParams, filename: 'empty-backup.xlsx' })
+    ).resolves.toEqual({ importedTable: { chunks: [], rawTextLength: 2 } });
   });
 
   it('still rejects malformed quoted content when trailing blank lines are present', async () => {
@@ -214,33 +240,11 @@ describe('parseDatasetImportFile', () => {
     await expect(parseDatasetImportFile(defaultParams)).rejects.toThrow('content');
   });
 
-  it.each([
-    {
-      name: 'missing table information',
-      tableInfo: undefined,
-      error: 'exactly one worksheet'
-    },
-    {
-      name: 'multiple worksheets',
-      tableInfo: { sheetCount: 2, mergedCellCount: 0 },
-      error: 'exactly one worksheet'
-    },
-    {
-      name: 'merged cells',
-      tableInfo: { sheetCount: 1, mergedCellCount: 1 },
-      error: 'merged cells'
-    }
-  ])('rejects Excel with $name', async ({ tableInfo, error }) => {
-    mockReadFileContentBySource.mockResolvedValue({
-      rawText: 'q,a\nquestion,answer',
-      tableInfo
-    });
+  it('rejects a workbook without a structured result', async () => {
+    mockReadRawContentFromSource.mockResolvedValueOnce({ rawText: 'q,a\nQuestion,Answer' });
 
     await expect(
-      parseDatasetImportFile({
-        ...defaultParams,
-        filename: 'template.xlsx'
-      })
-    ).rejects.toThrow(error);
+      parseDatasetImportFile({ ...defaultParams, filename: 'backup.xlsx' })
+    ).rejects.toThrow('Missing structured XLSX import result');
   });
 });

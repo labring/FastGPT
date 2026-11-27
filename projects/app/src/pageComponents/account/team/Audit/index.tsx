@@ -95,7 +95,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     try {
       await downloadFetch({
         url: '/api/proApi/support/user/team/audit/export',
-        filename: `${t('account_team:audit_export_filename')}_${dayjs(dateRange.from).format('YYYY-MM-DD')}_${dayjs(dateRange.to).format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`,
+        filename: `${t('account_team:audit_export_filename')}_${dayjs(dateRange.from).format('YYYY-MM-DD')}_${dayjs(dateRange.to).format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.xlsx`,
         body: { ...searchParams, locale: parseLocale(i18n.language) ?? 'en' }
       });
     } finally {

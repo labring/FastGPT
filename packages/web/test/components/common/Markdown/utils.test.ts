@@ -2,7 +2,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   fetchRemoteMarkdown,
-  parseTableToCSVString,
   parseTableToGrid,
   parseTableToMarkdownString
 } from '../../../../components/common/Markdown/utils';
@@ -166,10 +165,12 @@ describe('table export formats', () => {
     );
   });
 
-  it('still quotes CSV cells that need CSV escaping', () => {
-    expect(parseTableToCSVString(tableWithSpecialChars())).toBe(
-      ['Name,Note', '"1,234","say ""hi"""', 'a|b,plain'].join('\n')
-    );
+  it('preserves commas and quotes in their original cells for download', () => {
+    expect(parseTableToGrid(tableWithSpecialChars())).toEqual([
+      ['Name', 'Note'],
+      ['1,234', 'say "hi"'],
+      ['a|b', 'plain']
+    ]);
   });
 
   // 原生 HTML 表格里 `&#13;` 会解码成裸 CR，单元格正文因此可以包含 CR。
@@ -184,10 +185,12 @@ describe('table export formats', () => {
       </table>
     `);
 
-  it('quotes CSV cells containing a bare carriage return', () => {
-    expect(parseTableToCSVString(tableWithBareCr())).toBe(
-      ['Name,Note', '"a\rb",x', 'c,y'].join('\n')
-    );
+  it('preserves a bare carriage return in a single cell for download', () => {
+    expect(parseTableToGrid(tableWithBareCr())).toEqual([
+      ['Name', 'Note'],
+      ['a\rb', 'x'],
+      ['c', 'y']
+    ]);
   });
 
   it('collapses a bare carriage return in markdown cells', () => {

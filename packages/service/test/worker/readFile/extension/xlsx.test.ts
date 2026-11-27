@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
+import { writeXlsxFixture } from '@test/utils/xlsx';
 import {
   getXlsxParseLimits,
   readXlsxRawText,
@@ -9,6 +10,65 @@ import {
 } from '@fastgpt/service/worker/readFile/extension/xlsx';
 
 describe('readXlsxRawText', () => {
+  it('reads sparse import rows by their populated cell coordinates', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([['q', 'a']]);
+    worksheet.T1 = { t: 's', v: 'metadata' };
+    worksheet.A50001 = { t: 'n', v: 0 };
+    worksheet.B50001 = { t: 'b', v: false };
+    worksheet.C50001 = { t: 's', v: '' };
+    worksheet.T50001 = { t: 's', v: '{"keep":true}' };
+    worksheet['!ref'] = 'A1:T50001';
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Dataset');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const restore = () =>
+      readXlsxRawText({ extension: 'xlsx', buffer, encoding: '' }, { sparseRows: true });
+    expect((await restore()).xlsxRows).toEqual([
+      new Map([
+        [0, 'q'],
+        [1, 'a'],
+        [19, 'metadata']
+      ]),
+      new Map([
+        [0, '0'],
+        [1, 'FALSE'],
+        [19, '{"keep":true}']
+      ])
+    ]);
+    const previousLimit = XLSX_PARSE_LIMITS.maxCells;
+    Object.assign(XLSX_PARSE_LIMITS, { maxCells: 2 });
+    try {
+      await expect(restore()).rejects.toThrow('maximum data cell limit of 2');
+    } finally {
+      Object.assign(XLSX_PARSE_LIMITS, { maxCells: previousLimit });
+    }
+  });
+
+  it.each(['multiple worksheets', 'merged cells'])(
+    'rejects an import workbook with %s',
+    async (scenario) => {
+      const sheet = {
+        name: 'Dataset',
+        rows: [
+          ['q', 'a'],
+          ['Question', 'Answer']
+        ]
+      };
+      const buffer = writeXlsxFixture(
+        scenario === 'multiple worksheets'
+          ? [sheet, { name: 'Extra', rows: [['another']] }]
+          : [{ ...sheet, merges: ['A2:B2'] }]
+      );
+
+      await expect(
+        readXlsxRawText({ extension: 'xlsx', buffer, encoding: '' }, { sparseRows: true })
+      ).rejects.toThrow(
+        scenario === 'multiple worksheets' ? 'exactly one worksheet' : 'merged cells'
+      );
+    }
+  );
+
   const updateWorksheetXml = async ({
     buffer,
     update

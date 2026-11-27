@@ -3,6 +3,8 @@ import JSZip from 'jszip';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import XLSX from 'xlsx';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { writeXlsxFixture } from '@test/utils/xlsx';
 import { anydocTestExtensions, createAnydocFixture } from './anydocFixtures';
 
 const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
@@ -360,6 +362,53 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('name|alias,fullwidth｜pipe');
     expect(result.formatText).toContain('| name\\|alias | fullwidth｜pipe |');
     expect(result.formatText).toContain('| Alice\\|A | 保留｜字符 |');
+  });
+
+  it('真实 worker 保留本地备份的稀疏列并执行实例回导上限', async () => {
+    const buffer = writeXlsxFixture([
+      {
+        name: 'Dataset',
+        rows: [
+          ['q', 'a', '', 'metadata'],
+          ['Q', 'A', '', 'JSON']
+        ]
+      }
+    ]);
+    const metadata = { filename: 'backup.xlsx' };
+    const restore = () =>
+      readRawContentFromSource({
+        sparseXlsxRows: true,
+        source: {
+          kind: 'localFile',
+          sizeBytes: buffer.length,
+          metadata,
+          materialize: async () => ({ buffer: Buffer.from(buffer), metadata })
+        }
+      });
+
+    expect(await restore()).toMatchObject({
+      rawText: '',
+      xlsxRows: [
+        new Map([
+          [0, 'q'],
+          [1, 'a'],
+          [3, 'metadata']
+        ]),
+        new Map([
+          [0, 'Q'],
+          [1, 'A'],
+          [3, 'JSON']
+        ])
+      ]
+    });
+    const parse = getTestInstanceConfig().performance.parse;
+    const previousMaxRows = parse.xlsxMaxRows;
+    try {
+      parse.xlsxMaxRows = 1;
+      await expect(restore()).rejects.toThrow(RangeError);
+    } finally {
+      parse.xlsxMaxRows = previousMaxRows;
+    }
   });
 
   itIfXlsxFixture('通过真实 worker 解析指定的 XLSX 文件', async () => {

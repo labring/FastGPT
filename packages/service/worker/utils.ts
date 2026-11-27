@@ -1,6 +1,7 @@
 import type { TransferListItem, Worker as NodeWorker } from 'worker_threads';
 import { Worker } from 'worker_threads';
 import { randomUUID } from 'node:crypto';
+import { addAbortListener } from 'node:events';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/runtime';
@@ -12,6 +13,7 @@ type WorkerTaskOutcome =
   | 'resource_limit'
   | 'queue_timeout'
   | 'execution_timeout'
+  | 'cancelled'
   | 'worker_error'
   | 'message_error'
   | 'protocol_error'
@@ -105,12 +107,11 @@ export type WorkerTaskResourceController = {
   updateResourceBytes: (requiredBytes: number) => void;
 };
 /**
- * Worker 任务运行期间可发起的通用主线程能力。
- *
- * 这些 handler 只服务当前 run 调用，worker 发送中间事件时不会释放任务槽位；
- * 只有最终 success/error 消息才会完成任务。
+ * Worker 任务的可选取消信号和主线程回调。
+ * 回调只服务当前任务，处理中间事件期间仍占用任务槽位。
  */
 export type WorkerRunHandlers = {
+  signal?: AbortSignal;
   uploadFile?: (data: WorkerUploadFileRequest) => Promise<WorkerUploadFileResult>;
   loadFile?: (
     controller: WorkerTaskResourceController,
@@ -685,9 +686,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     }
   }
 
-  /** 提交任务；配置资源策略时检查资源准入和排队超时，执行超时从任务派发时开始计时。 */
+  /** 提交可取消的任务。资源策略决定排队准入和超时，执行超时从任务派发时开始计时。 */
   run(data: Props, transferList?: TransferListItem[], handlers?: WorkerRunHandlers) {
-    return new Promise<Response>((resolve, reject) => {
+    const signal = handlers?.signal;
+    let abortListener: ReturnType<typeof addAbortListener> | undefined;
+    const result = new Promise<Response>((resolve, reject) => {
+      signal?.throwIfAborted();
       const taskId = randomUUID();
       const taskType = this.getTaskType(data);
       const enqueuedAt = Date.now();
@@ -744,13 +748,19 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         reject
       };
 
+      const removeQueuedTask = () => {
+        const index = this.waitQueue.indexOf(task);
+        if (index < 0) return false;
+        this.waitQueue.splice(index, 1);
+        clearTimeout(task.queueTimeoutId);
+        return true;
+      };
+
       if (this.resourcePolicy) {
         const queueTimeoutMs = this.resourcePolicy.queueTimeoutMs;
         task.queueTimeoutId = setTimeout(() => {
-          const taskIndex = this.waitQueue.indexOf(task);
-          if (taskIndex < 0) return;
+          if (!removeQueuedTask()) return;
 
-          this.waitQueue.splice(taskIndex, 1);
           const error = new WorkerTaskQueueTimeoutError(queueTimeoutMs);
           const queueDurationMs = Date.now() - task.enqueuedAt;
           const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
@@ -778,6 +788,26 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       }
 
       this.waitQueue.push(task);
+      if (signal) {
+        abortListener = addAbortListener(signal, () => {
+          const reason: unknown = signal.reason;
+          if (removeQueuedTask()) {
+            this.logTaskFinished({
+              task,
+              outcome: 'cancelled',
+              queueDurationMs: Date.now() - task.enqueuedAt,
+              executionDurationMs: 0
+            });
+            reject(reason);
+            this.dispatchTasks();
+            return;
+          }
+
+          // 同步解析无法响应取消信号，沿用执行超时的线程回收路径。
+          const worker = this.workerQueue.find((item) => item.currentTask === task);
+          if (worker) this.deleteWorker(worker.id, reason, 'cancelled');
+        });
+      }
       this.dispatchTasks();
       if (this.waitQueue.includes(task)) {
         logger.debug('Worker task queued', {
@@ -791,6 +821,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         this.observeQueueState();
       }
     });
+    return signal ? result.finally(() => abortListener?.[Symbol.dispose]()) : result;
   }
 
   createWorker() {

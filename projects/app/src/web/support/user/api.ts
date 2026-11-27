@@ -149,5 +149,3 @@ export const getSearchMembersOrgsGroups = (
     { searchKey, ...options },
     { maxQuantity: 1 }
   );
-
-export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');

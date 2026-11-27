@@ -1,3 +1,4 @@
+import { readXlsxRows } from '@test/utils/xlsx';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import exportLogs from '@/pages/api/core/app/logs/exportLogs';
@@ -34,6 +35,11 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOrigi
 }));
 
 type EmptyQuery = Record<string, never>;
+
+const expectXlsxRows = (rows: string[][], expected: unknown[][]) => {
+  const prefixes = rows.map((row) => row.slice(0, expected[0].length));
+  expect(prefixes).toEqual(expect.arrayContaining(expected));
+};
 
 describe('logs list API - errorFilter', () => {
   let testAppId: string;
@@ -91,7 +97,7 @@ describe('logs list API - errorFilter', () => {
     };
   });
 
-  it('历史及未知来源在未筛选列表、未知筛选和 CSV 中一致归类，且不改原记录', async () => {
+  it('历史及未知来源在未筛选列表、未知筛选和 XLSX 中一致归类，且不改原记录', async () => {
     const now = new Date();
     const records = [
       { chatId: 'legacy-source' },
@@ -151,11 +157,14 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      for (const chatId of unknownIds) expect(exported.raw).toContain(`\n${chatId},未知,`);
+      const rows = readXlsxRows(exported.buffer)
+        .slice(1)
+        .map((row) => row.slice(0, 2));
+      for (const chatId of unknownIds) expect(rows).toContainEqual([chatId, '未知']);
       if (sources) {
-        expect(exported.raw).not.toContain('known-source');
+        expect(rows.some(([chatId]) => chatId === 'known-source')).toBe(false);
       } else {
-        expect(exported.raw).toContain('\nknown-source,API调用,');
+        expect(rows).toContainEqual(['known-source', 'API调用']);
       }
     }
     for (const record of records) {
@@ -163,7 +172,7 @@ describe('logs list API - errorFilter', () => {
     }
   });
 
-  it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
+  it('扩展渠道当前名、兼容旧名，来源筛选与 XLSX使用最新分类', async () => {
     const key = await MongoOpenApi.create({
       type: ApiKeyTypeEnum.personal,
       teamId: testTeamId,
@@ -267,14 +276,17 @@ describe('logs list API - errorFilter', () => {
         ]
       }
     });
-    expect(exported.raw).toContain('channel-api,API调用,当前名称');
-    expect(exported.raw).toContain("channel-old,'-,历史入口");
-    expect(exported.raw).toContain("channel-deleted,API调用,'-");
-    expect(exported.raw).toContain("channel-online,在线使用,'-");
-    expect(exported.raw).toContain("channel-online-legacy,在线使用,'-");
-    expect(exported.raw).toContain("channel-test,在线调试,'-");
-    expect(exported.raw).toContain("channel-cron,定时任务,'-");
-    expect(exported.raw).not.toContain('不应作为渠道名的旧应用名');
+    const exportedRows = readXlsxRows(exported.buffer);
+    expectXlsxRows(exportedRows, [
+      ['channel-api', 'API调用', '当前名称'],
+      ['channel-old', '-', '历史入口'],
+      ['channel-deleted', 'API调用', '-'],
+      ['channel-online', '在线使用', '-'],
+      ['channel-online-legacy', '在线使用', '-'],
+      ['channel-test', '在线调试', '-'],
+      ['channel-cron', '定时任务', '-']
+    ]);
+    expect(exportedRows.some(([, , name]) => name === '不应作为渠道名的旧应用名')).toBe(false);
     expect(
       (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
         .data.total
@@ -965,9 +977,13 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exported.code).toBe(200);
-    expect(exported.raw).toContain(`"customer,""42""",${testTmbId}:Test Member Logs List,match,`);
-    expect(exported.raw).not.toMatch(/wrong-|no-feedback/);
-    expect(exported.raw.split('\n')).toHaveLength(2);
+    const rows = readXlsxRows(exported.buffer);
+    expect(rows).toHaveLength(2);
+    expect(rows[1].slice(0, 3)).toEqual([
+      'customer,"42"',
+      `${testTmbId}:Test Member Logs List`,
+      'match'
+    ]);
   });
 
   it('exports identities as id:name and keeps only the ID when no member name is available', async () => {
@@ -1001,9 +1017,11 @@ describe('logs list API - errorFilter', () => {
     const named = await exportIdentities();
     expect(named.code).toBe(200);
     const memberIdentity = `${testTmbId}:Test Member Logs List`;
-    expect(named.raw).toContain(`\n${memberIdentity},${memberIdentity},member-identity,`);
-    expect(named.raw).toContain(`\ncustomer-42,${memberIdentity},external-identity,`);
-    expect(named.raw).toContain(`\n${missingId},${missingId},missing-identity,`);
+    expectXlsxRows(readXlsxRows(named.buffer), [
+      [memberIdentity, memberIdentity, 'member-identity'],
+      ['customer-42', memberIdentity, 'external-identity'],
+      [missingId, missingId, 'missing-identity']
+    ]);
 
     for (const name of ['   ', undefined]) {
       await MongoTeamMember.updateOne(
@@ -1012,8 +1030,10 @@ describe('logs list API - errorFilter', () => {
       );
       const nameless = await exportIdentities();
       expect(nameless.code).toBe(200);
-      expect(nameless.raw).toContain(`\n${testTmbId},${testTmbId},member-identity,`);
-      expect(nameless.raw).toContain(`\ncustomer-42,${testTmbId},external-identity,`);
+      expectXlsxRows(readXlsxRows(nameless.buffer), [
+        [testTmbId, testTmbId, 'member-identity'],
+        ['customer-42', testTmbId, 'external-identity']
+      ]);
     }
   });
 
@@ -1053,7 +1073,7 @@ describe('logs list API - errorFilter', () => {
     ]);
   });
 
-  it('keeps feedback and unread filters consistent in the list and CSV', async () => {
+  it('keeps feedback and unread filters consistent in the list and XLSX export', async () => {
     const base = {
       appId: testAppId,
       teamId: testTeamId,
@@ -1104,10 +1124,9 @@ describe('logs list API - errorFilter', () => {
       });
       expect(exported.code).toBe(200);
       expect(
-        exported.raw
-          .split('\n')
+        readXlsxRows(exported.buffer)
           .slice(1)
-          .map((line) => line.split(',')[0])
+          .map(([chatId]) => chatId)
           .sort()
       ).toEqual(expected);
     }
@@ -1156,10 +1175,12 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      expect(exported.raw).toContain('\nchat-with-version-1,version-with-id,');
-      expect(exported.raw).toContain('\nchat-with-version-2,version-with-id,');
-      expect(exported.raw).toContain('\nchat-without-version,,');
-      expect(exported.raw).toContain('\nchat-deleted-version,,');
+      expectXlsxRows(readXlsxRows(exported.buffer), [
+        ['chat-with-version-1', 'version-with-id'],
+        ['chat-with-version-2', 'version-with-id'],
+        ['chat-without-version', ''],
+        ['chat-deleted-version', '']
+      ]);
 
       expect(chatAggregateSpy).not.toHaveBeenCalled();
       expect(versionFindSpy).toHaveBeenCalledTimes(1);
@@ -1227,9 +1248,9 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      const dataRows = exported.raw.split('\n').slice(1);
+      const dataRows = readXlsxRows(exported.buffer).slice(1);
       expect(dataRows).toHaveLength(203);
-      expect(dataRows.every((line) => line.includes(',v-replica-sync,'))).toBe(true);
+      expect(dataRows.every((line) => line[1] === 'v-replica-sync')).toBe(true);
       expect(versionFindSpy).toHaveBeenCalledTimes(1);
     } finally {
       versionFindSpy.mockRestore();
@@ -1288,11 +1309,11 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      const dataRows = exported.raw.split('\n').slice(1);
+      const dataRows = readXlsxRows(exported.buffer).slice(1);
       expect(dataRows).toHaveLength(403);
       // 第 1 批 200 行查空留空，第 2/3 批共 203 行自动恢复为 v-recovered
-      expect(dataRows.slice(0, 200).every((line) => line.split(',')[1] === '')).toBe(true);
-      expect(dataRows.slice(200).every((line) => line.split(',')[1] === 'v-recovered')).toBe(true);
+      expect(dataRows.slice(0, 200).every((line) => line[1] === '')).toBe(true);
+      expect(dataRows.slice(200).every((line) => line[1] === 'v-recovered')).toBe(true);
       // 仅查 2 次：第 1 批查空 + 第 2 批命中并缓存；第 3 批 0 次查库
       expect(findCalls).toBe(2);
     } finally {
@@ -1352,13 +1373,11 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      const dataRows = exported.raw.split('\n').slice(1);
+      const dataRows = readXlsxRows(exported.buffer).slice(1);
       expect(dataRows).toHaveLength(803);
       // 前 3 批（600 行）查空或退避留空；第 4/5 批（203 行）在追平后恢复为 v-recovered-2x
-      expect(dataRows.slice(0, 600).every((line) => line.split(',')[1] === '')).toBe(true);
-      expect(dataRows.slice(600).every((line) => line.split(',')[1] === 'v-recovered-2x')).toBe(
-        true
-      );
+      expect(dataRows.slice(0, 600).every((line) => line[1] === '')).toBe(true);
+      expect(dataRows.slice(600).every((line) => line[1] === 'v-recovered-2x')).toBe(true);
       // 共查 3 次：第 1、2 批查空 + 第 4 批命中并缓存；第 3 批退避跳过，第 5 批直接命中缓存
       expect(findCalls).toBe(3);
     } finally {
@@ -1399,9 +1418,9 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      const dataRows = exported.raw.split('\n').slice(1);
+      const dataRows = readXlsxRows(exported.buffer).slice(1);
       expect(dataRows).toHaveLength(1003);
-      expect(dataRows.every((line) => line.split(',')[1] === '')).toBe(true);
+      expect(dataRows.every((line) => line[1] === '')).toBe(true);
       // 1003 行共 6 批：按 1 -> 2 -> 4 批次指数退避，仅在第 1/2/4 批查库（3 次而非 6 次）
       expect(versionFindSpy).toHaveBeenCalledTimes(3);
     } finally {
@@ -1494,12 +1513,15 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exportedZh.code).toBe(200);
-    expect(exportedZh.raw.split('\n')).toHaveLength(6);
-    expect(exportedZh.raw).toContain("\nip-legacy-number,'-,");
-    expect(exportedZh.raw).toContain("\nip-legacy-object,'-,");
-    expect(exportedZh.raw).toContain('\nip-public,新加坡，新加坡: 139.162.20.230,');
-    expect(exportedZh.raw).toContain('\nip-private,其他: 192.168.1.1,');
-    expect(exportedZh.raw).toContain("\nip-missing,'-,");
+    const zhRows = readXlsxRows(exportedZh.buffer);
+    expect(zhRows).toHaveLength(6);
+    expectXlsxRows(zhRows, [
+      ['ip-legacy-number', '-'],
+      ['ip-legacy-object', '-'],
+      ['ip-public', '新加坡，新加坡: 139.162.20.230'],
+      ['ip-private', '其他: 192.168.1.1'],
+      ['ip-missing', '-']
+    ]);
 
     const exportedEn = await StreamCall(exportLogs, {
       auth: authUser,
@@ -1514,11 +1536,14 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exportedEn.code).toBe(200);
-    expect(exportedEn.raw.split('\n')).toHaveLength(6);
-    expect(exportedEn.raw).toContain("\nip-legacy-number,'-,");
-    expect(exportedEn.raw).toContain("\nip-legacy-object,'-,");
-    expect(exportedEn.raw).toMatch(/\nip-public,"Singapore, ?Singapore: 139\.162\.20\.230",/);
-    expect(exportedEn.raw).toContain('\nip-private,Other: 192.168.1.1,');
-    expect(exportedEn.raw).toContain("\nip-missing,'-,");
+    const enRows = readXlsxRows(exportedEn.buffer);
+    expect(enRows).toHaveLength(6);
+    expectXlsxRows(enRows, [
+      ['ip-legacy-number', '-'],
+      ['ip-legacy-object', '-'],
+      ['ip-public', expect.stringMatching(/^Singapore, ?Singapore: 139\.162\.20\.230$/)],
+      ['ip-private', 'Other: 192.168.1.1'],
+      ['ip-missing', '-']
+    ]);
   });
 });

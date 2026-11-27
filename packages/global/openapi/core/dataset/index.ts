@@ -1,3 +1,5 @@
+import { XLSX_CONTENT_TYPE } from '../../../common/file/constants';
+import { XlsxDownloadResponseSchema } from '../../api';
 import type { OpenAPIPath } from '../../type';
 import { DevApiTagsMap } from '../../tag';
 import { SystemOpenApiTagMap } from '../../tag';
@@ -433,14 +435,18 @@ export const DatasetPath: OpenAPIPath = {
   '/core/dataset/exportAll': {
     get: {
       summary: '导出知识库全部数据',
-      description: '以流式 CSV 格式导出单个知识库的数据；目录不支持导出',
+      description: '以流式 XLSX 格式导出单个知识库的数据；目录不支持导出',
       tags: [DevApiTagsMap.datasetCommon],
       requestParams: {
         query: ExportDatasetQuerySchema
       },
       responses: {
         200: {
-          description: '流式返回 CSV 文件'
+          description: '流式返回 XLSX 文件',
+          content: { [XLSX_CONTENT_TYPE]: { schema: XlsxDownloadResponseSchema } }
+        },
+        400: {
+          description: '目标为目录，或备份超过当前回导限制'
         }
       }
     }

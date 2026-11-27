@@ -46,6 +46,7 @@ type ReadFileWorkerProps = {
   bufferSize: number;
   initialResourceBytes?: number;
   sourceKind?: FileSource['kind'] | 'buffer';
+  sparseXlsxRows?: boolean;
   imageKeyOptions?: {
     prefix: string;
     expiredTime?: Date;
@@ -118,19 +119,23 @@ const createUploadFileHandler = (imageKeyOptions?: ReadFileWorkerProps['imageKey
 /**
  * 把轻量 FileSource 提交给 readFile worker；只有任务获得 worker 和初始资源后才在主线程物化。
  *
- * S3 按可信大小一次性预留完整峰值。External HTTP 只按 base 启动，下载过程中执行两个硬限制并单调更新
+ * 已知大小的文件一次性预留完整峰值。External HTTP 只按 base 启动，下载过程中执行两个硬限制并单调更新
  * 软预留；当前动态内存不足只会阻止后续任务，不会终止已经启动的下载。
  */
 export const readRawContentFromSource = ({
   source,
-  imageKeyOptions
+  imageKeyOptions,
+  sparseXlsxRows,
+  signal
 }: {
   source: FileSource;
   imageKeyOptions?: ReadFileWorkerProps['imageKeyOptions'];
+  sparseXlsxRows?: boolean;
+  signal?: AbortSignal;
 }) => {
   const initialExtension = resolveFileSourceDeclaredExtension(source.metadata);
   const initialResourceBytes = (() => {
-    if (source.kind === 's3') {
+    if (source.kind !== 'externalHttp') {
       return Math.max(
         estimateFileParseMemoryBytes({
           extension: initialExtension,
@@ -152,17 +157,19 @@ export const readRawContentFromSource = ({
     {
       extension: initialExtension,
       encoding: source.metadata.encoding ?? '',
-      bufferSize: source.kind === 's3' ? source.sizeBytes : 0,
+      bufferSize: source.kind === 'externalHttp' ? 0 : source.sizeBytes,
       initialResourceBytes,
       sourceKind: source.kind,
-      imageKeyOptions
+      imageKeyOptions,
+      ...(sparseXlsxRows ? { sparseXlsxRows } : {})
     },
     undefined,
     {
+      signal,
       uploadFile: createUploadFileHandler(imageKeyOptions),
-      loadFile: async (controller, signal) => {
+      loadFile: async (controller, workerSignal) => {
         const materialized = await source.materialize({
-          signal,
+          signal: workerSignal,
           onReadBytes:
             source.kind === 'externalHttp'
               ? (readBytes) => {

@@ -16,10 +16,9 @@ type Range = {
 export type XlsxPreflightLimits = {
   maxRows: number;
   maxColumns: number;
-  maxCells: number;
   maxMergedCells: number;
   maxUncompressedBytes: number;
-};
+} & ({ maxCells: number; maxCellElements?: never } | { maxCells?: never; maxCellElements: number });
 
 type XlsxPreflightResult = {
   worksheetCount: number;
@@ -235,10 +234,12 @@ const validateRangeCoordinates = ({
   limits: XlsxPreflightLimits;
 }) => {
   if (range.e.r + 1 > limits.maxRows) {
-    throw new Error(`XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`);
+    throw new RangeError(
+      `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`
+    );
   }
   if (range.e.c + 1 > limits.maxColumns) {
-    throw new Error(
+    throw new RangeError(
       `XLSX worksheet "${path}" exceeds the maximum column limit of ${limits.maxColumns}`
     );
   }
@@ -250,12 +251,12 @@ const validateRangeCoordinates = ({
 const createWorksheetInspector = ({
   path,
   limits,
-  getRemainingCellElements,
+  cellElementLimit,
   getRemainingMergedCells
 }: {
   path: string;
   limits: XlsxPreflightLimits;
-  getRemainingCellElements: () => number;
+  cellElementLimit: { total: number; remaining: number };
   getRemainingMergedCells: () => number;
 }) => {
   let rootName: string | undefined;
@@ -297,7 +298,7 @@ const createWorksheetInspector = ({
       if (name === 'row') {
         rowElementCount += 1;
         if (rowElementCount > limits.maxRows) {
-          throw new Error(
+          throw new RangeError(
             `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`
           );
         }
@@ -309,7 +310,7 @@ const createWorksheetInspector = ({
         currentRow = rowNumber - 1;
         currentColumn = -1;
         if (currentRow + 1 > limits.maxRows) {
-          throw new Error(
+          throw new RangeError(
             `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`
           );
         }
@@ -318,8 +319,10 @@ const createWorksheetInspector = ({
 
       if (name === 'c') {
         cellElementCount += 1;
-        if (cellElementCount > getRemainingCellElements()) {
-          throw new Error(`XLSX workbook exceeds the maximum cell limit of ${limits.maxCells}`);
+        if (cellElementCount > cellElementLimit.remaining) {
+          throw new RangeError(
+            `XLSX workbook exceeds the maximum cell limit of ${cellElementLimit.total}`
+          );
         }
         const cellReference = getTagAttribute({ tag, name: 'r' });
         const coordinate = (() => {
@@ -419,7 +422,10 @@ const createWorksheetInspector = ({
 
       return {
         cellCount: worksheetRange
-          ? getRangeCellCount({ range: worksheetRange, maxCells: limits.maxCells })
+          ? getRangeCellCount({
+              range: worksheetRange,
+              maxCells: limits.maxCells ?? Number.MAX_SAFE_INTEGER
+            })
           : 0,
         cellElementCount,
         mergedCellCount
@@ -460,6 +466,7 @@ export const preflightXlsx = async ({
   limits: XlsxPreflightLimits;
 }): Promise<XlsxPreflightResult> => {
   const zip = await openZip(buffer);
+  const maxCellElements = limits.maxCellElements ?? limits.maxCells;
 
   return new Promise<XlsxPreflightResult>((resolve, reject) => {
     let entriesRead = 0;
@@ -487,14 +494,17 @@ export const preflightXlsx = async ({
         const inspector = createWorksheetInspector({
           path: entry.fileName,
           limits,
-          getRemainingCellElements: () => limits.maxCells - workbookCellElementCount,
+          cellElementLimit: {
+            total: maxCellElements,
+            remaining: maxCellElements - workbookCellElementCount
+          },
           getRemainingMergedCells: () => limits.maxMergedCells - workbookMergedCellCount
         });
 
         stream.on('data', (chunk: Buffer) => {
           if (chunk.length > limits.maxUncompressedBytes - uncompressedBytes) {
             stream.destroy(
-              new Error(
+              new RangeError(
                 `XLSX exceeds the maximum uncompressed data limit of ${limits.maxUncompressedBytes} bytes`
               )
             );
@@ -514,7 +524,10 @@ export const preflightXlsx = async ({
             const worksheet = inspector.finish();
             if (worksheet) {
               worksheetCount += 1;
-              if (worksheet.cellCount > limits.maxCells - workbookCellCount) {
+              if (
+                limits.maxCells !== undefined &&
+                worksheet.cellCount > limits.maxCells - workbookCellCount
+              ) {
                 throw new Error(
                   `XLSX workbook exceeds the maximum cell limit of ${limits.maxCells}`
                 );
@@ -552,7 +565,7 @@ export const preflightXlsx = async ({
 
       if (entry.uncompressedSize > limits.maxUncompressedBytes - uncompressedBytes) {
         fail(
-          new Error(
+          new RangeError(
             `XLSX exceeds the maximum uncompressed data limit of ${limits.maxUncompressedBytes} bytes`
           )
         );

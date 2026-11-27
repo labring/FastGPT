@@ -164,7 +164,7 @@ const DataCard = () => {
     async (collectionId: string) => {
       await downloadFetch({
         url: '/api/core/dataset/collection/export',
-        filename: `${collection?.name}.csv`,
+        filename: `${collection?.name}.xlsx`,
         body: {
           collectionId
         }

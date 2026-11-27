@@ -1,4 +1,4 @@
-import { EventEmitter } from 'node:events';
+import { StreamCall } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -11,9 +11,7 @@ const mocks = vi.hoisted(() => ({
   authCollectionInChat: vi.fn(),
   authDatasetCollection: vi.fn(),
   getCollectionWithDataset: vi.fn(),
-  loggerError: vi.fn(),
   nextAPI: vi.fn((handler) => handler),
-  responseWriteController: vi.fn(),
   query: {
     sort: vi.fn(),
     limit: vi.fn(),
@@ -43,23 +41,14 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/member', () => ({
   assertMemberRateLimit: mocks.assertMemberRateLimit,
   MemberRateLimitPolicy: { ExportDataset: 'export-dataset' }
 }));
-vi.mock('@fastgpt/service/common/response', () => ({
-  responseWriteController: mocks.responseWriteController
-}));
-vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: vi.fn(() => ({ error: mocks.loggerError })),
-  LogCategories: { MODULE: { DATASET: { COLLECTION: 'collection' } } }
-}));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({ addAuditLog: mocks.addAuditLog }));
 
-class TestCursor extends EventEmitter {
-  close = vi.fn();
-  destroy = vi.fn();
-  pause = vi.fn();
-  resume = vi.fn();
-}
-
-const cursor = new TestCursor();
+const cursor = {
+  close: vi.fn(async () => undefined),
+  async *[Symbol.asyncIterator]() {
+    yield { q: 'question', a: 'answer' };
+  }
+};
 const query = mocks.query;
 
 import handler from '@/pages/api/core/dataset/collection/export';
@@ -81,16 +70,9 @@ const chatBody = {
   outLinkAuthData: { shareId: 'share-1', outLinkUid: 'visitor-1' }
 };
 
-const createResponse = () => ({
-  end: vi.fn(),
-  setHeader: vi.fn(),
-  status: vi.fn()
-});
-
 describe('POST /core/dataset/collection/export audit scope', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    cursor.removeAllListeners();
     query.sort.mockReturnValue(query);
     query.limit.mockReturnValue(query);
     query.cursor.mockReturnValue(cursor);
@@ -112,13 +94,10 @@ describe('POST /core/dataset/collection/export audit scope', () => {
     mocks.getCollectionWithDataset.mockResolvedValue(collection);
     mocks.assertMemberRateLimit.mockResolvedValue(undefined);
     mocks.addAuditLog.mockResolvedValue(undefined);
-    mocks.responseWriteController.mockReturnValue(vi.fn());
   });
 
   it('records chunk export from the collection detail page', async () => {
-    const res = createResponse();
-    await handler({ body: { collectionId: collection._id } } as any, res as any);
-    cursor.emit('end');
+    await StreamCall(handler, { body: { collectionId: collection._id } });
 
     expect(mocks.addAuditLog).toHaveBeenCalledWith({
       teamId: 'dataset-team',
@@ -138,9 +117,7 @@ describe('POST /core/dataset/collection/export audit scope', () => {
   });
 
   it('does not audit exports initiated from a chat quote, including external links', async () => {
-    const res = createResponse();
-    await handler({ body: chatBody } as any, res as any);
-    cursor.emit('end');
+    await StreamCall(handler, { body: chatBody });
 
     expect(mocks.addAuditLog).not.toHaveBeenCalled();
   });
@@ -152,9 +129,7 @@ describe('POST /core/dataset/collection/export audit scope', () => {
       tmbId: 'api-key-member',
       authType: AuthUserTypeEnum.apikey
     });
-    const res = createResponse();
-    await handler({ body: { collectionId: collection._id } } as any, res as any);
-    cursor.emit('end');
+    await StreamCall(handler, { body: { collectionId: collection._id } });
 
     expect(mocks.addAuditLog).not.toHaveBeenCalled();
   });

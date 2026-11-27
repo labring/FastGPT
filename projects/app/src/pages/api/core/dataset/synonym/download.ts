@@ -10,7 +10,8 @@ import {
   assertDatasetSynonymEnabled,
   getDatasetSynonymMappings
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { serializeSynonymMappingsToFile } from '@fastgpt/service/core/dataset/synonym/utils';
+import { getSynonymExportRows } from '@fastgpt/service/core/dataset/synonym/utils';
+import { writeXlsxResponse } from '@fastgpt/service/common/file/xlsx/response';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   assertDatasetSynonymEnabled();
@@ -32,21 +33,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     datasetId: String(config.datasetId),
     fileVersion: config.version
   });
-  // 下载格式跟随上传格式（验收问题 1）：xlsx/xls 重新生成工作簿，csv 才回 CSV。
-  const rawExtension = config.fileName?.match(/\.(\w+)$/)?.[1]?.toLowerCase();
-  const extension =
-    rawExtension === 'xlsx' || rawExtension === 'xls' || rawExtension === 'csv'
-      ? rawExtension
-      : 'csv';
-  const baseName = (config.fileName ?? 'synonyms.csv').replace(/\.(xlsx?|csv)$/i, '');
-  const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, extension);
-  const fileName = `${baseName}.${extension}`;
-  res.setHeader('Content-Type', contentType);
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`
-  );
-  res.end(buffer);
+  const baseName = (config.fileName ?? 'synonyms').replace(/\.(xlsx?|csv)$/i, '');
+  await writeXlsxResponse({
+    res,
+    filename: `${baseName}.xlsx`,
+    sheet: { name: 'Synonyms', rows: () => getSynonymExportRows(mappings) }
+  });
 }
 
+export const config = { api: { responseLimit: false } };
 export default NextAPI(handler);

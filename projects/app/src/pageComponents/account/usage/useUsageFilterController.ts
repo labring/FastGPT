@@ -65,7 +65,7 @@ export const useUsageFilterController = ({
     setExporting(false);
   }
 
-  // 复制日期并统一自然日闭区间，列表、仪表盘和 CSV 导出共用同一时间边界。
+  // 复制日期并统一自然日闭区间，列表、仪表盘和 XLSX 导出共用同一时间边界。
   const commonFilters = useMemo((): UsageCommonFilters & { dateStart: string; dateEnd: string } => {
     const range = getLocalDateRange(
       filters.dateRange.from ?? new Date(),
@@ -365,7 +365,7 @@ export const useUsageFilterController = ({
         if (validated.context.scopeChanged || validated.context.selectionChanged) return;
         await downloadFetch({
           url: '/api/proApi/support/wallet/usage/exportUsage',
-          filename: 'usage.csv',
+          filename: 'usage.xlsx',
           body: {
             ...requestCommonFilters,
             ...mapping,

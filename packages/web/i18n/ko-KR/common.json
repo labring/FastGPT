@@ -1388,7 +1388,7 @@
   "audio_cannot_play": "오디오를 직접 재생할 수 없습니다",
   "copy_as_markdown": "Markdown으로 복사",
   "copy_as_csv": "CSV로 복사",
-  "download_as_csv": "CSV 다운로드",
+  "download_as_xlsx": "XLSX 다운로드",
   "download_svg": "SVG 다운로드",
   "download_image": "이미지 다운로드",
   "view_fullscreen": "전체 화면",

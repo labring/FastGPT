@@ -81,6 +81,23 @@ export const readCsvRawText = async ({ file }: { file: File }) => {
   return csvArr;
 };
 
+/** 读取引导词模板工作表的 A 列，保留表格中显示的文本。 */
+export const readXlsxFirstColumn = async (file: File): Promise<string[]> => {
+  const { read, utils } = await import('xlsx');
+  const workbook = read(await file.arrayBuffer(), { sheets: 0 });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet?.['!ref']) return [];
+  const { s, e } = utils.decode_range(sheet['!ref']);
+  return utils
+    .sheet_to_json<[string]>(sheet, {
+      header: 1,
+      raw: false,
+      blankrows: false,
+      range: { s: { r: s.r, c: 0 }, e: { r: e.r, c: 0 } }
+    })
+    .map(([value]) => value ?? '');
+};
+
 async function detectFileEncoding(file: File): Promise<string> {
   const buffer = await loadFile2Buffer({ file });
   const encoding = (() => {

@@ -1,3 +1,4 @@
+import { XLSX_CONTENT_TYPE } from '../../../../common/file/constants';
 import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
@@ -121,7 +122,7 @@ export const AppLogPath: OpenAPIPath = {
   '/core/app/logs/exportLogs': {
     post: {
       summary: '导出应用日志',
-      description: '导出应用的对话日志为 CSV 文件，支持自定义导出字段和筛选条件',
+      description: '导出应用的对话日志为 XLSX 文件，支持自定义导出字段和筛选条件',
       tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
@@ -132,9 +133,9 @@ export const AppLogPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导出应用日志，返回 CSV 文件',
+          description: '成功导出应用日志，返回 XLSX 文件',
           content: {
-            'text/csv': {
+            [XLSX_CONTENT_TYPE]: {
               schema: ExportChatLogsResponseSchema
             }
           }

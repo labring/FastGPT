@@ -39,6 +39,8 @@ export type ParsedPage = {
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;
+  /** 单工作表按行号排序的有值单元格，Map 的键为零基列坐标。 */
+  xlsxRows?: Map<number, string>[];
   sourceMetadata?: {
     filename?: string;
     contentType?: string;

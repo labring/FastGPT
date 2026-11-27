@@ -1,3 +1,5 @@
+import { XLSX_CONTENT_TYPE } from '../../../../common/file/constants';
+import { XlsxDownloadResponseSchema } from '../../../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -117,10 +119,15 @@ export const DatasetSynonymPath: OpenAPIPath = {
   '/core/dataset/synonym/download': {
     get: {
       summary: '下载知识库同义词文件',
-      description: '校验知识库读取权限后，根据当前生效 mappings 动态生成 UTF-8 CSV',
+      description: '校验知识库读取权限后，根据当前生效的同义词映射生成 XLSX',
       tags: [DevApiTagsMap.datasetSynonym],
       requestParams: { query: DownloadDatasetSynonymQuerySchema },
-      responses: { 200: { description: '同义词原始文件流' } }
+      responses: {
+        200: {
+          description: '流式返回同义词 XLSX 文件',
+          content: { [XLSX_CONTENT_TYPE]: { schema: XlsxDownloadResponseSchema } }
+        }
+      }
     }
   },
   '/core/dataset/synonym/mappings': {

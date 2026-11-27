@@ -387,7 +387,7 @@ const buildLegacyPresentedResources = ({
   return [];
 };
 
-/** 统一解析资源列展示模型，供页面表格和 CSV 导出复用。 */
+/** 统一解析资源列展示模型，供页面表格和 XLSX 导出复用。 */
 export const resolveAuditResources = ({
   event,
   resources,
@@ -436,7 +436,7 @@ export const resolveAuditResources = ({
   return buildLegacyPresentedResources({ event, metadata });
 };
 
-/** 将资源列表格式化为 CSV 纯文本列。 */
+/** 将资源列表格式化为 XLSX 文本列。 */
 export const formatAuditResourcesText = (
   resources: PresentedAuditResource[],
   t?: AuditTranslator
@@ -624,7 +624,7 @@ const formatCollectionDatasetLine = ({
 
 /**
  * 渲染精简后的审计详情列：只展示实际变更内容或补充上下文，无额外信息时统一返回 `-`。
- * 页面表格与 CSV 导出共用同一套规则。
+ * 页面表格与 XLSX 导出共用同一套规则。
  */
 export const formatAuditSummary = ({
   event,

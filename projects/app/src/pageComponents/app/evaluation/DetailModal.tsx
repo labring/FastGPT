@@ -138,7 +138,7 @@ const EvaluationDetailModal = ({
   const { runAsync: exportEval, loading: isDownloading } = useRequest(async () => {
     await downloadFetch({
       url: `/api/proApi/core/app/evaluation/exportItems?evalId=${evalDetail._id}`,
-      filename: `${evalDetail.name}.csv`,
+      filename: `${evalDetail.name}.xlsx`,
       body: {
         title: t('dashboard_evaluation:evaluation_export_title'),
         statusMap

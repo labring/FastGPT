@@ -3,7 +3,7 @@ import Markdown from '@/components/Markdown';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import AppSelect from '@/components/Select/AppSelect';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
-import { fileDownload } from '@/web/common/file/utils';
+import { downloadXlsx } from '@fastgpt/web/common/file/downloadXlsx';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import { getAppDetailById } from '@/web/core/app/api';
@@ -74,13 +74,9 @@ const EvaluationCreating = () => {
   const handleDownloadTemplate = async () => {
     const appDetail = await getAppDetail();
     const variables = appDetail?.chatConfig.variables;
-    const templateContent = getEvaluationFileHeader(variables);
-
-    fileDownload({
-      text: templateContent,
-      type: 'text/csv;charset=utf-8',
-      filename: `${appDetail?.name}_evaluation.csv`
-    });
+    await downloadXlsx(`${appDetail?.name}_evaluation`, [
+      getEvaluationFileHeader(variables).split(',')
+    ]);
   };
 
   const { runAsync: createEvaluation, loading: isCreating } = useRequest(
@@ -253,7 +249,7 @@ const EvaluationCreating = () => {
                   <FileSelector
                     w={'full'}
                     maxCount={1}
-                    fileType=".csv"
+                    fileType=".csv,.xlsx"
                     selectFiles={evaluationFiles}
                     setSelectFiles={(e) => {
                       setValue('evaluationFiles', e);
@@ -263,7 +259,7 @@ const EvaluationCreating = () => {
                         <Trans
                           i18nKey={i18nT('dashboard_evaluation:template_csv_file_select_tip')}
                           values={{
-                            fileType: '.csv'
+                            fileType: '.csv, .xlsx'
                           }}
                           components={{
                             highlight: <Box as="span" color="primary.600" fontWeight="medium" />

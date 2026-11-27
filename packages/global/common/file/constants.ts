@@ -4,6 +4,9 @@ export enum BucketNameEnum {
   chat = 'chat'
 }
 
+export const XLSX_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 /** FastGPT 原有解析器覆盖的文档扩展名。 */
 const builtInDocumentFileExtensions = [
   '.txt',

@@ -25,7 +25,7 @@ import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
-import { rawText2Chunks } from '../read';
+import { rawText2Chunks, type DatasetImportTable } from '../read';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetCollection } from './schema';
 import { createOrGetCollectionTags } from './utils';
@@ -486,6 +486,7 @@ export const formatCollectionParamsByDataset = async ({
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
+  importedTable,
   imageIds,
   createCollectionParams,
   backupParse = false,
@@ -495,6 +496,7 @@ export const createCollectionAndInsertData = async ({
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
+  importedTable?: DatasetImportTable;
   imageIds?: string[];
   createCollectionParams: CreateOneCollectionParams;
   modelAuthContext?: DatasetModelAuthContext;
@@ -531,13 +533,15 @@ export const createCollectionAndInsertData = async ({
     chunkSize?: number;
     indexSize?: number;
   } = await (async () => {
+    const { chunkSize, indexSize } = formatCreateCollectionParams;
+    if (importedTable) return { chunks: importedTable.chunks, chunkSize, indexSize };
     if (rawText) {
       // Process text chunks
       const chunks = await rawText2Chunks({
         rawText,
         chunkTriggerType: formatCreateCollectionParams.chunkTriggerType,
         chunkTriggerMinSize: formatCreateCollectionParams.chunkTriggerMinSize,
-        chunkSize: formatCreateCollectionParams.chunkSize,
+        chunkSize,
         paragraphChunkDeep: formatCreateCollectionParams.paragraphChunkDeep,
         paragraphChunkMinSize: formatCreateCollectionParams.paragraphChunkMinSize,
         maxSize: getLLMMaxChunkSize(agentModelData),
@@ -549,11 +553,7 @@ export const createCollectionAndInsertData = async ({
         trainingType,
         backupParse
       });
-      return {
-        chunks,
-        chunkSize: formatCreateCollectionParams.chunkSize,
-        indexSize: formatCreateCollectionParams.indexSize
-      };
+      return { chunks, chunkSize, indexSize };
     }
 
     if (imageIds) {
@@ -565,11 +565,7 @@ export const createCollectionAndInsertData = async ({
       return { chunks };
     }
 
-    return {
-      chunks: [],
-      chunkSize: formatCreateCollectionParams.chunkSize,
-      indexSize: formatCreateCollectionParams.indexSize
-    };
+    return { chunks: [], chunkSize, indexSize };
   })();
 
   // 2. auth limit
@@ -589,7 +585,7 @@ export const createCollectionAndInsertData = async ({
       indexSize,
 
       hashRawText: rawText ? hashStr(rawText) : undefined,
-      rawTextLength: rawText?.length,
+      rawTextLength: rawText?.length ?? importedTable?.rawTextLength,
       session
     });
 
@@ -635,7 +631,7 @@ export const createCollectionAndInsertData = async ({
           session
         });
       }
-      if (rawText) {
+      if (rawText || importedTable) {
         const formattedData = chunks.map((item, index) => ({
           ...item,
           indexes: item.indexes?.map((text) => ({
@@ -663,7 +659,7 @@ export const createCollectionAndInsertData = async ({
           });
         }
 
-        // rawText（手动输入文本、备份、模板、集合同步等）均先落库为 indexing 数据，再派发索引任务
+        // 直接导入的知识块先落库为 indexing 数据，再派发索引任务。
         return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,

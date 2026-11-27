@@ -11,11 +11,11 @@ Switch to the **Data board** sub-tab and filter by source channel, date range, a
 
 ![Conversation logs data board](/imgs/optimized/current/log-dashboard.png.webp)
 
-| Metric Category | Key Indicators | Operational Use |
-| --- | --- | --- |
-| **User data** | Active user trends, new user trends, retained users, cumulative users, plus points consumed, channel users, and token consumption trends | Evaluate user growth, retention, and activity across channels |
-| **Chat data** | Number of conversations, number of sessions, chat error rate (with total errors), and average points consumption per session | Detect error spikes caused by upstream API timeouts or model rate limits, and track cost per session |
-| **App performance** | User feedback (good/bad trends) and average run time | Track latency and user satisfaction |
+| Metric Category     | Key Indicators                                                                                                                           | Operational Use                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **User data**       | Active user trends, new user trends, retained users, cumulative users, plus points consumed, channel users, and token consumption trends | Evaluate user growth, retention, and activity across channels                                        |
+| **Chat data**       | Number of conversations, number of sessions, chat error rate (with total errors), and average points consumption per session             | Detect error spikes caused by upstream API timeouts or model rate limits, and track cost per session |
+| **App performance** | User feedback (good/bad trends) and average run time                                                                                     | Track latency and user satisfaction                                                                  |
 
 ## Filter, Customize Columns, and Export Logs
 
@@ -23,7 +23,7 @@ In the **Log details** view, narrow down target conversations using the filter b
 
 1. **Multi-dimensional filters**: Filter by **Source channel** (Online debugging, Online Use, External Link Call, API Call, Scheduled run, Lark, Official Account, WeChat Work, WeChat, MCP call), **Date range**, **Title or Session ID**, **Feedback status** (**All Records**, **Has Feedback**, **Has Good Feedback**, **Has Bad Feedback**, and the **Unread Only** checkbox), and **Errors only**.
 2. **Customizable columns**: Click the column settings icon to toggle session title, source, user, message count, feedback badges, custom feedback, error count, client IP, and published version name.
-3. **Export to CSV**: Click **Export** and confirm the matched conversation count (up to 100 messages per conversation) to download a CSV for offline review or [Agent Evaluation](/en/guide/build/evaluation) dataset preparation.
+3. **Export to XLSX**: Click **Export** and confirm the matched conversation count (up to 100 messages per conversation) to download an XLSX workbook for offline review or [Agent Evaluation](/en/guide/build/evaluation) dataset preparation.
 
 ![Conversation log list showing user and custom feedback columns](/imgs/optimized/current/feedback-log.png.webp)
 
@@ -37,11 +37,11 @@ In the **Log details** view, narrow down target conversations using the filter b
 
 ![Expand conversation run details to inspect node inputs, outputs, and feedback](/imgs/optimized/current/feedback-run-detail.png.webp)
 
-| Observation | Next check |
-| --- | --- |
-| Missing retrieved material | Processing status, retrieval scope, and parameters |
-| Tool call failure | Tool input, authentication, network, and error response |
-| Facts differ from expectations | Sources, model input, and instructions |
+| Observation                                 | Next check                                                                  |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| Missing retrieved material                  | Processing status, retrieval scope, and parameters                          |
+| Tool call failure                           | Tool input, authentication, network, and error response                     |
+| Facts differ from expectations              | Sources, model input, and instructions                                      |
 | Difference occurs only in old conversations | Message history, variables, interaction state; verify in a new conversation |
 
 Feedback helps collect cases to investigate. Before using [evaluation](/en/guide/build/evaluation), prepare a fixed set of questions with expected results and confirm the environment's permissions and capabilities.

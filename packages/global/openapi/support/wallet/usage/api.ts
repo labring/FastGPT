@@ -172,15 +172,20 @@ export const ExportUsageBodySchema = UsageFilterSchema.extend({
     example: { fastgpt: { label: '在线对话' } },
     description: '使用来源翻译映射'
   }),
-  title: z.string().meta({ example: '时间,成员,来源,应用,积分', description: 'CSV 文件表头' })
+  title: z
+    .string()
+    .meta({ example: '时间,成员,来源,应用,积分', description: '使用英文逗号分隔的表头' })
 })
   .refine(noMixedSubjectFilter, noMixedSubjectFilterError)
   .meta({ description: '使用记录导出参数' });
 export type ExportUsageBodyType = z.infer<typeof ExportUsageBodySchema>;
 
 export const ExportUsageContentSchema = z.string().meta({
-  description: '使用记录 CSV 文件内容'
+  description: '使用记录 XLSX 文件',
+  format: 'binary'
 });
+
+export type ExportUsageContentType = z.infer<typeof ExportUsageContentSchema>;
 
 export const UsageFilterOptionsBodySchema = z.strictObject({
   intent: z.enum(['options', 'validate']).default('options').meta({

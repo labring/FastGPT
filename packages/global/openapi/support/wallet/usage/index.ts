@@ -1,3 +1,4 @@
+import { XLSX_CONTENT_TYPE } from '../../../../common/file/constants';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -28,15 +29,15 @@ export const WalletUsagePath: OpenAPIPath = {
   '/proApi/support/wallet/usage/exportUsage': {
     post: {
       summary: '导出使用记录',
-      description: '按筛选条件导出团队积分使用记录 CSV 文件',
+      description: '按筛选条件导出团队积分使用记录 XLSX 文件',
       tags: [DevApiTagsMap.walletUsage],
       requestBody: {
         content: { 'application/json': { schema: ExportUsageBodySchema } }
       },
       responses: {
         200: {
-          description: '成功返回使用记录 CSV 文件',
-          content: { 'text/csv': { schema: ExportUsageContentSchema } }
+          description: '成功返回使用记录 XLSX 文件',
+          content: { [XLSX_CONTENT_TYPE]: { schema: ExportUsageContentSchema } }
         }
       }
     }

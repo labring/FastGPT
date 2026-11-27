@@ -1397,7 +1397,7 @@
   "audio_cannot_play": "Unable to play audio directly",
   "copy_as_markdown": "Copy as Markdown",
   "copy_as_csv": "Copy as CSV",
-  "download_as_csv": "Download as CSV",
+  "download_as_xlsx": "Download as XLSX",
   "download_svg": "Download SVG",
   "download_image": "Download Image",
   "view_fullscreen": "Fullscreen",

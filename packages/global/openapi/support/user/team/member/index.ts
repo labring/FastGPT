@@ -1,3 +1,4 @@
+import { XLSX_CONTENT_TYPE } from '../../../../../common/file/constants';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -50,13 +51,13 @@ export const TeamMemberPath: OpenAPIPath = {
   '/proApi/support/user/team/member/export': {
     get: {
       summary: '导出团队成员',
-      description: '将当前团队成员信息导出为 CSV 文件',
+      description: '将当前团队成员信息导出为 XLSX 文件',
       tags: [...TeamMemberTags],
       responses: {
         200: {
-          description: '成功导出团队成员 CSV 文件',
+          description: '成功导出团队成员 XLSX 文件',
           content: {
-            'text/csv': {
+            [XLSX_CONTENT_TYPE]: {
               schema: ExportTeamMembersResponseSchema
             }
           }

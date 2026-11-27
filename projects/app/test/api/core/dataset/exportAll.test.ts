@@ -1,5 +1,7 @@
+import { rm, stat } from 'node:fs/promises';
 import handler from '@/pages/api/core/dataset/exportAll';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   OwnerRoleVal,
@@ -11,15 +13,56 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import * as multipart from '@fastgpt/service/common/file/multer';
+import * as fileParseResource from '@fastgpt/service/worker/fileParseResource';
+import { readRawContentFromSource } from '@fastgpt/service/worker/function';
+import { WorkerNameEnum, WorkerPool } from '@fastgpt/service/worker/utils';
+import {
+  readXlsxRawText,
+  XLSX_PARSE_LIMITS
+} from '@fastgpt/service/worker/readFile/extension/xlsx';
 import { getFakeUsers, getUser } from '@test/datas/users';
-import { StreamCall, Call } from '@test/utils/request';
+import { StreamCall } from '@test/utils/request';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
+import { readXlsxRows } from '@test/utils/xlsx';
 
-// 全局 mock 把 responseWriteController 变成了返回 undefined 的空函数，流式导出需要真实实现。
-vi.unmock('@fastgpt/service/common/response');
+vi.mock('node:fs/promises', async (loadFs) => {
+  const fs = await loadFs<typeof import('node:fs/promises')>();
+  return { ...fs, rm: vi.fn(fs.rm) };
+});
+
+vi.mock('@fastgpt/service/worker/function', async (loadWorker) => {
+  const worker = await loadWorker<typeof import('@fastgpt/service/worker/function')>();
+  return {
+    ...worker,
+    readRawContentFromSource: vi.fn<typeof worker.readRawContentFromSource>(
+      async ({ source, sparseXlsxRows }) => {
+        const { buffer } = await source.materialize({ signal: new AbortController().signal });
+        return readXlsxRawText(
+          { extension: 'xlsx', buffer, encoding: 'utf-8' },
+          { sparseRows: sparseXlsxRows }
+        );
+      }
+    )
+  };
+});
 
 type TestUser = { teamId: string; tmbId: string };
+const defaultWorkerLimits = { ...XLSX_PARSE_LIMITS };
+
+const expectRestoreLimitError = (
+  response: Awaited<ReturnType<typeof StreamCall>>,
+  message: RegExp
+) => {
+  expect(response.error).toMatchObject({
+    name: 'UserConfigError',
+    displayMessage: 'dataset:backup_export_limit_exceeded',
+    message: expect.stringMatching(message)
+  });
+  expect(response.headers['Content-Disposition']).toBeUndefined();
+  expect(response.buffer).toHaveLength(0);
+};
 
 const createDataset = async ({
   name,
@@ -119,6 +162,123 @@ const grantCollection = async ({
 
 afterEach(() => {
   setDisableApiDatasetSuperAdmin(false);
+  Object.assign(XLSX_PARSE_LIMITS, defaultWorkerLimits);
+  vi.mocked(rm).mockReset();
+  vi.restoreAllMocks();
+});
+
+it('cancels queued backup validation and removes the temporary backup on disconnect', async () => {
+  const { owner } = await getFakeUsers(1);
+  const dataset = await createDataset({ name: 'cancelled-backup', owner });
+  const removeBackup = vi.mocked(rm);
+  const pool = new WorkerPool<{ resourceBytes: number }, never>({
+    name: WorkerNameEnum.readFile,
+    maxReservedThreads: 1,
+    resourcePolicy: {
+      getTaskResourceBytes: ({ resourceBytes }) => resourceBytes,
+      getResourceSnapshot: () => ({ availableResourceBytes: 0, maximumTaskResourceBytes: 100 }),
+      queueTimeoutMs: 1000
+    }
+  });
+  const response = await StreamCall(
+    (req, res) => {
+      vi.mocked(readRawContentFromSource).mockImplementationOnce(({ signal }) => {
+        const parsing = pool.run({ resourceBytes: 1 }, undefined, { signal });
+        expect(pool.waitQueue).toHaveLength(1);
+        res.destroy();
+        return parsing;
+      });
+      return handler(req, res);
+    },
+    { auth: owner, query: { datasetId: String(dataset._id) } }
+  );
+
+  expect(response.error).toMatchObject({ message: 'XLSX download connection closed' });
+  expect(response.headers['Content-Disposition']).toBeUndefined();
+  expect(pool.waitQueue).toHaveLength(0);
+  expect(removeBackup).toHaveBeenCalledOnce();
+  await expect(stat(removeBackup.mock.calls[0][0])).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+it('preserves the validation error when temporary backup removal fails', async () => {
+  const { owner } = await getFakeUsers(1);
+  const dataset = await createDataset({ name: 'failed-backup', owner });
+  const error = new Error('Backup validation failed');
+  const removeBackup = vi.mocked(rm).mockRejectedValueOnce(new Error('Backup removal failed'));
+  vi.mocked(readRawContentFromSource).mockRejectedValueOnce(error);
+
+  try {
+    const response = await StreamCall(handler, {
+      auth: owner,
+      query: { datasetId: String(dataset._id) }
+    });
+    expect(removeBackup).toHaveBeenCalledOnce();
+    expect(response.error).toBe(error);
+  } finally {
+    const directory = removeBackup.mock.calls[0]?.[0];
+    if (directory) await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it('round-trips sparse backups at the restore limits and rejects them before download beyond those limits', async () => {
+  const { owner } = await getFakeUsers(1);
+  const dataset = await createDataset({ name: 'sparse-backup', owner });
+  const datasetId = String(dataset._id);
+  const wide = await createFileCollection({ name: 'wide', owner, datasetId });
+  const sparse = await createFileCollection({ name: 'sparse', owner, datasetId });
+  await MongoDatasetData.updateOne(
+    { collectionId: wide._id },
+    {
+      $set: {
+        indexes: [{ type: DatasetDataIndexTypeEnum.custom, dataId: 'custom', text: 'Index' }]
+      }
+    }
+  );
+  await MongoDatasetData.updateOne(
+    { collectionId: sparse._id },
+    { $set: { metadata: { count: 1 } } }
+  );
+
+  const limits = { maxRows: 3, maxColumns: 4, maxCells: 6 };
+  Object.assign(XLSX_PARSE_LIMITS, limits);
+  const download = () => StreamCall(handler, { auth: owner, query: { datasetId } });
+  const res = await download();
+
+  expect(res.code).toBe(200);
+  const restore = () =>
+    readXlsxRawText(
+      { extension: 'xlsx', buffer: res.buffer, encoding: 'utf-8' },
+      { sparseRows: true }
+    );
+  const { xlsxRows = [] } = await restore();
+  expect(xlsxRows).toHaveLength(3);
+  expect([...xlsxRows[0].values()]).toEqual(['q', 'a', 'index', 'metadata']);
+  expect(xlsxRows[1].get(2)).toBe('Index');
+  expect([...xlsxRows[2]]).toEqual([
+    [0, 'sparse-q'],
+    [1, 'sparse-a'],
+    [3, '{"count":1}']
+  ]);
+
+  for (const [limit, error] of [
+    ['maxRows', /maximum row limit of 2/],
+    ['maxColumns', /maximum column limit of 3/],
+    ['maxCells', /maximum data cell limit of 5/]
+  ] as const) {
+    Object.assign(XLSX_PARSE_LIMITS, limits, { [limit]: limits[limit] - 1 });
+    await expect(restore()).rejects.toThrow(error);
+    expectRestoreLimitError(await download(), error);
+  }
+
+  Object.assign(XLSX_PARSE_LIMITS, limits);
+  const budget = vi.spyOn(fileParseResource, 'estimateFileParseMemoryBytes').mockReturnValue(1);
+  const archiveError = /maximum uncompressed data limit of 1 bytes/;
+  await expect(restore()).rejects.toThrow(archiveError);
+  expectRestoreLimitError(await download(), archiveError);
+  expect(budget).toHaveBeenLastCalledWith({ extension: 'xlsx', fileSizeBytes: res.buffer.length });
+  budget.mockRestore();
+  vi.spyOn(multipart, 'getMultipartFileSizeLimitBytes').mockReturnValue(res.buffer.length);
+  expectRestoreLimitError(await download(), /reaches the upload limit/);
 });
 
 describe('export dataset respects collection permission', () => {
@@ -150,9 +310,10 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('allowed-q');
-    expect(res.raw).not.toContain('restricted-q');
-    expect(res.raw).not.toContain('restricted-a');
+    expect(readXlsxRows(res.buffer)).toEqual([
+      ['q', 'a'],
+      ['allowed-q', 'allowed-a']
+    ]);
     void restricted;
   });
 
@@ -174,7 +335,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).not.toContain('hidden-q');
+    expect(readXlsxRows(res.buffer)).toEqual([['q', 'a']]);
   });
 
   it('keeps exporting everything when collection permission is disabled', async () => {
@@ -191,7 +352,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('open-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['open-file-q', 'open-file-a']);
   });
 
   it('does not filter for the team owner', async () => {
@@ -210,7 +371,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('owner-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['owner-file-q', 'owner-file-a']);
   });
 
   it('filters collections for the team owner when disableSuperAdmin is on', async () => {
@@ -243,7 +404,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).not.toContain('member-file-q');
+    expect(readXlsxRows(res.buffer)).toEqual([['q', 'a']]);
   });
 
   it('keeps the team-owner bypass for ordinary datasets when disableSuperAdmin is on', async () => {
@@ -268,7 +429,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('member-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['member-file-q', 'member-file-a']);
   });
 
   it('exports all collections for a cross-team root user', async () => {
@@ -289,7 +450,7 @@ describe('export dataset respects collection permission', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.raw).toContain('root-file-q');
+    expect(readXlsxRows(res.buffer)).toContainEqual(['root-file-q', 'root-file-a']);
   });
 
   it('rejects exporting a folder', async () => {
@@ -311,12 +472,11 @@ describe('export dataset respects collection permission', () => {
       datasetId: String(child._id)
     });
 
-    const res = await Call(handler, {
+    const res = await StreamCall(handler, {
       auth: owner,
       query: { datasetId: String(folder._id) }
     });
 
-    expect(res.code).toBe(500);
     expect(res.error).toBe(DatasetErrEnum.exportFolderNotSupported);
   });
 });

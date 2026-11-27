@@ -22,7 +22,7 @@ export const UploadDatasetSynonymBodySchema = z.object({
     .min(1)
     .max(255)
     .optional()
-    .meta({ description: '下载时使用的展示文件名，默认 synonyms.csv' })
+    .meta({ description: '导入时记录的文件名，用于生成 XLSX 下载名' })
 });
 export type UploadDatasetSynonymBody = z.infer<typeof UploadDatasetSynonymBodySchema>;
 

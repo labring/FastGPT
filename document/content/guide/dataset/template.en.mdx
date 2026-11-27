@@ -1,9 +1,10 @@
 ---
-title: "Structured Dataset Template Specifications"
+title: 'Structured Dataset Template Specifications'
 description: Master CSV and XLSX dataset import column definitions, tail expansion rules, metadata formatting, and formula escape mechanisms.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="file-structure" />
 <span id="csv-example" />
 <span id="excel-example" />
@@ -17,25 +18,25 @@ FastGPT provides a deterministic structured tabular data import engine. Standard
 
 The platform enforces strict validation rules on uploaded spreadsheet files:
 
-| Check Item | Specification Rule |
-| --- | --- |
-| **File Format** | Standard CSV files (UTF-8 encoding without BOM recommended) or `.xlsx` workbooks |
-| **Upload Limit** | Up to 1 file per upload, with a maximum file size of 50 MB |
-| **Sheet Structure** | XLSX workbooks must contain exactly one worksheet and must not include merged cells |
+| Check Item          | Specification Rule                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| **File Format**     | Standard CSV files (UTF-8 encoding without BOM recommended) or `.xlsx` workbooks       |
+| **Upload Limit**    | Up to 1 file per upload, with a maximum file size of 50 MB                             |
+| **Sheet Structure** | XLSX workbooks must contain exactly one worksheet and must not include merged cells    |
 | **Header Matching** | The parser trims whitespace and normalizes column headers to lowercase before matching |
-| **Empty Rows** | Rows where both `q` and `a` cells are empty are skipped automatically |
+| **Empty Rows**      | Rows where both `q` and `a` cells are empty are skipped automatically                  |
 
 ## Core Column Definitions and Schema Contracts
 
 The template schema accepts the following header declarations:
 
-| Column Header | Occurrence Constraint | Data Type and Semantic Role |
-| --- | --- | --- |
-| `q` | **Exactly one column** | Question or primary index text. Vectors are computed on this column for semantic recall. |
-| `a` | **Exactly one column** | Answer or complete body content. Combined with `q` to produce the full context chunk. |
-| `index` | Multiple allowed, optional | Supplementary index. Each cell value is indexed as an independent vector query entry. |
-| `indexes` | Multiple allowed, optional | Backward-compatible alias for `index`, sharing identical parsing logic and weights. |
-| `metadata` | **At most one column** | Valid JSON string. Parsed key-value pairs are merged into the chunk metadata dictionary. |
+| Column Header | Occurrence Constraint      | Data Type and Semantic Role                                                              |
+| ------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `q`           | **Exactly one column**     | Question or primary index text. Vectors are computed on this column for semantic recall. |
+| `a`           | **Exactly one column**     | Answer or complete body content. Combined with `q` to produce the full context chunk.    |
+| `index`       | Multiple allowed, optional | Supplementary index. Each cell value is indexed as an independent vector query entry.    |
+| `indexes`     | Multiple allowed, optional | Backward-compatible alias for `index`, sharing identical parsing logic and weights.      |
+| `metadata`    | **At most one column**     | Valid JSON string. Parsed key-value pairs are merged into the chunk metadata dictionary. |
 
 ---
 
@@ -68,9 +69,7 @@ The `metadata` column stores operational tags, department codes, timestamps, and
 
 ## Formula Injection Escape Protection
 
-To prevent formula execution vulnerabilities when spreadsheets are opened in desktop spreadsheet software, FastGPT's CSV export utility implements automatic escaping:
-- Cell values starting with `=`, `+`, `-`, `@`, or `|` receive a prepended single quote `'` upon export (template import parsing retains this leading single quote as literal text; review or remove added leading `'` characters before re-importing an exported CSV via Template import).
-- Fields containing commas, quotation marks, or line breaks are enclosed in double quotes following RFC 4180 standards.
+FastGPT writes exported values as text cells in XLSX. Values starting with `=`, `+`, `-`, `@`, or `|` and values containing commas, quotes, or line breaks are preserved as written. You can import the workbook directly as a template.
 
 ---
 
@@ -85,7 +84,7 @@ What is the company billing name?,The billing name is FastGPT Technologies Inc.,
 ## Import Procedure
 
 1. Open your target dataset and click **Create/Import → Template import**.
-2. In the dialog, click **Download CSV Template** if you need the sample header format, then select or drag in your prepared `.csv` or `.xlsx` file.
+2. In the dialog, click **Download XLSX template** if you need the sample header format, then select or drag in your prepared `.csv` or `.xlsx` file.
 3. Once the file finishes uploading, click **Confirm Import** in the lower-right corner to create the collection and start background indexing.
 
 ![Template Import dialog](/imgs/optimized/current/dataset-template-import.png.webp)

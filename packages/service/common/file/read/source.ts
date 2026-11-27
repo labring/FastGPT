@@ -39,11 +39,12 @@ type FileSourceBase = {
   materialize: (options: MaterializeFileSourceOptions) => Promise<MaterializedFileSource>;
 };
 
-export type S3FileSource = FileSourceBase & {
-  kind: 's3';
-  /** S3 HEAD Object 返回的可信 Content-Length。 */
+type SizedFileSource = FileSourceBase & {
+  /** 来源已知的可信文件大小。 */
   sizeBytes: number;
 };
+
+export type S3FileSource = SizedFileSource & { kind: 's3' };
 
 export type ExternalHttpFileSource = FileSourceBase & {
   kind: 'externalHttp';
@@ -51,7 +52,10 @@ export type ExternalHttpFileSource = FileSourceBase & {
   maxSizeBytes: number;
 };
 
-export type FileSource = S3FileSource | ExternalHttpFileSource;
+export type FileSource =
+  | S3FileSource
+  | (SizedFileSource & { kind: 'localFile' })
+  | ExternalHttpFileSource;
 
 /** 不读取文件内容，仅从来源声明元数据得到初始调度扩展名。 */
 export const resolveFileSourceDeclaredExtension = (metadata: FileSourceMetadata) => {
