@@ -1022,6 +1022,7 @@
   "navbar.Account": "帳戶",
   "navbar.Chat": "門戶",
   "navbar.Config": "管理員",
+  "navbar.Agent": "Agent",
   "navbar.Datasets": "知識庫",
   "navbar.Skill": "技能",
   "navbar.Studio": "工作區",

@@ -119,6 +119,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {isPc && paths.length > 0 ? (
               <Box flexShrink={0}>
                 <FolderPath
+                  rootName={t('app:tools')}
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
                   forbidLastClick
@@ -208,6 +209,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               {paths.length > 0 && (
                 <Box overflowX={'auto'}>
                   <FolderPath
+                    rootName={t('app:tools')}
                     paths={paths}
                     forbidLastClick
                     onClick={(parentId) => {

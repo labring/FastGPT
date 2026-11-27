@@ -52,17 +52,19 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   return (
     <>
       {isPc ? (
-        <Flex
+        <Box
+          display={'grid'}
+          gridTemplateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
+          alignItems={'center'}
+          gap={3}
           pb={2}
           pt={3}
           px={4}
-          justify={'space-between'}
           borderBottom={currentTab === TabEnum.dataCard ? 'none' : theme.borders.base}
           borderColor={'myGray.200'}
-          position={'relative'}
         >
           {currentTab === TabEnum.dataCard ? (
-            <>
+            <Box justifySelf={'start'} minW={0}>
               <Flex
                 alignItems={'center'}
                 cursor={'pointer'}
@@ -102,11 +104,23 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   </Box>
                 </MyTooltip>
               </Flex>
-            </>
+            </Box>
           ) : (
-            <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
+            <Flex
+              py={'0.38rem'}
+              px={2}
+              h={10}
+              ml={0.5}
+              alignItems={'center'}
+              minW={0}
+              overflow={'hidden'}
+            >
               <FolderPath
+                rootName={t('common:navbar.Datasets')}
                 paths={paths}
+                currentName={datasetDetail.name}
+                hoverStyle={{ color: 'primary.600' }}
+                fontSize={'14px'}
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);
                 }}
@@ -114,7 +128,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </Flex>
           )}
 
-          <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+          <Box justifySelf={'center'}>
             <LightRowTabs<TabEnum>
               px={4}
               py={1}
@@ -138,7 +152,8 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               }}
             />
           </Box>
-        </Flex>
+          <Box />
+        </Box>
       ) : (
         <Box mb={2}>
           <LightRowTabs<TabEnum>

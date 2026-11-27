@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import React, { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
@@ -143,21 +143,17 @@ export const DatasetPageContextProvider = ({
     errorToast: ''
   });
 
+  const isDetailLoaded = !!datasetId && datasetDetail._id === datasetId;
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () =>
       getDatasetPaths({
-        sourceId: datasetDetail?._id,
+        sourceId: datasetDetail._id,
         type: 'parent'
-      }).then((res) => {
-        res.push({
-          parentId: '',
-          parentName: datasetDetail.name
-        });
-        return res;
       }),
     {
       manual: false,
-      refreshDeps: [datasetDetail.parentId]
+      ready: isDetailLoaded,
+      refreshDeps: [datasetDetail._id, datasetDetail.parentId]
     }
   );
 

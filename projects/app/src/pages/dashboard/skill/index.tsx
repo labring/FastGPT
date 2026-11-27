@@ -103,6 +103,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {isPc && paths.length > 0 ? (
               <Box>
                 <FolderPath
+                  rootName={t('common:navbar.Skill')}
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
                   forbidLastClick
@@ -188,7 +189,12 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             <Flex mt={3} direction={'column'} gap={3}>
               {paths.length > 0 && (
                 <Box overflowX={'auto'}>
-                  <FolderPath paths={paths} forbidLastClick onClick={onNavigate} />
+                  <FolderPath
+                    rootName={t('common:navbar.Skill')}
+                    paths={paths}
+                    forbidLastClick
+                    onClick={onNavigate}
+                  />
                 </Box>
               )}
               <SearchInput
