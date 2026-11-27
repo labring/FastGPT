@@ -915,7 +915,6 @@ const AddModel = ({
   providers,
   channelType,
   onSuccess,
-  onOpen,
   buttonBoxProps,
   ...buttonProps
 }: {
@@ -924,8 +923,6 @@ const AddModel = ({
   providers: ModelProviderItemType[];
   channelType: ChannelType;
   onSuccess: () => Promise<void>;
-  /** 打开任一新增弹窗时通知外层取消排队的互斥模式切换，避免后台刷新卸载正在填写的表单。 */
-  onOpen?: () => void;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
@@ -942,21 +939,10 @@ const AddModel = ({
       <AddModelButton
         {...buttonProps}
         buttonBoxProps={buttonBoxProps}
-        onCreateFromBlank={() => {
-          onOpen?.();
-          setShowBlankCreate(true);
-        }}
-        onCreateFromTemplate={() => {
-          onOpen?.();
-          setShowTemplateCreate(true);
-        }}
+        onCreateFromBlank={() => setShowBlankCreate(true)}
+        onCreateFromTemplate={() => setShowTemplateCreate(true)}
         onCreateFromChannel={
-          channelType === 'system'
-            ? () => {
-                onOpen?.();
-                setShowChannelImport(true);
-              }
-            : undefined
+          channelType === 'system' ? () => setShowChannelImport(true) : undefined
         }
       />
       {showBlankCreate && (

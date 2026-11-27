@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   onError: vi.fn(),
   dnd: undefined as DndProps | undefined,
   addModelDisabled: undefined as boolean | undefined,
-  addModelOnSuccess: undefined as (() => Promise<void>) | undefined,
   confirmDelete: undefined as (() => void) | undefined,
   currentModels: [] as ModelConfigListItem[],
   setMockModels: undefined as ((next: ModelConfigListItem[]) => void) | undefined
@@ -63,7 +62,17 @@ vi.mock('@/web/core/ai/model/api', () => ({
   postUpdateModelChannels: vi.fn()
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (request: unknown) => ({ runAsync: request, loading: false })
+  useRequest: (
+    request: (...args: any[]) => Promise<unknown>,
+    options?: { onSuccess?: () => void }
+  ) => ({
+    runAsync: async (...args: any[]) => {
+      const res = await request(...args);
+      options?.onSuccess?.();
+      return res;
+    },
+    loading: false
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@fastgpt/web/hooks/useConfirm', () => ({
@@ -127,18 +136,9 @@ vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
   }
 }));
 vi.mock('@/pageComponents/model/AddModel', () => ({
-  default: ({
-    isDisabled,
-    onSuccess,
-    onOpen
-  }: {
-    isDisabled?: boolean;
-    onSuccess?: () => Promise<void>;
-    onOpen?: () => void;
-  }) => {
+  default: ({ isDisabled }: { isDisabled?: boolean }) => {
     const [open, setOpen] = React.useState(false);
     mocks.addModelDisabled = isDisabled;
-    mocks.addModelOnSuccess = onSuccess;
     return React.createElement(
       React.Fragment,
       null,
@@ -146,10 +146,7 @@ vi.mock('@/pageComponents/model/AddModel', () => ({
         'button',
         {
           disabled: Boolean(isDisabled),
-          onClick: () => {
-            onOpen?.();
-            setOpen(true);
-          }
+          onClick: () => setOpen(true)
         },
         'config_model:create_model'
       ),
@@ -239,7 +236,6 @@ beforeEach(async () => {
   vi.clearAllMocks();
   mocks.dnd = undefined;
   mocks.addModelDisabled = undefined;
-  mocks.addModelOnSuccess = undefined;
   mocks.confirmDelete = undefined;
   mocks.currentModels = [...models];
   mocks.setMockModels = undefined;
@@ -281,8 +277,7 @@ describe('ModelConfigTable sorting', () => {
     expect(host.textContent).not.toContain('config_model:model.cancel_sort');
   });
 
-  it('never disables custom sort or create model buttons while deleting a model', async () => {
-    // 退出排序态，回到包含自定义排序、新增模型和行删除按钮的主列表视图。
+  it('never disables custom sort or create model buttons while deleting and keeps AddModel form mounted after refresh', async () => {
     await act(async () => button('cancel_sort').click());
 
     let resolveDelete!: () => void;
@@ -292,12 +287,14 @@ describe('ModelConfigTable sorting', () => {
           resolveDelete = resolve;
         })
     );
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
 
-    const customSortBtn = button('custom_sort');
-    expect(customSortBtn.disabled).toBe(false);
+    expect(button('custom_sort').disabled).toBe(false);
     expect(mocks.addModelDisabled).toBeUndefined();
 
-    // 触发删除请求并停留在请求进行中状态，校验两个按钮均保持可用。
+    // 删除进行中两个按钮均可用，打开新增表单后后台删除与刷新完成不会卸载表单。
     await act(async () => {
       mocks.confirmDelete?.();
     });
@@ -305,166 +302,6 @@ describe('ModelConfigTable sorting', () => {
     expect(button('custom_sort').disabled).toBe(false);
     expect(mocks.addModelDisabled).toBeUndefined();
 
-    await act(async () => {
-      resolveDelete();
-    });
-  });
-
-  it('waits for in-flight deletion and catalog refresh before snapshotting sort draft so saving excludes deleted IDs', async () => {
-    await act(async () => button('cancel_sort').click());
-
-    let resolveDelete!: () => void;
-    let resolveRefresh!: () => void;
-    mocks.deleteModel.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveDelete = resolve;
-        })
-    );
-    mocks.refresh.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveRefresh = () => {
-            mocks.setMockModels?.([models[1], models[2]]);
-            resolve();
-          };
-        })
-    );
-
-    // 发起单条删除后在请求完成前点击自定义排序：按钮可用但暂不按旧列表进入排序草稿。
-    await act(async () => {
-      mocks.confirmDelete?.();
-    });
-    expect(button('custom_sort').disabled).toBe(false);
-    expect(mocks.addModelDisabled).toBeUndefined();
-
-    await act(async () => {
-      button('custom_sort').click();
-    });
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
-
-    // 删除完成但目录刷新尚未完成前仍等待刷新快照。
-    await act(async () => {
-      resolveDelete();
-    });
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
-
-    // 刷新完成后自动按剩余模型进入排序并可成功保存完整顺序。
-    await act(async () => {
-      resolveRefresh();
-    });
-    expect(sortNames()).toEqual(['B', 'C']);
-
-    await act(async () => mocks.dnd!.onDragEndCb([models[2], models[1]]));
-    await act(async () => button('save_sort').click());
-    expect(mocks.save).toHaveBeenCalledWith({
-      channelType: 'system',
-      modelIds: [models[2].modelId, models[1].modelId]
-    });
-  });
-
-  it('unblocks sort when a concurrent AddModel refresh supersedes a hanging delete refresh and retries after failed refresh', async () => {
-    await act(async () => button('cancel_sort').click());
-
-    const addedModel: ModelConfigListItem = {
-      ...models[0],
-      modelId: '68ad85a7463006c963799a09',
-      model: 'D',
-      name: 'D'
-    };
-
-    // 1. 删除成功后首路刷新被后续 AddModel 刷新取代（模拟 ahooks runAsync 返回永不落定 Promise），锁不卡死且排序按最新目录放行。
-    mocks.deleteModel.mockResolvedValueOnce(undefined);
-    mocks.refresh.mockImplementationOnce(() => new Promise<void>(() => {}));
-    let resolveSupersedingRefresh!: () => void;
-    mocks.refresh.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveSupersedingRefresh = () => {
-            mocks.setMockModels?.([models[1], models[2], addedModel]);
-            resolve();
-          };
-        })
-    );
-
-    await act(async () => {
-      mocks.confirmDelete?.();
-    });
-    await act(async () => {
-      button('custom_sort').click();
-    });
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
-
-    await act(async () => {
-      void mocks.addModelOnSuccess?.();
-    });
-    await act(async () => {
-      resolveSupersedingRefresh();
-    });
-    expect(sortNames()).toEqual(['B', 'C', 'D']);
-
-    // 2. 删除成功但目录刷新失败时，首次退出等待且不按旧快照建草稿；再次点击排序应重拉目录后再进入排序。
-    await act(async () => button('cancel_sort').click());
-    mocks.deleteModel.mockResolvedValueOnce(undefined);
-    mocks.refresh.mockRejectedValueOnce(new Error('network error'));
-    let resolveRetryRefresh!: () => void;
-    mocks.refresh.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveRetryRefresh = () => {
-            mocks.setMockModels?.([models[2], addedModel]);
-            resolve();
-          };
-        })
-    );
-
-    await act(async () => {
-      mocks.confirmDelete?.();
-    });
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
-
-    await act(async () => {
-      button('custom_sort').click();
-    });
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
-
-    await act(async () => {
-      resolveRetryRefresh();
-    });
-    expect(sortNames()).toEqual(['C', 'D']);
-  });
-
-  it('cancels queued sort when opening AddModel during deletion so background refresh keeps the add form mounted', async () => {
-    await act(async () => button('cancel_sort').click());
-
-    let resolveDelete!: () => void;
-    let resolveRefresh!: () => void;
-    mocks.deleteModel.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveDelete = resolve;
-        })
-    );
-    mocks.refresh.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveRefresh = () => {
-            mocks.setMockModels?.([models[1], models[2]]);
-            resolve();
-          };
-        })
-    );
-
-    // 1. 删除进行中先点击自定义排序进入排队态。
-    await act(async () => {
-      mocks.confirmDelete?.();
-    });
-    await act(async () => {
-      button('custom_sort').click();
-    });
-    expect(button('custom_sort').getAttribute('data-loading')).toBe('true');
-
-    // 2. 用户转而点击“添加模型”打开有状态的新增表单：排队的排序应立即撤销。
     const createBtn = Array.from(host.querySelectorAll('button')).find(
       (item) => item.textContent === 'config_model:create_model'
     );
@@ -472,16 +309,67 @@ describe('ModelConfigTable sorting', () => {
       createBtn?.click();
     });
     expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
-    expect(button('custom_sort').getAttribute('data-loading')).toBe('false');
 
-    // 3. 后台删除和目录刷新相继完成后，不应自动切入排序态或卸载已打开的新增表单。
     await act(async () => {
       resolveDelete();
     });
-    await act(async () => {
-      resolveRefresh();
-    });
     expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
-    expect(host.textContent).not.toContain('config_model:model.save_sort');
+  });
+
+  it('reconciles sort draft automatically when deletion or concurrent creation refreshes modelItems and preserves dragged order', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
+
+    // 删除进行中进入排序并拖拽剩余项，随后删除刷新到达时自动剔除已删模型 A 且保留 C 在 B 前的拖拽顺序。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(sortNames()).toEqual(['A', 'B', 'C']);
+
+    await act(async () => mocks.dnd!.onDragEndCb([models[0], models[2], models[1]]));
+    expect(sortNames()).toEqual(['A', 'C', 'B']);
+
+    await act(async () => {
+      resolveDelete();
+    });
+    expect(sortNames()).toEqual(['C', 'B']);
+
+    await act(async () => button('save_sort').click());
+    expect(mocks.save).toHaveBeenCalledWith({
+      channelType: 'system',
+      modelIds: [models[2].modelId, models[1].modelId]
+    });
+  });
+
+  it('self-heals stale sort draft via catalog refresh after save failure so retry succeeds', async () => {
+    // 若提交时服务端已删除模型 A 导致保存拒绝，自动刷新剔除 A 并保留 B/C 拖拽顺序，再次保存即可成功。
+    mocks.save.mockRejectedValueOnce(new Error('model not exist')).mockResolvedValueOnce(undefined);
+    mocks.refresh.mockImplementationOnce(async () => {
+      mocks.setMockModels?.([models[1], models[2]]);
+    });
+
+    await act(async () => mocks.dnd!.onDragEndCb([models[0], models[2], models[1]]));
+    await act(async () => button('save_sort').click());
+    expect(mocks.onError).toHaveBeenCalledOnce();
+    expect(sortNames()).toEqual(['C', 'B']);
+
+    await act(async () => button('save_sort').click());
+    expect(mocks.save).toHaveBeenLastCalledWith({
+      channelType: 'system',
+      modelIds: [models[2].modelId, models[1].modelId]
+    });
   });
 });

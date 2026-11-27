@@ -90,14 +90,12 @@ const ModelEditButton = React.memo(
     providers,
     channelType,
     onSuccess,
-    onOpen,
     isDisabled
   }: {
     model: ModelConfigListItem;
     providers: ModelProviderItemType[];
     channelType: ChannelType;
     onSuccess: () => Promise<void>;
-    onOpen?: () => void;
     isDisabled?: boolean;
   }) => {
     const { t } = useSafeTranslation();
@@ -110,10 +108,7 @@ const ModelEditButton = React.memo(
           tip={t('config_model:model.edit_model')}
           pointerEvents={isDisabled ? 'none' : undefined}
           opacity={isDisabled ? 0.5 : 1}
-          onClick={() => {
-            onOpen?.();
-            setIsOpen(true);
-          }}
+          onClick={() => setIsOpen(true)}
         />
         {isOpen && (
           <ModelEditModal
@@ -199,44 +194,9 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     channels: channelList,
     providers: modelProviders,
     getModelProvider,
-    refresh: rawRefreshModels,
+    refresh: refreshModels,
     loading: loadingModels
   } = useModelConfig({ channelType, language: i18n.language });
-
-  // 按递增序号追踪目录刷新，避免 ahooks 被后发刷新取代时阻塞删除锁，同时确保排序草稿总基于删除后的最新目录。
-  const refreshSeqRef = React.useRef(0);
-  const minFreshSeqRef = React.useRef(0);
-  const lastCommittedSeqRef = React.useRef(0);
-  const latestRefreshSettledRef = React.useRef(true);
-  const [requiredRefreshSeq, setRequiredRefreshSeq] = useState(0);
-  const [committedRefreshSeq, setCommittedRefreshSeq] = useState(0);
-  const [waitingEnterSort, setWaitingEnterSort] = useState(false);
-  // 打开其他弹窗操作时撤销已排队的排序切换，避免后台目录刷新完成后意外切入排序并卸载活动表单。
-  const cancelWaitingEnterSort = useCallback(() => {
-    setWaitingEnterSort(false);
-  }, []);
-
-  const refreshModels = useCallback(async () => {
-    const seq = ++refreshSeqRef.current;
-    latestRefreshSettledRef.current = false;
-    try {
-      await rawRefreshModels();
-      if (seq > lastCommittedSeqRef.current) {
-        lastCommittedSeqRef.current = seq;
-        setCommittedRefreshSeq(seq);
-      }
-      if (seq === refreshSeqRef.current) {
-        latestRefreshSettledRef.current = true;
-      }
-    } catch (error) {
-      if (seq === refreshSeqRef.current) {
-        latestRefreshSettledRef.current = true;
-        // 最新目录刷新失败时退出本次排序等待，保留过期标记待用户再次点击排序时重试拉取。
-        setWaitingEnterSort(false);
-      }
-      throw error;
-    }
-  }, [rawRefreshModels]);
 
   const isRoot = userInfo?.username === 'root';
 
@@ -355,36 +315,14 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     await refreshModels().catch(() => {});
   };
 
-  const activeDeleteCountRef = React.useRef(0);
-  const [activeDeleteCount, setActiveDeleteCount] = useState(0);
-  const runTrackedDelete = async (operation: () => Promise<unknown>) => {
-    let deleteSucceeded = false;
-    await runChannelMutation(async () => {
-      activeDeleteCountRef.current += 1;
-      setActiveDeleteCount(activeDeleteCountRef.current);
-      try {
-        await operation();
-        deleteSucceeded = true;
-        // 必须在删除完成后发起的刷新成功提交，才允许排序入口把目录视为新鲜快照。
-        minFreshSeqRef.current = refreshSeqRef.current + 1;
-        setRequiredRefreshSeq(minFreshSeqRef.current);
-      } finally {
-        activeDeleteCountRef.current -= 1;
-        setActiveDeleteCount(activeDeleteCountRef.current);
-      }
-    });
-
-    if (deleteSucceeded) {
-      // 目录刷新放在删除互斥锁外，避免与并发 AddModel 等刷新竞态时被 ahooks 取代而卡死锁。
-      void refreshModels().catch(() => {});
-    }
-  };
-
   const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
+    onSuccess: () => {
+      void refreshModels().catch(() => {});
+    },
     successToast: t('common:delete_success')
   });
   const handleDeleteModel = (data: Parameters<typeof deleteModel>[0]) =>
-    runTrackedDelete(() => deleteModelRequest(data));
+    runChannelMutation(() => deleteModelRequest(data));
   const clearSelection = useCallback(() => {
     setSelectedItems([]);
   }, [setSelectedItems]);
@@ -401,18 +339,19 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           { count: data.modelIds.length }
         )
       });
-      refreshModels();
+      void refreshModels().catch(() => {});
     }
   );
   const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(deleteModels, {
     manual: true,
+    onSuccess: () => {
+      clearSelection();
+      void refreshModels().catch(() => {});
+    },
     successToast: t('common:delete_success')
   });
   const handleDeleteModels = (data: Parameters<typeof deleteModels>[0]) =>
-    runTrackedDelete(async () => {
-      await deleteModelsRequest(data);
-      clearSelection();
-    });
+    runChannelMutation(() => deleteModelsRequest(data));
   const { openConfirm: openBatchDeleteConfirm, ConfirmModal: BatchDeleteConfirmModal } = useConfirm(
     {
       type: 'delete'
@@ -444,9 +383,21 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   const isInitialLoading = loadingModels && modelConfigData === undefined;
 
   const [showModelId, setShowModelId] = useState(true);
-  const [isSortMode, setIsSortMode] = useState(false);
-  const [sortModels, setSortModels] = useState<ModelConfigListItem[]>([]);
+  // 排序草稿只记录用户拖拽后的 modelId 顺序，列表实体始终由最新 modelItems 派生，避免并发删除后残留已删 ID。
+  const [draftOrderIds, setDraftOrderIds] = useState<string[] | null>(null);
+  const isSortMode = draftOrderIds !== null;
   const [isSortBusy, setIsSortBusy] = useState(false);
+  const sortModels = useMemo(() => {
+    if (!draftOrderIds) return [];
+    const modelMap = new Map(modelItems.map((item) => [item.modelId, item]));
+    const ordered = draftOrderIds.flatMap((id) => {
+      const item = modelMap.get(id);
+      return item ? [item] : [];
+    });
+    const orderedIds = new Set(ordered.map((item) => item.modelId));
+    const added = modelItems.filter((item) => !orderedIds.has(item.modelId));
+    return [...added, ...ordered];
+  }, [draftOrderIds, modelItems]);
   const {
     containerRef: sortModelListContainerRef,
     virtualDataList: virtualSortModels,
@@ -464,59 +415,29 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     }
     return sortModelTableBodyRef.current;
   }, []);
-  const [initialSortModelIds, setInitialSortModelIds] = useState<string[]>([]);
   const isSortDirty = useMemo(
     () =>
-      sortModels.length !== initialSortModelIds.length ||
-      sortModels.some((model, index) => model.modelId !== initialSortModelIds[index]),
-    [initialSortModelIds, sortModels]
+      isSortMode && sortModels.some((model, index) => model.modelId !== modelItems[index]?.modelId),
+    [isSortMode, modelItems, sortModels]
   );
   const { runAsync: saveModelOrder } = useRequest(putUpdateModelOrder, { manual: true });
 
   // 入口级粗筛：root 或拥有“安装模型”权限才展示管理操作；单个模型的最终判定以服务端 authModelConfig（action: config）为准
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
 
-  /** 统一从当前最新未过滤列表初始化排序草稿，避免点击路径与等待恢复路径各自维护一套初始化逻辑。 */
-  const initializeSortDraft = () => {
-    setSelectedItems([]);
-    setSortModels([...modelItems]);
-    setInitialSortModelIds(modelItems.map((model) => model.modelId));
-    setIsSortMode(true);
-  };
-
-  /** 若删除或删除后的目录刷新尚未完成，先等待最新目录提交；上次刷新失败时在点击时自动重拉。 */
-  const enterSortMode = () => {
+  /** 从未过滤的完整列表创建排序草稿，避免把搜索/筛选结果误当成完整顺序提交。 */
+  const enterSortMode = useCallback(() => {
     if (isSortBusy) return;
-    if (activeDeleteCountRef.current > 0) {
-      setWaitingEnterSort(true);
-      return;
-    }
-    if (lastCommittedSeqRef.current < minFreshSeqRef.current) {
-      setWaitingEnterSort(true);
-      if (latestRefreshSettledRef.current) {
-        void refreshModels().catch(() => {});
-      }
-      return;
-    }
-    initializeSortDraft();
-  };
-
-  // 删除及所需目录刷新全部完成后立即用最新 modelItems 初始化草稿，避免在 effect 中二次渲染。
-  if (waitingEnterSort && activeDeleteCount === 0 && committedRefreshSeq >= requiredRefreshSeq) {
-    setWaitingEnterSort(false);
-    if (!isSortBusy) {
-      initializeSortDraft();
-    }
-  }
+    setSelectedItems([]);
+    setDraftOrderIds(modelItems.map((model) => model.modelId));
+  }, [isSortBusy, modelItems, setSelectedItems]);
 
   const cancelSortMode = useCallback(() => {
     if (isSortBusy) return;
-    setSortModels([]);
-    setInitialSortModelIds([]);
-    setIsSortMode(false);
+    setDraftOrderIds(null);
   }, [isSortBusy]);
 
-  /** 保存完整草稿顺序；保存或刷新失败时保留草稿以便重试。 */
+  /** 保存完整草稿顺序；若因并发增删导致目录变更，自动刷新使派生草稿与最新目录对齐以便重试。 */
   const handleSaveModelOrder = useLockFn(async () => {
     const modelIds = sortModels.map((model) => model.modelId);
     if (!isSortDirty) {
@@ -527,11 +448,14 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     // 保存和刷新共同占用草稿，避免请求完成时清除等待期间的新操作。
     setIsSortBusy(true);
     try {
-      await saveModelOrder({ channelType, modelIds });
+      try {
+        await saveModelOrder({ channelType, modelIds });
+      } catch (error) {
+        await refreshModels().catch(() => {});
+        throw error;
+      }
       await refreshModels();
-      setSortModels([]);
-      setInitialSortModelIds([]);
-      setIsSortMode(false);
+      setDraftOrderIds(null);
     } finally {
       setIsSortBusy(false);
     }
@@ -591,7 +515,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
-                  isLoading={waitingEnterSort}
+                  isDisabled={isSortBusy || modelItems.length === 0}
                   onClick={enterSortMode}
                 >
                   {t('config_model:model.custom_sort')}
@@ -605,10 +529,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                         minW={0}
                         px={[2, 4]}
                         variant={'whiteBase'}
-                        onClick={() => {
-                          cancelWaitingEnterSort();
-                          onOpenDeprecationInform();
-                        }}
+                        onClick={onOpenDeprecationInform}
                       >
                         {t('config_model:model_deprecation.send_entry')}
                       </Button>
@@ -619,10 +540,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
-                      onClick={() => {
-                        cancelWaitingEnterSort();
-                        onOpenDefaultModel();
-                      }}
+                      onClick={onOpenDefaultModel}
                     >
                       {t('config_model:model.default_model')}
                     </Button>
@@ -632,10 +550,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
-                      onClick={() => {
-                        cancelWaitingEnterSort();
-                        onOpenJsonConfig();
-                      }}
+                      onClick={onOpenJsonConfig}
                     >
                       {t('config_model:model.json_config')}
                     </Button>
@@ -648,7 +563,6 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   providers={modelProviders}
                   channelType={channelType}
                   onSuccess={refreshModels}
-                  onOpen={cancelWaitingEnterSort}
                   w={'100%'}
                   minW={0}
                   px={[2, 4]}
@@ -701,7 +615,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                     <DndDrag<ModelConfigListItem>
                       dataList={sortModels}
                       onDragEndCb={(models) => {
-                        if (!isSortBusy) setSortModels(models);
+                        if (!isSortBusy) setDraftOrderIds(models.map((model) => model.modelId));
                       }}
                       mode="virtual"
                       getContainerForClone={getSortModelCloneContainer}
@@ -965,10 +879,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                               <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
                                 <ModelChannelCount
                                   channels={item.channels}
-                                  onClick={() => {
-                                    cancelWaitingEnterSort();
-                                    setChannelModel(item);
-                                  }}
+                                  onClick={() => setChannelModel(item)}
                                 />
                               </Box>
                             </Td>
@@ -1020,7 +931,6 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                   providers={modelProviders}
                                   channelType={channelType}
                                   onSuccess={refreshModels}
-                                  onOpen={cancelWaitingEnterSort}
                                   isDisabled={channelMutationLoading}
                                 />
                                 <PopoverConfirm
