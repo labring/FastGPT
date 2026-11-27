@@ -93,7 +93,7 @@ describe('serializeLangfuseTraceOutput', () => {
     ]);
   });
 
-  it('drops interactive resume snapshots but keeps display fields', () => {
+  it('drops interactive resume snapshots and keeps only structural metadata', () => {
     const interactive: WorkflowInteractiveResponseType = {
       type: 'userInput',
       entryNodeIds: ['workflowStartNodeId'],
@@ -111,14 +111,50 @@ describe('serializeLangfuseTraceOutput', () => {
       }
     };
 
-    expect(JSON.parse(serializeLangfuseTraceOutput([{ interactive }]))).toEqual([
+    const serialized = serializeLangfuseTraceOutput([{ interactive }]);
+
+    expect(JSON.parse(serialized)).toEqual([
       {
         interactive: {
           type: 'userInput',
-          params: { description: '请补充信息', inputForm: [] }
+          params: { inputForm: [] }
         }
       }
     ]);
+    // 说明可经编辑器变量展开携带用户输入，不上报。
+    expect(serialized).not.toContain('description');
+    expect(serialized).not.toContain('请补充信息');
+  });
+
+  it('drops variable-expanded descriptions for userSelect', () => {
+    const interactive: WorkflowInteractiveResponseType = {
+      type: 'userSelect',
+      entryNodeIds: ['userSelectNodeId'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        // 运行态说明由编辑器变量展开，可携带工作流开始节点的完整用户输入。
+        description: '请确认：帮我查一下内部的机密项目进度',
+        userSelectOptions: [
+          { key: 'confirm', value: '帮我查一下内部的机密项目进度' },
+          { key: 'cancel', value: '取消' }
+        ]
+      }
+    };
+
+    const serialized = serializeLangfuseTraceOutput([{ interactive }]);
+
+    expect(JSON.parse(serialized)).toEqual([
+      {
+        interactive: {
+          type: 'userSelect',
+          params: {}
+        }
+      }
+    ]);
+    expect(serialized).not.toContain('机密项目');
+    expect(serialized).not.toContain('userSelectOptions');
+    expect(serialized).not.toContain('description');
   });
 
   it('drops loop continuation snapshots and keeps only the final display interactive', () => {
@@ -171,16 +207,16 @@ describe('serializeLangfuseTraceOutput', () => {
 
     const serialized = serializeLangfuseTraceOutput([{ interactive }]);
 
-    // 动态选项可引用上游文本，只保留静态结构信息，选项值不上报。
+    // 动态选项可引用上游文本，仅保留交互类型，说明与选项值不上报。
     expect(JSON.parse(serialized)).toEqual([
       {
         interactive: {
           type: 'userSelect',
-          params: { description: '请选择下一步操作' }
+          params: {}
         }
       }
     ]);
-    // 脱敏不变量：续跑快照、上游用户输入、选项值与调度状态不得出现在序列化结果中。
+    // 脱敏不变量：续跑快照、上游用户输入、说明、选项值与调度状态不得出现在序列化结果中。
     expect(serialized).not.toContain('loopHistory');
     expect(serialized).not.toContain('上一轮用户输入');
     expect(serialized).not.toContain('customOutputs');
@@ -188,6 +224,8 @@ describe('serializeLangfuseTraceOutput', () => {
     expect(serialized).not.toContain('entryNodeIds');
     expect(serialized).not.toContain('nodeOutputs');
     expect(serialized).not.toContain('userSelectOptions');
+    expect(serialized).not.toContain('description');
+    expect(serialized).not.toContain('请选择下一步操作');
     expect(serialized).not.toContain('optionA');
   });
 
@@ -227,12 +265,10 @@ describe('serializeLangfuseTraceOutput', () => {
         interactive: {
           type: 'userInput',
           params: {
-            description: '请补充表单',
-            // 表单只保留结构信息：字段名/标签/类型/必填；valueType 等载荷与 submitted 状态不上报。
+            // 表单只保留结构元数据：字段名/类型/必填；说明、标签、valueType 与 submitted 不上报。
             inputForm: [
               {
                 key: 'name',
-                label: '姓名',
                 type: FlowNodeInputTypeEnum.input,
                 required: true
               }
@@ -279,6 +315,48 @@ describe('serializeLangfuseTraceOutput', () => {
     ]);
     expect(serialized).not.toContain('arguments');
     expect(serialized).not.toContain('目标城市');
+  });
+
+  it('projects tool records to identifiers and drops params and responses', () => {
+    const item: AIChatItemValueItemType = {
+      tools: [
+        buildToolItem({
+          id: 'tool-1',
+          // 内置读文件工具的参数可携带上传文件的完整签名 URL（含访问凭证）。
+          params: '{"fileUrl":"https://oss.example.com/file?signature=SECRET"}',
+          response: '文件内容全文',
+          content: [{ type: 'text', text: '结构化文件内容' }]
+        })
+      ]
+    };
+
+    const serialized = serializeLangfuseTraceOutput([item]);
+
+    expect(JSON.parse(serialized)).toEqual([
+      {
+        tools: [{ id: 'tool-1', toolName: 'get_weather', functionName: 'get_weather' }]
+      }
+    ]);
+    expect(serialized).not.toContain('fileUrl');
+    expect(serialized).not.toContain('SECRET');
+    expect(serialized).not.toContain('文件内容');
+    expect(serialized).not.toContain('params');
+    expect(serialized).not.toContain('response');
+  });
+
+  it('projects the deprecated tool marker to identifiers only', () => {
+    const item: AIChatItemValueItemType = {
+      tool: buildToolItem({ params: '{"fileUrl":"https://oss.example.com/file?signature=SECRET"}' })
+    };
+
+    const serialized = serializeLangfuseTraceOutput([item]);
+
+    expect(JSON.parse(serialized)).toEqual([
+      {
+        tool: { id: 'tool-1', toolName: 'get_weather', functionName: 'get_weather' }
+      }
+    ]);
+    expect(serialized).not.toContain('SECRET');
   });
 
   it('keeps recent complete items when the count exceeds the array limit', () => {

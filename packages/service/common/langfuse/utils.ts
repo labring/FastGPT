@@ -1,4 +1,7 @@
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -13,23 +16,6 @@ const LANGFUSE_MAX_ARRAY_LENGTH = 100;
 const LANGFUSE_MAX_OBJECT_KEYS = 100;
 const LANGFUSE_MAX_DEPTH = 8;
 const LANGFUSE_MAX_SERIALIZED_LENGTH = 100000;
-
-/**
- * trace.output 的白名单字段：只上报回复内容相关字段。
- * 输入上下文（inputContext，本轮改写后的完整用户输入）、恢复上下文（contextCheckpoint）
- * 以及服务端内部状态一律不上报，避免把用户输入写进 trace。
- */
-const langfuseTraceOutputItemKeys = [
-  'id',
-  'text',
-  'reasoning',
-  'tools',
-  'skills',
-  'interactive',
-  'plan',
-  'planStatus',
-  'tool'
-] as const;
 
 const LANGFUSE_TRACE_NAME = 'message';
 
@@ -201,7 +187,23 @@ export const getLangfuseTraceOutput = (
 };
 
 /**
- * trace.output 中交互的上报形状：type + 结构化 params。
+ * trace.output 中工具记录的上报形状：仅保留标识，不含参数与响应载荷。
+ * 内置读文件等工具的 params 可携带上传文件的完整签名 URL（含访问凭证），
+ * response / content 为原始工具输出，同样不上报。
+ */
+type LangfuseTraceToolItemType = Pick<
+  ToolModuleResponseItemType,
+  'id' | 'toolName' | 'functionName'
+>;
+
+const projectLangfuseToolItem = (tool: ToolModuleResponseItemType): LangfuseTraceToolItemType => ({
+  id: tool.id,
+  toolName: tool.toolName,
+  functionName: tool.functionName
+});
+
+/**
+ * trace.output 中交互的上报形状：type + 结构元数据。
  * 这是投影后的独立形状，不承载调度字段，也不等同完整运行时交互。
  */
 type LangfuseTraceInteractiveType = {
@@ -210,32 +212,27 @@ type LangfuseTraceInteractiveType = {
 };
 
 /**
- * 按叶子类型投影遥测所需的结构信息，剔除运行时值。
+ * 按叶子类型投影遥测所需的结构元数据，剔除运行时值与可展开文本。
  *
- * 动态选项（userSelectOptions）与表单字段可引用上游文本（如工作流开始节点的完整用户输入），
- * 模型工具参数（arguments）可携带会话上下文，一律不上报；只保留静态配置结构：
- * - userSelect / userInput / paymentPause：description 为工作流编辑器中的静态文案；
- *   userInput 的 inputForm 仅保留字段名/标签/类型/必填。
+ * 选择器/表单的说明与标签在节点执行前会展开编辑器变量，可引用工作流开始节点的
+ * 本轮用户输入；动态选项、表单运行时值与模型工具参数（arguments）同样可携带会话
+ * 上下文，一律不上报。只保留与具体数据无关的结构元数据：
+ * - userSelect / paymentPause：仅交互类型；
+ * - userInput：表单仅保留字段名/类型/必填；
  * - agentAsk / workflowBuilderPreview：仅保留工具调用 ID。
  */
 const projectLangfuseInteractiveParams = (
   leaf: InteractiveNodeResponseType
 ): Record<string, unknown> => {
   switch (leaf.type) {
-    case 'userSelect':
-      return { description: leaf.params.description };
     case 'userInput':
       return {
-        description: leaf.params.description,
-        inputForm: leaf.params.inputForm.map(({ key, label, type, required }) => ({
+        inputForm: leaf.params.inputForm.map(({ key, type, required }) => ({
           key,
-          label,
           type,
           required
         }))
       };
-    case 'paymentPause':
-      return { description: leaf.params.description, continue: leaf.params.continue };
     case 'agentAsk':
     case 'workflowBuilderPreview':
       return { toolCallId: leaf.params.toolCallId };
@@ -245,26 +242,19 @@ const projectLangfuseInteractiveParams = (
 };
 
 /**
- * 交互载荷判别：消息项 interactive 字段是宽联合（含旧版字符串副本、plan 状态等形状），
- * 只有“对象且带字符串 type”的载荷才进入解包与叶子校验。
- */
-const isLangfuseInteractivePayload = (value: unknown): value is WorkflowInteractiveResponseType =>
-  !!value &&
-  typeof value === 'object' &&
-  !Array.isArray(value) &&
-  typeof (value as { type?: unknown }).type === 'string';
-
-/**
- * 上报出口只投影“最终展示交互”的结构信息，不变量：续跑快照、调度状态与运行时用户输入
- * 不得进入 trace.output。
+ * 上报出口只投影“最终展示交互”的结构元数据，不变量：续跑快照、调度状态、可展开文本
+ * 与运行时用户输入不得进入 trace.output。
  *
  * 1. 复用 extractDeepestInteractive 解包嵌套包装（childrenInteractive / loopInteractive /
  *    loopRunInteractive 等），loopHistory / loopResult 等内部续跑快照随整层包装一起丢弃。
  * 2. 用 isValidInteractive（叶子 Schema 校验）收窄解包结果，非叶子或载荷不完整的交互不上报。
- * 3. 按叶子类型投影结构化 params（见 projectLangfuseInteractiveParams）。
+ * 3. 按叶子类型投影结构元数据（见 projectLangfuseInteractiveParams）。
  */
-const projectLangfuseInteractive = (value: unknown): LangfuseTraceInteractiveType | undefined => {
-  if (!isLangfuseInteractivePayload(value)) return undefined;
+const projectLangfuseInteractive = (
+  value: WorkflowInteractiveResponseType | undefined
+): LangfuseTraceInteractiveType | undefined => {
+  // 调用点 item.interactive 已按 Schema 声明为运行时交互；宽松载荷由叶子校验兜底。
+  if (!value || typeof value !== 'object') return undefined;
 
   const leaf = extractDeepestInteractive(value);
   if (!isValidInteractive(leaf)) return undefined;
@@ -275,20 +265,39 @@ const projectLangfuseInteractive = (value: unknown): LangfuseTraceInteractiveTyp
   };
 };
 
-/** 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。 */
-const projectLangfuseTraceOutputItem = (item: AIChatItemValueItemType): AIChatItemValueItemType => {
-  const projected: Record<string, unknown> = {};
-  for (const key of langfuseTraceOutputItemKeys) {
-    const value = item[key];
-    if (value === undefined || value === null) continue;
-    if (key === 'interactive') {
-      const projectedInteractive = projectLangfuseInteractive(value);
-      if (projectedInteractive !== undefined) projected.interactive = projectedInteractive;
-      continue;
-    }
-    projected[key] = value;
-  }
-  return projected as AIChatItemValueItemType;
+/**
+ * 投影后的 trace.output 消息项：interactive / tools / tool 为遥测投影形状，
+ * 不承载调度字段、工具参数与响应载荷。
+ */
+type LangfuseTraceOutputItemType = Omit<
+  AIChatItemValueItemType,
+  'interactive' | 'tools' | 'tool'
+> & {
+  interactive?: LangfuseTraceInteractiveType;
+  tools?: LangfuseTraceToolItemType[];
+  tool?: LangfuseTraceToolItemType;
+};
+
+/**
+ * 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。
+ * 逐字段显式构造：投影结果的形状由 LangfuseTraceOutputItemType 声明，
+ * 不把不含调度字段的遥测项强转回完整运行时类型。
+ */
+const projectLangfuseTraceOutputItem = (
+  item: AIChatItemValueItemType
+): LangfuseTraceOutputItemType => {
+  const projected: LangfuseTraceOutputItemType = {};
+  if (item.id) projected.id = item.id;
+  if (item.text) projected.text = item.text;
+  if (item.reasoning) projected.reasoning = item.reasoning;
+  if (item.skills) projected.skills = item.skills;
+  if (item.plan) projected.plan = item.plan;
+  if (item.planStatus) projected.planStatus = item.planStatus;
+  if (item.tools) projected.tools = item.tools.map(projectLangfuseToolItem);
+  if (item.tool) projected.tool = projectLangfuseToolItem(item.tool);
+  const projectedInteractive = projectLangfuseInteractive(item.interactive);
+  if (projectedInteractive !== undefined) projected.interactive = projectedInteractive;
+  return projected;
 };
 
 /** 结果必须是“消息项对象数组”：排除字符串占位（如 "[Truncated]"）与空元素。 */
