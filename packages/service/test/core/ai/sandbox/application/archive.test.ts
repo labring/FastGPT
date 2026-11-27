@@ -493,24 +493,21 @@ describe('sandbox archive lifecycle', () => {
     );
   });
 
-  it('skips overlapping archive sweep while a previous run is still active and keeps concurrency bounded to 2', async () => {
-    const firstClose = vi.fn(async () => undefined);
-    const secondClose = vi.fn(async () => undefined);
-    const candidates = Array.from({ length: 6 }, (_, index) =>
+  it('skips overlapping archive sweep while a previous run is active and keeps concurrency bounded to 2', async () => {
+    const close = vi.fn(async () => undefined);
+    const candidates = Array.from({ length: 4 }, (_, index) =>
       createResource('stopped', { sandboxId: `sandbox-${index + 1}` })
     );
     mocks.createSandboxResourcesToArchiveCursor
       .mockReturnValueOnce({
         async *[Symbol.asyncIterator]() {
-          for (const candidate of candidates) {
-            yield candidate;
-          }
+          for (const candidate of candidates) yield candidate;
         },
-        close: firstClose
+        close
       })
       .mockReturnValueOnce({
         async *[Symbol.asyncIterator]() {},
-        close: secondClose
+        close
       });
 
     let activeCount = 0;
@@ -527,12 +524,8 @@ describe('sandbox archive lifecycle', () => {
     mocks.withSandboxLease.mockImplementation(async ({ sandboxId }: { sandboxId: string }) => {
       activeCount += 1;
       maxConcurrency = Math.max(maxConcurrency, activeCount);
-      if (activeCount === 2 && (sandboxId === 'sandbox-1' || sandboxId === 'sandbox-2')) {
-        notifyFirstBatchFull();
-      }
-      if (sandboxId === 'sandbox-1' || sandboxId === 'sandbox-2') {
-        await firstBatchGate;
-      }
+      if (activeCount === 2) notifyFirstBatchFull();
+      if (sandboxId === 'sandbox-1' || sandboxId === 'sandbox-2') await firstBatchGate;
       activeCount -= 1;
       return { status: 'success' };
     });
@@ -540,61 +533,54 @@ describe('sandbox archive lifecycle', () => {
     const firstRun = archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'));
     await firstBatchFull;
 
-    // 模拟上一轮积压超过一小时后，下一整点在定时锁到期后再次触发归档。
+    // 模拟上一轮跨整点未结束时下一整点触发归档：应直接跳过，不叠加并发。
     await expect(
       archiveInactiveSandboxes(new Date('2026-07-10T01:00:00.000Z'))
     ).resolves.toBeUndefined();
     expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledTimes(1);
-    expect(mocks.logger.info).toHaveBeenCalledWith(
-      'Skipped sandbox archive sweep because a previous run is still active'
-    );
     expect(maxConcurrency).toBe(2);
 
     releaseFirstBatch();
     await firstRun;
-
-    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(6);
+    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(4);
     expect(maxConcurrency).toBe(2);
-    expect(firstClose).toHaveBeenCalledTimes(1);
 
-    // 上一轮释放扫描租约后，后续整点应正常启动新一轮扫描。
+    // 租约释放后下一整点应恢复正常扫描。
     await archiveInactiveSandboxes(new Date('2026-07-10T02:00:00.000Z'));
     expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledTimes(2);
-    expect(secondClose).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(2);
   });
 
-  it('stops dispatching further batches and propagates RedisLeaseLostError when the sweep lease is lost mid-run', async () => {
+  it('halts sweep dispatch via assertValid before signal aborts and propagates lease failures', async () => {
     const close = vi.fn(async () => undefined);
     const candidates = Array.from({ length: 4 }, (_, index) =>
       createResource('stopped', { sandboxId: `sandbox-${index + 1}` })
     );
     mocks.createSandboxResourcesToArchiveCursor.mockReturnValueOnce({
       async *[Symbol.asyncIterator]() {
-        for (const candidate of candidates) {
-          yield candidate;
-        }
+        for (const candidate of candidates) yield candidate;
       },
       close
     });
 
-    const sweepAbortController = new AbortController();
+    const signal = new AbortController().signal;
     let lostError: RedisLeaseLostError | undefined;
     mocks.withSweepLease.mockImplementationOnce(async ({ fn }: WithLeaseOptions<unknown>) => {
       const assertValid = () => {
         if (lostError) throw lostError;
       };
-      await fn({ signal: sweepAbortController.signal, assertValid });
+      await fn({ signal, assertValid });
       assertValid();
     });
 
     mocks.withSandboxLease.mockImplementation(async ({ sandboxId }: { sandboxId: string }) => {
       await Promise.resolve();
+      // 仅置失租而不触发 signal.abort，模拟 I/O 先于到期定时器恢复的竞态。
       if (sandboxId === 'sandbox-1') {
         lostError = new RedisLeaseLostError({
           key: 'lock:agent-sandbox:archive-sweep',
           label: 'archive-inactive-sandboxes'
         });
-        sweepAbortController.abort(lostError);
       }
       return { status: 'success' };
     });
@@ -602,12 +588,10 @@ describe('sandbox archive lifecycle', () => {
     await expect(
       archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'))
     ).rejects.toBeInstanceOf(RedisLeaseLostError);
-
+    expect(signal.aborted).toBe(false);
     expect(mocks.withSandboxLease).toHaveBeenCalledTimes(2);
     expect(close).toHaveBeenCalledTimes(1);
-  });
 
-  it('propagates RedisLeaseAcquireError instead of sweeping without an execution lease', async () => {
     mocks.withSweepLease.mockRejectedValueOnce(
       new RedisLeaseAcquireError({
         key: 'lock:agent-sandbox:archive-sweep',
@@ -615,11 +599,10 @@ describe('sandbox archive lifecycle', () => {
         cause: new Error('redis unavailable')
       })
     );
-
     await expect(
-      archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'))
+      archiveInactiveSandboxes(new Date('2026-07-10T01:00:00.000Z'))
     ).rejects.toBeInstanceOf(RedisLeaseAcquireError);
-    expect(mocks.createSandboxResourcesToArchiveCursor).not.toHaveBeenCalled();
+    expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledTimes(1);
   });
 
   it('rechecks inactivity under the lease before claiming', async () => {

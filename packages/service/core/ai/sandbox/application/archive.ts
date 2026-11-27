@@ -369,17 +369,19 @@ export async function archiveSandboxResource(
   }
 }
 
-/** 流式归档全部 inactive 候选，受 `SANDBOX_ARCHIVE_CONCURRENCY` 限制防止风暴；扫盘租约丢失后立即停止派发后续批次。 */
+/** 流式归档全部 inactive 候选，受 `SANDBOX_ARCHIVE_CONCURRENCY` 限制防止风暴；派发前同步校验扫盘租约，失租立即停止。 */
 async function archiveSandboxResources(inactiveBefore: Date, sweepLease: RedisLeaseContext) {
   const cursor = createSandboxResourcesToArchiveCursor(inactiveBefore);
   let batch: SandboxResourceDoc[] = [];
 
   const archiveBatch = async (resources: SandboxResourceDoc[]) => {
-    if (resources.length === 0 || sweepLease.signal.aborted) return;
+    if (resources.length === 0) return;
+    // 同步校验截止时间，避免到期定时器尚未触发时仍凭未 abort 的 signal 派发新批次。
+    sweepLease.assertValid();
     await batchRun(
       resources,
       async (resource) => {
-        if (sweepLease.signal.aborted) return;
+        sweepLease.assertValid();
         await archiveSandboxResource(resource, inactiveBefore).catch((error) => {
           logger.error('Failed to execute sandbox archive task', {
             sandboxId: resource.sandboxId,
@@ -394,17 +396,15 @@ async function archiveSandboxResources(inactiveBefore: Date, sweepLease: RedisLe
 
   try {
     for await (const resource of cursor) {
-      if (sweepLease.signal.aborted) break;
+      sweepLease.assertValid();
       batch.push(resource);
       if (batch.length >= SANDBOX_ARCHIVE_CONCURRENCY) {
         await archiveBatch(batch);
         batch = [];
-        if (sweepLease.signal.aborted) break;
+        sweepLease.assertValid();
       }
     }
-    if (!sweepLease.signal.aborted) {
-      await archiveBatch(batch);
-    }
+    await archiveBatch(batch);
   } finally {
     await cursor.close().catch(() => undefined);
   }
