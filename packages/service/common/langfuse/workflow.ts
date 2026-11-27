@@ -2,7 +2,6 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   isLangfuseEnabled,
@@ -13,6 +12,7 @@ import {
 import {
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
+  getLangfuseTraceOutput,
   langfuseTraceOutputAllowedKeys,
   serializeLangfuseValue
 } from './utils';
@@ -43,7 +43,7 @@ export const onWorkflowStart = ({
   prepareLangfuseSpan(enabled ? getLangfuseTraceAttributes(traceProps) : undefined, 'trace');
 };
 
-/** 记录工作流最终回复，类型与字段集合对齐 1.5.0（AI 消息项数组，含 reasoning/tools）。 */
+/** 记录工作流最终回复；合并规则与字段集合对齐 1.5.0（AI 消息项数组，含 reasoning/tools）。 */
 export const onWorkflowEnd = ({
   output,
   ...lifecycleProps
@@ -51,7 +51,7 @@ export const onWorkflowEnd = ({
   output: AIChatItemValueItemType[];
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
-  const serializedOutput = serializeLangfuseValue(normalizeAIChatValue(output), {
+  const serializedOutput = serializeLangfuseValue(getLangfuseTraceOutput(output), {
     keepExcludedKeys: langfuseTraceOutputAllowedKeys
   });
   if (serializedOutput !== undefined) {

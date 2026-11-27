@@ -1,3 +1,5 @@
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+
 const LANGFUSE_MAX_STRING_LENGTH = 10000;
 const LANGFUSE_MAX_ARRAY_LENGTH = 100;
 const LANGFUSE_MAX_OBJECT_KEYS = 100;
@@ -104,6 +106,53 @@ export const serializeLangfuseValue = (
  * 保证下游拿到的字段集合与 1.5.0 一致。
  */
 export const langfuseTraceOutputAllowedKeys: ReadonlySet<string> = new Set(['reasoning']);
+
+/**
+ * 构造 trace.output 的 AI 消息项数组，合并规则与 1.5.0 的
+ * `mergeAssistantResponseAnswerText` 保持一致：连续 text 合并、连续 reasoning 合并，
+ * 结果为空时补一个空 text 项。
+ *
+ * 1.6 的消息项没有 1.5 的 `type` 字段，这里按内容字段推断 text / reasoning 项；
+ * 同时 text 与 reasoning 并存的项不参与合并，保持原有边界。
+ * 合并时生成新对象，不修改调用方的消息项（避免同一数组被多次归一时内容叠加）。
+ */
+export const getLangfuseTraceOutput = (
+  values: AIChatItemValueItemType[]
+): AIChatItemValueItemType[] => {
+  const result: AIChatItemValueItemType[] = [];
+
+  for (const item of values) {
+    const lastItem = result[result.length - 1];
+
+    if (item.text && !item.reasoning) {
+      if (lastItem?.text && !lastItem.reasoning && lastItem.text.content) {
+        result[result.length - 1] = {
+          ...lastItem,
+          text: { content: lastItem.text.content + (item.text.content || '') }
+        };
+        continue;
+      }
+    } else if (item.reasoning && !item.text) {
+      if (lastItem?.reasoning && !lastItem.text) {
+        result[result.length - 1] = {
+          ...lastItem,
+          reasoning: {
+            ...lastItem.reasoning,
+            content: (lastItem.reasoning.content || '') + (item.reasoning.content || '')
+          }
+        };
+        continue;
+      }
+    }
+
+    result.push(item);
+  }
+
+  // 与 1.5.0 对齐：空结果补一个空 text 项，而不是返回空数组。
+  if (result.length === 0) result.push({ text: { content: '' } });
+
+  return result;
+};
 
 /** 构造根 workflow span 的初始属性，使 Langfuse 能在 onStart 阶段识别应用根。 */
 export const getLangfuseTraceAttributes = ({

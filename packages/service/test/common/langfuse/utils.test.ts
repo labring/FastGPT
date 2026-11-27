@@ -2,9 +2,48 @@ import { describe, expect, it } from 'vitest';
 import {
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
+  getLangfuseTraceOutput,
   langfuseTraceOutputAllowedKeys,
   serializeLangfuseValue
 } from '@fastgpt/service/common/langfuse/utils';
+
+describe('getLangfuseTraceOutput', () => {
+  it('merges consecutive text and reasoning items like 1.5.0', () => {
+    expect(
+      getLangfuseTraceOutput([
+        { reasoning: { content: 'think-1' } },
+        { reasoning: { content: 'think-2' } },
+        { text: { content: 'answer-1' } },
+        { text: { content: 'answer-2' } }
+      ])
+    ).toEqual([
+      { reasoning: { content: 'think-1think-2' } },
+      { text: { content: 'answer-1answer-2' } }
+    ]);
+  });
+
+  it('keeps item boundaries of other value types', () => {
+    const tools = [{ id: 'tool-1', response: 'ok' }];
+    expect(
+      getLangfuseTraceOutput([
+        { text: { content: 'before' } },
+        { tools } as any,
+        { text: { content: 'after' } }
+      ])
+    ).toEqual([{ text: { content: 'before' } }, { tools }, { text: { content: 'after' } }]);
+  });
+
+  it('does not mutate the caller items', () => {
+    const values: any[] = [{ text: { content: 'A' } }, { text: { content: 'B' } }];
+    getLangfuseTraceOutput(values);
+    expect(values[0].text.content).toBe('A');
+    expect(values[1].text.content).toBe('B');
+  });
+
+  it('falls back to an empty text item when output is empty', () => {
+    expect(getLangfuseTraceOutput([])).toEqual([{ text: { content: '' } }]);
+  });
+});
 
 describe('langfuseTraceOutputAllowedKeys', () => {
   it('allows reasoning items in trace.output and keeps other exclusions', () => {
