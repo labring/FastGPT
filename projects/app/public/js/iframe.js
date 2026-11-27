@@ -340,6 +340,8 @@ function embedChatbot() {
     newRight = Math.max(20, Math.min(vw - 60, newRight));
     newBottom = Math.max(30, Math.min(vh - 70, newBottom));
 
+    ChatBtn.style.left = 'auto';
+    ChatBtn.style.top = 'auto';
     ChatBtn.style.right = `${newRight}px`;
     ChatBtn.style.bottom = `${newBottom}px`;
 

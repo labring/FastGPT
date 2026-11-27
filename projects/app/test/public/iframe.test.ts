@@ -113,8 +113,10 @@ describe('floating chat window resizing', () => {
             : dom.window.document.documentElement;
         const viewportWidth = viewportEl?.clientWidth || dom.window.innerWidth;
         const viewportHeight = viewportEl?.clientHeight || dom.window.innerHeight;
-        const hasLeft = Boolean(this.style.left) && this.style.left !== 'unset';
-        const hasTop = Boolean(this.style.top) && this.style.top !== 'unset';
+        const hasLeft =
+          Boolean(this.style.left) && this.style.left !== 'unset' && this.style.left !== 'auto';
+        const hasTop =
+          Boolean(this.style.top) && this.style.top !== 'unset' && this.style.top !== 'auto';
         const left = hasLeft
           ? parseFloat(this.style.left) || 0
           : viewportWidth - (parseFloat(this.style.right) || 0) - width;
@@ -491,5 +493,43 @@ describe('floating chat window resizing', () => {
     expect(iframe().style.visibility).toBe('unset');
     expect(iframe().style.left).toBe('90px');
     expect(iframe().style.top).toBe('60px');
+  });
+
+  it('overrides host left/top positioning when dragging the launcher button while closed', () => {
+    dom.window.document.body.innerHTML =
+      '<script id="chatbot-iframe" data-bot-src="https://chat.example.com/" data-drag="true"></script>';
+    new Function(`${source}\nembedChatbot();`)();
+
+    const btn = dom.window.document.getElementById('fastgpt-chatbot-button')!;
+    btn.style.left = '160px';
+    btn.style.top = '120px';
+
+    btn.dispatchEvent(
+      new dom.window.MouseEvent('mousedown', { clientX: 180, clientY: 140, bubbles: true })
+    );
+    dom.window.dispatchEvent(
+      new dom.window.MouseEvent('mousemove', { clientX: 280, clientY: 220, bubbles: true })
+    );
+    dom.window.dispatchEvent(
+      new dom.window.MouseEvent('mouseup', { clientX: 280, clientY: 220, bubbles: true })
+    );
+
+    expect(btn.style.left).toBe('auto');
+    expect(btn.style.top).toBe('auto');
+    const movedBtn = btn.getBoundingClientRect();
+    expect(movedBtn.left).toBe(260);
+    expect(movedBtn.top).toBe(200);
+
+    btn.dispatchEvent(
+      new dom.window.MouseEvent('mousedown', { clientX: 280, clientY: 220, bubbles: true })
+    );
+    dom.window.dispatchEvent(
+      new dom.window.MouseEvent('mouseup', { clientX: 280, clientY: 220, bubbles: true })
+    );
+    btn.click();
+
+    expect(iframe().style.visibility).toBe('unset');
+    expect(iframe().style.left).toBe('310px');
+    expect(iframe().style.top).toBe('200px');
   });
 });
