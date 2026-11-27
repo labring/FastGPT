@@ -1,5 +1,3 @@
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-
 const LANGFUSE_MAX_STRING_LENGTH = 10000;
 const LANGFUSE_MAX_ARRAY_LENGTH = 100;
 const LANGFUSE_MAX_OBJECT_KEYS = 100;
@@ -100,9 +98,12 @@ export const serializeLangfuseValue = (
   }
 };
 
-/** 提取最终回复中的可见文本，不上传内部推理消息。 */
-export const getLangfuseAssistantOutput = (values: AIChatItemValueItemType[]): string =>
-  values.flatMap((item) => (item.text?.content ? [item.text.content] : [])).join('');
+/**
+ * trace.output 需要放行的字段：1.5.0 的 trace.output 直接序列化 AI 消息项数组，
+ * 其中包含 reasoning 项；1.6 默认会过滤推理内容，这里按上报契约显式放行，
+ * 保证下游拿到的字段集合与 1.5.0 一致。
+ */
+export const langfuseTraceOutputAllowedKeys: ReadonlySet<string> = new Set(['reasoning']);
 
 /** 构造根 workflow span 的初始属性，使 Langfuse 能在 onStart 阶段识别应用根。 */
 export const getLangfuseTraceAttributes = ({

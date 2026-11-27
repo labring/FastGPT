@@ -11,9 +11,9 @@ import {
   setActiveLangfuseTraceAttributes
 } from './index';
 import {
-  getLangfuseAssistantOutput,
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
+  langfuseTraceOutputAllowedKeys,
   serializeLangfuseValue
 } from './utils';
 
@@ -43,7 +43,7 @@ export const onWorkflowStart = ({
   prepareLangfuseSpan(enabled ? getLangfuseTraceAttributes(traceProps) : undefined, 'trace');
 };
 
-/** 记录工作流最终可见回复，不上传内部推理消息。 */
+/** 记录工作流最终回复，类型与字段集合对齐 1.5.0（AI 消息项数组，含 reasoning/tools）。 */
 export const onWorkflowEnd = ({
   output,
   ...lifecycleProps
@@ -51,9 +51,9 @@ export const onWorkflowEnd = ({
   output: AIChatItemValueItemType[];
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
-  const serializedOutput = serializeLangfuseValue(
-    getLangfuseAssistantOutput(normalizeAIChatValue(output))
-  );
+  const serializedOutput = serializeLangfuseValue(normalizeAIChatValue(output), {
+    keepExcludedKeys: langfuseTraceOutputAllowedKeys
+  });
   if (serializedOutput !== undefined) {
     setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': serializedOutput });
   }

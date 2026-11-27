@@ -1,24 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getLangfuseAssistantOutput,
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
+  langfuseTraceOutputAllowedKeys,
   serializeLangfuseValue
 } from '@fastgpt/service/common/langfuse/utils';
 
-describe('getLangfuseAssistantOutput', () => {
-  it('extracts text content without internal reasoning', () => {
+describe('langfuseTraceOutputAllowedKeys', () => {
+  it('allows reasoning items in trace.output and keeps other exclusions', () => {
+    expect(langfuseTraceOutputAllowedKeys.has('reasoning')).toBe(true);
     expect(
-      getLangfuseAssistantOutput([
-        { reasoning: { content: 'internal reasoning' } },
-        { text: { content: 'Hello' } },
-        { text: { content: ', world' } }
-      ])
-    ).toBe('Hello, world');
-  });
-
-  it('returns an empty string when the response has no text', () => {
-    expect(getLangfuseAssistantOutput([{ reasoning: { content: 'internal reasoning' } }])).toBe('');
+      JSON.parse(
+        serializeLangfuseValue(
+          [{ reasoning: { content: 'think' } }, { text: { content: 'Hello' } }],
+          { keepExcludedKeys: langfuseTraceOutputAllowedKeys }
+        ) ?? ''
+      )
+    ).toEqual([{ reasoning: { content: 'think' } }, { text: { content: 'Hello' } }]);
   });
 });
 

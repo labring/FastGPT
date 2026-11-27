@@ -79,13 +79,13 @@ describe('Langfuse workflow lifecycle callbacks', () => {
     );
   });
 
-  it('records visible workflow output without reasoning', () => {
+  it('records workflow output as an AI value item array including reasoning', () => {
     onWorkflowEnd({
       ...lifecycle,
       output: [{ reasoning: { content: 'private' } }, { text: { content: 'world' } }]
     });
     expect(mocks.setTraceAttributes).toHaveBeenCalledWith({
-      'langfuse.trace.output': '"world"'
+      'langfuse.trace.output': '[{"reasoning":{"content":"private"}},{"text":{"content":"world"}}]'
     });
     expect(mocks.setAttributes).not.toHaveBeenCalled();
   });
