@@ -229,7 +229,7 @@ export const applyApiDatasetSyncAll = async ({
   if (tx) {
     await apply(tx);
   } else {
-    await runInTransaction(apply);
+    await runInTransaction(apply, { dialect: 'mongo' });
   }
 };
 
@@ -827,19 +827,22 @@ export const createApiDatasetCollection = async ({
       datasetId: String(dataset._id)
     });
   } else if (reEnableSyncFolderIds.length > 0) {
-    await runInTransaction(async (writeTx) => {
-      await datasetRepo.updateSyncScope({
-        teamId,
-        datasetId: String(dataset._id),
-        tx: writeTx
-      });
-      await datasetCollectionRepo.reEnableSyncFolders({
-        teamId,
-        datasetId: String(dataset._id),
-        folderIds: reEnableSyncFolderIds,
-        tx: writeTx
-      });
-    });
+    await runInTransaction(
+      async (writeTx) => {
+        await datasetRepo.updateSyncScope({
+          teamId,
+          datasetId: String(dataset._id),
+          tx: writeTx
+        });
+        await datasetCollectionRepo.reEnableSyncFolders({
+          teamId,
+          datasetId: String(dataset._id),
+          folderIds: reEnableSyncFolderIds,
+          tx: writeTx
+        });
+      },
+      { dialect: 'mongo' }
+    );
   }
 
   logger.info('Create api file collection completed', {

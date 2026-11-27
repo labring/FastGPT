@@ -61,6 +61,8 @@ export type DbTransactionRunner = <T>(params: {
 export type OceanBaseExecutorResolver<TExecutor = unknown> = (params: {
   datasource: DbDatasource;
   nativeTx?: unknown;
+  /** 非事务只读查询优先路由至只读副本连接池（若未配置则透明回退主写池；活跃事务内强制忽略）。 */
+  useReadReplica?: boolean;
 }) => TExecutor;
 
 /** 驱动无关的 Mongo 集合描述符最小结构（避免 `types.ts` 直接耦合 `mongoose`）。 */

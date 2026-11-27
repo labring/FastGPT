@@ -118,6 +118,11 @@ export const unwrapNativeDbSession = <TNative = unknown>(
 
 export type RunInTransactionOptions = {
   datasource?: DbDatasource;
+  /**
+   * 可选显式指定事务方言（用于渐进迁移混合模式下仍仅依赖 Mongo 专用仓储的领域事务）。
+   * 缺省遵循主 `DbRuntime` 的方言。
+   */
+  dialect?: DbDialect;
   maxConflictRetries?: number;
   timeoutMs?: number;
 };
@@ -137,11 +142,12 @@ export const runInTransaction = async <T>(
 ): Promise<T> => {
   const {
     datasource = 'main',
+    dialect,
     maxConflictRetries = DEFAULT_MAX_CONFLICT_RETRIES,
     timeoutMs = DEFAULT_TRANSACTION_TIMEOUT_MS
   } = options;
 
-  const runtime = getDbRuntime();
+  const runtime = dialect !== undefined ? getDbRuntime(dialect) : getDbRuntime();
   const effectiveDatasource = runtime.resolveEffectiveDatasource(datasource);
   const runner = runtime.getTransactionRunner();
   const logger = runtime.getLogger();

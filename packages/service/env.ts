@@ -3,8 +3,16 @@ import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { StorageVendorSchema } from '@fastgpt/global/common/system/config/schemas/storage';
-import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv } from './env.util';
+import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv, validateDbEnv } from './env.util';
 import { LogLevelSchema, StorageCosProtocolSchema } from './env.const';
+
+const OptionalTrimmedStringSchema = z
+  .string()
+  .transform((value) => {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  })
+  .optional();
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
@@ -107,6 +115,11 @@ export const serviceEnv = createEnv({
     // Redisg
     REDIS_URL: z.string().default('redis://default:mypassword@localhost:6379'),
 
+    // 主业务数据库方言及连接配置（与下方 VectorDB 严格物理隔离）
+    DB_DIALECT: z.enum(['mongo', 'oceanbase']).default('mongo').meta({
+      description: '主业务数据库方言：mongo（默认）或 oceanbase'
+    }),
+
     // Mongo
     MONGODB_URI: z
       .string()
@@ -116,6 +129,17 @@ export const serviceEnv = createEnv({
     MONGODB_LOG_URI: z.string().optional(),
     MONGO_DEPRECATE_INDEX: BoolSchema.default(true).meta({
       description: '是否在 Mongo 索引同步阶段清理显式声明为 deprecated 的历史索引（默认开启）'
+    }),
+
+    // OceanBase 主业务库（严禁回退复用向量库 OCEANBASE_URL / SEEKDB_URL）
+    OCEANBASE_DB_URI: OptionalTrimmedStringSchema.meta({
+      description: 'OceanBase 主业务库连接串（DB_DIALECT=oceanbase 时必填）'
+    }),
+    OCEANBASE_LOG_DB_URI: OptionalTrimmedStringSchema.meta({
+      description: 'OceanBase 独立日志库连接串（可选，未配置或与主库同串时进入 shared 模式）'
+    }),
+    OCEANBASE_DB_READ_URI: OptionalTrimmedStringSchema.meta({
+      description: 'OceanBase 主业务只读副本连接串（可选，仅非事务只读查询生效）'
     }),
 
     // VectorDB
@@ -242,6 +266,7 @@ export const serviceEnv = createEnv({
 if (!isPhaseProductionBuild) {
   validateAgentUsersEnv(serviceEnv);
   validateS3Env(serviceEnv);
+  validateDbEnv(serviceEnv);
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {
     throw new Error(
       'Invalid environment configuration: PRO_TOKEN is required when PRO_URL is configured.'
