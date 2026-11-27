@@ -1,4 +1,5 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { getLowestReasoningEffort } from '@fastgpt/global/core/ai/llm/utils';
 import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
@@ -36,6 +37,7 @@ export async function createQuestionGuide({
     }
   ];
 
+  const lowestReasoningEffort = getLowestReasoningEffort(model);
   const {
     answerText: answer,
     usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens }
@@ -46,7 +48,7 @@ export async function createQuestionGuide({
       model,
       messages: concatMessages,
       stream: true,
-      ...(model.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+      ...(lowestReasoningEffort ? { reasoning_effort: lowestReasoningEffort } : {})
     }
   });
 

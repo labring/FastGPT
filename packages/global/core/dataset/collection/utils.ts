@@ -25,3 +25,7 @@ export const checkCollectionIsFolder = (type: DatasetCollectionTypeEnum) => {
 export const collectionCanSync = (type: DatasetCollectionTypeEnum) => {
   return [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(type);
 };
+
+/** 缺省（undefined）视为 true，以兼容存量 API 知识库集合；仅显式 false 停止拉取新增直属子级。 */
+export const isCollectionSyncChildrenEnabled = (collection?: { syncChildren?: boolean }) =>
+  collection?.syncChildren !== false;

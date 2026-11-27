@@ -11,6 +11,8 @@ const cronMocks = vi.hoisted(() => ({
   findInactiveRunningSandboxResources: vi.fn(),
   stopSandboxResources: vi.fn(),
   retryStaleStoppingSandboxes: vi.fn(),
+  retryStaleDeletingSandboxes: vi.fn(),
+  reconcileOrphanSandboxResources: vi.fn(),
   archiveInactiveSandboxes: vi.fn(),
   retryStaleArchivingSandboxes: vi.fn()
 }));
@@ -27,7 +29,8 @@ vi.mock('@fastgpt/service/common/system/timerLock/constants', () => ({
   TimerIdEnum: {
     stopInactiveSandboxes: 'stopInactiveSandboxes',
     archiveInactiveSandboxes: 'archiveInactiveSandboxes',
-    recoverStaleSandboxOperations: 'recoverStaleSandboxOperations'
+    recoverStaleSandboxOperations: 'recoverStaleSandboxOperations',
+    reconcileOrphanSandboxResources: 'reconcileOrphanSandboxResources'
   }
 }));
 
@@ -37,15 +40,17 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
   stopSandboxResources: cronMocks.stopSandboxResources,
-  retryStaleStoppingSandboxes: cronMocks.retryStaleStoppingSandboxes
+  retryStaleStoppingSandboxes: cronMocks.retryStaleStoppingSandboxes,
+  retryStaleDeletingSandboxes: cronMocks.retryStaleDeletingSandboxes,
+  reconcileOrphanSandboxResources: cronMocks.reconcileOrphanSandboxResources
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => ({
-  archiveInactiveSandboxes: cronMocks.archiveInactiveSandboxes,
-  retryStaleArchivingSandboxes: cronMocks.retryStaleArchivingSandboxes
+  archiveInactiveSandboxes: cronMocks.archiveInactiveSandboxes
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lifecycle/service', () => ({
+  retryStaleArchivingSandboxes: cronMocks.retryStaleArchivingSandboxes,
   retryStaleSandboxActivations: cronMocks.retryStaleSandboxActivations
 }));
 
@@ -55,12 +60,18 @@ describe('sandbox cron application', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl =
+      'https://opensandbox.example.com';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey = 'opensandbox-api-key';
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-24T01:00:00.000Z'));
     cronMocks.checkTimerLock.mockResolvedValue(true);
     cronMocks.archiveInactiveSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleArchivingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleStoppingSandboxes.mockResolvedValue(undefined);
+    cronMocks.retryStaleDeletingSandboxes.mockResolvedValue(undefined);
+    cronMocks.reconcileOrphanSandboxResources.mockResolvedValue(undefined);
     cronMocks.retryStaleSandboxActivations.mockResolvedValue(undefined);
   });
 
@@ -131,6 +142,36 @@ describe('sandbox cron application', () => {
     });
     expect(cronMocks.retryStaleArchivingSandboxes).toHaveBeenCalledTimes(1);
     expect(cronMocks.retryStaleStoppingSandboxes).toHaveBeenCalledTimes(1);
+    expect(cronMocks.retryStaleDeletingSandboxes).toHaveBeenCalledTimes(1);
     expect(cronMocks.retryStaleSandboxActivations).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs orphan sandbox reconciliation cron under timer lock', async () => {
+    await cronJob();
+    const callback = cronMocks.setCron.mock.calls[3]?.[1];
+    await callback();
+
+    expect(cronMocks.setCron).toHaveBeenCalledWith('*/30 * * * *', expect.any(Function));
+    expect(cronMocks.checkTimerLock).toHaveBeenCalledWith({
+      timerId: 'reconcileOrphanSandboxResources',
+      lockMinuted: 25
+    });
+    expect(cronMocks.reconcileOrphanSandboxResources).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips all sandbox cron jobs when opensandbox config is absent', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl = '';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey = '';
+
+    await cronJob();
+    const callbacks = cronMocks.setCron.mock.calls.map((call) => call[1]);
+    expect(callbacks).toHaveLength(4);
+
+    for (const callback of callbacks) {
+      await callback();
+    }
+
+    expect(cronMocks.checkTimerLock).not.toHaveBeenCalled();
   });
 });

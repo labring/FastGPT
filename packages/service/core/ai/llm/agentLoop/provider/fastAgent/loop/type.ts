@@ -82,7 +82,6 @@ export type FastAgentLoopInput<TChildrenResponse = unknown> = {
   messages: ChatCompletionMessageParam[];
   systemPrompt?: string;
   activePlan?: AgentPlanType;
-  userAnswer?: string;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
 };
 

@@ -1,51 +1,59 @@
 /**
  * Skill 包对象存储服务。
  *
- * 只负责 Skill ZIP 包和编辑会话制品在私有对象存储中的读写、复制、存在性检查和清理。
- * 包内容解析放在 package/zipBuilder，版本落库放在 version 模块。
+ * 在私有 S3 同时兼容存储 `.tar.zst`（编辑发布 / 空白新建）与 `.zip`（外部导入，写入 1 小时临时 TTL）；
+ * 创建副本时按原扩展名流式直拷；读取时统一以 `.tar.zst` 流交付，全程不落盘 `/tmp`。
  */
 
-import { getS3SkillSource } from '../../../../common/s3/sources/skill';
+import type { Readable } from 'node:stream';
+import {
+  getS3SkillSource,
+  getSkillPackageKey,
+  isSkillTarZstKey
+} from '../../../../common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ClientSession } from '../../../../common/mongo';
-import { getAgentSandboxSkillMaxBytes } from '../../sandbox/config';
-import { readStreamToBuffer } from '../../../../common/s3/utils';
-import type { Readable } from 'node:stream';
+import { getAgentSandboxDiskBytes } from '../../sandbox/config';
 import { createSizeLimitedStream } from '../../../../common/file/stream';
+import { createTarZstStream } from '../../../../common/file/tarZst';
+import { iterateRemoteZipAsTarEntries } from '../../../../common/file/zip';
+import { resolveStorageZipRangeSource } from '../../../../common/s3/utils/zipRange';
 
 export type SkillStorageInfo = {
   key: string;
 };
 
-export type UploadSkillPackageParams = {
+type UploadSkillPackageParams = {
   teamId: string;
   skillId: string;
   packageObjectId: string;
-  zipBuffer: Buffer;
+  packageBuffer: Buffer;
+  extension?: 'tar.zst' | 'zip';
 };
 
-export type DownloadSkillPackageParams = {
+type DownloadSkillPackageParams = {
   storageKey: string;
+  maxBytes?: number;
+  abortSignal?: AbortSignal;
 };
 
-type UploadSkillPackageStreamParams = Omit<UploadSkillPackageParams, 'zipBuffer'> & {
+type UploadSkillPackageStreamParams = Omit<UploadSkillPackageParams, 'packageBuffer'> & {
   packageStream: Readable;
   contentLength?: number;
+  signal?: AbortSignal;
 };
 
 /**
- * 上传 Skill ZIP 包到私有对象存储。
- *
- * 对象 key 由 S3SkillSource 统一生成，业务读取仍以数据库版本记录为准。
+ * 上传定长 Skill 包（默认 `.tar.zst`）到私有对象存储。
  */
 export async function uploadSkillPackage(
   params: UploadSkillPackageParams
 ): Promise<SkillStorageInfo> {
-  const { teamId, skillId, packageObjectId, zipBuffer } = params;
-  const maxBytes = getAgentSandboxSkillMaxBytes();
+  const { teamId, skillId, packageObjectId, packageBuffer, extension } = params;
+  const maxBytes = getAgentSandboxDiskBytes();
 
-  if (zipBuffer.length > maxBytes) {
+  if (packageBuffer.length > maxBytes) {
     throw new UserError(SkillErrEnum.archiveTooLarge);
   }
 
@@ -55,22 +63,33 @@ export async function uploadSkillPackage(
     teamId,
     skillId,
     packageObjectId,
-    body: zipBuffer
+    body: packageBuffer,
+    contentLength: packageBuffer.length,
+    extension
   });
 
   return { key };
 }
 
 /**
- * 将 Skill ZIP 流直接上传到私有对象存储。
+ * 将 Skill 包流（默认 `.tar.zst`）直接上传到私有对象存储。
  *
- * contentLength 仅透传对象存储 SDK；实际传输仍逐块计数，防止伪造长度绕过限制。
+ * `contentLength` 已知时走单次定长上传，否则走自适应 5 MiB Multipart 流式上传，始终逐块强制大小上限。
  */
 export async function uploadSkillPackageStream(
   params: UploadSkillPackageStreamParams
 ): Promise<SkillStorageInfo> {
-  const { teamId, skillId, packageObjectId, packageStream, contentLength } = params;
-  const maxBytes = getAgentSandboxSkillMaxBytes();
+  const { teamId, skillId, packageObjectId, packageStream, contentLength, extension, signal } =
+    params;
+  const maxBytes = getAgentSandboxDiskBytes();
+  const knownContentLength =
+    contentLength !== undefined && Number.isFinite(contentLength) && contentLength >= 0
+      ? contentLength
+      : undefined;
+
+  if (knownContentLength !== undefined && knownContentLength > maxBytes) {
+    throw new UserError(SkillErrEnum.archiveTooLarge);
+  }
 
   const boundedStream = createSizeLimitedStream({
     stream: packageStream,
@@ -79,23 +98,35 @@ export async function uploadSkillPackageStream(
   });
 
   const bucket = getS3SkillSource();
-  const { key } = await bucket.uploadPackage({
+  if (knownContentLength !== undefined) {
+    const { key } = await bucket.uploadPackage({
+      teamId,
+      skillId,
+      packageObjectId,
+      body: boundedStream,
+      contentLength: knownContentLength,
+      extension,
+      signal
+    });
+    return { key };
+  }
+
+  const { key } = await bucket.uploadPackageStream({
     teamId,
     skillId,
     packageObjectId,
     body: boundedStream,
-    contentLength
+    extension,
+    signal
   });
-
   return { key };
 }
 
 /**
  * 移除 Skill 包的临时 S3 TTL。
  *
- * uploadSkillPackage 通过 S3 bucket 封装上传，默认会写入一条 TTL 记录。只有当版本记录和
- * currentVersionId 在 Mongo 事务内绑定成功后，才移除 TTL；事务失败时 TTL 会保留并由现有
- * S3 cleanup cron 清理孤儿包。
+ * uploadSkillPackage / uploadSkillPackageStream 默认写入一条 TTL 记录；只有当版本记录和
+ * currentVersionId 在 Mongo 事务内绑定成功后，才移除 TTL；事务失败时由 TTL cron 清理孤儿包。
  */
 export async function removeSkillPackageTTL(
   storageKey: string,
@@ -105,43 +136,15 @@ export async function removeSkillPackageTTL(
 }
 
 /**
- * 从私有对象存储下载 Skill ZIP 包。
- *
- * 下载过程中按流式累计大小，超过 Skill sandbox 包大小上限即中断，避免异常大包撑爆内存。
- */
-export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
-  const { storageKey } = params;
-  const maxBytes = getAgentSandboxSkillMaxBytes();
-
-  const bucket = getS3SkillSource();
-
-  const response = await bucket.client.downloadObject({
-    key: storageKey
-  });
-
-  if (!response.body) {
-    throw new Error(`Failed to download skill package: ${storageKey}`);
-  }
-
-  return readStreamToBuffer({
-    stream: response.body,
-    maxBytes,
-    exceededMessage: `Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
-  });
-}
-
-/**
- * 从私有对象存储返回带实际字节上限的 Skill ZIP 流。
- *
- * 上限在消费流时逐块执行，避免对象元数据缺失或被错误填写时把超大包继续传入 Sandbox。
+ * 从私有对象存储返回带实际字节上限的 Skill 包流。
  */
 export async function downloadSkillPackageStream(
   params: DownloadSkillPackageParams
 ): Promise<Readable> {
-  const { storageKey } = params;
-  const maxBytes = getAgentSandboxSkillMaxBytes();
+  const { storageKey, maxBytes = getAgentSandboxDiskBytes(), abortSignal } = params;
   const response = await getS3SkillSource().client.downloadObject({
-    key: storageKey
+    key: storageKey,
+    ...(abortSignal ? { abortSignal } : {})
   });
 
   if (!response.body) {
@@ -157,7 +160,32 @@ export async function downloadSkillPackageStream(
 }
 
 /**
- * 删除单个版本的 Skill ZIP 包。
+ * 以 `.tar.zst` 流读取 Skill 包：`.tar.zst` 直接返回限流下载流；导入的 `.zip` 基于 S3 HTTP Range
+ * 实时转码（压缩包与解压总字节均受 `maxBytes` 约束）。
+ */
+export async function openSkillPackageTarZstStream(params: {
+  storageKey: string;
+  maxBytes?: number;
+  signal?: AbortSignal;
+}): Promise<Readable> {
+  const { storageKey, maxBytes = getAgentSandboxDiskBytes(), signal } = params;
+  if (isSkillTarZstKey(storageKey)) {
+    return downloadSkillPackageStream({ storageKey, maxBytes, abortSignal: signal });
+  }
+
+  const { totalSize, readRange } = await resolveStorageZipRangeSource({
+    bucket: getS3SkillSource(),
+    key: storageKey,
+    maxZipBytes: maxBytes,
+    label: 'Skill package'
+  });
+  return createTarZstStream(
+    iterateRemoteZipAsTarEntries({ totalSize, readRange, signal, maxUncompressedBytes: maxBytes })
+  );
+}
+
+/**
+ * 删除单个版本的 Skill 包。
  */
 export async function deleteSkillPackage(storageKey: string): Promise<void> {
   const bucket = getS3SkillSource();
@@ -168,47 +196,30 @@ export async function deleteSkillPackage(storageKey: string): Promise<void> {
 }
 
 /**
- * 清理某个 skill 的所有版本包。
- *
- * 这里使用异步删除队列，调用方不等待实际对象删除完成；数据库软删除流程不能依赖这个返回值
- * 表示对象已经立刻消失。
+ * 按前缀异步批量清理 Skill 的所有历史版本包。
  */
 export function deleteSkillAllPackages(teamId: string, skillId: string): Promise<void> {
   return getS3SkillSource().deleteSkillPackagesByPrefix({ teamId, skillId });
 }
 
 /**
- * 检查 Skill ZIP 包是否存在。
- *
- * 对象存储异常时保守返回 false，避免调用方误以为包可下载。
- */
-export async function checkSkillPackageExists(storageKey: string): Promise<boolean> {
-  try {
-    const bucket = getS3SkillSource();
-
-    const { exists } = await bucket.client.checkObjectExists({
-      key: storageKey
-    });
-
-    return exists ?? false;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 复制 Skill 包到新版本位置。
- *
- * 当前对象存储封装没有直接 copy API，因此这里下载后重新上传；调用方应避免在大批量迁移中使用。
+ * 通过 S3 服务端直拷复制 Skill 包到新的目标位置（保留源扩展名 `.tar.zst` 或 `.zip` 并写入临时 TTL），
+ * 不经 Node 内存或 `/tmp` 中转。
  */
 export async function copySkillPackage(
   sourceStorageKey: string,
-  targetParams: Omit<UploadSkillPackageParams, 'zipBuffer'>
+  targetParams: Omit<UploadSkillPackageParams, 'packageBuffer' | 'extension'>
 ): Promise<SkillStorageInfo> {
-  const zipBuffer = await downloadSkillPackage({ storageKey: sourceStorageKey });
-
-  return uploadSkillPackage({
+  const extension = isSkillTarZstKey(sourceStorageKey) ? 'tar.zst' : 'zip';
+  const targetKey = getSkillPackageKey({
     ...targetParams,
-    zipBuffer
+    extension
   });
+
+  await getS3SkillSource().copy({
+    from: sourceStorageKey,
+    to: targetKey,
+    options: { temporary: true }
+  });
+  return { key: targetKey };
 }

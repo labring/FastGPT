@@ -69,7 +69,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
     }
   );
 
-  const [selectedApps, setSelectedApps] = useState<{ id: string; name: string; avatar: string }[]>(
+  const [selectedApps, setSelectedApps] = useState<{ id: string; name: string; avatar?: string }[]>(
     []
   );
 
@@ -77,12 +77,12 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
     manual: false,
     onSuccess(res) {
       setSelectedApps(
-        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar || '' }))
+        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar }))
       );
     }
   });
 
-  const handleCheck = useCallback((app: { id: string; name: string; avatar: string }) => {
+  const handleCheck = useCallback((app: { id: string; name: string; avatar?: string }) => {
     setSelectedApps((prev) => {
       const exists = prev.some((item) => item.id === app.id);
       if (exists) {

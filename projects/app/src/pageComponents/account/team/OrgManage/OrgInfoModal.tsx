@@ -5,6 +5,7 @@ import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -125,14 +126,17 @@ function OrgInfoModal({
         </Button>
       }
     >
-      <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
+      <FormLabel>{t('common:avatar_and_name')}</FormLabel>
       <HStack>
-        <Avatar
-          src={avatar || DEFAULT_ORG_AVATAR}
-          onClick={handleAvatarSelectorOpen}
-          cursor={'pointer'}
-          borderRadius={'md'}
-        />
+        <MyTooltip label={t('common:set_avatar')}>
+          <Avatar
+            flexShrink={0}
+            src={avatar || DEFAULT_ORG_AVATAR}
+            onClick={handleAvatarSelectorOpen}
+            cursor={'pointer'}
+            borderRadius={'md'}
+          />
+        </MyTooltip>
         <Input
           bgColor="myGray.50"
           {...register('name', { required: true })}

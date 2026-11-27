@@ -250,6 +250,7 @@ const AppChatWindow = () => {
         <Box flex={'1 0 0'} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
           {isPlugin ? (
             <CustomPluginRunBox
+              isReady={!loading && !!appId && isCurrentChatReady}
               appId={appId}
               chatId={chatId}
               outLinkAuthData={outLinkAuthData}
@@ -258,6 +259,8 @@ const AppChatWindow = () => {
                 onChangeChatId(getNanoid());
               }}
               onStartChat={onStartChat}
+              onMarkChatRead={postMarkChatRead}
+              onChatGenerateStatusChange={onChatGenerateStatusChange}
             />
           ) : (
             <ChatBox

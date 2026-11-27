@@ -7,7 +7,33 @@ import {
   selectPluginText,
   selectReadmeUrl
 } from '@fastgpt/global/common/i18n/utils';
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+import {
+  I18nStringSchema,
+  LanguageSchema,
+  LocaleList,
+  type I18nStringType
+} from '@fastgpt/global/common/i18n/type';
+
+describe('LanguageSchema', () => {
+  it('keeps supported locales, falls back unknown strings to en, and keeps required type checks', () => {
+    for (const locale of LocaleList) {
+      expect(LanguageSchema.parse(locale)).toBe(locale);
+    }
+
+    expect(LanguageSchema.parse('tr-TR')).toBe('en');
+    expect(LanguageSchema.optional().parse(undefined)).toBeUndefined();
+    expect(LanguageSchema.optional().parse('tr-TR')).toBe('en');
+
+    for (const invalid of [undefined, null, '', '   ', 123]) {
+      expect(LanguageSchema.safeParse(invalid).success).toBe(false);
+    }
+    expect(LanguageSchema.optional().safeParse(123).success).toBe(false);
+  });
+
+  it('keeps I18nStringSchema keys aligned with LocaleList', () => {
+    expect(Object.keys(I18nStringSchema.shape).sort()).toEqual([...LocaleList].sort());
+  });
+});
 
 describe('i18nT', () => {
   it('should return the original i18n key', () => {

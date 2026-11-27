@@ -1,8 +1,8 @@
 # Dockerfile: Sandbox 镜像与内置极轻量 fastgpt-ide-agent
 #
 # Stage 1: 使用 cargo-chef 缓存并编译外部依赖
-FROM rust:1.95-slim AS chef
-RUN cargo install cargo-chef \
+FROM rust:1.100-slim AS chef
+RUN cargo install cargo-chef --locked --version 0.1.78 \
     && apt-get update && apt-get install -y --no-install-recommends musl-tools \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /usr/src/fastgpt-ide-agent
@@ -15,7 +15,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 # Stage 1.2: 编译依赖
 FROM chef AS builder
 COPY --from=planner /usr/src/fastgpt-ide-agent/recipe.json recipe.json
-RUN export ARCH=$(uname -m) && \
+RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         TARGET="x86_64-unknown-linux-musl"; \
     elif [ "$ARCH" = "aarch64" ]; then \
@@ -23,26 +23,20 @@ RUN export ARCH=$(uname -m) && \
     else \
         echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
+    printf '%s\n' "$TARGET" > /tmp/rust-target && \
     rustup target add "$TARGET" && \
     cargo chef cook --release --locked --target "$TARGET" --recipe-path recipe.json
 
 # Stage 1.3: 编译源码 (平铺拷贝真实 src 目录进行最终 Release 编译)
 COPY projects/fastgpt-ide-agent/src/ src/
 RUN touch src/main.rs && \
-    export ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        TARGET="x86_64-unknown-linux-musl"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        TARGET="aarch64-unknown-linux-musl"; \
-    else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
+    TARGET=$(cat /tmp/rust-target) && \
     cargo build --release --locked --target "$TARGET" && \
     mkdir -p dist && \
     cp target/"$TARGET"/release/fastgpt-ide-agent dist/fastgpt-ide-agent
 
 # Stage 2: 运行时环境配置
-FROM ubuntu:24.04 AS runtime-base
+FROM debian:trixie-slim AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV BUN_INSTALL=/usr/local
@@ -60,6 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     python3 \
     python3-pip \
+    python3-venv \
     ripgrep \
     tree \
     vim-tiny \
@@ -70,24 +65,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL https://bun.sh/install | bash \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建非特权安全 sandbox 账户
+# 创建非特权安全 sandbox 账户、容器级运行态目录与 /workspace 兼容软链
 RUN useradd --create-home --shell /bin/bash --uid 10001 sandbox \
-    && mkdir -p /workspace \
-    && chown -R sandbox:sandbox /home/sandbox /workspace
+    && mkdir -p /home/sandbox/workspace /var/lib/fastgpt-runtime \
+    && ln -sfn /home/sandbox/workspace /workspace \
+    && chown -R sandbox:sandbox /home/sandbox /var/lib/fastgpt-runtime
 
-# 拷贝 Rust Agent 二进制文件和启动脚本
-COPY --from=builder /usr/src/fastgpt-ide-agent/dist/fastgpt-ide-agent /usr/local/bin/fastgpt-ide-agent
-RUN chmod +x /usr/local/bin/fastgpt-ide-agent
-COPY --chown=sandbox:sandbox projects/agent-sandbox/entrypoint.sh /home/sandbox/entrypoint.sh
-RUN chmod +x /home/sandbox/entrypoint.sh
+# 默认持久化卷挂在 HOME=/home/sandbox，工作区位于 /home/sandbox/workspace；
+# 容器临时状态统一写入 FASTGPT_RUNTIME_DIR=/var/lib/fastgpt-runtime，容器重建时自然清空。
+ENV HOME=/home/sandbox \
+    FASTGPT_WORKDIR=/home/sandbox/workspace \
+    FASTGPT_RUNTIME_DIR=/var/lib/fastgpt-runtime \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/home/sandbox/.local/bin:${PATH}"
+
+# 拷贝 Rust Agent 二进制文件和启动脚本（置于系统目录，避免挂卷覆盖）
+COPY --chmod=755 --from=builder /usr/src/fastgpt-ide-agent/dist/fastgpt-ide-agent /usr/local/bin/fastgpt-ide-agent
+COPY --chmod=755 projects/agent-sandbox/entrypoint.sh /usr/local/bin/entrypoint.sh
+WORKDIR /home/sandbox
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # root 权限镜像，用于需要写入系统目录（例如 /etc/apt）的场景。
+# 将 /etc/passwd 中 root 的家目录统一到 /home/sandbox 并保留 /root 软链，避免 ssh 等直接查
+# getpwuid(0) 或硬编码 /root 的工具绕过 $HOME 持久卷写到容器临时层；
+# WORKDIR 指向挂载点 /home/sandbox，避免空 PVC 首次挂载时 /workspace 软链尚无目标导致容器启动失败。
 FROM runtime-base AS root
-WORKDIR /home/sandbox
-ENTRYPOINT ["/home/sandbox/entrypoint.sh"]
+RUN sed -i 's|^root:\([^:]*:[^:]*:[^:]*:[^:]*\):/root:|root:\1:/home/sandbox:|' /etc/passwd \
+    && grep -q '^root:.*:/home/sandbox:' /etc/passwd \
+    && rm -rf /root \
+    && ln -sfn /home/sandbox /root
 
 # 默认镜像保持非特权运行，兼容现有 fastgpt-agent-sandbox 用法。
 FROM runtime-base AS nonroot
 USER sandbox
-WORKDIR /home/sandbox
-ENTRYPOINT ["/home/sandbox/entrypoint.sh"]

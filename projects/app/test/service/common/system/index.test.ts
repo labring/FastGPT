@@ -43,7 +43,7 @@ describe('initSystemConfig', () => {
     mocks.buckets.mockImplementationOnce(() => {
       throw new Error('temporary bucket failure');
     });
-    const reload = () => initSystemConfig({ refreshLLMRequestRecordTTL: false });
+    const reload = () => initSystemConfig();
     await expect(reload()).rejects.toThrow('temporary bucket failure');
     await reload();
     expect(mocks.buckets).toHaveBeenCalledTimes(2);

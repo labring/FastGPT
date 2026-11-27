@@ -61,3 +61,15 @@ export const isRouteVisible = (
   // 商业版业务页面（数据面板、通知管理、用户管理、团队管理、应用管理、知识库管理、审计日志）
   return options.isProService && licenseActive;
 };
+
+/**
+ * 递归检查 RHF dirtyFields 是否存在实际已编辑字段。
+ * 不直接读 formState.isDirty：omitDomainSecrets 会省略密钥字段，未编辑的 Controller
+ * 注册写入 undefined 后会导致 RHF 的 deepEqual 因键数不等在首屏即误判为 isDirty。
+ */
+export const hasDirtyFields = (value: unknown): boolean => {
+  if (value === true) return true;
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some(hasDirtyFields);
+  return Object.values(value).some(hasDirtyFields);
+};

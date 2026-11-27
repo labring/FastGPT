@@ -20,3 +20,11 @@ export const SandboxVolumeEnsureResponseSchema = z.object({
   created: z.boolean()
 });
 export type SandboxVolumeEnsureResponse = z.infer<typeof SandboxVolumeEnsureResponseSchema>;
+
+export const SandboxVolumeInspectResponseSchema = z.object({
+  claimName: SandboxVolumeNameSchema
+});
+
+export const SandboxVolumeListResponseSchema = z.object({
+  items: z.array(SandboxVolumeNameSchema)
+});

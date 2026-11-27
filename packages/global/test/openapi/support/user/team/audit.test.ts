@@ -136,6 +136,9 @@ describe('team audit date contracts', () => {
     expect(parsed).not.toHaveProperty('teamId');
     expect(parsed).toMatchObject({ tmbIds: [], events: [] });
     expect(AuditExportBodySchema.parse({ ...filters, locale: 'en' })).not.toHaveProperty('events');
+    expect(AuditExportBodySchema.parse({ ...filters, locale: 'tr-TR' }).locale).toBe('en');
+    expect(AuditExportBodySchema.safeParse(filters).success).toBe(false);
+    expect(AuditExportBodySchema.safeParse({ ...filters, locale: 123 }).success).toBe(false);
   });
 
   it('falls back unrecognized list item events to unknown instead of failing validation', () => {

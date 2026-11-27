@@ -49,6 +49,7 @@ describe('SecretValueInput', () => {
   const render = async ({
     isConfigured = false,
     isDisabled = false,
+    isRequired = false,
     value = '',
     multiline = false
   } = {}) => {
@@ -60,6 +61,7 @@ describe('SecretValueInput', () => {
         React.createElement(SecretValueInput, {
           ...current,
           isDisabled,
+          isRequired,
           multiline,
           onChange: (value) => {
             onChange(value);
@@ -134,6 +136,32 @@ describe('SecretValueInput', () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith('');
     expect(container.querySelector('input')?.value).toBe('');
     expect(container.querySelector('button')).toBeNull();
+  });
+
+  it('disables confirming an empty or whitespace-only draft when required', async () => {
+    await render({ isConfigured: true, isRequired: true });
+    await click('Edit');
+    const saveButton = container.querySelector<HTMLButtonElement>('[aria-label="common:Save"]');
+    expect(saveButton?.disabled).toBe(true);
+    await click('Save');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(container.querySelector('input')).not.toBeNull();
+
+    await type('   ');
+    expect(saveButton?.disabled).toBe(true);
+    await click('Save');
+    expect(onChange).not.toHaveBeenCalled();
+
+    await type('new-token');
+    expect(saveButton?.disabled).toBe(false);
+    await click('Save');
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('new-token');
+    expect(container.querySelector('input')).toBeNull();
+
+    await click('Edit');
+    await click('Close');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('input')).toBeNull();
   });
 
   it('preserves line breaks while replacing a configured multiline secret', async () => {

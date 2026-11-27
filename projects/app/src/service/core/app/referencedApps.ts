@@ -73,7 +73,7 @@ export const formatReadableReferencedApps = async ({
   const formattedApps = readableApps.slice(0, 100).map((app) => ({
     _id: String(app._id),
     name: app.name,
-    avatar: app.avatar ?? '',
+    avatar: app.avatar ?? undefined,
     intro: app.intro ?? '',
     tmbId: String(app.tmbId),
     type: app.type,

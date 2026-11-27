@@ -10,14 +10,14 @@ export const ChatSelectedToolSchema = z.object({
   source: z.string().optional().meta({ description: '工具来源，未填写时使用系统来源' }),
   inputs: z.record(z.string(), z.any()).meta({ example: null, description: '工具输入参数' }),
   name: z.string().meta({ example: '测试应用', description: '工具名称' }),
-  avatar: z.string().meta({ example: '测试应用', description: '工具头像' })
+  avatar: z.string().optional().meta({ example: '测试应用', description: '工具头像' })
 });
 export type ChatSelectedToolType = z.infer<typeof ChatSelectedToolSchema>;
 
 export const ChatQuickAppSchema = z.object({
   _id: ObjectIdSchema,
   name: z.string().meta({ example: '测试应用', description: '快捷应用名称' }),
-  avatar: z.string().meta({ example: '测试应用', description: '快捷应用头像' })
+  avatar: z.string().optional().meta({ example: '测试应用', description: '快捷应用头像' })
 });
 export type ChatQuickAppType = z.infer<typeof ChatQuickAppSchema>;
 

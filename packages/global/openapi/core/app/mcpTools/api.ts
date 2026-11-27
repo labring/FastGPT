@@ -86,7 +86,7 @@ export const McpChildrenItemSchema = McpToolConfigSchema.extend({
     example: 'mcp-68ad85a7463006c963799a05/search',
     description: '工具 ID'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().optional().meta({
     example: 'https://example.com/avatar.png',
     description: '工具头像'
   })

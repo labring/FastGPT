@@ -2,7 +2,10 @@ import type { LogRecord } from '@logtape/logtape';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSinks } from '../../src/logger/sinks';
 
-const output = vi.hoisted(() => ({ console: vi.fn(), otel: vi.fn() }));
+const output = vi.hoisted(() => ({
+  console: Object.assign(vi.fn(), { [Symbol.dispose]: vi.fn() }),
+  otel: Object.assign(vi.fn(), { [Symbol.asyncDispose]: vi.fn(async () => {}) })
+}));
 
 vi.mock('@logtape/logtape', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@logtape/logtape')>()),
@@ -64,5 +67,23 @@ describe('createSinks', () => {
     const visible = { ...record, level: 'error' as const };
     sinks.otel?.(visible);
     expect(output.otel).toHaveBeenCalledExactlyOnceWith(visible);
+  });
+
+  it('forwards Symbol.dispose and Symbol.asyncDispose through filtered sinks', async () => {
+    const { sinks } = await createSinks({
+      console: { enabled: true, level: 'info' },
+      otel: { serviceName: 'test', level: 'info' }
+    });
+
+    const consoleSink = sinks.console as unknown as Partial<Disposable> | undefined;
+    const otelSink = sinks.otel as unknown as Partial<AsyncDisposable> | undefined;
+    expect(typeof consoleSink?.[Symbol.dispose]).toBe('function');
+    expect(typeof otelSink?.[Symbol.asyncDispose]).toBe('function');
+
+    consoleSink?.[Symbol.dispose]?.();
+    await otelSink?.[Symbol.asyncDispose]?.();
+
+    expect(output.console[Symbol.dispose]).toHaveBeenCalledTimes(1);
+    expect(output.otel[Symbol.asyncDispose]).toHaveBeenCalledTimes(1);
   });
 });

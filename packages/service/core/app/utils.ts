@@ -339,7 +339,7 @@ export async function rewriteAppWorkflowToDetail({
 
           return {
             datasetId: String(dataset._id),
-            avatar: dataset.avatar,
+            avatar: dataset.avatar ?? undefined,
             name: dataset.name,
             // 详情接口只返回知识库绑定的模型引用，不因模型停用或下架阻断应用详情。
             vectorModel: {

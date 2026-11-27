@@ -7,11 +7,14 @@ import {
   runSandboxLifecycleDeletion,
   type SandboxLifecycleDefinition
 } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/runner';
-import {
-  SandboxOperationSettledError,
-  SandboxOperationConflictError
-} from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
+import { SandboxOperationConflictError } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
+import { ConnectionError } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/errors';
 import { canResumeSandboxOperation } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/utils';
+import {
+  SANDBOX_CREATE_UNCERTAIN_TIMEOUT_MS,
+  SANDBOX_OPERATION_HEARTBEAT_INTERVAL_MS,
+  SANDBOX_STALE_OPERATION_TIMEOUT_MS
+} from '@fastgpt/service/core/ai/sandbox/constants';
 
 const sandboxId = 'runner-contract-test';
 const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
@@ -23,7 +26,7 @@ const create = async () => {
     sourceType: ChatSourceTypeEnum.app,
     sourceId: sandboxId,
     userId: 'user',
-    provider: 'sealosdevbox',
+    provider: 'opensandbox',
     status: 'running',
     lastActiveAt: new Date()
   });
@@ -81,25 +84,137 @@ describe('runSandboxLifecycleOperation', () => {
     expect(result.versionId).toBe('checkpoint-version');
   });
 
-  it.each([true, false])('persists safe retry eligibility for settled=%s', async (settled) => {
+  it('allows immediate retry on deterministic errors, cools down 60s on non-create uncertain errors, and cools down 240s on create-phase uncertain errors', async () => {
     const resource = await create();
-    const error = settled
-      ? new SandboxOperationSettledError('command exited')
-      : new Error('connection interrupted');
+    const deterministicErr = new Error('data-plane restore failed (502)');
     await expect(
       runSandboxLifecycleOperation({
         resource,
         lease,
         definition: definition(async () => {
-          throw error;
+          throw deterministicErr;
         })
       })
-    ).rejects.toBe(error);
-    const failed = (await read())!;
-    expect(failed.status).toBe('stopping');
-    expect(failed.operation?.error).toBe(error.message);
-    expect(canResumeSandboxOperation(failed)).toBe(settled);
-    expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
+    ).rejects.toBe(deterministicErr);
+    const failedDeterministic = (await read())!;
+    expect(canResumeSandboxOperation(failedDeterministic)).toBe(true);
+
+    await MongoSandboxInstance.deleteMany({ sandboxId });
+    const second = await create();
+    const uncertainErr = new ConnectionError('Failed to stop sandbox', {
+      cause: new TypeError('fetch failed')
+    });
+    await expect(
+      runSandboxLifecycleOperation({
+        resource: second,
+        lease,
+        definition: definition(async () => {
+          throw uncertainErr;
+        })
+      })
+    ).rejects.toBe(uncertainErr);
+    const failedUncertain = (await read())!;
+    expect(canResumeSandboxOperation(failedUncertain)).toBe(false);
+    expect(
+      canResumeSandboxOperation(
+        failedUncertain,
+        new Date(Date.now() + SANDBOX_STALE_OPERATION_TIMEOUT_MS + 10)
+      )
+    ).toBe(true);
+
+    await MongoSandboxInstance.deleteMany({ sandboxId });
+    await MongoSandboxInstance.create({
+      sandboxId,
+      teamId: 'runner-team',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: sandboxId,
+      userId: 'user',
+      provider: 'opensandbox',
+      status: 'archived',
+      lastActiveAt: new Date()
+    });
+    const archived = (await read())!;
+    const createUncertainErr = new ConnectionError('Failed to create sandbox', {
+      cause: new TypeError('fetch failed')
+    });
+    await expect(
+      runSandboxLifecycleOperation({
+        resource: archived,
+        lease,
+        definition: {
+          status: 'restoring',
+          steps: [
+            { fromPhase: 'claimed', toPhase: 'volumeAssigned', run: async () => undefined },
+            {
+              fromPhase: 'volumeAssigned',
+              toPhase: 'archiveInstalled',
+              run: async () => {
+                throw createUncertainErr;
+              }
+            }
+          ],
+          finish: { type: 'complete', status: 'running' }
+        }
+      })
+    ).rejects.toBe(createUncertainErr);
+    const failedRestoreCreate = (await read())!;
+    expect(failedRestoreCreate.operation?.phase).toBe('volumeAssigned');
+    expect(
+      canResumeSandboxOperation(
+        failedRestoreCreate,
+        new Date(Date.now() + SANDBOX_STALE_OPERATION_TIMEOUT_MS + 10)
+      )
+    ).toBe(false);
+    expect(
+      canResumeSandboxOperation(
+        failedRestoreCreate,
+        new Date(Date.now() + SANDBOX_CREATE_UNCERTAIN_TIMEOUT_MS + 10)
+      )
+    ).toBe(true);
+  });
+
+  it('refreshes operation.heartbeatAt periodically while a long-running step holds the lease', async () => {
+    const resource = await create();
+    let markStepEntered!: () => void;
+    const stepEntered = new Promise<void>((resolve) => {
+      markStepEntered = resolve;
+    });
+    let finishStep!: () => void;
+    const stepGate = new Promise<void>((resolve) => {
+      finishStep = resolve;
+    });
+
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    vi.setSystemTime(new Date('2026-11-16T00:00:00.000Z'));
+    try {
+      const runPromise = runSandboxLifecycleOperation({
+        resource,
+        lease,
+        definition: definition(async () => {
+          markStepEntered();
+          await stepGate;
+        })
+      });
+
+      await stepEntered;
+      const beforeHeartbeat = (await read())!.operation!.heartbeatAt.getTime();
+
+      await vi.advanceTimersByTimeAsync(SANDBOX_OPERATION_HEARTBEAT_INTERVAL_MS + 100);
+      // 后台心跳使用非阻塞 Mongo updateOne，轮询等待真实连接池落盘完成。
+      await vi.waitFor(
+        async () => {
+          const refreshedHeartbeat = (await read())!.operation!.heartbeatAt.getTime();
+          expect(refreshedHeartbeat).toBeGreaterThan(beforeHeartbeat);
+        },
+        { timeout: 2000, interval: 10 }
+      );
+
+      finishStep();
+      const completed = await runPromise;
+      expect(completed.status).toBe('stopped');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('resumes checkpoints without repeating prior steps and clears failure metadata', async () => {
@@ -141,8 +256,7 @@ describe('runSandboxLifecycleOperation', () => {
       teamId: 'runner-team',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: sandboxId,
-      userId: 'user',
-      provider: 'sealosdevbox'
+      userId: 'user'
     });
     const token = initial.instance!.operation!.id;
     await runSandboxLifecycleOperation({

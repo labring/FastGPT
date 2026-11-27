@@ -110,6 +110,9 @@ export const applyWorkflowCommand = async ({
         .map((item) => item.key)
         .filter((key): key is string => typeof key === 'string');
     }
+    const previousInputValue = inputNode.inputs.find(
+      (item) => item.key === command.inputKey
+    )?.value;
     setInputValue({
       document: nextDocument,
       nodeId: command.nodeId,
@@ -123,16 +126,17 @@ export const applyWorkflowCommand = async ({
         previousFieldKeys: previousFormFieldKeys
       });
     }
-    const codeIOSync =
+    // 代码节点动态端口由源码与语言共同决定；语言仅在实际变化时同步，避免重复保存同一语言误删手工输出。
+    const shouldSyncCodeIO =
       inputNode.flowNodeType === FlowNodeTypeEnum.code &&
-      command.inputKey === NodeInputKeyEnum.code &&
-      typeof command.value === 'string'
-        ? syncCodeNodeIO({
-            document: nextDocument,
-            nodeId: command.nodeId,
-            code: command.value
-          })
-        : undefined;
+      ((command.inputKey === NodeInputKeyEnum.code && typeof command.value === 'string') ||
+        (command.inputKey === NodeInputKeyEnum.codeType && command.value !== previousInputValue));
+    const codeIOSync = shouldSyncCodeIO
+      ? syncCodeNodeIO({
+          document: nextDocument,
+          nodeId: command.nodeId
+        })
+      : undefined;
     codeIOSync?.removedOutputs.forEach((output) => {
       if (output.references.length === 0) return;
       warnings.push({

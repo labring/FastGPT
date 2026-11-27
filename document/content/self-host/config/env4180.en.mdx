@@ -1,9 +1,9 @@
 ---
 title: Environment variables (V4.18.0+)
-description: Environment variables for FastGPT App, Pro, Code Sandbox, and Volume Manager in V4.18.0 and later.
+description: Environment variables for FastGPT App, Code Sandbox, Volume Manager, and Agent Sandbox Proxy in V4.18.0 and later.
 ---
 
-Starting with V4.18.0, environment configuration is simpler, with business settings managed in Admin. This page lists the remaining environment variables. Set them in the relevant service and restart that service after changes. Build-time variables require a new build.
+Starting with V4.18.0, environment configuration is simpler, with business settings managed in Admin. This page lists the remaining environment variables. Set them in the relevant service and restart that service after changes.
 
 Configure the Secure attribute for login cookies under Admin → Security, and the shared HTTP client response size limit under Admin → Resource limits (default: 20 MiB; 0 allows only empty responses). Legacy `AUTH_COOKIE_SECURE` and `SERVICE_AXIOS_MAX_CONTENT_LENGTH` values are imported only from the App process environment during the upgrade migration; matching Pro values are not imported. Existing form values take precedence. Changing these environment variables after upgrading has no effect. Cookie attributes apply when cookies are reissued; HTTP limits apply to subsequent requests.
 
@@ -84,7 +84,7 @@ Configure the Secure attribute for login cookies under Admin → Security, and t
 | `STORAGE_OSS_SECURE`                   | `false`                 | Whether Alibaba Cloud OSS uses HTTPS.                                                                                             |
 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`      | Unset                   | Public URL prefix for short download links. Configure your proxy to forward this prefix to FastGPT’s `/api/system/file/d/` route. |
 
-Configure the **File service domain** in **Admin → Core settings → Download links** (`storage.fileDomain`). It points to FastGPT and is used for both upload and download short links. Leave it empty to use `FE_DOMAIN`. Saved changes apply to newly generated links without a restart. A configured `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` still takes precedence for downloads. Legacy `FILE_DOMAIN` is imported once during upgrade, preserving saved values and explicit clears; runtime no longer reads this ENV variable.
+Configure the **File service domain** in **Admin → Core settings → Download links** (`storage.fileDomain`). It points to FastGPT and is used for both upload and download short links. Leave it empty to use the site URL (`site.publicUrl`). Saved changes apply to newly generated links without a restart. A configured `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` still takes precedence for downloads. Legacy `FILE_DOMAIN` and `FE_DOMAIN` are imported once during upgrade, preserving saved values and explicit clears; runtime no longer reads these ENV variables.
 
 ### Logs, metrics, and tracing
 
@@ -112,13 +112,11 @@ Configure the **File service domain** in **Admin → Core settings → Download 
 | `LANGFUSE_PUBLIC_KEY`       | Unset            | Langfuse public key.                                                                                                                                                                                                        |
 | `LANGFUSE_BASE_URL`         | Unset            | Langfuse service URL.                                                                                                                                                                                                       |
 
-### Domains, frontend, and runtime
+### Runtime
 
-| Variable               | Default  | Description                                                                                                                                                                   |
-| ---------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FE_DOMAIN`            | Required | The origin clients use to access FastGPT, including the scheme, host, and optional port. It completes file and image URLs. Local development can use `http://localhost:3000`. |
-| `NEXT_PUBLIC_BASE_URL` | Empty    | Next.js sub-path deployment prefix, such as `/fastgpt`. It must be fixed when building the image.                                                                             |
-| `PORT`                 | `3000`   | Next.js listening port. Also used for local-address detection.                                                                                                                |
+| Variable | Default | Description                                                    |
+| -------- | ------- | -------------------------------------------------------------- |
+| `PORT`   | `3000`  | Next.js listening port. Also used for local-address detection. |
 
 ### Network security and proxies
 
@@ -131,11 +129,9 @@ Configure the **File service domain** in **Admin → Core settings → Download 
 | `NO_PROXY`             | Empty   | Address list that bypasses proxies.                                                                                        |
 | `ALL_PROXY`            | Unset   | Proxy for outbound clients that support this variable. Default fetch/OpenAI clients require `HTTP_PROXY` or `HTTPS_PROXY`. |
 
-Protected requests through the shared HTTP client include Workflow HTTP Nodes, HTTP tools, and the chat channels and file operations that use this client. When these requests use a proxy, the FastGPT runtime must be able to resolve the destination, and the HTTP or HTTPS proxy must allow `CONNECT` to the resolved IP and port. Switch SOCKS and forward-only HTTP proxies to a compatible proxy. Destinations matched by `NO_PROXY` use a direct connection and still undergo address checks. If no request timeout is set, the proxy handshake has a 30-second deadline.
+When protected outbound requests (such as Workflow HTTP Nodes, HTTP tools, the MCP client, and chat channels or file operations using the shared HTTP client) route through `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`, supported proxy schemes are `http://`, `https://`, `socks://`, `socks5://`, and `socks5h://`, with target DNS resolution and egress connections delegated to the proxy layer. Enforce egress access controls on the proxy itself (blocking loopback, RFC1918 private networks, and cloud metadata addresses) to mitigate proxy-side DNS rebinding SSRF risks. Destinations matched by `NO_PROXY` use a direct connection and retain local address and IP checks.
 
-Before upgrading, use your actual Workflows and channels in a test environment to verify proxy authentication, DNS resolution, and `CONNECT` policy. If you switch proxies, update the applicable `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` setting and restart the affected processes.
-
-The WeChat Personal channel bypasses these proxy environment variables and requires direct HTTPS access from the App container to `ilinkai.weixin.qq.com` (and its subdomains) and `cdn.weixin.qq.com` (and its subdomains; default media downloads use `novac2c.cdn.weixin.qq.com`) resolving to public IP addresses. Verify connectivity from the container without a proxy (for example, `curl --noproxy '*'`), then test both messaging and media after upgrading.
+The WeChat Personal channel allows HTTPS requests only to `ilinkai.weixin.qq.com` (and its subdomains) and `cdn.weixin.qq.com` (and its subdomains; default media downloads use `novac2c.cdn.weixin.qq.com`) with redirects disabled. It supports `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` (enforce egress access controls on the proxy itself); direct connections and `NO_PROXY` targets continue to validate public IP addresses.
 
 ### Feature controls and service limits
 
@@ -149,52 +145,13 @@ The WeChat Personal channel bypasses these proxy environment variables and requi
 
 ## App environment variables
 
-| Variable                             | Default | Description                                                                                                                                                                                     |
-| ------------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CHINESE_IP_REDIRECT_URL`            | Unset   | Destination for the China Mainland IP redirect prompt. Users click to navigate. Leave empty to hide the prompt.                                                                                 |
-| `SHOW_GIT`                           | `false` | Set this variable in App only. When `PRO_URL` is set, it controls Git information visibility regardless of License activation. Community deployments ignore it and always show Git information. |
-| `SHOW_OUTLINK_BRAND`                 | `false` | Set this variable in App only. When `PRO_URL` is set, it controls branding on public share links regardless of License activation. Community deployments ignore it and always enable branding.  |
-| `DISABLE_MARKETPLACE`                | `false` | Hides the plugin marketplace installation entry when `true`; local file installation remains available.                                                                                         |
-| `ENABLE_SAAS_ADMIN_CONFIG`           | `false` | Show SaaS-specific settings in Admin. Set this only in App.                                                                                                                                     |
-| `NEXT_PUBLIC_WORKFLOW_LEAVE_CONFIRM` | `true`  | Confirm before leaving the Workflow editor. Only the literal value `false` disables it. Set at build time.                                                                                      |
-
-## Pro / Admin environment variables
-
-| Variable                              | Default                  | Description                                                                                                                                                                                                                         |
-| ------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PRO_TOKEN`                           | None, **required**       | Service-to-service token for FastGPT app calls to pro/admin internal APIs. Must be at least 32 characters and match App.                                                                                                            |
-| `BATCH_UPDATE_TIME`                   | `3000`                   | Wallet balance batch update interval, in milliseconds.                                                                                                                                                                              |
-| `INVOICE_FEISHU_WEBHOOK_URL`          | Empty                    | Lark webhook URL for invoice request notifications.                                                                                                                                                                                 |
-| `INVOICE_FEISHU_WEBHOOK_CALLBACK_URL` | Empty                    | Callback URL for buttons in invoice notifications.                                                                                                                                                                                  |
-| `SMS_PROXY`                           | Empty                    | SMS sending proxy service URL.                                                                                                                                                                                                      |
-| `MAX_CRAWL_PAGE`                      | `2000`                   | Maximum number of pages to crawl during website sync.                                                                                                                                                                               |
-| `CRAWL_MAX_HTML_SIZE`                 | `10`                     | Estimated maximum HTML size for one static crawled page, in MB.                                                                                                                                                                     |
-| `CRAWL_EXCLUDE_LIST`                  | Empty                    | Crawler exclusion rules for domains or paths. Use commas to separate values.                                                                                                                                                        |
-| `CLEAR_FREE_ACCOUNT`                  | `false`                  | Whether free account resource cleanup is enabled.                                                                                                                                                                                   |
-| `SYNC_MEMBER_CRON`                    | Empty                    | Cron expression for automatic member sync. Empty disables the sync task.                                                                                                                                                            |
-| `WORKORDER_BASE_URL`                  | Empty                    | Work order system URL. The entry is shown only when both this URL and `WORKORDER_JWT_SECRET` are configured.                                                                                                                        |
-| `WORKORDER_JWT_SECRET`                | Empty                    | Secret used to sign JWTs when creating work orders.                                                                                                                                                                                 |
-| `EXTERNAL_USER_SYSTEM_BASE_URL`       | Empty                    | External user system URL.                                                                                                                                                                                                           |
-| `EXTERNAL_USER_SYSTEM_AUTH_TOKEN`     | Empty                    | Authentication token for the external user system.                                                                                                                                                                                  |
-| `BAIDU_CONVERSION_TOKEN`              | Empty                    | Baidu conversion tracking token.                                                                                                                                                                                                    |
-| `BAIDU_CONVERSION_BASE_URL`           | Empty                    | Landing page URL for Baidu conversion tracking, without query parameters. The code appends `?bd_vid=...` to build the payload's `logidUrl`. The upload endpoint is fixed at `https://ocpc.baidu.com/ocpcapi/api/uploadConvertData`. |
-| `BING_ADS_DEVELOPER_TOKEN`            | Empty                    | Bing Ads developer token.                                                                                                                                                                                                           |
-| `BING_ADS_CUSTOMER_ID`                | Empty                    | Bing Ads customer ID.                                                                                                                                                                                                               |
-| `BING_ADS_CUSTOMER_ACCOUNT_ID`        | Empty                    | Bing Ads customer account ID.                                                                                                                                                                                                       |
-| `BING_ADS_CONVERSION_NAME`            | `fastgptcn`              | Bing Ads conversion goal name.                                                                                                                                                                                                      |
-| `BING_OAUTH_CLIENT_ID`                | Empty                    | Bing OAuth client ID.                                                                                                                                                                                                               |
-| `BING_OAUTH_CLIENT_SECRET`            | Empty                    | Bing OAuth client secret.                                                                                                                                                                                                           |
-| `BING_OAUTH_REFRESH_TOKEN`            | Empty                    | Bing OAuth refresh token.                                                                                                                                                                                                           |
-| `SHOW_WECOM_CONFIG`                   | `false`                  | Whether WeCom configuration is shown.                                                                                                                                                                                               |
-| `WECOM_DEV`                           | `false`                  | Development mode switch for WeCom Pay.                                                                                                                                                                                              |
-| `LICENSE_PUBLIC_KEY`                  | Unset                    | License verification public key contents. Uses the public key bundled in the image when unset.                                                                                                                                      |
-| `LICENSE_PUBLIC_KEY_PATH`             | Unset                    | Path to a public key file that overrides the bundled License verification key.                                                                                                                                                      |
-| `TEAM_MODE`                           | `single`                 | Team mode: `single` for one team, `multi` for multiple teams, or `sync` for external account synchronization. Restart Pro after changing it.                                                                                        |
-| `LOGIN_2FA_ENABLED`                   | `false`                  | Require email or SMS verification after password login. Set this only in Pro.                                                                                                                                                       |
-| `WECHAT_AUTH_TOKEN`                   | `THEAIDATASETPLATFORM`   | WeChat Official Account callback signing token. Must match the account’s configuration.                                                                                                                                             |
-| `TRANSFER_RESOURCE_ON_MEMBER_LEAVE`   | `true`                   | Transfer a member’s resources to root when external synchronization marks the member as having left.                                                                                                                                |
-| `LICENSE_AUTH_METHOD`                 | Unset                    | Set to `sangfor` to use the Sangfor License service. Other values use built-in License verification.                                                                                                                                |
-| `LICENSE_BASE_URL`                    | `http://127.0.0.1:10003` | Sangfor License service URL.                                                                                                                                                                                                        |
+| Variable                   | Default | Description                                                                                                                                                                                     |
+| -------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CHINESE_IP_REDIRECT_URL`  | Unset   | Destination for the China Mainland IP redirect prompt. Users click to navigate. Leave empty to hide the prompt.                                                                                 |
+| `SHOW_GIT`                 | `false` | Set this variable in App only. When `PRO_URL` is set, it controls Git information visibility regardless of License activation. Community deployments ignore it and always show Git information. |
+| `SHOW_OUTLINK_BRAND`       | `false` | Set this variable in App only. When `PRO_URL` is set, it controls branding on public share links regardless of License activation. Community deployments ignore it and always enable branding.  |
+| `DISABLE_MARKETPLACE`      | `false` | Hides the plugin marketplace installation entry when `true`; local file installation remains available.                                                                                         |
+| `ENABLE_SAAS_ADMIN_CONFIG` | `false` | Show SaaS-specific settings in Admin. Set this only in App.                                                                                                                                     |
 
 ## Code Sandbox environment variables
 
@@ -230,4 +187,18 @@ The WeChat Personal channel bypasses these proxy environment variables and requi
 | `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API version. Required only in `docker` mode.                                                     |
 | `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes namespace. Required only in `kubernetes` mode.                                               |
 | `VM_K8S_PVC_STORAGE_CLASS` | Unset                  | Kubernetes PVC StorageClass. Leave empty to use the cluster default. Applies only to `kubernetes` mode. |
-| `VM_LOG_LEVEL`             | `info`                 | Log level. Supported values are `debug`, `info`, and `none`.                                            |
+
+> Volume Manager logging uses the shared `LOG_*` variables (`LOG_ENABLE_CONSOLE`, `LOG_CONSOLE_LEVEL`, `LOG_ENABLE_OTEL`, and `LOG_OTEL_*`; defaults to `LOG_CONSOLE_LEVEL=info` and `LOG_OTEL_SERVICE_NAME=fastgpt-volume-manager`).
+
+## Agent Sandbox Proxy environment variables
+
+| Variable                                     | Default                                  | Description                                                                                                                                                                |
+| -------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                                       | `1006`                                   | Listening port for WebSocket traffic and, by default, HTTP previews.                                                                                                       |
+| `PREVIEW_PORT`                               | Same as `PORT`                           | Dedicated listening port for HTTP previews; shares `PORT` when unset.                                                                                                      |
+| `AGENT_SANDBOX_PROXY_SECRET`                 | None, **required**                       | Shared secret for JWT verification and upstream authentication with the FastGPT main service. Must be at least 32 bytes and match **Admin → Subservices → Agent Sandbox**. |
+| `FASTGPT_APP_URL`                            | `http://localhost:3000`                  | Internal FastGPT main service base URL used for ticket and preview session verification. The official Compose template sets it to `http://fastgpt-app:3000`.               |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS`           | `10`                                     | Timeout for proxy requests to the FastGPT main service, in seconds. The official Compose template sets it to `60`.                                                         |
+| `AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS` | `30`                                     | Cache TTL for resolved sandbox endpoints serving preview files, in seconds.                                                                                                |
+| `AGENT_SANDBOX_PROXY_REWRITE_HOST`           | Unset                                    | Rewrites loopback hosts in upstream sandbox URLs returned by the main service (for example, `host.docker.internal` in dev Compose; typically unset in production).         |
+| `RUST_LOG`                                   | `info,fastgpt_agent_sandbox_proxy=debug` | Log filter level for the proxy service (`error`, `warn`, `info`, `debug`, `trace`).                                                                                        |

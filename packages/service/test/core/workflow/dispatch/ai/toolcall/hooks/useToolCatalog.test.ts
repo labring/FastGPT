@@ -322,7 +322,7 @@ describe('useToolCatalog', () => {
   });
 
   it('appends sandbox prompt when sandbox is enabled', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     getSandboxToolInfoMock.mockReturnValue({
       name: 'Run shell',
       avatar: 'sandbox-avatar'
@@ -357,7 +357,7 @@ describe('useToolCatalog', () => {
   });
 
   it('prepends sandbox system prompt when original messages have no system message', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
 
     const result = await useToolCatalog({
       messages: [

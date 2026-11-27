@@ -97,7 +97,8 @@ export const buildRegisterMethods = ({
  * 从当前认证配置推导四个兼容前端字段。
  *
  * - 邮箱密码登录不依赖 SMTP，login_method 始终保留 email；
- * - 手机号登录/注册/找回/绑定入口必须同时具备短信通道和对应模板；
+ * - 手机号密码登录跟随手机注册能力（短信通道 + 注册模板）推导，不依赖登录二次验证模板；
+ * - 手机号注册/找回/绑定入口必须同时具备短信通道和对应模板；
  * - 邮箱找回/绑定通知需要可发送邮件的 SMTP 配置；
  * - legacyRegisterMethods 只用于保留 sync 历史兼容，不再提供 phone 默认值。
  */
@@ -121,7 +122,7 @@ export const buildAuthMethodProjection = ({
   return {
     login_method: [
       'email',
-      ...(phoneReady && hasSmsTemplate(sms?.login?.zh) ? (['phone'] as const) : [])
+      ...(phoneReady && hasSmsTemplate(sms?.register?.zh) ? (['phone'] as const) : [])
     ],
     register_method: buildRegisterMethods({
       legacyMethods: legacyRegisterMethods,

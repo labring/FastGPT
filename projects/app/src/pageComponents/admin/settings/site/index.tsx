@@ -80,6 +80,9 @@ const SiteSettingComponent = () => {
     );
   });
 
+  const isScriptsDirty =
+    scriptsText !== null && scriptsText !== JSON.stringify(effectiveConfig.scripts ?? [], null, 2);
+
   return (
     <AdminSettingPage
       form={form}
@@ -87,6 +90,7 @@ const SiteSettingComponent = () => {
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating}
+      isUnsaved={isScriptsDirty}
       onSave={onSave}
     >
       {/* 1. 品牌信息 */}
@@ -221,7 +225,7 @@ const SiteSettingComponent = () => {
         >
           <NavbarItems
             value={navbarItems}
-            onChange={(val) => setValue('navbarItems', val)}
+            onChange={(val) => setValue('navbarItems', val, { shouldDirty: true })}
             title={t('admin:custom_navigation_links')}
             description={t('admin:add_custom_external_link_entries_to_the_left_navigation_bar')}
           />

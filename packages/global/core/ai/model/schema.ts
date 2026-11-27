@@ -1,7 +1,13 @@
 /* v8 ignore file */
-import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import { ModelScopeEnum, ModelTypeEnum, REASONING_EFFORT_LEVELS } from '../constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
+
+export const ReasoningEffortLevelSchema = z.enum(REASONING_EFFORT_LEVELS).meta({
+  description: '模型支持的思考等级，取值对齐 AI Proxy 思考等级配置',
+  example: 'medium'
+});
+export type ReasoningEffortLevel = z.infer<typeof ReasoningEffortLevelSchema>;
 
 /** LLM 阶梯上限由 maxInputTokensK 固定为 K Tokens，避免同一字段在不同版本中按不同单位解释。 */
 export const ModelPriceTierSchema = z.object({
@@ -91,6 +97,13 @@ export const LLMModelConfigSchema = z.object({
   video: z.boolean().optional(),
   reasoning: z.boolean().optional(),
   reasoningEffort: z.boolean().optional(),
+  reasoningEffortList: z
+    .array(ReasoningEffortLevelSchema)
+    .optional()
+    .meta({
+      description: '模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置',
+      example: ['none', 'low', 'medium', 'high']
+    }),
   functionCall: z.boolean().optional(),
   toolChoice: z.boolean().optional(),
   defaultSystemChatPrompt: z.string().optional(),

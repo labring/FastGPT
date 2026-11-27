@@ -1,3 +1,4 @@
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { getMeter } from '../../common/metrics';
 
 type MetricAttributeValue = string | number | boolean;
@@ -10,6 +11,7 @@ type ObservationState = {
 
 type ObserveMetricOptions<T> = {
   getStatus?: (result: T) => ObservationStatus;
+  getErrorStatus?: (error: unknown) => ObservationStatus;
 };
 
 export type WorkflowRunMetricAttributes = {
@@ -92,7 +94,9 @@ async function observeOperation<T>({
     onFinish(status, result, observationState);
     return result;
   } catch (error) {
-    onFinish('error', undefined, observationState);
+    const status =
+      options?.getErrorStatus?.(error) ?? (isUserConfigError(error) ? 'user_error' : 'error');
+    onFinish(status, undefined, observationState);
     throw error;
   }
 }

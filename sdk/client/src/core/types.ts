@@ -151,4 +151,5 @@ export type OperationSpec = {
   queryParams: string[];
   bodyParams: string[];
   binaryBodyField?: string;
+  retryable?: boolean;
 };

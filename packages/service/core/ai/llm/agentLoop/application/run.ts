@@ -22,12 +22,12 @@ export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
 };
 
 /**
- * Agent Loop 顶层统一入口。业务层只选择 provider，不直接 import 具体 loop 实现。
+ * Agent Loop 顶层统一入口，业务层不直接 import 底层 loop 实现。
  *
- * provider 产生 usage 时仍只调用一次 `runtime.usagePush`。这里在转发账单回调的同时
- * 收集同一批 usage，并将其作为只读 result 返回，避免 provider 另行拼装汇总后遗漏
+ * loop 产生 usage 时仍只调用一次 `runtime.usagePush`。这里在转发账单回调的同时
+ * 收集同一批 usage，并将其作为只读 result 返回，避免底层另行拼装汇总后遗漏
  * 工具/压缩用量，或由业务层为了补汇总再次触发计费。
- * 调用方显式配置的内部读取目录统一作用于事件及对外消息；未配置时完整透传，provider 内部上下文及恢复状态不做裁剪。
+ * 调用方显式配置的内部读取目录统一作用于事件及对外消息；未配置时完整透传，底层上下文不做裁剪。
  */
 export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   provider,
@@ -67,8 +67,12 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
         typeof params.path !== 'string'
       )
         return false;
+      // 与 sandbox_read_file 工具保持一致，允许解析工作区外目录（如 $HOME/.fastgpt）以识别内部只读路径。
       const filePath = posix.normalize(
-        sandbox.client.resolveRuntimePath(params.path, { allowAbsolutePath: true })
+        sandbox.client.resolveRuntimePath(params.path, {
+          allowAbsolutePath: true,
+          allowOutsideWorkspace: true
+        })
       );
       return internalReadDirectories.some(
         (directory) => filePath === directory || filePath.startsWith(`${directory}/`)
@@ -228,7 +232,6 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       status: 'error',
       error,
       activePlan: input.activePlan,
-      providerState: provider.name === 'fastAgent' ? undefined : input.providerState,
       completeMessages: filterMessages(input.messages),
       assistantMessages: [],
       requestIds: [],

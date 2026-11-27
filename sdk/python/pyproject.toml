@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fastgpt-sdk"
+version = "0.1.0b1"
+description = "Official Python SDK for FastGPT System OpenAPI (sync & async, typed with Pydantic v2)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [
+  { name = "FastGPT Team" },
+]
+keywords = ["fastgpt", "ai", "agent", "rag", "workflow", "sdk"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = [
+  "httpx>=0.27,<1",
+  "pydantic>=2.7,<3",
+]
+
+[project.urls]
+Homepage = "https://fastgpt.cn"
+Repository = "https://github.com/labring/FastGPT"
+Documentation = "https://doc.fastgpt.cn"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "mypy>=1.11",
+  "ruff>=0.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fastgpt_sdk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = [
+  "error::UserWarning:pydantic",
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/fastgpt_sdk/generated/*" = ["E501"]

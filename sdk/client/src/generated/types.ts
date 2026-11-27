@@ -1081,7 +1081,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -1254,7 +1254,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -1465,7 +1465,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -1878,7 +1878,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -2051,7 +2051,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -2262,7 +2262,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -2675,7 +2675,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -2848,7 +2848,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -3059,7 +3059,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -3470,7 +3470,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -3643,7 +3643,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -3854,7 +3854,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -7019,6 +7019,8 @@ export type DatasetsCollectionsDetailRes = {
   apiFileId?: string;
   /** API 文件父级 ID */
   apiFileParentId?: string;
+  /** API 集合是否自动同步新增直属子级；缺省兼容存量视为 true */
+  syncChildren?: boolean;
   /** 外部文件 URL */
   externalFileUrl?: string;
   /** 原始文本长度 */
@@ -7176,11 +7178,15 @@ export type DatasetsCollectionsDetailRes = {
         rootNodeId?: string;
         workspaceName?: string;
       };
+      /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+      permissionSync?: boolean;
     };
     /** 删除时间 */
     deleteTime?: string | null;
     /** 自动同步 */
     autoSync?: boolean;
+    /** 是否同步第三方知识库根目录下的新增文件与文件夹 */
+    syncAll?: boolean;
     /**
      * 外部读取 URL
      * @deprecated
@@ -7369,6 +7375,10 @@ export type DatasetsCollectionsListRes = {
     >;
     /** 外部文件 ID */
     externalFileId?: string;
+    /** API 文件 ID */
+    apiFileId?: string;
+    /** API 集合是否自动同步新增直属子级；缺省兼容存量视为 true */
+    syncChildren?: boolean;
     /** 文件 ID */
     fileId?: string;
     /** 原始链接 */
@@ -7440,6 +7450,8 @@ export type DatasetsCollectionsUpdateReq =
       >;
       /** 是否禁用 */
       forbid?: boolean;
+      /** 是否自动同步该 API 目录下的新增子级（仅 API 目录生效） */
+      syncChildren?: boolean;
       /** 创建时间 */
       createTime?: string;
       /** 数据集ID，配合 externalFileId 使用 */
@@ -7464,6 +7476,8 @@ export type DatasetsCollectionsUpdateReq =
       >;
       /** 是否禁用 */
       forbid?: boolean;
+      /** 是否自动同步该 API 目录下的新增子级（仅 API 目录生效） */
+      syncChildren?: boolean;
       /** 创建时间 */
       createTime?: string;
       /** 数据集ID，配合 externalFileId 使用 */
@@ -7543,6 +7557,8 @@ export type DatasetsCreateReq = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
   };
   /** 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效 */
   sangforFileParseConfig?: {
@@ -7913,11 +7929,15 @@ export type DatasetsDetailRes = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
   };
   /** 删除时间 */
   deleteTime?: string | null;
   /** 自动同步 */
   autoSync?: boolean;
+  /** 是否同步第三方知识库根目录下的新增文件与文件夹 */
+  syncAll?: boolean;
   /**
    * 外部读取 URL
    * @deprecated
@@ -7974,6 +7994,10 @@ export type DatasetsDetailRes = {
   hasTrainingTask: boolean;
   /** 错误信息 */
   errorMsg?: string;
+  /** 外部文件权限同步状态；仅在 permissionSync 开启时返回 */
+  permissionSyncStatus?: 'active' | 'syncing' | 'waiting' | 'error';
+  /** 外部文件权限同步失败信息 */
+  permissionSyncErrorMsg?: string;
   /** 向量模型；模型已删除时为空，已停用模型仍返回展示数据 */
   vectorModel?: {
     /** 每固定计价单位的积分单价；缺省免费 */
@@ -8603,9 +8627,13 @@ export type DatasetsUpdateReq = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
   };
   /** 是否自动同步 */
   autoSync?: boolean;
+  /** 是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录） */
+  syncAll?: boolean;
   /** 分块配置 */
   chunkSettings?: {
     /** 训练类型 */

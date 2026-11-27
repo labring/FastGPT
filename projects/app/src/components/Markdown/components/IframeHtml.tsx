@@ -81,7 +81,7 @@ const ViewModeToggleSwitch = ({
       position={'relative'}
       display={'inline-flex'}
       alignItems={'center'}
-      bg={'rgba(0, 0, 0, 0.28)'}
+      bg={'myGray.150'}
       borderRadius={'full'}
       p={'2px'}
       userSelect={'none'}
@@ -93,9 +93,9 @@ const ViewModeToggleSwitch = ({
         bottom={'2px'}
         left={!isPreview ? '2px' : 'calc(50% + 1px)'}
         w={'calc(50% - 3px)'}
-        bg={'rgba(255, 255, 255, 0.22)'}
+        bg={'white'}
         borderRadius={'full'}
-        boxShadow={'0 1px 3px rgba(0, 0, 0, 0.25)'}
+        boxShadow={'1'}
         transition={'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)'}
         pointerEvents={'none'}
       />
@@ -111,7 +111,7 @@ const ViewModeToggleSwitch = ({
         cursor={'pointer'}
         position={'relative'}
         zIndex={1}
-        color={!isPreview ? 'white' : 'rgba(255, 255, 255, 0.65)'}
+        color={!isPreview ? 'myGray.900' : 'myGray.500'}
         fontWeight={!isPreview ? 500 : 400}
         fontSize={'xs'}
         transition={'color 0.2s'}
@@ -132,7 +132,7 @@ const ViewModeToggleSwitch = ({
         cursor={'pointer'}
         position={'relative'}
         zIndex={1}
-        color={isPreview ? 'white' : 'rgba(255, 255, 255, 0.65)'}
+        color={isPreview ? 'myGray.900' : 'myGray.500'}
         fontWeight={isPreview ? 500 : 400}
         fontSize={'xs'}
         transition={'color 0.2s'}
@@ -162,6 +162,8 @@ const IframeHtmlCodeBlock = ({
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const [isCopied, setIsCopied] = useState(false);
+  const copyAttemptRef = useRef(0);
   const code = String(children);
   const lang = match?.[1]?.toLowerCase();
   const isHtmlBlock = lang === 'html' || lang === 'htm';
@@ -240,105 +242,113 @@ const IframeHtmlCodeBlock = ({
     }
   }, [code, t]);
 
-  if (codeBlock) {
-    return (
-      <Box
-        ref={Ref}
-        className={`${styles.htmlCodeBlock} code-block-wrapper`}
-        w="100%"
-        my={3}
-        borderRadius={'md'}
-        overflow={'hidden'}
-        boxShadow={
-          '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-        }
-      >
-        {/* 顶部 Header：恒定保持深蓝灰色 #2d323b */}
-        <Flex
-          className="code-header"
-          h={'38px'}
-          px={3}
-          bg={'#2d323b'}
-          color={'white'}
-          userSelect={'none'}
-          position="relative"
-          zIndex={2}
-          alignItems="center"
-          fontSize={'xs'}
-          gap={2}
-          borderBottom={'1px solid'}
-          borderColor={'rgba(255, 255, 255, 0.08)'}
-        >
-          {/* 左侧：语言标签与复制图标 */}
-          <HStack flex={1} spacing={2} minW={0} overflow={'hidden'}>
-            <Icon name={'code'} width={'14px'} height={'14px'} color={'rgba(255, 255, 255, 0.7)'} />
-            <Text fontWeight={500} fontSize={'xs'} color={'rgba(255, 255, 255, 0.95)'} isTruncated>
-              {codeBoxName}
-            </Text>
-            <MyTooltip label={t('common:Copy')} placement="top" hasArrow>
-              <IconButton
-                icon={<Icon name={'copy'} width={'13px'} height={'13px'} />}
-                size={'xs'}
-                variant={'ghost'}
-                color={'rgba(255, 255, 255, 0.75)'}
-                _hover={{
-                  color: 'white',
-                  bg: 'rgba(255, 255, 255, 0.15)'
-                }}
-                onClick={() => copyData(code)}
-                aria-label={t('common:Copy')}
-              />
-            </MyTooltip>
-          </HStack>
-
-          {/* 右侧：开关形态的滑动分段切换器 */}
-          <ViewModeToggleSwitch viewMode={viewMode} onChange={selectViewMode} isMobile={isMobile} />
-
-          {/* 直接在新标签页打开按钮，取代全屏模态 */}
-          <MyTooltip label={t('common:open_in_new_tab')} placement="top" hasArrow>
-            <IconButton
-              icon={<Icon name={'export'} width={'13px'} height={'13px'} />}
-              size={'xs'}
-              variant={'ghost'}
-              color={'rgba(255, 255, 255, 0.75)'}
-              _hover={{
-                color: 'white',
-                bg: 'rgba(255, 255, 255, 0.15)'
-              }}
-              onClick={handleOpenInNewTab}
-              aria-label={t('common:open_in_new_tab')}
-            />
-          </MyTooltip>
-        </Flex>
-
-        {/* 内容展示区 */}
-        {isPreview ? (
-          <Box className="code-block-body" h={'60vh'} bg={'white'}>
-            <HtmlPreviewIframe code={code} />
-          </Box>
-        ) : (
-          <Box overflowX={'auto'} bg={'#171923'}>
-            <SyntaxHighlighter
-              style={codeLight as any}
-              language={match?.[1]}
-              PreTag={SourcePreTag}
-              customStyle={{
-                margin: 0,
-                padding: '14px 16px',
-                borderBottomLeftRadius: '6px',
-                borderBottomRightRadius: '6px',
-                background: '#171923'
-              }}
-            >
-              {code.replace(/&nbsp;/g, ' ')}
-            </SyntaxHighlighter>
-          </Box>
-        )}
-      </Box>
-    );
+  if (!codeBlock) {
+    return <code className={className}>{children}</code>;
   }
 
-  return <code className={className}>{children}</code>;
+  return (
+    <Box
+      ref={Ref}
+      className={`${styles.htmlCodeBlock} code-block-wrapper`}
+      w="100%"
+      my={3}
+      bg={'white'}
+      borderRadius={'md'}
+      overflow={'hidden'}
+      boxShadow={'1.5'}
+    >
+      {/* 顶部 Header：与浅色代码块视觉保持统一 */}
+      <Flex
+        className="code-header"
+        h={'40px'}
+        px={4}
+        bg={'myGray.50'}
+        color={'myGray.900'}
+        userSelect={'none'}
+        position="relative"
+        zIndex={2}
+        alignItems="center"
+        fontSize={'xs'}
+        gap={2}
+      >
+        {/* 左侧：语言标签与复制图标 */}
+        <HStack flex={1} spacing={2} minW={0} overflow={'hidden'}>
+          <Icon name={'code'} w={'14px'} h={'14px'} color={'myGray.900'} flexShrink={0} />
+          <Text fontWeight={500} fontSize={'xs'} color={'myGray.900'} isTruncated>
+            {codeBoxName}
+          </Text>
+          <MyTooltip
+            label={isCopied ? t('common:copied') : t('common:copy_code')}
+            placement="bottom"
+            offset={[0, 10]}
+            shouldWrapChildren={false}
+            closeOnClick={false}
+            onClose={() => {
+              copyAttemptRef.current += 1;
+              setIsCopied(false);
+            }}
+          >
+            <IconButton
+              icon={<Icon name={isCopied ? 'check' : 'copy'} w={'14px'} h={'14px'} />}
+              size={'xsSquare'}
+              variant={'grayGhost'}
+              onClick={async () => {
+                const attemptId = ++copyAttemptRef.current;
+                const copied = await copyData(code, null);
+                if (copyAttemptRef.current === attemptId) {
+                  setIsCopied(copied);
+                }
+              }}
+              aria-label={isCopied ? t('common:copied') : t('common:copy_code')}
+            />
+          </MyTooltip>
+        </HStack>
+
+        {/* 右侧：开关形态的滑动分段切换器 */}
+        <ViewModeToggleSwitch viewMode={viewMode} onChange={selectViewMode} isMobile={isMobile} />
+
+        {/* 直接在新标签页打开按钮，取代全屏模态 */}
+        <MyTooltip
+          label={t('common:open_in_new_tab')}
+          placement="bottom"
+          offset={[0, 10]}
+          shouldWrapChildren={false}
+        >
+          <IconButton
+            icon={<Icon name={'export'} w={'14px'} h={'14px'} />}
+            size={'xsSquare'}
+            variant={'grayGhost'}
+            onClick={handleOpenInNewTab}
+            aria-label={t('common:open_in_new_tab')}
+          />
+        </MyTooltip>
+      </Flex>
+
+      {/* 内容展示区 */}
+      {isPreview ? (
+        <Box className="code-block-body" h={'60vh'} bg={'white'}>
+          <HtmlPreviewIframe code={code} />
+        </Box>
+      ) : (
+        <Box overflowX={'auto'} bg={'white'}>
+          <SyntaxHighlighter
+            style={codeLight as any}
+            language={match?.[1]}
+            PreTag={SourcePreTag}
+            customStyle={{
+              margin: 0,
+              padding: '14px 16px',
+              borderBottomLeftRadius: '8px',
+              borderBottomRightRadius: '8px',
+              background: '#ffffff'
+            }}
+          >
+            {code.replace(/&nbsp;/g, ' ')}
+          </SyntaxHighlighter>
+        </Box>
+      )}
+    </Box>
+  );
 };
 
 export default React.memo(IframeHtmlCodeBlock);

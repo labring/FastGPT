@@ -423,6 +423,19 @@ describe('audit presenter summary', () => {
 
     expect(
       formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: {
+          datasetName: 'KB',
+          changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:dataset_config_item_apiDatasetServer · account_team:dataset_config_field_apiDatasetServer_apiServer_authorization'
+    );
+
+    expect(
+      formatAuditSummary({
         event: AuditEventEnum.CREATE_COLLECTION,
         metadata: { collectionName: 'doc.pdf', datasetName: 'KB' },
         t

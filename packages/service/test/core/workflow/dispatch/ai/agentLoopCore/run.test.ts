@@ -131,7 +131,6 @@ describe('runAgentLoopCore', () => {
       executeTool: vi.fn()
     } as any;
     const result = await runAgentLoopCore({
-      provider: 'fastAgent',
       input: {
         messages: []
       },
@@ -154,7 +153,6 @@ describe('runAgentLoopCore', () => {
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'fastAgent',
         input: {
           messages: []
         },

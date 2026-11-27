@@ -557,6 +557,7 @@ export const buildSdkIrDocument = (): SdkIrDocument => {
         resource: sdkMeta.resource,
         method: sdkMeta.method,
         ...(sdkMeta.streamMethod !== undefined ? { streamMethod: sdkMeta.streamMethod } : {}),
+        ...(sdkMeta.retryable !== undefined ? { retryable: sdkMeta.retryable } : {}),
         httpMethod,
         path: routePath,
         summary: typeof rawOp.summary === 'string' ? rawOp.summary : '',

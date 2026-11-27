@@ -20,7 +20,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
   it('uses ask without plan and preserves pause state', async () => {
     const streamWriter = vi.fn();
     const executeTool = vi.fn();
-    const nextProviderState = { pendingMainContext: { askToolCallId: 'ask_2' } };
     runAgentLoopMock.mockImplementation(async ({ runtime }) => {
       runtime.emitEvent({ type: 'reasoning_delta', text: '分析中' });
       runtime.emitEvent({ type: 'answer_delta', text: '处理中' });
@@ -48,7 +47,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
             }
           }
         },
-        providerState: nextProviderState,
         completeMessages: [],
         assistantMessages: [
           { role: 'assistant', reasoning_content: '分析中' },
@@ -107,7 +105,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       expect.objectContaining({
         status: 'paused',
         pause: expect.objectContaining({ toolCallId: 'ask_2' }),
-        providerState: nextProviderState,
         answerText: '处理中',
         reasoningText: '分析中'
       })

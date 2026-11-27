@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import dns from 'node:dns';
-import { Agent, Dispatcher, ProxyAgent } from 'undici';
+import { Agent, Dispatcher, type ProxyAgent } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
+import { createUndiciOutboundProxyAgent } from '../proxy/utils';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 
 /**
@@ -40,7 +41,7 @@ const getTargetDispatcher = (origin: string) => {
     if (!proxyUrl) return safeAgent;
     let agent = proxyAgentCache.get(proxyUrl);
     if (!agent) {
-      agent = new ProxyAgent(proxyUrl);
+      agent = createUndiciOutboundProxyAgent(proxyUrl);
       proxyAgentCache.set(proxyUrl, agent);
     }
     return agent;

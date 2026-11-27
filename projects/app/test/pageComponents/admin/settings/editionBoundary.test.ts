@@ -11,19 +11,29 @@ import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/syste
 const mocks = vi.hoisted(() => ({
   isPro: false,
   enableSaasAdminConfig: false,
+  login2faEnabled: false,
+  enableSangforAdminConfig: false,
   save: undefined as undefined | ((data: any) => Promise<unknown>),
   update: vi.fn(),
   patch: vi.fn(),
   pageSave: undefined as undefined | (() => Promise<void>),
   switchRows: new Map<string, { isChecked: boolean; onChange: (checked: boolean) => void }>(),
+  selectLists: [] as Array<Array<{ label: string; value: string }>>,
   formLabels: [] as string[],
   authOverrides: {} as Record<string, unknown>,
-  featureOverrides: {} as Record<string, unknown>
+  authSecretKeys: new Set<string>(),
+  featureOverrides: {} as Record<string, unknown>,
+  providersOverrides: {} as Record<string, unknown>
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({
-    feConfigs: { isProService: mocks.isPro, enableSaasAdminConfig: mocks.enableSaasAdminConfig }
+    feConfigs: {
+      isProService: mocks.isPro,
+      enableSaasAdminConfig: mocks.enableSaasAdminConfig,
+      login2faEnabled: mocks.login2faEnabled,
+      enableSangforAdminConfig: mocks.enableSangforAdminConfig
+    }
   })
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
@@ -32,15 +42,24 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: (domain: SystemInstanceConfigDomainKey) => ({
     revision: 1,
-    isSecretConfigured: () => false,
+    isSecretConfigured: (path: string) => domain === 'auth' && mocks.authSecretKeys.has(path),
     isLoading: false,
-    overrides: domain === 'auth' ? mocks.authOverrides : {},
+    overrides:
+      domain === 'auth'
+        ? mocks.authOverrides
+        : domain === 'providers'
+          ? mocks.providersOverrides
+          : {},
     effectiveConfig: filterDomainDataByEdition({
       domain,
-      data: resolveSystemInstanceConfig({
-        auth: mocks.authOverrides as any,
-        feature: mocks.featureOverrides as any
-      })[domain],
+      data: resolveSystemInstanceConfig(
+        {
+          auth: mocks.authOverrides as any,
+          feature: mocks.featureOverrides as any,
+          providers: mocks.providersOverrides as any
+        },
+        { strict: false }
+      )[domain],
       edition: mocks.isPro ? 'pro' : 'community'
     }),
     refetch: vi.fn(),
@@ -62,6 +81,7 @@ vi.mock('@chakra-ui/react', () => {
   return {
     SimpleGrid: element,
     Box: element,
+    Icon: () => null,
     Flex: element,
     HStack: element,
     Button: element,
@@ -78,7 +98,15 @@ vi.mock('@chakra-ui/react', () => {
     useToast: () => ({ toast: vi.fn() })
   };
 });
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({ list }: { list?: Array<{ label: string; value: string }> }) => {
+    if (list) mocks.selectLists.push(list);
+    return null;
+  }
+}));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ Trigger }: any) => Trigger
+}));
 vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({
     children,
@@ -120,14 +148,95 @@ describe('configuration form edition boundary', () => {
   beforeEach(() => {
     mocks.isPro = false;
     mocks.enableSaasAdminConfig = false;
+    mocks.login2faEnabled = false;
+    mocks.enableSangforAdminConfig = false;
     mocks.authOverrides = {};
+    mocks.authSecretKeys = new Set<string>();
     mocks.featureOverrides = {};
+    mocks.providersOverrides = {};
     mocks.patch.mockReset().mockResolvedValue(undefined);
     mocks.pageSave = undefined;
     mocks.switchRows.clear();
+    mocks.selectLists = [];
     mocks.formLabels = [];
     mocks.update.mockReset().mockResolvedValue({ results: [] });
   });
+
+  it.each([
+    [false, true, false],
+    [true, false, false],
+    [true, true, true]
+  ])(
+    'shows login 2FA SMS template input only for Pro=%s / 2FA=%s',
+    (isPro, login2faEnabled, visible) => {
+      mocks.isPro = isPro;
+      mocks.login2faEnabled = login2faEnabled;
+      mocks.authOverrides = {
+        loginProviders: { phone: { accessKeyId: 'ak', signName: 'sign' } }
+      };
+      mocks.authSecretKeys = new Set(['loginProviders.phone.accessKeySecret']);
+      const html = renderToStaticMarkup(React.createElement(AuthSettings));
+      expect(html.includes('id="smsLogin"')).toBe(isPro);
+      expect(mocks.formLabels.includes('admin:login_code_chinese_template')).toBe(visible);
+    }
+  );
+
+  it('shows prerequisite links instead of email switch or SMS templates when SMTP/Aliyun SMS are unconfigured', () => {
+    mocks.isPro = true;
+    const unconfiguredHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(unconfiguredHtml).toContain('href="/admin/settings/core#email"');
+    expect(unconfiguredHtml).toContain('admin:please_configure_smtp_first');
+    expect(unconfiguredHtml).toContain('admin:smtp_service');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(false);
+
+    expect(unconfiguredHtml).toContain('href="/admin/settings/core#sms"');
+    expect(unconfiguredHtml).toContain('admin:aliyun_sms_not_configured');
+    expect(unconfiguredHtml).toContain('admin:aliyun_sms');
+    expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+
+    mocks.switchRows.clear();
+    mocks.authOverrides = { loginProviders: { email: { register: true } } };
+    const legacyEnabledWithoutSmtpHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(legacyEnabledWithoutSmtpHtml).toContain('href="/admin/settings/core#email"');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
+
+    mocks.switchRows.clear();
+    mocks.formLabels = [];
+    mocks.authOverrides = {
+      loginProviders: {
+        email: { smtp: 'smtp.example.com', user: 'noreply@example.com' },
+        phone: { accessKeyId: 'ak', signName: 'sign' }
+      }
+    };
+    mocks.authSecretKeys = new Set([
+      'loginProviders.email.pass',
+      'loginProviders.phone.accessKeySecret'
+    ]);
+    const configuredHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(configuredHtml).not.toContain('href="/admin/settings/core#email"');
+    expect(configuredHtml).not.toContain('href="/admin/settings/core#sms"');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
+    expect(mocks.formLabels).toContain('admin:registration_code_chinese_template');
+  });
+
+  it.each([false, true])(
+    'shows cancellation SMS template inputs only when accountCancellation.enabled=%s',
+    (enabled) => {
+      mocks.isPro = true;
+      mocks.authOverrides = { accountCancellation: { enabled } };
+      const html = renderToStaticMarkup(React.createElement(AuthSettings));
+      expect(html.includes('id="accountCancellation"')).toBe(true);
+      expect(mocks.formLabels.includes('admin:cancellation_request_chinese_template')).toBe(
+        enabled
+      );
+      expect(mocks.formLabels.includes('admin:cancellation_reminder_chinese_template')).toBe(
+        enabled
+      );
+      expect(mocks.formLabels.includes('admin:same_day_cancellation_chinese_template')).toBe(
+        enabled
+      );
+    }
+  );
 
   it.each([
     [false, true, false],
@@ -186,10 +295,10 @@ describe('configuration form edition boundary', () => {
       mocks.isPro = isPro;
       renderToStaticMarkup(React.createElement(CoreSettings));
       expect(mocks.formLabels).toContain('admin:file_service_domain');
+      expect(mocks.formLabels).not.toContain('admin:agent_execution_engine');
       expect(mocks.formLabels).not.toContain('admin:openapi_key_prefix');
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
-        agentEngine: 'fastAgent',
         multipleDataToBase64: false,
         downloadMode: 'short-proxy',
         fileDomain: 'https://files.test',
@@ -378,7 +487,6 @@ describe('configuration form edition boundary', () => {
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       teamMode: 'multi',
-      agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
       externalEndpoint: '',
@@ -476,7 +584,6 @@ describe('configuration form edition boundary', () => {
     expect(html).not.toContain('id="team"');
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
-      agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
       externalEndpoint: '',
@@ -492,5 +599,70 @@ describe('configuration form edition boundary', () => {
     );
     expect(submitted.overrides).not.toHaveProperty('teamMode');
     expect(submitted.overrides.loginProviders.wecom.providerSecret).toBe('keep-secret');
+    const featureSubmitted = mocks.update.mock.calls[0][0].items.find(
+      (item: { domain: string }) => item.domain === 'feature'
+    );
+    expect(featureSubmitted.overrides).not.toHaveProperty('agentEngine');
   });
+
+  it.each([false, true])(
+    'controls Sangfor parser visibility via ENABLE_SANGFOR_ADMIN_CONFIG=%s and translates TextIn option',
+    async (enableSangfor) => {
+      mocks.enableSangforAdminConfig = enableSangfor;
+      mocks.providersOverrides = {
+        documentParse: {
+          provider: 'sangfor',
+          sangfor: {
+            url: 'https://sangfor.internal.test',
+            extensions: 'pdf,docx',
+            timeoutSeconds: 45
+          }
+        }
+      };
+      renderToStaticMarkup(React.createElement(CoreSettings));
+      const providerOptions = mocks.selectLists.find((list) =>
+        list.some((item) => item.value === 'somark')
+      )!;
+      expect(providerOptions).toContainEqual({
+        label: 'admin:document_parse_provider_textin',
+        value: 'textln'
+      });
+      expect(providerOptions.some((item) => item.value === 'sangfor')).toBe(enableSangfor);
+      expect(mocks.formLabels.includes('admin:sangfor_parsing_api_endpoint')).toBe(enableSangfor);
+
+      // 关闭深信服展示开关时保存核心页，数据库中已有深信服配置原样保留，历史废弃的 sangfor.timeoutSeconds 自动剥离并通过严格校验。
+      if (!enableSangfor) {
+        const config = resolveSystemInstanceConfig(
+          {
+            providers: mocks.providersOverrides as any
+          },
+          { strict: false }
+        );
+        await mocks.save!({
+          agentEngine: 'fastAgent',
+          multipleDataToBase64: false,
+          downloadMode: 'short-proxy',
+          externalEndpoint: '',
+          cdnEndpoint: '',
+          publicUrl: 'https://main.test',
+          email: config.auth.loginProviders.email,
+          documentParse: {
+            ...config.providers.documentParse,
+            provider: 'somark'
+          },
+          phone: config.auth.loginProviders.phone
+        });
+        const providersItem = mocks.update.mock.calls[0][0].items.find(
+          (item: { domain: string }) => item.domain === 'providers'
+        );
+        expect(providersItem.overrides.documentParse.sangfor).toEqual({
+          url: 'https://sangfor.internal.test',
+          extensions: 'pdf,docx'
+        });
+        expect(() =>
+          parseDomainOverrides({ domain: 'providers', overrides: providersItem.overrides })
+        ).not.toThrow();
+      }
+    }
+  );
 });

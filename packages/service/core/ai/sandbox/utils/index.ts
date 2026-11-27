@@ -79,9 +79,9 @@ export const getSandboxRuntimePaths = ({
 };
 
 /**
- * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认不限制其 workspace 范围。
+ * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认限制在 `workspaceRoot` 内。
  *
- * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径直接按 sandbox 文件系统路径使用。
+ * 相对路径始终以 sessionWorkDirectory 为基准；只读内置 Skill 等受控入口需显式传入 `allowOutsideWorkspace: true`。
  */
 export const resolveSandboxRuntimePath = (
   path: string | undefined,
@@ -89,7 +89,7 @@ export const resolveSandboxRuntimePath = (
   options: ResolveSandboxRuntimePathOptions = {}
 ) => {
   const rawPath = path || '.';
-  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? true;
+  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? false;
   const sessionWorkDirectory = trimSandboxPathRight(runtimePaths.sessionWorkDirectory);
 
   if (rawPath === '.' || rawPath === './' || rawPath === '') {
@@ -128,26 +128,13 @@ export type SandboxInputFileNameAllocation = {
   filenameByUrlAndBaseName: Map<string, string>;
 };
 
-export const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
+const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
   usedNames: new Map<string, number>(),
   urlByFilename: new Map<string, string>(),
   filenameByUrlAndBaseName: new Map<string, string>()
 });
 
 const allocationsByOwner = new WeakMap<object, Map<string, SandboxInputFileNameAllocation>>();
-
-const setOwnerAllocation = (
-  owner: object,
-  key: string,
-  allocation: SandboxInputFileNameAllocation
-) => {
-  let byScope = allocationsByOwner.get(owner);
-  if (!byScope) {
-    byScope = new Map<string, SandboxInputFileNameAllocation>();
-    allocationsByOwner.set(owner, byScope);
-  }
-  byScope.set(key, allocation);
-};
 
 /** 生成单个会话沙盒工作目录的输入文件去重作用域键。 */
 export const buildSandboxInputFileScopeKey = ({
@@ -179,6 +166,21 @@ export const getSandboxInputFileNameAllocation = ({
   sandbox?: object | null;
   workDirectory?: string;
 }): SandboxInputFileNameAllocation => {
+  const setOwnerAllocation = ({
+    owner,
+    allocation
+  }: {
+    owner: object;
+    allocation: SandboxInputFileNameAllocation;
+  }) => {
+    let byScope = allocationsByOwner.get(owner);
+    if (!byScope) {
+      byScope = new Map<string, SandboxInputFileNameAllocation>();
+      allocationsByOwner.set(owner, byScope);
+    }
+    byScope.set(key, allocation);
+  };
+
   const key = scopeKey || workDirectory;
   const sandboxObject = sandbox && typeof sandbox === 'object' ? sandbox : undefined;
 
@@ -186,10 +188,10 @@ export const getSandboxInputFileNameAllocation = ({
     let allocation = allocationsByOwner.get(contextOwner)?.get(key);
     if (!allocation) {
       allocation = createSandboxInputFileNameAllocation();
-      setOwnerAllocation(contextOwner, key, allocation);
+      setOwnerAllocation({ owner: contextOwner, allocation });
     }
     if (sandboxObject) {
-      setOwnerAllocation(sandboxObject, key, allocation);
+      setOwnerAllocation({ owner: sandboxObject, allocation });
     }
     return allocation;
   }
@@ -198,7 +200,7 @@ export const getSandboxInputFileNameAllocation = ({
     let allocation = allocationsByOwner.get(sandboxObject)?.get(key);
     if (!allocation) {
       allocation = createSandboxInputFileNameAllocation();
-      setOwnerAllocation(sandboxObject, key, allocation);
+      setOwnerAllocation({ owner: sandboxObject, allocation });
     }
     return allocation;
   }
@@ -211,16 +213,21 @@ export const getSandboxInputFileNameAllocation = ({
  * URL query、API body 和模型上下文都可能携带文件名，因此调用方不能信任原始 name。
  * 当提供会话级 allocation 时，相同 URL 复用原文件名，不同 URL 的同名文件自动递增后缀。
  */
-export const getSafeSandboxInputFilename = (
-  filename: string,
-  index: number,
-  usedNames: Map<string, number>,
-  options?: {
-    url?: string;
-    allocation?: SandboxInputFileNameAllocation;
-    batchUsedFilenames?: Set<string>;
-  }
-) => {
+export const getSafeSandboxInputFilename = ({
+  filename,
+  index,
+  usedNames,
+  url,
+  allocation,
+  batchUsedFilenames
+}: {
+  filename: string;
+  index: number;
+  usedNames: Map<string, number>;
+  url?: string;
+  allocation?: SandboxInputFileNameAllocation;
+  batchUsedFilenames?: Set<string>;
+}) => {
   const fallbackName = `file-${index}`;
   const normalized = filename.replace(/\\/g, '/').split('/').pop()?.trim() || fallbackName;
   const withoutControlChars = normalized.replace(/[\u0000-\u001F\u007F]/g, '').trim();
@@ -229,9 +236,7 @@ export const getSafeSandboxInputFilename = (
       ? withoutControlChars
       : fallbackName;
 
-  const allocation = options?.allocation;
-  const normalizedUrl = options?.url?.trim() || undefined;
-  const batchUsedFilenames = options?.batchUsedFilenames;
+  const normalizedUrl = url?.trim() || undefined;
   if (allocation && normalizedUrl) {
     const existing = allocation.filenameByUrlAndBaseName.get(`${baseName}\0${normalizedUrl}`);
     if (existing && !batchUsedFilenames?.has(existing)) {
@@ -264,4 +269,25 @@ export const getSafeSandboxInputFilename = (
   }
 
   return candidate;
+};
+
+/** 批量为本轮输入文件分配去重且安全的文件名，统一 runtime/toolCall/useToolMessages 三处复用。 */
+export const allocateSandboxInputFiles = <T extends { url?: string }>(params: {
+  items: readonly T[];
+  getFilename: (item: T) => string;
+  allocation?: SandboxInputFileNameAllocation;
+}): Array<{ item: T; filename: string }> => {
+  const usedNames = new Map<string, number>();
+  const batchUsedFilenames = new Set<string>();
+  return params.items.map((item, index) => ({
+    item,
+    filename: getSafeSandboxInputFilename({
+      filename: params.getFilename(item),
+      index,
+      usedNames,
+      url: item.url,
+      allocation: params.allocation,
+      batchUsedFilenames
+    })
+  }));
 };

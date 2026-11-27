@@ -858,13 +858,21 @@ export const formatAuditSummary = ({
 
     case DatasetAuditEventEnum.DATASET_CONFIG_UPDATE: {
       const changeItem = asNonEmptyString(processed.changeItem);
-      return changeItem
-        ? t('account_team:audit_detail_dataset_config', {
-            changeItem,
-            oldValue: processed.oldValue ?? '-',
-            newValue: processed.newValue ?? '-'
-          })
-        : '-';
+      if (!changeItem) return '-';
+
+      const hasValue = (value: unknown) => value !== undefined && value !== null && value !== '';
+      const hasOldValue = hasValue(processed.oldValue);
+      const hasNewValue = hasValue(processed.newValue);
+      // 敏感字段不记录新旧值；新旧值同时为空时隐藏对比段，只展示配置项名称。
+      if (!hasOldValue && !hasNewValue) {
+        return changeItem;
+      }
+
+      return t('account_team:audit_detail_dataset_config', {
+        changeItem,
+        oldValue: hasOldValue ? processed.oldValue : '-',
+        newValue: hasNewValue ? processed.newValue : '-'
+      });
     }
 
     case DatasetAuditEventEnum.DATASET_TAG_CREATE:

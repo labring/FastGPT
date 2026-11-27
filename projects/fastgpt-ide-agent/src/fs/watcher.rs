@@ -2,17 +2,24 @@ use std::collections::BTreeSet;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use notify::event::ModifyKind;
-use notify::{Config, Event, EventKind, EventKindMask, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::notify::event::ModifyKind;
+use notify_debouncer_full::notify::{
+    Config, Event, EventKind, EventKindMask, RecommendedWatcher, RecursiveMode,
+};
 use notify_debouncer_full::{
-    DebounceEventResult, DebouncedEvent, RecommendedCache, new_debouncer_opt,
+    Config as DebouncerConfig, DebounceEventResult, DebouncedEvent, RecommendedCache,
+    new_debouncer_opt,
 };
 use serde_json::json;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
+use tracing::error;
 
 use crate::protocol::JsonRpcNotification;
-use crate::workspace::{get_workspace_root, normalize_workspace_relative_path};
+use crate::workspace::{
+    get_workspace_root, is_atomic_tmp_workspace_path, is_reserved_workspace_path,
+    normalize_workspace_relative_path,
+};
 
 const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
@@ -47,6 +54,7 @@ pub(super) fn collect_fs_event_paths(event: &Event) -> Vec<String> {
         .paths
         .iter()
         .filter_map(|path| normalize_workspace_relative_path(path))
+        .filter(|rel| !is_reserved_workspace_path(rel) && !is_atomic_tmp_workspace_path(rel))
         .collect()
 }
 
@@ -125,24 +133,23 @@ fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
 
     // 只订阅真实文件变更，避免 read_dir/read metadata 在 inotify 下触发 Access 事件后自激刷新。
     let watcher_config = Config::default().with_event_kinds(EventKindMask::CORE);
+    let debouncer_config = DebouncerConfig::default()
+        .with_timeout(Duration::from_millis(FS_CHANGE_DEBOUNCE_MS))
+        .with_notify_config(watcher_config);
     let mut debouncer = match new_debouncer_opt::<_, RecommendedWatcher, _>(
-        Duration::from_millis(FS_CHANGE_DEBOUNCE_MS),
-        None,
-        move |result| {
-            let _ = event_tx.send(result);
-        },
+        debouncer_config,
+        event_tx,
         RecommendedCache::new(),
-        watcher_config,
     ) {
         Ok(debouncer) => debouncer,
         Err(error) => {
-            eprintln!("Failed to create workspace watcher: {error}");
+            error!("Failed to create workspace watcher: {error}");
             return;
         }
     };
 
     if let Err(error) = debouncer.watch(&root, RecursiveMode::Recursive) {
-        eprintln!("Failed to watch workspace {root:?}: {error}");
+        error!("Failed to watch workspace {root:?}: {error}");
         return;
     }
 
@@ -169,8 +176,8 @@ fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
                     }
                 }
                 Err(errors) => {
-                    for error in errors {
-                        eprintln!("Workspace watcher event error: {error}");
+                    for err in errors {
+                        error!("Workspace watcher event error: {err}");
                     }
                     FsChangeBatch {
                         seq: 0,

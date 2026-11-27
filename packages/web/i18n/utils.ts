@@ -164,7 +164,7 @@ export const getClientLanguagePreference = (
  */
 export const getLanguageRequestHeaders = (pathname?: string): Record<string, string> => {
   const currentPathname =
-    pathname ?? (typeof window !== 'undefined' ? window.location.pathname : undefined);
+    pathname ?? (typeof window !== 'undefined' ? window.location?.pathname : undefined);
   const isSharePage =
     currentPathname === '/chat/share' || currentPathname?.endsWith('/chat/share') === true;
   const language = isSharePage

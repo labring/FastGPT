@@ -3,6 +3,7 @@ import { Flex, Text, HStack } from '@chakra-ui/react';
 
 export type AdminHeaderProps = {
   title: string;
+  titleExtra?: React.ReactNode;
   description?: string;
   rightContent?: React.ReactNode;
 };
@@ -11,7 +12,7 @@ export type AdminHeaderProps = {
  * 管理员页面顶部统一 Header 组件。
  * 统一定义各页面顶部标题视觉规范与右侧操作区。
  */
-const AdminHeader = ({ title, description, rightContent }: AdminHeaderProps) => {
+const AdminHeader = ({ title, titleExtra, description, rightContent }: AdminHeaderProps) => {
   return (
     <Flex
       h={'56px'}
@@ -27,6 +28,7 @@ const AdminHeader = ({ title, description, rightContent }: AdminHeaderProps) => 
         <Text as={'h1'} fontSize={'md'} fontWeight={'semibold'} color={'myGray.900'}>
           {title}
         </Text>
+        {titleExtra}
         {description && (
           <Text fontSize={'xs'} color={'myGray.500'}>
             {description}

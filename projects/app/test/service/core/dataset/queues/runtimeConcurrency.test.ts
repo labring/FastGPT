@@ -11,7 +11,8 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) 
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/training/schema')>()),
   MongoDatasetTraining: model
 }));
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
+vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/mongo/sessionRun')>()),
   mongoSessionRun: async (run: (session: object) => Promise<unknown>) => run({})
 }));
 vi.mock('@/service/core/dataset/queues/utils', () => ({

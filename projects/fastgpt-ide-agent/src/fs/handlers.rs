@@ -1,30 +1,30 @@
 use std::collections::HashSet;
+use std::fs::{Metadata, OpenOptions};
+use std::io::{Read, Write};
 use std::path::Path;
-use std::process::Stdio;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::SystemTime;
 
 use base64::Engine;
-use futures_util::StreamExt;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::process::Command;
 
 use super::error::{FsError, FsResult};
 use crate::workspace::{
-    get_workspace_root, is_workspace_root_path, sanitize_create_path,
-    sanitize_existing_workspace_entry_path, sanitize_path,
+    is_atomic_tmp_file_name, is_reserved_workspace_root_entry, is_workspace_root_rel,
+    resolve_workspace_path,
 };
 
 const DEFAULT_EXCLUDED_NAMES: &[&str] = &[".DS_Store"];
 pub(super) const DEFAULT_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
-const EXEC_TIMEOUT_MS: u64 = 30_000;
-const EXEC_MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 const DEFAULT_WORKSPACE_PATH: &str = ".";
 const DEFAULT_MAX_DEPTH: u64 = 20;
+const MAX_RECURSIVE_ENTRIES: usize = 50_000;
+const HASH_CHUNK_BYTES: usize = 64 * 1024;
+
+static TEMP_WRITE_SEQ: AtomicU64 = AtomicU64::new(0);
 
 // JSON-RPC 的 params 入口统一走强类型反序列化，避免各 handler 分散手写 Value 字段读取。
 fn parse_params<T>(params: Option<serde_json::Value>) -> FsResult<T>
@@ -35,7 +35,7 @@ where
     Ok(serde_json::from_value(params)?)
 }
 
-fn mtime_secs(metadata: &std::fs::Metadata) -> u64 {
+fn mtime_secs(metadata: &Metadata) -> u64 {
     metadata
         .modified()
         .unwrap_or(SystemTime::UNIX_EPOCH)
@@ -44,9 +44,44 @@ fn mtime_secs(metadata: &std::fs::Metadata) -> u64 {
         .as_secs()
 }
 
+fn format_sha256_etag(digest: impl AsRef<[u8]>) -> String {
+    use std::fmt::Write;
+
+    let bytes = digest.as_ref();
+    let mut hex = String::with_capacity(bytes.len() * 2 + 7);
+    hex.push_str("sha256:");
+    for byte in bytes {
+        let _ = write!(&mut hex, "{byte:02x}");
+    }
+    hex
+}
+
 fn file_etag(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
-    format!("sha256:{digest:x}")
+    format_sha256_etag(Sha256::digest(bytes))
+}
+
+fn file_etag_from_reader<R: Read>(mut reader: R, max_bytes: u64) -> Result<String, FsError> {
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; HASH_CHUNK_BYTES];
+    let mut total: u64 = 0;
+
+    loop {
+        let read_len = reader.read(&mut buf)?;
+        if read_len == 0 {
+            break;
+        }
+        total = total.saturating_add(read_len as u64);
+        if total > max_bytes {
+            return Err(FsError::FileTooLarge {
+                operation: "write",
+                size: total,
+                max_size: max_bytes,
+            });
+        }
+        hasher.update(&buf[..read_len]);
+    }
+
+    Ok(format_sha256_etag(hasher.finalize()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,20 +121,6 @@ struct MoveParams {
     to: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ExecParams {
-    command: String,
-    #[serde(default)]
-    timeout_ms: Option<u64>,
-}
-
-impl ExecParams {
-    fn timeout_ms(&self) -> u64 {
-        self.timeout_ms.unwrap_or(EXEC_TIMEOUT_MS)
-    }
-}
-
 pub(super) fn parse_max_file_bytes(value: Option<&str>) -> u64 {
     value
         .and_then(|value| value.parse::<u64>().ok())
@@ -112,36 +133,53 @@ fn max_file_bytes() -> u64 {
     parse_max_file_bytes(value.as_deref())
 }
 
-fn default_exclude_names() -> HashSet<String> {
-    DEFAULT_EXCLUDED_NAMES
-        .iter()
-        .map(|name| (*name).to_string())
-        .collect()
-}
-
 pub(super) async fn handle_read_dir(
     params: Option<serde_json::Value>,
 ) -> FsResult<serde_json::Value> {
     let params: PathParams = parse_params(params)?;
-    let clean_path = sanitize_path(&params.path).await?;
+    let (abs_path, rel_path) =
+        resolve_workspace_path(&params.path, true).map_err(FsError::message)?;
+    let is_root = is_workspace_root_rel(&rel_path);
 
-    let mut entries = Vec::new();
-    let mut dir = tokio::fs::read_dir(clean_path).await?;
+    let entries = tokio::task::spawn_blocking(move || -> FsResult<Vec<serde_json::Value>> {
+        let mut entries = Vec::new();
+        for entry_res in std::fs::read_dir(&abs_path)? {
+            let entry = match entry_res {
+                Ok(entry) => entry,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error.into()),
+            };
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if (is_root && is_reserved_workspace_root_entry(&name))
+                || is_atomic_tmp_file_name(&name)
+            {
+                continue;
+            }
+            let metadata = match std::fs::metadata(entry.path()) {
+                Ok(metadata) => metadata,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error.into()),
+            };
 
-    while let Some(entry) = dir.next_entry().await? {
-        let metadata = entry.metadata().await?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let is_dir = metadata.is_dir();
-        let size = metadata.len();
-        let mtime = mtime_secs(&metadata);
+            entries.push(json!({
+                "name": name,
+                "is_dir": metadata.is_dir(),
+                "size": metadata.len(),
+                "mtime": mtime_secs(&metadata)
+            }));
+        }
 
-        entries.push(json!({
-            "name": name,
-            "is_dir": is_dir,
-            "size": size,
-            "mtime": mtime
-        }));
-    }
+        Ok(entries)
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Read dir task failed: {e}")))??;
 
     Ok(serde_json::Value::Array(entries))
 }
@@ -150,42 +188,55 @@ pub(super) async fn handle_read_file(
     params: Option<serde_json::Value>,
 ) -> FsResult<serde_json::Value> {
     let params: PathParams = parse_params(params)?;
-    let clean_path = sanitize_path(&params.path).await?;
-
-    let mut file = tokio::fs::File::open(&clean_path).await?;
-    let metadata = file.metadata().await?;
-    if metadata.is_dir() {
-        return Err(FsError::message("Cannot read a directory as a file"));
-    }
-
-    let file_size = metadata.len();
+    let (abs_path, _) = resolve_workspace_path(&params.path, false).map_err(FsError::message)?;
     let max_file_bytes = max_file_bytes();
-    if file_size > max_file_bytes {
-        return Err(FsError::FileTooLarge {
-            operation: "read",
-            size: file_size,
-            max_size: max_file_bytes,
-        });
-    }
 
-    let mut content_bytes = Vec::with_capacity(file_size as usize);
-    file.read_to_end(&mut content_bytes).await?;
+    tokio::task::spawn_blocking(move || {
+        let file = std::fs::File::open(&abs_path)?;
+        let fd_meta = file.metadata()?;
+        if fd_meta.is_dir() {
+            return Err(FsError::message("Cannot read a directory as a file"));
+        }
+        if !fd_meta.is_file() {
+            return Err(FsError::message("Cannot read non-regular file"));
+        }
+        if fd_meta.len() > max_file_bytes {
+            return Err(FsError::FileTooLarge {
+                operation: "read",
+                size: fd_meta.len(),
+                max_size: max_file_bytes,
+            });
+        }
 
-    let mut content_b64 = String::with_capacity(content_bytes.len().div_ceil(3) * 4);
-    base64::engine::general_purpose::STANDARD.encode_string(&content_bytes, &mut content_b64);
-    let etag = file_etag(&content_bytes);
+        let mut content_bytes = Vec::with_capacity(fd_meta.len() as usize);
+        file.take(max_file_bytes + 1)
+            .read_to_end(&mut content_bytes)?;
+        if content_bytes.len() as u64 > max_file_bytes {
+            return Err(FsError::FileTooLarge {
+                operation: "read",
+                size: content_bytes.len() as u64,
+                max_size: max_file_bytes,
+            });
+        }
 
-    Ok(json!({
-        "content": content_b64,
-        "etag": etag
-    }))
+        let mut content_b64 = String::with_capacity(content_bytes.len().div_ceil(3) * 4);
+        base64::engine::general_purpose::STANDARD.encode_string(&content_bytes, &mut content_b64);
+        let etag = file_etag(&content_bytes);
+
+        Ok(json!({
+            "content": content_b64,
+            "etag": etag
+        }))
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Read file task failed: {e}")))?
 }
 
 pub(super) async fn handle_write_file(
     params: Option<serde_json::Value>,
 ) -> FsResult<serde_json::Value> {
     let params: WriteFileParams = parse_params(params)?;
-    let clean_path = sanitize_create_path(&params.path).await?;
+    let (abs_path, _) = resolve_workspace_path(&params.path, false).map_err(FsError::message)?;
     let raw_bytes = base64::engine::general_purpose::STANDARD.decode(&params.content)?;
     let max_file_bytes = max_file_bytes();
 
@@ -197,36 +248,94 @@ pub(super) async fn handle_write_file(
         });
     }
 
-    match tokio::fs::symlink_metadata(&clean_path).await {
-        Ok(_) => {
-            let current_bytes = tokio::fs::read(&clean_path).await?;
-            let actual_etag = file_etag(&current_bytes);
+    let expected_old_etag = params.old_etag;
+    tokio::task::spawn_blocking(move || {
+        let mut existing_permissions = None;
+        let mut is_symlink = false;
+        match std::fs::symlink_metadata(&abs_path) {
+            Ok(meta) => {
+                if meta.is_dir() {
+                    return Err(FsError::message("Cannot overwrite a directory"));
+                }
+                is_symlink = meta.file_type().is_symlink();
+                let Some(ref expected) = expected_old_etag else {
+                    // 写入已存在文件时必须提供匹配的 old_etag，避免未校验直接覆盖。
+                    return Err(FsError::FileConflict);
+                };
 
-            // 写入基于 read_file 返回的内容版本；不同版本说明文件已被其他来源修改。
-            if params.old_etag.as_ref() != Some(&actual_etag) {
-                return Err(FsError::FileConflict);
+                let existing_file = std::fs::File::open(&abs_path)?;
+                let fd_meta = existing_file.metadata()?;
+                if fd_meta.is_dir() {
+                    return Err(FsError::message("Cannot overwrite a directory"));
+                }
+                if fd_meta.len() > max_file_bytes {
+                    return Err(FsError::FileTooLarge {
+                        operation: "write",
+                        size: fd_meta.len(),
+                        max_size: max_file_bytes,
+                    });
+                }
+                existing_permissions = Some(fd_meta.permissions());
+
+                let actual_etag = file_etag_from_reader(existing_file, max_file_bytes)?;
+                if expected != &actual_etag {
+                    return Err(FsError::FileConflict);
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+
+        if let Some(parent) = abs_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        if is_symlink {
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&abs_path)?;
+            file.write_all(&raw_bytes)?;
+            file.flush()?;
+        } else {
+            // 经由同目录隐藏临时文件原子替换，避免中断写留下半成品；`watcher` 与列表会隐藏 `.fastgpt-tmp-*`。
+            let seq = TEMP_WRITE_SEQ.fetch_add(1, Ordering::Relaxed);
+            let file_name = abs_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| FsError::message("Invalid destination file name"))?;
+            let tmp_name = format!(".{file_name}.fastgpt-tmp-{}-{seq}", std::process::id());
+            let tmp_path = abs_path.with_file_name(&tmp_name);
+
+            let mut tmp_file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&tmp_path)?;
+            let write_result = (|| -> std::io::Result<()> {
+                tmp_file.write_all(&raw_bytes)?;
+                tmp_file.flush()?;
+                if let Some(permissions) = existing_permissions {
+                    let _ = tmp_file.set_permissions(permissions);
+                }
+                drop(tmp_file);
+                std::fs::rename(&tmp_path, &abs_path)
+            })();
+            if let Err(err) = write_result {
+                let _ = std::fs::remove_file(&tmp_path);
+                return Err(err.into());
             }
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error.into()),
-    }
 
-    if let Some(parent) = clean_path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
-
-    let mut file = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&clean_path)
-        .await?;
-    file.write_all(&raw_bytes).await?;
-
-    Ok(json!({ "etag": file_etag(&raw_bytes) }))
+        Ok(json!({ "etag": file_etag(&raw_bytes) }))
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Write file task failed: {e}")))?
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 struct FsTreeNode {
     name: String,
     #[serde(rename = "type")]
@@ -241,94 +350,86 @@ struct FsTreeNode {
     loaded: Option<bool>,
 }
 
-async fn scan_dir_recursive(
+fn scan_dir_sync(
     dir_path: &Path,
-    rel_path: String,
+    is_root: bool,
+    rel_path: &str,
     level: usize,
     max_depth: usize,
-    exclude_names: Arc<HashSet<String>>,
+    exclude_names: &HashSet<String>,
+    total_entries: &mut usize,
 ) -> FsResult<Vec<FsTreeNode>> {
-    let mut dir = match tokio::fs::read_dir(dir_path).await {
-        Ok(dir) => dir,
+    let read_dir = match std::fs::read_dir(dir_path) {
+        Ok(entries) => entries,
         Err(_) => return Ok(Vec::new()),
     };
 
-    let mut tasks = futures_util::stream::FuturesUnordered::new();
-
-    loop {
-        let entry = match dir.next_entry().await {
-            Ok(Some(entry)) => entry,
-            Ok(None) => break,
-            // 目录可能在扫描过程中被删除；返回已收集的快照，而不是让整个请求失败。
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
+    let mut nodes = Vec::new();
+    for entry_res in read_dir {
+        if *total_entries >= MAX_RECURSIVE_ENTRIES {
+            break;
+        }
+        let entry = match entry_res {
+            Ok(entry) => entry,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
             Err(error) => return Err(error.into()),
         };
-        let name = entry.file_name().to_string_lossy().into_owned();
 
-        if exclude_names.contains(&name) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if (is_root && is_reserved_workspace_root_entry(&name))
+            || is_atomic_tmp_file_name(&name)
+            || exclude_names.contains(&name)
+        {
             continue;
         }
 
-        let child_path = entry.path();
+        let entry_path = entry.path();
+        let metadata = match std::fs::symlink_metadata(&entry_path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+
+        let is_dir = metadata.file_type().is_dir();
         let child_rel_path = if rel_path.is_empty() {
             name.clone()
         } else {
             format!("{rel_path}/{name}")
         };
 
-        let file_type = match entry.file_type().await {
-            Ok(file_type) => file_type,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(error) => return Err(error.into()),
+        *total_entries += 1;
+
+        let children = if is_dir && level < max_depth {
+            Some(scan_dir_sync(
+                &entry_path,
+                false,
+                &child_rel_path,
+                level + 1,
+                max_depth,
+                exclude_names,
+                total_entries,
+            )?)
+        } else {
+            None
         };
-        let is_dir = file_type.is_dir();
-        let exclude_names = Arc::clone(&exclude_names);
 
-        tasks.push(async move {
-            let metadata = match entry.metadata().await {
-                Ok(metadata) => metadata,
-                // entry 可能已在异步任务执行前被删除，不应使整个目录树读取失败。
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-                Err(error) => return Err(error.into()),
-            };
-            let mut children = None;
-            if is_dir && level < max_depth {
-                children = Some(
-                    Box::pin(scan_dir_recursive(
-                        &child_path,
-                        child_rel_path.clone(),
-                        level + 1,
-                        max_depth,
-                        exclude_names,
-                    ))
-                    .await?,
-                );
-            }
-
-            Ok::<_, FsError>(Some(FsTreeNode {
-                name,
-                item_type: if is_dir {
-                    "directory".to_string()
-                } else {
-                    "file".to_string()
-                },
-                size: metadata.len(),
-                mtime: mtime_secs(&metadata),
-                path: child_rel_path,
-                level,
-                children,
-                loaded: is_dir.then_some(level < max_depth),
-            }))
+        nodes.push(FsTreeNode {
+            name,
+            item_type: if is_dir {
+                "directory".to_string()
+            } else {
+                "file".to_string()
+            },
+            size: metadata.len(),
+            mtime: mtime_secs(&metadata),
+            path: child_rel_path,
+            level,
+            children,
+            loaded: is_dir.then_some(level < max_depth),
         });
     }
 
-    let mut entries = Vec::new();
-    while let Some(result) = tasks.next().await {
-        if let Some(entry) = result? {
-            entries.push(entry);
-        }
-    }
-    entries.sort_by(|left, right| {
+    nodes.sort_by(|left, right| {
         let left_is_dir = left.item_type == "directory";
         let right_is_dir = right.item_type == "directory";
         if left_is_dir != right_is_dir {
@@ -337,22 +438,49 @@ async fn scan_dir_recursive(
             left.name.to_lowercase().cmp(&right.name.to_lowercase())
         }
     });
-    Ok(entries)
+
+    Ok(nodes)
 }
 
 pub(super) async fn handle_read_dir_recursive(
     params: Option<serde_json::Value>,
 ) -> FsResult<serde_json::Value> {
     let params: ReadDirRecursiveParams = parse_params(params)?;
-    let clean_path = sanitize_path(&params.path).await?;
     let max_depth = params.max_depth.min(50) as usize;
-    let exclude_names = Arc::new(
-        params
-            .exclude_names
-            .map(|items| items.into_iter().collect())
-            .unwrap_or_else(default_exclude_names),
-    );
-    let files = scan_dir_recursive(&clean_path, String::new(), 0, max_depth, exclude_names).await?;
+    let exclude_names: HashSet<String> = params
+        .exclude_names
+        .map(|items| items.into_iter().collect())
+        .unwrap_or_else(|| {
+            DEFAULT_EXCLUDED_NAMES
+                .iter()
+                .map(|name| (*name).to_string())
+                .collect()
+        });
+    let (abs_path, rel_path) =
+        resolve_workspace_path(&params.path, true).map_err(FsError::message)?;
+    let is_root = is_workspace_root_rel(&rel_path);
+
+    let files = tokio::task::spawn_blocking(move || {
+        if !abs_path.is_dir() {
+            return Err(FsError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Target directory not found",
+            )));
+        }
+        let mut total_entries = 0;
+        scan_dir_sync(
+            &abs_path,
+            is_root,
+            "",
+            0,
+            max_depth,
+            &exclude_names,
+            &mut total_entries,
+        )
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Recursive scan task failed: {e}")))??;
+
     let expanded_paths = if files
         .iter()
         .any(|node| node.item_type == "directory" && node.level == 0 && node.path == "skills")
@@ -370,8 +498,15 @@ pub(super) async fn handle_read_dir_recursive(
 
 pub(super) async fn handle_mkdir(params: Option<serde_json::Value>) -> FsResult<serde_json::Value> {
     let params: PathParams = parse_params(params)?;
-    let clean_path = sanitize_create_path(&params.path).await?;
-    tokio::fs::create_dir_all(&clean_path).await?;
+    let (abs_path, _) = resolve_workspace_path(&params.path, false).map_err(FsError::message)?;
+
+    tokio::task::spawn_blocking(move || -> FsResult<()> {
+        std::fs::create_dir_all(&abs_path)?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Mkdir task failed: {e}")))??;
+
     Ok(json!({ "success": true }))
 }
 
@@ -379,110 +514,48 @@ pub(super) async fn handle_delete(
     params: Option<serde_json::Value>,
 ) -> FsResult<serde_json::Value> {
     let params: PathParams = parse_params(params)?;
-    let clean_path = sanitize_path(&params.path).await?;
-    if is_workspace_root_path(&clean_path) {
+    let (abs_path, rel_path) =
+        resolve_workspace_path(&params.path, true).map_err(FsError::message)?;
+    if is_workspace_root_rel(&rel_path) {
         return Err(FsError::message("Refusing to delete workspace root"));
     }
 
-    // 直接尝试删除文件，若报错（如目标是目录）则回退为目录递归删除。
-    if let Err(error) = tokio::fs::remove_file(&clean_path).await {
-        if error.kind() == std::io::ErrorKind::NotFound {
-            return Err(FsError::message("File or directory not found"));
+    tokio::task::spawn_blocking(move || -> FsResult<()> {
+        // 使用 symlink_metadata 不跟随目标软链，只删除链接本身。
+        let meta = std::fs::symlink_metadata(&abs_path)?;
+        if meta.file_type().is_dir() {
+            std::fs::remove_dir_all(&abs_path)?;
+        } else {
+            std::fs::remove_file(&abs_path)?;
         }
-        tokio::fs::remove_dir_all(&clean_path).await?;
-    }
+        Ok(())
+    })
+    .await
+    .map_err(|e| FsError::message(format!("Delete task failed: {e}")))??;
+
     Ok(json!({ "success": true }))
 }
 
 pub(super) async fn handle_move(params: Option<serde_json::Value>) -> FsResult<serde_json::Value> {
     let params: MoveParams = parse_params(params)?;
-    let clean_from = sanitize_existing_workspace_entry_path(&params.from).await?;
-    let clean_to = sanitize_create_path(&params.to).await?;
-    if is_workspace_root_path(&clean_from) {
+    let (from_abs, from_rel) =
+        resolve_workspace_path(&params.from, true).map_err(FsError::message)?;
+    if is_workspace_root_rel(&from_rel) {
         return Err(FsError::message("Refusing to move workspace root"));
     }
+    let (to_abs, _) = resolve_workspace_path(&params.to, false).map_err(FsError::message)?;
 
-    // 不能用 exists()，否则会跟随最后一个 symlink。
-    if tokio::fs::symlink_metadata(&clean_from).await.is_err() {
-        return Err(FsError::message("Source path does not exist"));
-    }
-    if let Some(parent) = clean_to.parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
-    tokio::fs::rename(&clean_from, &clean_to).await?;
-    Ok(json!({ "success": true }))
-}
-
-async fn read_limited_output<R>(mut reader: R) -> FsResult<Vec<u8>>
-where
-    R: AsyncRead + Unpin,
-{
-    let mut output = Vec::new();
-    let mut buffer = [0_u8; 8192];
-    loop {
-        let read_len = reader.read(&mut buffer).await?;
-        if read_len == 0 {
-            break;
+    tokio::task::spawn_blocking(move || -> FsResult<()> {
+        if let Some(parent) = to_abs.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)?;
         }
-        // 达到返回上限后继续 drain pipe，避免子进程因 stdout/stderr 写满而卡住。
-        let remaining = EXEC_MAX_OUTPUT_BYTES.saturating_sub(output.len());
-        if remaining > 0 {
-            output.extend_from_slice(&buffer[..read_len.min(remaining)]);
-        }
-    }
-    Ok(output)
-}
-
-pub(super) async fn handle_exec(params: Option<serde_json::Value>) -> FsResult<serde_json::Value> {
-    let params: ExecParams = parse_params(params)?;
-    if params.command.trim().is_empty() {
-        return Err(FsError::message("command param required"));
-    }
-    let timeout_ms = params.timeout_ms();
-    let mut child = Command::new("sh")
-        .arg("-lc")
-        .arg(params.command)
-        .current_dir(get_workspace_root())
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| FsError::message("Failed to capture command stdout"))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| FsError::message("Failed to capture command stderr"))?;
-
-    let output = match tokio::time::timeout(Duration::from_millis(timeout_ms), async {
-        let (status, stdout, stderr) = tokio::try_join!(
-            async { Ok::<_, FsError>(child.wait().await?) },
-            read_limited_output(stdout),
-            read_limited_output(stderr)
-        )?;
-        Ok::<_, FsError>((status, stdout, stderr))
+        std::fs::rename(&from_abs, &to_abs)?;
+        Ok(())
     })
     .await
-    {
-        Ok(output) => output?,
-        Err(_) => {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-            return Ok(json!({
-                "exitCode": -1,
-                "stdout": "",
-                "stderr": format!("Command timed out after {timeout_ms}ms"),
-            }));
-        }
-    };
+    .map_err(|e| FsError::message(format!("Move task failed: {e}")))??;
 
-    let (status, stdout, stderr) = output;
-    Ok(json!({
-        "exitCode": status.code().unwrap_or(-1),
-        "stdout": String::from_utf8_lossy(&stdout).to_string(),
-        "stderr": String::from_utf8_lossy(&stderr).to_string(),
-    }))
+    Ok(json!({ "success": true }))
 }

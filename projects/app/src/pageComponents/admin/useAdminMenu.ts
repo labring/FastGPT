@@ -232,11 +232,11 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
       value: '/admin/subservice/code-sandbox',
       children: [
         {
-          label: lbl('menu_subservice_code_sandbox', 'Code Sandbox'),
+          label: lbl('menu_subservice_code_sandbox', '代码沙盒'),
           value: '/admin/subservice/code-sandbox'
         },
         {
-          label: lbl('menu_subservice_agent_sandbox', 'Agent Sandbox'),
+          label: lbl('menu_subservice_agent_sandbox', 'Agent 沙盒'),
           value: '/admin/subservice/agent-sandbox'
         },
         {

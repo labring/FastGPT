@@ -1,11 +1,14 @@
 import {
   hasDamagedSecurityOverrides,
   LegacyBooleanSchema,
-  readMigrationDomainConfig
+  readMigrationDomainConfig,
+  resolveAgentSandboxProxyFromEnv
 } from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { PDF_PARSE_TIMEOUT_DEFAULT_SECONDS } from '@fastgpt/global/common/system/config/schemas/providers';
 import { NumSchema } from '@fastgpt/global/common/zod';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -241,10 +244,10 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['security'];
 
   // ---------- feature ----------
+  // AGENT_ENGINE 已随 piAgent 下架停止迁入，确保残留该环境变量的老部署跳过写入且不触发严格 Schema 报错。
   overrides.feature = compact({
     hideChatCopyrightSetting: optionalBool(legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING),
     multipleDataToBase64: optionalBool(legacyEnv.MULTIPLE_DATA_TO_BASE64),
-    agentEngine: optionalText(legacyEnv.AGENT_ENGINE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
     showOpenaiAccount: optionalBool(feConfigs.show_openai_account),
     enableTeamModel: optionalBool(feConfigs.enable_team_model),
@@ -295,6 +298,7 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['resource'];
 
   // ---------- performance ----------
+  const legacyFileTimeoutSeconds = optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS);
   overrides.performance = compact({
     workflow: compact({
       maxRunTimes: optionalNumber(legacyEnv.WORKFLOW_MAX_RUN_TIMES),
@@ -304,7 +308,7 @@ export const buildLegacyDomainOverrides = ({
         optionalNumber(legacyEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
     }),
     parse: compact({
-      fileTimeoutSeconds: optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS),
+      fileTimeoutSeconds: legacyFileTimeoutSeconds,
       xlsxMaxRows: optionalNumber(legacyEnv.XLSX_PARSE_MAX_ROWS),
       xlsxMaxColumns: optionalNumber(legacyEnv.XLSX_PARSE_MAX_COLUMNS),
       xlsxMaxCells: optionalNumber(legacyEnv.XLSX_PARSE_MAX_CELLS),
@@ -326,7 +330,10 @@ export const buildLegacyDomainOverrides = ({
       maxQpm: optionalNumber(legacyEnv.CHAT_MAX_QPM)
     }),
     tracking: compact({
-      retentionHours: optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
+      retentionHours: (() => {
+        const raw = optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS);
+        return raw !== undefined ? clampLlmTraceRetentionHours(raw) : undefined;
+      })()
     })
   }) as DomainOverrides['performance'];
 
@@ -363,32 +370,48 @@ export const buildLegacyDomainOverrides = ({
     legacy: legacyPdfCredentials,
     env: envPdfCredentials
   });
-  const customPdf = {
-    url: customPdfCredentials.url,
-    key: customPdfCredentials.key,
-    somarkApiKey:
-      optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(legacyEnv.SOMARK_API_KEY),
-    doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY),
-    textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
-    textinSecretCode:
-      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE),
-    price: optionalNumber(legacyCustomPdf.price)
-  };
   const sangforCredentials = isSangfor
     ? resolveCredentialGroup({ legacy: legacyPdfCredentials, env: envPdfCredentials })
     : { url: undefined, key: undefined };
+  const somarkApiKey =
+    optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(legacyEnv.SOMARK_API_KEY);
+  const doc2xKey = optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY);
+  const textinAppId =
+    optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID);
+  const textinSecretCode =
+    optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE);
 
-  // 旧运行时没有 provider 选择，按 custom → somark → textin → doc2x 的固定顺序选择第一个
-  // 可用凭据。迁移时把这一实际选择固化为 provider，运行期改为按 provider 分派，
-  // 避免管理员切换后仍被旧凭据抢占。
+  // 旧运行时没有 provider 选择，按 sangfor(需有 URL) → custom → somark → textin → doc2x 的固定顺序选择第一个
+  // 可用凭据。迁移时把这一实际选择固化为 provider，并按最终生效服务选择旧超时来源。
   const documentParseProvider = (() => {
     if (isSangfor && sangforCredentials.url) return 'sangfor' as const;
-    if (customPdf.url) return 'customPdf' as const;
-    if (customPdf.somarkApiKey) return 'somark' as const;
-    if (customPdf.textinAppId && customPdf.textinSecretCode) return 'textin' as const;
-    if (customPdf.doc2xKey) return 'doc2x' as const;
+    if (customPdfCredentials.url) return 'customPdf' as const;
+    if (somarkApiKey) return 'somark' as const;
+    if (textinAppId && textinSecretCode) return 'textin' as const;
+    if (doc2xKey) return 'doc2x' as const;
     return undefined;
   })();
+
+  const legacyPdfTimeoutSeconds =
+    documentParseProvider === 'sangfor'
+      ? optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+      : legacyFileTimeoutSeconds;
+  const customPdf = {
+    url: customPdfCredentials.url,
+    key: customPdfCredentials.key,
+    somarkApiKey,
+    doc2xKey,
+    textinAppId,
+    textinSecretCode,
+    // 旧版文档增强解析（含深信服）统一复用 customPdf.timeoutSeconds；
+    // 仅在旧值大于默认值（600 秒）时自动回填到独立超时，避免小值反向缩短或触发最小 60 秒校验失败。
+    timeoutSeconds:
+      typeof legacyPdfTimeoutSeconds === 'number' &&
+      legacyPdfTimeoutSeconds > PDF_PARSE_TIMEOUT_DEFAULT_SECONDS
+        ? legacyPdfTimeoutSeconds
+        : undefined,
+    price: optionalNumber(legacyCustomPdf.price)
+  };
 
   overrides.providers = compact({
     documentParse: compact({
@@ -397,8 +420,7 @@ export const buildLegacyDomainOverrides = ({
       sangfor: compact({
         url: sangforCredentials.url,
         key: sangforCredentials.key,
-        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS),
-        timeoutSeconds: optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS)
       })
     }),
     externalProviderWorkflowVariables: Array.isArray(feConfigs.externalProviderWorkflowVariables)
@@ -408,7 +430,39 @@ export const buildLegacyDomainOverrides = ({
 
   // ---------- subservice ----------
   const codeSandboxBaseUrl = optionalText(legacyEnv.CODE_SANDBOX_URL);
-  const agentSandboxProvider = optionalText(legacyEnv.AGENT_SANDBOX_PROVIDER);
+  const rawEnv = legacyEnv as unknown as Record<string, unknown>;
+  const readExtraLegacyEnv = (key: string) =>
+    Object.hasOwn(rawEnv, key) ? rawEnv[key] : process.env[key];
+  const rawSandboxProvider = readExtraLegacyEnv('AGENT_SANDBOX_PROVIDER');
+  const normalizedSandboxProvider =
+    typeof rawSandboxProvider === 'string' ? rawSandboxProvider.trim().toLowerCase() : undefined;
+  const openSandboxBaseUrl = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
+  const openSandboxApiKey = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
+  const openSandboxImage = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
+  const volumeManagerUrl = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL);
+  const volumeManagerToken = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN);
+  const validSandboxProxy = resolveAgentSandboxProxyFromEnv(readExtraLegacyEnv);
+  const isLegacyEnvTemplatePlaceholder =
+    openSandboxBaseUrl === 'http://localhost:8090' &&
+    validSandboxProxy?.wsUrl === 'ws://localhost:3006' &&
+    validSandboxProxy?.previewUrl === 'http://localhost:3006' &&
+    validSandboxProxy?.secret === 'default_fastgpt_agent_sandbox_proxy_secret';
+  // 旧版若显式声明 AGENT_SANDBOX_PROVIDER，仅在 opensandbox 时启用，保留 "" / none / sealosdevbox 的禁用语义；
+  // 新版 Helm / Compose 已移除该变量，未声明时凭完整控制面+代理凭据启用，但排除旧 .env.template 默认占位值。
+  const providerAllowsOpenSandbox =
+    normalizedSandboxProvider === undefined
+      ? !isLegacyEnvTemplatePlaceholder
+      : normalizedSandboxProvider === 'opensandbox';
+  const agentSandboxEnabled = Boolean(
+    providerAllowsOpenSandbox &&
+    openSandboxBaseUrl &&
+    openSandboxApiKey &&
+    openSandboxImage &&
+    volumeManagerUrl &&
+    volumeManagerToken &&
+    validSandboxProxy
+  );
+  const resolvedSandboxProxy = agentSandboxEnabled ? validSandboxProxy : undefined;
 
   overrides.subservice = compact({
     codeSandbox: compact({
@@ -423,7 +477,8 @@ export const buildLegacyDomainOverrides = ({
       sseProxyUrl: optionalText(legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
     }),
     agentSandbox: compact({
-      provider: agentSandboxProvider,
+      enabled: agentSandboxEnabled ? true : undefined,
+      proxy: resolvedSandboxProxy,
       common: compact({
         cpuCount: optionalNumber(legacyEnv.AGENT_SANDBOX_CPU_COUNT),
         memoryMiB: optionalNumber(legacyEnv.AGENT_SANDBOX_MEMORY_MIB),
@@ -442,20 +497,14 @@ export const buildLegacyDomainOverrides = ({
         pypiIndexUrl: optionalText(legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL),
         aptMirror: optionalText(legacyEnv.AGENT_SANDBOX_APT_MIRROR)
       }),
-      sealosdevbox: compact({
-        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_BASEURL),
-        token: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_TOKEN),
-        workDirectory: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY),
-        image: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_IMAGE)
-      }),
       opensandbox: compact({
-        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL),
-        apiKey: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY),
+        baseUrl: openSandboxBaseUrl,
+        apiKey: openSandboxApiKey,
         runtime: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME),
-        image: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE),
+        image: openSandboxImage,
         useServerProxy: optionalBool(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY),
-        volumeManagerUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL),
-        volumeManagerToken: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN),
+        volumeManagerUrl,
+        volumeManagerToken,
         volumeNamePrefix: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX)
       })
     })
@@ -914,6 +963,26 @@ const missingLegacyDefaultPaths = ({
   declared.filter((path) => !existingPaths.has(path) && !hasOverridePath(existingOverrides, path));
 
 /**
+ * 识别存量域文档中尚未清理但具有明确默认禁用语义的旧字段（如 `agentSandbox.provider = 'none' | 'sealosdevbox'`），
+ * 防止 Stage 2 环境变量补缺在 Stage 3 废弃字段清理前误把 `agentSandbox.enabled` 翻转为 `true`。
+ */
+const deriveImplicitLegacyDisabledPaths = (
+  domain: SystemInstanceConfigDomainKey,
+  existingOverrides: Record<string, unknown>
+): string[] => {
+  if (
+    domain === 'subservice' &&
+    isPlainObject(existingOverrides.agentSandbox) &&
+    typeof existingOverrides.agentSandbox.provider === 'string' &&
+    existingOverrides.agentSandbox.provider !== 'opensandbox' &&
+    !Object.hasOwn(existingOverrides.agentSandbox, 'enabled')
+  ) {
+    return ['agentSandbox.enabled'];
+  }
+  return [];
+};
+
+/**
  * 读取旧配置来源并生成迁移计划。
  * 仅当 11 个业务域均为空时读取 App defaultConfig.json；Pro ENV scope 不参与判空。
  *
@@ -1009,18 +1078,23 @@ export const inspectInstanceConfigMigration = async () => {
     if (!existingEntry || existingEntry.damagedSecurityOverrides) return false;
 
     const declaredExplicit = legacyExplicitDefaultPaths[domain] ?? [];
+    const implicitDisabledPaths = deriveImplicitLegacyDisabledPaths(
+      domain,
+      existingEntry.overrides
+    );
+    const effectiveExistingPaths = new Set([
+      ...existingEntry.explicitDefaultPaths,
+      ...implicitDisabledPaths
+    ]);
     const missingExplicitPaths = missingLegacyDefaultPaths({
       declared: declaredExplicit,
       existingOverrides: existingEntry.overrides,
-      existingPaths: existingEntry.explicitDefaultPaths
+      existingPaths: effectiveExistingPaths
     });
     const missing = computeMissingOverrides({
       existing: existingEntry.overrides,
       target: targetOverrides,
-      explicitDefaultPaths: new Set([
-        ...existingEntry.explicitDefaultPaths,
-        ...missingExplicitPaths
-      ])
+      explicitDefaultPaths: new Set([...effectiveExistingPaths, ...missingExplicitPaths])
     });
     if (!missing && missingExplicitPaths.length === 0) return false;
 
@@ -1104,15 +1178,17 @@ export const applyInstanceConfigMigration = async ({
           : []
       );
       const declaredExplicitDefaultPaths = explicitDefaultPaths?.[domain] ?? [];
+      const implicitDisabledPaths = deriveImplicitLegacyDisabledPaths(domain, existingOverrides);
+      const effectiveExistingPaths = new Set([
+        ...existingExplicitDefaultPaths,
+        ...implicitDisabledPaths
+      ]);
       const missingExplicitPaths = missingLegacyDefaultPaths({
         declared: declaredExplicitDefaultPaths,
         existingOverrides,
-        existingPaths: existingExplicitDefaultPaths
+        existingPaths: effectiveExistingPaths
       });
-      const explicitDefaultPathsSet = new Set([
-        ...existingExplicitDefaultPaths,
-        ...missingExplicitPaths
-      ]);
+      const explicitDefaultPathsSet = new Set([...effectiveExistingPaths, ...missingExplicitPaths]);
       const missing = computeMissingOverrides({
         existing: existingOverrides,
         target: targetOverrides,

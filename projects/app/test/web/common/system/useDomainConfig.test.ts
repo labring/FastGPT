@@ -3,12 +3,23 @@ import { JSDOM } from 'jsdom';
 import type { Root } from 'react-dom/client';
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), toast: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  toast: vi.fn(),
+  clientInitData: vi.fn().mockResolvedValue({ feConfigs: {} }),
+  subPlans: undefined as Record<string, unknown> | undefined
+}));
 vi.mock('@/web/common/api/request', () => ({ GET: mocks.get, POST: mocks.post }));
+vi.mock('@/web/common/system/staticData', () => ({
+  clientInitData: mocks.clientInitData
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ feConfigs: { isProService: false } })
+  useSystemStore: Object.assign(() => ({ feConfigs: { isProService: false } }), {
+    getState: () => ({ subPlans: mocks.subPlans })
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -89,6 +100,8 @@ describe('useDomainConfig', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const { createRoot } = await import('react-dom/client');
     vi.clearAllMocks();
+    mocks.subPlans = undefined;
+    mocks.clientInitData.mockResolvedValue({ feConfigs: {} });
     mocks.get.mockResolvedValue({
       revision: 3,
       overrides: { name: 'Original' },
@@ -293,5 +306,59 @@ describe('useDomainConfig', () => {
     });
     expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(false);
     expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+  });
+
+  it('delays clientInitData by 2s after save, coalesces rapid saves, and preserves includeSubPlans', async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.post.mockResolvedValue({ results: [] });
+
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 1, overrides: { name: 'Updated' } }]
+      });
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(1);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0 });
+
+      // 连续保存合并为一次 2 秒后的刷新，且保留之前保存携带的 includeSubPlans
+      await updateDomainConfigApi({
+        items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
+        subPlans: {},
+        subPlansExpectedRevision: 1
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Updated 2' } }]
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(2);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+
+      mocks.subPlans = { standard: {} };
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 3, overrides: { name: 'Updated 3' } }]
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(3);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+
+      mocks.clientInitData.mockClear();
+      mocks.post.mockRejectedValueOnce(new Error('Save failed'));
+      await expect(
+        updateDomainConfigApi({
+          items: [{ domain: 'site', expectedRevision: 3, overrides: { name: 'Fail' } }]
+        })
+      ).rejects.toThrow('Save failed');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

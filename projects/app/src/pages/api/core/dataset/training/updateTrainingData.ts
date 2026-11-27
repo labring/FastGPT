@@ -22,12 +22,18 @@ import {
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { buildCollectionAuditResource, buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
+import {
+  buildCollectionAuditResource,
+  buildDatasetAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -192,7 +198,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     );
     await publishTrainingWakeup({
       modes: [nextMode ?? data.mode],
-      session
+      tx: bridgeClientSessionToDbSession(session)
     });
   });
 

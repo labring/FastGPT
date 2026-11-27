@@ -22,7 +22,7 @@ import userErr, { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { EnterpriseAuthErrEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const ALLOWED_ERROR_HTTP_STATUSES = new Set<ErrorHttpStatus>([
-  400, 401, 402, 403, 404, 405, 406, 409, 410, 413, 422, 429, 500, 502, 503, 504
+  400, 401, 402, 403, 404, 405, 406, 409, 410, 413, 422, 429, 500, 501, 502, 503, 504
 ]);
 
 describe('ERROR_RESPONSE HTTP status contract', () => {
@@ -122,7 +122,12 @@ describe('ERROR_RESPONSE HTTP status contract', () => {
     [CommonErrEnum.pdfEncrypted, 507009, 422],
     [SkillErrEnum.noStorage, 509007, 422],
     [TeamErrEnum.tooManyInvitations, 500029, 429],
-    [SandboxErrEnum.runtimeUpgradeFailed, 510002, 500],
+    [SandboxErrEnum.agentSandboxPermissionDenied, 510000, 403],
+    [SandboxErrEnum.agentSandboxInitializing, 510001, 409],
+    [SandboxErrEnum.agentSandboxLimitReached, 510004, 409],
+    [SandboxErrEnum.agentSandboxTeamLimitReached, 510005, 409],
+    [SandboxErrEnum.agentSandboxMigrationInProgress, 510006, 409],
+    [SandboxErrEnum.agentSandboxDiskQuotaExceeded, 510007, 403],
     [CommonErrEnum.pdfParseFailed, 507008, 500],
     [DatasetErrEnum.externalChunkFailed, 501013, 502],
     [DatasetErrEnum.externalChunkNotConfigured, 501015, 503],

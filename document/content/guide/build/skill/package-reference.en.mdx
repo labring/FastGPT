@@ -121,7 +121,7 @@ fi
 
 ### versionId Deduplication
 
-The sandbox tracks successfully initialized `versionId` records in `~/.fastgpt/runtime/state.json`. Subsequent conversations reusing the sandbox instance skip script execution for previously completed versions, enabling rapid startup.
+The sandbox tracks successfully initialized `versionId` records in `/var/lib/fastgpt-runtime/state.json`. Subsequent conversations reusing the sandbox instance skip script execution for previously completed versions, enabling rapid startup.
 
 See the [Initialization Script Guide](/en/guide/build/skill/initialization) for execution limits and fault-tolerance policies.
 

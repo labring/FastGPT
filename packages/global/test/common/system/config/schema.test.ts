@@ -1,5 +1,13 @@
 import { vi, describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
+import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
+import {
+  getSomarkRegionPreset,
+  resolveSomarkBaseUrl,
+  SOMARK_BASE_URL_CN,
+  SOMARK_BASE_URL_GLOBAL
+} from '@fastgpt/global/common/system/config/schemas/providers';
 import {
   getDomainDefaultConfig,
   parseDomainOverrides,
@@ -400,6 +408,74 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     });
     expect(somarkConfig.documentParse.provider).toBe('somark');
     expect(somarkConfig.documentParse.customPdf.somarkApiKey).toBe('sk-somark-xxx');
+    expect(somarkConfig.documentParse.customPdf.somarkBaseUrl).toBe(SOMARK_BASE_URL_GLOBAL);
+    expect(somarkConfig.documentParse.customPdf.timeoutSeconds).toBe(600);
+
+    for (const timeoutSeconds of [60, 600, 7200]) {
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { timeoutSeconds } } }
+        }).documentParse.customPdf.timeoutSeconds
+      ).toBe(timeoutSeconds);
+    }
+    for (const invalidTimeout of [0, 59, 7201, 12.5]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { timeoutSeconds: invalidTimeout } } }
+        })
+      ).toThrow();
+    }
+
+    // 已移除独立的 sangfor.timeoutSeconds，宽松读取应剥离历史字段且严格保存应拒绝再次写入。
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } } as any,
+        options: { strict: false }
+      }).documentParse.sangfor
+    ).not.toHaveProperty('timeoutSeconds');
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'providers',
+        overrides: { documentParse: { sangfor: { timeoutSeconds: 45 } } } as any
+      })
+    ).toThrow();
+
+    // somarkBaseUrl supports global, CN, custom HTTP(S) base URLs, and legacy empty string
+    for (const somarkBaseUrl of [
+      '',
+      SOMARK_BASE_URL_GLOBAL,
+      SOMARK_BASE_URL_CN,
+      'https://oxr.example.com/api/v1'
+    ]) {
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { somarkBaseUrl } } }
+        }).documentParse.customPdf.somarkBaseUrl
+      ).toBe(somarkBaseUrl);
+    }
+    for (const invalid of [
+      'ftp://somark.example.com/api/v1',
+      'https://user:pass@somark.example.com/api/v1',
+      'https://somark.example.com/api/v1?x=1',
+      'https://somark.example.com/api/v1#frag'
+    ]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'providers',
+          overrides: { documentParse: { customPdf: { somarkBaseUrl: invalid } } }
+        })
+      ).toThrow();
+    }
+    expect(resolveSomarkBaseUrl('')).toBe(SOMARK_BASE_URL_GLOBAL);
+    expect(resolveSomarkBaseUrl('  https://somark.cn/api/v1/  ')).toBe(SOMARK_BASE_URL_CN);
+    expect(getSomarkRegionPreset('')).toBe('global');
+    expect(getSomarkRegionPreset('https://somark.ai/api/v1/')).toBe('global');
+    expect(getSomarkRegionPreset('https://somark.cn/api/v1/')).toBe('cn');
+    expect(getSomarkRegionPreset('https://oxr.example.com/api/v1')).toBe('custom');
 
     // doc2x does not require customPdf.url
     const doc2xConfig = resolveDomainEffectiveConfig({
@@ -531,7 +607,7 @@ describe('resolveSystemInstanceConfig', () => {
     expect(fullConfig.site.name).toBe('My AI');
     expect(fullConfig.site.openApiPrefix).toBe('fastgpt');
     expect(fullConfig.performance.workflow.maxRunTimes).toBe(800);
-    expect(fullConfig.subservice.agentSandbox.provider).toBe('none');
+    expect(fullConfig.subservice.agentSandbox.enabled).toBe(false);
     expect(fullConfig.security.csrfEnabled).toBe(true);
   });
 });
@@ -645,28 +721,41 @@ describe('systemInstanceConfigRegistry', () => {
       expect(proKeys).not.toContain(key);
       expect(communityKeys).not.toContain(key);
     }
-  });
-  it('checks subservice resolveDomainEffectiveConfig errors', () => {
-    try {
-      resolveDomainEffectiveConfig({
-        domain: 'subservice',
-        overrides: {
-          agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: '', token: '', image: '' }
-          }
-        }
-      });
-    } catch (e: any) {
-      console.error('SEALOS_FAIL:', e.message);
-    }
 
-    try {
+    // 深信服专用字段默认隐藏，仅开启 ENABLE_SANGFOR_ADMIN_CONFIG 后进入展示集合
+    const sangforKeys = [
+      'providers.documentParse.sangfor.url',
+      'providers.documentParse.sangfor.extensions',
+      'providers.documentParse.sangfor.key'
+    ];
+    const sangforEnabledKeys = getSystemInstanceConfigRegistry('community', {
+      enableSangforAdminConfig: true
+    }).map((item) => item.key);
+    for (const key of sangforKeys) {
+      expect(communityKeys).not.toContain(key);
+      expect(proKeys).not.toContain(key);
+      expect(saasProKeys).not.toContain(key);
+      expect(sangforEnabledKeys).toContain(key);
+    }
+  });
+  it('checks subservice resolveDomainEffectiveConfig errors and rejects retired provider field', () => {
+    expect(() =>
       resolveDomainEffectiveConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'opensandbox',
+            provider: 'sealosdevbox'
+          } as any
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            enabled: true,
             opensandbox: {
               baseUrl: '',
               apiKey: '',
@@ -676,9 +765,62 @@ describe('systemInstanceConfigRegistry', () => {
             }
           }
         }
-      });
-    } catch (e: any) {
-      console.error('OPEN_FAIL:', e.message);
+      })
+    ).toThrow();
+
+    const baseEnabled = {
+      enabled: true,
+      proxy: {
+        wsUrl: 'wss://proxy.example.test',
+        previewUrl: 'https://preview.example.test',
+        secret: 'proxy_secret_32_characters_minimum'
+      },
+      opensandbox: {
+        baseUrl: 'https://opensandbox.example.test',
+        apiKey: 'osb-key',
+        image: 'fastgpt/agent-sandbox:v0.5.0',
+        volumeManagerUrl: 'http://volume-manager:8081',
+        volumeManagerToken: 'vm-token'
+      }
+    };
+    expect(() =>
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: { agentSandbox: baseEnabled }
+      })
+    ).not.toThrow();
+
+    for (const missingField of [
+      'baseUrl',
+      'apiKey',
+      'image',
+      'volumeManagerUrl',
+      'volumeManagerToken'
+    ] as const) {
+      expect(() =>
+        resolveDomainEffectiveConfig({
+          domain: 'subservice',
+          overrides: {
+            agentSandbox: {
+              ...baseEnabled,
+              opensandbox: { ...baseEnabled.opensandbox, [missingField]: '' }
+            }
+          }
+        })
+      ).toThrow();
+    }
+    for (const invalidUrl of ['ftp://opensandbox.test', 'https://u:p@opensandbox.test']) {
+      expect(() =>
+        resolveDomainEffectiveConfig({
+          domain: 'subservice',
+          overrides: {
+            agentSandbox: {
+              ...baseEnabled,
+              opensandbox: { ...baseEnabled.opensandbox, volumeManagerUrl: invalidUrl }
+            }
+          }
+        })
+      ).toThrow();
     }
   });
 });
@@ -735,9 +877,52 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
   });
 });
 
+describe('agentSandbox.common outbound proxy validation', () => {
+  it('defaults to empty/false, trims valid http/https proxy URLs, and rejects invalid URLs', () => {
+    const defaults = getDomainDefaultConfig('subservice').agentSandbox;
+    expect(defaults.common).toMatchObject({ httpProxy: '', httpsProxy: '', noProxy: '' });
+    expect(defaults.opensandbox.enableUpstreamProxy).toBe(false);
+
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: {
+        agentSandbox: {
+          common: {
+            httpProxy: ' http://127.0.0.1:7890 ',
+            httpsProxy: 'https://user:pass@10.1.2.3:8443/',
+            noProxy: '.corp.local,10.0.0.0/8'
+          },
+          opensandbox: { enableUpstreamProxy: true }
+        }
+      }
+    }).agentSandbox;
+    expect(effective.common).toMatchObject({
+      httpProxy: 'http://127.0.0.1:7890',
+      httpsProxy: 'https://user:pass@10.1.2.3:8443/',
+      noProxy: '.corp.local,10.0.0.0/8'
+    });
+    expect(effective.opensandbox.enableUpstreamProxy).toBe(true);
+
+    for (const bad of ['ftp://proxy.corp.local:21', 'not-a-url']) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'subservice',
+          overrides: { agentSandbox: { common: { httpProxy: bad } } }
+        })
+      ).toThrow();
+    }
+  });
+});
+
 describe('unvalidated instance config reads and strict saves', () => {
-  it('retains invalid known fields and incomplete provider config on reads without warning while rejecting saves', () => {
-    const raw = { agentSandbox: { provider: 'sealosdevbox', common: { memoryMiB: -1 } } };
+  it('retains invalid known fields and incomplete opensandbox config on reads without warning while rejecting saves', () => {
+    const raw = {
+      agentSandbox: {
+        enabled: true,
+        common: { memoryMiB: -1 },
+        opensandbox: { baseUrl: 'not-a-url' }
+      }
+    };
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const read = resolveDomainEffectiveConfig({
@@ -745,7 +930,8 @@ describe('unvalidated instance config reads and strict saves', () => {
         overrides: raw,
         options: { strict: false }
       });
-      expect(read.agentSandbox.provider).toBe('sealosdevbox');
+      expect(read.agentSandbox.enabled).toBe(true);
+      expect(read.agentSandbox.opensandbox.baseUrl).toBe('not-a-url');
       expect(read.agentSandbox.common.memoryMiB).toBe(-1);
       expect(read.agentSandbox.proxy.wsUrl).toBe('');
       expect(warn).not.toHaveBeenCalled();
@@ -769,6 +955,43 @@ describe('unvalidated instance config reads and strict saves', () => {
     expect(parsed).toEqual({
       tracking: { retentionHours: -1 }
     });
+  });
+
+  it('constrains performance.tracking.retentionHours strictly to 1..1000', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1 } }
+      }).tracking.retentionHours
+    ).toBe(1);
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { tracking: { retentionHours: 1000 } }
+      }).tracking.retentionHours
+    ).toBe(1000);
+
+    const invalidInputs: unknown[] = [0, -1, 1001, 1.5, '48', null];
+    for (const invalid of invalidInputs) {
+      let caughtError: unknown;
+      try {
+        parseDomainOverrides({
+          domain: 'performance',
+          overrides: { tracking: { retentionHours: invalid } }
+        });
+      } catch (error) {
+        caughtError = error;
+      }
+      expect(caughtError).toBeInstanceOf(ZodError);
+      if (caughtError instanceof ZodError) {
+        expect(caughtError.issues[0]?.path).toEqual(['tracking', 'retentionHours']);
+      }
+    }
+
+    expect(clampLlmTraceRetentionHours(0)).toBe(1);
+    expect(clampLlmTraceRetentionHours(-5)).toBe(1);
+    expect(clampLlmTraceRetentionHours(1440)).toBe(1000);
+    expect(clampLlmTraceRetentionHours(24.8)).toBe(24);
   });
 
   it('distinguishes unset domain overrides from corrupted non-object root values', () => {

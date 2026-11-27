@@ -60,7 +60,7 @@ describe('sandbox keepalive API', () => {
   it('refreshes runtime sandbox without triggering archived restore', async () => {
     const req = createReq();
 
-    await handler(req, createRes());
+    await expect(handler(req, createRes())).resolves.toBeUndefined();
 
     expect(mocks.authAgentSandboxProxy).toHaveBeenCalledWith(req);
     expect(mocks.buildSandboxClientQueryFromChatSource).toHaveBeenCalledWith({

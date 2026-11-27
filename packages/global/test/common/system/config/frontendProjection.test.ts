@@ -103,6 +103,25 @@ describe('buildRegisterMethods', () => {
       bind_notification_method: ['email', 'phone']
     });
 
+    const registerOnlyAuth = createAuth({
+      loginProviders: {
+        phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
+        sms: { login: { zh: '' }, register: { zh: 'REGISTER' } }
+      }
+    });
+    expect(buildAuthMethodProjection({ auth: registerOnlyAuth }).login_method).toEqual([
+      'email',
+      'phone'
+    ]);
+
+    const login2faOnlyAuth = createAuth({
+      loginProviders: {
+        phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
+        sms: { login: { zh: 'LOGIN' }, register: { zh: '' } }
+      }
+    });
+    expect(buildAuthMethodProjection({ auth: login2faOnlyAuth }).login_method).toEqual(['email']);
+
     const emailLoginOnly = createAuth({});
     expect(buildAuthMethodProjection({ auth: emailLoginOnly })).toEqual({
       login_method: ['email'],

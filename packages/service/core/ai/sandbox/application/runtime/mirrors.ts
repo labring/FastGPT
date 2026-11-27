@@ -3,7 +3,13 @@
  *
  * 负责根据实例配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
+import { isRecoverableSandboxError } from '../../infrastructure/opensandbox/errors';
+import {
+  OPEN_SANDBOX_CONTAINER_RUNTIME_DIR,
+  OPEN_SANDBOX_DEFAULT_HOME_PATH,
+  SANDBOX_INTERNAL_RUNTIME_DIR_NAME
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { z } from 'zod';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getAgentSandboxCommonConfig } from '../../config';
@@ -12,9 +18,9 @@ import {
   getRuntimeStateValue,
   readSandboxRuntimeState,
   setRuntimeStateValue,
-  writeSandboxRuntimeState
+  writeSandboxRuntimeState,
+  type SandboxRuntimeStateScope
 } from './state';
-import { resolveSandboxHome } from './home';
 import { prepareSandboxFileParentDirectories } from '../file';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
@@ -75,29 +81,45 @@ export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig =>
   };
 };
 
+/**
+ * 按 npm / pypi / apt 三组独立同步沙盒镜像源配置：
+ * - `npm` / `pypi` 目标位于 `$HOME` 持久卷，状态与标记跟随 `$HOME/.fastgpt/runtime/{state.json,mirrors}` 持久化；
+ * - `apt` 目标位于 `/etc/apt` 容器临时层，状态与标记位于 `/var/lib/fastgpt-runtime/{state.json,mirrors}`，容器重建自动重写。
+ */
 export const prepareSandboxRuntimeMirrors = async ({
   sandbox,
   config = getSandboxRuntimeMirrorsConfig()
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   config?: SandboxRuntimeMirrorsConfig;
 }): Promise<void> => {
   const normalizedConfig = normalizeMirrorsConfig(config);
-  const homeDirectory = await resolveSandboxHome(sandbox);
-  if (!homeDirectory) return;
+  const homeDirectory = OPEN_SANDBOX_DEFAULT_HOME_PATH;
 
-  const stateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
-  if (!stateContext.statePath) return;
+  // 状态文件按目标生命周期分域读取；任一域读取失败仅跳过该域，避免误判历史状态覆盖用户文件。
+  const [homeStateContext, containerStateContext] = await Promise.all([
+    readSandboxRuntimeState({ sandbox, scope: 'home' }),
+    readSandboxRuntimeState({ sandbox, scope: 'container' })
+  ]);
+  const stateContexts = {
+    home: homeStateContext,
+    container: containerStateContext
+  } as const;
 
-  const aptMirrorHash = buildRuntimeHash(normalizedConfig.aptMirror ?? '');
+  // 兼容旧版本已落盘的空字符串 hash，判定曾经是否启用镜像时将其视为未启用。
+  const emptyMirrorHash = buildRuntimeHash('');
+  const aptMirrorHash = normalizedConfig.aptMirror
+    ? buildRuntimeHash(normalizedConfig.aptMirror)
+    : '';
   const previousAptHash = getRuntimeStateValue(
-    stateContext.state,
+    containerStateContext.state,
     SANDBOX_MIRROR_STATE_HASH_KEYS.apt
   );
-  const aptMirrorSynchronized = previousAptHash === aptMirrorHash;
+  const aptNeedsPlatform = normalizedConfig.aptMirror
+    ? previousAptHash !== aptMirrorHash
+    : Boolean(previousAptHash) && previousAptHash !== emptyMirrorHash;
   const aptPlatform =
-    !aptMirrorSynchronized &&
-    (normalizedConfig.aptMirror || (previousAptHash && previousAptHash !== buildRuntimeHash('')))
+    !containerStateContext.readFailed && aptNeedsPlatform
       ? await resolveSandboxAptPlatform(sandbox)
       : undefined;
 
@@ -108,8 +130,33 @@ export const prepareSandboxRuntimeMirrors = async ({
     aptPlatform
   });
 
+  const homeMarkerDir = joinSandboxPath(
+    homeDirectory,
+    SANDBOX_INTERNAL_RUNTIME_DIR_NAME,
+    'runtime/mirrors'
+  );
+  const containerMarkerDir = joinSandboxPath(OPEN_SANDBOX_CONTAINER_RUNTIME_DIR, 'mirrors');
+  const markerDirExistsCache = new Map<string, Promise<boolean>>();
+  const hasMarkerDirectory = (markerDirectory: string) => {
+    let cached = markerDirExistsCache.get(markerDirectory);
+    if (!cached) {
+      cached = sandbox
+        .getFileInfo([markerDirectory])
+        .then((dirInfo) => dirInfo.has(markerDirectory))
+        .catch((error) => {
+          if (isRecoverableSandboxError(error)) throw error;
+          // 探测目录状态失败时不跳过同步，保留后续 synchronize 的兜底校验。
+          return true;
+        });
+      markerDirExistsCache.set(markerDirectory, cached);
+    }
+    return cached;
+  };
+
   const mirrorGroups: Array<{
     group: SandboxRuntimeMirrorGroup;
+    stateScope: SandboxRuntimeStateScope;
+    markerDirectory: string;
     stateKey: string;
     value?: string;
     managedPaths: readonly string[];
@@ -117,6 +164,8 @@ export const prepareSandboxRuntimeMirrors = async ({
   }> = [
     {
       group: 'npm',
+      stateScope: 'home',
+      markerDirectory: homeMarkerDir,
       stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.npm,
       value: normalizedConfig.npmRegistry,
       managedPaths: mirrorPaths.npm,
@@ -124,6 +173,8 @@ export const prepareSandboxRuntimeMirrors = async ({
     },
     {
       group: 'pypi',
+      stateScope: 'home',
+      markerDirectory: homeMarkerDir,
       stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.pypi,
       value: normalizedConfig.pypiIndexUrl,
       managedPaths: mirrorPaths.pypi,
@@ -131,6 +182,8 @@ export const prepareSandboxRuntimeMirrors = async ({
     },
     {
       group: 'apt',
+      stateScope: 'container',
+      markerDirectory: containerMarkerDir,
       stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.apt,
       value: normalizedConfig.aptMirror,
       // 只处理当前发行版的源文件，不能误动另一发行版的用户文件。
@@ -139,30 +192,37 @@ export const prepareSandboxRuntimeMirrors = async ({
     }
   ];
 
-  let stateDirty = false;
+  const dirtyScopes = new Set<SandboxRuntimeStateScope>();
   for (const mirrorGroup of mirrorGroups) {
-    const configHash = buildRuntimeHash(mirrorGroup.value ?? '');
-    const previousHash = getRuntimeStateValue(stateContext.state, mirrorGroup.stateKey);
-    if (mirrorGroup.value && previousHash === configHash) {
+    const stateContext = stateContexts[mirrorGroup.stateScope];
+    if (stateContext.readFailed) {
       continue;
+    }
+    const targetHash = mirrorGroup.value ? buildRuntimeHash(mirrorGroup.value) : '';
+    const previousHash = getRuntimeStateValue(stateContext.state, mirrorGroup.stateKey);
+    if (mirrorGroup.value && previousHash === targetHash) {
+      continue;
+    }
+    // 未配置镜像且无历史状态时，若连 marker 目录都不存在说明从无托管残留，直接跳过扫描以消除无谓 RPC；
+    // 旧版若已写入 emptyMirrorHash，仍执行一次清理以摘除遗留空键。
+    if (!mirrorGroup.value && !previousHash) {
+      if (!(await hasMarkerDirectory(mirrorGroup.markerDirectory))) {
+        continue;
+      }
     }
 
     // APT 无法识别发行版时只跳过 APT，保留旧状态让下一次调用继续重试。
-    if (
-      mirrorGroup.group === 'apt' &&
-      !aptMirrorSynchronized &&
-      (mirrorGroup.value || (previousHash && previousHash !== buildRuntimeHash(''))) &&
-      !aptPlatform
-    )
+    if (mirrorGroup.group === 'apt' && aptNeedsPlatform && !aptPlatform) {
       continue;
+    }
 
     const synchronized = await new SandboxRuntimeMirrorFileManager(
       mirrorGroup.managedPaths,
-      joinSandboxPath(homeDirectory, '.fastgpt/runtime/mirrors')
+      mirrorGroup.markerDirectory
     ).synchronize({
       sandbox,
       files: mirrorGroup.files,
-      previouslyActive: Boolean(previousHash) && previousHash !== buildRuntimeHash(''),
+      previouslyActive: Boolean(previousHash) && previousHash !== emptyMirrorHash,
       legacyActivePaths:
         mirrorGroup.group === 'apt' && aptPlatform
           ? [APT_SOURCE_PATHS[aptPlatform.distribution]]
@@ -175,23 +235,37 @@ export const prepareSandboxRuntimeMirrors = async ({
       continue;
     }
 
-    if (previousHash !== configHash) {
-      setRuntimeStateValue(stateContext.state, mirrorGroup.stateKey, configHash);
-      stateDirty = true;
+    if (previousHash !== targetHash) {
+      setRuntimeStateValue({
+        state: stateContext.state,
+        key: mirrorGroup.stateKey,
+        value: targetHash
+      });
+      dirtyScopes.add(mirrorGroup.stateScope);
     }
   }
 
-  if (stateDirty) await writeSandboxRuntimeState(sandbox, stateContext);
+  for (const dirtyScope of dirtyScopes) {
+    await writeSandboxRuntimeState({
+      sandbox,
+      context: stateContexts[dirtyScope],
+      scope: dirtyScope
+    });
+  }
 };
 
 /** 读取发行版信息，用于生成对应的 APT source 文件。 */
 const resolveSandboxAptPlatform = async (
-  sandbox: ISandbox
+  sandbox: OpenSandboxClient
 ): Promise<SandboxAptPlatform | undefined> => {
   const [osRelease] = await sandbox.readFiles(['/etc/os-release']).catch((error) => {
+    if (isRecoverableSandboxError(error)) throw error;
     logger.warn('[Sandbox Runtime] Failed to read sandbox OS release', { error });
     return [];
   });
+  if (osRelease?.error && isRecoverableSandboxError(osRelease.error)) {
+    throw osRelease.error;
+  }
   if (!osRelease || osRelease.error) {
     logger.warn('[Sandbox Runtime] Cannot configure apt mirror; official sources remain active', {
       error: osRelease?.error
@@ -244,6 +318,13 @@ const getSandboxRuntimeMirrorPaths = (homeDirectory: string) => ({
   apt: Object.values(APT_SOURCE_PATHS)
 });
 
+const rethrowRecoverableResultError = (results?: Array<{ error?: unknown | null }>) => {
+  const recoverable = results?.find(
+    ({ error }) => error && isRecoverableSandboxError(error)
+  )?.error;
+  if (recoverable) throw recoverable;
+};
+
 /** 统一处理镜像文件的备份、写入和配置清空后的恢复。 */
 class SandboxRuntimeMirrorFileManager {
   constructor(
@@ -261,7 +342,7 @@ class SandboxRuntimeMirrorFileManager {
     previouslyActive,
     legacyActivePaths
   }: {
-    sandbox: ISandbox;
+    sandbox: OpenSandboxClient;
     files: SandboxRuntimeMirrorFile[];
     previouslyActive: boolean;
     legacyActivePaths: readonly string[];
@@ -274,20 +355,30 @@ class SandboxRuntimeMirrorFileManager {
     ]);
     // readFiles 的 error 不区分缺失与权限/传输错误；只有 stat 明确缺失才能视作不存在。
     const info = await sandbox.getFileInfo(paths).catch((error) => {
+      if (isRecoverableSandboxError(error)) throw error;
       logger.warn('[Sandbox Runtime] Failed to inspect mirror config files', { error });
       return undefined;
     });
-    if (!info || [...info.values()].some((item) => item.isDirectory || item.isSymlink))
+    if (!info || [...info.values()].some((item) => item.isDirectory || item.isSymlink)) {
       return false;
+    }
 
     const existingPaths = paths.filter((path) => info.has(path));
-    const readResults = await sandbox.readFiles(existingPaths).catch(() => undefined);
+    const readResults =
+      existingPaths.length === 0
+        ? []
+        : await sandbox.readFiles(existingPaths).catch((error) => {
+            if (isRecoverableSandboxError(error)) throw error;
+            return undefined;
+          });
+    rethrowRecoverableResultError(readResults);
     if (
       !readResults ||
       readResults.length !== existingPaths.length ||
       readResults.some((result, index) => result.error || result.path !== existingPaths[index])
-    )
+    ) {
       return false;
+    }
     const contents = new Map(readResults.map(({ path, content }) => [path, content]));
 
     const markers = new Map<string, z.infer<typeof MirrorFileMarkerSchema>>();
@@ -311,21 +402,29 @@ class SandboxRuntimeMirrorFileManager {
         entries.map(({ path }) => path)
       )
         .then(() => sandbox.writeFiles(entries))
-        .catch(() => undefined);
+        .catch((error) => {
+          if (isRecoverableSandboxError(error)) throw error;
+          return undefined;
+        });
+      rethrowRecoverableResultError(results);
       return Boolean(
         results &&
         results.length === entries.length &&
         results.every((result, index) => !result.error && result.path === entries[index].path)
       );
     };
-    const remove = async (paths: string[]) => {
-      if (paths.length === 0) return true;
-      const results = await sandbox.deleteFiles(paths).catch(() => undefined);
+    const remove = async (pathsToRemove: string[]) => {
+      if (pathsToRemove.length === 0) return true;
+      const results = await sandbox.deleteFiles(pathsToRemove).catch((error) => {
+        if (isRecoverableSandboxError(error)) throw error;
+        return undefined;
+      });
+      rethrowRecoverableResultError(results);
       return Boolean(
         results &&
-        results.length === paths.length &&
+        results.length === pathsToRemove.length &&
         results.every(
-          (result, index) => result.success && !result.error && result.path === paths[index]
+          (result, index) => result.success && !result.error && result.path === pathsToRemove[index]
         )
       );
     };
@@ -343,8 +442,9 @@ class SandboxRuntimeMirrorFileManager {
           marker?.origin === 'backup' &&
           !backup &&
           (!content || !marker.backupHash || buildRuntimeHash(content) !== marker.backupHash)
-        )
+        ) {
           return false;
+        }
         if (marker?.origin === 'legacyBackup' && !copy) return false;
 
         // pending 表示上次目标写入未完成，残片不是用户编辑；按原 marker 的 origin/备份续作，
@@ -363,20 +463,23 @@ class SandboxRuntimeMirrorFileManager {
           userFile &&
           (marker?.origin === 'backup' || marker?.origin === 'legacyBackup') &&
           (!marker.backupHash || buildRuntimeHash(content) !== marker.backupHash)
-        )
+        ) {
           return false;
+        }
         if (
           marker?.origin === 'backup' &&
           backup &&
           (!marker.backupHash || buildRuntimeHash(backup) !== marker.backupHash)
-        )
+        ) {
           return false;
+        }
         if (
           marker?.origin === 'legacyBackup' &&
           copy &&
           (!marker.backupHash || buildRuntimeHash(copy) !== marker.backupHash)
-        )
+        ) {
           return false;
+        }
         const contentHash = content ? buildRuntimeHash(content) : undefined;
         // 上次 marker 已落库但备份写入失败：目标仍是原始内容时，重试必须先补备份。
         const retryMissingBackup =
@@ -448,10 +551,12 @@ class SandboxRuntimeMirrorFileManager {
         const original = marker.origin === 'backup' ? backup : copy;
         if (!marker.backupHash) return false;
         // 上次目标写入未完成：只要有可校验的原始备份，清空时直接恢复它并收尾，
-        // 不把失败残留误判为用户编辑；没有备份时才保留 marker 并让同步失败。
+        // 不把失败残留误判为用户编辑；目标仍等于原件（如非 root EACCES 未改写）则跳过写目标。
         if (marker.pending) {
           if (original && marker.backupHash && buildRuntimeHash(original) === marker.backupHash) {
-            restores.push({ path, data: original });
+            if (!content || buildRuntimeHash(content) !== marker.backupHash) {
+              restores.push({ path, data: original });
+            }
             if (marker.origin === 'backup') backupsToRemove.push(this.getBackupPath(path));
             markersToRemove.push(this.getMarkerPath(path));
             continue;
@@ -560,11 +665,11 @@ const buildSandboxRuntimeMirrorFiles = ({
       },
       {
         path: paths.npm[2],
-        data: `npmRegistryServer: "${escapeYamlString(config.npmRegistry)}"\n`
+        data: `npmRegistryServer: "${escapeQuotedString(config.npmRegistry)}"\n`
       },
       {
         path: paths.npm[3],
-        data: `[install]\nregistry = "${escapeTomlString(config.npmRegistry)}"\n`
+        data: `[install]\nregistry = "${escapeQuotedString(config.npmRegistry)}"\n`
       }
     );
   }
@@ -590,9 +695,9 @@ const buildSandboxRuntimeMirrorFiles = ({
       {
         path: paths.pypi[2],
         data: `${[
-          `default-index = "${escapeTomlString(config.pypiIndexUrl!)}"`,
+          `default-index = "${escapeQuotedString(config.pypiIndexUrl!)}"`,
           ...(pypiTrustedHost
-            ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
+            ? [`allow-insecure-host = ["${escapeQuotedString(pypiTrustedHost)}"]`]
             : [])
         ].join('\n')}\n`
       }
@@ -663,6 +768,4 @@ const resolveDebianSecurityMirror = (aptMirror: string): string => {
   return aptMirror;
 };
 
-const escapeTomlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-
-const escapeYamlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+const escapeQuotedString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');

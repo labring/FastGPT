@@ -94,7 +94,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
             name: tool.name,
             pluginId: tool.pluginId || '',
             source: tool.source,
-            avatar: tool.avatar || '',
+            avatar: tool.avatar,
             inputs: tool.inputs?.reduce(
               (acc, input) => {
                 acc[input.key] = input.value;

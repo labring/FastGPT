@@ -31,6 +31,8 @@ type ResponseType = {
   toolRunTimes: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   toolCallTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   completeMessages: ChatCompletionMessageParam[];
   assistantResponses: AIChatItemValueItemType[];
@@ -172,7 +174,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
   const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
-      provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
         messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt,
@@ -193,6 +194,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     toolRunTimes: toolProvider.getToolRunTimes(),
     toolCallInputTokens: outputSummary.inputTokens,
     toolCallOutputTokens: outputSummary.outputTokens,
+    cacheReadTokens: outputSummary.cacheReadTokens,
+    cacheCreationTokens: outputSummary.cacheCreationTokens,
     toolCallTotalPoints: outputSummary.llmTotalPoints,
     completeMessages: outputSummary.completeMessages,
     assistantResponses: outputSummary.assistantResponses,

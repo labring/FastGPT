@@ -92,6 +92,26 @@ describe('password/updateRoot API', () => {
     expect(delUserAllSession).toHaveBeenCalledWith(String(rootUser._id), ['current-session']);
   });
 
+  it('allows reusing the current root password when the old password matches', async () => {
+    const currentPsw = hashStr(OLD_PASSWORD);
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+      updateRootPasswordApi,
+      {
+        body: {
+          oldPsw: currentPsw,
+          newPsw: currentPsw
+        },
+        auth: getAuth()
+      }
+    );
+
+    expect(response.code).toBe(200);
+    expect(await MongoUser.exists({ _id: rootUser._id, password: currentPsw })).toBeTruthy();
+    const updatedUser = await MongoUser.findById(rootUser._id).lean();
+    expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
+    expect(delUserAllSession).toHaveBeenCalledWith(String(rootUser._id), ['current-session']);
+  });
+
   it('requires the old password when root already has a stored password', async () => {
     const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
       updateRootPasswordApi,

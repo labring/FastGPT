@@ -126,7 +126,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     toolCatalog: normalized
   };
 
-  // FastAgent 完全使用 ChatItem 重建后的消息；旧 providerState 不参与恢复。
   const messages = buildInitialMessages({ input });
   let activePlan = input.activePlan;
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。
@@ -416,11 +415,31 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             return createToolResponse(response, { skipResponseCompress: true });
           }
 
+          const { checkIsStopping, sandboxToolContext } = runtime;
+          const stopController = checkIsStopping ? new AbortController() : undefined;
+          let stopTimer: ReturnType<typeof setInterval> | undefined;
+          if (stopController && checkIsStopping) {
+            if (checkIsStopping()) {
+              stopController.abort();
+            } else {
+              stopTimer = setInterval(() => {
+                if (checkIsStopping()) {
+                  clearInterval(stopTimer);
+                  stopController.abort();
+                }
+              }, 100);
+              stopTimer.unref?.();
+            }
+          }
+
           const sandboxResult = await runSandboxTools({
             toolName: sandboxToolName,
             args: call.function.arguments ?? '',
-            sandboxClient: runtime.sandboxToolContext.client,
-            validate: runtime.sandboxToolContext.validate
+            sandboxClient: sandboxToolContext.client,
+            validate: sandboxToolContext.validate,
+            signal: stopController?.signal
+          }).finally(() => {
+            if (stopTimer !== undefined) clearInterval(stopTimer);
           });
           return createToolResponse(sandboxResult.response, {
             skipResponseCompress: true,

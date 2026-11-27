@@ -1,6 +1,8 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import NextLink from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Box,
   Input,
   NumberInput,
   NumberInputField,
@@ -34,6 +36,47 @@ type AuthConfigForm = SystemInstanceConfigDomainMap['auth'] & {
   maxLoginSession: SystemInstanceConfigDomainMap['security']['maxLoginSession'];
 };
 
+/** 未配置前置基础设施（SMTP / 阿里云短信）时的引导提示与锚点跳转链接。 */
+const ConfigPrerequisiteHint = ({
+  text,
+  linkLabel,
+  href
+}: {
+  text: string;
+  linkLabel: string;
+  href: string;
+}) => {
+  const [before, after] = text.split('__LINK__');
+  const linkNode = (
+    <NextLink href={href}>
+      <Text
+        as={'span'}
+        color={'primary.600'}
+        fontWeight={'medium'}
+        _hover={{ textDecoration: 'underline' }}
+      >
+        {linkLabel}
+      </Text>
+    </NextLink>
+  );
+
+  return (
+    <Text fontSize={'xs'} color={'myGray.500'}>
+      {after !== undefined ? (
+        <>
+          {before}
+          {linkNode}
+          {after}
+        </>
+      ) : (
+        <>
+          {text} {linkNode}
+        </>
+      )}
+    </Text>
+  );
+};
+
 const AuthSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
@@ -43,7 +86,9 @@ const AuthSettingComponent = () => {
   const showPasswordSecurity = isFieldVisible('auth.passwordExpiredMonth');
   const showLoginProtection = isFieldVisible('security.passwordLoginMinuteLimitCount');
   const showEmail = isFieldVisible('auth.loginProviders.email.register');
-  const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
+  const showSms = isFieldVisible('auth.loginProviders.sms.register.zh');
+  const showLoginSmsCode =
+    isFieldVisible('auth.loginProviders.sms.login.zh') && Boolean(feConfigs?.login2faEnabled);
   const showWechat = isFieldVisible('auth.loginProviders.wechat.appId');
   const showWecom = isFieldVisible('auth.loginProviders.wecom.suiteId');
   const showGithub = isFieldVisible('auth.loginProviders.github.clientId');
@@ -61,6 +106,20 @@ const AuthSettingComponent = () => {
   const security = useDomainConfig('security');
   const { effectiveConfig } = auth;
   const isLoading = auth.isLoading || security.isLoading;
+
+  const isSmtpConfigured = Boolean(
+    effectiveConfig?.loginProviders?.email?.smtp?.trim() &&
+    effectiveConfig?.loginProviders?.email?.user?.trim() &&
+    auth.isSecretConfigured('loginProviders.email.pass')
+  );
+  // 历史库若在缺 SMTP 时已开启邮箱注册，保留开关以便管理员手动关闭；关闭保存后隐藏。
+  const showEmailRegisterSwitch =
+    isSmtpConfigured || Boolean(effectiveConfig?.loginProviders?.email?.register);
+  const isPhoneSmsConfigured = Boolean(
+    effectiveConfig?.loginProviders?.phone?.accessKeyId?.trim() &&
+    effectiveConfig?.loginProviders?.phone?.signName?.trim() &&
+    auth.isSecretConfigured('loginProviders.phone.accessKeySecret')
+  );
 
   // 已弃用功能只为仍有配置的旧实例保留编辑/清空入口；按已保存值判断，避免清空草稿时立即消失。
   const showFastLogin =
@@ -118,6 +177,7 @@ const AuthSettingComponent = () => {
   const { control, handleSubmit, reset, register, setValue } = form;
 
   const emailRegister = useWatch({ control, name: 'loginProviders.email.register' });
+  const cancellationEnabled = useWatch({ control, name: 'accountCancellation.enabled' });
   const ssoAutoLogin = useWatch({ control, name: 'sso.autoLogin' });
   const ssoDisablePassword = useWatch({ control, name: 'sso.disablePasswordForSsoUsers' });
   const [fastLoginText, setFastLoginText] = useState(() =>
@@ -222,6 +282,9 @@ const AuthSettingComponent = () => {
     }
   );
 
+  const isFastLoginDirty =
+    showFastLogin && fastLoginText !== JSON.stringify(effectiveConfig.fastLogin ?? [], null, 2);
+
   return (
     <AdminSettingPage
       form={form}
@@ -229,6 +292,7 @@ const AuthSettingComponent = () => {
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isSaving}
+      isUnsaved={isFastLoginDirty}
       onSave={handleSubmit(submitAuthConfig)}
     >
       {/* 密码安全 */}
@@ -336,7 +400,7 @@ const AuthSettingComponent = () => {
           title={t('admin:account_cancellation')}
           showDivider
         >
-          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mb={6}>
+          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mb={cancellationEnabled ? 6 : 0}>
             <Controller
               name="accountCancellation.enabled"
               control={control}
@@ -352,74 +416,92 @@ const AuthSettingComponent = () => {
             />
           </SimpleGrid>
 
-          <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
-            {t('admin:sms_templates_for_the_cancellation_flow_apply_for_template_i')}
-          </Text>
+          {cancellationEnabled && (
+            <>
+              <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
+                {t('admin:sms_templates_for_the_cancellation_flow_apply_for_template_i')}
+              </Text>
 
-          <SimpleGrid columns={[1, 2]} spacing={5}>
-            <AdminFormItem
-              label={t('admin:cancellation_request_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_submission_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('accountCancellation.cancellationSm.zh', form.formState).error
-                )}
-                {...register('accountCancellation.cancellationSm.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:cancellation_reminder_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_cooling_off_reminder_chines')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('accountCancellation.reminderSm.zh', form.formState).error
-                )}
-                {...register('accountCancellation.reminderSm.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:same_day_cancellation_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_effective_date_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('accountCancellation.todaySm.zh', form.formState).error
-                )}
-                {...register('accountCancellation.todaySm.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-          </SimpleGrid>
+              <SimpleGrid columns={[1, 2]} spacing={5}>
+                <AdminFormItem
+                  label={t('admin:cancellation_request_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_cancellation_submission_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('accountCancellation.cancellationSm.zh', form.formState)
+                        .error
+                    )}
+                    {...register('accountCancellation.cancellationSm.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:cancellation_reminder_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_cancellation_cooling_off_reminder_chines')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('accountCancellation.reminderSm.zh', form.formState).error
+                    )}
+                    {...register('accountCancellation.reminderSm.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:same_day_cancellation_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_cancellation_effective_date_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('accountCancellation.todaySm.zh', form.formState).error
+                    )}
+                    {...register('accountCancellation.todaySm.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+              </SimpleGrid>
+            </>
+          )}
         </AdminSettingSection>
       )}
 
       {/* 4. 邮箱注册 */}
       {showEmail && (
         <AdminSettingSection id="emailLogin" title={t('admin:email_registration')} showDivider>
-          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-            <Controller
-              name="loginProviders.email.register"
-              control={control}
-              render={({ field }) => (
-                <AdminSwitchRow
-                  name={field.name}
-                  label={t('admin:enable_email_self_registration')}
-                  tooltip={t('admin:allow_users_to_register_with_email')}
-                  isChecked={field.value}
-                  onChange={field.onChange}
+          {showEmailRegisterSwitch && (
+            <>
+              <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+                <Controller
+                  name="loginProviders.email.register"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSwitchRow
+                      name={field.name}
+                      label={t('admin:enable_email_self_registration')}
+                      tooltip={t('admin:allow_users_to_register_with_email')}
+                      isChecked={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
-              )}
-            />
-          </SimpleGrid>
+              </SimpleGrid>
 
-          {emailRegister && (
-            <Text fontSize={'xs'} color={'myGray.500'} mt={2}>
-              {t('admin:ensure_the_smtp_configuration_is_complete_and_working_otherw')}
-            </Text>
+              {isSmtpConfigured && emailRegister && (
+                <Text fontSize={'xs'} color={'myGray.500'} mt={2}>
+                  {t('admin:ensure_the_smtp_configuration_is_complete_and_working_otherw')}
+                </Text>
+              )}
+            </>
+          )}
+          {!isSmtpConfigured && (
+            <Box mt={showEmailRegisterSwitch ? 2 : 0}>
+              <ConfigPrerequisiteHint
+                text={t('admin:please_configure_smtp_first', { service: '__LINK__' })}
+                linkLabel={t('admin:smtp_service')}
+                href="/admin/settings/core#email"
+              />
+            </Box>
           )}
         </AdminSettingSection>
       )}
@@ -427,84 +509,100 @@ const AuthSettingComponent = () => {
       {/* 5. 短信验证码 */}
       {showSms && (
         <AdminSettingSection id="smsLogin" title={t('admin:sms_verification_code')} showDivider>
-          <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
-            {t('admin:sms_templates_fill_in_the_template_ids_approved_in_the_aliyu')}
-          </Text>
+          {isPhoneSmsConfigured ? (
+            <>
+              <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
+                {t('admin:sms_templates_fill_in_the_template_ids_approved_in_the_aliyu')}
+              </Text>
 
-          <SimpleGrid columns={[1, 2]} spacing={5}>
-            <AdminFormItem
-              label={t('admin:login_code_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_login_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.login.zh', form.formState).error
+              <SimpleGrid columns={[1, 2]} spacing={5}>
+                {showLoginSmsCode && (
+                  <AdminFormItem
+                    label={t('admin:login_code_chinese_template')}
+                    tooltip={t('admin:sms_template_id_for_login_chinese')}
+                  >
+                    <Input
+                      isInvalid={Boolean(
+                        form.getFieldState('loginProviders.sms.login.zh', form.formState).error
+                      )}
+                      {...register('loginProviders.sms.login.zh')}
+                      placeholder="SMS_xxx"
+                    />
+                  </AdminFormItem>
                 )}
-                {...register('loginProviders.sms.login.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:registration_code_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_registration_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.register.zh', form.formState).error
-                )}
-                {...register('loginProviders.sms.register.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:reset_password_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_password_reset_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.resetPassword.zh', form.formState).error
-                )}
-                {...register('loginProviders.sms.resetPassword.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:change_password_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_password_change_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.changePassword.zh', form.formState).error
-                )}
-                {...register('loginProviders.sms.changePassword.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:binding_notification_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_binding_notification_methods_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.bindNotification.zh', form.formState).error
-                )}
-                {...register('loginProviders.sms.bindNotification.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:model_deprecation_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_model_deprecation_chinese')}
-            >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('loginProviders.sms.modelDeprecation.zh', form.formState).error
-                )}
-                {...register('loginProviders.sms.modelDeprecation.zh')}
-                placeholder="SMS_xxx"
-              />
-            </AdminFormItem>
-          </SimpleGrid>
+                <AdminFormItem
+                  label={t('admin:registration_code_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_registration_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.sms.register.zh', form.formState).error
+                    )}
+                    {...register('loginProviders.sms.register.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:reset_password_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_password_reset_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.sms.resetPassword.zh', form.formState)
+                        .error
+                    )}
+                    {...register('loginProviders.sms.resetPassword.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:change_password_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_password_change_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.sms.changePassword.zh', form.formState)
+                        .error
+                    )}
+                    {...register('loginProviders.sms.changePassword.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:binding_notification_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_binding_notification_methods_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.sms.bindNotification.zh', form.formState)
+                        .error
+                    )}
+                    {...register('loginProviders.sms.bindNotification.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:model_deprecation_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_model_deprecation_chinese')}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.sms.modelDeprecation.zh', form.formState)
+                        .error
+                    )}
+                    {...register('loginProviders.sms.modelDeprecation.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+              </SimpleGrid>
+            </>
+          ) : (
+            <ConfigPrerequisiteHint
+              text={t('admin:aliyun_sms_not_configured', { service: '__LINK__' })}
+              linkLabel={t('admin:aliyun_sms')}
+              href="/admin/settings/core#sms"
+            />
+          )}
         </AdminSettingSection>
       )}
 
@@ -834,14 +932,16 @@ const AuthSettingComponent = () => {
               label={t('admin:sso_auto_login')}
               tooltip={t('admin:sso_auto_login_tip')}
               isChecked={ssoAutoLogin}
-              onChange={(value) => setValue('sso.autoLogin', value)}
+              onChange={(value) => setValue('sso.autoLogin', value, { shouldDirty: true })}
             />
             <AdminSwitchRow
               name="sso.disablePasswordForSsoUsers"
               label={t('admin:disable_password_for_sso_users')}
               tooltip={t('admin:disable_password_for_sso_users_tip')}
               isChecked={ssoDisablePassword}
-              onChange={(value) => setValue('sso.disablePasswordForSsoUsers', value)}
+              onChange={(value) =>
+                setValue('sso.disablePasswordForSsoUsers', value, { shouldDirty: true })
+              }
             />
           </SimpleGrid>
         </AdminSettingSection>

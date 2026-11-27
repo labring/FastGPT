@@ -43,17 +43,23 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
-    // Provider 和代理地址统一从当前实例配置读取。
+    // 启用开关、服务地址和代理地址统一从当前实例配置读取。
     global.systemInstanceConfig = resolveSystemInstanceConfig({
       subservice: {
         agentSandbox: {
-          provider: 'opensandbox',
+          enabled: true,
           proxy: {
             wsUrl: 'wss://agent-proxy.example.com/base/',
             previewUrl: 'https://agent-preview.example.com:3007/base/',
             secret: 'test-agent-sandbox-proxy-secret-32-characters'
           },
-          opensandbox: { baseUrl: 'https://sandbox.example.com' }
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.com',
+            apiKey: 'test-api-key',
+            image: 'fastgpt/sandbox:latest',
+            volumeManagerUrl: 'http://volume-manager.example.com',
+            volumeManagerToken: 'vm-token'
+          }
         }
       }
     });
@@ -97,7 +103,7 @@ describe('sandbox preview application', () => {
       };
       const url = await createSandboxPreviewFileUrl({
         context,
-        filePath: '/workspace/dist/index.html'
+        filePath: '/home/sandbox/workspace/dist/index.html'
       });
       const [scriptOptions] = redisMock.evalScript.mock.calls[0];
       const sessionId = String(scriptOptions.args[4]);
@@ -189,7 +195,7 @@ describe('sandbox preview application', () => {
     expect(
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/test dir/预览.html'
+        filePath: '/home/sandbox/workspace/test dir/预览.html'
       })
     ).toBe(
       'https://agent-preview.example.com:3007/base/preview/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
@@ -203,7 +209,7 @@ describe('sandbox preview application', () => {
     expect(
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/index.html'
+        filePath: '/home/sandbox/workspace/index.html'
       })
     ).toBe('https://updated-preview.test/new-base/preview/a12345678901234567890123/index.html');
     vi.unstubAllEnvs();
@@ -215,20 +221,23 @@ describe('sandbox preview application', () => {
     expect(() =>
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/index.html'
+        filePath: '/home/sandbox/workspace/index.html'
       })
     ).toThrow('Agent Sandbox preview proxy URL is not configured');
   });
 
   it('normalizes relative and workspace absolute paths', () => {
     expect(resolveSandboxPreviewPath('./dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
-    expect(resolveSandboxPreviewPath('/workspace/dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+    expect(resolveSandboxPreviewPath('/home/sandbox/workspace/dir/file.txt')).toEqual({
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
+    expect(() => resolveSandboxPreviewPath('/workspace/dir/file.txt')).toThrow(
+      'Sandbox path is outside workspace'
+    );
   });
 
   it('rejects workspace roots, traversal, outside absolute paths and noncanonical segments', () => {

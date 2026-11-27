@@ -15,9 +15,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Trans, useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   DndContext,
   useSensor,
@@ -35,10 +33,9 @@ import {
   findNodeByPath,
   getIconByFilename,
   getSandboxParentPath,
-  getSafeSandboxCommandPath,
-  getSafeSandboxPathSegment,
   getTargetDirectoryPath,
   getTopLevelSandboxPaths,
+  resolveSandboxAbsolutePaths,
   type SandboxMoveOperation
 } from '../utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -68,7 +65,7 @@ const customCollisionDetection: CollisionDetection = (args) => {
 
   return rectCollisions;
 };
-import { downloadSandbox } from '../api';
+import { downloadSandbox, extractSandboxZip } from '../api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 export type FileItem = {
@@ -105,7 +102,7 @@ type Props = {
   ) => Promise<SandboxMoveOperation[]>;
   onDeleteFile: (path: string) => Promise<void>;
   onUploadFiles: (files: FileList, targetDirPath: string) => Promise<void>;
-  onExecCommand: (command: string, timeoutMs?: number) => Promise<ExecuteResult>;
+  sessionWorkDirectory: string;
   onRefreshWorkspace: (options?: { preserveExpandedDirs?: boolean }) => Promise<void>;
   setExpandedDirs: React.Dispatch<React.SetStateAction<Set<string>>>;
   sandboxTarget: ChatTargetInputType;
@@ -134,45 +131,12 @@ const FileTreeSkeleton = () => {
   );
 };
 
-const buildResolveAbsolutePathsCommand = (paths: string[]) => {
-  const quotedPaths = paths.map((path) => shellQuote(getSafeSandboxCommandPath(path))).join(' ');
-  return [
-    'workspace_root=$(pwd -P)',
-    `for path in ${quotedPaths}; do`,
-    '  if [ "$path" = "." ]; then',
-    '    printf \'%s\\n\' "$workspace_root"',
-    '  else',
-    '    printf \'%s/%s\\n\' "$workspace_root" "${path#./}"',
-    '  fi',
-    'done'
-  ].join('\n');
-};
-
-const getIsZipFile = (node: TreeNode) => node.type === 'file' && /\.zip$/i.test(node.name);
-
-const stripZipExtension = (name: string) => name.replace(/\.zip$/i, '');
-
-const buildExtractZipToNamedDirCommand = (params: {
-  zipPath: string;
-  parentPath: string;
-  targetDirName: string;
-}) => {
-  const { zipPath, parentPath, targetDirName } = params;
-
-  return [
-    `zip_path=${shellQuote(getSafeSandboxCommandPath(zipPath))}`,
-    `parent_dir=${shellQuote(getSafeSandboxCommandPath(parentPath))}`,
-    `base_name=${shellQuote(getSafeSandboxPathSegment(targetDirName))}`,
-    'target_dir="$parent_dir/$base_name"',
-    'index=1',
-    'while [ -e "$target_dir" ]; do',
-    '  target_dir="$parent_dir/$base_name-$index"',
-    '  index=$((index + 1))',
-    'done',
-    'mkdir -p "$target_dir"',
-    'unzip -q "$zip_path" -d "$target_dir"',
-    'printf "%s\\n" "$target_dir"'
-  ].join('\n');
+const getIsZipFile = (node: TreeNode) => {
+  if (node.type !== 'file' || !/\.zip$/i.test(node.name)) {
+    return false;
+  }
+  const stem = node.name.slice(0, -4);
+  return stem.length > 0 && stem !== '.' && stem !== '..';
 };
 
 const DroppableRootBox = ({
@@ -236,7 +200,7 @@ const FileTree = ({
   onMoveFiles,
   onDeleteFile,
   onUploadFiles,
-  onExecCommand,
+  sessionWorkDirectory,
   onRefreshWorkspace,
   setExpandedDirs,
   sandboxTarget,
@@ -343,6 +307,7 @@ const FileTree = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadLockRef = useRef(false);
+  const extractLockRef = useRef(false);
   const treeRootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -576,7 +541,7 @@ const FileTree = ({
 
   const handleBlankContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!showFileOps) return;
+    if (isLoading || !showFileOps) return;
     selectSingleNode('.');
     setContextMenu({
       x: e.clientX,
@@ -598,7 +563,7 @@ const FileTree = ({
     setSelectedPaths(new Set());
   };
 
-  const handleCtxCreateFile = async () => {
+  const handleCtxCreate = async (type: 'file' | 'directory') => {
     if (!contextMenu) return;
     const node = contextMenu.node;
     const parentPath = node.type === 'directory' ? node.path : getSandboxParentPath(node.path);
@@ -615,30 +580,12 @@ const FileTree = ({
         });
       }
     }
-    setCreatingNode({ parentPath, type: 'file' });
+    setCreatingNode({ parentPath, type });
     setContextMenu(null);
   };
 
-  const handleCtxCreateDir = async () => {
-    if (!contextMenu) return;
-    const node = contextMenu.node;
-    const parentPath = node.type === 'directory' ? node.path : getSandboxParentPath(node.path);
-
-    if (parentPath !== '.') {
-      const parentNode = findNodeByPath(filteredTree, parentPath);
-      if (parentNode && !parentNode.loaded) {
-        await toggleDirectory(parentNode);
-      } else {
-        setExpandedDirs((prev) => {
-          const next = new Set(prev);
-          next.add(parentPath);
-          return next;
-        });
-      }
-    }
-    setCreatingNode({ parentPath, type: 'directory' });
-    setContextMenu(null);
-  };
+  const handleCtxCreateFile = () => handleCtxCreate('file');
+  const handleCtxCreateDir = () => handleCtxCreate('directory');
 
   const handleCtxRename = () => {
     if (!contextMenu) return;
@@ -670,22 +617,18 @@ const FileTree = ({
       ),
       confirmButtonVariant: 'dangerFill',
       onConfirm: async () => {
-        try {
-          for (const path of deletePaths) {
-            await onDeleteFile(path);
-            setSelectedPaths(
-              (prev) =>
-                new Set(
-                  Array.from(prev).filter(
-                    (selectedPath) => selectedPath !== path && !selectedPath.startsWith(path + '/')
-                  )
+        for (const path of deletePaths) {
+          await onDeleteFile(path);
+          setSelectedPaths(
+            (prev) =>
+              new Set(
+                Array.from(prev).filter(
+                  (selectedPath) => selectedPath !== path && !selectedPath.startsWith(path + '/')
                 )
-            );
-          }
-          setSelectedPaths(new Set());
-        } catch (error) {
-          throw error;
+              )
+          );
         }
+        setSelectedPaths(new Set());
       }
     })();
   };
@@ -718,17 +661,7 @@ const FileTree = ({
     setContextMenu(null);
 
     try {
-      const result = await onExecCommand(buildResolveAbsolutePathsCommand(selectedPaths), 5000);
-      if (result.exitCode !== 0) {
-        throw new Error(result.stderr || result.stdout || t('chat:sandbox_copy_path_failed'));
-      }
-
-      const stdout = result.stdout.replace(/\r?\n$/, '');
-      const absolutePaths = stdout ? stdout.split(/\r?\n/) : [];
-      if (absolutePaths.length !== selectedPaths.length) {
-        throw new Error(t('chat:sandbox_copy_path_failed'));
-      }
-
+      const absolutePaths = resolveSandboxAbsolutePaths(sessionWorkDirectory, selectedPaths);
       await navigator.clipboard.writeText(absolutePaths.join('\n'));
       toast({
         title: t('chat:sandbox_copy_path_success'),
@@ -744,34 +677,29 @@ const FileTree = ({
   };
 
   const handleCtxExtractZip = async () => {
-    if (!contextMenu || !getIsZipFile(contextMenu.node)) return;
+    if (extractLockRef.current || !contextMenu || !getIsZipFile(contextMenu.node)) return;
     const path = contextMenu.node.path;
     setContextMenu(null);
 
     const parentPath = getSandboxParentPath(path);
+    extractLockRef.current = true;
 
     try {
-      const result = await onExecCommand(
-        buildExtractZipToNamedDirCommand({
-          zipPath: path,
-          parentPath,
-          targetDirName: stripZipExtension(contextMenu.node.name)
-        }),
-        30000
-      );
-
-      if (result.exitCode !== 0) {
-        throw new Error(result.stderr || result.stdout || t('chat:sandbox_unzip_failed'));
-      }
-
-      setExpandedDirs((prev) => {
-        const next = new Set(prev);
-        if (parentPath !== '.') {
-          next.add(parentPath);
-        }
-        return next;
+      await extractSandboxZip({
+        ...sandboxTarget,
+        chatId,
+        outLinkAuthData,
+        path
       });
+
       await onRefreshWorkspace({ preserveExpandedDirs: true });
+      if (parentPath !== '.') {
+        setExpandedDirs((prev) => {
+          const next = new Set(prev);
+          next.add(parentPath);
+          return next;
+        });
+      }
 
       toast({
         title: t('chat:sandbox_unzip_success'),
@@ -783,6 +711,8 @@ const FileTree = ({
         description: getErrText(error),
         status: 'error'
       });
+    } finally {
+      extractLockRef.current = false;
     }
   };
 

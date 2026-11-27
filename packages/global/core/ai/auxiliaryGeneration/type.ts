@@ -4,6 +4,7 @@ import { ChatCompletionMessageParamSchema } from '../llm/type';
 import { ChatFileTypeEnum } from '../../chat/constants';
 import { SelectedAgentSkillItemTypeSchema } from '../../app/formEdit/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { optionalNullToUndefined } from '../../../common/zod';
 import { ChatAgentHelperTypeEnum } from './constants';
 
 export const AuxiliaryGenerationChatFileSchema = z.object({
@@ -44,7 +45,7 @@ export const AuxiliaryGenerationSelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '可选知识库 ID'
   }),
-  avatar: z.string().meta({
+  avatar: optionalNullToUndefined(z.string()).meta({
     description: '可选知识库头像'
   }),
   name: z.string().meta({

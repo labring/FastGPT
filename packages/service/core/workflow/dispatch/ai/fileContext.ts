@@ -55,7 +55,11 @@ export const parseWorkflowAIInputFiles = async ({
   // 分类可以并发，但文件名必须按输入顺序分配，保持沙箱路径稳定。
   const usedNames = new Map<string, number>();
   return parsedFiles.map((file, index) => ({
-    name: getSafeSandboxInputFilename(file.name || file.url, index, usedNames),
+    name: getSafeSandboxInputFilename({
+      filename: file.name || file.url,
+      index,
+      usedNames
+    }),
     ...(file.filename ? { filename: file.filename } : {}),
     type: file.type,
     url: file.url

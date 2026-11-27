@@ -5,8 +5,31 @@ import {
   resolveDomainEffectiveConfig,
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
+import { AgentSandboxProxyConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
 
 const logger = getLogger(LogCategories.SYSTEM.UPGRADE);
+
+export const agentSandboxProxyEnvKeys = {
+  wsUrl: 'AGENT_SANDBOX_PROXY_URL',
+  previewUrl: 'AGENT_SANDBOX_PREVIEW_PROXY_URL',
+  secret: 'AGENT_SANDBOX_PROXY_SECRET'
+} as const;
+
+/** 从环境变量或只读 Getter 解析并校验完整的 Agent Sandbox Proxy 配置；缺失或不合法时返回 `undefined`。 */
+export const resolveAgentSandboxProxyFromEnv = (
+  source: Record<string, unknown> | ((key: string) => unknown) = process.env
+): z.output<typeof AgentSandboxProxyConfigSchema> | undefined => {
+  const read = (key: string) => (typeof source === 'function' ? source(key) : source[key]);
+  const rawWsUrl = read(agentSandboxProxyEnvKeys.wsUrl);
+  const rawPreviewUrl = read(agentSandboxProxyEnvKeys.previewUrl);
+  const rawSecret = read(agentSandboxProxyEnvKeys.secret);
+  const wsUrl = typeof rawWsUrl === 'string' ? rawWsUrl.trim() : '';
+  const previewUrl = typeof rawPreviewUrl === 'string' ? rawPreviewUrl.trim() : '';
+  const secret = typeof rawSecret === 'string' ? rawSecret : '';
+  if (!wsUrl || !previewUrl || secret.length < 32) return undefined;
+  const parsed = AgentSandboxProxyConfigSchema.safeParse({ wsUrl, previewUrl, secret });
+  return parsed.success ? parsed.data : undefined;
+};
 
 const legacyBooleanValues = new Set([
   'true',

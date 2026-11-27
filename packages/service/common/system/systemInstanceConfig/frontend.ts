@@ -9,6 +9,7 @@ import {
   hasPayChannel
 } from '@fastgpt/global/common/system/config/frontendProjection';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
+import { storageSizeGiToBytes } from '@fastgpt/global/core/ai/sandbox/constants';
 import { serviceEnv } from '../../../env';
 import { resolveFeatureConfigForEdition } from '@fastgpt/global/common/system/config/feature';
 
@@ -97,6 +98,7 @@ export const buildSystemFrontendConfig = (
     show_workorder: Boolean(proEnv.show_workorder),
     show_enterprise_auth: Boolean(proEnv.show_enterprise_auth),
     enableSaasAdminConfig: serviceEnv.ENABLE_SAAS_ADMIN_CONFIG,
+    enableSangforAdminConfig: serviceEnv.ENABLE_SANGFOR_ADMIN_CONFIG,
 
     show_coupon: instanceConfig?.commercial?.showCoupon,
     show_discount_coupon: instanceConfig?.commercial?.showDiscountCoupon,
@@ -130,11 +132,9 @@ export const buildSystemFrontendConfig = (
       typeof instanceConfig?.subservice?.codeSandbox?.token === 'string' &&
       Boolean(instanceConfig.subservice.codeSandbox.token.trim()),
     limit: {
-      skillSandboxMaxBytes:
-        Math.round(
-          (instanceConfig?.subservice?.agentSandbox?.common?.storageSizeGi * 1024) / 2 - 150
-        ) *
-        1024 ** 2,
+      skillSandboxMaxBytes: storageSizeGiToBytes(
+        instanceConfig?.subservice?.agentSandbox?.common?.storageSizeGi ?? 0
+      ),
 
       uploadFileMaxSize: instanceConfig?.resource?.uploadFileMaxSize,
       uploadFileMaxAmount: instanceConfig?.resource?.uploadFileMaxAmount,
@@ -153,7 +153,7 @@ export const buildSystemFrontendConfig = (
     pluginRemoteDebug,
     disableMarketplace: context.disableMarketplace ?? false,
     show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
-    show_agent_sandbox: instanceConfig?.subservice?.agentSandbox?.provider !== 'none',
+    show_agent_sandbox: instanceConfig?.subservice?.agentSandbox?.enabled === true,
     showCustomPdfParse: instanceConfig?.providers?.documentParse?.provider !== 'none',
     customPdfParsePrice: instanceConfig?.providers?.documentParse?.customPdf?.price,
     show_outlink_brand: serviceEnv.SHOW_OUTLINK_BRAND,

@@ -24,7 +24,6 @@ sources:
   - pro/admin/src/service/core/ai/workflowBuilder/task/entity.ts
   - pro/admin/src/service/core/ai/workflowBuilder/version/service.ts
   - packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts
-  - packages/service/core/ai/llm/agentLoop/provider/piAgent/run.ts
 routes:
   - POST /api/proApi/core/workflow/builder/chat
   - POST /api/proApi/core/workflow/builder/version/load

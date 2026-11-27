@@ -4,22 +4,25 @@ import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 
 const mocks = vi.hoisted(() => ({
-  getSandboxClient: vi.fn(),
-  getSandboxRuntimeProfile: vi.fn()
+  getSandboxClient: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
-  getSandboxRuntimeProfile: mocks.getSandboxRuntimeProfile
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
+  getSandboxStaticRuntimePaths: () => ({
+    workDirectory: '/workspace',
+    homeDirectory: '/home/sandbox',
+    skillsRootPath: '/workspace/skills',
+    builtinSkillsRootPath: '/var/lib/fastgpt-runtime/skills'
+  })
 }));
 
 describe('prepareAgentSandboxRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getSandboxRuntimeProfile.mockReturnValue({ workDirectory: '/workspace' });
     mocks.getSandboxClient.mockResolvedValue({ getSandboxId: () => 'sandbox' });
   });
 
@@ -40,17 +43,20 @@ describe('prepareAgentSandboxRuntime', () => {
       workDirectory: '/workspace/sessions/chat_1'
     });
 
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith({
-      sandboxId: generateSandboxId({
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
+      {
+        sandboxId: generateSandboxId({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: 'app_1',
+          userId: 'user_1'
+        }),
         sourceType: ChatSourceTypeEnum.app,
         sourceId: 'app_1',
-        userId: 'user_1'
-      }),
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
-    });
+        userId: 'user_1',
+        chatId: 'chat_1'
+      },
+      { onUpgrade: undefined }
+    );
   });
 
   it('converts skill edit source into stable edit sandbox id without exposing appId input', async () => {
@@ -64,12 +70,34 @@ describe('prepareAgentSandboxRuntime', () => {
       chatId: 'edit-debug'
     });
 
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith({
-      sandboxId: getEditDebugSandboxId('skill_1'),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: 'skill_1',
-      userId: ChatSourceTypeEnum.skillEdit,
-      chatId: 'edit-debug'
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
+      {
+        sandboxId: getEditDebugSandboxId('skill_1'),
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'skill_1',
+        userId: ChatSourceTypeEnum.skillEdit,
+        chatId: 'edit-debug'
+      },
+      { onUpgrade: undefined }
+    );
+  });
+
+  it('forwards onUpgrade callback into getSandboxClient', async () => {
+    const { prepareAgentSandboxRuntime } =
+      await import('@fastgpt/service/core/ai/sandbox/application/runtime');
+    const onUpgrade = vi.fn();
+
+    await prepareAgentSandboxRuntime({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      onUpgrade
     });
+
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'app_1' }),
+      { onUpgrade }
+    );
   });
 });

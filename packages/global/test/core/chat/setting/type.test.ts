@@ -53,6 +53,16 @@ describe('ChatSelectedToolSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('allows missing avatar', () => {
+    expect(
+      ChatSelectedToolSchema.safeParse({
+        pluginId: '507f1f77bcf86cd799439011',
+        inputs: {},
+        name: '测试工具'
+      }).success
+    ).toBe(true);
+  });
 });
 
 describe('ChatQuickAppSchema', () => {
@@ -63,6 +73,15 @@ describe('ChatQuickAppSchema', () => {
       avatar: '/icon/app.svg'
     });
     expect(result.success).toBe(true);
+  });
+
+  it('allows missing avatar', () => {
+    expect(
+      ChatQuickAppSchema.safeParse({
+        _id: '507f1f77bcf86cd799439011',
+        name: '快捷应用'
+      }).success
+    ).toBe(true);
   });
 
   it('should reject missing name', () => {

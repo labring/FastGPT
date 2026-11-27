@@ -13,11 +13,12 @@ import {
   SandboxGetTicketResponseSchema,
   SandboxGetHtmlPreviewLinkBodyRawSchema,
   SandboxGetHtmlPreviewLinkResponseSchema,
+  SandboxExtractZipBodyRawSchema,
+  SandboxExtractZipResponseSchema,
   SandboxKeepaliveBodySchema,
-  SandboxKeepaliveResponseSchema,
   SandboxProxyHeaderSchema,
-  SandboxVerifyTicketDocumentQuerySchema,
   SandboxVerifyTicketHeaderSchema,
+  SandboxVerifyTicketQuerySchema,
   SandboxVerifyTicketResponseSchema
 } from './api';
 
@@ -39,12 +40,7 @@ export const SandboxPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功刷新沙盒会话活跃时间',
-          content: {
-            'application/json': {
-              schema: SandboxKeepaliveResponseSchema
-            }
-          }
+          description: '成功刷新沙盒会话活跃时间'
         }
       }
     }
@@ -61,7 +57,7 @@ export const SandboxPath: OpenAPIPath = {
         '仅供 agent-sandbox-proxy 内部调用。ticket 查询参数与 x-sandbox-preview-session 请求头二选一，并且必须携带 x-proxy-token。',
       tags: [DevApiTagsMap.reverseInvokeSandbox],
       requestParams: {
-        query: SandboxVerifyTicketDocumentQuerySchema,
+        query: SandboxVerifyTicketQuerySchema,
         header: SandboxVerifyTicketHeaderSchema
       },
       responses: {
@@ -147,6 +143,32 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxGetHtmlPreviewLinkResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/extractZip': {
+    post: {
+      summary: '解压沙盒工作区内的 .zip 文件',
+      description:
+        '鉴权后通过 OpenSandbox execd 在当前会话目录下将指定 .zip 文件解压到不冲突同名目录',
+      tags: [DevApiTagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxExtractZipBodyRawSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '解压后的目标目录路径',
+          content: {
+            'application/json': {
+              schema: SandboxExtractZipResponseSchema
             }
           }
         }

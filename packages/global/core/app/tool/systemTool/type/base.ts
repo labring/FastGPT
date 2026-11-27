@@ -1,6 +1,6 @@
 import z from 'zod';
 import { PluginStatusSchema, PluginTextSchema } from '../../../../plugin/type';
-import { LanguageSchema } from '../../../../../common/i18n/type';
+import { I18nStringSchema } from '../../../../../common/i18n/type';
 import { UserTagsSchema } from '../../../../../support/user/type';
 import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 import { SystemToolSystemSecretStatusEnum } from '../constants';
@@ -44,7 +44,7 @@ export const SystemToolListItemSchema = z.object({
   status: PluginStatusSchema.meta({ description: '工具的状态' }),
   source: z.string().meta({ description: '工具的来源, system 或 teamId' }),
   isToolSet: z.boolean().meta({ description: '是否为工具集' }),
-  avatar: z.string().meta({ description: '工具的图标' }),
+  avatar: z.string().optional().meta({ description: '工具的图标' }),
   name: PluginTextSchema.meta({ description: '工具的名称' }),
   intro: PluginTextSchema.meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),
@@ -52,8 +52,8 @@ export const SystemToolListItemSchema = z.object({
 
   userGuide: z.string().nullish().meta({ description: '工具的使用指南(markdown 纯文本)' }),
   readmeUrl: z.string().optional().meta({ description: '工具的 README 地址' }),
-  readmeUrls: z
-    .partialRecord(LanguageSchema, z.string())
+  // 使用部分对象而非带 catch 的 record key，避免未知语言键被重映射并覆写 en 链接。
+  readmeUrls: I18nStringSchema.partial()
     .optional()
     .meta({ description: '按语言区分的插件 README 地址' }),
   courseUrl: z.string().optional().meta({ description: '工具的教程地址' }),

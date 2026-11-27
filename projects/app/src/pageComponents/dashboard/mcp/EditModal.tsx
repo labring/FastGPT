@@ -70,7 +70,7 @@ const SelectAppModal = ({
       appId: string;
       toolName: string;
       appName: string;
-      avatar: string;
+      avatar?: string;
       description: string;
     }[]
   >([]);

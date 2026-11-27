@@ -1,4 +1,5 @@
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { getLowestReasoningEffort } from '@fastgpt/global/core/ai/llm/utils';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
@@ -180,6 +181,7 @@ export const queryExtension = async ({
       }
     ] as any;
 
+    const lowestReasoningEffort = getLowestReasoningEffort(llmModel);
     const {
       answerText: answer,
       requestId,
@@ -191,7 +193,7 @@ export const queryExtension = async ({
         stream: true,
         model: llmModel,
         messages,
-        ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+        ...(lowestReasoningEffort ? { reasoning_effort: lowestReasoningEffort } : {})
       }
     });
 

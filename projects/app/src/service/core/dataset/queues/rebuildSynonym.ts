@@ -4,7 +4,10 @@ import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/u
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -98,7 +101,7 @@ const enqueueOneSynonymRebuildTask = async ({
       if (emitWakeup) {
         await publishTrainingWakeup({
           modes: [TrainingModeEnum.rebuildSynonym],
-          session: activeSession
+          tx: bridgeClientSessionToDbSession(activeSession)
         });
       }
       return true;
@@ -144,7 +147,7 @@ export const seedDatasetSynonymRebuildTasks = async (
     if (createdCount > 0) {
       await publishTrainingWakeup({
         modes: [TrainingModeEnum.rebuildSynonym],
-        session: activeSession
+        tx: bridgeClientSessionToDbSession(activeSession)
       });
     }
     return createdCount;

@@ -1,4 +1,4 @@
-import { systemConfigMigrationId } from '@fastgpt/global/migration/constants';
+import { sandboxMigrationId, systemConfigMigrationId } from '@fastgpt/global/migration/constants';
 import { migrateSystemConfigs } from './tasks/4180/20261116_migrate_system_configs';
 import type {
   SystemMigrationFailedRecord,
@@ -12,7 +12,13 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { cleanApiDatasetSystemRoot } from './tasks/4180/20261120_clean_api_dataset_system_root';
 import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes';
+import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
+import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
+import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
+import { cleanupAgentEngineConfig } from './tasks/4180/20261127_cleanup_agent_engine_config';
+import { backfillTeamMemberSortKey } from './tasks/4180/20261127_backfill_team_member_sort_key';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -254,6 +260,205 @@ export const systemMigrations = [
       }
     ],
     run: cleanupMongoIndexes
+  },
+  {
+    id: sandboxMigrationId,
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    nameKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.result'),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.preflight'
+        )
+      },
+      {
+        key: 'runningDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox'
+        )
+      },
+      {
+        key: 'stoppedDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox'
+        )
+      },
+      {
+        key: 'legacyArchives',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.validation'
+        )
+      }
+    ],
+    run: migrateSandboxToOpenSandbox
+  },
+  {
+    id: '20261117_cleanup_legacy_sandbox_resources',
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    dependsOn: [sandboxMigrationId],
+    nameKey: i18nT('system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.result'
+    ),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.preflight'
+        )
+      },
+      {
+        key: 'cleanupDevboxes',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes'
+        )
+      },
+      {
+        key: 'cleanupLegacyZips',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.validation'
+        )
+      }
+    ],
+    run: cleanupLegacySandboxResources
+  },
+  {
+    id: '20261125_backfill_model_reasoning_effort_list',
+    version: '4.18.0',
+    // 须在所有 App 实例与 fastgpt-plugin 均升级完成后由管理员手动触发执行。
+    manual: true,
+    blockStartup: false,
+    nameKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.name'
+    ),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.result'
+    ),
+    progressSteps: [
+      {
+        key: 'loadPresets',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.loadPresets'
+        )
+      },
+      {
+        key: 'backfill',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.backfill'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_backfill_model_reasoning_effort_list.validation'
+        )
+      }
+    ],
+    run: backfillModelReasoningEffortListMigration
+  },
+  {
+    id: '20261120_clean_api_dataset_system_root',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261120_clean_api_dataset_system_root.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.result'),
+    progressSteps: [
+      {
+        key: 'migrate',
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.migrate'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.validation'
+        )
+      }
+    ],
+    // 为兼容任意升级顺序（先升 App / 同时升级 / 滚动升级窗口期与旧版 Pro 共存），
+    // 不在启动阶段自动删除 SYSTEM_ROOT；由新版 App/Pro 运行时透明兼容，待全部服务升级完毕后由管理员手动触发清理。
+    manual: true,
+    run: cleanApiDatasetSystemRoot
+  },
+  {
+    id: '20261127_cleanup_agent_engine_config',
+    version: '4.18.0',
+    // 启动配置迁移完成后独立后台执行，覆盖 4.17 首次升级及已执行过 20261116 的 4.18 灰度/测试环境。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261127_cleanup_agent_engine_config.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.result'),
+    progressSteps: [
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261127_cleanup_agent_engine_config.cleanup')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261127_cleanup_agent_engine_config.validation'
+        )
+      }
+    ],
+    run: cleanupAgentEngineConfig
+  },
+  {
+    id: '20261127_backfill_team_member_sort_key',
+    version: '4.18.0',
+    // 独立后台分批回填成员拼音排序键，不阻塞业务启动；回填完成前列表查询自动兼容兜底。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261127_backfill_team_member_sort_key.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261127_backfill_team_member_sort_key.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261127_backfill_team_member_sort_key.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT(
+          'system_migration:migrations.20261127_backfill_team_member_sort_key.members'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261127_backfill_team_member_sort_key.validation'
+        )
+      }
+    ],
+    run: backfillTeamMemberSortKey
   }
 ] as const satisfies readonly SystemMigration[];
 

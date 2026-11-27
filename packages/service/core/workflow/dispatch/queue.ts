@@ -726,7 +726,11 @@ export class WorkflowQueue {
               result.responseData?.error === undefined &&
               result.responseData?.errorText === undefined
             ) {
-              result.responseData = { ...result.responseData, error: getErrText(result.rawError) };
+              result.responseData = {
+                ...result.responseData,
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，调度层统一写 errorText，不再写历史兼容字段 error。
+                errorText: getErrText(result.rawError)
+              };
             }
 
             // error 是错误分支的数据记录；主动选该分支不代表出现了系统异常。
@@ -791,7 +795,8 @@ export class WorkflowQueue {
               rawError: error,
               error: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                error: errorText,
+                // 列表预览投影与分享树裁剪只保留轻量的 errorText，调度层统一写 errorText，不再写历史兼容字段 error。
+                errorText,
                 ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
@@ -1083,7 +1088,7 @@ export class WorkflowQueue {
             eventName: 'workflow.step.end',
             nodeType: node.flowNodeType,
             mode,
-            status: 'error',
+            status: isUserConfigError(error) ? 'user_error' : 'error',
             durationMs: Date.now() - stepStartedAt
           });
           throw error;

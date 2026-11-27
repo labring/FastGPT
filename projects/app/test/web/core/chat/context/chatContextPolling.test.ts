@@ -6,10 +6,16 @@ import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatCo
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 
-const mocks = vi.hoisted(() => ({ poll: vi.fn(), setHistories: vi.fn(), initialStatus: 0 }));
+const mocks = vi.hoisted(() => ({
+  poll: vi.fn(),
+  getHistories: vi.fn(),
+  setHistories: vi.fn(),
+  loadHistories: vi.fn(),
+  initialStatus: 0
+}));
 vi.mock('@/web/core/chat/history/api', () => ({
   getChatHistoryStatus: mocks.poll,
-  getChatHistories: vi.fn(),
+  getChatHistories: mocks.getHistories,
   putChatHistory: vi.fn(),
   delChatHistoryById: vi.fn(),
   delClearChatHistories: vi.fn()
@@ -21,7 +27,10 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
   ];
   const skillHistories = histories.map(({ appId, ...item }) => ({ ...item, skillId: 'skill' }));
   return {
-    useScrollPagination: (_fetch: unknown, { params }: { params: { skillId?: string } }) => {
+    useScrollPagination: (
+      fetch: (params: any) => Promise<{ list: any[]; total: number }>,
+      { params }: { params: { skillId?: string } }
+    ) => {
       // 使用真实 state/setter，覆盖状态切换引发的 effect 清理与重新轮询。
       const [data, setData] = React.useState(() =>
         (params.skillId ? skillHistories : histories).map((item) => ({
@@ -33,6 +42,16 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
         mocks.setHistories(update);
         setData(update);
       }, []);
+      const fetchData = React.useCallback(
+        async (options?: { init?: boolean; silent?: boolean }) => {
+          mocks.loadHistories(options);
+          if (mocks.getHistories.getMockImplementation()) {
+            const res = await fetch({ offset: 0, pageSize: 20, ...params });
+            setData(res.list);
+          }
+        },
+        [fetch, params]
+      );
 
       return {
         ScrollData: () => null,
@@ -40,7 +59,7 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
         isInitialLoading: false,
         setData: setHistories,
         setTotal: vi.fn(),
-        fetchData: vi.fn(),
+        fetchData,
         data
       };
     }
@@ -53,6 +72,7 @@ describe('chat history lease polling lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.poll.mockReset();
+    mocks.getHistories.mockReset();
     mocks.initialStatus = ChatGenerateStatusEnum.generating;
     dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example' });
     vi.stubGlobal('window', dom.window);
@@ -164,6 +184,7 @@ describe('chat history lease polling lifecycle', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
       expect(document.querySelector('output')?.textContent).toBe(`${ChatGenerateStatusEnum.done}`);
+      expect(mocks.loadHistories).toHaveBeenCalledWith({ init: true, silent: true });
       const idleCalls = mocks.poll.mock.calls.length;
       await act(async () => {
         await vi.advanceTimersByTimeAsync(15000);
@@ -180,6 +201,7 @@ describe('chat history lease polling lifecycle', () => {
   it.each([
     ['app', { appId: 'app' }],
     ['skill', { skillId: 'skill' }],
+    ['share', { outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' } }],
     ['builder', { appId: 'app', sourceType: ChatSourceTypeEnum.workflowBuilder }],
     ['helper', { appId: 'app', sourceType: ChatSourceTypeEnum.chatAgentHelper }]
   ] as const)(
@@ -232,4 +254,98 @@ describe('chat history lease polling lifecycle', () => {
       expect(mocks.setHistories).not.toHaveBeenCalled();
     }
   );
+
+  it('preserves another unpersisted optimistic generating chat across page-1 reload until confirmed', async () => {
+    mocks.initialStatus = ChatGenerateStatusEnum.done;
+    mocks.poll.mockResolvedValue({ list: [] });
+    mocks.getHistories.mockResolvedValue({
+      list: [
+        {
+          appId: 'app',
+          chatId: 'chat-b',
+          title: 'B',
+          updateTime: new Date(),
+          chatGenerateStatus: ChatGenerateStatusEnum.done,
+          hasBeenRead: true
+        }
+      ],
+      total: 1
+    });
+
+    let ctx!: React.ContextType<typeof ChatContext>;
+    const Probe = () => {
+      ctx = useContextSelector(ChatContext, (v) => v);
+      return React.createElement(
+        'output',
+        null,
+        ctx.histories.map((h) => `${h.chatId}:${h.chatGenerateStatus}`).join(',')
+      );
+    };
+
+    await act(async () =>
+      root!.render(
+        React.createElement(
+          ChatContextProvider,
+          {
+            params: { outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' } }
+          } as React.ComponentProps<typeof ChatContextProvider>,
+          React.createElement(Probe)
+        )
+      )
+    );
+
+    // 乐观插入 A（尚未落库）和 B（将先完成）
+    await act(async () => {
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-a',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        fallbackTitle: 'New Chat'
+      });
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-b',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        fallbackTitle: 'New Chat'
+      });
+    });
+
+    // B 完成后自动触发首屏静默重拉，此时服务端仅返回 B，A 必须继续保留并参与轮询
+    await act(async () => {
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-b',
+        status: ChatGenerateStatusEnum.done,
+        hasBeenRead: true
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(document.querySelector('output')?.textContent).toBe('chat-a:0,chat-b:1');
+    expect(mocks.poll).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' },
+        chatIds: expect.arrayContaining(['chat-a', 'chat-b'])
+      })
+    );
+
+    // 短时间内高频触发 visibilitychange 轮询（>6 次但未满最短过期窗口）不得误删未落库的乐观会话 A
+    for (let i = 0; i < 8; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+        document.dispatchEvent(new dom.window.Event('visibilitychange'));
+        await Promise.resolve();
+      });
+    }
+    expect(document.querySelector('output')?.textContent).toBe('chat-a:0,chat-b:1');
+
+    // 超过最短过期窗口后，始终未落库的孤立乐观项才被清理并停止轮询
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25000);
+    });
+    expect(document.querySelector('output')?.textContent).toBe('chat-b:1');
+  });
 });

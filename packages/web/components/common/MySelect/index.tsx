@@ -8,17 +8,9 @@ import React, {
   useState,
   useCallback
 } from 'react';
-import {
-  Menu,
-  MenuItem,
-  Button,
-  useDisclosure,
-  MenuButton,
-  Box,
-  Flex,
-  Input
-} from '@chakra-ui/react';
+import { Menu, MenuItem, Button, useDisclosure, MenuButton, Box, Flex } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps, MenuProps } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import { useRequest } from '../../../hooks/useRequest';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
@@ -26,10 +18,7 @@ import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 import EmptyTip from '../EmptyTip';
-import {
-  filterSelectOptionsBySearch,
-  useComposedSearchInput
-} from '../TagFilter/FilterSearchInput';
+import FilterSearchInput, { filterSelectOptionsBySearch } from '../TagFilter/FilterSearchInput';
 import { useMenuListPresence } from './useMenuListPresence';
 import { CanvasMenuList, useCanvasMenuModifiers } from './CanvasMenuList';
 
@@ -47,6 +36,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
+  searchPlaceholder?: string;
   onSearchChange?: (val: string) => void;
   list: {
     alias?: string | React.ReactNode;
@@ -98,29 +88,30 @@ const SelectButtonContent = React.memo(function SelectButtonContent({
   placeholder
 }: SelectButtonContentProps) {
   return (
-    <Flex alignItems="center" justifyContent="space-between" w="100%" minW={0}>
-      <Flex alignItems="center" flex="1 1 0" minW={0} overflow="hidden">
-        {isSelecting && <MyIcon mr={2} name="common/loading" w="1rem" />}
-        {valueLabel ? (
-          <>{valueLabel}</>
-        ) : (
-          <>
-            {selectItem?.icon && (
-              <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
-            )}
-            <Box
-              noOfLines={1}
-              {...(!selectItem
-                ? {
-                    color: 'myGray.500'
-                  }
-                : {})}
-            >
-              {selectItem?.alias || selectItem?.label || placeholder}
-            </Box>
-          </>
-        )}
-      </Flex>
+    <Flex alignItems="center" w="100%" minW={0} overflow="hidden">
+      {isSelecting && <MyIcon mr={2} name="common/loading" w="1rem" />}
+      {valueLabel ? (
+        <>{valueLabel}</>
+      ) : (
+        <>
+          {selectItem?.icon && (
+            <Avatar mr={2} src={selectItem.icon} w={selectItem.iconSize ?? '1rem'} flexShrink={0} />
+          )}
+          <Box
+            flex="1 1 auto"
+            minW={0}
+            isTruncated
+            wordBreak="normal"
+            {...(!selectItem
+              ? {
+                  color: 'myGray.500'
+                }
+              : {})}
+          >
+            {selectItem?.alias || selectItem?.label || placeholder}
+          </Box>
+        </>
+      )}
     </Flex>
   );
 });
@@ -203,6 +194,7 @@ const SelectMenu = React.memo(function SelectMenu({
   value,
   valueLabel,
   isSearch = false,
+  searchPlaceholder,
   onSearchChange,
   isListLoading = false,
   width = '100%',
@@ -219,9 +211,11 @@ const SelectMenu = React.memo(function SelectMenu({
   onClose,
   ...props
 }: SelectMenuProps) {
+  const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
   const MenuRef = useRef<HTMLDivElement>(null);
   const MenuListRef = useRef<HTMLDivElement>(null);
+  const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
   const closingRef = useRef(false);
@@ -243,14 +237,16 @@ const SelectMenu = React.memo(function SelectMenu({
   }, [isOpen]);
 
   const [search, setSearch] = useState('');
-  const { inputValue, isComposingRef, resetInput, updateInput, compositionProps } =
-    useComposedSearchInput(search, (next) => {
+  const handleSearchChange = useCallback(
+    (next: string) => {
       setSearch(next);
       onSearchChange?.(next);
-    });
+    },
+    [onSearchChange]
+  );
 
   const handleOpen = useCallback(() => {
-    resetInput();
+    setSearch('');
     closingRef.current = false;
     const width =
       ButtonRef.current?.offsetWidth ||
@@ -261,48 +257,14 @@ const SelectMenu = React.memo(function SelectMenu({
     }
     mount();
     onOpen();
-  }, [mount, onOpen, resetInput]);
+  }, [mount, onOpen]);
 
   const handleClose = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
-    resetInput();
+    setSearch('');
     onClose();
-  }, [onClose, resetInput]);
-
-  const isComposingSearch = (e: React.KeyboardEvent<HTMLInputElement>) =>
-    isComposingRef.current || e.nativeEvent.isComposing || e.keyCode === 229;
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const composing = isComposingSearch(e);
-    if (!composing && e.key !== ' ' && e.code !== 'Space') return;
-
-    e.stopPropagation();
-    // 输入法候选框接管方向键、确认键和 Escape，菜单不应处理这些事件。
-    if (composing) return;
-
-    e.preventDefault();
-    const input = e.currentTarget;
-    const selectionStart = input.selectionStart ?? inputValue.length;
-    const selectionEnd = input.selectionEnd ?? selectionStart;
-    const nextSearch = `${inputValue.slice(0, selectionStart)} ${inputValue.slice(selectionEnd)}`;
-
-    updateInput(nextSearch);
-    window.requestAnimationFrame(() => {
-      const nextPosition = selectionStart + 1;
-      input.setSelectionRange(nextPosition, nextPosition);
-    });
-  };
-
-  const handleSearchSpaceKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isSearch || (e.key !== ' ' && e.code !== 'Space')) return;
-
-    e.stopPropagation();
-
-    if (!isComposingSearch(e)) {
-      e.preventDefault();
-    }
-  };
+  }, [onClose]);
 
   const handleMenuBlur = useCallback<React.FocusEventHandler<HTMLDivElement>>(
     (e) => {
@@ -341,10 +303,10 @@ const SelectMenu = React.memo(function SelectMenu({
   }, [list, onSearchChange, search, isSearch]);
 
   useEffect(() => {
-    if (isOpen && !ScrollData && MenuListRef.current && SelectedItemRef.current) {
-      const menu = MenuListRef.current;
+    const scrollContainer = isSearch ? ScrollContainerRef.current : MenuListRef.current;
+    if (isOpen && !ScrollData && scrollContainer && SelectedItemRef.current) {
       const selectedItem = SelectedItemRef.current;
-      menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+      scrollContainer.scrollTop = selectedItem.offsetTop - scrollContainer.offsetTop - 100;
     }
 
     if (!isOpen && isSearch) {
@@ -417,7 +379,14 @@ const SelectMenu = React.memo(function SelectMenu({
     selectOpen: isOpen,
     isInvalid,
     isDisabled,
-    ...props
+    ...props,
+    onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
+      props.onMouseDown?.(e);
+      // 搜索态点击自身触发器时阻止 mousedown 提前触发输入框失焦关闭，交由随后的 click 正常收起菜单。
+      if (isSearch && isOpen) {
+        e.preventDefault();
+      }
+    }
   };
 
   const buttonContent = (
@@ -459,9 +428,9 @@ const SelectMenu = React.memo(function SelectMenu({
             zIndex={99}
             maxH="45vh"
             overflowX="hidden"
-            display={ScrollData ? 'flex' : undefined}
-            flexDirection={ScrollData ? 'column' : undefined}
-            overflowY={ScrollData ? 'hidden' : 'auto'}
+            display={ScrollData || isSearch ? 'flex' : undefined}
+            flexDirection={ScrollData || isSearch ? 'column' : undefined}
+            overflowY={ScrollData || isSearch ? 'hidden' : 'auto'}
             rootProps={
               {
                 'data-preserve-width': true,
@@ -502,25 +471,15 @@ const SelectMenu = React.memo(function SelectMenu({
             }}
           >
             {isSearch && (
-              <Input
-                ref={SearchInputRef}
-                flexShrink={0}
-                autoFocus
-                variant="unstyled"
-                value={inputValue}
-                {...compositionProps}
-                placeholder={
-                  (typeof selectItem?.alias === 'string' ? selectItem.alias : '') ||
-                  (typeof selectItem?.label === 'string' ? selectItem.label : placeholder)
-                }
-                _placeholder={{ color: 'myGray.500' }}
-                size="sm"
-                w="100%"
-                color="myGray.700"
-                onKeyDown={handleSearchKeyDown}
-                onKeyUp={handleSearchSpaceKeyUp}
-                onClick={(e) => e.stopPropagation()}
-              />
+              <Box mb={1} flexShrink={0}>
+                <FilterSearchInput
+                  ref={SearchInputRef}
+                  autoFocus
+                  value={search}
+                  placeholder={searchPlaceholder ?? t('common:Search')}
+                  onChange={handleSearchChange}
+                />
+              </Box>
             )}
             {ScrollData ? (
               <ScrollData
@@ -532,6 +491,16 @@ const SelectMenu = React.memo(function SelectMenu({
               >
                 {ListRender}
               </ScrollData>
+            ) : isSearch ? (
+              <Box
+                ref={ScrollContainerRef}
+                flex={'1 1 auto'}
+                minH={0}
+                overflowY={'auto'}
+                overflowX={'hidden'}
+              >
+                {ListRender}
+              </Box>
             ) : (
               ListRender
             )}
@@ -549,6 +518,7 @@ const MySelect = <T = any,>(
     value,
     valueLabel,
     isSearch = false,
+    searchPlaceholder,
     onSearchChange,
     isListLoading = false,
     width = '100%',
@@ -602,6 +572,7 @@ const MySelect = <T = any,>(
         value={value}
         valueLabel={valueLabel}
         isSearch={isSearch}
+        searchPlaceholder={searchPlaceholder}
         onSearchChange={onSearchChange}
         isListLoading={isListLoading}
         width={width}

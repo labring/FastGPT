@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import {
@@ -21,6 +21,10 @@ const run = () => backfillExternalFileCheck({ assertActive: async () => {} });
 describe('external file check backfill with MongoDB', () => {
   beforeEach(async () => {
     await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it.each([200, 201, 1000])(

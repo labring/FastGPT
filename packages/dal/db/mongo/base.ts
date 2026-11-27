@@ -118,20 +118,26 @@ export abstract class MongoRepositoryBase<
     return useReadReplica ? { readPreference: 'secondaryPreferred' } : {};
   }
 
-  protected parseRow(doc: unknown): z.output<TReadSchema> {
+  protected parseRow<TSchema extends z.ZodTypeAny = TReadSchema>(
+    doc: unknown,
+    customSchema?: TSchema
+  ): z.output<TSchema> {
     return parseRepoRow({
       table: this.tableName,
-      schema: this.readSchema,
+      schema: (customSchema ?? this.readSchema) as TSchema,
       row: doc,
       logger: this.runtime.getLogger()
     });
   }
 
-  protected parseNullable(doc: unknown): z.output<TReadSchema> | null {
+  protected parseNullable<TSchema extends z.ZodTypeAny = TReadSchema>(
+    doc: unknown,
+    customSchema?: TSchema
+  ): z.output<TSchema> | null {
     if (doc === null || doc === undefined) {
       return null;
     }
-    return this.parseRow(doc);
+    return this.parseRow(doc, customSchema);
   }
 
   protected parseList<TSchema extends z.ZodTypeAny = TReadSchema>(

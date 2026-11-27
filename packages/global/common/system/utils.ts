@@ -5,6 +5,45 @@ export const delay = (ms: number) =>
     }, ms);
   });
 
+/**
+ * 把 AbortSignal 的 reason 归一为 Error。
+ * `controller.abort(reason)` 允许传入任意值，调用方 reject/throw/destroy 流时需要 Error 实例，
+ * 非 Error reason 统一包装为 `Error('Aborted')`。
+ */
+export const getAbortError = (signal: AbortSignal): Error => {
+  if (signal.reason instanceof Error) return signal.reason;
+  const abortError = new Error('Aborted');
+  abortError.name = 'AbortError';
+  return abortError;
+};
+
+/** signal 已中断时抛出归一后的中断错误，用于长任务循环中的检查点。 */
+export const throwIfAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) throw getAbortError(signal);
+};
+
+/** 可被 signal 中断的 delay：中断时清理定时器并以归一后的中断错误 reject。 */
+export const delayWithSignal = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (!signal) {
+      setTimeout(resolve, ms);
+      return;
+    }
+    if (signal.aborted) {
+      reject(getAbortError(signal));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(getAbortError(signal));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+
 export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
   while (true) {
     try {

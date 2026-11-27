@@ -16,9 +16,14 @@ import {
   type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getDocumentNode } from '../nesting/service';
-import { extractCodeInputDefinitions, extractCodeOutputDefinitions } from '../code/io';
+import {
+  extractCodeInputDefinitions,
+  extractCodeOutputDefinitions,
+  isCodeMismatchedWithType
+} from '../code/io';
 import { DYNAMIC_INPUT_MARKER_KEYS, DYNAMIC_OUTPUT_NODE_TYPES } from '../template/contract';
 
 const supportsDynamicOutputs = (node: ReturnType<typeof getDocumentNode>) =>
@@ -200,30 +205,45 @@ const codeSystemOutputKeys = new Set<string>([
   NodeOutputKeyEnum.error
 ]);
 
+const parseSandboxCodeType = (value: unknown): SandboxCodeTypeEnum | undefined =>
+  value === SandboxCodeTypeEnum.js || value === SandboxCodeTypeEnum.py ? value : undefined;
+
 /**
  * 以 main 参数和 return 对象为代码节点动态 IO 的事实源。
  * 无法静态识别参数或返回对象时保留原配置，避免编辑中的不完整代码造成破坏性删除。
+ * 源码与 codeType 可能分两次命令写入；源码明确属于另一种语言时保留现有端口，等两者一致后再同步。
  */
 export const syncCodeNodeIO = ({
   document,
-  nodeId,
-  code
+  nodeId
 }: {
   document: WorkflowDocument;
   nodeId: string;
-  code: string;
 }) => {
-  const node = getDocumentNode(document, nodeId);
-  if (node.flowNodeType !== FlowNodeTypeEnum.code) {
-    return {
-      addedInputKeys: [],
-      removedInputKeys: [],
-      addedOutputKeys: [],
-      removedOutputs: []
-    };
-  }
+  const unchanged = {
+    addedInputKeys: [] as string[],
+    removedInputKeys: [] as string[],
+    addedOutputKeys: [] as string[],
+    removedOutputs: [] as Array<{
+      outputKey: string;
+      removedEdgeCount: number;
+      references: Array<{ nodeId: string; inputKey: string }>;
+    }>
+  };
 
-  const inputDefinitions = extractCodeInputDefinitions(code);
+  const node = getDocumentNode(document, nodeId);
+  if (node.flowNodeType !== FlowNodeTypeEnum.code) return unchanged;
+
+  const code = node.inputs.find((input) => input.key === NodeInputKeyEnum.code)?.value;
+  if (typeof code !== 'string') return unchanged;
+
+  // 运行时解释器由节点配置的 codeType 决定；源码与配置语言冲突时保留现有端口，等切换完成后再同步。
+  const codeType = parseSandboxCodeType(
+    node.inputs.find((input) => input.key === NodeInputKeyEnum.codeType)?.value
+  );
+  if (codeType && isCodeMismatchedWithType(code, codeType)) return unchanged;
+
+  const inputDefinitions = extractCodeInputDefinitions(code, codeType);
   const addedInputKeys: string[] = [];
   const removedInputKeys: string[] = [];
   if (inputDefinitions) {
@@ -267,7 +287,7 @@ export const syncCodeNodeIO = ({
     });
   }
 
-  const outputDefinitions = extractCodeOutputDefinitions(code);
+  const outputDefinitions = extractCodeOutputDefinitions(code, codeType);
   const addedOutputKeys: string[] = [];
   const removedOutputs: Array<{
     outputKey: string;

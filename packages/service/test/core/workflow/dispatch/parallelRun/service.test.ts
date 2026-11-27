@@ -464,9 +464,10 @@ describe('parallelRun/service', () => {
         moduleName: 'workflow:parallel_task',
         moduleNameArgs: { index: 1 },
         loopInputValue: 'input-0',
-        loopOutputValue: 'data-0',
-        error: undefined
+        loopOutputValue: 'data-0'
       });
+      expect(responseDetails[0].errorText).toBeUndefined();
+      expect(responseDetails[0].error).toBeUndefined();
       expect(responseDetails[0].childrenResponses).toBeUndefined();
       expect(responseDetails[0].childResponseCount).toBe(1);
       expect(responseDetails[1]).toMatchObject({
@@ -480,14 +481,14 @@ describe('parallelRun/service', () => {
       expect(assistantResponses).toHaveLength(1); // only index 0 has assistant response
     });
 
-    it('失败任务 → wrapper 带 error、无 loopOutputValue', () => {
+    it('失败任务 → wrapper 带 errorText、无 loopOutputValue', () => {
       const { responseDetails } = agg([failResult1]);
 
       expect(responseDetails).toHaveLength(1);
       expect(responseDetails[0]).toMatchObject({
         id: 'parent_task_1',
         moduleNameArgs: { index: 2 },
-        error: 'task failed',
+        errorText: 'task failed',
         loopOutputValue: undefined
       });
       expect(responseDetails[0].childrenResponses).toBeUndefined();
@@ -511,10 +512,10 @@ describe('parallelRun/service', () => {
       );
 
       expect(attemptResponseDetails).toMatchObject([
-        { id: 'task-0-attempt-0', error: 'task failed', errorCaptured: true },
-        { id: 'task-0-attempt-1', error: 'task failed', errorCaptured: true },
+        { id: 'task-0-attempt-0', errorText: 'task failed', errorCaptured: true },
+        { id: 'task-0-attempt-1', errorText: 'task failed', errorCaptured: true },
         { id: 'task-0-attempt-2', loopOutputValue: 'data-0' },
-        { id: 'task-1-attempt-0', error: 'task failed' }
+        { id: 'task-1-attempt-0', errorText: 'task failed' }
       ]);
       expect(attemptResponseDetails[3].errorCaptured).toBeUndefined();
       expect(responseDetails[1].errorCaptured).toBeUndefined();

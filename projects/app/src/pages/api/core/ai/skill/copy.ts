@@ -13,7 +13,10 @@ import {
   updateCurrentVersion,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/ai/skill/manage';
-import { copySkillPackage, removeSkillPackageTTL } from '@fastgpt/service/core/ai/skill/package';
+import {
+  copySkillPackage,
+  removeSkillPackageTTL
+} from '@fastgpt/service/core/ai/skill/package/storage';
 import { createVersion } from '@fastgpt/service/core/ai/skill/version';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';

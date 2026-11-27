@@ -48,6 +48,30 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(separate.logMode).toBe('separate');
     expect(separate.hasSeparateLogDatabase()).toBe(true);
     expect(separate.resolveEffectiveDatasource('log')).toBe('log');
+
+    await closeDbRuntime();
+
+    // Mongo 同一副本集 URI 配合不同 dbName 时必须保持 separate 独立日志库路由语义
+    const mongoModelBinder = vi.fn();
+    const mongoSameUriSeparate = configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: 'mongodb://127.0.0.1:27017/?replicaSet=rs0',
+      logWriteUrl: 'mongodb://127.0.0.1:27017/?replicaSet=rs0',
+      mongoModelBinder
+    });
+    expect(mongoSameUriSeparate.logMode).toBe('separate');
+    expect(mongoSameUriSeparate.hasSeparateLogDatabase()).toBe(true);
+    expect(mongoSameUriSeparate.resolveEffectiveDatasource('log')).toBe('log');
+    mongoSameUriSeparate.bindMongoModel({ name: 'apps', datasource: 'main' });
+    mongoSameUriSeparate.bindMongoModel({ name: 'llm_request_records', datasource: 'log' });
+    expect(mongoModelBinder).toHaveBeenNthCalledWith(1, {
+      collection: { name: 'apps', datasource: 'main' },
+      datasource: 'main'
+    });
+    expect(mongoModelBinder).toHaveBeenNthCalledWith(2, {
+      collection: { name: 'llm_request_records', datasource: 'log' },
+      datasource: 'log'
+    });
   });
 
   it('is idempotent for identical topology and rejects live topology mismatch until closed', async () => {
@@ -74,6 +98,39 @@ describe('@fastgpt/dal/db runtime & errors', () => {
       mainWriteUrl: 'mongodb://localhost:27017/fastgpt'
     });
     expect(afterClose.dialect).toBe('mongo');
+  });
+
+  it('tracks separate mainReadUrl via hasReadReplica() and treats mainReadUrl equal to mainWriteUrl as no replica', async () => {
+    const noReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
+    });
+    expect(noReplica.hasReadReplica()).toBe(false);
+
+    const sameUrlReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: '  mysql://root@127.0.0.1:2881/fastgpt  '
+    });
+    expect(sameUrlReplica).toBe(noReplica);
+    expect(sameUrlReplica.hasReadReplica()).toBe(false);
+
+    expect(() =>
+      configureDbRuntime({
+        dialect: 'oceanbase',
+        mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+        mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt'
+      })
+    ).toThrow(DbConfigurationError);
+
+    await closeDbRuntime();
+
+    const withReplica = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt'
+    });
+    expect(withReplica.hasReadReplica()).toBe(true);
   });
 
   it('emits slow-query warn/error logs and isolates metric callback failures', () => {
@@ -138,5 +195,57 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     ).toBe(true);
     expect(isDbTransactionOutcomeUnknownError(new DbTransactionOutcomeUnknownError())).toBe(true);
     expect(isDbTransactionOutcomeUnknownError({ errno: 6002 })).toBe(false);
+  });
+
+  it('rejects resolver, transactionRunner, and mongoModelBinder access while closing or closed', async () => {
+    let releaseClose!: () => void;
+    const closeGate = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+
+    const transactionRunner = vi.fn(async () => {
+      throw new Error('transactionRunner should not be called while closing or closed');
+    });
+    const oceanBaseExecutorResolver = vi.fn(() => {
+      throw new Error('oceanBaseExecutorResolver should not be called while closing or closed');
+    });
+    const mongoModelBinder = vi.fn(() => {
+      throw new Error('mongoModelBinder should not be called while closing or closed');
+    });
+
+    const runtime = configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
+      transactionRunner,
+      oceanBaseExecutorResolver,
+      mongoModelBinder,
+      closeHandler: () => closeGate
+    });
+
+    const closingPromise = runtime.close();
+    expect(runtime.getState()).toBe('closing');
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() =>
+      runtime.bindMongoModel({
+        name: 'demo',
+        datasource: 'main'
+      })
+    ).toThrow(DbConfigurationError);
+
+    releaseClose();
+    await closingPromise;
+    expect(runtime.getState()).toBe('closed');
+    expect(() => runtime.getTransactionRunner()).toThrow(DbConfigurationError);
+    expect(() => runtime.getOceanBaseExecutorResolver()).toThrow(DbConfigurationError);
+    expect(() =>
+      runtime.bindMongoModel({
+        name: 'demo',
+        datasource: 'main'
+      })
+    ).toThrow(DbConfigurationError);
+    expect(transactionRunner).not.toHaveBeenCalled();
+    expect(oceanBaseExecutorResolver).not.toHaveBeenCalled();
+    expect(mongoModelBinder).not.toHaveBeenCalled();
   });
 });

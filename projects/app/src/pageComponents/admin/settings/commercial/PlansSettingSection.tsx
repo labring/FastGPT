@@ -10,11 +10,12 @@ import React, {
 import { Box, Button, Flex, HStack, Input, Switch, Text, Textarea } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, useFormState } from 'react-hook-form';
 import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import { hasDirtyFields } from '@/pageComponents/admin/utils';
 import { getInitFormData } from '@/web/admin/system/api';
 import { formatSubPlansStore2FormSchema } from '@/web/admin/config/adapt';
 import type { ConfigFormType } from '@/pageComponents/admin/config/type';
@@ -130,6 +131,7 @@ export type PlansSettingSectionHandle = {
 
 type PlansSettingSectionProps = {
   className?: string;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 /**
@@ -173,7 +175,7 @@ const DateInput = ({
  * 提交时不带 subPlans 键，避免把读取失败写成清空套餐。
  */
 const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSectionProps>(
-  (_props, ref) => {
+  ({ onDirtyChange }, ref) => {
     const { t } = useSafeTranslation();
 
     const [openPlan, setOpenPlan] = useState(false);
@@ -187,6 +189,12 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       handleSubmit,
       formState: { errors }
     } = form;
+    const { dirtyFields } = useFormState({ control: form.control });
+    const isDirty = hasDirtyFields(dirtyFields);
+
+    useEffect(() => {
+      onDirtyChange?.(isDirty);
+    }, [isDirty, onDirtyChange]);
     /** 套餐读取时一起返回的 commercial revision，提交时用于防并发覆盖 */
     const [subPlansRevision, setSubPlansRevision] = useState<number>();
 
@@ -321,14 +329,16 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
               onChange={(e) => {
                 const checked = e.target.checked;
                 if (checked) {
-                  setValue('subPlans.standard', defaultStandardValueJSON);
-                  setValue('subPlans.extraPointsPackages', defaultExtraPointPackages);
+                  setValue('subPlans.standard', defaultStandardValueJSON, { shouldDirty: true });
+                  setValue('subPlans.extraPointsPackages', defaultExtraPointPackages, {
+                    shouldDirty: true
+                  });
                 } else {
                   if (standard) defaultStandardValueJSON = standard;
                   if (extraPointsPackages) defaultExtraPointPackages = extraPointsPackages;
 
-                  setValue('subPlans.standard', undefined);
-                  setValue('subPlans.extraPointsPackages', []);
+                  setValue('subPlans.standard', undefined, { shouldDirty: true });
+                  setValue('subPlans.extraPointsPackages', [], { shouldDirty: true });
                 }
                 setOpenPlan(checked);
               }}
@@ -345,7 +355,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
                 >
                   <StandardPlans
                     value={standard}
-                    onChange={(val) => setValue('subPlans.standard', val)}
+                    onChange={(val) => setValue('subPlans.standard', val, { shouldDirty: true })}
                   />
                 </AdminFormItem>
               </Box>
@@ -359,7 +369,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
                   >
                     <LegacyPlans
                       value={standard}
-                      onChange={(val) => setValue('subPlans.standard', val)}
+                      onChange={(val) => setValue('subPlans.standard', val, { shouldDirty: true })}
                     />
                   </AdminFormItem>
                 </Box>
@@ -402,7 +412,9 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
               >
                 <ExtraPointsPackages
                   value={extraPointsPackages}
-                  onChange={(val) => setValue('subPlans.extraPointsPackages', val)}
+                  onChange={(val) =>
+                    setValue('subPlans.extraPointsPackages', val, { shouldDirty: true })
+                  }
                 />
                 {form.getFieldState('subPlans.extraPointsPackages', form.formState).error && (
                   <Text color={'red.500'} fontSize={'xs'}>
@@ -463,12 +475,20 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
                       form.getFieldState('subPlans.activityExpirationTime', form.formState).error
                     )}
                     value={watch('subPlans.activityExpirationTime')}
-                    onChange={(val) => setValue('subPlans.activityExpirationTime', val as never)}
+                    onChange={(val) =>
+                      setValue('subPlans.activityExpirationTime', val as never, {
+                        shouldDirty: true
+                      })
+                    }
                   />
                   <Button
                     size={'sm'}
                     variant={'whiteBase'}
-                    onClick={() => setValue('subPlans.activityExpirationTime', undefined as never)}
+                    onClick={() =>
+                      setValue('subPlans.activityExpirationTime', undefined as never, {
+                        shouldDirty: true
+                      })
+                    }
                   >
                     {t('admin:clear')}
                   </Button>

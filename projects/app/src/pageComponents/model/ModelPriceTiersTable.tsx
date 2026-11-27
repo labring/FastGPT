@@ -378,11 +378,6 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                             step={0.01}
                             min={0}
                             aria-label={priceLabels[key]}
-                            placeholder={
-                              key === 'cacheReadPrice' || key === 'cacheCreationPrice'
-                                ? t('common:model.cache_price_default')
-                                : undefined
-                            }
                             {...register(`pricing.tiers.${index}.${key}`, {
                               setValueAs: (value) => {
                                 const price = getOptionalNumber(value);

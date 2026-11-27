@@ -16,7 +16,7 @@ export type VolumeManagerConfig = {
  * 读取 volume-manager 配置。
  *
  * 连接信息以实例配置 subservice.agentSandbox 为权威；
- * volume-manager 只负责分配持久卷，OpenSandbox 的挂载路径由运行态固定为 /workspace。
+ * volume-manager 只负责分配持久卷，OpenSandbox 的挂载路径由运行态固定为 `$HOME`（`/home/sandbox`）。
  */
 export function getVolumeManagerEnvConfig(): VolumeManagerConfig {
   const opensandbox = getAgentSandboxOpenSandboxConfig();

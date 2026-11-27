@@ -87,7 +87,12 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
   useToast: () => ({ toast: vi.fn() })
 }));
 vi.mock('@chakra-ui/react', () => {
-  const Box = ({ children }: any) => React.createElement('div', null, children);
+  const Box = ({ children, as, href, target, rel }: any) =>
+    React.createElement(
+      as === 'a' ? 'a' : 'div',
+      as === 'a' ? { href, target, rel } : null,
+      children
+    );
   const Input = React.forwardRef(function Input(
     { isInvalid: _isInvalid, ...props }: any,
     ref: any
@@ -96,8 +101,12 @@ vi.mock('@chakra-ui/react', () => {
   });
   return {
     Box,
+    Button: ({ children, type = 'button', onClick, isDisabled }: any) =>
+      React.createElement('button', { type, onClick, disabled: Boolean(isDisabled) }, children),
+    Icon: () => null,
     HStack: Box,
     Flex: Box,
+    Tag: Box,
     SimpleGrid: Box,
     Text: Box,
     Input,
@@ -123,8 +132,8 @@ vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   }
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
-  default: ({ children, id, title }: any) =>
-    React.createElement('section', { id, 'aria-label': title }, children)
+  default: ({ children, id, title, rightContent }: any) =>
+    React.createElement('section', { id, 'aria-label': title }, rightContent, children)
 }));
 vi.mock('@/pageComponents/admin/settings/AdminFormItem', () => ({
   default: ({ children }: any) => React.createElement('div', null, children)
@@ -141,7 +150,32 @@ vi.mock('@/pageComponents/admin/settings/AdminNumberInput', () => ({
     })
 }));
 vi.mock('@/pageComponents/admin/settings/ImageInput', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({ list, value, onChange }: any) =>
+    React.createElement(
+      'select',
+      {
+        value: value ?? '',
+        onChange: (event: any) => onChange?.(event.target.value)
+      },
+      ...(list ?? []).map((item: { label: string; value: string }) =>
+        React.createElement('option', { key: item.value, value: item.value }, item.label)
+      )
+    )
+}));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ Trigger, onConfirm, content }: any) =>
+    React.createElement(
+      'span',
+      { 'data-confirm-content': content },
+      Trigger,
+      React.createElement(
+        'button',
+        { type: 'button', 'data-confirm-action': 'true', onClick: onConfirm },
+        'confirm'
+      )
+    )
+}));
 vi.mock('@/pageComponents/admin/config/components/FormField/ThirdPartyVariables', () => ({
   default: ({ value, onChange }: any) =>
     React.createElement('input', {
@@ -210,8 +244,12 @@ beforeEach(() => {
   mocks.subPlans = { standard: { basic: {} } };
   mocks.storageCapabilities = undefined;
   const full = resolveSystemInstanceConfig({});
+  full.auth.loginProviders.email.smtp = 'smtp.test';
+  full.auth.loginProviders.email.user = 'user@test.com';
   full.auth.loginProviders.email.pass = 'stored-email';
+  full.auth.loginProviders.phone.accessKeyId = 'stored-ak';
   full.auth.loginProviders.phone.accessKeySecret = 'stored-sms';
+  full.auth.loginProviders.phone.signName = 'stored-sign';
   full.auth.loginProviders.wechat.appSecret = 'stored-wechat';
   full.auth.loginProviders.wecom.token = 'stored-wecom';
   full.commercial.payment.wx.apiV3Key = 'stored-wx';
@@ -413,9 +451,88 @@ describe('system configuration secret forms', () => {
     expect(sentOverrides('auth').loginProviders.phone).not.toHaveProperty('accessKeySecret');
     await setSecret('email.pass', 'new-email');
     await setSecret('phone.accessKeySecret', '');
+    await act(async () => {
+      for (const name of ['phone.accessKeyId', 'phone.signName']) {
+        const input = container.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+        Simulate.change(input, { target: { name, value: '' } } as any);
+      }
+    });
     await save();
     expect(sentOverrides('auth').loginProviders.email.pass).toBe('new-email');
     expect(sentOverrides('auth').loginProviders.phone.accessKeySecret).toBe('');
+  });
+
+  it('requires SMTP user/pass when smtp host is set and all 3 Aliyun SMS fields when any is set', async () => {
+    mocks.configs.auth = omitDomainSecrets('auth', resolveSystemInstanceConfig({}).auth);
+    mocks.configured.auth = markDomainSecrets('auth', resolveSystemInstanceConfig({}).auth);
+    await act(async () => root.render(React.createElement(CoreSettings)));
+
+    const setInput = async (name: string, value: string) => {
+      const input = container.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+      await act(async () => Simulate.change(input, { target: { name, value } } as any));
+    };
+
+    // 1. 填写 SMTP 服务地址后，user 与 pass 均为必填
+    await setInput('email.smtp', 'smtp.example.com');
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    // 补全 SMTP 必填项但只填 1 个阿里云短信字段，仍被拦截
+    await setInput('email.user', 'noreply@example.com');
+    await setSecret('email.pass', 'mail-pass');
+    await setInput('phone.accessKeyId', 'ak-1');
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    // 补全阿里云短信全部 3 个字段后保存成功
+    await setSecret('phone.accessKeySecret', 'sk-1');
+    await setInput('phone.signName', 'FastGPT');
+    await save();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(sentOverrides('auth').loginProviders).toMatchObject({
+      email: { smtp: 'smtp.example.com', user: 'noreply@example.com', pass: 'mail-pass' },
+      phone: { accessKeyId: 'ak-1', accessKeySecret: 'sk-1', signName: 'FastGPT' }
+    });
+  });
+
+  it('clears all SMTP and Aliyun SMS fields including configured secrets via section Clear buttons', async () => {
+    mocks.configs.auth = {
+      ...mocks.configs.auth,
+      loginProviders: {
+        ...mocks.configs.auth.loginProviders,
+        email: { ...mocks.configs.auth.loginProviders.email, register: true }
+      }
+    };
+    await act(async () => root.render(React.createElement(CoreSettings)));
+
+    const emailClear = container.querySelector<HTMLButtonElement>(
+      '#email button:not([data-confirm-action])'
+    );
+    const smsClear = container.querySelector<HTMLButtonElement>(
+      '#sms button:not([data-confirm-action])'
+    );
+    const emailConfirm = container.querySelector<HTMLButtonElement>(
+      '#email button[data-confirm-action]'
+    );
+    const smsConfirm = container.querySelector<HTMLButtonElement>(
+      '#sms button[data-confirm-action]'
+    );
+    expect(emailClear?.textContent).toBe('common:Clear');
+    expect(smsClear?.textContent).toBe('common:Clear');
+
+    await act(async () => {
+      emailConfirm!.click();
+      smsConfirm!.click();
+    });
+    expect(container.querySelector('#email button')).toBeNull();
+    expect(container.querySelector('#sms button')).toBeNull();
+
+    await save();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(sentOverrides('auth').loginProviders).toMatchObject({
+      email: { smtp: '', user: '', pass: '', port: 465, secure: true, register: false },
+      phone: { accessKeyId: '', accessKeySecret: '', signName: '' }
+    });
   });
 
   it('preserves authentication secrets and submits explicit changes', async () => {
@@ -479,6 +596,100 @@ describe('system configuration secret forms', () => {
       expect(mocks.configs.providers.documentParse.customPdf.price).toBe(2.5);
     }
   );
+
+  it('renders cleanly while domain configs are still loading with empty snapshots', async () => {
+    mocks.configs.providers = {};
+    mocks.configs.site = {};
+    mocks.configs.auth = {};
+    mocks.configs.feature = {};
+    mocks.configs.storage = {};
+    await act(async () => root.render(React.createElement(CoreSettings)));
+    expect(container.querySelector('#documentParse')).not.toBeNull();
+  });
+
+  it('defaults SoMark region to international on load and supports CN and custom base URLs', async () => {
+    const getSomarkSelect = () =>
+      [...container.querySelectorAll<HTMLSelectElement>('#documentParse select')].find((select) =>
+        [...select.options].some((option) => option.value === 'global')
+      )!;
+    const getCustomUrlInput = () =>
+      container.querySelector<HTMLInputElement>('[name="documentParse.customPdf.somarkBaseUrl"]');
+
+    // 历史空值加载时自动选中国际站，不展示自定义地址输入框；专用超时默认 600 秒可独立修改
+    mocks.configs.providers.documentParse.provider = 'somark';
+    mocks.configs.providers.documentParse.customPdf.somarkBaseUrl = '';
+    await act(async () => root.render(React.createElement(CoreSettings)));
+    expect(getSomarkSelect().value).toBe('global');
+    expect(getCustomUrlInput()).toBeNull();
+    const timeoutInput = container.querySelector<HTMLInputElement>(
+      '[name="documentParse.customPdf.timeoutSeconds"]'
+    );
+    expect(timeoutInput?.value).toBe('600');
+    await act(async () => Simulate.change(timeoutInput!, { target: { value: '900' } } as any));
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://somark.ai/api/v1'
+    );
+    expect(sentOverrides('providers').documentParse.customPdf.timeoutSeconds).toBe(900);
+
+    // 切换到国内站直接写入国内地址；已配置密钥时不阻塞「测试」按钮
+    const getDocParseTestButton = () =>
+      [...container.querySelectorAll<HTMLButtonElement>('#documentParse button')].find((button) =>
+        button.textContent?.includes('admin:test_document_parse_file')
+      );
+    expect(getDocParseTestButton()?.disabled).toBe(false);
+    await act(async () => Simulate.change(getSomarkSelect(), { target: { value: 'cn' } } as any));
+    expect(getCustomUrlInput()).toBeNull();
+    expect(getDocParseTestButton()?.disabled).toBe(false);
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://somark.cn/api/v1'
+    );
+
+    // 切换到自定义后展开输入框，空值或非法地址阻止提交，合法地址去尾斜杠后保存
+    await act(async () =>
+      Simulate.change(getSomarkSelect(), { target: { value: 'custom' } } as any)
+    );
+    expect(getCustomUrlInput()?.value).toBe('');
+    mocks.update.mockClear();
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    await act(async () =>
+      Simulate.change(getCustomUrlInput()!, {
+        target: { value: 'ftp://invalid.example/api/v1' }
+      } as any)
+    );
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    await act(async () =>
+      Simulate.change(getCustomUrlInput()!, {
+        target: { value: 'https://oxr.internal.test/api/v1/' }
+      } as any)
+    );
+    await save();
+    expect(sentOverrides('providers').documentParse.customPdf.somarkBaseUrl).toBe(
+      'https://oxr.internal.test/api/v1'
+    );
+
+    // 回读已保存的自定义地址时自动选中 custom 并回显地址
+    mocks.configs.providers = {
+      ...mocks.configs.providers,
+      documentParse: {
+        ...mocks.configs.providers.documentParse,
+        customPdf: {
+          ...mocks.configs.providers.documentParse.customPdf,
+          somarkBaseUrl: 'https://oxr.internal.test/api/v1'
+        }
+      }
+    };
+    await act(async () => {
+      mocks.configListeners.forEach((notify) => notify());
+    });
+    expect(getSomarkSelect().value).toBe('custom');
+    expect(getCustomUrlInput()?.value).toBe('https://oxr.internal.test/api/v1');
+  });
 
   it('preserves visible and hidden provider credentials and submits a changed key', async () => {
     mocks.configs.providers.documentParse.customPdf.price = 2.5;

@@ -147,6 +147,27 @@ describe('ConnectivityTestInput', () => {
     });
   });
 
+  it('forwards stored credential flag for opensandbox probes', async () => {
+    mocks.post.mockResolvedValueOnce({ connected: true, status: 200, responseTimeMs: 9 });
+    await act(async () =>
+      root.render(
+        React.createElement(ConnectivityTestInput, {
+          isEditable: true,
+          service: 'opensandbox',
+          value: 'http://localhost:8090',
+          useStoredToken: true
+        })
+      )
+    );
+    await act(async () => container.querySelector('button')!.click());
+    expect(mocks.post).toHaveBeenLastCalledWith('/admin/system/config/probe', {
+      url: 'http://localhost:8090',
+      timeoutMs: 5000,
+      service: 'opensandbox',
+      useStoredToken: true
+    });
+  });
+
   it('keeps generic probes compatible and omits credentials for MCP probes', async () => {
     mocks.post.mockResolvedValue({ connected: false, responseTimeMs: 7, errorCode: 'response' });
     await act(async () =>

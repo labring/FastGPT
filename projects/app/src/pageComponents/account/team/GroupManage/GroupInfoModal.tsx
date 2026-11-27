@@ -2,6 +2,7 @@ import { Input, HStack, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -93,14 +94,17 @@ function GroupInfoModal({
         </Button>
       }
     >
-      <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
+      <FormLabel>{t('common:avatar_and_name')}</FormLabel>
       <HStack>
-        <Avatar
-          src={getValues('avatar')}
-          onClick={handleAvatarSelectorOpen}
-          cursor={'pointer'}
-          borderRadius={'md'}
-        />
+        <MyTooltip label={t('common:set_avatar')}>
+          <Avatar
+            flexShrink={0}
+            src={getValues('avatar')}
+            onClick={handleAvatarSelectorOpen}
+            cursor={'pointer'}
+            borderRadius={'md'}
+          />
+        </MyTooltip>
         <Input
           bgColor="myGray.50"
           {...register('name', { required: true })}

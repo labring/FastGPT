@@ -49,6 +49,7 @@ type FinishChatGenerateStatus = (params: {
 type UseChatResumeProps = {
   enableAutoResume: boolean;
   isReady: boolean;
+  isChatting?: boolean;
   resumeTargetAiDataId?: string;
   activeSourceKeyRef: MutableRefObject<string | undefined>;
   activeChatIdRef: MutableRefObject<string | undefined>;
@@ -58,6 +59,7 @@ type UseChatResumeProps = {
   flushGeneratingMessages: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onResumeStart?: () => void;
   onChatGeneratingConflictRecovered?: () => void;
 };
 
@@ -98,6 +100,7 @@ const isResumeLifecycleAbort = (reason: unknown) => {
 export const useChatResume = ({
   enableAutoResume,
   isReady,
+  isChatting: isChattingProp,
   resumeTargetAiDataId,
   activeSourceKeyRef,
   activeChatIdRef,
@@ -107,6 +110,7 @@ export const useChatResume = ({
   flushGeneratingMessages,
   scrollToBottom,
   finishChatGenerateStatus,
+  onResumeStart,
   onChatGeneratingConflictRecovered
 }: UseChatResumeProps) => {
   const { t } = useTranslation();
@@ -126,8 +130,10 @@ export const useChatResume = ({
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
-  const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const chatBoxIsChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const isChatting = isChattingProp ?? chatBoxIsChatting;
   const isChattingRef = useLatest(isChatting);
+  const onResumeStartRef = useLatest(onResumeStart);
   const documentVisibility = useDocumentVisibility();
   const resumeStatusCheckingRef = useRef(false);
   const resumeRecordsRefreshRef = useRef<{
@@ -431,6 +437,7 @@ export const useChatResume = ({
         }
 
         hasStartedResumeStream = true;
+        onResumeStartRef.current?.();
         const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
           ...resumeForChatTarget,
           chatId: resumeForChatId,
@@ -603,6 +610,7 @@ export const useChatResume = ({
     setChatRecords,
     refreshChatRecords,
     finishChatGenerateStatus,
+    onResumeStartRef,
     onChatGeneratingConflictRecovered,
     t,
     toast,

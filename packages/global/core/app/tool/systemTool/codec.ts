@@ -84,7 +84,7 @@ export const SystemToolCodec = {
       source: 'system',
       author,
       name,
-      avatar: avatar ?? '',
+      avatar: avatar ?? undefined,
       intro: intro ?? '',
       tags: tags ?? [],
       currentCost: item.currentCost ?? 0,
@@ -126,7 +126,7 @@ export const SystemToolCodec = {
       id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
       author: tool.author ?? systemTitle ?? '',
-      avatar: tool.icon,
+      avatar: tool.icon ?? undefined,
       currentCost: config?.currentCost ?? 0,
       hasSystemSecret,
       systemSecretStatus: this.getSystemSecretStatus({

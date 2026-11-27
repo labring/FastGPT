@@ -108,7 +108,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     vi.clearAllMocks();
     getDefaultChatTitleModelDataMock.mockReturnValue({
       model: 'gpt-title',
-      config: { reasoning: true }
+      config: { reasoning: true, reasoningEffort: true }
     });
     createLLMResponseMock.mockResolvedValue({
       answerText: '"FastGPT Docker Deployment"',
@@ -156,6 +156,44 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(systemPrompt).toContain("The output language must follow the user's message");
     expect(systemPrompt).toContain("If the user's message is English, output English only");
     expect(systemPrompt).toContain("Never answer the user's message");
+  });
+
+  it('uses the lowest supported reasoning effort when the title model cannot disable reasoning, and omits it when unconfigurable', async () => {
+    getDefaultChatTitleModelDataMock.mockReturnValueOnce({
+      model: 'gpt-title-min',
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['minimal', 'low', 'medium', 'high']
+      }
+    });
+    await createChat({ chatId: 'chat-title-min-effort' });
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      chatId: 'chat-title-min-effort',
+      userContent: textContent('Summarize FastGPT')
+    });
+
+    expect(createLLMResponseMock.mock.calls[0]?.[0]?.body.reasoning_effort).toBe('minimal');
+
+    createLLMResponseMock.mockClear();
+    getDefaultChatTitleModelDataMock.mockReturnValueOnce({
+      model: 'gpt-title-fixed-reasoning',
+      config: {
+        reasoning: true,
+        reasoningEffort: false
+      }
+    });
+    await createChat({ chatId: 'chat-title-no-effort' });
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      chatId: 'chat-title-no-effort',
+      userContent: textContent('Summarize FastGPT')
+    });
+
+    expect(createLLMResponseMock.mock.calls[0]?.[0]?.body).not.toHaveProperty('reasoning_effort');
   });
 
   it('skips later rounds while a background title still holds the lease', async () => {

@@ -1,7 +1,15 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import {
+  sandboxMigrationId,
+  systemMigrationStateCollectionName,
+  SystemMigrationStatusEnum
+} from '@fastgpt/global/migration/constants';
+import {
+  getLegacySandboxInstanceCollection,
+  MongoSandboxInstance
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import {
   advanceSandboxOperation,
   backfillSandboxInstanceTeamId,
@@ -11,11 +19,15 @@ import {
   createSandboxProvisioningInstance,
   createSandboxResourcesToArchiveCursor,
   deleteClaimedSandboxRecord,
+  findExistingSandboxVolumeClaimNames,
   findInactiveRunningSandboxResources,
+  findLegacySandboxInstanceBySandboxId,
+  findLegacySandboxInstancesBySandboxIds,
   findStaleSandboxOperations,
+  hasPendingLegacySandboxInstance,
   markSandboxOperationFailed,
-  switchArchivedSandboxProvider,
   touchRunningSandboxInstance,
+  updateSandboxInstanceRecordBySandboxId,
   type SandboxResourceDoc
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import {
@@ -50,13 +62,24 @@ describe('sandbox instance lifecycle repository', () => {
 
   beforeEach(async () => {
     await MongoSandboxInstance.deleteMany({ sandboxId: new RegExp(`^${prefix}`) });
+    await getLegacySandboxInstanceCollection().deleteMany({ sandboxId: new RegExp(`^${prefix}`) });
+    await MongoSandboxInstance.db
+      .collection(systemMigrationStateCollectionName)
+      .deleteMany({ _id: sandboxMigrationId as never });
+  });
+
+  afterAll(async () => {
+    await MongoSandboxInstance.deleteMany({ sandboxId: new RegExp(`^${prefix}`) });
+    await getLegacySandboxInstanceCollection().deleteMany({ sandboxId: new RegExp(`^${prefix}`) });
+    await MongoSandboxInstance.db
+      .collection(systemMigrationStateCollectionName)
+      .deleteMany({ _id: sandboxMigrationId as never });
   });
 
   it('selects recent rollback phases without admitting recent forward operations or other statuses', async () => {
     const resources = [];
     for (let index = 0; index < 3; index++) {
       const { instance } = await createSandboxProvisioningInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...createAppIdentity(),
         teamId: 'recovery-query-team'
@@ -96,13 +119,11 @@ describe('sandbox instance lifecycle repository', () => {
   it('creates one provisioning claim and never upserts a running record', async () => {
     const identity = createAppIdentity();
     const first = await createSandboxProvisioningInstance({
-      provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
       teamId: 'team-1'
     });
     const duplicate = await createSandboxProvisioningInstance({
-      provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
       teamId: 'team-1'
@@ -117,7 +138,6 @@ describe('sandbox instance lifecycle repository', () => {
     expect(String(duplicate.instance?._id)).toBe(String(first.instance?._id));
     await expect(
       touchRunningSandboxInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...identity
       })
@@ -128,7 +148,6 @@ describe('sandbox instance lifecycle repository', () => {
   it('publishes provisioning only for the current operation token', async () => {
     const identity = createAppIdentity();
     const { instance } = await createSandboxProvisioningInstance({
-      provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
       teamId: 'team-1'
@@ -163,7 +182,6 @@ describe('sandbox instance lifecycle repository', () => {
   it('touches only the matching published identity and preserves stable fields', async () => {
     const identity = createAppIdentity();
     const { instance } = await createSandboxProvisioningInstance({
-      provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
       teamId: 'team-1'
@@ -177,7 +195,6 @@ describe('sandbox instance lifecycle repository', () => {
 
     await expect(
       touchRunningSandboxInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...identity
       })
@@ -188,7 +205,6 @@ describe('sandbox instance lifecycle repository', () => {
 
     await expect(
       touchRunningSandboxInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...identity,
         userId: 'another-user'
@@ -220,7 +236,6 @@ describe('sandbox instance lifecycle repository', () => {
 
     await expect(
       touchRunningSandboxInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...identity,
         expectedWorkspaceClaimName: 'fastgpt-session-stale-generation'
@@ -228,7 +243,6 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toBeNull();
     await expect(
       touchRunningSandboxInstance({
-        provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         ...identity,
         expectedWorkspaceClaimName: 'fastgpt-session-current-generation'
@@ -306,38 +320,6 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toMatchObject({ status: SandboxInstanceStatusEnum.stopped });
   });
 
-  it('switches provider only while the record remains archived and operation-free', async () => {
-    const identity = createAppIdentity();
-    const archived = await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sourceType: ChatSourceTypeEnum.app,
-      ...identity,
-      status: SandboxInstanceStatusEnum.archived,
-      lastActiveAt: oldDate,
-      createdAt: oldDate
-    });
-    const resource = archived.toObject() as SandboxResourceDoc;
-
-    await expect(
-      switchArchivedSandboxProvider({
-        resource,
-        provider: 'sealosdevbox',
-        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
-      })
-    ).resolves.toMatchObject({
-      provider: 'sealosdevbox',
-      status: SandboxInstanceStatusEnum.archived,
-      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
-    });
-    await expect(
-      switchArchivedSandboxProvider({
-        resource,
-        provider: 'sealosdevbox',
-        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
-      })
-    ).resolves.toBeNull();
-  });
-
   it('fences any previous operation before deleting its record', async () => {
     const identity = createAppIdentity();
     const stable = await MongoSandboxInstance.create({
@@ -403,16 +385,12 @@ describe('sandbox instance lifecycle repository', () => {
     );
   });
 
-  it('counts active instances across providers and sources, with optional team filtering', async () => {
+  it('counts active instances across sources, with optional team filtering', async () => {
     const teamId = `${prefix}team-${getNanoid()}`;
     const fixtures = [
       {
         status: SandboxInstanceStatusEnum.provisioning,
         operationType: SandboxOperationTypeEnum.provision
-      },
-      {
-        status: SandboxInstanceStatusEnum.legacyMigrating,
-        operationType: SandboxOperationTypeEnum.legacyMigration
       },
       { status: SandboxInstanceStatusEnum.running },
       { status: SandboxInstanceStatusEnum.stopping, operationType: SandboxOperationTypeEnum.stop },
@@ -435,7 +413,7 @@ describe('sandbox instance lifecycle repository', () => {
     const baseline = await countActiveSandboxInstances();
     await MongoSandboxInstance.create(
       fixtures.map((fixture, index) => ({
-        provider: index % 2 ? 'sealosdevbox' : 'opensandbox',
+        provider: 'opensandbox',
         sourceType: index % 2 ? ChatSourceTypeEnum.skillEdit : ChatSourceTypeEnum.app,
         ...createAppIdentity(),
         status: fixture.status,
@@ -456,9 +434,20 @@ describe('sandbox instance lifecycle repository', () => {
       }))
     );
 
-    // 六种活跃状态计入团队用量；缺归属的 running 只计系统总量，另三种状态不占额。
-    expect(await countActiveSandboxInstances()).toBe(baseline + 7);
-    expect(await countActiveSandboxInstances({ teamId })).toBe(6);
+    await getLegacySandboxInstanceCollection().insertOne({
+      provider: 'sealosdevbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...createAppIdentity(),
+      teamId,
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+
+    // 4 种活跃状态（provisioning/running/stopping/restoring）计入团队用量；
+    // archiving 已在回收不占额，缺归属的 running 只计系统总量，v2 遗留记录不占 v3 配额。
+    expect(await countActiveSandboxInstances()).toBe(baseline + 5);
+    expect(await countActiveSandboxInstances({ teamId })).toBe(4);
     expect(await countActiveSandboxInstances({ teamId: `${prefix}missing-team` })).toBe(0);
   });
 
@@ -475,21 +464,18 @@ describe('sandbox instance lifecycle repository', () => {
 
     await expect(
       backfillSandboxInstanceTeamId({
-        provider: 'opensandbox',
         sandboxId: identity.sandboxId,
         teamId: 'team-fill'
       })
     ).resolves.toMatchObject({ modifiedCount: 1 });
     await expect(
       backfillSandboxInstanceTeamId({
-        provider: 'opensandbox',
         sandboxId: identity.sandboxId,
         teamId: 'team-other'
       })
     ).resolves.toMatchObject({ modifiedCount: 0 });
     await expect(
       backfillSandboxInstanceTeamId({
-        provider: 'opensandbox',
         sandboxId: `${prefix}missing`,
         teamId: 'team-fill'
       })
@@ -498,5 +484,198 @@ describe('sandbox instance lifecycle repository', () => {
     expect(
       (await MongoSandboxInstance.findOne({ sandboxId: identity.sandboxId }).lean())?.teamId
     ).toBe('team-fill');
+  });
+
+  it('refuses updateSandboxInstanceRecordBySandboxId when record is in transitional state', async () => {
+    const identity = createAppIdentity();
+    const created = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...identity,
+      teamId: 'team-id-transitional',
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+    const doc = created.toObject();
+
+    const claimedStopping = await claimSandboxOperation({
+      resource: {
+        _id: doc._id,
+        provider: 'opensandbox',
+        sandboxId: doc.sandboxId,
+        status: SandboxInstanceStatusEnum.running
+      },
+      status: SandboxInstanceStatusEnum.stopping,
+      type: SandboxOperationTypeEnum.stop
+    });
+    expect(claimedStopping?.status).toBe(SandboxInstanceStatusEnum.stopping);
+
+    // updateSandboxInstanceRecordBySandboxId 即使不传 touchActive 也必须拒绝更新过渡态记录
+    await expect(
+      updateSandboxInstanceRecordBySandboxId({
+        sandboxId: doc.sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: identity.sourceId,
+        userId: identity.userId,
+        versionId: 'v-new'
+      })
+    ).resolves.toBeNull();
+  });
+
+  it('unions volume claimNames from both v3 and read-only v2 collections', async () => {
+    const v3Identity = createAppIdentity();
+    const v2Identity = createAppIdentity();
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...v3Identity,
+      teamId: 'team-vol',
+      status: SandboxInstanceStatusEnum.running,
+      storage: {
+        volumes: [
+          { name: 'workspace', claimName: 'fastgpt-session-v3-claim', mountPath: '/home/sandbox' }
+        ]
+      },
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+    await getLegacySandboxInstanceCollection().insertOne({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...v2Identity,
+      teamId: 'team-vol',
+      status: SandboxInstanceStatusEnum.stopped,
+      storage: {
+        volumes: [
+          { name: 'workspace', claimName: 'fastgpt-session-v2-claim', mountPath: '/workspace' }
+        ]
+      },
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+
+    const found = await findExistingSandboxVolumeClaimNames([
+      'fastgpt-session-v3-claim',
+      'fastgpt-session-v2-claim',
+      'fastgpt-session-orphan-claim'
+    ]);
+    expect(found).toEqual(new Set(['fastgpt-session-v3-claim', 'fastgpt-session-v2-claim']));
+  });
+
+  it('gates pending legacy v2 records only before sandboxMigrationId succeeds and exposes read-only v2 lookups', async () => {
+    const appIdentity = createAppIdentity();
+    const deletingIdentity = createAppIdentity();
+    const skillId = `${prefix}skill-${getNanoid()}`;
+    const skillSandboxId = `${prefix}skill-sb-${getNanoid()}`;
+    const migrationStateCol = MongoSandboxInstance.db.collection(
+      systemMigrationStateCollectionName
+    );
+
+    await getLegacySandboxInstanceCollection().insertMany([
+      {
+        provider: 'sealosdevbox',
+        sourceType: ChatSourceTypeEnum.app,
+        ...appIdentity,
+        status: SandboxInstanceStatusEnum.running,
+        lastActiveAt: oldDate,
+        createdAt: oldDate
+      },
+      {
+        provider: 'sealosdevbox',
+        sourceType: ChatSourceTypeEnum.app,
+        ...deletingIdentity,
+        status: SandboxInstanceStatusEnum.deleting,
+        lastActiveAt: oldDate,
+        createdAt: oldDate
+      },
+      {
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        userId: ChatSourceTypeEnum.skillEdit,
+        sandboxId: skillSandboxId,
+        status: SandboxInstanceStatusEnum.stopped,
+        lastActiveAt: oldDate,
+        createdAt: oldDate
+      }
+    ]);
+
+    // 未有 migration succeeded 记录时，非 deleting 的 v2 记录必须触发阻断
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appIdentity.sourceId,
+        userId: appIdentity.userId
+      })
+    ).resolves.toBe(true);
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appIdentity.sourceId,
+        userId: 'other-user'
+      })
+    ).resolves.toBe(false);
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: deletingIdentity.sourceId,
+        userId: deletingIdentity.userId
+      })
+    ).resolves.toBe(false);
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId
+      })
+    ).resolves.toBe(true);
+
+    // migration 状态非 succeeded（如 failed/running）时仍阻断
+    await migrationStateCol.insertOne({
+      _id: sandboxMigrationId as never,
+      status: SystemMigrationStatusEnum.failed
+    });
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appIdentity.sourceId,
+        userId: appIdentity.userId
+      })
+    ).resolves.toBe(true);
+
+    // migration succeeded 后，即便 v2 尚未清理，v3 删除后重建也应放行
+    await migrationStateCol.updateOne(
+      { _id: sandboxMigrationId as never },
+      { $set: { status: SystemMigrationStatusEnum.succeeded } }
+    );
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appIdentity.sourceId,
+        userId: appIdentity.userId
+      })
+    ).resolves.toBe(false);
+    await expect(
+      hasPendingLegacySandboxInstance({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId
+      })
+    ).resolves.toBe(false);
+
+    // v2 只读按 sandboxId 查询仅返回 v2 记录，供孤儿容器保护
+    const legacyDocs = await findLegacySandboxInstancesBySandboxIds([
+      appIdentity.sandboxId,
+      skillSandboxId,
+      `${prefix}missing`
+    ]);
+    expect(legacyDocs.map((item) => item.sandboxId).sort()).toEqual(
+      [appIdentity.sandboxId, skillSandboxId].sort()
+    );
+    expect(
+      (await findLegacySandboxInstanceBySandboxId({ sandboxId: skillSandboxId }))?.status
+    ).toBe(SandboxInstanceStatusEnum.stopped);
+    expect(
+      await findLegacySandboxInstanceBySandboxId({ sandboxId: `${prefix}missing` })
+    ).toBeNull();
   });
 });

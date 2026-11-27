@@ -4,6 +4,8 @@ import type {
 } from '@fastgpt/global/core/ai/sandbox/volume';
 
 export type IVolumeDriver = {
+  exists(claimName: string, options?: { allowLegacyUnlabeled?: boolean }): Promise<boolean>;
   ensure(params: SandboxVolumeEnsureRequest): Promise<SandboxVolumeEnsureResponse>;
-  remove(claimName: string): Promise<void>;
+  remove(claimName: string, options?: { allowLegacyUnlabeled?: boolean }): Promise<void>;
+  list(): Promise<string[]>;
 };

@@ -190,14 +190,15 @@ export class AppTemplateData extends VersionedDataCache<AppTemplateSchemaType[]>
     }, session);
   }
 
-  /** 社区模板只保存运营字段；商业模板更新内容，保持旧接口的增量更新语义。 */
+  /** 社区模板只保存运营字段；商业模板更新内容，保持旧接口的增量更新语义，并返回最新名称供审计复用。 */
   async update(
     { templateId, ...data }: Partial<TemplateContent> & { templateId: string },
     session?: ClientSession
-  ) {
+  ): Promise<{ name?: string }> {
+    let updatedName: string | undefined;
     await this.mutate(async (session) => {
       const isCommunity = isPluginSystemTemplate(templateId);
-      await MongoAppTemplate.updateOne(
+      const updated = await MongoAppTemplate.findOneAndUpdate(
         { templateId },
         isCommunity
           ? {
@@ -205,12 +206,14 @@ export class AppTemplateData extends VersionedDataCache<AppTemplateSchemaType[]>
               $unset: pluginSystemTemplateDbUnsetFields
             }
           : { $set: data },
-        { upsert: true, session }
-      );
+        { upsert: true, new: true, projection: { name: 1 }, session }
+      ).lean();
+      updatedName = isCommunity ? undefined : updated?.name;
       if (!isCommunity && data.avatar) {
         await getS3AvatarSource().refreshAvatar(data.avatar, undefined, session);
       }
     }, session);
+    return { name: updatedName };
   }
 
   /** 删除模板，提交后使所有进程的模板快照失效。 */

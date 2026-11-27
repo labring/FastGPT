@@ -1,0 +1,565 @@
+import { z } from 'zod';
+import { batchRun } from '@fastgpt/global/common/system/utils';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { IntSchema } from '@fastgpt/global/common/zod';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
+import {
+  getS3SandboxSource,
+  LEGACY_SANDBOX_ARCHIVE_PREFIX,
+  SANDBOX_ARCHIVE_PREFIX
+} from '@fastgpt/service/common/s3/sources/sandbox';
+import { withSandboxLease } from '@fastgpt/service/core/ai/sandbox/application/lease';
+import { deleteOpenSandboxContainer } from '@fastgpt/service/core/ai/sandbox/application/resource';
+import { SandboxInstanceStatusEnum } from '@fastgpt/service/core/ai/sandbox/constants';
+import {
+  getLegacySandboxInstanceCollection,
+  MongoSandboxInstance
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import {
+  deleteSessionVolume,
+  getSessionVolumeClaimName
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
+import { LEGACY_DEVBOX_PROVIDER } from '@fastgpt/service/core/ai/sandbox/legacy';
+import { SANDBOX_PROVIDER } from '@fastgpt/service/core/ai/sandbox/type';
+import { systemMigrationBatchSize } from '@/migration/constants';
+import type { SystemMigrationContext } from '@/migration/registry';
+import {
+  createSealosMigrationClient,
+  hasSealosMigrationEnv
+} from '../sandbox_opensandbox_shared/sealosClient';
+import {
+  completeNoopSandboxMigration,
+  createStageProgressReporter,
+  hasMigratedV3Record,
+  isSandboxSourceActive,
+  loadNonPreflightFailures,
+  runSandboxDocCursorStage,
+  SANDBOX_MIGRATION_PROJECTION,
+  sanitizeMigrationFailureMessage,
+  type SandboxCursorStageState,
+  type SandboxMigrationDoc
+} from '../sandbox_opensandbox_shared/utils';
+
+const CLEANUP_CONCURRENCY = 5;
+const MAX_FAILURE_RECORDS = 500;
+const LEGACY_ZIP_KEY_REGEX = new RegExp(`^${LEGACY_SANDBOX_ARCHIVE_PREFIX}/([^/]+)/package\\.zip$`);
+
+const CheckpointSchema = z.object({
+  lastDocId: ObjectIdSchema.nullable(),
+  devboxesDone: z.boolean(),
+  lastZipKey: z.string().nullable(),
+  zipsDone: z.boolean(),
+  deletedDevboxes: IntSchema,
+  deletedVolumes: IntSchema,
+  deletedZips: IntSchema,
+  processedDocs: IntSchema,
+  totalDocs: IntSchema.optional(),
+  processedZips: IntSchema,
+  totalZips: IntSchema.optional()
+});
+
+type CheckpointState = z.infer<typeof CheckpointSchema>;
+
+const createInitialCheckpoint = (): CheckpointState => ({
+  lastDocId: null,
+  devboxesDone: false,
+  lastZipKey: null,
+  zipsDone: false,
+  deletedDevboxes: 0,
+  deletedVolumes: 0,
+  deletedZips: 0,
+  processedDocs: 0,
+  processedZips: 0
+});
+
+/**
+ * 4.18.0 历史沙盒遗留资源核验与永久清理任务（`manual: true`，强依赖 `20261117_migrate_sandbox_to_opensandbox`）。
+ *
+ * 全程只读扫描旧集合 `agent_sandbox_instances_v2`，**不删除旧 Mongo 集合或其文档**，仅回收高成本外部遗留资源：
+ * - 前置安全门禁：扫描 `agent_sandbox_instances_v2`，发现任何非 `deleting` 且源活跃、却尚未在 `v3` 落库的记录立即阻断，零删除放行；
+ * - 阶段 `cleanupDevboxes`：只读扫描 `agent_sandbox_instances_v2`，对每条 `v2` 记录在 `withSandboxLease` 锁内确认活跃实例已存在 `v3` 记录且对应 `sandbox/archive-v2/*.tar.zst` 归档真实存在（若 `v3` 含归档元数据或处于 `archived`/`restoring`），随后回收远端 Sealos Devbox 与仅属于 `v2` 的孤儿/已替代容器及旧持久卷（绝不触碰 `targetV3` 的活容器或仍在 `v3` 使用中的持久卷），保留 `v2` 文档不删除；
+ * - 阶段 `cleanupLegacyZips`：扫描 `sandbox/archive/<sandboxId>/package.zip`，确认无未迁入 `v3` 的非 `deleting` 活跃 `v2` 记录且 `v3` 归档（若含归档元数据或处于 `archived`/`restoring`）已在 `sandbox/archive-v2/` 真实存在后删除旧 `package.zip`；
+ * - 阶段 `validation`：校验 S3 `sandbox/archive/<sandboxId>/package.zip` 已彻底清零。
+ */
+export const cleanupLegacySandboxResources = async (context: SystemMigrationContext) => {
+  const legacyCollection = getLegacySandboxInstanceCollection();
+  const targetCollection = MongoSandboxInstance.collection;
+  const s3Source = getS3SandboxSource();
+  const activeSourceCache = new Map<string, boolean>();
+  const listLegacyZipKeys = async () =>
+    (await s3Source.client.listObjects({ prefix: `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/` })).keys
+      .filter((key) => LEGACY_ZIP_KEY_REGEX.test(key))
+      .sort();
+
+  await context.reportProgress({
+    key: 'preflight',
+    status: SystemMigrationStatusEnum.running
+  });
+  context.signal.throwIfAborted();
+  await context.assertActive();
+
+  // 先加载历史失败记录：保留业务阶段失败快照，仅在 preflight 阻断消除后清理旧 preflight 记录。
+  const { failures, hadPreflight: hadPreflightFailures } = await loadNonPreflightFailures(context);
+
+  const unmigratedActiveFailures: SystemMigrationFailedRecord[] = [];
+  let hasLegacyDevbox = false;
+  const guardCursor = legacyCollection
+    .find<SandboxMigrationDoc>({}, { projection: SANDBOX_MIGRATION_PROJECTION })
+    .batchSize(systemMigrationBatchSize);
+
+  try {
+    for await (const doc of guardCursor) {
+      context.signal.throwIfAborted();
+      if (doc.provider === LEGACY_DEVBOX_PROVIDER) {
+        hasLegacyDevbox = true;
+      }
+      if (
+        doc.status !== SandboxInstanceStatusEnum.deleting &&
+        (await isSandboxSourceActive(doc, activeSourceCache)) &&
+        !(await hasMigratedV3Record(doc))
+      ) {
+        if (unmigratedActiveFailures.length < systemMigrationBatchSize) {
+          unmigratedActiveFailures.push({
+            stageKey: 'preflight',
+            data: { id: String(doc._id), sandboxId: doc.sandboxId },
+            reason: { message: 'Sandbox record is not migrated to v3 opensandbox tar.zst yet' }
+          });
+        }
+      }
+    }
+  } finally {
+    await guardCursor.close().catch(() => undefined);
+  }
+
+  if (unmigratedActiveFailures.length > 0) {
+    await context.fail({
+      message: 'Active unmigrated sandbox records found; complete migration before cleanup',
+      failedRecords: [...failures.values(), ...unmigratedActiveFailures]
+    });
+  }
+
+  if (hasLegacyDevbox && !hasSealosMigrationEnv()) {
+    await context.fail({
+      message:
+        'Missing AGENT_SANDBOX_SEALOS_BASEURL or AGENT_SANDBOX_SEALOS_TOKEN to cleanup legacy Sealos Devbox resources',
+      ...(failures.size > 0 ? { failedRecords: [...failures.values()] } : {})
+    });
+  }
+
+  if (hadPreflightFailures) {
+    await context.reportFailedRecords([...failures.values()]);
+  }
+
+  const legacyCount = await legacyCollection.countDocuments({});
+  const preflightZipKeys = legacyCount === 0 ? await listLegacyZipKeys() : undefined;
+  const existingCheckpoint = await context.getCheckpoint(CheckpointSchema);
+
+  if (legacyCount === 0 && (preflightZipKeys?.length ?? 0) === 0 && failures.size === 0) {
+    const deletedDevboxes = existingCheckpoint?.deletedDevboxes ?? 0;
+    const deletedVolumes = existingCheckpoint?.deletedVolumes ?? 0;
+    const deletedZips = existingCheckpoint?.deletedZips ?? 0;
+
+    return await completeNoopSandboxMigration({
+      context,
+      stages: [
+        {
+          key: 'cleanupDevboxes',
+          current: existingCheckpoint?.processedDocs ?? 0
+        },
+        {
+          key: 'cleanupLegacyZips',
+          current: existingCheckpoint?.processedZips ?? 0
+        }
+      ],
+      result: { deletedDevboxes, deletedVolumes, deletedZips }
+    });
+  }
+
+  const sealosClient = hasSealosMigrationEnv() ? createSealosMigrationClient() : undefined;
+
+  await context.reportProgress({
+    key: 'preflight',
+    status: SystemMigrationStatusEnum.succeeded
+  });
+
+  const checkpoint = existingCheckpoint ?? createInitialCheckpoint();
+  const docStage: SandboxCursorStageState = {
+    lastId: checkpoint.lastDocId,
+    done: checkpoint.devboxesDone,
+    processed: checkpoint.processedDocs,
+    total: checkpoint.totalDocs
+  };
+  const saveCleanupCheckpoint = () => {
+    checkpoint.lastDocId = docStage.lastId;
+    checkpoint.devboxesDone = docStage.done;
+    checkpoint.processedDocs = docStage.processed;
+    checkpoint.totalDocs = docStage.total;
+    return context.saveCheckpoint(checkpoint);
+  };
+
+  const findTargetV3 = (params: {
+    sandboxId: string;
+    legacyRow?: Pick<SandboxMigrationDoc, 'sourceType' | 'sourceId' | 'userId'> | null;
+  }) =>
+    targetCollection.findOne<SandboxMigrationDoc>(
+      params.legacyRow
+        ? {
+            $or: [
+              {
+                sourceType: params.legacyRow.sourceType,
+                sourceId: params.legacyRow.sourceId,
+                userId: params.legacyRow.userId
+              },
+              { provider: SANDBOX_PROVIDER, sandboxId: params.sandboxId }
+            ]
+          }
+        : { provider: SANDBOX_PROVIDER, sandboxId: params.sandboxId },
+      { projection: SANDBOX_MIGRATION_PROJECTION }
+    );
+
+  const validateTargetTarZstArchive = async (
+    targetRow: SandboxMigrationDoc
+  ): Promise<{ missingObjectKey?: string }> => {
+    const archive = targetRow.storage?.archive;
+    if (
+      Boolean(archive) ||
+      targetRow.status === SandboxInstanceStatusEnum.archived ||
+      targetRow.status === SandboxInstanceStatusEnum.restoring
+    ) {
+      if (!archive || archive.format !== 'tar.zst') {
+        throw new Error('Sandbox record lacks validated tar.zst archive metadata');
+      }
+      if (!archive.objectKey.startsWith(`${SANDBOX_ARCHIVE_PREFIX}/`)) {
+        throw new Error(`Sandbox archive objectKey must reside under ${SANDBOX_ARCHIVE_PREFIX}/`);
+      }
+      if (archive.sizeBytes > 0 && !(await s3Source.isObjectExists(archive.objectKey))) {
+        return { missingObjectKey: archive.objectKey };
+      }
+    }
+    return {};
+  };
+
+  const cleanupLegacyV2Row = async (doc: SandboxMigrationDoc) => {
+    context.signal.throwIfAborted();
+    await context.assertActive();
+    const recordId = String(doc._id);
+    const failureKey = recordId;
+
+    try {
+      await withSandboxLease({
+        sandboxId: doc.sandboxId,
+        label: `cleanup-legacy:${doc.sandboxId}`,
+        signal: context.signal,
+        fn: async (lease) => {
+          const effectiveSignal = AbortSignal.any([context.signal, lease.signal]);
+          effectiveSignal.throwIfAborted();
+
+          const latest = await legacyCollection.findOne<SandboxMigrationDoc>(
+            { _id: doc._id },
+            { projection: SANDBOX_MIGRATION_PROJECTION }
+          );
+          if (!latest) {
+            failures.delete(failureKey);
+            return;
+          }
+
+          const active = await isSandboxSourceActive(latest, activeSourceCache);
+          const targetV3 = await findTargetV3({ sandboxId: latest.sandboxId, legacyRow: latest });
+
+          if (active && latest.status !== SandboxInstanceStatusEnum.deleting) {
+            if (!targetV3) {
+              throw new Error('Active sandbox record is missing migrated v3 record during cleanup');
+            }
+            const { missingObjectKey } = await validateTargetTarZstArchive(targetV3);
+            if (missingObjectKey) {
+              throw new Error(
+                'Target tar.zst archive object is missing in S3; preserving legacy sandbox resource'
+              );
+            }
+          }
+
+          lease.assertValid();
+
+          if (latest.provider === LEGACY_DEVBOX_PROVIDER) {
+            if (!sealosClient) {
+              throw new Error(
+                'Missing AGENT_SANDBOX_SEALOS_BASEURL or AGENT_SANDBOX_SEALOS_TOKEN to delete legacy Sealos Devbox'
+              );
+            }
+            if (await sealosClient.deleteDevbox(latest.sandboxId, effectiveSignal)) {
+              checkpoint.deletedDevboxes += 1;
+            }
+          } else if (latest.provider === SANDBOX_PROVIDER) {
+            // 仅在 v3 不存在对应逻辑实例且旧状态可能存在运行容器时才调用容器删除，严禁误杀已激活的 v3 在线容器。
+            const hasPossibleContainer =
+              latest.status !== SandboxInstanceStatusEnum.archived &&
+              !(
+                latest.status === SandboxInstanceStatusEnum.deleting &&
+                latest.operation?.previousStatus === SandboxInstanceStatusEnum.archived
+              );
+            if (!targetV3 && hasPossibleContainer) {
+              await deleteOpenSandboxContainer({
+                sandboxId: latest.sandboxId,
+                allowLegacyUnlabeled: true,
+                signal: effectiveSignal
+              });
+            }
+
+            const legacyClaimName = getSessionVolumeClaimName(latest.storage);
+            const isReferencedByTargetV3 = Boolean(
+              legacyClaimName &&
+              targetV3?.storage?.volumes?.some((volume) => volume.claimName === legacyClaimName)
+            );
+            if (legacyClaimName && !isReferencedByTargetV3) {
+              await deleteSessionVolume(legacyClaimName, {
+                allowLegacyUnlabeled: true,
+                signal: effectiveSignal
+              });
+              checkpoint.deletedVolumes += 1;
+            }
+          }
+
+          lease.assertValid();
+          // 保留 MongoDB 旧集合 agent_sandbox_instances_v2 仅作只读留存，不在迁移任务中删除旧表记录。
+          failures.delete(failureKey);
+        }
+      });
+    } catch (error) {
+      context.signal.throwIfAborted();
+      failures.set(failureKey, {
+        stageKey: 'cleanupDevboxes',
+        data: { id: recordId, sandboxId: doc.sandboxId },
+        reason: {
+          message: sanitizeMigrationFailureMessage(error, 'Legacy sandbox resource cleanup failed')
+        }
+      });
+    }
+  };
+
+  // 只读扫描 v2 记录，回收远端 Devbox、无 targetV3 的遗留容器及未被 v3 引用的旧 PVC（不删除 v2 Mongo 记录）。
+  await runSandboxDocCursorStage({
+    context,
+    collection: legacyCollection,
+    failures,
+    stageKey: 'cleanupDevboxes',
+    filter: {},
+    stage: docStage,
+    concurrency: CLEANUP_CONCURRENCY,
+    maxFailures: MAX_FAILURE_RECORDS,
+    failMessage: 'Too many legacy Devbox cleanup failures; inspect failed records before retrying',
+    processDoc: cleanupLegacyV2Row,
+    saveCheckpoint: saveCleanupCheckpoint
+  });
+
+  // ---- Stage: cleanupLegacyZips ----
+  const cleanupLegacyZipKey = async (key: string) => {
+    context.signal.throwIfAborted();
+    await context.assertActive();
+    const match = LEGACY_ZIP_KEY_REGEX.exec(key);
+    if (!match) return;
+    const rawSandboxId = match[1];
+
+    try {
+      await withSandboxLease({
+        sandboxId: rawSandboxId,
+        label: `cleanup-legacy-zip:${rawSandboxId}`,
+        signal: context.signal,
+        fn: async (lease) => {
+          AbortSignal.any([context.signal, lease.signal]).throwIfAborted();
+
+          const legacyRow = await legacyCollection.findOne<SandboxMigrationDoc>(
+            {
+              sandboxId: rawSandboxId,
+              status: { $ne: SandboxInstanceStatusEnum.deleting }
+            },
+            { projection: SANDBOX_MIGRATION_PROJECTION }
+          );
+          const targetRow = await findTargetV3({ sandboxId: rawSandboxId, legacyRow });
+
+          // 活跃非 deleting 的 v2 记录必须命中可核验的 v3 记录，避免缺失或匹配口径不一致时跳过归档校验误删旧 ZIP。
+          if (
+            legacyRow &&
+            (await isSandboxSourceActive(legacyRow, activeSourceCache)) &&
+            !targetRow
+          ) {
+            throw new Error(
+              'Active legacy sandbox row is not migrated to v3; preserving legacy package.zip'
+            );
+          }
+
+          if (targetRow && (await isSandboxSourceActive(targetRow, activeSourceCache))) {
+            const { missingObjectKey } = await validateTargetTarZstArchive(targetRow);
+            if (missingObjectKey) {
+              throw new Error(
+                'Target tar.zst archive object is missing in S3; preserving package.zip'
+              );
+            }
+          }
+
+          lease.assertValid();
+          await s3Source.deleteArchiveObject({ key });
+          checkpoint.deletedZips += 1;
+          failures.delete(key);
+        }
+      });
+    } catch (error) {
+      context.signal.throwIfAborted();
+      failures.set(key, {
+        stageKey: 'cleanupLegacyZips',
+        data: { key, sandboxId: rawSandboxId },
+        reason: {
+          message: sanitizeMigrationFailureMessage(error, 'Legacy sandbox resource cleanup failed')
+        }
+      });
+    }
+  };
+
+  const allRemainingZipKeys = preflightZipKeys ?? (await listLegacyZipKeys());
+  const existingZipSet = new Set(allRemainingZipKeys);
+  const seenRetryKeys = new Set<string>();
+  const activeZipRetries: string[] = [];
+  let clearedMissingZips = false;
+
+  for (const item of failures.values()) {
+    if (
+      (item.stageKey !== 'cleanupLegacyZips' && item.stageKey !== 'validation') ||
+      typeof item.data.key !== 'string'
+    ) {
+      continue;
+    }
+    const key = item.data.key;
+    if (seenRetryKeys.has(key)) continue;
+    seenRetryKeys.add(key);
+    if (existingZipSet.has(key)) {
+      if (checkpoint.zipsDone || (checkpoint.lastZipKey !== null && key <= checkpoint.lastZipKey)) {
+        activeZipRetries.push(key);
+      }
+    } else {
+      failures.delete(key);
+      clearedMissingZips = true;
+    }
+  }
+
+  const keysToProcess = checkpoint.zipsDone
+    ? []
+    : allRemainingZipKeys.filter((key) => !checkpoint.lastZipKey || key > checkpoint.lastZipKey);
+
+  checkpoint.totalZips = Math.max(
+    checkpoint.totalZips ?? 0,
+    checkpoint.processedZips + activeZipRetries.length + keysToProcess.length
+  );
+
+  const zipProgressReporter = createStageProgressReporter({
+    context,
+    stageKey: 'cleanupLegacyZips',
+    getProgress: () => ({
+      current: checkpoint.processedZips,
+      total: Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips)
+    })
+  });
+  await zipProgressReporter.reportStart();
+
+  const cleanupAndTrackZipKey = async (key: string) => {
+    await cleanupLegacyZipKey(key);
+    if (!failures.has(key)) {
+      checkpoint.processedZips += 1;
+      checkpoint.totalZips = Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips);
+      await zipProgressReporter.reportIfDue();
+    }
+  };
+
+  if (activeZipRetries.length > 0) {
+    await batchRun(activeZipRetries, cleanupAndTrackZipKey, CLEANUP_CONCURRENCY);
+    await context.reportFailedRecords([...failures.values()]);
+    await saveCleanupCheckpoint();
+    await zipProgressReporter.flush();
+  } else if (clearedMissingZips) {
+    await context.reportFailedRecords([...failures.values()]);
+  }
+
+  if (!checkpoint.zipsDone) {
+    for (let i = 0; i < keysToProcess.length; i += systemMigrationBatchSize) {
+      context.signal.throwIfAborted();
+      await context.assertActive();
+
+      const batch = keysToProcess.slice(i, i + systemMigrationBatchSize);
+      await batchRun(batch, cleanupAndTrackZipKey, CLEANUP_CONCURRENCY);
+
+      if (failures.size >= MAX_FAILURE_RECORDS) {
+        await zipProgressReporter.flush();
+        await context.fail({
+          message: 'Too many legacy package.zip cleanup failures; inspect failed records',
+          failedRecords: [...failures.values()]
+        });
+      }
+
+      await context.reportFailedRecords([...failures.values()]);
+      checkpoint.lastZipKey = batch[batch.length - 1];
+      await saveCleanupCheckpoint();
+      await zipProgressReporter.flush();
+    }
+
+    checkpoint.zipsDone = true;
+    await context.reportFailedRecords([...failures.values()]);
+    await saveCleanupCheckpoint();
+  }
+
+  const zipFailureCount = [...failures.values()].filter(
+    (item) =>
+      item.stageKey === 'cleanupLegacyZips' ||
+      (item.stageKey === 'validation' && typeof item.data.key === 'string')
+  ).length;
+  if (zipFailureCount === 0) {
+    if (checkpoint.totalZips !== checkpoint.processedZips) {
+      checkpoint.totalZips = checkpoint.processedZips;
+      await saveCleanupCheckpoint();
+    }
+    await zipProgressReporter.reportSucceeded();
+  } else {
+    await zipProgressReporter.flush();
+  }
+
+  if (failures.size > 0) {
+    await context.fail({
+      message: 'Some legacy sandbox resources failed safety verification or cleanup',
+      failedRecords: [...failures.values()]
+    });
+  }
+
+  // ---- Stage: validation ----
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.running
+  });
+  await context.assertActive();
+
+  const residualZips = await listLegacyZipKeys();
+  if (residualZips.length > 0) {
+    // 若校验阶段发现残留旧 ZIP，重置游标以确保下次重跑从头扫清。
+    checkpoint.lastZipKey = null;
+    checkpoint.zipsDone = false;
+    checkpoint.processedZips = 0;
+    checkpoint.totalZips = undefined;
+    await saveCleanupCheckpoint();
+    await context.fail({
+      message: 'Legacy package.zip objects remain in S3 after cleanup',
+      failedRecords: residualZips.slice(0, systemMigrationBatchSize).map((key) => ({
+        stageKey: 'validation',
+        data: { key },
+        reason: { message: 'Legacy package.zip object still present after cleanup' }
+      }))
+    });
+  }
+
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.succeeded
+  });
+
+  return {
+    deletedDevboxes: checkpoint.deletedDevboxes,
+    deletedVolumes: checkpoint.deletedVolumes,
+    deletedZips: checkpoint.deletedZips
+  };
+};

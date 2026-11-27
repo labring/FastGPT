@@ -3,7 +3,10 @@ import {
   batchRun,
   batchRunSettled,
   delay,
+  delayWithSignal,
+  getAbortError,
   retryFn,
+  throwIfAborted,
   withTimeout
 } from '@fastgpt/global/common/system/utils';
 
@@ -361,6 +364,40 @@ describe('system utils', () => {
         { success: false, error: thirdError },
         { success: true, data: 40 }
       ]);
+    });
+  });
+
+  describe('abort helpers', () => {
+    it('normalizes non-Error abort reasons to Error named AbortError', async () => {
+      const controller = new AbortController();
+      controller.abort('timeout');
+
+      const abortError = getAbortError(controller.signal);
+      expect(abortError).toBeInstanceOf(Error);
+      expect(abortError.message).toBe('Aborted');
+      expect(abortError.name).toBe('AbortError');
+
+      let thrown: unknown;
+      try {
+        throwIfAborted(controller.signal);
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).name).toBe('AbortError');
+
+      await expect(delayWithSignal(50, controller.signal)).rejects.toMatchObject({
+        name: 'AbortError',
+        message: 'Aborted'
+      });
+    });
+
+    it('returns Error abort reasons unchanged', () => {
+      const controller = new AbortController();
+      const customError = new TypeError('custom reason');
+      controller.abort(customError);
+
+      expect(getAbortError(controller.signal)).toBe(customError);
     });
   });
 });

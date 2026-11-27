@@ -3,7 +3,7 @@ import { getSystemConfigRuntimeState } from '@fastgpt/service/common/system/syst
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
-import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { configureDalRuntime } from '@fastgpt/service/common/db/dalRuntime';
 import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
 import {
   disableTestMongoIndexReadiness,
@@ -39,7 +39,8 @@ beforeAll(async () => {
   const mongoUri = inject('MONGODB_URI');
   // 直接写入进程级测试基线，避免单测在 afterEach 调用 vi.unstubAllEnvs() 时意外清空 MONGODB_URI
   process.env.MONGODB_URI = mongoUri;
-  configureMongoDalRuntime({
+  configureDalRuntime({
+    dialect: 'mongo',
     mainWriteUrl: mongoUri,
     logWriteUrl: process.env.MONGODB_LOG_URI
   });

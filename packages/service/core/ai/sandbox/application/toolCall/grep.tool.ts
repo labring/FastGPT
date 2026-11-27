@@ -12,7 +12,7 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
 
-export const SandboxGrepToolSchema = z.object({
+const SandboxGrepToolSchema = z.object({
   pattern: z.string(),
   path: z.string().optional(),
   glob: z.string().optional(),
@@ -31,7 +31,8 @@ const truncateMatchLine = (line: string) => {
 
 export const sandboxGrepTool = defineTool({
   zodSchema: SandboxGrepToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  skipEnsureAvailable: true,
+  execute: async ({ sandboxInstance, params, signal }) => {
     const limit = params.limit ?? DEFAULT_GREP_LIMIT;
     const rgArgs = [
       'rg',
@@ -52,7 +53,9 @@ export const sandboxGrepTool = defineTool({
     // awk 在第 N 个 match 事件后停止，避免 rg 在大量匹配时撑满 provider 输出缓冲区。
     const awkScript = `{ print } /\"type\":\"match\"/ { count++; if (count >= ${limit}) exit }`;
     const command = `${rgArgs.map(shellQuote).join(' ')} | awk ${shellQuote(awkScript)}`;
-    const result = await sandboxInstance.exec(command);
+    const result = signal
+      ? await sandboxInstance.exec(command, { signal })
+      : await sandboxInstance.exec(command);
 
     const outputLines: string[] = [];
     let matchCount = 0;

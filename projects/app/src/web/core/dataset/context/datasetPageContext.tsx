@@ -20,6 +20,7 @@ type DatasetPageContextType = {
   datasetId: string;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
+  patchDatasetDetail: (patch: Partial<DatasetItemType>) => void;
   updateDataset: (data: UpdateDatasetBody) => Promise<void>;
   refreshCollectionList: () => void;
   registerCollectionListRefresh: (refresh: () => void) => () => void;
@@ -51,6 +52,7 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   loadDatasetDetail: function (_id: string): Promise<DatasetItemType> {
     throw new Error('Function not implemented.');
   },
+  patchDatasetDetail: () => {},
   updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -98,6 +100,9 @@ export const DatasetPageContextProvider = ({
     setDatasetDetail(data);
     return data;
   };
+  const patchDatasetDetail = useCallback((patch: Partial<DatasetItemType>) => {
+    setDatasetDetail((prev) => ({ ...prev, ...patch }));
+  }, []);
   const updateDataset = async (data: UpdateDatasetBody) => {
     await putDatasetById(data);
 
@@ -178,6 +183,7 @@ export const DatasetPageContextProvider = ({
     datasetId,
     datasetDetail,
     loadDatasetDetail,
+    patchDatasetDetail,
     updateDataset,
     refreshCollectionList,
     registerCollectionListRefresh,

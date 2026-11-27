@@ -42,7 +42,10 @@ export const GetToolSetChildrenResponseSchema = z.object({
           description: '可供预览和执行的子工具 ID',
           example: 'http-507f1f77bcf86cd799439011/search'
         }),
-        avatar: z.string().meta({ description: '工具图标', example: 'core/app/type/httpToolsFill' })
+        avatar: z
+          .string()
+          .optional()
+          .meta({ description: '工具图标', example: 'core/app/type/httpToolsFill' })
       })
     )
     .meta({ description: '只含 ID、名称、说明和图标的子工具摘要' })

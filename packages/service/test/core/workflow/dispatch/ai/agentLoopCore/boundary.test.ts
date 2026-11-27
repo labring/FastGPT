@@ -40,7 +40,6 @@ describe('workflow agent-loop core boundary', () => {
 
     expect(source).not.toContain('infrastructure');
     expect(source).not.toContain('runFastAgentLoop');
-    expect(source).not.toContain('runPiAgentLoop');
   });
 
   it('removes legacy root entries instead of forwarding them', () => {
@@ -82,6 +81,7 @@ describe('workflow agent-loop core boundary', () => {
       'interface',
       // syntax.md 禁止转导，公共定义模块直接登记，不再经由 interface 转发。
       'domain/toolContent',
+      'adapter/memory/nodeMemory',
       ...Array.from(
         readSource('core/workflow/dispatch/ai/agentLoopCore/interface/index.ts').matchAll(
           /export\s+(?:type\s+)?\{[^}]+\}\s+from\s+['"]\.\.\/([^'"]+)['"]/g

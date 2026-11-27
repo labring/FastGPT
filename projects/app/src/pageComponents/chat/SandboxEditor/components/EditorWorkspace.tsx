@@ -207,7 +207,12 @@ const EditorWorkspace = ({
         />
       ) : hasFiles ? (
         <Center h="full">
-          <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
+          <EmptyTip
+            text={
+              canWrite ? t('chat:sandbox_select_file_edit') : t('chat:sandbox_select_file_view')
+            }
+            mt={0}
+          />
         </Center>
       ) : (
         <Center h="full">

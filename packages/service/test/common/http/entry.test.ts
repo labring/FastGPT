@@ -265,6 +265,31 @@ describe('createApiEntry response lifecycle', () => {
     expect(res.json).toHaveBeenCalledOnce();
   });
 
+  it('preserves 501 for an unsupported channel model catalog', async () => {
+    const { req, res } = createHttpObjects();
+
+    await createApiEntry({ requestI18n })(async () => {
+      throw ModelErrEnum.channelCatalogUnsupported;
+    })(req, res);
+
+    expect(res.statusCode).toBe(501);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 513028, statusText: ModelErrEnum.channelCatalogUnsupported })
+    );
+  });
+
+  it.each([
+    [ModelErrEnum.channelNameConflict, 513009],
+    [ModelErrEnum.noAvailableChannel, 513010],
+    [ModelErrEnum.teamModelDisabled, 513011]
+  ])('preserves the error code for %s', async (statusText, code) => {
+    const { req, res } = createHttpObjects();
+    await createApiEntry({ requestI18n })(async () => {
+      throw statusText;
+    })(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code, statusText }));
+  });
+
   it('keeps request validation at 400 across separately loaded module instances', async () => {
     vi.resetModules();
     const reloaded = await import('../../../common/zod/requestParseError');
@@ -298,7 +323,8 @@ describe('createApiEntry response lifecycle', () => {
     { error: TeamErrEnum.aiPointsNotEnough, status: 402, code: 500005 },
     { error: AppErrEnum.unAuthApp, status: 403, code: 502001 },
     { error: AppErrEnum.unExist, status: 404, code: 502000 },
-    { error: SandboxErrEnum.runtimeUpgradeFailed, status: 500, code: 510002 }
+    { error: SandboxErrEnum.agentSandboxInitializing, status: 409, code: 510001 },
+    { error: ModelErrEnum.unConfigured, status: 500, code: 513001 }
   ])(
     'maps domain business error $error to HTTP $status while preserving business code $code',
     async ({ error, status, code }) => {

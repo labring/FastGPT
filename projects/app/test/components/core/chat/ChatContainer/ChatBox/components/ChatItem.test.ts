@@ -5,6 +5,7 @@ import { JSDOM } from 'jsdom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import type AIChatBubble from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble';
 import ChatItem from '@/components/core/chat/ChatContainer/ChatBox/components/ChatItem';
@@ -26,10 +27,10 @@ vi.mock('@fastgpt/web/components/common/Icon', () => ({
 }));
 // 只隔离 AI 叶子展示和操作区，保留 ChatItem 分组和用户气泡的真实渲染。
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', () => ({
-  default: ({ chatValue, children }: React.ComponentProps<typeof AIChatBubble>) =>
+  default: ({ chatValue, hasError, children }: React.ComponentProps<typeof AIChatBubble>) =>
     React.createElement(
       'section',
-      { 'data-ai-message': '' },
+      { 'data-ai-message': '', 'data-has-error': String(hasError) },
       chatValue
         .map((value) => {
           if (value.interactive?.type === 'workflowBuilderPreview') {
@@ -287,4 +288,56 @@ describe('ChatItem interactive replies', () => {
       dom.window.close();
     }
   );
+
+  it('passes unified hasError to AIChatBubble for responseData-derived errors and suppresses error card for caught nodes', () => {
+    const derivedErrorDom = renderChatItem({
+      id: 'ai-derived-err',
+      dataId: 'ai-derived-err',
+      obj: ChatRoleEnum.AI,
+      status: ChatStatusEnum.finish,
+      value: [],
+      responseData: [
+        {
+          id: 'agent-1',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'Sandbox error: runtime failed'
+        }
+      ]
+    });
+    expect(
+      derivedErrorDom.window.document
+        .querySelector('[data-ai-message]')
+        ?.getAttribute('data-has-error')
+    ).toBe('true');
+    expect(derivedErrorDom.window.document.body.textContent).toContain(
+      'Sandbox error: runtime failed'
+    );
+    derivedErrorDom.window.close();
+
+    const caughtErrorDom = renderChatItem({
+      id: 'ai-caught-err',
+      dataId: 'ai-caught-err',
+      obj: ChatRoleEnum.AI,
+      status: ChatStatusEnum.finish,
+      value: [],
+      responseData: [
+        {
+          id: 'agent-2',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'Sandbox error: handled by branch',
+          errorCaptured: true
+        }
+      ]
+    });
+    expect(
+      caughtErrorDom.window.document
+        .querySelector('[data-ai-message]')
+        ?.getAttribute('data-has-error')
+    ).toBe('false');
+    caughtErrorDom.window.close();
+  });
 });

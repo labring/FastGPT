@@ -69,5 +69,8 @@
       "seekdb": "oceanbase/seekdb",
       "rustfs": "rustfs/rustfs"
     }
+  },
+  "dataDirs": {
+    "pg": "/var/lib/postgresql/data"
   }
 }

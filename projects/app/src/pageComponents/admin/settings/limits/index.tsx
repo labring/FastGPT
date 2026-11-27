@@ -19,6 +19,11 @@ import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 import { ResourceConfigSchema } from '@fastgpt/global/common/system/config/schemas/resource';
+import {
+  LLM_TRACE_RETENTION_DEFAULT_HOURS,
+  LLM_TRACE_RETENTION_MAX_HOURS,
+  LLM_TRACE_RETENTION_MIN_HOURS
+} from '@fastgpt/global/common/system/config/schemas/performance';
 
 type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
   SystemInstanceConfigDomainMap['performance'] & {
@@ -1120,10 +1125,10 @@ const LimitsSettingComponent = () => {
                 <NumberInput
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
-                  min={1}
-                  max={720}
-                  value={field.value ?? 6}
-                  onChange={(_, val) => field.onChange(val || 6)}
+                  min={LLM_TRACE_RETENTION_MIN_HOURS}
+                  max={LLM_TRACE_RETENTION_MAX_HOURS}
+                  value={field.value ?? LLM_TRACE_RETENTION_DEFAULT_HOURS}
+                  onChange={(_, val) => field.onChange(val || LLM_TRACE_RETENTION_DEFAULT_HOURS)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

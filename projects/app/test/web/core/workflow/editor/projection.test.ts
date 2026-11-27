@@ -88,7 +88,6 @@ const project = (
   runtime: WorkflowRuntimePort,
   options: {
     overlays?: ViewDataOverlayMap;
-    errorNodeId?: string;
     localNodes?: CanvasNode[];
     localEdges?: Edge<any>[];
     cache?: ProjectionCache;
@@ -97,7 +96,6 @@ const project = (
   projectRuntimeCanvas({
     runtime,
     overlays: options.overlays ?? {},
-    errorNodeId: options.errorNodeId,
     localNodes: options.localNodes ?? [],
     localEdges: options.localEdges ?? [],
     cache: options.cache ?? createProjectionCache()
@@ -106,7 +104,9 @@ const project = (
 /** 本地交互数组只需要 id 与被保留的交互字段。 */
 const localNode = (
   id: string,
-  fields: Pick<CanvasNode, 'selected' | 'dragging' | 'position' | 'width' | 'height' | 'measured'>
+  fields: Partial<
+    Pick<CanvasNode, 'selected' | 'dragging' | 'position' | 'width' | 'height' | 'measured'>
+  >
 ): CanvasNode => ({
   id,
   data: {
@@ -185,7 +185,7 @@ describe('workflow editor projection', () => {
     expect(nodeById(nodes, 'http').data.hasToolInput).toBe(true);
   });
 
-  it('merges node view, overlay and issue focus into canvas data', () => {
+  it('merges node view and overlay into canvas data', () => {
     const runtime = createRuntime();
     runtime.dispatch({
       type: 'commitGeometry',
@@ -194,32 +194,30 @@ describe('workflow editor projection', () => {
       isFolded: true
     });
 
-    const { nodes } = project(runtime, {
-      overlays: { http: { searchedText: 'keyword' } },
-      errorNodeId: 'answer'
-    });
+    const { nodes } = project(runtime, { overlays: { http: { searchedText: 'keyword' } } });
 
     const http = nodeById(nodes, 'http');
     expect(http.position).toEqual({ x: 320, y: 40 });
     expect(http.data.isFolded).toBe(true);
     expect(http.data.searchedText).toBe('keyword');
-
-    const answer = nodeById(nodes, 'answer');
-    expect(runtime.getNode('answer')?.issues.length).toBeGreaterThan(0);
-    expect(answer.data).not.toHaveProperty('issues');
-    expect(answer.data.isError).toBe(true);
-    // 标红焦点节点强制选中，定位后无需再点一次。
-    expect(answer.selected).toBe(true);
-    expect(http.data).not.toHaveProperty('isError');
   });
 
-  it('does not mark the focused node after its issue is resolved', () => {
-    const runtime = createRuntime();
-    const { nodes } = project(runtime, { errorNodeId: 'start' });
+  it.each([null, 'answer', 'http'])(
+    'keeps the local selection %s when validation reports a node error',
+    (selectedId) => {
+      const runtime = createRuntime();
+      expect(runtime.getNode('answer')?.issues.some((issue) => issue.level === 'error')).toBe(true);
+      const localNodes = selectedId ? [localNode(selectedId, { selected: true })] : [];
 
-    expect(runtime.getNode('start')?.issues).toEqual([]);
-    expect(nodeById(nodes, 'start').data).not.toHaveProperty('isError');
-  });
+      const { nodes } = project(runtime, { localNodes });
+      const answer = nodeById(nodes, 'answer');
+      expect(answer.data).not.toHaveProperty('issues');
+      expect(answer.data).not.toHaveProperty('isError');
+      expect(nodes.filter((node) => node.selected).map((node) => node.id)).toEqual(
+        selectedId ? [selectedId] : []
+      );
+    }
+  );
 
   it('preserves renderer interaction state and dragging position', () => {
     const runtime = createRuntime();

@@ -11,6 +11,12 @@ import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/confi
 afterEach(() => vi.unstubAllEnvs());
 
 describe('legacy instance config ENV import', () => {
+  it('ignores retired AGENT_SANDBOX_PROVIDER ENV even when values are sealosdevbox or invalid', () => {
+    for (const value of ['sealosdevbox', 'opensandbox', 'invalid-provider']) {
+      vi.stubEnv('AGENT_SANDBOX_PROVIDER', value);
+      expect(readLegacyInstanceConfigEnv()).not.toHaveProperty('AGENT_SANDBOX_PROVIDER');
+    }
+  });
   it('ignores retired WeChat concurrency ENV without blocking migration', () => {
     vi.stubEnv('WECHAT_CHANNEL_CONCURRENCY', 'invalid');
     expect(readLegacyInstanceConfigEnv()).not.toHaveProperty('WECHAT_CHANNEL_CONCURRENCY');

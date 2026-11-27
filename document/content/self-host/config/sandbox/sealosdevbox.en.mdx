@@ -6,6 +6,13 @@ description: Configure Sealos Devbox as the remote code execution sandbox provid
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
+  Starting in FastGPT v4.18, the `sealosdevbox` runtime provider has been retired in favor of
+  OpenSandbox. Existing deployments should run `20261117_migrate_sandbox_to_opensandbox` (to migrate
+  active workspaces when needed) and `20261117_cleanup_legacy_sandbox_resources` (to clean up legacy
+  Devbox instances) in System Migration before switching to OpenSandbox.
+</Alert>
+
+<Alert icon="⚠️" context="warning">
   This feature is available only to commercial edition users. Contact [Commercial
   Support](/en/guide/version/commercial) to request a key. Billing is usage-based and deducted from
   your Sealos balance.

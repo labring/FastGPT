@@ -1,6 +1,9 @@
 import { ZodError, type z } from 'zod';
 
-export type ZodRequestInputSource = 'body' | 'query' | 'params';
+/** 请求入参来源；除 parseApiInput 处理的 body/query/params 外，显式校验请求头时也允许标记为 header */
+export type ZodRequestInputSource = 'body' | 'query' | 'params' | 'header';
+
+type ParseApiInputSource = 'body' | 'query' | 'params';
 
 export type ZodRequestParseErrorContext = {
   inputSource: ZodRequestInputSource;
@@ -35,8 +38,8 @@ const isApiRequestInputParseError = (error: unknown): error is ApiRequestInputPa
 
 function parseRequestInput<T extends z.ZodTypeAny>(
   schema: T,
-  req: Partial<Record<ZodRequestInputSource, unknown>>,
-  inputSource: ZodRequestInputSource
+  req: Partial<Record<ParseApiInputSource, unknown>>,
+  inputSource: ParseApiInputSource
 ): z.output<T> {
   try {
     return schema.parse(req[inputSource]);
@@ -54,7 +57,7 @@ type ParseApiInputProps<
   Q extends z.ZodTypeAny | undefined,
   P extends z.ZodTypeAny | undefined
 > = {
-  req: Partial<Record<ZodRequestInputSource, unknown>>;
+  req: Partial<Record<ParseApiInputSource, unknown>>;
   bodySchema?: B;
   querySchema?: Q;
   paramsSchema?: P;

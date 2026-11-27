@@ -16,7 +16,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
+import { getSandboxStaticRuntimePaths } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import {
   createTestWorkflowFileContext,
@@ -70,19 +70,15 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  ensureAppSandboxRuntimeReadyMock,
   markChatSandboxEnabledMock,
   authSkillByTmbIdMock,
   getLLMModelDataMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
-    AGENT_ENGINE: 'fastAgent',
-    AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
     STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: 30,
     STREAM_RESUME_REDIS_MAXMEMORY_RATIO: 0.5,
@@ -98,7 +94,6 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
   markChatSandboxEnabledMock: vi.fn(),
   authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
@@ -156,18 +151,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOri
     ...original,
     prepareAgentSandboxRuntime: vi.fn(async (params) => ({
       sandboxClient: await getSandboxClientMock(params),
-      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
-      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+      workspaceRoot: getSandboxStaticRuntimePaths().workDirectory,
+      workDirectory: getSandboxStaticRuntimePaths().workDirectory
     }))
   };
-});
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
-    >();
-
-  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
 });
 vi.mock(
   '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
@@ -347,12 +334,12 @@ const createProps = () =>
     }
   }) as any;
 
-const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const getSandboxWorkDirectory = () => getSandboxStaticRuntimePaths().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(async () => {
     global.systemInstanceConfig = createDefaultInstanceConfig();
-    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { provider: 'opensandbox' });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { enabled: true });
     Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
       runtime: 'docker',
       image: 'fastgpt-agent-sandbox:latest'
@@ -374,16 +361,14 @@ describe('dispatchRunAgent user context', () => {
       }
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
-    getTestInstanceConfig().feature.agentEngine = 'fastAgent';
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     sandboxCreateDirectoriesMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue([]);
     sandboxGetFileInfoMock.mockResolvedValue(new Map());
     sandboxClientExecMock.mockResolvedValue({
       exitCode: 0,
-      stdout: '/workspace\n',
+      stdout: `${getSandboxWorkDirectory()}\n`,
       stderr: ''
     });
     axiosGetMock.mockResolvedValue({
@@ -392,7 +377,7 @@ describe('dispatchRunAgent user context', () => {
     });
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
-      provider: {
+      opensandbox: {
         createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
         getFileInfo: sandboxGetFileInfoMock,
@@ -400,6 +385,7 @@ describe('dispatchRunAgent user context', () => {
         execute: sandboxClientExecMock
       },
       exec: sandboxClientExecMock,
+      runWithRecovery: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
       getSandboxId: () => 'sandbox_prepared'
     });
     getAgentSkillInfosMock.mockResolvedValue([
@@ -728,7 +714,7 @@ describe('dispatchRunAgent user context', () => {
   });
 
   it('does not resolve builtin:agent_sandbox or skills when sandbox is disabled', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
     const props = createProps();
     props.params.useAgentSandbox = true;
     props.params.skills = [
@@ -890,17 +876,20 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
-    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
+    const workDir = getSandboxWorkDirectory();
+    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith([`${workDir}/user_files`]);
     const inputFilesWriteCallIndex = sandboxWriteFilesMock.mock.calls.findIndex(([files]) =>
-      files.some((file: { path: string }) => file.path === '/workspace/user_files/current.pdf')
+      files.some((file: { path: string }) => file.path === `${workDir}/user_files/current.pdf`)
     );
     expect(inputFilesWriteCallIndex).toBeGreaterThanOrEqual(0);
     const inputFilesWrite = sandboxWriteFilesMock.mock.calls[inputFilesWriteCallIndex][0];
     expect(inputFilesWrite.map((file: { path: string }) => file.path)).toEqual([
-      '/workspace/user_files/current.pdf'
+      `${workDir}/user_files/current.pdf`
     ]);
     expect(sandboxCreateDirectoriesMock.mock.invocationCallOrder[0]).toBeLessThan(
       sandboxWriteFilesMock.mock.invocationCallOrder[inputFilesWriteCallIndex]
@@ -908,12 +897,11 @@ describe('dispatchRunAgent user context', () => {
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).toContain('<sandbox_capability>');
     expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
-    expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
+    expect(loopInput.systemPrompt).not.toContain(`pwd: ${workDir}`);
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
-      '当前沙盒的工作目录: /workspace'
+      `当前沙盒的工作目录: ${workDir}`
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
-    expect(runAgentLoopMock.mock.calls[0][0].provider).toBe('fastAgent');
     const runtimeToolNames = loopRuntime.toolCatalog.runtimeTools.map(
       (tool: any) => tool.function.name
     );
@@ -927,7 +915,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
@@ -963,12 +953,14 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
+  it('streams upgrading and continues the same workflow after silent App sandbox image upgrade', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      onUpgrade?.();
-      return true;
+    const defaultClient = getSandboxClientMock.getMockImplementation();
+    getSandboxClientMock.mockImplementationOnce(async (params) => {
+      params.onUpgrade?.();
+      params.onUpgradeComplete?.();
+      return defaultClient!(params);
     });
 
     let resultPromise: Promise<any> | undefined;
@@ -982,7 +974,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
@@ -1004,10 +995,10 @@ describe('dispatchRunAgent user context', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('returns the concrete silent migration failure reason', async () => {
+  it('returns the concrete sandbox runtime initialization failure reason', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    getSandboxClientMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
     runWithContext(
@@ -1020,7 +1011,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
     expect(
       props.workflowStreamResponse.mock.calls
@@ -1054,7 +1044,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -1162,6 +1154,11 @@ describe('dispatchRunAgent user context', () => {
       expect(Object.hasOwn(result, 'rawError')).toBe(true);
       expect(result.rawError).toBe(error);
       expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
+      expect(
+        result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+          (item: any) => !item.inputContext
+        )
+      ).toEqual([]);
     }
   );
 
@@ -1382,24 +1379,20 @@ describe('dispatchRunAgent user context', () => {
     expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
-  it('routes pi engine through the unified runAgentLoop provider entry', async () => {
-    getTestInstanceConfig().feature.agentEngine = 'piAgent';
+  it('routes agent runs through fastAgent and clears leftover non-array node memory on completion', async () => {
     const props = createProps();
+    props.histories[props.histories.length - 1].memories = {
+      'agentLoopMemory-agent_node': {
+        stale: true
+      }
+    };
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
-      providerState: {
-        piMessages: [
-          {
-            role: 'assistant',
-            content: 'saved pi message'
-          }
-        ]
-      },
       completeMessages: [],
       assistantMessages: [
         {
           role: 'assistant',
-          content: 'pi answer'
+          content: 'fastAgent answer'
         }
       ],
       requestIds: []
@@ -1416,13 +1409,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'piAgent'
-      })
-    );
-    expect(runAgentLoopMock.mock.calls[0][0].input).not.toHaveProperty('providerState');
-    expect(result.data.answerText).toBe('pi answer');
+    expect(result.data.answerText).toBe('fastAgent answer');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
       'app:app_1:agent_node': undefined
     });
@@ -1523,16 +1510,6 @@ describe('dispatchRunAgent user context', () => {
     props.query = runtimePrompt2ChatsValue({
       text: JSON.stringify({ answers: ['A', ''] })
     });
-    props.histories[props.histories.length - 1].memories = {
-      'agentLoopMemory-agent_node': {
-        providerState: {
-          pendingMainContext: {
-            askToolCallId: 'call_ask',
-            messages: []
-          }
-        }
-      }
-    };
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
       completeMessages: [],
@@ -1749,194 +1726,71 @@ describe('dispatchRunAgent user context', () => {
     });
   });
 
-  it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
-    getTestInstanceConfig().feature.agentEngine = 'piAgent';
-    const props = createProps();
-    props.lastInteractive = {
-      type: 'agentAsk',
-
-      params: {
-        toolCallId: 'call_ask_1',
-        arguments: JSON.stringify({
-          reason: '',
-          blockerType: 'user_choice',
-          questions: [{ question: 'Need confirmation', options: [] }]
-        })
-      }
-    };
-    props.histories[props.histories.length - 1].memories = {
-      'agentLoopMemory-agent_node': {
-        providerState: {
-          pendingMainContext: {
-            askToolCallId: 'call_ask_1',
-            activePlan: {
-              planId: 'plan_1'
-            },
-            messages: [
-              {
-                role: 'assistant',
-                content: null,
-                tool_calls: [
-                  {
-                    id: 'call_ask_1',
-                    type: 'function',
-                    function: {
-                      name: 'ask_user',
-                      arguments: '{}'
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      }
-    };
-    runAgentLoopMock.mockResolvedValueOnce({
-      status: 'paused',
-      pause: {
-        toolCallId: 'call_ask_2',
-        interactive: {
-          type: 'agentAsk',
-          params: {
-            toolCallId: 'call_ask_2',
-            arguments: JSON.stringify({
-              reason: 'Need another confirmation',
-              blockerType: 'missing_required_input',
-              questions: [
-                {
-                  question: 'Confirm again?',
-                  options: [
-                    { summary: 'Yes', value: 'Yes' },
-                    { summary: 'No', value: 'No' }
-                  ]
-                }
-              ]
-            })
-          }
-        }
-      },
-      providerState: {
-        pendingMainContext: {
-          activePlan: {
-            planId: 'plan_1'
-          },
-          askToolCallId: 'call_ask_2',
-          messages: [
-            {
-              role: 'assistant',
-              content: null,
-              tool_calls: [
-                {
-                  id: 'call_ask_2',
-                  type: 'function',
-                  function: {
-                    name: 'ask_user',
-                    arguments: '{}'
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      completeMessages: [
-        {
-          role: 'assistant',
-          tool_calls: [
-            {
-              id: 'call_ask_2',
-              type: 'function',
-              function: {
-                name: 'ask_user',
-                arguments: JSON.stringify({
-                  reason: 'Need another confirmation',
-                  blockerType: 'missing_required_input',
-                  questions: [
-                    {
-                      question: 'Confirm again?',
-                      options: [
-                        { summary: 'Yes', value: 'Yes' },
-                        { summary: 'No', value: 'No' }
-                      ]
-                    }
-                  ]
-                })
-              }
-            }
-          ]
-        }
-      ],
-      assistantMessages: [],
-      requestIds: []
-    });
-
-    let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
-    const result = await resultPromise!;
-
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'piAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: expect.objectContaining({
-            pendingMainContext: expect.objectContaining({
-              activePlan: {
-                planId: 'plan_1'
-              },
-              askToolCallId: 'call_ask_1'
-            })
+  it.each([{ staleObject: true }, [{ invalidItem: true }]])(
+    'ignores invalid stored node memory on resume (%j) and overwrites it with a fastAgent array on re-pause',
+    async (invalidMemory) => {
+      const props = createProps();
+      props.lastInteractive = {
+        type: 'agentAsk',
+        params: {
+          toolCallId: 'call_ask_1',
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [{ question: 'Need confirmation', options: [] }]
           })
-        })
-      })
-    );
-    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'app:app_1:agent_node': {
-        providerState: {
-          pendingMainContext: {
-            activePlan: {
-              planId: 'plan_1'
-            },
-            askToolCallId: 'call_ask_2',
-            messages: [
-              {
-                role: 'assistant',
-                content: null,
-                tool_calls: [
+        }
+      };
+      props.histories[props.histories.length - 1].memories = {
+        'agentLoopMemory-agent_node': invalidMemory
+      };
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'paused',
+        pause: {
+          toolCallId: 'call_ask_2',
+          interactive: {
+            type: 'agentAsk',
+            params: {
+              toolCallId: 'call_ask_2',
+              arguments: JSON.stringify({
+                reason: 'Need another confirmation',
+                blockerType: 'missing_required_input',
+                questions: [
                   {
-                    id: 'call_ask_2',
-                    type: 'function',
-                    function: {
-                      name: 'ask_user',
-                      arguments: '{}'
-                    }
+                    question: 'Confirm again?',
+                    options: [
+                      { summary: 'Yes', value: 'Yes' },
+                      { summary: 'No', value: 'No' }
+                    ]
                   }
                 ]
-              }
-            ]
+              })
+            }
           }
-        }
-      }
-    });
-    expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
-      expect.objectContaining({
-        params: expect.objectContaining({ toolCallId: 'call_ask_2' })
-      })
-    );
-  });
+        },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      });
 
-  it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
+      const result = await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+
+      const callArg = runAgentLoopMock.mock.calls[0][0];
+      expect(callArg.input.messages.length).toBeGreaterThan(0);
+      expect(
+        Array.isArray(result[DispatchNodeResponseKeyEnum.memories]['app:app_1:agent_node'])
+      ).toBe(true);
+      expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
+        expect.objectContaining({
+          params: expect.objectContaining({ toolCallId: 'call_ask_2' })
+        })
+      );
+    }
+  );
+
+  it('clears nested scoped non-array node memory on completion when history=0', async () => {
     const { WorkflowMemoryContext } =
       await import('@fastgpt/service/core/workflow/dispatch/context/memory');
-    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     props.params.history = 0;
     props.histories = [];
@@ -1954,45 +1808,23 @@ describe('dispatchRunAgent user context', () => {
         })
       }
     };
-    const providerState = {
-      pendingMainContext: {
-        askToolCallId: 'nested_ask',
-        messages: [
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [
-              {
-                id: 'nested_ask',
-                type: 'function',
-                function: { name: 'ask_user', arguments: '{}' }
-              }
-            ]
-          }
-        ]
-      }
-    };
     props.memoryContext = WorkflowMemoryContext.fromRecord(
       {
-        'node:outer_agent/app:app_1:agent_node': { providerState }
+        'node:outer_agent/app:app_1:agent_node': { staleObject: true }
       },
       { rootSource: { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' } }
     )
       .fork('node:outer_agent')
       .fork('app:app_1');
 
-    await runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => dispatchRunAgent(props)
-    );
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'piAgent',
-        input: expect.objectContaining({ providerState, userAnswer: '前端原始问题' })
-      })
-    );
+    const result = await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+
+    const callArg = runAgentLoopMock.mock.calls[0][0];
+    expect(callArg.input.messages.length).toBeGreaterThan(0);
+    expect(result.data?.answerText).toBe('ok');
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'node:outer_agent/app:app_1:agent_node': undefined
+    });
   });
   it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
     const props = createProps();
@@ -2051,7 +1883,7 @@ describe('dispatchRunAgent user context', () => {
       configure: (props: ReturnType<typeof createProps>) => {
         props.params.useAgentSandbox = true;
         props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
-        getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+        getTestInstanceConfig().subservice.agentSandbox.enabled = false;
       }
     }
   ])('continues without sandbox or skills when $name', async ({ configure }) => {
@@ -2088,7 +1920,7 @@ describe('dispatchRunAgent user context', () => {
     props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
     props.runningAppInfo.sourceId = 'skill_1';
     props.params.editSkillId = 'skill_1';
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     let promise: Promise<any>;
     runWithContext(
@@ -2220,7 +2052,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'parent_app_id',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(props.nodeSummary.hasAgentSandbox).toBe(true);
     expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({

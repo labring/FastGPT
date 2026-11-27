@@ -13,11 +13,11 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 
 describe('createQuestionGuide', () => {
-  const buildModel = (reasoning: boolean): LLMModelDataType => ({
+  const buildModel = (overrides: Partial<LLMModelDataType['config']> = {}): LLMModelDataType => ({
     modelId: '507f1f77bcf86cd799439013',
     provider: 'openai',
-    model: reasoning ? 'deepseek-r1' : 'gpt-4o',
-    name: reasoning ? 'DeepSeek R1' : 'GPT-4o',
+    model: overrides.reasoning ? 'deepseek-r1' : 'gpt-4o',
+    name: overrides.reasoning ? 'DeepSeek R1' : 'GPT-4o',
     type: ModelTypeEnum.llm,
     scope: 'system' as const,
     isActive: true,
@@ -25,7 +25,7 @@ describe('createQuestionGuide', () => {
       maxContext: 128000,
       maxResponse: 4096,
       quoteMaxToken: 30000,
-      reasoning
+      ...overrides
     }
   });
 
@@ -40,31 +40,55 @@ describe('createQuestionGuide', () => {
     });
   });
 
-  it('forces reasoning models to disable reasoning for question guide generation', async () => {
-    const model = buildModel(true);
+  it('uses the lowest supported reasoning effort for reasoning models', async () => {
+    const disableableModel = buildModel({
+      reasoning: true,
+      reasoningEffort: true,
+      reasoningEffortList: ['none', 'high']
+    });
 
     await createQuestionGuide({
       messages: [],
-      model,
+      model: disableableModel,
       teamId: 'team_1'
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
       reasoning_effort: 'none'
     });
-    expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(model);
-  });
+    expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(disableableModel);
 
-  it('does not set reasoning effort for non-reasoning models', async () => {
-    const model = buildModel(false);
+    const minLevelModel = buildModel({
+      reasoning: true,
+      reasoningEffort: true,
+      reasoningEffortList: ['minimal', 'low', 'medium', 'high']
+    });
 
     await createQuestionGuide({
       messages: [],
-      model,
+      model: minLevelModel,
       teamId: 'team_1'
     });
 
-    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
-    expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(model);
+    expect(createLLMResponseMock.mock.calls[1][0].body).toMatchObject({
+      reasoning_effort: 'minimal'
+    });
+  });
+
+  it('does not set reasoning effort when reasoning or reasoningEffort is unsupported', async () => {
+    for (const model of [
+      buildModel({ reasoning: false }),
+      buildModel({ reasoning: true, reasoningEffort: false })
+    ]) {
+      createLLMResponseMock.mockClear();
+      await createQuestionGuide({
+        messages: [],
+        model,
+        teamId: 'team_1'
+      });
+
+      expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+      expect(createLLMResponseMock.mock.calls[0][0].body.model).toBe(model);
+    }
   });
 });

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import jwt from 'jsonwebtoken';
 import type { SandboxGetTicketResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
@@ -54,7 +56,8 @@ describe('sandbox getTicket API', () => {
     });
     mocks.createDirectories.mockResolvedValue(undefined);
     mocks.getSandboxClient.mockResolvedValue({
-      provider: { createDirectories: mocks.createDirectories },
+      opensandbox: { createDirectories: mocks.createDirectories },
+      runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
       getRuntimePaths: () => ({
         workspaceRoot: '/workspace',
         runtimeSkillsRoot: '/workspace/projects',
@@ -112,7 +115,7 @@ describe('sandbox getTicket API', () => {
 
       expect(result).toEqual({
         wsUrl: expect.any(String),
-        maxFileBytes: 362 * 1024 ** 2,
+        maxFileBytes: 1024 ** 3,
         workspaceRoot: '/workspace',
         sessionWorkDirectory: '/workspace/sessions/chat-1'
       });
@@ -182,6 +185,16 @@ describe('sandbox getTicket API', () => {
     mocks.createDirectories.mockRejectedValueOnce(new Error('mkdir failed'));
     await expect(invoke({ appId, chatId: 'chat-1', channel: 'fs' })).rejects.toThrow(
       'mkdir failed'
+    );
+  });
+
+  it('maps ENOSPC from session directory creation to agentSandboxDiskQuotaExceeded', async () => {
+    mocks.createDirectories.mockRejectedValueOnce(
+      new Error('error accessing file: mkdir /workspace/sessions/chat-1: no space left on device')
+    );
+
+    await expect(invoke({ appId, chatId: 'chat-1', channel: 'fs' })).rejects.toThrowError(
+      new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
     );
   });
 });

@@ -13,6 +13,7 @@ type PluginItemRowProps = {
   isModerationEnabled?: boolean;
   isLastPlugin?: boolean;
   isActivating?: boolean;
+  isDisabled?: boolean;
   onActivate: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -24,6 +25,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
   isModerationEnabled = false,
   isLastPlugin = false,
   isActivating = false,
+  isDisabled = false,
   onActivate,
   onEdit,
   onDelete
@@ -32,7 +34,10 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
 
   const isConfigured = !!plugin.hasConfiguredSecrets;
   const shouldBypassConfirm =
-    isLastPlugin || Boolean(plugin.enabled) || Boolean(isModerationEnabled && isActive);
+    isDisabled ||
+    isLastPlugin ||
+    Boolean(plugin.enabled) ||
+    Boolean(isModerationEnabled && isActive);
 
   return (
     <Flex
@@ -101,9 +106,10 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
               px={3}
               fontSize={'xs'}
               isLoading={isActivating}
+              isDisabled={isDisabled}
               onClick={(e) => {
                 e.stopPropagation();
-                onActivate();
+                if (!isDisabled) onActivate();
               }}
             >
               {t('admin:moderation.enable')}
@@ -134,13 +140,16 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
             size={'16px'}
             w={'24px'}
             h={'24px'}
+            opacity={isDisabled ? 0.5 : 1}
+            cursor={isDisabled ? 'not-allowed' : 'pointer'}
+            pointerEvents={isDisabled ? 'none' : 'auto'}
             onClick={(e) => {
               e.stopPropagation();
-              onEdit();
+              if (!isDisabled) onEdit();
             }}
           />
 
-          {/* 删除插件按钮：仅剩最后一个插件或当前正处于生效/禁止卸载状态时交由外层 Modal/提示处理，其余可卸载的普通插件统一经过气泡二次确认 */}
+          {/* 删除插件按钮：仅剩最后一个插件、当前正处于生效/禁止卸载状态或页面忙态时交由外层 Modal/提示或拦截处理，其余可卸载的普通插件统一经过气泡二次确认 */}
           {shouldBypassConfirm ? (
             <MyIconButton
               icon="common/trash"
@@ -150,9 +159,12 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
               h={'24px'}
               hoverBg="red.50"
               hoverColor="red.600"
+              opacity={isDisabled ? 0.5 : 1}
+              cursor={isDisabled ? 'not-allowed' : 'pointer'}
+              pointerEvents={isDisabled ? 'none' : 'auto'}
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete();
+                if (!isDisabled) onDelete();
               }}
             />
           ) : (

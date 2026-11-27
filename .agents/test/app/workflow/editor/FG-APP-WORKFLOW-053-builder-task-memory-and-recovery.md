@@ -22,12 +22,9 @@ sources:
   - pro/admin/src/service/core/ai/workflowBuilder/sandbox/workspace.ts
   - packages/service/core/ai/llm/compress/index.ts
   - packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts
-  - packages/service/core/ai/llm/agentLoop/provider/piAgent/run.ts
   - packages/service/core/chat/chatSchema.ts
   - packages/service/core/chat/chatItemSchema.ts
   - packages/global/core/chat/adapt.ts
-  - sdk/sandbox-adapter/src/contracts/filesystem.ts
-  - sdk/sandbox-adapter/src/polyfills/command-filesystem.ts
 routes:
   - POST /api/proApi/core/workflow/builder/chat
   - POST /api/proApi/core/workflow/builder/version/load

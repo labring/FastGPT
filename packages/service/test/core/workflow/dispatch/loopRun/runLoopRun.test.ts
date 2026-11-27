@@ -781,7 +781,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(publishedResponses).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          error: 'Invalid MCP URL'
+          errorText: 'Invalid MCP URL'
         })
       ])
     );

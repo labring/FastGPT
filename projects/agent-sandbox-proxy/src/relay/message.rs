@@ -43,7 +43,12 @@ pub(super) fn upstream_error_client_close(error: &WsError) -> (u16, &'static str
 }
 
 pub(super) async fn close_client_ws(client_sink: &mut ClientWsSink, code: u16, reason: &str) {
-    let _ = client_sink.send(client_close_message(code, reason)).await;
+    let _ = client_sink
+        .send(AxumMsg::Close(Some(axum::extract::ws::CloseFrame {
+            code,
+            reason: reason.into(),
+        })))
+        .await;
 }
 
 pub(super) fn send_client_close(
@@ -51,36 +56,23 @@ pub(super) fn send_client_close(
     code: u16,
     reason: &str,
 ) {
-    send_client_close_message(client_tx, client_close_message(code, reason));
-}
-
-pub(super) fn send_client_close_message(
-    client_tx: &tokio::sync::mpsc::Sender<AxumMsg>,
-    message: AxumMsg,
-) {
-    let _ = client_tx.try_send(message);
+    let _ = client_tx.try_send(AxumMsg::Close(Some(axum::extract::ws::CloseFrame {
+        code,
+        reason: reason.into(),
+    })));
 }
 
 pub(super) fn send_upstream_close(
     upstream_tx: &tokio::sync::mpsc::Sender<UpstreamControl>,
-    message: WsMsg,
+    code: u16,
+    reason: &str,
 ) {
-    let _ = upstream_tx.try_send(UpstreamControl::Close(message));
-}
-
-pub(super) fn send_upstream_flush(upstream_tx: &tokio::sync::mpsc::Sender<UpstreamControl>) {
-    let _ = upstream_tx.try_send(UpstreamControl::Flush);
-}
-
-pub(super) fn client_close_message(code: u16, reason: &str) -> AxumMsg {
-    AxumMsg::Close(Some(axum::extract::ws::CloseFrame {
-        code,
-        reason: reason.into(),
-    }))
-}
-
-pub(super) fn upstream_close_message(code: u16, reason: &str) -> WsMsg {
-    axum_to_tungstenite(client_close_message(code, reason))
+    let _ = upstream_tx.try_send(UpstreamControl::Close(WsMsg::Close(Some(
+        tokio_tungstenite::tungstenite::protocol::CloseFrame {
+            code: code.into(),
+            reason: reason.into(),
+        },
+    ))));
 }
 
 /// Converts every Axum WebSocket message variant into its Tungstenite counterpart.

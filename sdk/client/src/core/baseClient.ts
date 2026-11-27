@@ -527,9 +527,13 @@ export class BaseClient {
     const extraSecrets = secretScope.snapshot();
 
     const timeoutMs = requestOptions?.timeoutMs ?? this._options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const defaultRetries =
-      spec.httpMethod === 'GET' ? (this._options.maxRetries ?? DEFAULT_GET_MAX_RETRIES) : 0;
-    const maxRetries = isStreamBody ? 0 : (requestOptions?.maxRetries ?? defaultRetries);
+    const isRetryableByDefault =
+      spec.retryable === true || (spec.retryable === undefined && spec.httpMethod === 'GET');
+    const defaultRetries = isRetryableByDefault
+      ? (this._options.maxRetries ?? DEFAULT_GET_MAX_RETRIES)
+      : 0;
+    const maxRetries =
+      isStreamBody || spec.retryable === false ? 0 : (requestOptions?.maxRetries ?? defaultRetries);
 
     let attempt = 0;
     while (true) {

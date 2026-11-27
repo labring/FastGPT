@@ -163,7 +163,7 @@ export const CreateAppToolBodySchema = UpdateWorkflowToolBodySchema.omit({
   id: true
 }).extend({
   name: z.string(),
-  avatar: z.string(),
+  avatar: z.string().optional(),
   intro: z.string(),
   associatedPluginId: z.string(),
   originCost: z.number().optional()
@@ -179,7 +179,7 @@ export type GetAllSystemAppsBodyType = z.infer<typeof GetAllSystemAppsBodySchema
 export const GetAllSystemAppsResponseSchema = z.array(
   z.object({
     _id: z.string(),
-    avatar: z.string(),
+    avatar: z.string().optional(),
     name: z.string()
   })
 );

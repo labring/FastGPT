@@ -1,5 +1,3 @@
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
-import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { StorageVendor } from '@fastgpt/global/common/system/config/schemas/storage';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
@@ -36,12 +34,6 @@ export const validateS3Env = (env: {
   }
 };
 
-/* ===== sandbox ===== */
-export const isAgentSandboxProvider = (
-  provider: string | undefined
-): provider is SandboxProviderType =>
-  agentSandboxProviderList.includes(provider as SandboxProviderType);
-
 /**
  * 校验 Agent 用户初始化环境变量。
  * 当配置了 AGENT_USERS 时，必须提供初始密码 DEFAULT_AGENT_PSW。
@@ -58,5 +50,50 @@ export const validateAgentUsersEnv = (env: {
     throw new Error(
       'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
     );
+  }
+};
+
+const assertValidMysqlUri = ({ name, value }: { name: string; value: string }): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(
+      `Invalid database environment variables: ${name} must be a valid mysql:// URL.`
+    );
+  }
+
+  if (parsed.protocol !== 'mysql:' || parsed.hostname.length === 0) {
+    throw new Error(
+      `Invalid database environment variables: ${name} must be a valid mysql:// URL.`
+    );
+  }
+};
+
+/**
+ * 校验主业务数据库方言及 OceanBase 业务连接串。
+ * OceanBase 业务库与向量库（`OCEANBASE_URL` / `SEEKDB_URL`）严格物理隔离，严禁回退复用向量库连接串；
+ * 报错信息仅输出环境变量名，严禁泄露包含凭据的原始连接串。
+ */
+export const validateDbEnv = (env: {
+  DB_DIALECT: 'mongo' | 'oceanbase';
+  OCEANBASE_DB_URI?: string;
+  OCEANBASE_LOG_DB_URI?: string;
+  OCEANBASE_DB_READ_URI?: string;
+}): void => {
+  if (env.DB_DIALECT === 'oceanbase' && !env.OCEANBASE_DB_URI) {
+    throw new Error(
+      'Invalid database environment variables: OCEANBASE_DB_URI is required when DB_DIALECT is oceanbase (vector DB OCEANBASE_URL / SEEKDB_URL cannot be used as fallback).'
+    );
+  }
+
+  for (const [name, value] of [
+    ['OCEANBASE_DB_URI', env.OCEANBASE_DB_URI],
+    ['OCEANBASE_LOG_DB_URI', env.OCEANBASE_LOG_DB_URI],
+    ['OCEANBASE_DB_READ_URI', env.OCEANBASE_DB_READ_URI]
+  ] as const) {
+    if (value !== undefined) {
+      assertValidMysqlUri({ name, value });
+    }
   }
 };

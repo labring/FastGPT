@@ -57,7 +57,7 @@ const defaultScenarioMap = {
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const serviceRequire = createRequire(path.join(repo, 'packages/service/package.json'));
 const dalRequire = createRequire(path.join(repo, 'packages/dal/package.json'));
-const sandboxRequire = createRequire(path.join(repo, 'sdk/sandbox-adapter/package.json'));
+const sandboxRequire = serviceRequire;
 const { ObjectId } = serviceRequire('mongoose').mongo;
 const sourceType = 'workflowBuilder';
 const chatRoute = '/api/proApi/core/workflow/builder/chat';
@@ -199,7 +199,7 @@ async function prepareFixture(context) {
   const proUrl = new URL(required(env.PRO_URL, 'secretEnv.PRO_URL'));
   if (!['127.0.0.1', 'localhost'].includes(proUrl.hostname) || proUrl.port !== '3001')
     throw new Blocked('需显式配置本机 Pro3001，不能绕过 3000 代理直调 Pro');
-  if (env.AGENT_SANDBOX_PROVIDER !== 'opensandbox')
+  if (!env.AGENT_SANDBOX_OPENSANDBOX_BASEURL)
     throw new Blocked('本轮远端文件取证要求真实 OpenSandbox');
   return { env, config };
 }
@@ -468,7 +468,7 @@ export async function createBuilderHarness(context) {
     if (remotes.has(app.appId)) return remotes.get(app.appId);
     const query = { sourceType, sourceId: app.appId, userId: c.actor('owner').tmbId };
     const instance = await (await c.database())
-      .collection('agent_sandbox_instances_v2')
+      .collection('agent_sandbox_instances_v3')
       .findOne(query);
     assert.ok(instance && instance.provider === 'opensandbox', '缺少本轮真实 OpenSandbox 映射');
     const { Sandbox, SandboxManager, ConnectionConfig } = await import(
@@ -709,7 +709,7 @@ export async function createBuilderHarness(context) {
           const remaining = {
             apps: await db.collection('apps').countDocuments({ _id: query._id }),
             sandboxes: await db
-              .collection('agent_sandbox_instances_v2')
+              .collection('agent_sandbox_instances_v3')
               .countDocuments({ sourceType, sourceId: app.appId })
           };
           await record('Mongo 清理核验', { appId: app.appId, remaining });

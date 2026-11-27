@@ -393,8 +393,8 @@ describe('registerNodeInstrumentation', () => {
       overrides: {
         plugin: { remoteDebug: true },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
         }
       },
       explicitDefaultPaths: []
@@ -410,7 +410,8 @@ describe('registerNodeInstrumentation', () => {
       expect(mocks.getInitConfig).toHaveBeenCalledTimes(2);
       expect(mocks.exit).not.toHaveBeenCalled();
       expect(getSystemInstanceConfig().subservice.agentSandbox).toMatchObject({
-        provider: 'sealosdevbox',
+        enabled: true,
+        opensandbox: { baseUrl: 'https://sandbox.example.test' },
         proxy: {
           wsUrl: 'wss://proxy.example.test',
           previewUrl: 'https://preview.example.test',

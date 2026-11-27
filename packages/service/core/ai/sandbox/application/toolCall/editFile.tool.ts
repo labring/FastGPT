@@ -6,7 +6,7 @@
 import z from 'zod';
 import { defineTool } from './type';
 
-export const SandboxEditFileToolSchema = z.object({
+const SandboxEditFileToolSchema = z.object({
   entries: z.array(
     z.object({
       path: z.string(),
@@ -18,9 +18,9 @@ export const SandboxEditFileToolSchema = z.object({
 
 export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
+  requiresWritableDisk: true,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
-    const results = await sandboxInstance.provider.replaceContent(
+    const results = await sandboxInstance.opensandbox.replaceContent(
       params.entries.map((entry) => ({
         path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),
         oldContent: entry.oldContent,

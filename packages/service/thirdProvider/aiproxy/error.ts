@@ -1,5 +1,6 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { isAxiosError } from 'axios';
 
 /** 判断是否为 AI Proxy 404 / 资源不存在错误 */
 export const isAiproxyNotFoundError = (error: unknown): boolean => {
@@ -16,6 +17,10 @@ export const isAiproxyNotFoundError = (error: unknown): boolean => {
   }
   return false;
 };
+
+/** 识别 AIProxy 未实现接口的 HTTP 响应，保留传输层原始异常。 */
+export const isAiproxyNotImplementedError = (error: unknown): boolean =>
+  isAxiosError(error) && (error.response?.status ?? error.status) === 501;
 
 /**
  * 执行 AI Proxy 请求，资源不存在（404）时返回 fallback，其余错误原样抛出。

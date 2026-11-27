@@ -32,6 +32,7 @@ const RenderInput = () => {
   const inputForm = useForm<ChatBoxInputFormType>();
 
   const hasHistory = useContextSelector(ChatRecordContext, (v) => v.chatRecords.length > 0);
+  const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
   const historyInputSnapshot = useContextSelector(ChatRecordContext, (v) => {
     const historyValue = v.chatRecords[0]?.value as UserChatItemValueItemType[] | undefined;
     return Array.isArray(historyValue)
@@ -43,6 +44,7 @@ const RenderInput = () => {
   const onNewChat = useContextSelector(PluginRunContext, (v) => v.onNewChat);
   const onSubmit = useContextSelector(PluginRunContext, (v) => v.onSubmit);
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+  const isReady = useContextSelector(PluginRunContext, (v) => v.isReady ?? true);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
@@ -269,7 +271,7 @@ const RenderInput = () => {
 
           <Button
             isLoading={isChatting}
-            isDisabled={fileUploading}
+            isDisabled={fileUploading || isLoadingRecords || !isReady}
             onClick={() => {
               handleSubmit((e) => {
                 if (hasHistory) {

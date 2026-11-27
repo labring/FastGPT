@@ -1,6 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
@@ -55,6 +55,7 @@ const CommercialSettingComponent = () => {
     refetch
   } = useDomainConfig('commercial');
   const plansRef = useRef<PlansSettingSectionHandle>(null);
+  const [isPlansDirty, setIsPlansDirty] = useState(false);
 
   const form = useForm<CommercialConfigForm>({
     defaultValues: effectiveConfig
@@ -143,11 +144,12 @@ const CommercialSettingComponent = () => {
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating || isBatchSaving}
+      isUnsaved={isPlansDirty}
       onSave={onSave}
     >
       {/* 1. 订阅套餐：套餐等级、积分包与活动配置 */}
       <AdminSettingSection id="plans" title={t('admin:pay_section_plans')}>
-        <PlansSettingSection ref={plansRef} />
+        <PlansSettingSection ref={plansRef} onDirtyChange={setIsPlansDirty} />
       </AdminSettingSection>
 
       {/* 2. 功能展示：优惠券策略（SaaS 运营字段） */}

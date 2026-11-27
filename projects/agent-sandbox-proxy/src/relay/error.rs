@@ -1,28 +1,17 @@
 use thiserror::Error;
 use tokio_tungstenite::tungstenite::Error as WsError;
 
+use crate::error::AuthError;
+
 pub(super) type RelayResult<T> = Result<T, RelayError>;
 
 /// Relay setup errors retain their original source while presenting stable operator-facing text.
 #[derive(Debug, Error)]
 pub(super) enum RelayError {
-    #[error("Sandbox endpoint URL is empty")]
-    EmptyEndpoint,
-    #[error("Invalid sandbox endpoint URL: {source}")]
-    InvalidEndpoint {
-        #[source]
-        source: url::ParseError,
-    },
-    #[error("Invalid workspace preview path")]
-    InvalidPreviewPath,
-    #[error("Sandbox endpoint cannot be used as a base URL")]
-    EndpointCannotBeBase,
-    #[error("Invalid loopback rewrite host: {host}")]
-    InvalidRewriteHost { host: String },
-    #[error("Unsupported sandbox endpoint scheme: {scheme}")]
-    UnsupportedEndpointScheme { scheme: String },
-    #[error("Failed to set sandbox endpoint scheme to {scheme}")]
-    EndpointSchemeRewrite { scheme: &'static str },
+    #[error("Invalid sandbox endpoint: {0}")]
+    InvalidEndpoint(&'static str),
+    #[error(transparent)]
+    RefreshAuth(#[from] AuthError),
     #[error("Failed to build WebSocket request: {source}")]
     WebSocketRequest {
         #[source]
@@ -51,30 +40,5 @@ impl RelayError {
         } else {
             Self::UpstreamConnect { attempts, source }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::RelayError;
-    use tokio_tungstenite::tungstenite::{Error as WsError, http::Response};
-
-    #[test]
-    fn classifies_http_handshake_response_as_not_ready() {
-        let response = Response::builder().status(502).body(None).unwrap();
-        let error = RelayError::upstream_connect(10, WsError::Http(Box::new(response)));
-
-        assert!(matches!(error, RelayError::UpstreamNotReady { .. }));
-    }
-
-    #[test]
-    fn classifies_transport_failure_as_connect_error() {
-        let source = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
-        let error = RelayError::upstream_connect(10, WsError::Io(source));
-
-        assert!(matches!(
-            error,
-            RelayError::UpstreamConnect { attempts: 10, .. }
-        ));
     }
 }

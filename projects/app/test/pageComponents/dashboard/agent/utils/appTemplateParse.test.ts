@@ -104,6 +104,35 @@ describe('normalizeSimpleImportForm', () => {
       isToolParam: true
     });
   });
+
+  it('preserves valid aiChatQuoteRole and strips invalid or missing values during normalization', () => {
+    const validSystem = normalizeSimpleImportForm(
+      createSimpleConfig({
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: 'system'
+        }
+      })
+    );
+    expect(validSystem.aiSettings.aiChatQuoteRole).toBe('system');
+
+    const omitted = normalizeSimpleImportForm(createSimpleConfig());
+    expect(omitted.aiSettings.aiChatQuoteRole).toBeUndefined();
+
+    const invalidEmpty = normalizeSimpleImportForm(
+      createSimpleConfig({
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: ''
+        }
+      })
+    );
+    expect(invalidEmpty.aiSettings.aiChatQuoteRole).toBeUndefined();
+  });
 });
 
 describe('resolveImportAppType', () => {
@@ -194,6 +223,55 @@ describe('parseDashboardImportConfig', () => {
       selectedTypeIndex: 1,
       isToolParam: true
     });
+  });
+
+  it.each(['', 'invalid', null])(
+    'rejects simple JSON import with invalid aiChatQuoteRole (%s)',
+    async (invalidRole) => {
+      await expect(
+        parseDashboardImportConfig({
+          config: createSimpleConfig({
+            type: AppTypeEnum.simple,
+            aiSettings: {
+              model: 'gpt-4o',
+              isResponseAnswerText: true,
+              maxHistories: 6,
+              aiChatQuoteRole: invalidRole
+            }
+          }),
+          scene: 'agent',
+          t
+        })
+      ).rejects.toThrow('app:type_not_recognized');
+    }
+  );
+
+  it('preserves valid aiChatQuoteRole and accepts missing role in simple JSON import', async () => {
+    const withSystem = await parseDashboardImportConfig({
+      config: createSimpleConfig({
+        type: AppTypeEnum.simple,
+        aiSettings: {
+          model: 'gpt-4o',
+          isResponseAnswerText: true,
+          maxHistories: 6,
+          aiChatQuoteRole: 'system'
+        }
+      }),
+      scene: 'agent',
+      t
+    });
+    expect((withSystem.workflow.nodes[0] as any).formData.aiSettings.aiChatQuoteRole).toBe(
+      'system'
+    );
+
+    const withoutRole = await parseDashboardImportConfig({
+      config: createSimpleConfig({ type: AppTypeEnum.simple }),
+      scene: 'agent',
+      t
+    });
+    expect(
+      (withoutRole.workflow.nodes[0] as any).formData.aiSettings.aiChatQuoteRole
+    ).toBeUndefined();
   });
 
   it('drops dangling edges while retaining valid edges and reference snapshots', async () => {

@@ -113,8 +113,6 @@ export const updatePassword = async ({
 
     if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
 
-    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
-
     const updateResult = await MongoUser.updateOne(
       // 改密成功可完成 inactive 账号激活，但绝不能把管理员禁用的账号重新启用。
       { _id: userId, status: { $ne: UserStatusEnum.forbidden } },
@@ -161,8 +159,6 @@ export const updateRootPassword = async ({
       await assertOldPasswordMatches({ userId, oldPassword, session });
     }
 
-    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
-
     const updateResult = await MongoUser.updateOne(
       {
         _id: userId,
@@ -198,8 +194,6 @@ export const activateAccount = async ({
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
     }
 
-    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
-
     const updateResult = await MongoUser.updateOne(
       { _id: userId, status: UserStatusEnum.inactive },
       {
@@ -227,19 +221,4 @@ export const assertOldPasswordMatches = async ({
   const query = MongoUser.exists({ _id: userId, password: oldPassword });
   if (session) query.session(session);
   if (!(await query)) throw new UserError(UserErrEnum.oldPasswordError);
-};
-
-/** 拒绝将当前持久化密码再次设置为新密码。Schema setter 负责沿用现有双层哈希协议。 */
-export const assertNewPasswordDiffersFromCurrent = async ({
-  userId,
-  newPassword,
-  session
-}: {
-  userId: string;
-  newPassword: string;
-  session?: ClientSession;
-}) => {
-  const query = MongoUser.exists({ _id: userId, password: newPassword });
-  if (session) query.session(session);
-  if (await query) throw new UserError(UserErrEnum.newPasswordSameAsOld);
 };

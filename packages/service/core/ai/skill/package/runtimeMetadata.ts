@@ -1,68 +1,60 @@
-import JSZip from 'jszip';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { getLogger } from '../../../../common/logger/client';
 import { LogCategories } from '../../../../common/logger/categories';
 import { extractSkillMetadataFromMarkdown, findSkillMdEntries } from '../utils';
-import { validateZipSafety } from './zipBuilder';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
-export type ExtractRuntimeSkillsFromPackageOptions = {
-  allowEmpty?: boolean;
+export type SkillMdFileInput = {
+  path: string;
+  content: string;
+  error?: string;
 };
 
+export const MAX_SKILL_MD_ENTRY_BYTES = 2 * 1024 * 1024;
+
 /**
- * 从 Skill ZIP 包中解析运行态子 Skill 元数据。
+ * 从流式提取的 `SKILL.md` 文件集合中解析运行态子 Skill 元数据。
  *
  * 扫描与解析口径与运行态 `getAgentSkillInfos` 保持一致：
  * - 递归扫描任意深度的 `SKILL.md` 文件（大小写不敏感、跳过 `node_modules/.venv/venv`）；
- * - `path` 保留包内真实相对路径；
- * - 解析失败或缺少有效 `name` 的 `SKILL.md`（例如文档示例或草稿）跳过并记警告，不阻断发布；
- * - 不限制子 Skill 间 `name` 重复（运行态向模型同时注入 `name`、`description` 和唯一文件路径）；
- * - 若包内所有 `SKILL.md` 均无效（最终有效数为 0），非 `allowEmpty` 场景下抛可国际化的业务错误码，
- *   并在日志与 `cause` 中保留具体解析原因，避免发布出运行态不可用的空壳版本；
- *   初始空白 workspace 可通过 `allowEmpty` 允许空结果。
+ * - `path` 保留包内真实相对路径，允许子 Skill 间 `name` 重复；
+ * - 解析失败、缺少有效 `name` 或超出元数据上限的 `SKILL.md` 跳过并记警告；全部无效抛 `noValidSkillMd`，零匹配抛 `missingSkillMd`。
  */
-export async function extractRuntimeSkillsFromPackage(
-  zipBuffer: Buffer,
-  options: ExtractRuntimeSkillsFromPackageOptions = {}
-): Promise<RuntimeSkillMetadataType[]> {
-  let zip: JSZip;
-  try {
-    zip = await JSZip.loadAsync(zipBuffer);
-  } catch (error) {
-    throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, { cause: error });
-  }
-
-  const safety = validateZipSafety(zip);
-  if (!safety.valid) {
-    throw new UserError(safety.errorCode ?? SkillErrEnum.invalidSkillPackage, undefined, {
-      cause: new Error(safety.error)
-    });
-  }
-
+export function extractRuntimeSkillsFromSkillMdFiles(
+  files: SkillMdFileInput[]
+): RuntimeSkillMetadataType[] {
   const skillMdEntries = findSkillMdEntries(
-    Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir, file }))
+    files.map((entry) => ({
+      ...entry,
+      isDir: false
+    }))
   );
 
   if (skillMdEntries.length === 0) {
-    if (options.allowEmpty) return [];
     throw new UserError(SkillErrEnum.missingSkillMd);
   }
 
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
   const invalidReasons: string[] = [];
 
-  for (const { path, file } of skillMdEntries) {
-    const content = await file.async('string');
-    const parsed = extractSkillMetadataFromMarkdown(content);
-
-    if (!parsed.valid) {
-      invalidReasons.push(`${path}: ${parsed.error}`);
+  for (const entry of skillMdEntries) {
+    if (entry.error) {
+      invalidReasons.push(`${entry.path}: ${entry.error}`);
       logger.warn('[Agent Skills] Skip invalid SKILL.md while extracting runtime metadata', {
-        path,
+        path: entry.path,
+        error: entry.error
+      });
+      continue;
+    }
+
+    const parsed = extractSkillMetadataFromMarkdown(entry.content);
+    if (!parsed.valid) {
+      invalidReasons.push(`${entry.path}: ${parsed.error}`);
+      logger.warn('[Agent Skills] Skip invalid SKILL.md while extracting runtime metadata', {
+        path: entry.path,
         error: parsed.error
       });
       continue;
@@ -71,12 +63,11 @@ export async function extractRuntimeSkillsFromPackage(
     runtimeSkills.push({
       name: parsed.name,
       description: parsed.description,
-      path
+      path: entry.path
     });
   }
 
   if (runtimeSkills.length === 0) {
-    if (options.allowEmpty) return [];
     throw new UserError(SkillErrEnum.noValidSkillMd, undefined, {
       cause: new Error(invalidReasons.join('; '))
     });

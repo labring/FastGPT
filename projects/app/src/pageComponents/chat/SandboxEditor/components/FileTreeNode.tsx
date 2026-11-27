@@ -59,6 +59,7 @@ const FileTreeNode = ({
   const shouldShowActiveBg = isActive && !enableMultiSelect;
   const isSelected = enableMultiSelect ? selectedPaths.has(node.path) : selectedPath === node.path;
   const isRenaming = renamingPath === node.path;
+  const canDrag = showFileOps && !isRenaming;
   const shouldShowArrow = node.type === 'directory';
 
   // dnd-kit hooks
@@ -72,12 +73,12 @@ const FileTreeNode = ({
     data: {
       node
     },
-    disabled: !showFileOps || isRenaming
+    disabled: !canDrag
   });
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: node.path,
-    disabled: !showFileOps || isRenaming
+    disabled: !canDrag
   });
 
   // 完美VSCode拖放体验：只允许文件夹节点和根目录Box显示放置高亮
@@ -94,10 +95,15 @@ const FileTreeNode = ({
   return (
     <Box>
       <Flex
-        ref={(el) => {
-          setDragRef(el);
-          setDropRef(el);
-        }}
+        // dnd-kit 禁用态会自动注入 aria-disabled="true"；仅在允许拖拽时挂载 DnD ref 与属性，避免只读或重命名模式下可点击行误报禁用。
+        ref={
+          canDrag
+            ? (el) => {
+                setDragRef(el);
+                setDropRef(el);
+              }
+            : undefined
+        }
         data-file-tree-node="true"
         pl={`${node.level * 16 + 4}px`}
         pr={2}
@@ -132,8 +138,8 @@ const FileTreeNode = ({
         color="myGray.600"
         transition="all 0.15s ease"
         userSelect={'none'}
-        {...listeners}
-        {...attributes}
+        {...(canDrag ? listeners : {})}
+        {...(canDrag ? attributes : {})}
       >
         {/* 左侧展开折叠三角形 */}
         <Flex

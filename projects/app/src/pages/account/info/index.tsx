@@ -345,7 +345,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
             <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
 
-            <MyTooltip label={t('account_info:select_avatar')}>
+            <MyTooltip label={t('common:set_avatar')}>
               <Box
                 w={['22px', '32px']}
                 h={['22px', '32px']}
@@ -370,7 +370,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               cursor={'pointer'}
               onClick={handleFileSelectorOpen}
             >
-              <MyTooltip label={t('account_info:choose_avatar')}>
+              <MyTooltip label={t('common:set_avatar')}>
                 <Box
                   w={'40px'}
                   h={'40px'}

@@ -503,7 +503,8 @@ const DATASETS_COLLECTIONS_BATCH_DOWNLOAD_SPEC: OperationSpec = {
   identityCarrier: null,
   pathParams: [],
   queryParams: ['ticket'],
-  bodyParams: []
+  bodyParams: [],
+  retryable: false
 };
 
 const DATASETS_COLLECTIONS_CREATE_SPEC: OperationSpec = {
@@ -709,6 +710,7 @@ const DATASETS_COLLECTIONS_UPDATE_SPEC: OperationSpec = {
     'name',
     'tags',
     'forbid',
+    'syncChildren',
     'createTime',
     'datasetId',
     'externalFileId'
@@ -906,6 +908,7 @@ const DATASETS_UPDATE_SPEC: OperationSpec = {
     'externalReadUrl',
     'apiDatasetServer',
     'autoSync',
+    'syncAll',
     'chunkSettings',
     'sangforFileParseConfig'
   ]

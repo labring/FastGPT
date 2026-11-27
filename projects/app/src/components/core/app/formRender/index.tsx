@@ -221,7 +221,7 @@ const InputRender = (props: InputRenderProps) => {
               return {
                 name: selectedItem?.label || '',
                 datasetId: selectedItem?.value || '',
-                icon: selectedItem?.icon || ''
+                icon: selectedItem?.icon
               };
             })
           );

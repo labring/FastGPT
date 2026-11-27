@@ -7,6 +7,7 @@ import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestPa
 import type { UpdateDomainConfigResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 vi.hoisted(() => vi.resetModules());
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
 const mocks = vi.hoisted(() => ({
@@ -61,17 +62,19 @@ describe('instance config update API', () => {
     mocks.edition = 'community';
     const proxySecret = 'community-proxy-secret-at-least-32-characters';
     const agentSandbox = {
-      provider: 'opensandbox',
+      enabled: true,
       proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test', secret: proxySecret },
       common: { cpuCount: 2, memoryMiB: 4096 },
       opensandbox: {
         baseUrl: 'https://sandbox.test',
         apiKey: 'community-provider-key',
+        image: 'fastgpt-agent-sandbox:v0.5.0',
+        volumeManagerUrl: 'https://volume.test',
+        volumeManagerToken: 'vm-token',
         runtime: 'kubernetes',
         cpuOvercommitFactor: 2,
         memoryOvercommitFactor: 3
-      },
-      sealosdevbox: { baseUrl: 'https://devbox.test', token: 'community-devbox-token' }
+      }
     };
     const response = await callUpdate({
       body: {
@@ -81,7 +84,7 @@ describe('instance config update API', () => {
     expect(response.results[0]).toMatchObject({ domain: 'subservice', revision: 1 });
     const config = await getDomainConfigForAdmin('subservice', 'community');
     expect(config.effectiveConfig.agentSandbox).toMatchObject({
-      provider: 'opensandbox',
+      enabled: true,
       proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test' },
       common: { cpuCount: 2, memoryMiB: 4096 },
       opensandbox: {
@@ -90,11 +93,7 @@ describe('instance config update API', () => {
         memoryOvercommitFactor: 3
       }
     });
-    for (const path of [
-      'agentSandbox.proxy.secret',
-      'agentSandbox.opensandbox.apiKey',
-      'agentSandbox.sealosdevbox.token'
-    ]) {
+    for (const path of ['agentSandbox.proxy.secret', 'agentSandbox.opensandbox.apiKey']) {
       expect(config.effectiveConfig).toHaveProperty(path, { isSecret: true });
     }
     const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
@@ -102,7 +101,7 @@ describe('instance config update API', () => {
       'agentSandbox.proxy.secret.secret',
       expect.any(String)
     );
-    for (const secret of [proxySecret, 'community-provider-key', 'community-devbox-token']) {
+    for (const secret of [proxySecret, 'community-provider-key']) {
       expect(JSON.stringify(stored)).not.toContain(secret);
       expect(JSON.stringify(config)).not.toContain(secret);
       expect(JSON.stringify(response)).not.toContain(secret);
@@ -136,7 +135,7 @@ describe('instance config update API', () => {
     });
     expect(reads).toBe(2);
     expect(reloadSpy).not.toHaveBeenCalled();
-    expect(mocks.initSystemConfig).toHaveBeenCalled();
+    expect(mocks.initSystemConfig).toHaveBeenCalledWith();
     expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalled();
     readSpy.mockRestore();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
@@ -150,6 +149,43 @@ describe('instance config update API', () => {
       expect(audit).toMatchObject({ metadata: { name: 'root' } });
       expect(String(audit?.teamId)).toBe(mocks.teamId);
       expect(String(audit?.tmbId)).toBe(mocks.tmbId);
+    });
+  });
+
+  it('awaits initSystemConfig before returning so immediate getInitData reads the refreshed snapshot', async () => {
+    let releaseReload!: () => void;
+    let reloaded = false;
+    mocks.initSystemConfig.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseReload = () => {
+            reloaded = true;
+            resolve();
+          };
+        })
+    );
+
+    let finished = false;
+    const pending = callUpdate({
+      body: {
+        items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'Refreshed name' } }]
+      }
+    } as any).then((res) => {
+      finished = true;
+      return res;
+    });
+
+    await vi.waitFor(() => expect(mocks.initSystemConfig).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(finished).toBe(false);
+
+    releaseReload();
+    const response = await pending;
+    expect(reloaded).toBe(true);
+    expect(response.results[0]).toMatchObject({
+      domain: 'site',
+      revision: 1,
+      effectiveConfig: { name: 'Refreshed name' }
     });
   });
 
@@ -525,4 +561,253 @@ describe('instance config update API', () => {
       })
     );
   });
+
+  it('persists performance tracking retentionHours directly without modifying log TTL indexes', async () => {
+    const updated = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 0,
+            overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
+          }
+        ]
+      }
+    } as any);
+
+    expect(updated.results[0].revision).toBe(1);
+    expect(mocks.initSystemConfig).toHaveBeenLastCalledWith();
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
+      {
+        revision: 1,
+        overrides: { chat: { maxQpm: 3000 }, tracking: { retentionHours: 48 } }
+      }
+    );
+  });
+
+  it('requires explicitly replacing or clearing stored document parse credentials when their target URL changes', async () => {
+    // 1. 初始保存三类可配置地址及对应密钥
+    const init = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: {
+              documentParse: {
+                provider: 'somark',
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.ai/api/v1',
+                  somarkApiKey: 'sk-somark-global',
+                  url: 'https://custom-a.example.com/v2/parse/file',
+                  key: 'sk-custom-a'
+                },
+                sangfor: {
+                  url: 'https://sangfor-a.example.com/parse',
+                  key: 'sk-sangfor-a'
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(init.results[0].revision).toBe(1);
+
+    // 2. 地址未实质变化（含尾斜杠归一化）且保留旧密钥时允许保存其他字段
+    const sameEndpoint = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 1,
+            overrides: {
+              documentParse: {
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.ai/api/v1/',
+                  somarkApiKey: { isSecret: true },
+                  timeoutSeconds: 900
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(sameEndpoint.results[0].revision).toBe(2);
+
+    // 3. 分别修改 SoMark / 自建 / 深信服地址但保留旧密钥标记（或省略密钥）时，全部拒绝且不写库
+    for (const [overrides, expectedPath] of [
+      [
+        {
+          documentParse: {
+            customPdf: {
+              somarkBaseUrl: 'https://somark.cn/api/v1',
+              somarkApiKey: { isSecret: true }
+            }
+          }
+        },
+        ['providers', 'documentParse', 'customPdf', 'somarkApiKey']
+      ],
+      [
+        {
+          documentParse: {
+            customPdf: {
+              url: 'https://custom-b.example.com/v2/parse/file',
+              key: { isSecret: true }
+            }
+          }
+        },
+        ['providers', 'documentParse', 'customPdf', 'key']
+      ],
+      [
+        {
+          documentParse: {
+            sangfor: {
+              url: 'https://sangfor-b.example.com/parse'
+            }
+          }
+        },
+        ['providers', 'documentParse', 'sangfor', 'key']
+      ]
+    ] as const) {
+      await expect(
+        callUpdate({
+          body: {
+            items: [{ domain: 'providers', expectedRevision: 2, overrides }]
+          }
+        } as any)
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ApiRequestInputParseError);
+        const issues = (error as ApiRequestInputParseError).cause.issues;
+        expect(issues[0]?.path).toEqual(expectedPath);
+        return true;
+      });
+    }
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.revision
+    ).toBe(2);
+
+    // 4. 改地址同时显式替换或清空对应密钥时允许保存
+    const updated = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 2,
+            overrides: {
+              documentParse: {
+                customPdf: {
+                  somarkBaseUrl: 'https://somark.cn/api/v1',
+                  somarkApiKey: 'sk-somark-cn',
+                  url: 'https://custom-b.example.com/v2/parse/file',
+                  key: ''
+                },
+                sangfor: {
+                  url: 'https://sangfor-b.example.com/parse',
+                  key: 'sk-sangfor-b'
+                }
+              }
+            }
+          }
+        ]
+      }
+    } as any);
+    expect(updated.results[0].revision).toBe(3);
+  });
+
+  it('preserves existing non-default retentionHours and revision when invalid retentionHours values are submitted', async () => {
+    const initial = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 0,
+            overrides: { tracking: { retentionHours: 48 } }
+          }
+        ]
+      }
+    });
+    expect(initial.results[0].revision).toBe(1);
+
+    for (const invalid of ['48', null, 0, 1440, 1.5]) {
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 1,
+                overrides: { tracking: { retentionHours: invalid } }
+              }
+            ]
+          }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    }
+
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()).toMatchObject(
+      {
+        revision: 1,
+        overrides: { tracking: { retentionHours: 48 } }
+      }
+    );
+  });
+
+  it.each([
+    { legacyHours: 0, clampedHours: 1 },
+    { legacyHours: 1440, clampedHours: 1000 }
+  ])(
+    'clamps untouched legacy retentionHours=$legacyHours to $clampedHours on partial performance save while rejecting explicit out-of-range submits',
+    async ({ legacyHours, clampedHours }) => {
+      // 模拟升级前库中可能残留的越界旧值（如 0 或 1440）。
+      await MongoSystemInstanceConfig.collection.insertOne({
+        domain: 'performance',
+        schemaVersion: 1,
+        revision: 3,
+        overrides: { tracking: { retentionHours: legacyHours } },
+        updatedAt: new Date()
+      });
+
+      // 未显式提交 retentionHours 时保存同域其他字段不被历史越界值阻断，合并前自动就近收口。
+      const saved = await callUpdate({
+        body: {
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 3,
+              overrides: { chat: { maxQpm: 2500 } }
+            }
+          ]
+        }
+      });
+
+      expect(saved.results[0].revision).toBe(4);
+      expect(saved.results[0].effectiveConfig).toMatchObject({
+        chat: { maxQpm: 2500 },
+        tracking: { retentionHours: clampedHours }
+      });
+
+      // 显式提交越界值仍由严格 Schema 拒绝，且不改动已提交的 revision 与保留时长。
+      await expect(
+        callUpdate({
+          body: {
+            items: [
+              {
+                domain: 'performance',
+                expectedRevision: 4,
+                overrides: { tracking: { retentionHours: legacyHours } }
+              }
+            ]
+          }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+      expect(
+        await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean()
+      ).toMatchObject({
+        revision: 4,
+        overrides: { chat: { maxQpm: 2500 }, tracking: { retentionHours: clampedHours } }
+      });
+    }
+  );
 });

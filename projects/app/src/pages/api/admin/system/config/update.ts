@@ -225,7 +225,7 @@ async function handler(
     items: itemsToSave,
     subPlans,
     subPlansExpectedRevision,
-    actor: { actor: 'admin', userId: auth.userId }
+    actor: { actor: 'admin' as const, userId: auth.userId }
   });
 
   // 只在提交后记录操作者，不记录可能包含密钥的配置；审计失败不影响已提交的保存。
@@ -240,8 +240,8 @@ async function handler(
     )
     .catch((error) => logger.error('Failed to add system config audit log', { error }));
 
-  // 5. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
-  void initSystemConfig().catch((error) => {
+  // 5. 数据库提交后即保存成功；等待本进程运行时快照刷新以便后续请求命中最新配置，刷新失败不回滚已提交的保存。
+  await initSystemConfig().catch((error) => {
     logger.error('Failed to apply instance config after save', { error });
   });
 

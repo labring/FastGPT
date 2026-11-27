@@ -2,7 +2,10 @@ import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemIn
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -78,7 +81,7 @@ const enqueueOneRebuildTask = async ({
       if (emitWakeup) {
         await publishTrainingWakeup({
           modes: [TrainingModeEnum.rebuildIndex],
-          session: activeSession
+          tx: bridgeClientSessionToDbSession(activeSession)
         });
       }
       return true;
@@ -121,7 +124,7 @@ export const seedDatasetRebuildTasks = async (
     if (createdCount > 0) {
       await publishTrainingWakeup({
         modes: [TrainingModeEnum.rebuildIndex],
-        session: activeSession
+        tx: bridgeClientSessionToDbSession(activeSession)
       });
     }
     return createdCount;

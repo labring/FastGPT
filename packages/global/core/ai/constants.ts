@@ -14,6 +14,15 @@ export const LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE: I18nStringType = {
     '도구가 실행되지 않았습니다. 모델이 출력 토큰 한도에 도달하여 도구 인수가 불완전할 수 있습니다. 이 응답의 도구 호출은 모두 실행되지 않았습니다. 더 짧고 완전한 인수로 다시 시도하거나 작업을 더 작은 단계로 나누세요.'
 };
 
+/** 工具参数不是合法 JSON 对象时，回填给模型的未执行说明及重试指引。 */
+export const LLM_TOOL_CALL_ARGUMENTS_INVALID_RESPONSE: I18nStringType = {
+  en: 'Tool not executed: the tool arguments are not a valid JSON object. Retry with valid JSON object arguments.',
+  'zh-CN': '工具未执行：工具参数不是合法的 JSON 对象。请使用合法的 JSON 对象参数重试。',
+  'zh-Hant': '工具未執行：工具參數不是合法的 JSON 物件。請使用合法的 JSON 物件參數重試。',
+  'ko-KR':
+    '도구가 실행되지 않았습니다. 도구 인수가 유효한 JSON 객체가 아닙니다. 유효한 JSON 객체 인수로 다시 시도하세요.'
+};
+
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {
     prompt_tokens: 0,
@@ -116,6 +125,16 @@ export enum EmbeddingTypeEnm {
   query = 'query',
   db = 'db'
 }
+
+/** AI Proxy 对齐的模型思考等级全集（按思考强度从低到高排序）。 */
+export const REASONING_EFFORT_LEVELS = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh'
+] as const;
 
 export const reasoningEffortList: { label: string; value: ReasoningEffort }[] = [
   { label: i18nT('common:reasoning_effort.default'), value: null },

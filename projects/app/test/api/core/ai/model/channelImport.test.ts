@@ -1,0 +1,79 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+
+const mocks = vi.hoisted(() => ({
+  authUserPer: vi.fn(),
+  preview: vi.fn(),
+  apply: vi.fn()
+}));
+
+vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
+vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
+  authUserPer: mocks.authUserPer
+}));
+vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({ authOutLink: vi.fn() }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({ assertAuthModels: vi.fn() }));
+vi.mock('@fastgpt/service/core/ai/model/importFromChannel', () => ({
+  previewImportFromChannel: mocks.preview,
+  importFromChannel: mocks.apply
+}));
+
+import preview from '@/pages/api/core/ai/model/previewImportFromChannel';
+import apply from '@/pages/api/core/ai/model/importFromChannel';
+
+describe('system channel import authorization', () => {
+  const actor = { tmbId: 'member', teamId: 'team' };
+  const query = { channelId: 1 };
+  const body = { ...query, models: [] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.preview.mockResolvedValue({ items: [] });
+    mocks.apply.mockResolvedValue({ results: [] });
+  });
+
+  it('rejects a non-root caller before reading or applying the import', async () => {
+    mocks.authUserPer.mockResolvedValue({ ...actor, isRoot: false });
+    await expect(
+      preview({ query } as Parameters<typeof preview>[0], {} as Parameters<typeof preview>[1])
+    ).rejects.toBe(ModelErrEnum.rootOnlyPermit);
+    await expect(
+      apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
+    ).rejects.toBe(ModelErrEnum.rootOnlyPermit);
+    expect(mocks.preview).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
+  });
+
+  it('rejects requests that try to associate an existing model through import', async () => {
+    mocks.authUserPer.mockResolvedValue({ ...actor, isRoot: true });
+    const body = {
+      ...query,
+      operations: [
+        {
+          action: 'associate',
+          providerModelSlug: 'vendor/model',
+          modelId: '68ad85a7463006c963799a05',
+          isActive: true
+        }
+      ]
+    };
+
+    await expect(
+      apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
+    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    expect(mocks.apply).not.toHaveBeenCalled();
+  });
+
+  it('allows a root caller and passes the authenticated identity to the service', async () => {
+    mocks.authUserPer.mockResolvedValue({ ...actor, isRoot: true });
+    await expect(
+      preview({ query } as Parameters<typeof preview>[0], {} as Parameters<typeof preview>[1])
+    ).resolves.toEqual({ items: [] });
+    await expect(
+      apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
+    ).resolves.toEqual({ results: [] });
+    expect(mocks.preview).toHaveBeenCalledExactlyOnceWith({ channelId: 1, tmbId: actor.tmbId });
+    expect(mocks.apply).toHaveBeenCalledExactlyOnceWith({ channelId: 1, models: [], ...actor });
+  });
+});

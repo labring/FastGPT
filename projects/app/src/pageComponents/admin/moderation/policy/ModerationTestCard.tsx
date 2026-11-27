@@ -161,7 +161,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
   return (
     <Box>
       <Flex flexDirection={'column'}>
-        <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
+        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
           {t('admin:moderation.test_input_label')}
         </Text>
 

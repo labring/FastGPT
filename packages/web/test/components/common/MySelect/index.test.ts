@@ -275,6 +275,79 @@ describe('MySelect closed render', () => {
     root.unmount();
   });
 
+  it('uses searchPlaceholder instead of selected label and clears search without closing menu', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    try {
+      await act(async () => {
+        root.render(
+          React.createElement(
+            ChakraProvider,
+            null,
+            React.createElement(MySelect, {
+              list: [
+                { label: 'OpenAI', value: 1 },
+                { label: 'Anthropic', value: 2 }
+              ],
+              value: 1,
+              isSearch: true,
+              searchPlaceholder: 'Search protocol',
+              onChange: () => undefined
+            })
+          )
+        );
+      });
+
+      const trigger = host.querySelector('button')!;
+      await act(async () => trigger.click());
+
+      const input = host.querySelector('input')!;
+      expect(input.getAttribute('placeholder')).toBe('Search protocol');
+
+      const setInputValue = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      await act(async () => {
+        setInputValue?.call(input, 'Anth');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      expect(host.textContent).toContain('Anthropic');
+      expect(host.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
+
+      const clearBtn = host.querySelector('[role="menu"] [role="button"], [role="menu"] svg')
+        ?.parentElement as HTMLElement | null;
+      await act(async () => {
+        clearBtn?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+        clearBtn?.click();
+      });
+      expect(input.value).toBe('');
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+      expect(host.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+
+      // 模拟真实点击触发器：mousedown 阻止输入框提前失焦，避免 rAF 关闭后 click 又重新打开。
+      const mouseDownEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      await act(async () => {
+        trigger.dispatchEvent(mouseDownEvent);
+        if (!mouseDownEvent.defaultPrevented) {
+          input.blur();
+        }
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      });
+      expect(mouseDownEvent.defaultPrevented).toBe(true);
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+      await act(async () => {
+        trigger.click();
+      });
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
   it('keeps numeric zero searchable', async () => {
     const host = document.createElement('div');
     document.body.appendChild(host);

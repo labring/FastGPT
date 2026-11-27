@@ -49,8 +49,8 @@ describe('rehomeAgentSandboxProxy', () => {
         $set: {
           overrides: {
             agentSandbox: {
-              provider: 'sealosdevbox',
-              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+              enabled: true,
+              opensandbox: { baseUrl: 'https://sandbox.example.test' }
             }
           }
         }
@@ -59,8 +59,8 @@ describe('rehomeAgentSandboxProxy', () => {
 
     expect(await run()).toEqual({ updatedDocuments: 1 });
     expect(decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox).toEqual({
-      provider: 'sealosdevbox',
-      sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+      enabled: true,
+      opensandbox: { baseUrl: 'https://sandbox.example.test' },
       proxy: {
         wsUrl: legacyEnv.AGENT_SANDBOX_PROXY_URL,
         previewUrl: legacyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
@@ -77,8 +77,8 @@ describe('rehomeAgentSandboxProxy', () => {
         $set: {
           overrides: {
             agentSandbox: {
-              provider: 'sealosdevbox',
-              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+              enabled: true,
+              opensandbox: { baseUrl: 'https://sandbox.example.test' }
             }
           }
         }

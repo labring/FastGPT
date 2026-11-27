@@ -145,6 +145,7 @@ const CodeSandboxSubserviceComponent = () => {
                                 value={field.value}
                                 onChange={field.onChange}
                                 isConfigured={isTokenConfigured}
+                                isRequired
                                 isInvalid={Boolean(errors.codeSandbox?.token)}
                               />
                             )}

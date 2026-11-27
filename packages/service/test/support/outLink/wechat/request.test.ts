@@ -1,7 +1,8 @@
 import type { LookupAddress } from 'node:dns';
-import { Socket } from 'node:net';
+import net, { Socket } from 'node:net';
 import tls from 'node:tls';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Agent, ProxyAgent } from 'undici';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
 import { fetchWechat, getWechatBaseUrl } from '@fastgpt/service/support/outLink/wechat/request';
 
@@ -33,7 +34,26 @@ const observeDialAddresses = (addresses: LookupAddress[]) => {
 };
 
 describe('WeChat request policy', () => {
+  beforeEach(() => {
+    for (const key of [
+      'HTTP_PROXY',
+      'http_proxy',
+      'HTTPS_PROXY',
+      'https_proxy',
+      'ALL_PROXY',
+      'all_proxy',
+      'NO_PROXY',
+      'no_proxy',
+      'npm_config_http_proxy',
+      'npm_config_https_proxy',
+      'npm_config_proxy'
+    ]) {
+      vi.stubEnv(key, '');
+    }
+  });
+
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     mockLookup.mockReset();
@@ -95,7 +115,88 @@ describe('WeChat request policy', () => {
     await fetchWechat({ url, endpoint: 'media' }, { redirect: 'follow' });
     expect(fetch).toHaveBeenCalledWith(
       url,
-      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(Object) })
+      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(Agent) })
     );
   });
+
+  it('routes WeChat requests through ProxyAgent when an outbound proxy is configured', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:7890');
+    const fetch = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal('fetch', fetch);
+
+    const url = 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates';
+    await fetchWechat({ url, endpoint: 'ilink' }, { redirect: 'follow' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({ redirect: 'error', dispatcher: expect.any(ProxyAgent) })
+    );
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('bypasses the proxy and keeps direct IP checks when NO_PROXY matches', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:7890');
+    vi.stubEnv('NO_PROXY', 'ilinkai.weixin.qq.com');
+    const fetch = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal('fetch', fetch);
+
+    const url = 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates';
+    await fetchWechat({ url, endpoint: 'ilink' }, {});
+
+    const dispatcher = fetch.mock.calls[0]?.[1]?.dispatcher;
+    expect(dispatcher).toBeInstanceOf(Agent);
+    expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
+  });
+
+  it.each(['socks5', 'socks5h'] as const)(
+    'delegates target DNS resolution to %s:// proxy without local DNS lookup',
+    async (scheme) => {
+      mockLookup.mockImplementation((_hostname, _options, callback) =>
+        callback(new Error('DNS unavailable'), [])
+      );
+      const socksTargets: Array<{ atyp: number; host: string; port: number }> = [];
+      const socksSockets = new Set<net.Socket>();
+      const socksServer = net.createServer((client) => {
+        socksSockets.add(client);
+        let stage = 0;
+        client.on('data', (chunk) => {
+          if (stage === 0) {
+            stage = 1;
+            client.write(Buffer.from([0x05, 0x00]));
+          } else if (stage === 1) {
+            stage = 2;
+            const atyp = chunk[3];
+            const hostLen = atyp === 0x03 ? chunk[4] : 0;
+            const host = atyp === 0x03 ? chunk.subarray(5, 5 + hostLen).toString('utf8') : '';
+            const port = chunk.readUInt16BE(5 + hostLen);
+            socksTargets.push({ atyp, host, port });
+            // 记录到代理收到的域名和端口后返回通用失败，结束握手。
+            client.end(Buffer.from([0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          }
+        });
+        client.on('close', () => socksSockets.delete(client));
+      });
+      await new Promise<void>((resolve) => socksServer.listen(0, '127.0.0.1', resolve));
+      const socksAddress = socksServer.address();
+      if (!socksAddress || typeof socksAddress === 'string') {
+        throw new Error('Invalid SOCKS5 server address');
+      }
+
+      try {
+        vi.stubEnv('ALL_PROXY', `${scheme}://127.0.0.1:${socksAddress.port}`);
+        await expect(
+          fetchWechat(
+            { url: 'https://ilinkai.weixin.qq.com/ilink/bot/getupdates', endpoint: 'ilink' },
+            {}
+          )
+        ).rejects.toThrow();
+
+        expect(socksTargets).toEqual([{ atyp: 0x03, host: 'ilinkai.weixin.qq.com', port: 443 }]);
+        expect(mockLookup).not.toHaveBeenCalled();
+      } finally {
+        for (const s of socksSockets) s.destroy();
+        await new Promise<void>((resolve) => socksServer.close(() => resolve()));
+      }
+    }
+  );
 });

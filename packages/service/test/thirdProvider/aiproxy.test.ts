@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { AxiosError } from 'axios';
 import { AIProxyClient } from '../../thirdProvider/aiproxy/client';
 import {
   isAiproxyNotFoundError,
@@ -25,6 +26,30 @@ describe('AIProxyClient', () => {
     vi.clearAllMocks();
     mockAxiosWithoutSSRF.mockReset();
     client = new AIProxyClient(() => config);
+  });
+
+  it.each([501, 502])('preserves the Axios error for HTTP %d', async (status) => {
+    const error = Object.assign(
+      new AxiosError('upstream unavailable', AxiosError.ERR_BAD_RESPONSE),
+      {
+        response: { status, data: { success: false, message: 'upstream error' } }
+      }
+    );
+    mockAxiosWithoutSSRF.mockRejectedValue(error);
+
+    await expect(client.getSystemChannelModels(1)).rejects.toBe(error);
+    await expect(client.system.channels.get(1)).rejects.toBe(error);
+  });
+
+  it('preserves catalog IDs that can be saved without changing their identity', async () => {
+    mockAxiosWithoutSSRF
+      .mockResolvedValueOnce({ data: { success: true, data: [{ id: 'vendor/model' }] } })
+      .mockResolvedValueOnce({ data: { success: true, data: [{ id: ' vendor/model ' }] } });
+
+    await expect(client.getSystemChannelModels(1)).resolves.toEqual([{ id: 'vendor/model' }]);
+    await expect(client.getSystemChannelModels(1)).rejects.toMatchObject({
+      issues: [expect.objectContaining({ path: [0, 'id'] })]
+    });
   });
 
   describe('system.channels', () => {

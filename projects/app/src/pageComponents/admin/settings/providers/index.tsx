@@ -94,7 +94,8 @@ const ProvidersSettingComponent = () => {
               onChange={(val) =>
                 setValue(
                   'externalProviderWorkflowVariables',
-                  val.map((item) => ({ ...item, url: item.url ?? '' }))
+                  val.map((item) => ({ ...item, url: item.url ?? '' })),
+                  { shouldDirty: true }
                 )
               }
               title={t('admin:global_variable_list')}

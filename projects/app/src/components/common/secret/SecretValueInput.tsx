@@ -9,7 +9,8 @@ type SecretValueInputProps = {
   onChange?: (value: string) => void;
   multiline?: boolean;
   rows?: number;
-} & Omit<InputProps, 'value' | 'onChange' | 'type' | 'onBlur' | 'onFocus'>;
+  isRequired?: boolean;
+} & Omit<InputProps, 'value' | 'onChange' | 'type' | 'onBlur' | 'onFocus' | 'isRequired'>;
 
 /**
  * 明文首次填写直接更新表单；已保存密钥使用独立的空草稿替换。
@@ -22,6 +23,7 @@ const SecretValueInput = ({
   multiline = false,
   rows = 5,
   isDisabled,
+  isRequired = false,
   h = 9,
   borderLeftRadius,
   isInvalid,
@@ -32,6 +34,7 @@ const SecretValueInput = ({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const isEditing = draft !== undefined;
   const showConfigured = isConfigured || (isConfirmed && value !== '');
+  const isConfirmDisabled = isEditing && isRequired && draft.trim() === '';
 
   return (
     <Flex w={'full'} minW={0} alignItems={'center'} gap={1}>
@@ -93,8 +96,10 @@ const SecretValueInput = ({
             flexShrink={0}
             variant="ghost"
             color={'primary.600'}
+            isDisabled={isConfirmDisabled}
             onClick={() => {
               if (isEditing) {
+                if (isConfirmDisabled) return;
                 onChange?.(draft);
                 setIsConfirmed(draft !== '');
                 setDraft(undefined);

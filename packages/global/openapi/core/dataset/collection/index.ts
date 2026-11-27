@@ -70,7 +70,8 @@ export const DatasetCollectionPath: OpenAPIPath = {
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       'x-fastgpt-sdk': {
         resource: 'datasets.collections',
-        method: 'batchDownload'
+        method: 'batchDownload',
+        retryable: false
       },
       requestParams: {
         query: BatchDownloadDatasetCollectionsQuerySchema

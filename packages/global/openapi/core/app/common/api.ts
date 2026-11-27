@@ -733,7 +733,7 @@ export type GetAppBasicInfoBodyType = z.infer<typeof GetAppBasicInfoBodySchema>;
 export const AppBasicInfoSchema = z.object({
   id: ObjectIdSchema.meta({ description: '应用 ID' }),
   name: z.string().meta({ description: '应用名称' }),
-  avatar: z.string().meta({ description: '应用头像' })
+  avatar: z.string().optional().meta({ description: '应用头像' })
 });
 export const GetAppBasicInfoResponseSchema = z.array(AppBasicInfoSchema).meta({
   description: '应用基础信息列表'

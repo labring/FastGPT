@@ -2418,7 +2418,7 @@ describe('Workflow runtime LLM token summary', () => {
             expect.objectContaining({
               response: expect.objectContaining({
                 nodeId: 'summary-node',
-                error: 'after LLM'
+                errorText: 'after LLM'
               }),
               emit: true
             })
@@ -2504,7 +2504,8 @@ describe('Workflow runtime error summary', () => {
         expect(result.workflowRuntimeSummary).not.toHaveProperty('error');
         for (const call of publish.mock.calls) {
           for (const { response } of call[0]) {
-            expect(typeof (response.error ?? response.errorText)).toBe('string');
+            expect(typeof response.errorText).toBe('string');
+            expect(response.error).toBeUndefined();
             expect(JSON.stringify(response)).not.toContain('private-cause');
           }
         }
@@ -2515,6 +2516,61 @@ describe('Workflow runtime error summary', () => {
       }
     }
   );
+
+  it('populates errorText when a node returns rawError without responseData', async () => {
+    const original = callbackMap[FlowNodeTypeEnum.textEditor];
+    const node = createNode('raw-only-node', FlowNodeTypeEnum.textEditor);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
+      rawError: new Error('Agent runtime crashed'),
+      error: { system_error_text: 'Agent runtime crashed' }
+    }));
+    const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'raw error only fallback',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableContext: createTestVariableContext(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => false,
+        nodeResponseSink: { publish }
+      } as any);
+
+      expect(result.workflowRuntimeSummary).toMatchObject({
+        errorCount: 1,
+        errorText: 'Agent runtime crashed'
+      });
+      expect(publish).toHaveBeenCalledWith([
+        expect.objectContaining({
+          response: expect.objectContaining({
+            nodeId: 'raw-only-node',
+            errorText: 'Agent runtime crashed'
+          })
+        })
+      ]);
+      expect(publish.mock.calls[0][0][0].response.error).toBeUndefined();
+    } finally {
+      callbackMap[FlowNodeTypeEnum.textEditor] = original;
+    }
+  });
 
   it.each(['error', 'errorText'] as const)(
     'does not log display-only responseData.%s',

@@ -136,7 +136,6 @@ export type AgentLoopEvent =
   | {
       type: 'ask';
       ask: AgentAskPayload;
-      providerState?: unknown;
     }
   | {
       type: 'ask_resume';

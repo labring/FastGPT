@@ -9,14 +9,14 @@ releaseTime: '2026-11-23'
 ### 镜像更新
 
 - 将 FastGPT 主服务（`fastgpt-app`）镜像标签更新为 `v4.17.5`。商业版同时将 `fastgpt-pro` 更新为 `v4.17.5`。
-- 最新的 [Docker Compose 部署模板](/self-host/deploy/docker) 将自带的 MongoDB 更新至 `8.0.38`，以兼容 Ubuntu 的部分新版内核。已使用 MongoDB 8.0 的部署在原地更新补丁版时保留现有数据卷。如果使用外部 MongoDB，请参考 [MongoDB 内核兼容说明](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes)。
+- 最新的 [Docker Compose 部署模板](/self-host/deploy/docker) 面向**全新部署**（自带的 PostgreSQL 向量库 `fastgpt-vector` 已更新为 `pgvector/pgvector:0.8.7-pg18`、`fastgpt-aiproxy-pg` 改为标准 `postgres:18.7` 且挂载路径调整为 `/var/lib/postgresql`，MongoDB 更新至 `8.3.17`）。已有部署升级应用时，请保留两套 PostgreSQL 的原镜像与 `/var/lib/postgresql/data` 挂载路径，避免 PG 18 检测到 PG 15 旧数据而启动失败；MongoDB 若已在 `8.0` 系列且需兼容 Ubuntu 新版内核，可原地将补丁版更新至 `8.0.38` 并保留现有数据卷，跨系列版本切换应作为独立迁移步骤单独执行。外部 MongoDB 请参考 [MongoDB 内核兼容说明](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes)。
 - 部署模板为 OpenSandbox Server 补充了 `host.docker.internal:host-gateway` 映射。自定义 Compose 使用该主机名时，也需在 `fastgpt-opensandbox-server` 的 `extra_hosts` 中加入此映射，确保服务能访问沙盒容器在宿主机上的映射端口。
 
 ### 配置与数据
 
 FastGPT 从 v4.17.4 升级无需新增环境变量或执行应用升级脚本。使用自定义 Compose 的部署可直接更新对应镜像标签。
 
-已有 MongoDB 5.x 或 MinIO 的部署可继续使用原 Compose，仅更新 FastGPT 镜像。若要切换 MongoDB 大版本或从 MinIO 迁移到 RustFS，请先完成 [数据备份与迁移](/self-host/migration/docker_db)。
+已有 PostgreSQL 15（含向量库与 AI Proxy 数据库）、MongoDB 5.x/8.0 或 MinIO 的部署，应用升级时应继续保留原有数据库镜像、挂载路径与存储配置，仅更新 FastGPT 镜像。若要单独执行数据库版本切换或从 MinIO 迁移到 RustFS，请先完成 [数据备份与迁移](/self-host/migration/docker_db)。
 
 ## 安全修复
 

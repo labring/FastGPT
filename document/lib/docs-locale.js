@@ -3,6 +3,23 @@
  * @typedef {'cn' | 'io' | 'preview'} DocsSiteVariant
  */
 
+const LOCAL_HOME_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+
+/**
+ * Check whether the configured home origin points to a local development host.
+ * Local hosts should stay in multi-locale preview mode unless DOCS_SITE_VARIANT is explicitly set.
+ * @param {string} homeOrigin
+ * @returns {boolean}
+ */
+function isLocalHomeOrigin(homeOrigin) {
+  try {
+    const hostname = new URL(homeOrigin).hostname.toLowerCase();
+    return LOCAL_HOME_HOSTNAMES.has(hostname) || hostname.endsWith('.localhost');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Resolve the docs locale from the build host used by the documentation image.
  * @param {string} homeOrigin
@@ -58,6 +75,9 @@ function resolveDocsSiteVariant(options = {}) {
   ).trim();
 
   if (rawHomeOrigin !== '') {
+    if (isLocalHomeOrigin(rawHomeOrigin)) {
+      return 'preview';
+    }
     return getFastGPTDocsLocaleFromHomeOrigin(rawHomeOrigin) === 'zh-CN' ? 'cn' : 'io';
   }
 

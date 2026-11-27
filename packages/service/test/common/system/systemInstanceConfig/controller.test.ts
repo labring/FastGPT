@@ -360,7 +360,7 @@ describe('systemInstanceConfig controller', () => {
             expectedRevision: 0,
             submittedOverrides: {
               agentSandbox: {
-                provider: 'opensandbox',
+                enabled: true,
                 opensandbox: { baseUrl: 'https://sandbox.test' },
                 proxy
               }
@@ -379,8 +379,14 @@ describe('systemInstanceConfig controller', () => {
         expectedRevision: 0,
         submittedOverrides: {
           agentSandbox: {
-            provider: 'opensandbox',
-            opensandbox: { baseUrl: 'https://sandbox.test' },
+            enabled: true,
+            opensandbox: {
+              baseUrl: 'https://sandbox.test',
+              apiKey: 'sandbox-key',
+              image: 'fastgpt/sandbox:latest',
+              volumeManagerUrl: 'http://volume-manager.test',
+              volumeManagerToken: 'vm-token'
+            },
             proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://proxy.test', secret }
           }
         },
@@ -564,14 +570,15 @@ describe('systemInstanceConfig controller', () => {
           submittedOverrides: {
             documentParse: {
               customPdf: {
-                url: 'https://pdf.new-domain.com'
+                timeoutSeconds: 900
               }
             }
           },
           actor: { actor: 'admin' }
         });
 
-        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.new-domain.com');
+        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.example.com');
+        expect(updated.overrides.documentParse?.customPdf?.timeoutSeconds).toBe(900);
         expect(updated.overrides.documentParse?.customPdf?.key).toBe('original-secret-key');
         expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key');
         const preserved = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
@@ -795,7 +802,7 @@ describe('systemInstanceConfig controller', () => {
       expect(snapshot.site.name).toBe('Snapshot Site');
       expect(snapshot.performance.workflow.maxRunTimes).toBe(999);
       expect(snapshot.security.csrfEnabled).toBe(true); // default
-      expect(snapshot.subservice.agentSandbox.provider).toBe('none'); // default
+      expect(snapshot.subservice.agentSandbox.enabled).toBe(false); // default
     });
   });
 

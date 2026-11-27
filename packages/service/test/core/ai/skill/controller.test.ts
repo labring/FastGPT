@@ -1,6 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import {
   createSkill,
@@ -22,6 +23,7 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import JSZip from 'jszip';
 import { Readable } from 'node:stream';
 
 describe('AgentSkill Controller', () => {
@@ -383,9 +385,14 @@ describe('AgentSkill Controller', () => {
 
   // ==================== Import Skill ====================
   describe('importSkill', () => {
-    const packageContent = Buffer.from('opaque package content');
+    const createValidSkillZipBuffer = async () => {
+      const zip = new JSZip();
+      zip.file('SKILL.md', '---\nname: imported-skill\ndescription: An imported skill\n---\n');
+      return zip.generateAsync({ type: 'nodebuffer' });
+    };
 
     it('should import skill from package', async () => {
+      const packageContent = await createValidSkillZipBuffer();
       const skillData = {
         name: 'Imported Skill',
         description: 'An imported skill',
@@ -418,6 +425,7 @@ describe('AgentSkill Controller', () => {
     });
 
     it('should allow importing duplicate name without error', async () => {
+      const packageContent = await createValidSkillZipBuffer();
       const skillData = {
         name: 'Duplicate Import',
         description: 'A skill',
@@ -448,6 +456,7 @@ describe('AgentSkill Controller', () => {
     });
 
     it('should create owner permission and inherit parent collaborators', async () => {
+      const packageContent = await createValidSkillZipBuffer();
       const folder = await createSkillFolder({
         name: 'Import Parent',
         teamId: testTeamId,
@@ -488,6 +497,48 @@ describe('AgentSkill Controller', () => {
           [String(collaboratorTmbId), ReadRoleVal]
         ])
       );
+    });
+
+    it('constructs a fresh skill document on transaction retry after save rollback', async () => {
+      const packageContent = await createValidSkillZipBuffer();
+      const updateSpy = vi
+        .spyOn(MongoAgentSkills, 'updateOne')
+        .mockRejectedValueOnce(new Error('Simulated TransientTransactionError'));
+      vi.mocked(mongoSessionRun).mockImplementationOnce(async (fn) => {
+        try {
+          return await fn(null as any);
+        } catch {
+          await Promise.all([
+            MongoAgentSkills.deleteMany({ teamId: testTeamId }),
+            MongoResourcePermission.deleteMany({
+              teamId: testTeamId,
+              resourceType: PerResourceTypeEnum.agentSkill
+            })
+          ]);
+          return await fn(null as any);
+        }
+      });
+
+      try {
+        const skillId = await importSkill({
+          skill: {
+            name: 'Retried Import Skill',
+            description: 'Succeeds across transaction retry',
+            category: []
+          },
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          packageStream: Readable.from(packageContent),
+          contentLength: packageContent.length
+        });
+
+        expect(skillId).toBeDefined();
+        const saved = await MongoAgentSkills.findById(skillId).lean();
+        expect(saved?.name).toBe('Retried Import Skill');
+        expect(updateSpy).toHaveBeenCalledTimes(2);
+      } finally {
+        updateSpy.mockRestore();
+      }
     });
   });
 });

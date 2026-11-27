@@ -23,12 +23,12 @@ describe('resolveAppSandboxAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemInstanceConfig = createDefaultInstanceConfig();
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
   });
 
   it('returns systemDisabled without checking the team plan', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(
       resolveAppSandboxAvailability({ appEnabled: true, teamId: 'team_1' })
@@ -72,12 +72,12 @@ describe('assertSandboxAvailable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemInstanceConfig = createDefaultInstanceConfig();
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
   });
 
   it('rejects before the team check when the system feature is disabled', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     await expect(assertSandboxAvailable('team_1')).rejects.toMatchObject({
       message: SandboxErrEnum.agentSandboxPermissionDenied

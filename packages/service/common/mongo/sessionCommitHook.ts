@@ -1,3 +1,4 @@
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { getLogger, LogCategories } from '../logger';
 import type { ClientSession } from './index';
 
@@ -6,6 +7,7 @@ type AfterCommitCallback = () => Promise<void> | void;
 const getMongoLogger = () => getLogger(LogCategories?.INFRA?.MONGO ?? LogCategories?.SYSTEM);
 const managedMongoSessions = new WeakSet<ClientSession>();
 const pendingMongoAfterCommit = new WeakMap<ClientSession, AfterCommitCallback[]>();
+const bridgedMongoSessions = new WeakMap<ClientSession, DbSession>();
 
 const runSafeCallback = async (callback: AfterCommitCallback): Promise<void> => {
   try {
@@ -19,6 +21,23 @@ const runSafeCallback = async (callback: AfterCommitCallback): Promise<void> => 
 export const registerManagedMongoSession = (session: ClientSession): void => {
   managedMongoSessions.add(session);
 };
+
+/**
+ * 将经 `bridgeDbSessionToClientSession` 解包出的 `ClientSession` 关联回外层 `runInTransaction`
+ * 持有的 `DbSession`，使存量调用 `afterMongoCommit(session, cb)` 时统一汇入 `tx.afterCommit`。
+ *
+ * 已由 `mongoSessionRun` 托管的会话忽略绑定，避免双向桥接往返形成递归。
+ */
+export const registerBridgedMongoSession = (session: ClientSession, tx: DbSession): void => {
+  if (managedMongoSessions.has(session)) {
+    return;
+  }
+  bridgedMongoSessions.set(session, tx);
+};
+
+/** 获取与反向桥接解包出的 `ClientSession` 关联的外层真实 `DbSession`。 */
+export const getBridgedMongoSession = (session: ClientSession): DbSession | undefined =>
+  bridgedMongoSessions.get(session);
 
 /** 清空某次失败或即将重试的事务尝试期间暂存的回调队列，避免回滚/重跑后重复执行。 */
 export const clearPendingMongoAfterCommit = (session: ClientSession): void => {
@@ -40,22 +59,35 @@ export const flushMongoAfterCommit = async (session: ClientSession): Promise<voi
 /**
  * 注册在 MongoDB 事务提交后才执行的副作用回调（如 Redis Pub/Sub 广播、队列唤醒）。
  *
- * 若未传入 `session`，或传入的是测试替身等非 `mongoSessionRun` 托管会话，则立即执行，
- * 保证无事务上下文与单测环境同样可触发通知，且回调异常不会破坏已成功的写操作。
+ * - `mongoSessionRun` 托管会话：暂存至当前事务尝试队列，提交后按 FIFO 执行，回滚/重试丢弃；
+ * - 经 `bridgeDbSessionToClientSession` 桥接自 `runInTransaction` 的会话：委托至外层 `tx.afterCommit`；
+ * - 未传入 `session` 或非托管测试替身：立即执行，保证无事务上下文与单测环境同样可触发通知，
+ *   且回调异常不会破坏已成功的写操作。
  */
 export const afterMongoCommit = async (
   session: ClientSession | null | undefined,
   callback: AfterCommitCallback
 ): Promise<void> => {
-  if (session === null || session === undefined || !managedMongoSessions.has(session)) {
+  if (session === null || session === undefined) {
     await runSafeCallback(callback);
     return;
   }
 
-  const queue = pendingMongoAfterCommit.get(session);
-  if (queue === undefined) {
-    pendingMongoAfterCommit.set(session, [callback]);
+  if (managedMongoSessions.has(session)) {
+    const queue = pendingMongoAfterCommit.get(session);
+    if (queue === undefined) {
+      pendingMongoAfterCommit.set(session, [callback]);
+      return;
+    }
+    queue.push(callback);
     return;
   }
-  queue.push(callback);
+
+  const bridgedTx = bridgedMongoSessions.get(session);
+  if (bridgedTx !== undefined) {
+    bridgedTx.afterCommit(callback);
+    return;
+  }
+
+  await runSafeCallback(callback);
 };

@@ -1,5 +1,4 @@
-import { isAgentSandboxProvider } from '../../../env.util';
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type { SandboxProviderType } from '../../../core/ai/sandbox/type';
 
 const getPositiveIntegerEnv = (
   env: NodeJS.ProcessEnv,
@@ -33,30 +32,24 @@ export const getSandboxIntegrationProvider = (
 ): SandboxProviderType | undefined => {
   if (env.SANDBOX_INTEGRATION?.toLowerCase() !== 'true') return;
 
-  const provider = env.AGENT_SANDBOX_PROVIDER;
-  if (!isAgentSandboxProvider(provider)) {
-    throw new Error(
-      'AGENT_SANDBOX_PROVIDER must be opensandbox or sealosdevbox when SANDBOX_INTEGRATION=true'
-    );
+  if (!env.AGENT_SANDBOX_OPENSANDBOX_BASEURL?.trim()) {
+    throw new Error('AGENT_SANDBOX_OPENSANDBOX_BASEURL must be set when SANDBOX_INTEGRATION=true');
   }
 
   // 独立集成测试显式使用部署凭据；生产服务不再声明这些历史 ENV。
-  const requiredKeys =
-    provider === 'sealosdevbox'
-      ? ['AGENT_SANDBOX_SEALOS_BASEURL', 'AGENT_SANDBOX_SEALOS_TOKEN', 'AGENT_SANDBOX_SEALOS_IMAGE']
-      : [
-          'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
-          'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
-          'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
-          'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
-          'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
-        ];
+  const requiredKeys = [
+    'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
+    'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+    'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
+    'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
+    'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
+  ];
   const missingKeys = requiredKeys.filter((key) => !env[key]?.trim());
   if (missingKeys.length > 0) {
     throw new Error(`Missing Sandbox integration environment variables: ${missingKeys.join(', ')}`);
   }
 
-  return provider;
+  return 'opensandbox';
 };
 
 /** 读取本地 provider 性能预算；所有预算都是单次操作的 wall-clock 上限。 */

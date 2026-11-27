@@ -57,6 +57,14 @@ describe('getZodParseErrorInputSource', () => {
     }
   });
 
+  it('recognizes explicit header request errors', () => {
+    const cause = schema.safeParse({}).error!;
+    const error = new ApiRequestInputParseError(cause, { inputSource: 'header' });
+
+    expect(getZodParseErrorInputSource(error)).toEqual({ inputSource: 'header' });
+    expect(getZodError(error)).toBe(cause);
+  });
+
   it('does not classify internal schema parse failures', () => {
     try {
       schema.parse({});

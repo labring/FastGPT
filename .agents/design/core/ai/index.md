@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-07-16
+最后核对：2026-11-27
 
 ## 文档目的
 
@@ -14,7 +14,7 @@
 | --- | --- |
 | [Agent Loop](./agent-loop/index.md) | 统一模型循环、工具、事件、暂停恢复、上下文和计费协议 |
 | [辅助生成](./auxiliary-generation.md) | Chat Agent Helper 等非 workflow 生成场景的通用生命周期 |
-| [Agent Sandbox](./sandbox/index.md) | 沙盒实例、provider、工具、Skill 部署、entrypoint 和归档 |
+| [Agent Sandbox](./sandbox/index.md) | 沙盒实例、OpenSandbox 1.2.1 运行时、持久卷、`fastgpt-ide-agent`、出网代理、磁盘软限制与统一写满处理、工具、Skill 部署、entrypoint 和 `.tar.zst` 归档 |
 | [Agent Skill](./skill/index.md) | 空白工作区、发布约束和内置辅助生成 Skill |
 
 ## 总体关系
@@ -33,8 +33,7 @@
         `-- Sandbox runtime + Skill deployment
 
 runAgentLoop
-  |-- fastAgent provider
-  `-- piAgent provider
+  `-- fastAgent provider
 
 Sandbox
   |-- runtime client and lifecycle

@@ -1,9 +1,8 @@
 import { z } from 'zod';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { SignalPubSubChannel } from '@fastgpt/dal/redis/caches/pubSubSync';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLogger, LogCategories } from '../../../common/logger';
-import type { ClientSession } from '../../../common/mongo';
-import { afterMongoCommit } from '../../../common/mongo/sessionCommitHook';
 
 const getTrainingLogger = () =>
   getLogger(LogCategories?.MODULE?.DATASET?.TRAINING ?? LogCategories?.SYSTEM);
@@ -20,22 +19,22 @@ export const trainingWakeupChannel = new SignalPubSubChannel({
 /**
  * 知识库训练队列唤醒信号（替代 `MongoDatasetTraining.watch()`）。
  *
- * 挂载在 `afterMongoCommit` 上，保证事务内写入仅在提交后才广播唤醒；
- * 推送失败只打告警，由主仓/商业版既有的分钟级 Cron 兜底拉起消费。
+ * 传入 `tx` 时挂载在 `tx.afterCommit` 上，保证事务内写入仅在提交后才广播唤醒；
+ * 未传入 `tx` 时立即发布。推送失败只打告警，由主仓/商业版既有的分钟级 Cron 兜底拉起消费。
  */
 export const publishTrainingWakeup = async ({
   modes,
-  session
+  tx
 }: {
   modes: readonly TrainingModeEnum[];
-  session?: ClientSession | null;
+  tx?: DbSession | null;
 }): Promise<void> => {
   const uniqueModes = Array.from(new Set(modes));
   if (uniqueModes.length === 0) {
     return;
   }
 
-  await afterMongoCommit(session, async () => {
+  const publish = async () => {
     try {
       await trainingWakeupChannel.publish({ modes: uniqueModes });
     } catch (error) {
@@ -44,7 +43,14 @@ export const publishTrainingWakeup = async ({
         error
       });
     }
-  });
+  };
+
+  if (tx !== null && tx !== undefined) {
+    tx.afterCommit(publish);
+    return;
+  }
+
+  await publish();
 };
 
 export const subscribeTrainingWakeup = ({

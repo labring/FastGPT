@@ -79,6 +79,20 @@ describe('Prompt_userQuotePromptList', () => {
       });
     });
   });
+
+  it('should wrap instructions and quote in <system-reminder> before {{question}}', () => {
+    Prompt_userQuotePromptList.forEach((item) => {
+      Object.values(item.value).forEach((prompt) => {
+        expect(prompt.startsWith('<system-reminder>\n')).toBe(true);
+        const closeIndex = prompt.lastIndexOf('</system-reminder>');
+        expect(closeIndex).toBeGreaterThan(prompt.indexOf('{{quote}}'));
+        expect(prompt.indexOf('{{question}}')).toBeGreaterThan(closeIndex);
+        expect(prompt.trimEnd().endsWith('{{question}}')).toBe(true);
+        expect(prompt).not.toContain('## 用户问题');
+        expect(prompt).not.toMatch(/^## 回答\s*$/m);
+      });
+    });
+  });
 });
 
 // ===========================================================================

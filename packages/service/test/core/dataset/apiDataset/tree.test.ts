@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileRecords,
   buildApiFileTree,
@@ -56,21 +55,48 @@ describe('buildApiFileTree', () => {
     ]);
   });
 
-  it.each(['base-path', undefined])('显式 listId=%s 决定哨兵枚举位置', async (listId) => {
+  it.each(['base-path', undefined])('显式 listId=%s 决定目录枚举位置', async (listId) => {
     listFiles.mockResolvedValue([]);
     const nodes = await buildApiFileTree({
       request,
-      seeds: [{ ...file(RootCollectionId, 'folder', true), listId }]
+      seeds: [{ ...file('custom-root', 'folder', true), listId }]
     });
     expect(listFiles).toHaveBeenCalledExactlyOnceWith({ parentId: listId });
     expect(nodes).toEqual([
       expect.objectContaining({
-        serverId: RootCollectionId,
+        serverId: 'custom-root',
         type: 'folder',
-        name: `name-${RootCollectionId}`,
+        name: 'name-custom-root',
         depth: 0,
         serverParentId: null
       })
+    ]);
+  });
+
+  it('syncChildren=false 且 expandChildren=false 的占位祖先种子不展开子级，但显式子种子会挂到其下', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'child') return [file('leaf', 'file')];
+      return [];
+    });
+    const nodes = await buildApiFileTree({
+      request,
+      seeds: [
+        { ...file('ancestor', 'folder', true), syncChildren: false, expandChildren: false },
+        { ...file('child', 'folder', true), serverParentId: 'ancestor' }
+      ]
+    });
+    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ parentId: 'child' });
+    expect(
+      nodes.map(({ serverId, serverParentId, depth, syncChildren }) => [
+        serverId,
+        serverParentId,
+        depth,
+        syncChildren
+      ])
+    ).toEqual([
+      ['ancestor', null, 0, false],
+      ['child', 'ancestor', 1, undefined],
+      ['leaf', 'child', 2, undefined]
     ]);
   });
 

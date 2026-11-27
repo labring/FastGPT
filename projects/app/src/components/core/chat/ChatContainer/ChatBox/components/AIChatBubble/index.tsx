@@ -26,6 +26,7 @@ type AIChatBubbleProps = {
   isLastChild: boolean;
   isLastValueGroup: boolean;
   isChatting: boolean;
+  hasError: boolean;
   hasValidContent: boolean;
   loadingText?: string;
   questionGuides: string[];
@@ -43,6 +44,7 @@ const AIChatBubble = ({
   isLastChild,
   isLastValueGroup,
   isChatting,
+  hasError,
   hasValidContent,
   loadingText,
   questionGuides,
@@ -76,11 +78,7 @@ const AIChatBubble = ({
     isLastValueGroup &&
     (!isCurrentChatGenerateStatusReady || isCurrentChatGenerating);
   const showLoadingPlaceholder =
-    shouldWaitCurrentChatStatus &&
-    !isChatting &&
-    !chat.errorMsg &&
-    !chat.errorText &&
-    !hasValidContent;
+    shouldWaitCurrentChatStatus && !isChatting && !hasError && !hasValidContent;
   const showNoOutputTip = shouldShowNoOutputTip({
     obj: chat.obj,
     status: chat.status,
@@ -88,7 +86,7 @@ const AIChatBubble = ({
     isLastChild,
     isChatting,
     shouldWaitCurrentChatStatus,
-    hasError: !!chat.errorMsg || !!chat.errorText,
+    hasError,
     hasValidContent
   });
   const placeholderText = showLoadingPlaceholder

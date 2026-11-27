@@ -405,6 +405,8 @@ describe('dispatchDatasetSearch', () => {
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 12,
+        cacheCreationTokens: 4,
         usedUserOpenAIKey: false,
         embeddingModel: 'embedding-query',
         embeddingTokens: 6,
@@ -448,6 +450,8 @@ describe('dispatchDatasetSearch', () => {
         llmRequestIds: ['req_query_extension'],
         inputTokens: 10,
         outputTokens: 5,
+        cacheReadTokens: 12,
+        cacheCreationTokens: 4,
         totalPoints: 0.15,
         textOutput: 'origin\nexpanded'
       })
@@ -541,6 +545,8 @@ describe('dispatchDatasetSearch', () => {
         model: 'gpt-vision',
         inputTokens: 4,
         outputTokens: 3,
+        cacheReadTokens: 6,
+        cacheCreationTokens: 2,
         requestIds: ['req_image_caption_1', 'req_image_caption_2'],
         seconds: 1.5,
         usedUserOpenAIKey: true,
@@ -592,6 +598,8 @@ describe('dispatchDatasetSearch', () => {
       llmRequestIds: ['req_image_caption_1', 'req_image_caption_2'],
       inputTokens: 4,
       outputTokens: 3,
+      cacheReadTokens: 6,
+      cacheCreationTokens: 2,
       totalPoints: 0,
       textOutput: 'red handbag\nblue sneaker'
     });

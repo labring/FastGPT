@@ -2,7 +2,6 @@ import { LegacyBooleanSchema, readMigrationConfigValue } from './validation';
 import z from 'zod';
 import { IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
-import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 
 const defaultableIntSchema = (defaultValue: number) =>
@@ -17,21 +16,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   FE_DOMAIN: UrlSchema.optional(),
   CODE_SANDBOX_URL: UrlSchema.optional(),
   CODE_SANDBOX_TOKEN: z.string().optional(),
-  AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
-    description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
-  }),
-  AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
-    description: 'Sealos Devbox 服务地址'
-  }),
-  AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional().meta({
-    description: 'Sealos Devbox 访问 Token'
-  }),
-  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace').meta({
-    description: 'Sealos Devbox 沙箱内工作目录'
-  }),
-  AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
-    description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
-  }),
   AGENT_SANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
     description: 'Agent Sandbox 实例的 CPU 核数上限'
   }),
@@ -133,9 +117,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
   MULTIPLE_DATA_TO_BASE64: LegacyBooleanSchema.default(false).meta({
     description: '是否强制将图片、音频、视频转成 base64 传递给模型'
   }),
-  AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
-    description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
-  }),
+  // AGENT_ENGINE 已随 piAgent 下架废止，老环境即使保留 AGENT_ENGINE=piAgent 也在迁移时安全跳过。
   SKIP_FILE_TYPE_CHECK: LegacyBooleanSchema.default(false).meta({
     description: '是否跳过文件类型检查'
   }),

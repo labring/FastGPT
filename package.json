@@ -33,7 +33,7 @@
     "sdk:gen": "pnpm --filter @fastgpt-sdk/openapi-codegen generate",
     "sdk:check": "pnpm --filter @fastgpt-sdk/openapi-codegen check",
     "sdk:test": "pnpm --filter @fastgpt-sdk/openapi-codegen test && pnpm --filter @fastgpt/sdk test",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter --filter @fastgpt/sdk build",
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt/sdk build",
     "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/cli build:tsdown"
   },
   "devDependencies": {

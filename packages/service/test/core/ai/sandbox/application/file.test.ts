@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { SandboxInstanceStatusEnum } from '@fastgpt/service/core/ai/sandbox/constants';
 import {
-  isSandboxPathDirectory,
-  getSandboxFileContent,
   addDirectoryToArchive,
   prepareSandboxFileParentDirectories,
-  resolveSandboxWorkspacePath,
+  resolveSandboxDownloadTarget,
   writeUrlFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/file';
-import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import type { DirectoryEntry, FileInfo, FileReadResult } from '@fastgpt-sdk/sandbox-adapter';
+import { resolveSandboxRuntimePath } from '@fastgpt/service/core/ai/sandbox/utils';
+import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import type { PreparedSandboxRuntime } from '@fastgpt/service/core/ai/sandbox/application/runtime/type';
+import { SANDBOX_PROVIDER } from '@fastgpt/service/core/ai/sandbox/type';
+import type {
+  DirectoryEntry,
+  FileInfo
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/type';
 
 const axiosMock = vi.hoisted(() => ({
   get: vi.fn()
@@ -23,23 +31,38 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
-  getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
+  getSandboxStaticRuntimePaths: () => ({
+    workDirectory: '/workspace',
+    homeDirectory: '/home/sandbox',
+    skillsRootPath: '/workspace/skills',
+    builtinSkillsRootPath: '/var/lib/fastgpt-runtime/skills'
+  })
 }));
 
 const sessionWorkDirectory = '/workspace/sessions/chat-1';
-const resolveSessionPath = (path: string) =>
-  resolveSandboxWorkspacePath(path, sessionWorkDirectory, {
-    allowAbsolutePath: true,
-    workspaceRoot: '/workspace'
-  });
+const resolveSessionPath = (
+  path: string,
+  options?: { allowAbsolutePath?: boolean; allowOutsideWorkspace?: boolean }
+) =>
+  resolveSandboxRuntimePath(
+    path,
+    {
+      workspaceRoot: '/workspace',
+      sessionWorkDirectory
+    },
+    options
+  );
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
-function makeSandbox(providerOverrides: Partial<SandboxClient['provider']> = {}): SandboxClient {
+function makeSandbox(
+  opensandboxOverrides: Partial<SandboxClient['opensandbox']> = {}
+): SandboxClient {
   return {
-    provider: providerOverrides,
-    resolveRuntimePath: vi.fn(resolveSessionPath)
+    opensandbox: opensandboxOverrides,
+    resolveRuntimePath: vi.fn(resolveSessionPath),
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn())
   } as unknown as SandboxClient;
 }
 
@@ -56,14 +79,6 @@ function makeDirectoryEntry(
   };
 }
 
-function makeReadResult(path: string, content: string, error: Error | null = null): FileReadResult {
-  return {
-    path,
-    content: new TextEncoder().encode(content),
-    error
-  };
-}
-
 function makeFileInfoMap(path: string, info: Partial<FileInfo>): Map<string, FileInfo> {
   return new Map([[path, { path, ...info }]]);
 }
@@ -77,9 +92,12 @@ describe('writeUrlFilesToSandbox', () => {
     const sandbox = {
       createDirectories: vi.fn(),
       writeFiles: vi.fn()
-    } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0];
+    } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0]['sandbox'];
 
-    await writeUrlFilesToSandbox(sandbox, [{ path: '', url: 'https://example.com/ignored.txt' }]);
+    await writeUrlFilesToSandbox({
+      sandbox,
+      files: [{ path: '', url: 'https://example.com/ignored.txt' }]
+    });
 
     expect(axiosMock.get).not.toHaveBeenCalled();
     expect(sandbox.createDirectories).not.toHaveBeenCalled();
@@ -94,13 +112,16 @@ describe('writeUrlFilesToSandbox', () => {
       .mockResolvedValueOnce({ data: Readable.from([second]), headers: {} });
     const sandbox = {
       createDirectories: vi.fn(async () => undefined),
-      writeFiles: vi.fn(async () => undefined)
-    } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0];
+      writeFiles: vi.fn(async () => [])
+    } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0]['sandbox'];
 
-    await writeUrlFilesToSandbox(sandbox, [
-      { path: '/workspace/a.txt', url: 'https://example.com/a.txt' },
-      { path: '/workspace/reports/b.txt', url: 'https://example.com/b.txt' }
-    ]);
+    await writeUrlFilesToSandbox({
+      sandbox,
+      files: [
+        { path: '/workspace/a.txt', url: 'https://example.com/a.txt' },
+        { path: '/workspace/reports/b.txt', url: 'https://example.com/b.txt' }
+      ]
+    });
 
     expect(axiosMock.get).toHaveBeenCalledWith(
       'https://example.com/a.txt',
@@ -123,15 +144,15 @@ describe('writeUrlFilesToSandbox', () => {
   it('uses the injected reader for workflow context files', async () => {
     const sandbox = {
       createDirectories: vi.fn(async () => undefined),
-      writeFiles: vi.fn(async () => undefined)
+      writeFiles: vi.fn(async () => [])
     };
     const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private'));
 
-    await writeUrlFilesToSandbox(
-      sandbox as any,
-      [{ path: '/workspace/private.pdf', url: 'https://files.example.com/signed' }],
+    await writeUrlFilesToSandbox({
+      sandbox: sandbox as any,
+      files: [{ path: '/workspace/private.pdf', url: 'https://files.example.com/signed' }],
       readInputFile
-    );
+    });
 
     expect(readInputFile).toHaveBeenCalledWith('https://files.example.com/signed');
     expect(axiosMock.get).not.toHaveBeenCalled();
@@ -140,13 +161,36 @@ describe('writeUrlFilesToSandbox', () => {
     ]);
   });
 
+  it('maps ENOSPC write failures to agentSandboxDiskQuotaExceeded', async () => {
+    const sandbox = {
+      createDirectories: vi.fn(async () => undefined),
+      writeFiles: vi.fn(async () => [
+        {
+          path: '/workspace/a.txt',
+          bytesWritten: 0,
+          error: new Error('write /workspace/a.txt: no space left on device')
+        }
+      ])
+    };
+    const readInputFile = vi.fn().mockResolvedValue(Buffer.from('data'));
+
+    await expect(
+      writeUrlFilesToSandbox({
+        sandbox: sandbox as any,
+        files: [{ path: '/workspace/a.txt', url: 'https://files.example.com/a.txt' }],
+        readInputFile
+      })
+    ).rejects.toThrowError(new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded));
+  });
+
   it('rejects relative input URLs instead of calling an internal axios', async () => {
     const sandbox = { writeFiles: vi.fn() };
 
     await expect(
-      writeUrlFilesToSandbox(sandbox as any, [
-        { path: '/workspace/a.txt', url: '/api/system/file/d/token' }
-      ])
+      writeUrlFilesToSandbox({
+        sandbox: sandbox as any,
+        files: [{ path: '/workspace/a.txt', url: '/api/system/file/d/token' }]
+      })
     ).rejects.toThrow('absolute HTTP(S)');
     expect(axiosMock.get).not.toHaveBeenCalled();
   });
@@ -164,88 +208,132 @@ describe('prepareSandboxFileParentDirectories', () => {
 
 // ─── resolveSandboxWorkspacePath ───────────────────────────────────────────
 
-describe('resolveSandboxWorkspacePath', () => {
+describe('resolveSandboxRuntimePath', () => {
+  const paths = {
+    workspaceRoot: '/workspace',
+    sessionWorkDirectory: '/workspace'
+  };
+
   it('把根路径和相对路径锚定到 workDirectory，默认拒绝绝对路径', () => {
-    expect(resolveSandboxWorkspacePath('.', '/home/devbox/workspace')).toBe(
-      '/home/devbox/workspace'
+    expect(
+      resolveSandboxRuntimePath('.', {
+        workspaceRoot: '/home/devbox/workspace',
+        sessionWorkDirectory: '/home/devbox/workspace'
+      })
+    ).toBe('/home/devbox/workspace');
+    expect(
+      resolveSandboxRuntimePath('', {
+        workspaceRoot: '/home/devbox/workspace',
+        sessionWorkDirectory: '/home/devbox/workspace/'
+      })
+    ).toBe('/home/devbox/workspace');
+    expect(
+      resolveSandboxRuntimePath('skills/a/SKILL.md', {
+        workspaceRoot: '/home/devbox/workspace',
+        sessionWorkDirectory: '/home/devbox/workspace'
+      })
+    ).toBe('/home/devbox/workspace/skills/a/SKILL.md');
+    expect(resolveSandboxRuntimePath('./src/index.ts', paths)).toBe('/workspace/src/index.ts');
+    expect(() => resolveSandboxRuntimePath('/home/devbox/workspace/src/index.ts', paths)).toThrow(
+      'Absolute sandbox paths are not allowed'
     );
-    expect(resolveSandboxWorkspacePath('', '/home/devbox/workspace/')).toBe(
-      '/home/devbox/workspace'
-    );
-    expect(resolveSandboxWorkspacePath('skills/a/SKILL.md', '/home/devbox/workspace')).toBe(
-      '/home/devbox/workspace/skills/a/SKILL.md'
-    );
-    expect(resolveSandboxWorkspacePath('./src/index.ts', '/workspace')).toBe(
-      '/workspace/src/index.ts'
-    );
-    expect(() =>
-      resolveSandboxWorkspacePath('/home/devbox/workspace/src/index.ts', '/workspace')
-    ).toThrow('Absolute sandbox paths are not allowed');
   });
 });
 
-// ─── isSandboxPathDirectory ────────────────────────────────────────────────
+// ─── resolveSandboxDownloadTarget ──────────────────────────────────────────
 
-describe('isSandboxPathDirectory', () => {
+describe('resolveSandboxDownloadTarget', () => {
   it.each([
-    { path: 'src', isDirectory: true },
-    { path: 'main.py', isDirectory: false }
-  ])('根据 provider 信息判断 $path', async ({ path, isDirectory }) => {
+    { path: 'src', isDirectory: true, size: undefined },
+    { path: 'main.py', isDirectory: false, size: 42 }
+  ])('根据 provider 信息解析 $path 的类型与体积', async ({ path, isDirectory, size }) => {
     const providerPath = resolveSessionPath(path);
-    const getFileInfo = vi.fn().mockResolvedValue(makeFileInfoMap(providerPath, { isDirectory }));
-    const sandbox = makeSandbox({
-      getFileInfo
-    });
+    const getFileInfo = vi
+      .fn()
+      .mockResolvedValue(makeFileInfoMap(providerPath, { isDirectory, size }));
+    const sandbox = makeSandbox({ getFileInfo });
 
-    expect(await isSandboxPathDirectory(sandbox, path)).toBe(isDirectory);
+    await expect(resolveSandboxDownloadTarget(sandbox, path)).resolves.toEqual({
+      providerPath,
+      isDirectory,
+      size
+    });
     expect(getFileInfo).toHaveBeenCalledWith([providerPath]);
   });
 
-  it('fileInfo 不存在时按路径形态判断目录', async () => {
+  it('fileInfo 不存在时按路径形态兜底判断目录', async () => {
     const sandbox = makeSandbox({
       getFileInfo: vi.fn().mockResolvedValue(new Map())
     });
 
-    expect(await isSandboxPathDirectory(sandbox, '.')).toBe(true);
-    expect(await isSandboxPathDirectory(sandbox, '')).toBe(true);
-    expect(await isSandboxPathDirectory(sandbox, 'workspace/')).toBe(true);
-    expect(await isSandboxPathDirectory(sandbox, 'main.py')).toBe(false);
-  });
-});
-
-// ─── getSandboxFileContent ─────────────────────────────────────────────────
-
-describe('getSandboxFileContent', () => {
-  it('默认按二进制读取 session 文件并返回文件名和内容', async () => {
-    const readFiles = vi.fn().mockResolvedValue([makeReadResult('a/b/main.py', 'print(1)')]);
-    const sandbox = makeSandbox({ readFiles });
-
-    const result = await getSandboxFileContent(sandbox, 'a/b/main.py');
-
-    expect(result.contentType).toBe('application/octet-stream');
-    expect(result.fileName).toBe('main.py');
-    expect(result.content).toEqual(Buffer.from('print(1)'));
-    expect(readFiles).toHaveBeenCalledWith([resolveSessionPath('a/b/main.py')]);
+    expect((await resolveSandboxDownloadTarget(sandbox, '.')).isDirectory).toBe(true);
+    expect((await resolveSandboxDownloadTarget(sandbox, '')).isDirectory).toBe(true);
+    expect((await resolveSandboxDownloadTarget(sandbox, 'workspace/')).isDirectory).toBe(true);
+    expect((await resolveSandboxDownloadTarget(sandbox, 'main.py')).isDirectory).toBe(false);
   });
 
-  it.each([
-    { path: 'index.html', expectedContentType: 'text/html' },
-    { path: 'foo.unknown123', expectedContentType: 'application/octet-stream' }
-  ])('preview 时按 $path 推断 contentType', async ({ path, expectedContentType }) => {
-    const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult(path, 'data')])
+  it('在 getFileInfo 遇到可恢复连接异常时通过 SandboxClient 自愈重试', async () => {
+    const query = {
+      sandboxId: 'sandbox-1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
+      userId: 'user-1',
+      chatId: 'chat-1'
+    };
+    const brokenSandbox = {
+      id: 'remote-1',
+      close: vi.fn(async () => undefined),
+      getFileInfo: vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }))
+    };
+    const recoveredSandbox = {
+      id: 'remote-2',
+      close: vi.fn(async () => undefined),
+      getFileInfo: vi
+        .fn()
+        .mockResolvedValueOnce(
+          makeFileInfoMap('/workspace/sessions/chat-1/file.txt', { isDirectory: false, size: 17 })
+        )
+    };
+    const initialRuntime = {
+      resource: {
+        ...query,
+        provider: SANDBOX_PROVIDER,
+        status: SandboxInstanceStatusEnum.running,
+        teamId: 'team-1'
+      },
+      opensandbox: brokenSandbox
+    } as unknown as PreparedSandboxRuntime;
+    const recoveredRuntime = {
+      resource: {
+        ...query,
+        provider: SANDBOX_PROVIDER,
+        status: SandboxInstanceStatusEnum.running,
+        teamId: 'team-1'
+      },
+      opensandbox: recoveredSandbox
+    } as unknown as PreparedSandboxRuntime;
+    let currentRuntime = initialRuntime;
+    const prepare = vi.fn(async (_conn, options?: { verifyHealth?: boolean }) => {
+      if (options?.verifyHealth) {
+        currentRuntime = recoveredRuntime;
+      }
+      return currentRuntime;
     });
-    const result = await getSandboxFileContent(sandbox, path, true);
-    expect(result.contentType).toBe(expectedContentType);
-  });
-
-  it('读取失败时 reject', async () => {
-    const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('file.txt', '', new Error('not found'))])
+    const sandbox = new SandboxClient({
+      query,
+      runtime: initialRuntime,
+      prepare
     });
-    await expect(getSandboxFileContent(sandbox, 'file.txt')).rejects.toThrow(
-      'Failed to read file: not found'
-    );
+
+    await expect(resolveSandboxDownloadTarget(sandbox, 'file.txt')).resolves.toEqual({
+      providerPath: '/workspace/sessions/chat-1/file.txt',
+      isDirectory: false,
+      size: 17
+    });
+    expect(prepare).toHaveBeenCalledWith(expect.anything(), { verifyHealth: true });
+    expect(brokenSandbox.close).toHaveBeenCalled();
   });
 });
 
@@ -253,7 +341,7 @@ describe('getSandboxFileContent', () => {
 
 describe('addDirectoryToArchive', () => {
   function makeArchive() {
-    return { append: vi.fn() } as unknown as Parameters<typeof addDirectoryToArchive>[1];
+    return { append: vi.fn() } as unknown as Parameters<typeof addDirectoryToArchive>[0]['archive'];
   }
 
   it('逐文件把 provider download stream 交给 archive', async () => {
@@ -271,7 +359,7 @@ describe('addDirectoryToArchive', () => {
       listDirectory: vi.fn().mockResolvedValue(entries),
       readFileStream
     });
-    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    await addDirectoryToArchive({ sandbox, archive, dirPath: '/workspace', archivePath: '' });
     expect(archive.append).toHaveBeenCalledTimes(2);
     expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'ok.py' });
     expect(readFileStream).toHaveBeenCalledWith('/workspace/ok.py');
@@ -292,7 +380,7 @@ describe('addDirectoryToArchive', () => {
       })()
     );
     const sandbox = makeSandbox({ listDirectory, readFileStream });
-    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    await addDirectoryToArchive({ sandbox, archive, dirPath: '/workspace', archivePath: '' });
     expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'a/b/c.txt' });
   });
 
@@ -305,18 +393,31 @@ describe('addDirectoryToArchive', () => {
       ]);
     const sandbox = makeSandbox({ listDirectory });
     // depth=21 超过 MAX_ARCHIVE_DEPTH(20)，应直接返回不做任何操作
-    await addDirectoryToArchive(sandbox, archive, '/workspace', '', 21);
+    await addDirectoryToArchive({
+      sandbox,
+      archive,
+      dirPath: '/workspace',
+      archivePath: '',
+      depth: 21
+    });
     expect(listDirectory).not.toHaveBeenCalled();
     expect(archive.append).not.toHaveBeenCalled();
   });
 
-  it('允许归档 provider 返回的 workspace 外绝对路径', async () => {
+  it('拒绝下载工作区外的路径与归档 provider 返回的 workspace 外绝对路径', async () => {
+    const downloadSandbox = makeSandbox({ getFileInfo: vi.fn() });
+    await expect(
+      resolveSandboxDownloadTarget(downloadSandbox, '/etc/secret.txt')
+    ).rejects.toThrow();
+    await expect(
+      resolveSandboxDownloadTarget(
+        downloadSandbox,
+        '/var/lib/fastgpt-runtime/.fastgpt-ide-agent-password'
+      )
+    ).rejects.toThrow();
+
     const archive = makeArchive();
-    const readFileStream = vi.fn(() =>
-      (async function* () {
-        yield new TextEncoder().encode('secret');
-      })()
-    );
+    const readFileStream = vi.fn();
     const sandbox = makeSandbox({
       listDirectory: vi.fn().mockResolvedValue([
         makeDirectoryEntry('secret.txt', {
@@ -326,8 +427,58 @@ describe('addDirectoryToArchive', () => {
       readFileStream
     });
 
-    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
-    expect(readFileStream).toHaveBeenCalledWith('/etc/secret.txt');
-    expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'secret.txt' });
+    await expect(
+      addDirectoryToArchive({ sandbox, archive, dirPath: '/workspace', archivePath: '' })
+    ).rejects.toThrow();
+    expect(readFileStream).not.toHaveBeenCalled();
+    expect(archive.append).not.toHaveBeenCalled();
+  });
+
+  it('仅归档 workspace 内部子目录（包括同名 lost+found），拒绝 $HOME 等 workspace 外根目录', async () => {
+    const archive = makeArchive();
+    await expect(
+      addDirectoryToArchive({
+        sandbox: makeSandbox({ listDirectory: vi.fn() }),
+        archive,
+        dirPath: '/home/sandbox',
+        archivePath: ''
+      })
+    ).rejects.toThrow();
+
+    const listDirectory = vi.fn().mockImplementation(async (dir: string) => {
+      if (dir === '/workspace') {
+        return [
+          makeDirectoryEntry('lost+found', {
+            isDirectory: true,
+            path: '/workspace/lost+found'
+          })
+        ];
+      }
+      if (dir === '/workspace/lost+found') {
+        return [
+          makeDirectoryEntry('keep.txt', {
+            path: '/workspace/lost+found/keep.txt'
+          })
+        ];
+      }
+      return [];
+    });
+    const readFileStream = vi.fn(() =>
+      (async function* () {
+        yield new TextEncoder().encode('data');
+      })()
+    );
+    const sandbox = makeSandbox({ listDirectory, readFileStream });
+
+    await addDirectoryToArchive({
+      sandbox,
+      archive,
+      dirPath: '/workspace',
+      archivePath: ''
+    });
+
+    expect(archive.append).toHaveBeenCalledWith(expect.anything(), {
+      name: 'lost+found/keep.txt'
+    });
   });
 });

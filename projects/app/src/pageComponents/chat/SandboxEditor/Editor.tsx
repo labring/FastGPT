@@ -59,9 +59,20 @@ const SandboxEditor = ({
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
+  const targetAppId = chatTarget?.appId;
+  const targetSkillId = chatTarget?.skillId;
+  const targetSourceType = chatTarget?.sourceType;
   const sandboxTarget = useMemo(
-    () => resolveSandboxTarget({ appId, chatTarget }),
-    [appId, chatTarget?.appId, chatTarget?.skillId]
+    () =>
+      resolveSandboxTarget({
+        appId,
+        chatTarget: targetSkillId
+          ? { skillId: targetSkillId }
+          : targetAppId
+            ? { appId: targetAppId, sourceType: targetSourceType }
+            : undefined
+      }),
+    [appId, targetAppId, targetSkillId, targetSourceType]
   );
   const fileTreeShowDownload = showFileTreeDownload ?? showDownload;
 
@@ -94,7 +105,7 @@ const SandboxEditor = ({
     onMoveFiles,
     onDeleteFile,
     onUploadFiles,
-    onExecCommand,
+    sessionWorkDirectory,
     toggleDirectory
   } = useSandboxFileStore({
     sandboxTarget,
@@ -195,7 +206,7 @@ const SandboxEditor = ({
         onMoveFiles={onMoveFiles}
         onDeleteFile={onDeleteFile}
         onUploadFiles={onUploadFiles}
-        onExecCommand={onExecCommand}
+        sessionWorkDirectory={sessionWorkDirectory}
         onRefreshWorkspace={refreshWorkspace}
         setExpandedDirs={setExpandedDirs}
         sandboxTarget={sandboxTarget}

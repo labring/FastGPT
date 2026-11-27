@@ -480,6 +480,7 @@ const SystemToolConfigModal = ({
                   typeof value === 'string' && value !== SystemToolSecretMaskedValue ? value : ''
                 }
                 isConfigured={value === SystemToolSecretMaskedValue}
+                isRequired={Boolean(item.required)}
                 onChange={onChange}
                 placeholder={item.placeholder}
                 bg={'white'}
