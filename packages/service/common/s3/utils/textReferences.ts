@@ -2,15 +2,19 @@ import { S3Sources } from '../contracts/type';
 import {
   htmlImgTokenPrefixPattern,
   htmlImgTokenValuePattern,
-  htmlImgTokenSuffixPattern
+  htmlImgTokenSuffixPattern,
+  matchDocumentImages,
+  type DocumentImageItem
 } from '@fastgpt/global/common/string/markdown';
 
 const s3SourcePattern = Object.values(S3Sources)
   .map((prefix) => `${prefix}\\/`)
   .join('|');
 
-/** 预览和写入校验共用对象引用语法，捕获组保持原预览替换约定。 */
-export const s3TextKeyRegex = new RegExp(
+const s3SourcePrefixRegex = new RegExp(`^(?:${s3SourcePattern})`, 'i');
+
+/** 兜底匹配普通 Markdown 链接及含未转义 > 的历史尖括号写法；图片节点优先走共享文档图片扫描器。 */
+const s3TextKeyRegex = new RegExp(
   String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)|` +
     htmlImgTokenPrefixPattern +
     htmlImgTokenValuePattern +
@@ -18,17 +22,113 @@ export const s3TextKeyRegex = new RegExp(
   'gi'
 );
 
-/** 只提取原始对象引用；是否反转义、签名和访问存储由消费方决定。 */
-export const getS3TextReferences = (text: string) =>
-  [...text.matchAll(s3TextKeyRegex)].flatMap((match) => {
-    const markdownKey = match[3] ?? match[4];
-    const objectKey = markdownKey ?? (match[7] ?? match[8] ?? match[9])?.trim();
-    return objectKey
-      ? [
-          {
-            objectKey,
-            format: markdownKey !== undefined ? ('markdown' as const) : ('html' as const)
-          }
-        ]
-      : [];
-  });
+export type S3TextReference = {
+  objectKey: string;
+  format: 'markdown' | 'html';
+  index: number;
+  fullMatch: string;
+  replace: (nextUrl: string) => string;
+};
+
+/** 替换 Markdown 图片目标地址，并对预览短链去掉原尖括号包装，与既有预览契约保持一致。 */
+const replaceMarkdownImageForPreview = (item: DocumentImageItem, nextUrl: string) => {
+  // scanMarkdownImages 产出结构恒为 `![${altText}](${ws}${dest}...)`，目标区起点精确位于 altText 之后。
+  let cursor = item.altText.length + 4;
+  while (cursor < item.fullMatch.length && /[ \t\r\n]/.test(item.fullMatch[cursor]!)) {
+    cursor++;
+  }
+  if (item.fullMatch[cursor] === '<') {
+    const wrappedEnd = cursor + item.url.length + 2;
+    if (item.fullMatch[wrappedEnd - 1] === '>') {
+      return item.fullMatch.slice(0, cursor) + nextUrl + item.fullMatch.slice(wrappedEnd);
+    }
+  }
+  return item.replace(nextUrl);
+};
+
+/**
+ * 统一提取文本中的 S3 对象引用及替换函数，供预览提取、预览替换和写入校验共用。
+ * 图片节点复用 `matchDocumentImages`（支持嵌套/转义方括号 alt 与完整 HTML `<img>` 边界），
+ * 普通 Markdown 链接及历史非规范尖括号 key 由正则在不与图片节点重叠的区间补齐。
+ */
+export const getS3TextReferences = (text: string): S3TextReference[] => {
+  if (!text || typeof text !== 'string') return [];
+
+  const refs: S3TextReference[] = [];
+  const occupiedSpans: Array<[number, number]> = [];
+
+  for (const item of matchDocumentImages(text)) {
+    const start = item.index;
+    const end = start + item.fullMatch.length;
+    // 所有已识别图片节点（含非 S3 的 HTML <img>）都占位，防止兜底正则误扫标签属性中的假语法。
+    occupiedSpans.push([start, end]);
+
+    if (!s3SourcePrefixRegex.test(item.url)) continue;
+
+    refs.push({
+      objectKey: item.url,
+      format: item.format,
+      index: start,
+      fullMatch: item.fullMatch,
+      replace:
+        item.format === 'markdown'
+          ? (nextUrl: string) => replaceMarkdownImageForPreview(item, nextUrl)
+          : item.replace
+    });
+  }
+
+  for (const match of text.matchAll(s3TextKeyRegex)) {
+    const start = match.index;
+    const fullMatch = match[0];
+    const end = start + fullMatch.length;
+    if (occupiedSpans.some(([spanStart, spanEnd]) => start < spanEnd && end > spanStart)) {
+      continue;
+    }
+
+    const [
+      ,
+      bang,
+      alt,
+      wrappedObjectKey,
+      unwrappedObjectKey,
+      markdownTitle,
+      htmlPrefix,
+      doubleQuoted,
+      singleQuoted,
+      unquoted,
+      htmlSuffix
+    ] = match;
+
+    if (htmlPrefix !== undefined) {
+      const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
+      if (!objectKey) continue;
+      occupiedSpans.push([start, end]);
+      refs.push({
+        objectKey,
+        format: 'html',
+        index: start,
+        fullMatch,
+        replace: (nextUrl: string) => {
+          if (doubleQuoted !== undefined) return `${htmlPrefix}"${nextUrl}"${htmlSuffix}`;
+          if (singleQuoted !== undefined) return `${htmlPrefix}'${nextUrl}'${htmlSuffix}`;
+          return `${htmlPrefix}"${nextUrl}"${htmlSuffix}`;
+        }
+      });
+      continue;
+    }
+
+    const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
+    if (!objectKey) continue;
+    occupiedSpans.push([start, end]);
+    refs.push({
+      objectKey,
+      format: 'markdown',
+      index: start,
+      fullMatch,
+      replace: (nextUrl: string) => `${bang}[${alt}](${nextUrl}${markdownTitle ?? ''})`
+    });
+  }
+
+  refs.sort((left, right) => left.index - right.index);
+  return refs;
+};

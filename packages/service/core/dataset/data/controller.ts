@@ -94,8 +94,9 @@ export const formatDatasetDataValues = async (
     ...formatDatasetDataTextValue({ q, a, imageDescMap }),
     imageId
   }));
+  // 带独立 imageId 的分块仍可能通过编辑在 a 中写入内联图片，必须一并收集并签发。
   const rawTextObjectKeys = getS3ObjectKeysFromTexts(
-    normalizedItems.flatMap((item) => (item.imageId ? [] : [item.q, item.a]))
+    normalizedItems.flatMap((item) => (item.imageId ? [item.a] : [item.q, item.a]))
   );
   const rawImageObjectKeys = normalizedItems.flatMap(({ imageId }) =>
     imageId && isS3ObjectKey(imageId, 'dataset') ? [imageId] : []
@@ -125,7 +126,7 @@ export const formatDatasetDataValues = async (
 
     return {
       q: `![${q.replaceAll('\n', '')}](${imagePreivewUrl})`,
-      a,
+      a: a ? replaceS3KeysWithPreviewUrlMap(a, previewUrlMap) : a,
       imagePreivewUrl
     };
   });

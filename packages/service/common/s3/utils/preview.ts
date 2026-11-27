@@ -2,7 +2,7 @@ import { isS3ObjectKey } from '../utils';
 import { S3Buckets } from '../config/constants';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 import { createS3DownloadAccessUrls } from '../accessLink';
-import { getS3TextReferences, s3TextKeyRegex } from './textReferences';
+import { getS3TextReferences } from './textReferences';
 
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
@@ -61,7 +61,7 @@ export const createS3KeysPreviewUrlMap = async ({
   return previewUrlMap;
 };
 
-/** 使用已签发的 URL 映射替换 Markdown 图片语法与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
+/** 使用已签发的 URL 映射替换 Markdown 图片/链接与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
 export const replaceS3KeysWithPreviewUrlMap = (
   documentQuoteText: string,
   previewUrlMap: ReadonlyMap<string, string>
@@ -70,36 +70,21 @@ export const replaceS3KeysWithPreviewUrlMap = (
     return documentQuoteText as string;
   }
 
-  return documentQuoteText.replace(
-    s3TextKeyRegex,
-    (
-      full,
-      bang,
-      alt,
-      wrappedObjectKey,
-      unwrappedObjectKey,
-      markdownTitle,
-      htmlPrefix,
-      doubleQuoted,
-      singleQuoted,
-      unquoted,
-      htmlSuffix
-    ) => {
-      if (htmlPrefix !== undefined) {
-        const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
-        const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-        if (!previewUrl) return full;
+  const refs = getS3TextReferences(documentQuoteText);
+  if (refs.length === 0) return documentQuoteText;
 
-        if (doubleQuoted !== undefined) return `${htmlPrefix}"${previewUrl}"${htmlSuffix}`;
-        if (singleQuoted !== undefined) return `${htmlPrefix}'${previewUrl}'${htmlSuffix}`;
-        return `${htmlPrefix}"${previewUrl}"${htmlSuffix}`;
-      }
+  let result = '';
+  let lastIndex = 0;
 
-      const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
-      const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-      return previewUrl ? `${bang}[${alt}](${previewUrl}${markdownTitle ?? ''})` : full;
-    }
-  );
+  for (const ref of refs) {
+    const previewUrl = previewUrlMap.get(ref.objectKey);
+    result +=
+      documentQuoteText.slice(lastIndex, ref.index) +
+      (previewUrl ? ref.replace(previewUrl) : ref.fullMatch);
+    lastIndex = ref.index + ref.fullMatch.length;
+  }
+
+  return result + documentQuoteText.slice(lastIndex);
 };
 
 export type ReplaceS3KeysOptions = {

@@ -335,12 +335,25 @@ describe('replaceS3KeyToPreviewUrl', () => {
     });
 
     // 括号类字符
-    it('alt 文本包含转义方括号不匹配正则，不做替换', async () => {
-      // 由于 markdown 正则 [^\]]* 不匹配包含 ] 的 alt 文本，这种情况不会被替换
-      const text = '![image \\[1\\]](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      // 预期不做替换
-      expect(result).toBe(text);
+    it('alt 文本包含转义方括号和嵌套方括号应正常提取并替换', async () => {
+      const escaped = '![image \\[1\\]](dataset/team1/file.png)';
+      const nested = '![Figure [1]](dataset/team1/chunk-images/col1/file/abc.png)';
+      const nestedWrapped = '![Figure [2]](<dataset/team1/with spaces.png> "fig 2")';
+
+      expect(getS3ObjectKeysFromTexts([escaped, nested, nestedWrapped])).toEqual([
+        'dataset/team1/file.png',
+        'dataset/team1/chunk-images/col1/file/abc.png',
+        'dataset/team1/with spaces.png'
+      ]);
+      await expect(replaceS3KeyToPreviewUrl(escaped, expiredTime)).resolves.toBe(
+        '![image \\[1\\]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/file.png)'
+      );
+      await expect(replaceS3KeyToPreviewUrl(nested, expiredTime)).resolves.toBe(
+        '![Figure [1]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/chunk-images/col1/file/abc.png)'
+      );
+      await expect(replaceS3KeyToPreviewUrl(nestedWrapped, expiredTime)).resolves.toBe(
+        '![Figure [2]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/with spaces.png "fig 2")'
+      );
     });
 
     it('alt 文本包含圆括号应正常处理', async () => {

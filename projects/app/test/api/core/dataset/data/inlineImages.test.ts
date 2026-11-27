@@ -18,6 +18,8 @@ import * as datasetSource from '@fastgpt/service/common/s3/sources/dataset';
 import { s3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq';
 import { mockVectorInsert } from '@test/mocks/common/vector';
 import { createVitestStorageMock } from '@fastgpt-sdk/storage';
+import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
+import * as s3AccessLink from '@fastgpt/service/common/s3/accessLink';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 // 集合统计通知不属于图片事务验证，避免启动全局 Redis 队列运行时。
@@ -62,7 +64,10 @@ describe('direct data image ingestion', () => {
       return params.uploadKey;
     });
     vi.spyOn(datasetSource, 'getS3DatasetSource').mockReturnValue({
-      deleteDatasetFilesByKeys: vi.fn().mockResolvedValue(undefined)
+      deleteDatasetFilesByKeys: vi.fn().mockResolvedValue(undefined),
+      createGetDatasetFileURL: vi.fn(
+        async ({ key }: { key: string }) => `https://preview.test/${key}`
+      )
     } as unknown as ReturnType<typeof datasetSource.getS3DatasetSource>);
   });
   afterEach(() => {
@@ -228,5 +233,60 @@ describe('direct data image ingestion', () => {
     });
     await expect(storage.getObjectMetadata({ key })).rejects.toThrow();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
+  });
+
+  it('signs nested-bracket alt images and inline answers on independent imageId chunks after ingestion', async () => {
+    const { root, scope } = await createContext();
+    vi.spyOn(s3AccessLink, 'createS3DownloadAccessUrls').mockImplementation(async (params) =>
+      params.map(({ objectKey }) => `https://preview.test/${objectKey}`)
+    );
+
+    const inserted = await Call(insertHandler, {
+      auth: root,
+      body: {
+        collectionId: scope.collectionId,
+        q: `See ![Figure [1]](data:image/png;base64,${png})`
+      }
+    });
+    expect(inserted.code, String(inserted.error?.message ?? JSON.stringify(inserted))).toBe(200);
+    const nestedRow = (await MongoDatasetData.findById(inserted.data.dataIds[0]).lean())!;
+    const nestedFormatted = await formatDatasetDataValue(
+      { q: nestedRow.q, a: nestedRow.a, imageId: nestedRow.imageId },
+      { datasetIds: [scope.datasetId] }
+    );
+    expect(nestedFormatted.q).toContain(
+      `![Figure [1]](https://preview.test/dataset/${scope.datasetId}/chunk-images/${scope.collectionId}/file/`
+    );
+
+    const mainImageKey = `dataset/${scope.datasetId}/file/${'9'.repeat(32)}.png`;
+    const imageRow = await MongoDatasetData.create({
+      ...scope,
+      q: 'Main image caption',
+      imageId: mainImageKey,
+      chunkIndex: 1,
+      indexes: []
+    });
+    const edited = await Call(updateHandler, {
+      auth: root,
+      body: {
+        dataId: String(imageRow._id),
+        q: 'Main image caption',
+        a: `Answer ![Detail [2]](data:image/png;base64,${png})`
+      }
+    });
+    expect(edited.code, String(edited.error?.message ?? JSON.stringify(edited))).toBe(200);
+    const updatedImageRow = (await MongoDatasetData.findById(imageRow._id).lean())!;
+    expect(updatedImageRow.a).toContain(`/chunk-images/${scope.collectionId}/`);
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
+
+    const imageFormatted = await formatDatasetDataValue(
+      { q: updatedImageRow.q, a: updatedImageRow.a, imageId: updatedImageRow.imageId },
+      { datasetIds: [scope.datasetId] }
+    );
+    expect(imageFormatted.imagePreivewUrl).toBe(`https://preview.test/${mainImageKey}`);
+    expect(imageFormatted.q).toBe(`![Main image caption](https://preview.test/${mainImageKey})`);
+    expect(imageFormatted.a).toContain(
+      `![Detail [2]](https://preview.test/dataset/${scope.datasetId}/chunk-images/${scope.collectionId}/file/`
+    );
   });
 });
