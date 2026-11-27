@@ -19,7 +19,20 @@ export type FileIoAdapter = {
     filePath: string;
     content: string;
     baseDir?: string;
+    overwrite?: boolean;
   }) => Promise<string>;
+  writeBinaryAtomic: (params: {
+    filePath: string;
+    content: Uint8Array;
+    baseDir?: string;
+    overwrite?: boolean;
+  }) => Promise<string>;
+  writeStreamAtomic: (params: {
+    filePath: string;
+    stream: ReadableStream<Uint8Array>;
+    baseDir?: string;
+    overwrite?: boolean;
+  }) => Promise<{ path: string; bytes: number }>;
   createTextFiles: (params: {
     baseDir: string;
     files: Array<{ filePath: string; content: string }>;
@@ -94,16 +107,32 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
         throw new CliArgumentError(`Failed to read file "${filePath}": ${msg}`);
       }
     },
-    writeTextAtomic: ({ filePath, content, baseDir }) =>
-      writeTextFile({ absolutePath: resolvePath(filePath, baseDir), content }),
+    writeTextAtomic: ({ filePath, content, baseDir, overwrite = true }) =>
+      writeAtomicFile({
+        absolutePath: resolvePath(filePath, baseDir),
+        content,
+        overwrite
+      }),
+    writeBinaryAtomic: ({ filePath, content, baseDir, overwrite = false }) =>
+      writeAtomicFile({
+        absolutePath: resolvePath(filePath, baseDir),
+        content,
+        overwrite
+      }),
+    writeStreamAtomic: ({ filePath, stream, baseDir, overwrite = false }) =>
+      writeStreamToFile({
+        absolutePath: resolvePath(filePath, baseDir),
+        stream,
+        overwrite
+      }),
     createTextFiles: async ({ baseDir, files }) => {
       const created: string[] = [];
       try {
         for (const { filePath, content } of files) {
-          const path = await writeTextFile({
+          const path = await writeAtomicFile({
             absolutePath: resolvePath(filePath, baseDir),
             content,
-            exclusive: true
+            overwrite: false
           });
           created.push(path);
         }
@@ -116,16 +145,16 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
   };
 }
 
-/** 将完整内容从临时文件发布到目标路径，初始化时使用独占写入防止覆盖现有文件。 */
-async function writeTextFile({
+/** 运行原子落盘回调：先独占写入同目录临时文件，成功 sync 并关闭句柄后再按覆盖策略原子发布。 */
+async function withAtomicTempFile<T>({
   absolutePath,
-  content,
-  exclusive = false
+  overwrite,
+  writeContent
 }: {
   absolutePath: string;
-  content: string;
-  exclusive?: boolean;
-}): Promise<string> {
+  overwrite: boolean;
+  writeContent: (handle: Awaited<ReturnType<typeof open>>) => Promise<T>;
+}): Promise<{ path: string; result: T }> {
   const directory = dirname(absolutePath);
   const temporaryPath = join(
     directory,
@@ -135,24 +164,99 @@ async function writeTextFile({
 
   const handle = await open(temporaryPath, 'wx');
   try {
-    await handle.writeFile(content, 'utf8');
+    const result = await writeContent(handle);
     await handle.sync();
     await handle.close();
-    if (exclusive) {
-      await link(temporaryPath, absolutePath);
-    } else {
+    if (overwrite) {
       await rename(temporaryPath, absolutePath);
+    } else {
+      await link(temporaryPath, absolutePath);
     }
-    return absolutePath;
+    return { path: absolutePath, result };
   } catch (error) {
     await handle.close().catch(() => {});
-    if (exclusive && error instanceof Error && 'code' in error && error.code === 'EEXIST') {
-      throw new CliArgumentError(`File already exists: "${absolutePath}".`, {
-        filePath: absolutePath
-      });
+    if (!overwrite && error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+      throw new CliArgumentError(
+        `File already exists: "${absolutePath}".`,
+        { filePath: absolutePath },
+        'Pass --overwrite to replace the existing file.'
+      );
     }
     throw error;
   } finally {
     await rm(temporaryPath, { force: true }).catch(() => {});
   }
+}
+
+/** 将完整文本或二进制内容原子发布到目标路径。 */
+async function writeAtomicFile({
+  absolutePath,
+  content,
+  overwrite
+}: {
+  absolutePath: string;
+  content: string | Uint8Array;
+  overwrite: boolean;
+}): Promise<string> {
+  const { path } = await withAtomicTempFile({
+    absolutePath,
+    overwrite,
+    writeContent: async (handle) => {
+      if (typeof content === 'string') {
+        await handle.writeFile(content, 'utf8');
+      } else {
+        await handle.writeFile(content);
+      }
+    }
+  });
+  return path;
+}
+
+/** 边读边写流式响应体到临时文件，传输完成并刷盘后再原子提交；断流或失败时自动清理临时文件。 */
+async function writeStreamToFile({
+  absolutePath,
+  stream,
+  overwrite
+}: {
+  absolutePath: string;
+  stream: ReadableStream<Uint8Array>;
+  overwrite: boolean;
+}): Promise<{ path: string; bytes: number }> {
+  const { path, result } = await withAtomicTempFile({
+    absolutePath,
+    overwrite,
+    writeContent: async (handle) => {
+      const reader = stream.getReader();
+      let totalBytes = 0;
+      let streamCompleted = false;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            streamCompleted = true;
+            break;
+          }
+          if (!value || value.byteLength === 0) {
+            continue;
+          }
+          let offset = 0;
+          while (offset < value.byteLength) {
+            const { bytesWritten } = await handle.write(value, offset, value.byteLength - offset);
+            if (bytesWritten <= 0) {
+              throw new Error('Failed to write stream chunk to temporary file.');
+            }
+            offset += bytesWritten;
+          }
+          totalBytes += value.byteLength;
+        }
+        return totalBytes;
+      } finally {
+        if (!streamCompleted) {
+          await reader.cancel().catch(() => {});
+        }
+        reader.releaseLock();
+      }
+    }
+  });
+  return { path, bytes: result };
 }

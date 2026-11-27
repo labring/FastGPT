@@ -374,4 +374,17 @@ describe('createChatService', () => {
     ).rejects.toBe(error);
     expect(client.request).toHaveBeenCalledOnce();
   });
+
+  it('rejects unknownApiKey boundAppId mismatch consistently via shared app chat target guard', async () => {
+    const client = makeClient();
+    await expect(
+      service.execute({
+        operation: 'run',
+        client,
+        credential: { kind: 'unknownApiKey', boundAppId: APP_ID },
+        input: { appId: OTHER_APP_ID, text: 'hi' }
+      })
+    ).rejects.toThrow('does not match');
+    expect(client.request).not.toHaveBeenCalled();
+  });
 });

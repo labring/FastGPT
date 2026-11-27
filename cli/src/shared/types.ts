@@ -51,6 +51,7 @@ export type CommandOptionMeta = {
   name: string;
   flags: string;
   takesValue: boolean;
+  repeatable?: boolean;
   description: string;
 };
 

@@ -1,5 +1,9 @@
 import { chmod, rm, writeFile } from 'node:fs/promises';
 import {
+  CLI_SKILLS_BUNDLE_FILE,
+  readCliSkillsSource
+} from '../src/infra/skills/cli-skill-catalog.ts';
+import {
   readWorkflowBuildSkillSource,
   WORKFLOW_BUILD_SKILL_FILE
 } from '../src/infra/workflow/skill-catalog.ts';
@@ -53,6 +57,7 @@ function readFlagValue(flag: string): string | undefined {
 }
 
 const skillJson = JSON.stringify(await readWorkflowBuildSkillSource());
+const cliSkillsJson = JSON.stringify(await readCliSkillsSource());
 
 if (!compileOnly) {
   await rm('dist', { recursive: true, force: true });
@@ -76,6 +81,7 @@ if (!compileOnly) {
 
   await chmod('dist/cli.mjs', 0o755);
   await writeFile(`dist/${WORKFLOW_BUILD_SKILL_FILE}`, skillJson);
+  await writeFile(`dist/${CLI_SKILLS_BUNDLE_FILE}`, cliSkillsJson);
 }
 
 if (!bundleOnly) {
@@ -87,7 +93,10 @@ if (!bundleOnly) {
   const compileResult = await bunRuntime.build({
     entrypoints: ['src/cli/cli.ts'],
     minify: true,
-    define: { __FASTGPT_WORKFLOW_BUILD_SKILL__: skillJson },
+    define: {
+      __FASTGPT_WORKFLOW_BUILD_SKILL__: skillJson,
+      __FASTGPT_CLI_SKILLS__: cliSkillsJson
+    },
     compile: target ? { outfile, target } : { outfile }
   });
 

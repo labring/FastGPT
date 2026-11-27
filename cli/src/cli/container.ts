@@ -1,3 +1,8 @@
+import { createApiCallerService, type ApiCallerService } from '../domain/api/api-caller-service';
+import {
+  createOpenapiCacheService,
+  type OpenapiCacheService
+} from '../domain/api/openapi-cache-service';
 import {
   createAuthService,
   type AuthService,
@@ -25,9 +30,15 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createAppLogsService, type AppLogsService } from '../domain/app/app-logs-service';
+import {
+  createChatFeedbackService,
+  type ChatFeedbackService
+} from '../domain/chat/chat-feedback-service';
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
+import { createSkillsService, type SkillsService } from '../domain/skills/skills-service';
 import {
   createWorkflowLocalService,
   type WorkflowLocalService
@@ -36,7 +47,10 @@ import {
   createWorkflowSyncService,
   type WorkflowSyncService
 } from '../domain/workflow/workflow-sync-service';
+import { createNodeSkillInstaller } from '../infra/fs/skill-installer';
+import { loadCliSkills } from '../infra/skills/cli-skill-catalog';
 import { createWorkflowTemplateLoader } from '../infra/workflow/template-loader';
+import { createFileApidocCacheStore } from '../infra/cache/apidoc-cache-store';
 import {
   createFileConfigRepository,
   resolveConfigDir,
@@ -83,10 +97,15 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
+  readonly appLogsService: AppLogsService;
   readonly chatService: ChatService;
+  readonly chatFeedbackService: ChatFeedbackService;
   readonly modelService: ModelService;
+  readonly skillsService: SkillsService;
   readonly workflowLocalService: WorkflowLocalService;
   readonly workflowSyncService: WorkflowSyncService;
+  readonly openapiCacheService: OpenapiCacheService;
+  readonly apiCallerService: ApiCallerService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
@@ -200,6 +219,32 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     env: deps.env,
     readStdin: deps.readStdin
   });
+  const apidocCacheStore = createFileApidocCacheStore({ configDir });
+  const openapiCacheService = createOpenapiCacheService({ cacheStore: apidocCacheStore });
+  const apiCallerService = createApiCallerService({
+    openapiCacheService,
+    fileIo,
+    prompter,
+    readStdin: deps.readStdin
+  });
+  const skillHome = (() => {
+    if (deps.env.HOME && deps.env.HOME.trim().length > 0) {
+      return deps.env.HOME.trim();
+    }
+    if (deps.env.USERPROFILE && deps.env.USERPROFILE.trim().length > 0) {
+      return deps.env.USERPROFILE.trim();
+    }
+    return undefined;
+  })();
+  const skillsService = createSkillsService({
+    loadSkills: loadCliSkills,
+    installer: createNodeSkillInstaller({
+      cwd: deps.cwd,
+      ...(skillHome !== undefined ? { homedir: skillHome } : {})
+    }),
+    prompter,
+    cliVersion
+  });
 
   return {
     env: deps.env,
@@ -216,10 +261,15 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
+    appLogsService: createAppLogsService({ fileIo }),
     chatService: createChatService(),
+    chatFeedbackService: createChatFeedbackService(),
     modelService: createModelService(),
+    skillsService,
     workflowLocalService,
     workflowSyncService,
+    openapiCacheService,
+    apiCallerService,
     readJsonInput: (params) =>
       readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,

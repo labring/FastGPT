@@ -4,6 +4,7 @@ import type { CliContainer } from './container';
 import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {
+  api: 'Inspect OpenAPI schemas and invoke FastGPT APIs directly',
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
   dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
@@ -13,10 +14,13 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   chat: 'Run App conversations and manage their history and messages',
   'chat history': 'Manage App conversations and their status',
   'chat record': 'Read App messages and detailed responses',
+  'chat feedback': 'Manage user feedback on App conversation messages',
   app: 'List, pull, save, publish, run, and test FastGPT Apps',
+  'app logs': 'Search, list, analyze, and export App conversation logs',
   plugin: 'Discover FastGPT plugins',
   'plugin tool': 'Discover plugin-backed system tools',
   'code-sandbox': 'Inspect the FastGPT code sandbox',
+  skills: 'List, install, update, and verify bundled FastGPT Agent skills',
   workflow: 'Compare and debug FastGPT workflows',
   'workflow-build': 'Author, validate, and compile local workflows',
   'workflow-build meta': 'Inspect and update workflow application metadata',
@@ -58,7 +62,16 @@ function attachCommandSpec({
   }
 
   for (const opt of spec.options) {
-    cmd.option(opt.flags, opt.description);
+    if (opt.repeatable === true) {
+      cmd.option(
+        opt.flags,
+        opt.description,
+        (val: string, prev: string[] = []) => [...prev, val],
+        []
+      );
+    } else {
+      cmd.option(opt.flags, opt.description);
+    }
   }
 
   const examplesText = (spec.examples ?? [])

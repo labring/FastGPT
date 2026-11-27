@@ -129,12 +129,27 @@ try {
   assert.equal(doctorOut.ok, true);
   assert.equal(doctorOut.data.ok, true);
 
+  const apiSchemaOut = JSON.parse(
+    await run(['api', 'schema', '--source', 'dev', '--format', 'json'])
+  );
+  assert.equal(apiSchemaOut.ok, true);
+  assert.equal(apiSchemaOut.data.mode, 'list');
+  assert.equal(apiSchemaOut.data.endpoints[0].path, '/support/user/account/whoami');
+
+  const apiGetOut = JSON.parse(
+    await run(['api', 'get', '/support/user/account/whoami', '--source', 'dev', '--format', 'json'])
+  );
+  assert.equal(apiGetOut.ok, true);
+  assert.equal(apiGetOut.data.user.username, 'smoke@fastgpt.in');
+
   const logoutOut = JSON.parse(await run(['logout', '--purge']));
   assert.equal(logoutOut.ok, true);
   assert.equal(logoutOut.data.purged, true);
 
   const wfDir = join(configDir, 'wf-smoke');
-  const wfInitOut = JSON.parse(await run(['workflow-build', 'init', '--offline', '--dir', wfDir, '--name', 'Smoke Flow']));
+  const wfInitOut = JSON.parse(
+    await run(['workflow-build', 'init', '--offline', '--dir', wfDir, '--name', 'Smoke Flow'])
+  );
   assert.equal(wfInitOut.ok, true);
   assert.equal(wfInitOut.command, 'workflow-build init');
   const wfAddOut = JSON.parse(
@@ -158,14 +173,40 @@ try {
   assert.equal(wfValidateOut.data.valid, true);
 
   const skillOut = JSON.parse(await run(['workflow-build', 'skills', '--format', 'json']));
-  const skill = JSON.parse(await readFile(join(packageRoot, 'dist', 'workflow-build-skill.json'), 'utf8'));
+  const skill = JSON.parse(
+    await readFile(join(packageRoot, 'dist', 'workflow-build-skill.json'), 'utf8')
+  );
   assert.equal(skillOut.data.markdown, skill.markdown);
   assert.deepEqual(skillOut.data.references, Object.keys(skill.references));
   assert.ok(skillOut.data.references.includes('changesets-and-plans'));
   const reference = await run([
-    'workflow-build', 'skills', 'changesets-and-plans', '--format', 'text'
+    'workflow-build',
+    'skills',
+    'changesets-and-plans',
+    '--format',
+    'text'
   ]);
   assert.equal(reference.trimEnd(), skill.references['changesets-and-plans'].trimEnd());
+
+  const skillsCatalogOut = JSON.parse(await run(['skills', 'catalog', '--format', 'json']));
+  const cliSkills = JSON.parse(
+    await readFile(join(packageRoot, 'dist', 'cli-skills.json'), 'utf8')
+  );
+  assert.equal(skillsCatalogOut.ok, true);
+  assert.equal(skillsCatalogOut.command, 'skills catalog');
+  assert.equal(skillsCatalogOut.data.skills.length, 5);
+  assert.deepEqual(
+    skillsCatalogOut.data.skills.map((item) => item.name),
+    cliSkills.map((item) => item.name)
+  );
+
+  const skillsDryInstallOut = JSON.parse(
+    await run(['skills', 'install', '--dry-run', '--format', 'json'])
+  );
+  assert.equal(skillsDryInstallOut.ok, true);
+  assert.equal(skillsDryInstallOut.changed, false);
+  assert.equal(skillsDryInstallOut.data.dryRun, true);
+  assert.equal(skillsDryInstallOut.data.skills.length, 5);
 
   process.stdout.write('fastgpt cli built bin smoke passed\n');
 } finally {
