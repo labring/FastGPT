@@ -9,7 +9,7 @@ import {
   getConfiguredDbRuntime,
   type DbRuntime
 } from '@fastgpt/dal/db/runtime';
-import { createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
+import { createContractBackends, createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
 import { createManagedDbSession, runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 
@@ -303,5 +303,59 @@ describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
     expect(obClose).toHaveBeenCalledTimes(1);
     expect(mongoClose).toHaveBeenCalledTimes(1);
     expect(getConfiguredDbRuntime('mongo')).toBeUndefined();
+  });
+
+  it('allows Mongo-first tokens without oceanbase provider and fails closed under oceanbase dialect', async () => {
+    const mongoOnlyToken = defineRepoToken('MongoFirstDemoToken', {
+      mongo: () => ({ kind: () => 'mongo-only' })
+    });
+    const proxy = injectRepo(mongoOnlyToken);
+
+    configureDbRuntime({ dialect: 'mongo', mainWriteUrl: 'mongodb://localhost:27017/app' });
+    expect(proxy.kind()).toBe('mongo-only');
+
+    await closeDbRuntime();
+    configureDbRuntime({ dialect: 'oceanbase', mainWriteUrl: 'mysql://root@127.0.0.1:2881/app' });
+    expect(() => proxy.kind()).toThrowError(DbConfigurationError);
+    expect(() => proxy.kind()).toThrow(/MongoFirstDemoToken/);
+  });
+
+  it('registers OceanBase contract backend only when oceanBaseTables are explicitly declared', () => {
+    const mongoOnlyBackends = createContractBackends({
+      mongoCollections: [],
+      env: {
+        FASTGPT_TEST_OCEANBASE_URI: 'mysql://root@127.0.0.1:2881/test',
+        FASTGPT_TEST_REQUIRED_OCEANBASE: '1'
+      }
+    });
+    expect(mongoOnlyBackends.map((entry) => entry.name)).toEqual(['mongo']);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseDdls: ['CREATE TABLE t (_id VARCHAR(24) PRIMARY KEY);'],
+        env: {}
+      })
+    ).toThrowError(DbConfigurationError);
+
+    expect(() =>
+      createContractBackends({
+        mongoCollections: [],
+        oceanBaseTables: ['demo_items'],
+        oceanBaseDdls: [],
+        env: { FASTGPT_TEST_REQUIRED_OCEANBASE: '1' }
+      })
+    ).toThrowError(DbConfigurationError);
+
+    const dualBackends = createContractBackends({
+      mongoCollections: [],
+      oceanBaseTables: ['demo_items'],
+      oceanBaseDdls: ['CREATE TABLE IF NOT EXISTS demo_items (_id VARCHAR(24) PRIMARY KEY);'],
+      env: {
+        FASTGPT_TEST_OCEANBASE_URI: 'mysql://root@127.0.0.1:2881/test',
+        FASTGPT_TEST_REQUIRED_OCEANBASE: '1'
+      }
+    });
+    expect(dualBackends.map((entry) => entry.name)).toEqual(['mongo', 'oceanbase']);
   });
 });

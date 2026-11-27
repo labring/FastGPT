@@ -352,10 +352,12 @@ export type ContractBackendEntry = {
 };
 
 /**
- * 构建 MongoDB + 可选真实 OceanBase/SeekDB 双引擎契约测试后端列表。
+ * 构建 MongoDB + 可选真实 OceanBase/SeekDB 契约测试后端列表。
  *
- * 设置 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 时若缺少 `FASTGPT_TEST_OCEANBASE_URI` 会立即抛错，
- * 防止 CI 静默跳过真实 OceanBase 契约验证。
+ * - Phase 1A 仅验证 MongoDB 仓储时可省略 `oceanBaseTables`/`oceanBaseDdls`，仅返回 `mongo` 后端，
+ *   避免 CI 启用 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 时误阻断；
+ * - 传入非空 `oceanBaseTables` 时（如 Pilot 0 `AppRegistration` 及 Phase 1B 双引擎仓储），
+ *   设置 `FASTGPT_TEST_REQUIRED_OCEANBASE=1` 且缺少 `FASTGPT_TEST_OCEANBASE_URI` 会立即抛错防静默跳过。
  */
 export const createContractBackends = ({
   mongoCollections,
@@ -364,8 +366,8 @@ export const createContractBackends = ({
   env = process.env
 }: {
   mongoCollections: readonly MongoCollectionDefinition<any>[];
-  oceanBaseTables: readonly string[];
-  oceanBaseDdls: readonly string[];
+  oceanBaseTables?: readonly string[];
+  oceanBaseDdls?: readonly string[];
   env?: Record<string, string | undefined>;
 }): ContractBackendEntry[] => {
   const backends: ContractBackendEntry[] = [];
@@ -390,6 +392,17 @@ export const createContractBackends = ({
     }
   });
 
+  const hasOceanBaseTables = oceanBaseTables !== undefined && oceanBaseTables.length > 0;
+  const hasOceanBaseDdls = oceanBaseDdls !== undefined && oceanBaseDdls.length > 0;
+  if (!hasOceanBaseTables) {
+    if (hasOceanBaseDdls) {
+      throw new DbConfigurationError(
+        'createContractBackends received oceanBaseDdls without non-empty oceanBaseTables'
+      );
+    }
+    return backends;
+  }
+
   const obUri = env.FASTGPT_TEST_OCEANBASE_URI?.trim() ?? '';
   const requireOb = env.FASTGPT_TEST_REQUIRED_OCEANBASE === '1';
   if (requireOb && obUri.length === 0) {
@@ -407,7 +420,7 @@ export const createContractBackends = ({
         obHarness = await createOceanBaseTestHarness({
           uri: obUri,
           tables: oceanBaseTables,
-          ddls: oceanBaseDdls
+          ddls: oceanBaseDdls ?? []
         });
         const active = obHarness;
         return {

@@ -8,7 +8,10 @@ description: >-
 
 # FastGPT MongoDB + OceanBase 领域仓储重构 SOP
 
-本技能用于将存量裸 `Mongo*` 调用渐进收敛为 **MongoDB + OceanBase（4.3+ / SeekDB，MySQL 兼容模式）** 双引擎领域仓储，不额外兼容 PostgreSQL 或标准 MySQL。
+本技能用于将存量裸 `Mongo*` 调用分两阶段收敛为 **MongoDB + OceanBase（4.3+ / SeekDB，MySQL 兼容模式）** 领域仓储，不额外兼容 PostgreSQL 或标准 MySQL：
+
+- **Phase 1A（当前默认 · Mongo 先行收口重构）**：优先将全部存量业务表重构为 **数据库无关的领域契约（`repo.type.ts`）+ `mongo/` 完整实现 + `XxxService` 注入切换**，清理旧 `schema.ts` 与 `packages/service/common/mongo/`；此阶段暂不编写 `oceanbase/` 实现（`defineRepoToken` 允许暂缺 `oceanbase`，运行时切 OB 将 fail-closed 报错；`createContractBackends` 省略 `oceanBaseTables` 避免误报错）。
+- **Phase 1B（集中补齐 OceanBase）**：待 Mongo 全部收口稳妥后，基于已定型的 `repo.type.ts` 集中补齐各域 `oceanbase/{table.ts,repo.ts}`、`coreOceanBaseDdls`/`proOceanBaseDdls` 及双引擎 SeekDB 契约验证，实现 `packages/service` / 上层调用方零返工。
 
 ## 核心约束
 
@@ -30,12 +33,12 @@ description: >-
 
 ```text
 packages/dal/db/repos/<domain>/
-├── repo.type.ts           # 【公开】领域接口、Read/Write Zod Schema、.pick() 窄 DTO
-├── repo.ts                # 【公开】defineRepoToken({ mongo, oceanbase })
-├── mongo/                 # 【私有】
+├── repo.type.ts           # 【公开】数据库无关领域接口、Read/Write Zod Schema、.pick() 窄 DTO（Phase 1A 必写）
+├── repo.ts                # 【公开】defineRepoToken({ mongo, oceanbase? })（Phase 1A 先挂 mongo）
+├── mongo/                 # 【私有】（Phase 1A 必写）
 │   ├── schema.ts          # 原生 new Schema + defineMongoCollection（零导入副作用）
 │   └── repo.ts            # extends MongoRepositoryBase
-└── oceanbase/             # 【私有】
+└── oceanbase/             # 【私有】（Phase 1B 集中补齐；Pilot 0 AppRegistration 已完成）
     ├── table.ts           # 行类型、表名常量与原生 OceanBase CREATE TABLE DDL
     └── repo.ts            # extends OceanBaseRepositoryBase（Kysely + mysql2）
 
@@ -44,12 +47,13 @@ packages/service/<domain>/service.ts
 packages/service/test/<domain>/service.unit.test.ts
 ```
 
-## 5 步落地流程
+## 5 步落地流程（Phase 1A Mongo 先行）
 
 1. **查调用面**：用 `rg` 盘点目标 `MongoXxx` 在 `packages/`、`projects/`、`pro/admin/` 中的全部调用点（含测试夹具），优先选调用点 `<= 15` 的独立表。
-2. **建双引擎仓储**：在 `packages/dal/db/repos/<domain>/` 编写 `repo.type.ts`、`mongo/`、`oceanbase/`、`repo.ts`，并在 `packages/dal/db/repos/registry.ts` 注册 Mongo 集合与 OceanBase 测试 DDL，在 `packages/dal/package.json` 暴露 `repo` / `repo.type`。
+2. **建领域仓储（DB 无关契约 + Mongo 实现）**：在 `packages/dal/db/repos/<domain>/` 编写严格的 DB 无关 `repo.type.ts`（仅 24-hex `EntityId` 与显式 `tx?: DbSession`，禁止出现 `ObjectId`/`ClientSession`/`FilterQuery`）、`mongo/{schema.ts,repo.ts}` 与 `repo.ts`（`{ mongo }`），并在 `packages/dal/db/repos/registry.ts` 注册 `coreMongoCollections`、在 `packages/dal/package.json` 暴露 `repo` / `repo.type`（`mongo/*` 与 `oceanbase/*` 设为 `null`）。
 3. **核对存量 Mongo 索引**：确保旧 `schema.ts` 的全部现行 `defineIndex` 原样迁入 `defineMongoCollection({ indexes })`，不新增 `deprecated: true` 墓碑。
 4. **迁调用方并删旧 Schema**：封装 `XxxService`，迁完所有生产与测试调用方后物理删除旧 `schema.ts`，再用 `rg` 确认非 `migration/` 目录零残留引用。
 5. **运行最小验证集**：
-   - `pnpm --filter @fastgpt/dal typecheck && pnpm --filter @fastgpt/service typecheck`
-   - 运行该域契约测试（Mongo + Mock/真实 SeekDB·OceanBase）与 L0 `service.unit.test.ts`。
+   - `pnpm --filter @fastgpt/dal typecheck`（涉及上层改动时一并检查对应 workspace）；
+   - `pnpm test packages/dal/test/db/package-exports.test.ts packages/dal/test/db/schema-drift-guard.test.ts`；
+   - 运行该域契约测试（Phase 1A 在 `repo.contract.test.ts` 调用 `createContractBackends({ mongoCollections: [...] })` 省略 `oceanBaseTables` 跑 `MongoMemoryReplSet`，并补一条切 `oceanbase` 方言 fail-closed 断言；Phase 1B 补 `oceanbase/` 时再传入 `oceanBaseTables` 与 `oceanBaseDdls`）及 `service.unit.test.ts`、受影响业务回归单测。
