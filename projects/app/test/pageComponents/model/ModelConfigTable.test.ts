@@ -129,17 +129,31 @@ vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
 vi.mock('@/pageComponents/model/AddModel', () => ({
   default: ({
     isDisabled,
-    onSuccess
+    onSuccess,
+    onOpen
   }: {
     isDisabled?: boolean;
     onSuccess?: () => Promise<void>;
+    onOpen?: () => void;
   }) => {
+    const [open, setOpen] = React.useState(false);
     mocks.addModelDisabled = isDisabled;
     mocks.addModelOnSuccess = onSuccess;
     return React.createElement(
-      'button',
-      { disabled: Boolean(isDisabled) },
-      'config_model:create_model'
+      React.Fragment,
+      null,
+      React.createElement(
+        'button',
+        {
+          disabled: Boolean(isDisabled),
+          onClick: () => {
+            onOpen?.();
+            setOpen(true);
+          }
+        },
+        'config_model:create_model'
+      ),
+      open ? React.createElement('div', { 'data-testid': 'add-model-form' }, 'draft-form') : null
     );
   }
 }));
@@ -418,5 +432,56 @@ describe('ModelConfigTable sorting', () => {
       resolveRetryRefresh();
     });
     expect(sortNames()).toEqual(['C', 'D']);
+  });
+
+  it('cancels queued sort when opening AddModel during deletion so background refresh keeps the add form mounted', async () => {
+    await act(async () => button('cancel_sort').click());
+
+    let resolveDelete!: () => void;
+    let resolveRefresh!: () => void;
+    mocks.deleteModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    mocks.refresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = () => {
+            mocks.setMockModels?.([models[1], models[2]]);
+            resolve();
+          };
+        })
+    );
+
+    // 1. 删除进行中先点击自定义排序进入排队态。
+    await act(async () => {
+      mocks.confirmDelete?.();
+    });
+    await act(async () => {
+      button('custom_sort').click();
+    });
+    expect(button('custom_sort').getAttribute('data-loading')).toBe('true');
+
+    // 2. 用户转而点击“添加模型”打开有状态的新增表单：排队的排序应立即撤销。
+    const createBtn = Array.from(host.querySelectorAll('button')).find(
+      (item) => item.textContent === 'config_model:create_model'
+    );
+    await act(async () => {
+      createBtn?.click();
+    });
+    expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
+    expect(button('custom_sort').getAttribute('data-loading')).toBe('false');
+
+    // 3. 后台删除和目录刷新相继完成后，不应自动切入排序态或卸载已打开的新增表单。
+    await act(async () => {
+      resolveDelete();
+    });
+    await act(async () => {
+      resolveRefresh();
+    });
+    expect(host.querySelector('[data-testid="add-model-form"]')?.textContent).toBe('draft-form');
+    expect(host.textContent).not.toContain('config_model:model.save_sort');
   });
 });

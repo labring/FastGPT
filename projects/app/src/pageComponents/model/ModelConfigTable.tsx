@@ -90,12 +90,14 @@ const ModelEditButton = React.memo(
     providers,
     channelType,
     onSuccess,
+    onOpen,
     isDisabled
   }: {
     model: ModelConfigListItem;
     providers: ModelProviderItemType[];
     channelType: ChannelType;
     onSuccess: () => Promise<void>;
+    onOpen?: () => void;
     isDisabled?: boolean;
   }) => {
     const { t } = useSafeTranslation();
@@ -108,7 +110,10 @@ const ModelEditButton = React.memo(
           tip={t('config_model:model.edit_model')}
           pointerEvents={isDisabled ? 'none' : undefined}
           opacity={isDisabled ? 0.5 : 1}
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            onOpen?.();
+            setIsOpen(true);
+          }}
         />
         {isOpen && (
           <ModelEditModal
@@ -206,6 +211,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   const [requiredRefreshSeq, setRequiredRefreshSeq] = useState(0);
   const [committedRefreshSeq, setCommittedRefreshSeq] = useState(0);
   const [waitingEnterSort, setWaitingEnterSort] = useState(false);
+  // 打开其他弹窗操作时撤销已排队的排序切换，避免后台目录刷新完成后意外切入排序并卸载活动表单。
+  const cancelWaitingEnterSort = useCallback(() => {
+    setWaitingEnterSort(false);
+  }, []);
 
   const refreshModels = useCallback(async () => {
     const seq = ++refreshSeqRef.current;
@@ -596,7 +605,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                         minW={0}
                         px={[2, 4]}
                         variant={'whiteBase'}
-                        onClick={onOpenDeprecationInform}
+                        onClick={() => {
+                          cancelWaitingEnterSort();
+                          onOpenDeprecationInform();
+                        }}
                       >
                         {t('config_model:model_deprecation.send_entry')}
                       </Button>
@@ -607,7 +619,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
-                      onClick={onOpenDefaultModel}
+                      onClick={() => {
+                        cancelWaitingEnterSort();
+                        onOpenDefaultModel();
+                      }}
                     >
                       {t('config_model:model.default_model')}
                     </Button>
@@ -617,7 +632,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
-                      onClick={onOpenJsonConfig}
+                      onClick={() => {
+                        cancelWaitingEnterSort();
+                        onOpenJsonConfig();
+                      }}
                     >
                       {t('config_model:model.json_config')}
                     </Button>
@@ -630,6 +648,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   providers={modelProviders}
                   channelType={channelType}
                   onSuccess={refreshModels}
+                  onOpen={cancelWaitingEnterSort}
                   w={'100%'}
                   minW={0}
                   px={[2, 4]}
@@ -946,7 +965,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                               <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
                                 <ModelChannelCount
                                   channels={item.channels}
-                                  onClick={() => setChannelModel(item)}
+                                  onClick={() => {
+                                    cancelWaitingEnterSort();
+                                    setChannelModel(item);
+                                  }}
                                 />
                               </Box>
                             </Td>
@@ -998,6 +1020,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                   providers={modelProviders}
                                   channelType={channelType}
                                   onSuccess={refreshModels}
+                                  onOpen={cancelWaitingEnterSort}
                                   isDisabled={channelMutationLoading}
                                 />
                                 <PopoverConfirm
