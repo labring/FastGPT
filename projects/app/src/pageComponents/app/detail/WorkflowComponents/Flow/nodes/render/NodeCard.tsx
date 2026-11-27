@@ -13,7 +13,7 @@ import {
   useWorkflowOverlayValue,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { mergeToolNodeVersionTemplate, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
   getWorkflowIssueUIStatus,
   useWorkflowIssueTranslation
@@ -28,7 +28,6 @@ import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/system
 import {
   getToolRawId,
   isDebugToolSource,
-  mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import type {
@@ -65,7 +64,6 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import {
   getBorderColorByColorSchema,
-  getColorSchemaByFlowNodeType,
   getGradientByColorSchema
 } from '@fastgpt/web/core/workflow/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -858,18 +856,10 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
         });
 
         if (!!template) {
-          const versionTemplate = {
-            ...template,
-            colorSchema:
-              template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
-            name: node.name,
-            intro: node.intro,
-            avatar: node.avatar,
-            toolConfig: mergeToolSetChildDescriptions({
-              savedToolConfig: node.toolConfig,
-              templateToolConfig: template.toolConfig
-            })
-          };
+          const versionTemplate = mergeToolNodeVersionTemplate({
+            current: node,
+            template
+          });
           // 切换版本 = 用新版本模板整体覆盖节点数据，保留位置、折叠与已配置的工具输入。
           // adapter 没有整节点替换句柄，这里拼出完整 patch 走 updateNode：Runtime 会用当前
           // Node View 覆盖 patch 里的 position/isFolded，教程地址等视图字段也不进文档。
@@ -880,6 +870,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
               {
                 ...current,
                 ...versionTemplate,
+                metadataLocale: current.metadataLocale ?? template.metadataLocale,
                 inputs: versionTemplate.inputs.map((input) =>
                   migrateToolInputConfig({
                     input,

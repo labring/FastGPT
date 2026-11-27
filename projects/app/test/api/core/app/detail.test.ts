@@ -281,10 +281,13 @@ describe('get app detail api', () => {
     );
     const detailTools = detailRes.data.nodes
       .find((node) => node.nodeId === 'agent-1')
-      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as
-      | Array<{ id: string; metadataLocale?: string }>
-      | undefined;
-    expect(detailTools?.[0]?.metadataLocale).toBe('tr-TR');
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+    expect(detailTools).toMatchObject([
+      {
+        id: 'systemTool-missing-locale-tool',
+        metadataLocale: 'tr-TR'
+      }
+    ]);
 
     const editedNodes = detailRes.data.nodes.map((node) =>
       node.nodeId === 'start-1' ? { ...node, name: 'Start renamed' } : node
@@ -306,9 +309,12 @@ describe('get app detail api', () => {
     expect(draft?.nodes.find((node) => node.nodeId === 'tool-1')?.metadataLocale).toBe('tr-TR');
     const savedTools = draft?.nodes
       .find((node) => node.nodeId === 'agent-1')
-      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as
-      | Array<{ id: string; metadataLocale?: string }>
-      | undefined;
-    expect(savedTools?.[0]?.metadataLocale).toBe('tr-TR');
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+    expect(savedTools).toMatchObject([
+      {
+        id: 'systemTool-missing-locale-tool',
+        metadataLocale: 'tr-TR'
+      }
+    ]);
   });
 });

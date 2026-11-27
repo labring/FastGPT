@@ -48,7 +48,12 @@ import type {
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
-import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
+import { mergeToolSetChildDescriptions } from '@fastgpt/global/core/app/tool/utils';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import {
+  formatEditorVariablePickerIcon,
+  getColorSchemaByFlowNodeType
+} from '@fastgpt/web/core/workflow/utils';
 import type { Node, Edge, XYPosition } from '@xyflow/react';
 import type { TFunction } from 'next-i18next';
 import { getGlobalVariableNode } from './adapt';
@@ -793,3 +798,26 @@ export const getWorkflowGlobalVariables = ({
 }): EditorVariablePickerType[] => {
   return formatEditorVariablePickerIcon(getWorkflowReferenceVariables({ chatConfig }));
 };
+
+/**
+ * 切换工具节点版本时合并新版本模板与节点已有元信息：
+ * 保留节点展示字段、子工具描述和原 metadataLocale，避免旧实例按英文预览回退时覆写原语言标识。
+ */
+export const mergeToolNodeVersionTemplate = ({
+  current,
+  template
+}: {
+  current: Pick<WorkflowNodeData, 'name' | 'intro' | 'avatar' | 'metadataLocale' | 'toolConfig'>;
+  template: FlowNodeTemplateType;
+}) => ({
+  ...template,
+  colorSchema: template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
+  name: current.name,
+  intro: current.intro,
+  avatar: current.avatar,
+  metadataLocale: current.metadataLocale ?? template.metadataLocale,
+  toolConfig: mergeToolSetChildDescriptions({
+    savedToolConfig: current.toolConfig,
+    templateToolConfig: template.toolConfig
+  })
+});

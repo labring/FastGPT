@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { splitToolInputsByMode } from '@/web/core/workflow/utils';
+import {
+  filterSensitiveNodesData,
+  mergeToolNodeVersionTemplate,
+  splitToolInputsByMode
+} from '@/web/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import type {
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 
 describe('splitToolInputsByMode', () => {
   it('keeps Agent-generated editable inputs out of common inputs', () => {
@@ -263,5 +269,56 @@ describe('filterSensitiveNodesData', () => {
     expect(selectedTools).toEqual([]);
     secrets.forEach((secret) => expect(JSON.stringify(exported)).not.toContain(secret));
     expect(JSON.stringify(nodes)).toContain(secrets[0]);
+  });
+});
+
+describe('mergeToolNodeVersionTemplate', () => {
+  const baseTemplate: FlowNodeTemplateType = {
+    id: 'template-id',
+    pluginId: 'systemTool-search',
+    flowNodeType: FlowNodeTypeEnum.tool,
+    name: 'Template Name',
+    intro: 'Template Intro',
+    avatar: '/template.svg',
+    metadataLocale: 'en',
+    version: '2.0.0',
+    inputs: [],
+    outputs: []
+  };
+
+  it('preserves existing unrecognized metadataLocale when switching tool versions on an older instance', () => {
+    const merged = mergeToolNodeVersionTemplate({
+      current: {
+        name: 'Custom Name',
+        intro: 'Custom Intro',
+        avatar: '/custom.svg',
+        metadataLocale: 'tr-TR',
+        toolConfig: undefined
+      },
+      template: baseTemplate
+    });
+
+    expect(merged).toMatchObject({
+      name: 'Custom Name',
+      intro: 'Custom Intro',
+      avatar: '/custom.svg',
+      metadataLocale: 'tr-TR',
+      version: '2.0.0'
+    });
+  });
+
+  it('adopts template metadataLocale when legacy node has no metadataLocale', () => {
+    const merged = mergeToolNodeVersionTemplate({
+      current: {
+        name: 'Legacy Node',
+        intro: 'Legacy Intro',
+        avatar: '/legacy.svg',
+        metadataLocale: undefined,
+        toolConfig: undefined
+      },
+      template: baseTemplate
+    });
+
+    expect(merged.metadataLocale).toBe('en');
   });
 });

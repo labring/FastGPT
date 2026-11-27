@@ -22,8 +22,6 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import type {
   GetPreviewNodeQuery,
   GetToolSetChildrenResponseType,
@@ -157,10 +155,11 @@ type ClientToolPreviewQuery = GetPreviewNodeQuery extends infer T
     : never
   : never;
 
+// 原样透传非空 lang，避免旧前端提前覆盖为 en 导致新后端失去原语言；未知值统一由服务端契约回退。
 export const getClientToolPreviewNode = (data: ClientToolPreviewQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', {
     ...data,
-    ...(data.lang !== undefined ? { lang: parseLocale(data.lang) ?? LangEnum.en } : {})
+    ...(data.lang !== undefined ? { lang: data.lang.trim() || undefined } : {})
   });
 
 /**
