@@ -80,9 +80,13 @@ async function handler(
       externalUserSystemConfigured: ssoConfigured !== false
     });
 
+    // 独立自助注册已退役；仅为 V4.17.6 旧前端保留已弃用的 register_method 响应兼容数组。
+    const deprecatedRegisterMethod: 'sync'[] = effectiveTeamMode === 'sync' ? ['sync'] : [];
+
     const config = {
       ...runtimeSnapshot.feConfigs,
       ...(effectiveTeamMode !== undefined ? { teamMode: effectiveTeamMode } : {}),
+      register_method: deprecatedRegisterMethod,
       // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
@@ -104,6 +108,7 @@ async function handler(
     };
     const loginConfig = {
       login_method: config.login_method,
+      register_method: config.register_method,
       find_password_method: config.find_password_method,
       loginGuideDocUrl: config.loginGuideDocUrl,
       chineseRedirectUrl: config.chineseRedirectUrl,

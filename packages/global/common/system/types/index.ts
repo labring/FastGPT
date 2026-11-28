@@ -50,6 +50,9 @@ export type ExternalProviderWorkflowVarType = z.infer<typeof ExternalProviderWor
 export const FastGPTRegisterMethodSchema = z.enum(['email', 'phone']);
 export type FastGPTRegisterMethodType = z.infer<typeof FastGPTRegisterMethodSchema>;
 
+export const FastGPTRegisterMethodCompatSchema = z.enum(['email', 'phone', 'sync']);
+export type FastGPTRegisterMethodCompatType = z.infer<typeof FastGPTRegisterMethodCompatSchema>;
+
 export const FastGPTTeamModeSchema = z.enum(['multi', 'single', 'sync']);
 export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
@@ -87,6 +90,11 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   }),
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
+  }),
+  register_method: z.array(FastGPTRegisterMethodCompatSchema).optional().meta({
+    deprecated: true,
+    description:
+      '已弃用；独立自助注册已退役，请改用 login_method 与 teamMode。仅在 getInitData 响应边界按有效团队模式兼容返回 [] 或 ["sync"]'
   }),
   login_method: z.array(FastGPTRegisterMethodSchema).optional().meta({
     description:

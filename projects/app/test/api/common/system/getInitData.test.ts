@@ -36,6 +36,7 @@ const publicConfig = {
   scripts: [{ src: 'https://analytics.example.com/script.js' }],
   isPlus: true,
   login_method: ['email', 'phone'],
+  register_method: ['sync'],
   find_password_method: ['email'],
   loginGuideDocUrl: 'https://docs.example.com/login',
   docUrl: 'https://docs.example.com/',
@@ -158,7 +159,8 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(code).toBe(200);
     expect(data).toEqual({
       bufferId: 'unAuth_v13_sso_1_config-1',
-      feConfigs: publicConfig
+      // teamMode 被填充为非 sync 的占位值时，弃用兼容字段 register_method 同步降级为空数组。
+      feConfigs: { ...publicConfig, register_method: [] }
     });
     expect(global.feConfigs).toEqual(originalConfig);
   });
@@ -406,6 +408,7 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual({
       ...config,
+      register_method: [],
       ...('sso' in config && { sso: { ...config.sso, enabled: false } })
     });
   });
@@ -688,5 +691,29 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, { auth, headers: {} });
     expect(code).toBe(200);
     expect(data.feConfigs?.teamMode).toBe('single');
+    expect(data.feConfigs?.register_method).toEqual([]);
   });
+
+  it.each([
+    { teamMode: 'sync' as const, ssoConfigured: true, expectedRegisterMethod: ['sync'] },
+    { teamMode: 'sync' as const, ssoConfigured: false, expectedRegisterMethod: [] },
+    { teamMode: 'multi' as const, ssoConfigured: true, expectedRegisterMethod: [] },
+    { teamMode: 'single' as const, ssoConfigured: true, expectedRegisterMethod: [] }
+  ])(
+    'returns deprecated register_method=$expectedRegisterMethod for anonymous getInitData when teamMode=$teamMode and ssoConfigured=$ssoConfigured',
+    async ({ teamMode, ssoConfigured, expectedRegisterMethod }) => {
+      global.feConfigs = {
+        ...global.feConfigs,
+        teamMode,
+        // 即使快照残留旧注册渠道，响应边界仍只按有效团队模式返回 [] 或 ['sync']。
+        register_method: ['email', 'phone']
+      };
+      global.getSsoConfiguredHandler = () => ssoConfigured;
+
+      const { code, data } = await Call(handler, { headers: {} });
+      expect(code).toBe(200);
+      expect(data.feConfigs?.register_method).toEqual(expectedRegisterMethod);
+      expect(data.feConfigs?.login_method).toEqual(publicConfig.login_method);
+    }
+  );
 });
