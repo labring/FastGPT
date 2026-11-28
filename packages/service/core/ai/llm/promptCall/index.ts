@@ -128,6 +128,39 @@ export const promptToolCallMessageRewrite = (
 };
 
 const ERROR_TEXT = 'Tool call error';
+const PROMPT_TOOL_CALL_PREFIX_REG = /1(:|：)/;
+
+const findPromptToolAnswerPrefixIndex = (trimmedStr: string) => {
+  const asciiIndex = trimmedStr.indexOf('0:');
+  return asciiIndex !== -1 ? asciiIndex : trimmedStr.indexOf('0：');
+};
+
+/**
+ * 与 `parsePromptToolCall` 共用同一套协议头规则，判定流式缓冲内容属于工具协议、普通答复还是待继续缓冲。
+ */
+export const matchPromptToolStreamPrefix = (
+  raw: string
+): { type: 'pending' | 'tool' } | { type: 'answer' | 'plain'; text: string } => {
+  const trimmed = raw.trimStart();
+
+  if (PROMPT_TOOL_CALL_PREFIX_REG.test(trimmed)) {
+    return { type: 'tool' };
+  }
+
+  const answerPrefixIndex = findPromptToolAnswerPrefixIndex(trimmed);
+  if (answerPrefixIndex > -1 && answerPrefixIndex < 6) {
+    const visibleText = trimmed.substring(answerPrefixIndex + 2).trimStart();
+    return visibleText ? { type: 'answer', text: visibleText } : { type: 'pending' };
+  }
+
+  // 等待足够的非空白字符；协议头窗口内以 0/1 结尾时（如 "- 1"）继续等待后续冒号。
+  if (trimmed.length < 3 || (trimmed.length <= 6 && /[01]$/.test(trimmed))) {
+    return { type: 'pending' };
+  }
+
+  return { type: 'plain', text: trimmed };
+};
+
 export const parsePromptToolCall = (
   str: string
 ): {
@@ -137,9 +170,7 @@ export const parsePromptToolCall = (
 } => {
   str = str.trim();
   // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
-  const prefixReg = /1(:|：)/;
-
-  if (prefixReg.test(str)) {
+  if (PROMPT_TOOL_CALL_PREFIX_REG.test(str)) {
     const toolString = sliceJsonStr(str);
 
     try {
@@ -159,7 +190,7 @@ export const parsePromptToolCall = (
         ]
       };
     } catch {
-      if (prefixReg.test(str)) {
+      if (PROMPT_TOOL_CALL_PREFIX_REG.test(str)) {
         return {
           answer: `${ERROR_TEXT}: ${str}`,
           streamAnswer: `${ERROR_TEXT}: ${str}`
@@ -172,7 +203,7 @@ export const parsePromptToolCall = (
       }
     }
   } else {
-    const firstIndex = str.indexOf('0:') !== -1 ? str.indexOf('0:') : str.indexOf('0：');
+    const firstIndex = findPromptToolAnswerPrefixIndex(str);
     if (firstIndex > -1 && firstIndex < 6) {
       str = str.substring(firstIndex + 2).trim();
     }

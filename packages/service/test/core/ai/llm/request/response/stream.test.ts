@@ -734,6 +734,11 @@ describe('createStreamResponse', () => {
     it.each([
       { label: 'split ASCII prefix', parts: ['0', ':', ' hello', ' world'], callbacks: true },
       { label: 'split full-width prefix', parts: ['0', '：', ' hello', ' world'], callbacks: true },
+      {
+        label: 'bulleted example prefix',
+        parts: ['-', ' ', '0', ':', ' hello', ' world'],
+        callbacks: true
+      },
       { label: 'missing prefix', parts: ['hello', ' world'], callbacks: true },
       { label: 'missing prefix without callbacks', parts: ['hello', ' world'], callbacks: false }
     ])('should stream an answer with $label', async ({ parts, callbacks: observe }) => {
@@ -809,6 +814,19 @@ describe('createStreamResponse', () => {
           chunk({ content: '1' }),
           chunk({ content: '：' }),
           chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      },
+      {
+        label: 'bulleted prompt example prefix after reasoning',
+        chunks: [
+          chunk({ reasoning_content: '思考中' }),
+          chunk({ content: '\n' }),
+          chunk({ content: '-' }),
+          chunk({ content: ' ' }),
+          chunk({ content: '1' }),
+          chunk({ content: ':' }),
+          chunk({ content: ' {"name":"search","arguments":{"q":"fastgpt"}}' }),
           chunk({}, 'stop')
         ]
       }
