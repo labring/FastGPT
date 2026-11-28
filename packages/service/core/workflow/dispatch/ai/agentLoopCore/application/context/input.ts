@@ -16,7 +16,6 @@ export const buildAgentLoopCoreInput = <TChildrenResponse = unknown>(
   messages: params.messages,
   ...(params.systemPrompt !== undefined ? { systemPrompt: params.systemPrompt } : {}),
   ...(params.activePlan !== undefined ? { activePlan: params.activePlan } : {}),
-  ...(params.providerState !== undefined ? { providerState: params.providerState } : {}),
   ...(params.userAnswer !== undefined ? { userAnswer: params.userAnswer } : {}),
   ...(params.childrenInteractiveParams !== undefined
     ? { childrenInteractiveParams: params.childrenInteractiveParams }

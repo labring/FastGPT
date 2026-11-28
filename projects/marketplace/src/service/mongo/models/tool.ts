@@ -6,7 +6,7 @@ import {
   MarketplaceOfficialSource,
   MarketplacePkgSourceSchema
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
-import { LanguageSchema } from '@fastgpt/global/common/i18n/type';
+import { I18nStringSchema } from '@fastgpt/global/common/i18n/type';
 
 export const MarketplaceToolIndexZodSchema = z.object({
   type: z.enum(['tool', 'moderation']),
@@ -26,7 +26,8 @@ export const MarketplaceToolManifestZodSchema = MarketplaceToolIndexZodSchema.ex
   downloadObjectKey: z.string(),
   downloadUrl: z.string(),
   readmeUrl: z.string().optional(),
-  readmeUrls: z.partialRecord(LanguageSchema, z.string()).optional(),
+  // 使用部分对象而非带 catch 的 record key，避免未知语言键被重映射并覆写 en 链接。
+  readmeUrls: I18nStringSchema.partial().optional(),
   source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource),
   filename: z.string(),
   size: z.number()

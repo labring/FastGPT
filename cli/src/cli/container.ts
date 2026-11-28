@@ -1,10 +1,15 @@
+import { createAgentLogsService, type AgentLogsService } from '../domain/agent/agent-logs-service';
+import { createAgentService, type AgentService } from '../domain/agent/agent-service';
 import {
-  createAuthService,
-  type AuthService,
-  type HttpClientFactory
-} from '../domain/auth/auth-service';
+  createAgentVersionService,
+  type AgentVersionService
+} from '../domain/agent/agent-version-service';
+import { resolveEffectiveAuth } from '../domain/auth/auth-resolver';
+import { createAuthService, type AuthService } from '../domain/auth/auth-service';
+import { buildCapabilitySummary } from '../domain/auth/capability';
 import { createDatasetProbeHandler } from '../domain/auth/probe/dataset-probe';
 import { createOpenApiHealthProbeHandler } from '../domain/auth/probe/openapi-health-probe';
+import { runWhoamiProbeChain } from '../domain/auth/probe/probe-chain';
 import { createTokenLoginProbeHandler } from '../domain/auth/probe/token-login-probe';
 import { createWhoamiProbeHandler } from '../domain/auth/probe/whoami-probe';
 import { createApiKeyLoginStrategy } from '../domain/auth/strategies/api-key-login';
@@ -25,9 +30,20 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createFileService, type FileService } from '../domain/file/file-service';
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
+import {
+  createPlatformSkillService,
+  type PlatformSkillService
+} from '../domain/skill/platform-skill-service';
+import { createHttpToolService, type HttpToolService } from '../domain/tool/http-tool-service';
+import { createMcpToolService, type McpToolService } from '../domain/tool/mcp-tool-service';
+import {
+  createToolFolderService,
+  type ToolFolderService
+} from '../domain/tool/tool-folder-service';
 import {
   createWorkflowLocalService,
   type WorkflowLocalService
@@ -43,9 +59,10 @@ import {
   type ConfigRepository
 } from '../infra/config/config-repository';
 import { createNodeFileIoAdapter, type FileIoAdapter } from '../infra/fs/file-io';
-import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
+import { createFastGptHttpClient, type HttpClientFactory } from '../infra/http/fastgpt-http-client';
 import { readJsonInput } from '../infra/input/json-input';
-import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
+import { createDefaultSecretStore } from '../infra/secrets/secret-store';
+import type { SecretStore } from '../infra/secrets/types';
 import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
 import { openExternalFile } from '../infra/ui/external-opener';
 import { createClackPrompter, createNonTtyPrompter, type Prompter } from '../infra/ui/prompter';
@@ -83,8 +100,16 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
+  readonly fileService: FileService;
+  readonly agentService: AgentService;
+  readonly agentVersionService: AgentVersionService;
+  readonly agentLogsService: AgentLogsService;
   readonly chatService: ChatService;
   readonly modelService: ModelService;
+  readonly platformSkillService: PlatformSkillService;
+  readonly toolFolderService: ToolFolderService;
+  readonly mcpToolService: McpToolService;
+  readonly httpToolService: HttpToolService;
   readonly workflowLocalService: WorkflowLocalService;
   readonly workflowSyncService: WorkflowSyncService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
@@ -174,11 +199,41 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
       createServerConnectivityCheck(),
       createIdentityProbeCheck()
     ],
-    env: deps.env,
     configRepo,
     secretStore,
     createHttpClient,
-    probeHandlers
+    authPort: {
+      resolveAuth: ({ global, existingConfig }) =>
+        resolveEffectiveAuth({
+          options: global,
+          env: deps.env,
+          configRepo,
+          secretStore,
+          existingConfig
+        }),
+      probeIdentity: async ({ client, auth }) => {
+        const probe = await runWhoamiProbeChain({
+          handlers: probeHandlers,
+          client,
+          auth
+        });
+        return {
+          source: probe.source,
+          authType: probe.authType,
+          apiKeyType: probe.apiKeyType,
+          sessionExpiresAt:
+            probe.detail?.authType === 'token' ? probe.detail.session.expiresAt : undefined,
+          apiKeyRemainingPoints:
+            probe.detail?.authType === 'apikey'
+              ? probe.detail.apiKey.limit.remainingPoints
+              : undefined,
+          apiKeyExpiredTime:
+            probe.detail?.authType === 'apikey' ? probe.detail.apiKey.limit.expiredTime : undefined,
+          warnings: probe.warnings
+        };
+      },
+      summarizeCapabilities: ({ probe, resolved }) => buildCapabilitySummary({ probe, resolved })
+    }
   });
 
   const fileIo = createNodeFileIoAdapter({ cwd: deps.cwd });
@@ -216,8 +271,16 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
+    fileService: createFileService(),
+    agentService: createAgentService(),
+    agentVersionService: createAgentVersionService(),
+    agentLogsService: createAgentLogsService(),
     chatService: createChatService(),
     modelService: createModelService(),
+    platformSkillService: createPlatformSkillService(),
+    toolFolderService: createToolFolderService(),
+    mcpToolService: createMcpToolService(),
+    httpToolService: createHttpToolService(),
     workflowLocalService,
     workflowSyncService,
     readJsonInput: (params) =>

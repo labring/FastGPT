@@ -8,6 +8,8 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { attachNameSortKeyHooks } from '../../../common/mongo/nameSortKeyHook';
+import { buildTeamMemberNameSortKey } from './sortKey';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -29,6 +31,16 @@ const TeamMemberSchema = new Schema({
     required: true,
     trim: true,
     default: 'Member'
+  },
+  /**
+   * 基于成员名生成的规范化拼音排序键（0:字母/拼音、1:数字、2:其他），用于团队成员列表按索引排序分页。
+   * 存量文档由自动系统迁移任务分批回填。
+   */
+  nameSortKey: {
+    type: String,
+    default: function (this: { name?: string } | null | undefined) {
+      return buildTeamMemberNameSortKey(this?.name ?? 'Member');
+    }
   },
   /**
    * 成员名是否由显式来源设置（本人/管理员/邀请/第三方有效下发）。
@@ -80,6 +92,8 @@ TeamMemberSchema.virtual('user', {
   justOne: true
 });
 
+attachNameSortKeyHooks<TeamMemberType>(TeamMemberSchema, buildTeamMemberNameSortKey);
+
 defineIndex(TeamMemberSchema, {
   key: { teamId: 1 },
   options: { background: true }
@@ -88,6 +102,11 @@ defineIndex(TeamMemberSchema, {
 defineIndex(TeamMemberSchema, {
   key: { userId: 1, teamId: 1 },
   options: { unique: true, background: true }
+});
+
+defineIndex(TeamMemberSchema, {
+  key: { teamId: 1, status: 1, nameSortKey: 1, _id: 1 },
+  options: { name: 'fg_team_member_status_sort', background: true }
 });
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

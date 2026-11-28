@@ -128,7 +128,6 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
       messages: input.messages,
       systemPrompt: input.systemPrompt,
       activePlan: input.activePlan,
-      userAnswer: input.userAnswer,
       childrenInteractiveParams: input.childrenInteractiveParams
     }
   });
@@ -146,14 +145,12 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
   if (ask) {
     runtime.emitEvent?.({
       type: 'ask',
-      ask,
-      providerState: undefined
+      ask
     });
   }
 
   const commonResult = {
     activePlan: result.activePlan,
-    providerState: undefined,
     completeMessages: result.completeMessages,
     assistantMessages: result.assistantMessages,
     requestIds: result.requestIds,

@@ -207,6 +207,7 @@ const FileSelector = ({
       flexDirection={'column'}
       alignItems={'center'}
       justifyContent={'center'}
+      textAlign={'center'}
       px={3}
       py={[4, 7]}
       borderWidth={'1.5px'}

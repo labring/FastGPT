@@ -1,0 +1,105 @@
+---
+title: Migrate Coze Assets to FastGPT
+description: Migrate Coze Datasets, toolkits, Skills, workflows, and Agents to FastGPT China using the official migration Skill and FastGPT CLI.
+---
+
+import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT provides a standardized Coze migration Skill that pairs with the official `@fastgpt/cli` (`fastgpt`) tool. An AI coding assistant can use it to migrate Coze Datasets, MCP and HTTP toolkits, custom Skills, workflows, Agents, and avatars end to end, then verify and repair every workflow with `workflow-build` and live smoke tests.
+
+---
+
+## Prerequisites
+
+Confirm all three requirements before starting a migration:
+
+<Alert context="warning">
+
+1. **FastGPT China only**: This migration workflow currently targets FastGPT China (`https://cloud.fastgpt.cn`) only. FastGPT International and unadapted older deployments are not supported yet.
+2. **FastGPT credentials and available credits**: Provide your FastGPT China username and password for CLI login. Signing in to `cloud.fastgpt.cn` in your browser as well is recommended for side-by-side inspection. Make sure your team has available credits, because Dataset indexing, workflow Test Runs, and Agent smoke tests consume credits.
+3. **Signed-in Coze browser session**: Sign in to Coze (`https://www.coze.cn`) in your browser beforehand so the AI Agent can export Bots, workflows, plugins, Dataset source files, and avatars from your workspace.
+
+</Alert>
+
+---
+
+## Run the migration with an AI Agent
+
+If you use an AI coding assistant with terminal and browser capabilities (such as **Codex** or **Claude Code**), send it the prompt below. The assistant will fetch the official migration Skill and mapping reference, then migrate your assets in dependency order:
+
+<Alert context="info">Send this prompt in your AI coding assistant chat:</Alert>
+
+```text
+Follow https://doc.fastgpt.io/skills/coze-to-fastgpt/SKILL.md to migrate my Coze assets to FastGPT China (cloud.fastgpt.cn).
+```
+
+<CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
+
+To download the Skill and reference guide locally for offline inspection or custom Agent setups, run:
+
+```bash
+mkdir -p ./coze-to-fastgpt/references
+curl -fsSL https://doc.fastgpt.io/skills/coze-to-fastgpt/SKILL.md -o ./coze-to-fastgpt/SKILL.md
+curl -fsSL https://doc.fastgpt.io/skills/coze-to-fastgpt/references/mapping-and-pitfalls.md -o ./coze-to-fastgpt/references/mapping-and-pitfalls.md
+```
+
+<CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
+
+For CLI installation, authentication, and command reference, see [Manage FastGPT with the CLI](/en/guide/getting-started/cli).
+
+---
+
+## Supported assets and mapping
+
+| Coze Asset                    | FastGPT Target Type                                                          | Folder Tree                    | CLI Command Group                  | Notes                                                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------- | ------------------------------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Knowledge Base & files/chunks | Dataset (`dataset`) & Collections                                            | Dataset tree                   | `fastgpt dataset`                  | Preserves avatars, uploads source files or text chunks, and verifies Collection counts                                                                         |
+| MCP / HTTP plugins            | MCP / HTTP Toolkit                                                           | Tool tree                      | `fastgpt tool mcp` / `tool http`   | Parses tool metadata, creates the Toolkit, updates intro text, and runs a live tool call                                                                       |
+| Custom Skill                  | Agent Skill (`skill`)                                                        | Skill tree                     | `fastgpt skill import`             | Imports a `.zip` package containing a root `SKILL.md`                                                                                                          |
+| Workflow                      | Workflow (`advanced`)                                                        | Agent tree                     | `fastgpt agent` + `workflow-build` | Converts Nodes and models, then enforces `workflow-build` validation, repair, and publishing                                                                   |
+| Bot                           | Standard Chat App (`simple`, default) or Agent V2 (`chatAgent`, when needed) | Agent tree                     | `fastgpt agent`                    | Defaults to `simple` (supports global variables, Datasets, Toolkits, and workflows); uses `chatAgent` only when Skills or VM sandbox capabilities are required |
+| Avatars & folders             | Uploaded avatars & 4 folder trees                                            | Dataset / Tool / Skill / Agent | `fastgpt file upload-avatar`       | Organizes resources into FastGPT's four independent folder trees                                                                                               |
+
+> **Compatibility boundary**: Coze store plugins that depend on platform-managed OAuth or third-party credentials (such as Lark Docs or LinkReader) cannot have their credentials migrated automatically. The migration Skill explicitly flags these plugins in the workflow description and final handoff report so you can rebind equivalent tools or credentials manually in FastGPT.
+
+---
+
+## Migration workflow overview
+
+The migration Skill runs in 8 ordered stages so every downstream binding references verified FastGPT resource IDs:
+
+1. **CLI readiness and login**: Verify the `fastgpt` version, sign in to `https://cloud.fastgpt.cn` over standard input, fetch the team's available models, and confirm credit availability.
+2. **Coze inventory and export**: Reuse the signed-in Coze browser session to export Bots, workflow `schema_json`, plugin configurations, Dataset source files, and avatars.
+3. **Avatar upload and 4-tree folder setup**: Upload all Coze avatars and create target folders across the Dataset, Tool, Skill, and Agent trees.
+4. **Datasets and Collections**: Create each Dataset, import source files or text chunks as Collections, and verify Collection totals.
+5. **MCP and HTTP Toolkits**: Probe tool definitions, create each Toolkit, verify child tools, and execute a live tool call.
+6. **Skill import**: Import packaged `.zip` Skills into the Skill folder tree and verify the active version.
+7. **Workflow migration and `workflow-build` repair**: Create each workflow, then run `agent pull` -> `workflow-build inspect/validate` -> fix stray `catch` edges or schema issues -> `agent save` / `agent publish` -> `workflow diff` -> `agent test --detail`.
+8. **Agent assembly and end-to-end verification**: Default to `simple` (preserving global variables, Datasets, and tool or workflow bindings), and use `chatAgent` (Agent V2) only when Skills or VM sandbox capabilities are needed. Publish and verify with `agent test`, `agent run`, and conversation logs.
+
+### Built-in safeguards
+
+- **Per-resource live progress updates**: The Skill requires reporting each folder, Dataset, Toolkit, Skill, workflow, and Agent immediately before it starts and after it finishes, including its name, status, and FastGPT ID.
+- **Idempotent reruns**: Each step checks existing resources by name and parent folder before creating new ones, preventing duplicates after retries.
+- **Workflow self-repair**: Every migrated workflow passes `workflow-build` structural checks and live Test Runs to confirm the local graph matches the published version.
+
+---
+
+## FAQ and troubleshooting
+
+### Should a migrated Bot use `simple` or `chatAgent` (Agent V2)?
+
+Default to `simple` ([Chat Agent / Standard App](/en/guide/build/chat-agent)): `simple` supports **global variables**, Dataset retrieval, and MCP, HTTP, or workflow tool calls, covering most Coze Bots. Use `chatAgent` ([Chat Agent V2](/en/guide/build/agentv2/settings)) only when the Bot requires **Agent Skills**, a **VM execution sandbox**, or Agent V2 autonomous planning. Note that **Agent V2 does not support global variables yet**; if a Coze Bot relies on both global variables and Skills, prioritize one or handle variables in a workflow.
+
+### Why can folder avatars appear blank?
+
+The FastGPT backend does not automatically populate a default avatar when creating Dataset or Agent folders. `fastgpt tool folder create` and `fastgpt agent folder create` inject `/imgs/files/folder.svg` automatically, while `fastgpt dataset create --type folder` requires passing `--avatar "/imgs/files/folder.svg"` explicitly. Skill folders can omit the avatar and rely on the server default icon.
+
+### How should I handle `WORKFLOW_BINDING_UNVERIFIED` from `workflow-build validate`?
+
+`chatNode` model bindings use remote validation, so offline local checks cannot confirm team model permissions and emit a non-blocking warning while still returning `valid: true`. Run `fastgpt agent test --detail` once to verify the remote model call finishes with `finishReason: stop`.
+
+### Why does the migration require available team credits?
+
+Importing Dataset Collections triggers embedding and vector indexing, and post-migration verification runs real `agent test` and `agent run` calls against LLMs. Both steps consume team credits or model quota and will fail if the account balance is exhausted.

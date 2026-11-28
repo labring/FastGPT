@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>FastGPT 发布部署验收报告</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f8fb;
+        --surface: #ffffff;
+        --surface-soft: #f9fafc;
+        --line: #e2e8f0;
+        --line-strong: #cbd5e1;
+        --text: #1e293b;
+        --muted: #64748b;
+        --brand: #2563eb;
+        --brand-soft: #eff6ff;
+        --pass-bg: #dcfce7;
+        --pass-text: #166534;
+        --fail-bg: #fee2e2;
+        --fail-text: #991b1b;
+        --block-bg: #fef3c7;
+        --block-text: #92400e;
+        --pending-bg: #e2e8f0;
+        --pending-text: #475569;
+        --skip-bg: #f1f5f9;
+        --skip-text: #64748b;
+        --radius: 10px;
+        --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.6 system-ui,
+          -apple-system,
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          sans-serif;
+      }
+      a {
+        color: var(--brand);
+        text-decoration: none;
+        word-break: break-all;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12.5px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: #eef2f7;
+        color: #0f172a;
+      }
+      main {
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 24px 20px 56px;
+      }
+      .header-card,
+      .section-card,
+      .retention-banner {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      .header-card {
+        padding: 22px 24px;
+        margin-bottom: 16px;
+      }
+      .header-top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+      .subtitle {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .verdict-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px 16px;
+        padding: 14px 16px;
+        background: var(--surface-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .meta-item {
+        min-width: 0;
+      }
+      .meta-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 2px;
+      }
+      .meta-value {
+        font-size: 13px;
+        font-weight: 500;
+        overflow-wrap: anywhere;
+      }
+      .images-details {
+        margin-top: 12px;
+        font-size: 13px;
+      }
+      .images-details summary {
+        cursor: pointer;
+        color: var(--muted);
+        user-select: none;
+      }
+      .images-list {
+        margin: 8px 0 0;
+        padding: 10px 14px;
+        background: var(--surface-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        list-style: none;
+      }
+      .retention-banner {
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        border-left: 4px solid #16a34a;
+      }
+      .retention-banner.cleaned {
+        border-left-color: #64748b;
+        background: #f8fafc;
+      }
+      .retention-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .retention-title {
+        font-weight: 650;
+        font-size: 15px;
+      }
+      .retention-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 10px 16px;
+        margin-bottom: 10px;
+      }
+      .cleanup-box {
+        margin-top: 8px;
+        padding: 10px 12px;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        box-shadow: var(--shadow);
+      }
+      .stat-num {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .stat-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .btn {
+        border: 1px solid var(--line-strong);
+        background: var(--surface);
+        color: var(--text);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn:hover {
+        border-color: var(--brand);
+        color: var(--brand);
+      }
+      .btn.active {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #fff;
+      }
+      .section-card {
+        margin-bottom: 16px;
+        overflow: hidden;
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 13px 18px;
+        background: var(--surface-soft);
+        border-bottom: 1px solid var(--line);
+      }
+      .section-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      .section-summary {
+        font-size: 12.5px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .item-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .check-item {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .check-item:last-child {
+        border-bottom: 0;
+      }
+      .check-item.hidden {
+        display: none;
+      }
+      .item-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .item-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .item-id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: var(--brand-soft);
+        color: var(--brand);
+      }
+      .item-title {
+        font-weight: 600;
+        font-size: 14.5px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .status-passed {
+        background: var(--pass-bg);
+        color: var(--pass-text);
+      }
+      .status-failed {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+      }
+      .status-blocked {
+        background: var(--block-bg);
+        color: var(--block-text);
+      }
+      .status-pending {
+        background: var(--pending-bg);
+        color: var(--pending-text);
+      }
+      .status-skipped {
+        background: var(--skip-bg);
+        color: var(--skip-text);
+      }
+      .item-body {
+        display: grid;
+        grid-template-columns: minmax(260px, 1.05fr) minmax(260px, 1fr);
+        gap: 12px 18px;
+      }
+      @media (max-width: 820px) {
+        .item-body {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: var(--surface-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+      .panel-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .steps-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13px;
+      }
+      .steps-list li {
+        margin-bottom: 4px;
+      }
+      .steps-list li:last-child {
+        margin-bottom: 0;
+      }
+      .result-pair {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .result-text {
+        margin: 0;
+        font-size: 13px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .shots-wrap {
+        margin-top: 12px;
+      }
+      .shots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .shot-card {
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--surface);
+        cursor: zoom-in;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .shot-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+      }
+      .shot-card img {
+        display: block;
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        object-position: top center;
+        background: #f1f5f9;
+      }
+      .shot-card figcaption {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .empty-hint {
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      footer {
+        margin-top: 20px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.86);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+      .lightbox.open {
+        display: flex;
+      }
+      .lightbox-toolbar {
+        width: 100%;
+        max-width: 1280px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #f8fafc;
+        margin-bottom: 10px;
+        gap: 12px;
+      }
+      .lightbox-caption {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .lightbox-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .lightbox-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        padding: 5px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .lightbox-btn:hover {
+        background: rgba(255, 255, 255, 0.24);
+      }
+      .lightbox-stage {
+        max-width: 100%;
+        max-height: calc(100vh - 96px);
+        overflow: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .lightbox-stage img {
+        max-width: 94vw;
+        max-height: calc(100vh - 104px);
+        border-radius: 8px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+        background: #fff;
+      }
+      .lightbox-stage.zoomed img {
+        max-width: none;
+        max-height: none;
+        cursor: zoom-out;
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .toolbar,
+        .lightbox {
+          display: none !important;
+        }
+        .section-card,
+        .header-card,
+        .retention-banner {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="header-card">
+        <div class="header-top">
+          <div>
+            <h1 id="report-title">FastGPT 发布部署验收报告</h1>
+            <p class="subtitle" id="report-subtitle"></p>
+          </div>
+          <span id="overall-verdict" class="verdict-pill status-pending">待执行</span>
+        </div>
+        <div class="meta-grid" id="meta-grid"></div>
+        <details class="images-details" id="images-details" hidden>
+          <summary>查看本次部署实际运行的容器镜像版本</summary>
+          <ul class="images-list" id="images-list"></ul>
+        </details>
+      </section>
+
+      <section class="retention-banner" id="retention-banner">
+        <div class="retention-head">
+          <span class="retention-title" id="retention-title"></span>
+          <span class="badge" id="retention-badge"></span>
+        </div>
+        <div class="retention-grid" id="retention-grid"></div>
+        <div id="cleanup-wrap"></div>
+      </section>
+
+      <section class="stats-bar" id="stats-bar"></section>
+
+      <div class="toolbar">
+        <div class="filter-group" id="filter-group"></div>
+        <div class="filter-group">
+          <button type="button" class="btn" id="toggle-steps-btn">收起所有步骤</button>
+        </div>
+      </div>
+
+      <div id="sections-root"></div>
+
+      <footer>
+        由 FastGPT <code>release-deploy-test</code> 模板生成 ·
+        离线单文件报告，点击任意截图可放大预览
+      </footer>
+    </main>
+
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="截图预览">
+      <div class="lightbox-toolbar">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+        <div class="lightbox-actions">
+          <button type="button" class="lightbox-btn" id="lightbox-prev">上一张</button>
+          <button type="button" class="lightbox-btn" id="lightbox-next">下一张</button>
+          <button type="button" class="lightbox-btn" id="lightbox-zoom">原图尺寸</button>
+          <button type="button" class="lightbox-btn" id="lightbox-close">关闭 (Esc)</button>
+        </div>
+      </div>
+      <div class="lightbox-stage" id="lightbox-stage">
+        <img id="lightbox-img" alt="" />
+      </div>
+    </div>
+
+    <script id="report-data" type="application/json">
+      /*__REPORT_DATA__*/
+    </script>
+    <script>
+      (() => {
+        const STATUS_LABEL = {
+          passed: '通过',
+          failed: '失败',
+          blocked: '阻塞',
+          pending: '待执行',
+          skipped: '跳过'
+        };
+
+        const raw = document.getElementById('report-data').textContent.trim();
+        const data = JSON.parse(raw);
+        const items = Array.isArray(data.items) ? data.items : [];
+        let activeFilter = 'all';
+        let stepsCollapsed = false;
+        const gallery = [];
+        let galleryIndex = 0;
+
+        function el(tag, options = {}) {
+          const { text, className } = options;
+          const node = document.createElement(tag);
+          if (text !== undefined && text !== null) node.textContent = String(text);
+          if (className) node.className = className;
+          return node;
+        }
+
+        function formatTime(iso) {
+          if (!iso) return '-';
+          const d = new Date(iso);
+          return Number.isNaN(d.getTime())
+            ? String(iso)
+            : d.toLocaleString('zh-CN', { hour12: false });
+        }
+
+        function isSafeUrl(url) {
+          return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+        }
+
+        function computeStats() {
+          const counts = {
+            total: items.length,
+            passed: 0,
+            failed: 0,
+            blocked: 0,
+            pending: 0,
+            skipped: 0
+          };
+          items.forEach((item) => {
+            const st = STATUS_LABEL[item.status] ? item.status : 'pending';
+            counts[st] += 1;
+          });
+          const verdict = (() => {
+            if (counts.failed > 0) return { text: '存在失败项', cls: 'status-failed' };
+            if (counts.blocked > 0) return { text: '存在阻塞项', cls: 'status-blocked' };
+            if (counts.total > 0 && counts.pending === 0 && counts.passed > 0) {
+              return { text: '验收通过', cls: 'status-passed' };
+            }
+            return { text: '进行中', cls: 'status-pending' };
+          })();
+          return { counts, verdict };
+        }
+
+        function renderHeader(stats) {
+          const meta = data.meta ?? {};
+          document.title = data.title || 'FastGPT 发布部署验收报告';
+          document.getElementById('report-title').textContent =
+            data.title || 'FastGPT 发布部署验收报告';
+          document.getElementById('report-subtitle').textContent =
+            `生成时间：${formatTime(data.updatedAt || data.createdAt)} · 共 ${stats.counts.total} 项检查（通过 ${stats.counts.passed} / 失败 ${stats.counts.failed} / 阻塞 ${stats.counts.blocked} / 待执行 ${stats.counts.pending}）`;
+
+          const verdictEl = document.getElementById('overall-verdict');
+          verdictEl.textContent = stats.verdict.text;
+          verdictEl.className = 'verdict-pill ' + stats.verdict.cls;
+
+          const fields = [
+            ['目标模板', meta.template || '-'],
+            ['目标版本', meta.version || '-'],
+            ['向量库 / 镜像源', `${meta.vectorDb || '-'} / ${meta.region || '-'}`],
+            ['部署宿主机', meta.host || '-'],
+            ['Compose 项目名', meta.project || '-'],
+            ['远程工作目录', meta.workdir || '-'],
+            ['模型上游来源', meta.modelSource || '-'],
+            ['浏览器与语言', meta.browser || 'EGO Lite · 简体中文']
+          ];
+          const grid = document.getElementById('meta-grid');
+          grid.replaceChildren();
+          fields.forEach(([label, value]) => {
+            const box = el('div', { className: 'meta-item' });
+            box.append(
+              el('div', { text: label, className: 'meta-label' }),
+              el('div', { text: value, className: 'meta-value' })
+            );
+            grid.append(box);
+          });
+
+          const images = Array.isArray(meta.images) ? meta.images : [];
+          if (images.length) {
+            const details = document.getElementById('images-details');
+            const list = document.getElementById('images-list');
+            details.hidden = false;
+            list.replaceChildren();
+            images.forEach((img) => {
+              const li = el('li');
+              li.append(el('code', { text: img }));
+              list.append(li);
+            });
+          }
+        }
+
+        function renderRetention() {
+          const env = data.environment ?? {};
+          const meta = data.meta ?? {};
+          const cleaned = env.retentionStatus === 'cleaned';
+          const banner = document.getElementById('retention-banner');
+          banner.classList.toggle('cleaned', cleaned);
+
+          document.getElementById('retention-title').textContent = cleaned
+            ? '测试环境已清理完成'
+            : '测试环境已保留运行中 — 等待用户人工核验后再清理';
+
+          const badge = document.getElementById('retention-badge');
+          badge.textContent = cleaned ? '已清理' : '保留运行中';
+          badge.className = 'badge ' + (cleaned ? 'status-skipped' : 'status-passed');
+
+          const grid = document.getElementById('retention-grid');
+          grid.replaceChildren();
+
+          const addField = ({ label, value, asLink = false }) => {
+            const box = el('div', { className: 'meta-item' });
+            box.append(el('div', { text: label, className: 'meta-label' }));
+            const val = el('div', { className: 'meta-value' });
+            if (asLink && isSafeUrl(value)) {
+              const link = el('a', { text: value });
+              link.href = value;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              val.append(link);
+            } else {
+              val.textContent = value || '-';
+            }
+            box.append(val);
+            grid.append(box);
+          };
+
+          addField({ label: '访问入口', value: env.baseUrl || meta.baseUrl || '-', asLink: true });
+          addField({
+            label: '测试管理员账号（已激活）',
+            value: env.rootAccount
+              ? `${env.rootAccount} / ${env.rootPassword || '（见说明）'}`
+              : `root / ${env.rootPassword || '（未记录）'}`
+          });
+          addField({
+            label: '免登录分享链接',
+            value: env.shareUrl || '（尚未生成）',
+            asLink: true
+          });
+          if (env.cleanupNote) {
+            addField({ label: '环境备注 / 清理说明', value: env.cleanupNote });
+          }
+
+          const wrap = document.getElementById('cleanup-wrap');
+          wrap.replaceChildren();
+          const cmd =
+            env.cleanupCommand ||
+            (meta.project && meta.workdir
+              ? `docker compose --profile '*' -p ${meta.project} -f ${meta.workdir}/docker-compose.yml down -v --remove-orphans && (docker compose --profile '*' -p ${meta.project} -f ${meta.workdir}/docker-compose.yml config --images | xargs -r -n 1 docker image rm || true) && (rm -rf ${meta.workdir} 2>/dev/null || sudo rm -rf ${meta.workdir})`
+              : '');
+          if (cmd) {
+            wrap.append(
+              el('div', {
+                text: cleaned
+                  ? '已执行的零痕迹清理命令（服务/容器/数据库卷/网络/镜像/临时目录，仅作留档）：'
+                  : '待用户确认后执行的零痕迹清理命令（移除服务、容器、数据库卷、网络、镜像与临时目录，不影响宿主机其他运行服务）：',
+                className: 'meta-label'
+              }),
+              el('div', { text: cmd, className: 'cleanup-box' })
+            );
+          }
+        }
+
+        function renderStats(stats) {
+          const cards = [
+            ['总验收项', stats.counts.total, ''],
+            ['通过', stats.counts.passed, 'color: var(--pass-text)'],
+            ['失败', stats.counts.failed, 'color: var(--fail-text)'],
+            ['阻塞', stats.counts.blocked, 'color: var(--block-text)'],
+            ['待执行', stats.counts.pending, 'color: var(--pending-text)'],
+            ['跳过', stats.counts.skipped, 'color: var(--skip-text)']
+          ];
+          const bar = document.getElementById('stats-bar');
+          bar.replaceChildren();
+          cards.forEach(([label, num, style]) => {
+            const card = el('div', { className: 'stat-card' });
+            const n = el('div', { text: num, className: 'stat-num' });
+            if (style) n.setAttribute('style', style);
+            card.append(n, el('div', { text: label, className: 'stat-label' }));
+            bar.append(card);
+          });
+
+          const filters = [
+            ['all', `全部 (${stats.counts.total})`],
+            ['passed', `通过 (${stats.counts.passed})`],
+            ['failed', `失败 (${stats.counts.failed})`],
+            ['blocked', `阻塞 (${stats.counts.blocked})`],
+            ['pending', `待执行 (${stats.counts.pending})`],
+            ['skipped', `跳过 (${stats.counts.skipped})`]
+          ];
+          const group = document.getElementById('filter-group');
+          group.replaceChildren();
+          filters.forEach(([key, label]) => {
+            const btn = el('button', {
+              text: label,
+              className: 'btn' + (activeFilter === key ? ' active' : '')
+            });
+            btn.type = 'button';
+            btn.addEventListener('click', () => {
+              activeFilter = key;
+              applyFilter();
+              group.querySelectorAll('.btn').forEach((b) => b.classList.remove('active'));
+              btn.classList.add('active');
+            });
+            group.append(btn);
+          });
+        }
+
+        function openLightbox(index) {
+          if (!gallery.length) return;
+          galleryIndex = (index + gallery.length) % gallery.length;
+          const entry = gallery[galleryIndex];
+          document.getElementById('lightbox-img').src = entry.src;
+          document.getElementById('lightbox-img').alt = entry.caption;
+          document.getElementById('lightbox-caption').textContent =
+            `[${galleryIndex + 1}/${gallery.length}] ${entry.itemId} ${entry.itemTitle} — ${entry.caption}`;
+          document.getElementById('lightbox-stage').classList.remove('zoomed');
+          document.getElementById('lightbox-zoom').textContent = '原图尺寸';
+          document.getElementById('lightbox').classList.add('open');
+        }
+
+        function closeLightbox() {
+          document.getElementById('lightbox').classList.remove('open');
+        }
+
+        function renderSections() {
+          const root = document.getElementById('sections-root');
+          root.replaceChildren();
+          gallery.length = 0;
+
+          const phases = [];
+          const phaseMap = new Map();
+          items.forEach((item) => {
+            const phase = item.phase || '其他检查项';
+            if (!phaseMap.has(phase)) {
+              const bucket = { name: phase, items: [] };
+              phaseMap.set(phase, bucket);
+              phases.push(bucket);
+            }
+            phaseMap.get(phase).items.push(item);
+          });
+
+          phases.forEach((phase) => {
+            const sec = el('section', { className: 'section-card' });
+            sec.dataset.phase = phase.name;
+            const passedCount = phase.items.filter((i) => i.status === 'passed').length;
+            const header = el('div', { className: 'section-header' });
+            header.append(
+              el('h2', { text: phase.name, className: 'section-title' }),
+              el('span', {
+                text: `${passedCount}/${phase.items.length} 通过`,
+                className: 'section-summary'
+              })
+            );
+            const list = el('div', { className: 'item-list' });
+
+            phase.items.forEach((item) => {
+              const st = STATUS_LABEL[item.status] ? item.status : 'pending';
+              const row = el('article', { className: 'check-item' });
+              row.dataset.status = st;
+
+              const head = el('div', { className: 'item-head' });
+              const titleWrap = el('div', { className: 'item-title-wrap' });
+              titleWrap.append(
+                el('span', { text: item.id || '-', className: 'item-id' }),
+                el('span', { text: item.title || '未命名检查项', className: 'item-title' })
+              );
+              head.append(
+                titleWrap,
+                el('span', { text: STATUS_LABEL[st], className: 'badge status-' + st })
+              );
+              row.append(head);
+
+              const body = el('div', { className: 'item-body' });
+
+              const stepsPanel = el('div', { className: 'panel steps-panel' });
+              stepsPanel.append(el('div', { text: '测试步骤', className: 'panel-label' }));
+              const ol = el('ol', { className: 'steps-list' });
+              (Array.isArray(item.steps) ? item.steps : []).forEach((step) => {
+                ol.append(el('li', { text: step }));
+              });
+              stepsPanel.append(ol);
+
+              const resultPanel = el('div', { className: 'panel result-pair' });
+              const expWrap = el('div');
+              expWrap.append(
+                el('div', { text: '预期结果', className: 'panel-label' }),
+                el('p', { text: item.expected || '-', className: 'result-text' })
+              );
+              const actWrap = el('div');
+              actWrap.append(
+                el('div', { text: '实际结果与记录', className: 'panel-label' }),
+                el('p', { text: item.actual || '尚未填写', className: 'result-text' })
+              );
+              resultPanel.append(expWrap, actWrap);
+
+              body.append(stepsPanel, resultPanel);
+              row.append(body);
+
+              const shots = Array.isArray(item.screenshots) ? item.screenshots : [];
+              if (shots.length) {
+                const shotsWrap = el('div', { className: 'shots-wrap' });
+                shotsWrap.append(
+                  el('div', { text: `关键截图 (${shots.length})`, className: 'panel-label' })
+                );
+                const grid = el('div', { className: 'shots-grid' });
+                shots.forEach((shot) => {
+                  if (!shot || !shot.src) return;
+                  const idx = gallery.length;
+                  const caption = shot.caption || shot.label || `${item.id} 截图`;
+                  gallery.push({
+                    src: shot.src,
+                    caption,
+                    itemId: item.id || '',
+                    itemTitle: item.title || ''
+                  });
+                  const fig = el('figure', { className: 'shot-card' });
+                  const img = document.createElement('img');
+                  img.src = shot.src;
+                  img.alt = caption;
+                  img.loading = 'lazy';
+                  fig.append(img, el('figcaption', { text: caption }));
+                  fig.addEventListener('click', () => openLightbox(idx));
+                  grid.append(fig);
+                });
+                shotsWrap.append(grid);
+                row.append(shotsWrap);
+              }
+
+              list.append(row);
+            });
+
+            sec.append(header, list);
+            root.append(sec);
+          });
+        }
+
+        function applyFilter() {
+          document.querySelectorAll('.section-card').forEach((sec) => {
+            let visible = 0;
+            sec.querySelectorAll('.check-item').forEach((row) => {
+              const show = activeFilter === 'all' || row.dataset.status === activeFilter;
+              row.classList.toggle('hidden', !show);
+              if (show) visible += 1;
+            });
+            sec.style.display = visible > 0 ? '' : 'none';
+          });
+        }
+
+        document.getElementById('toggle-steps-btn').addEventListener('click', (e) => {
+          stepsCollapsed = !stepsCollapsed;
+          document.querySelectorAll('.steps-panel').forEach((panel) => {
+            panel.style.display = stepsCollapsed ? 'none' : '';
+          });
+          e.currentTarget.textContent = stepsCollapsed ? '展开所有步骤' : '收起所有步骤';
+        });
+
+        document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+        document
+          .getElementById('lightbox-prev')
+          .addEventListener('click', () => openLightbox(galleryIndex - 1));
+        document
+          .getElementById('lightbox-next')
+          .addEventListener('click', () => openLightbox(galleryIndex + 1));
+        document.getElementById('lightbox-zoom').addEventListener('click', (e) => {
+          const stage = document.getElementById('lightbox-stage');
+          const zoomed = stage.classList.toggle('zoomed');
+          e.currentTarget.textContent = zoomed ? '适配窗口' : '原图尺寸';
+        });
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+          if (e.target.id === 'lightbox' || e.target.id === 'lightbox-stage') closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (!document.getElementById('lightbox').classList.contains('open')) return;
+          if (e.key === 'Escape') closeLightbox();
+          else if (e.key === 'ArrowLeft') openLightbox(galleryIndex - 1);
+          else if (e.key === 'ArrowRight') openLightbox(galleryIndex + 1);
+        });
+
+        const stats = computeStats();
+        renderHeader(stats);
+        renderRetention();
+        renderStats(stats);
+        renderSections();
+        applyFilter();
+      })();
+    </script>
+  </body>
+</html>

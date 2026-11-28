@@ -31,7 +31,14 @@ import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
 import type { HttpFormFieldType } from '@fastgpt/global/core/workflow/http/type';
-import { buildHttpFormData } from './httpFormData';
+import {
+  buildHttpFormData,
+  encodeHttpFormData,
+  HttpFileReadError,
+  HTTP_MULTIPART_MAX_BYTES
+} from './httpFormData';
+import StreamFormData from 'form-data';
+import type { Readable } from 'node:stream';
 import { runWithHttpAbort } from './httpAbort';
 import { getErrText, isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
@@ -231,6 +238,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         httpTimeout * 1000
       )
     : undefined;
+  let cleanupMultipart: (() => void) | undefined;
   let requestPrepared = false;
   let formattedRequestBody: Record<string, any> = {};
 
@@ -248,10 +256,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         if (httpContentType === ContentTypes.formData) {
           if (!Array.isArray(httpFormBody)) return {};
           const formBody = formatHttpProps(httpFormBody);
-          const { formData, body } = await buildHttpFormData({
+          const { formData, body, cleanup } = await buildHttpFormData({
             fields: formBody,
             signal: controller.signal
           });
+          cleanupMultipart = cleanup;
           formattedRequestBody = body;
           return formData;
         }
@@ -280,10 +289,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         const rawBody = replaceStringVariables(httpJsonBody);
         return rawBody.replaceAll(UNDEFINED_SIGN, 'null');
       } catch (error) {
-        if (hasFileFields)
-          throw error instanceof UserConfigError
-            ? error
-            : new UserConfigError(getErrText(error), undefined, { cause: error });
+        if (hasFileFields) throw error;
         return Promise.reject(
           new UserConfigError(`Invalid JSON body: ${httpJsonBody}`, undefined, { cause: error })
         );
@@ -292,7 +298,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
     // Just show
     formattedRequestBody = (() => {
-      if (requestBody instanceof FormData) return formattedRequestBody;
+      if (requestBody instanceof StreamFormData || requestBody instanceof FormData)
+        return formattedRequestBody;
       if (requestBody instanceof URLSearchParams) {
         return Object.fromEntries(requestBody);
       } else if (typeof requestBody === 'string') {
@@ -326,6 +333,17 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     const { formatResponse, rawResponse } = await (
       hasFileFields ? runWithHttpAbort(sendRequest, controller.signal) : sendRequest()
     ).catch((error: unknown) => {
+      if (hasFileFields) {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        // Axios 会重新包装请求流错误；恢复附件来源/配额错误的原始分类。
+        const seen = new Set<unknown>();
+        let cause = error;
+        while (cause && typeof cause === 'object' && !seen.has(cause)) {
+          if (cause instanceof HttpFileReadError || cause instanceof UserConfigError) throw cause;
+          seen.add(cause);
+          cause = 'cause' in cause ? cause.cause : undefined;
+        }
+      }
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
 
@@ -410,6 +428,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
     });
   } finally {
+    cleanupMultipart?.();
     clearInterval(stopTimer);
     clearTimeout(timeoutTimer);
   }
@@ -631,7 +650,7 @@ async function fetchData({
   method: string;
   url: string;
   headers: Record<string, any>;
-  body: Record<string, any> | string;
+  body: Record<string, any> | string | Readable;
   params: Record<string, any>;
   timeout: number;
   signal?: AbortSignal;
@@ -646,7 +665,7 @@ async function fetchData({
 
   // 文件请求由 Axios 按实际 FormData 生成 boundary 和长度，旧的手填头不能覆盖它们。
   const requestHeaders = { ...headers };
-  if (signal && body instanceof FormData) {
+  if (body instanceof StreamFormData) {
     for (const key of Object.keys(requestHeaders)) {
       if (['content-type', 'content-length'].includes(key.toLowerCase()))
         delete requestHeaders[key];
@@ -658,12 +677,18 @@ async function fetchData({
     method,
     maxContentLength: getServiceRequestMaxContentLength(),
     url,
-    headers: requestHeaders,
+    headers:
+      body instanceof StreamFormData ? { ...requestHeaders, ...body.getHeaders() } : requestHeaders,
     timeout: timeout * 1000,
     signal,
-    ...(signal ? { maxBodyLength: getServiceRequestMaxContentLength() } : {}),
+    // 流不可重放；拒绝自动重定向，避免 307/308 重发已消费的附件流或跟随库缓存整批内容。
+    ...(signal ? { maxBodyLength: HTTP_MULTIPART_MAX_BYTES, maxRedirects: 0 } : {}),
     params: params,
-    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+    data: ['POST', 'PUT', 'PATCH'].includes(method)
+      ? body instanceof StreamFormData
+        ? encodeHttpFormData(body)
+        : body
+      : undefined,
     ...getWorkflowHttpNodeHttpsAgentConfig(url)
   });
 

@@ -266,6 +266,9 @@ describe('CLI auth command integration', () => {
     expect(doctorRes.exitCode).toBe(0);
     const doctorJson = JSON.parse(doctorRes.stdout);
     expect(doctorJson.data.ok).toBe(true);
+    expect(
+      doctorJson.data.checks.find((c: { name: string }) => c.name === 'server_connectivity')
+    ).toMatchObject({ status: 'pass' });
     expect(doctorJson.data.capabilities.credentialKind).toBe('personalKey');
 
     expect(

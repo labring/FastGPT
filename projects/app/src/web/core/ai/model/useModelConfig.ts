@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   formatModelProviders,
@@ -26,12 +26,36 @@ export const useModelConfig = ({
   manual?: boolean;
 }) => {
   const isTeam = channelType === 'team';
+  // ahooks 3.9.5 中被后续请求取代的 runAsync Promise 永不落定；改为统一挂起等待并在最新一次成功/失败时批量唤醒，避免并发刷新卡死调用方。
+  const refreshWaitersRef = useRef<{ resolve: () => void; reject: (error: unknown) => void }[]>([]);
+  const settleRefreshWaiters = useCallback(
+    (result: { ok: true } | { ok: false; error: unknown }) => {
+      const waiters = refreshWaitersRef.current.splice(0);
+      for (const waiter of waiters) {
+        if (result.ok) {
+          waiter.resolve();
+        } else {
+          waiter.reject(result.error);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      refreshWaitersRef.current = [];
+    };
+  }, []);
+
   const request = useRequest<ModelConfigResponse, []>(() => getModelConfig({ channelType }), {
     manual,
-    refreshDeps: [isTeam]
+    refreshDeps: [isTeam],
+    onSuccess: () => settleRefreshWaiters({ ok: true }),
+    onError: (error) => settleRefreshWaiters({ ok: false, error })
   });
 
-  const { runAsync } = request;
+  const { run } = request;
   const models = useMemo(() => request.data?.models ?? [], [request.data?.models]);
   const channels = useMemo(() => request.data?.channels ?? [], [request.data?.channels]);
   const defaultModelIds = useMemo(
@@ -63,10 +87,13 @@ export const useModelConfig = ({
       ),
     [language, providerCache.ModelProviderListCache]
   );
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(() => {
     useUserModelStore.getState().clearMemory();
-    await runAsync();
-  }, [runAsync]);
+    return new Promise<void>((resolve, reject) => {
+      refreshWaitersRef.current.push({ resolve, reject });
+      run();
+    });
+  }, [run]);
 
   return {
     ...request,

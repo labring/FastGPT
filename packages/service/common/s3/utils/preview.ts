@@ -1,35 +1,12 @@
-import { S3Sources } from '../contracts/type';
 import { isS3ObjectKey } from '../utils';
 import { S3Buckets } from '../config/constants';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 import { createS3DownloadAccessUrls } from '../accessLink';
-import {
-  htmlImgTokenPrefixPattern,
-  htmlImgTokenValuePattern,
-  htmlImgTokenSuffixPattern
-} from '@fastgpt/global/common/string/markdown';
+import { getS3TextReferences } from './textReferences';
 
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
   previewUrlS3Sources.some((source) => isS3ObjectKey(objectKey, source));
-
-const s3SourcePattern = Object.values(S3Sources)
-  .map((prefix) => `${prefix}\\/`)
-  .join('|');
-
-/**
- * 匹配文本中的 Markdown 图片语法或带有 src 属性的完整 HTML `<img>` 标签。
- * HTML img 结构片段（prefix/value/suffix）来自 @fastgpt/global 共享定义，
- * 拼接后捕获组编号保持不变：6=前缀、7/8/9=src 值、10=后缀。
- * 正则在模块加载时编译一次；`matchAll` 会使用独立迭代器，`replace` 也不会把调用状态泄漏给下一次调用。
- */
-const s3TextKeyRegex = new RegExp(
-  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)|` +
-    htmlImgTokenPrefixPattern +
-    htmlImgTokenValuePattern +
-    htmlImgTokenSuffixPattern,
-  'gi'
-);
 
 /**
  * 从多段文本（Markdown 图片语法与 HTML `<img>` 标签）中提取允许签发预览链接的 S3 对象键，
@@ -41,12 +18,9 @@ export const getS3ObjectKeysFromTexts = (texts: Array<string | undefined>) => {
   for (const text of texts) {
     if (!text || typeof text !== 'string') continue;
 
-    for (const match of text.matchAll(s3TextKeyRegex)) {
-      const markdownObjectKey = match[3] ?? match[4];
-      const htmlObjectKey = match[7] ?? match[8] ?? match[9];
-      const matchedObjectKey = markdownObjectKey ?? htmlObjectKey?.trim();
-      if (matchedObjectKey && isPreviewUrlS3ObjectKey(matchedObjectKey)) {
-        objectKeys.add(matchedObjectKey);
+    for (const { objectKey } of getS3TextReferences(text)) {
+      if (isPreviewUrlS3ObjectKey(objectKey)) {
+        objectKeys.add(objectKey);
       }
     }
   }
@@ -87,7 +61,7 @@ export const createS3KeysPreviewUrlMap = async ({
   return previewUrlMap;
 };
 
-/** 使用已签发的 URL 映射替换 Markdown 图片语法与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
+/** 使用已签发的 URL 映射替换 Markdown 图片/链接与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
 export const replaceS3KeysWithPreviewUrlMap = (
   documentQuoteText: string,
   previewUrlMap: ReadonlyMap<string, string>
@@ -96,36 +70,21 @@ export const replaceS3KeysWithPreviewUrlMap = (
     return documentQuoteText as string;
   }
 
-  return documentQuoteText.replace(
-    s3TextKeyRegex,
-    (
-      full,
-      bang,
-      alt,
-      wrappedObjectKey,
-      unwrappedObjectKey,
-      markdownTitle,
-      htmlPrefix,
-      doubleQuoted,
-      singleQuoted,
-      unquoted,
-      htmlSuffix
-    ) => {
-      if (htmlPrefix !== undefined) {
-        const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
-        const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-        if (!previewUrl) return full;
+  const refs = getS3TextReferences(documentQuoteText);
+  if (refs.length === 0) return documentQuoteText;
 
-        if (doubleQuoted !== undefined) return `${htmlPrefix}"${previewUrl}"${htmlSuffix}`;
-        if (singleQuoted !== undefined) return `${htmlPrefix}'${previewUrl}'${htmlSuffix}`;
-        return `${htmlPrefix}"${previewUrl}"${htmlSuffix}`;
-      }
+  let result = '';
+  let lastIndex = 0;
 
-      const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
-      const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-      return previewUrl ? `${bang}[${alt}](${previewUrl}${markdownTitle ?? ''})` : full;
-    }
-  );
+  for (const ref of refs) {
+    const previewUrl = previewUrlMap.get(ref.objectKey);
+    result +=
+      documentQuoteText.slice(lastIndex, ref.index) +
+      (previewUrl ? ref.replace(previewUrl) : ref.fullMatch);
+    lastIndex = ref.index + ref.fullMatch.length;
+  }
+
+  return result + documentQuoteText.slice(lastIndex);
 };
 
 export type ReplaceS3KeysOptions = {

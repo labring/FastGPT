@@ -121,6 +121,9 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
   axios: {
     get: vi.fn(),
     post: mockAxiosPost
+  },
+  axiosWithoutSSRF: {
+    post: mockAxiosPost
   }
 }));
 
@@ -360,10 +363,10 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should use custom URL service for pdf when configured', async () => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
     Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
       url: 'http://custom-pdf-service.com/parse',
-      key: 'test-key'
+      key: 'test-key',
+      timeoutSeconds: 1200
     });
 
     mockAxiosPost.mockResolvedValueOnce({
@@ -1160,6 +1163,7 @@ describe('readFileContentBySource', () => {
         kind: 's3' as const,
         sizeBytes: 10,
         metadata: { filename },
+        openStream: vi.fn(),
         materialize: vi.fn()
       };
       await readFileContentBySource({ teamId, tmbId, source });
@@ -1186,6 +1190,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.PDF' },
+      openStream: vi.fn(),
       materialize: vi.fn().mockResolvedValue(materialized)
     };
     await expect(readFileContentBySource({ teamId, tmbId, source })).resolves.toMatchObject({
@@ -1214,6 +1219,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.xlsx' },
+      openStream: vi.fn(),
       materialize: vi.fn()
     };
 
@@ -1236,6 +1242,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.txt' },
+      openStream: vi.fn(),
       materialize: vi.fn()
     };
 
@@ -1260,6 +1267,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 3,
       metadata: { filename: 'file.pdf' },
+      openStream: vi.fn(),
       materialize: vi.fn().mockResolvedValue({
         buffer: Buffer.from('pdf'),
         metadata: { filename: 'file.pdf' }

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT 发布部署验收'
+  short_description: '按指定版本或 Docker Compose 模板部署 FastGPT，完成全链路中文 UI 验收、生成带截图 HTML 报告并在用户复核后零痕迹清理服务/容器/数据库/镜像'
+  default_prompt: '使用 $release-deploy-test 按指定模板与版本在目标主机部署 FastGPT，完成全链路 UI 验收并生成带截图的 HTML 测试报告，保留环境待我验证后再清理。'

@@ -42,6 +42,11 @@ export type TeamMemberSchema = {
   updateTime?: Date;
   lastSwitchTime?: Date;
   name: string;
+  /**
+   * 基于成员名生成的规范化拼音排序键（0:字母/拼音、1:数字、2:其他），供索引排序分页使用。
+   * v4.18.0 后台迁移过渡期暂保持可选，下一版本确认全量回填后改为必填。
+   */
+  nameSortKey?: string;
   /** 成员名是否由显式来源设置；false 表示 name 是待确认的 username 回落值。存量文档迁移前可能缺失该字段。 */
   isSetMemberName?: boolean;
   role: TeamMemberRoleEnum;

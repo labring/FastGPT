@@ -23,6 +23,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { Types } from '@fastgpt/service/common/mongo';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 describe('POST /api/core/dataset/list', () => {
   afterEach(() => {
@@ -597,5 +598,80 @@ describe('POST /api/core/dataset/list', () => {
     expect(res.data.list).toContainEqual(
       expect.objectContaining({ name: 'Legacy Dataset', avatar: '/icon/logo.svg', intro: '' })
     );
+  });
+});
+
+describe('POST /api/core/dataset/list - team owner under DISABLE_APIDATASET_SUPER_ADMIN', () => {
+  afterEach(() => {
+    setDisableApiDatasetSuperAdmin(false);
+  });
+
+  it('只按 ACL 暴露 API 文件库，普通知识库仍走团队 owner 旁路', async () => {
+    setDisableApiDatasetSuperAdmin(true);
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const [apiDataset, ordinaryDataset] = await MongoDataset.create([
+      {
+        name: 'api-dataset',
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      },
+      { name: 'ordinary-dataset', teamId: owner.teamId, tmbId: member.tmbId }
+    ]);
+
+    const response = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
+      handler,
+      { auth: owner, body: { parentId: null } }
+    );
+
+    expect(response.code).toBe(200);
+    expect(response.data.map((item) => String(item._id))).toEqual([String(ordinaryDataset._id)]);
+    expect(response.data[0].permission.isOwner).toBe(true);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: owner.teamId,
+      resourceId: apiDataset._id,
+      tmbId: owner.tmbId,
+      permission: ReadPermissionVal
+    });
+    const granted = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
+      handler,
+      { auth: owner, body: { parentId: null } }
+    );
+    expect(granted.code).toBe(200);
+    expect(
+      granted.data.find((item) => String(item._id) === String(apiDataset._id))?.permission
+    ).toMatchObject({ hasReadPer: true, isOwner: false });
+  });
+
+  it('API 文件库的 dataset 所有者即使没有 ACL 行也保留 owner 身份', async () => {
+    setDisableApiDatasetSuperAdmin(true);
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const [ownedByTeamOwner, ownedByMember] = await MongoDataset.create([
+      {
+        name: 'owned-by-team-owner',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      },
+      {
+        name: 'owned-by-member',
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      }
+    ]);
+
+    const response = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
+      handler,
+      { auth: owner, body: { parentId: null } }
+    );
+
+    expect(response.code).toBe(200);
+    expect(response.data.map((item) => String(item._id))).toEqual([String(ownedByTeamOwner._id)]);
+    expect(response.data[0].permission.isOwner).toBe(true);
   });
 });

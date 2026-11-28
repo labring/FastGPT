@@ -738,8 +738,9 @@ describe('dataset collection index consolidation', () => {
       collectionOverrides: { dataset_collections: model.collection.collectionName }
     });
     const names = await getIndexNames(model);
-    expect(names.size).toBe(10); // 9 条内置索引（含 _id）及 1 条客户索引。
+    expect(names.size).toBe(11); // 10 条内置索引（含 _id 与 fg_dataset_col_parent_name_sort）及 1 条客户索引。
     expect(names).toContain('teamId_1_fileId_1');
+    expect(names).toContain('fg_dataset_col_parent_name_sort');
     expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1');
     expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1_tags.value_1');
     expect(names).toContain('teamId_1_datasetId_1_type_1_parentId_1_inheritPermission_1__id_1');

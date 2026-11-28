@@ -2,6 +2,7 @@ import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import { enUS } from 'date-fns/locale/en-US';
 import { ko } from 'date-fns/locale/ko';
+import { tr } from 'date-fns/locale/tr';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import { zhTW } from 'date-fns/locale/zh-TW';
 
@@ -10,6 +11,7 @@ export const getDatePickerLocale = (language?: string) => {
   const locales = {
     [LangEnum.en]: enUS,
     [LangEnum.ko_KR]: ko,
+    [LangEnum.tr_TR]: tr,
     [LangEnum.zh_CN]: zhCN,
     [LangEnum.zh_Hant]: zhTW
   };

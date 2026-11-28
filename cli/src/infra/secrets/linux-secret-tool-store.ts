@@ -1,6 +1,6 @@
 import type { ExecCommandFn } from './exec-command';
 import { getKeychainAccountKey, KEYCHAIN_SERVICE } from './keychain-common';
-import type { SecretStoreStrategy } from './secret-store';
+import type { SecretStoreStrategy } from './types';
 
 /**
  * Linux Secret Service (`secret-tool`) 凭据策略：仅在具备 D-Bus 会话总线且二进制存在时启用。

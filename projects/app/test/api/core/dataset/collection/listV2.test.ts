@@ -1,11 +1,12 @@
 import listHandler from '@/pages/api/core/dataset/collection/listV2';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import pathsHandler from '@/pages/api/core/dataset/collection/paths';
@@ -54,6 +55,91 @@ describe('collection listV2 permission', () => {
       hasManagePer: true
     });
   });
+
+  it('does not mark the creator as owner under permission sync', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const dataset = await MongoDataset.create({
+      name: 'permission-sync-list',
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test',
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        permissionSync: true
+      }
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'owned-by-member',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: users.owner.teamId,
+        resourceId: dataset._id,
+        tmbId: member.tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.collection,
+        teamId: users.owner.teamId,
+        resourceId: collection._id,
+        tmbId: member.tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const response = await Call(listHandler, {
+      auth: member,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    expect(response.code).toBe(200);
+    // 托管模式下创建者身份不是授权来源：只有 ACL 里的 read
+    expect(
+      response.data.list.find((item) => String(item._id) === String(collection._id))?.permission
+    ).toMatchObject({
+      isOwner: false,
+      hasReadPer: true,
+      hasManagePer: false
+    });
+  });
+  it('short-circuits for a root user outside the dataset team', async () => {
+    const users = await getFakeUsers(1);
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'root-list-permission',
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test',
+      collectionPermissionEnabled: true
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'no-acl-for-root',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    // 与 authDatasetCollection 一致：root 不依赖团队归属，列表不能把整库过滤成空
+    expect(response.code).toBe(200);
+    expect(
+      response.data.list.find((item) => String(item._id) === String(collection._id))?.permission
+    ).toMatchObject({ role: OwnerRoleVal, isOwner: true });
+  });
 });
 
 describe('collection listV2 navigation folders', () => {
@@ -69,16 +155,25 @@ describe('collection listV2 navigation folders', () => {
       agentModel: 'test',
       collectionPermissionEnabled: true
     });
-    const create = (name: string, type: DatasetCollectionTypeEnum, parentId: string | null) =>
+    const create = (
+      name: string,
+      type: DatasetCollectionTypeEnum,
+      parentId: string | null,
+      extra: Record<string, unknown> = {}
+    ) =>
       MongoDatasetCollection.create({
         name,
         type,
         parentId,
         teamId: users.owner.teamId,
         tmbId: users.owner.tmbId,
-        datasetId: dataset._id
+        datasetId: dataset._id,
+        ...extra
       });
-    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null);
+    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null, {
+      apiFileId: 'remote-folder-id',
+      syncChildren: false
+    });
     const emptyFolder = await create('empty', DatasetCollectionTypeEnum.folder, null);
     const file = await create('file', DatasetCollectionTypeEnum.file, String(folder._id));
     await MongoResourcePermission.create({
@@ -98,22 +193,27 @@ describe('collection listV2 navigation folders', () => {
     return { member, dataset, folder, emptyFolder, file };
   };
 
-  it('lists folders that lead to readable collections as navigation-only and hides empty ones', async () => {
-    const { member, dataset, folder, emptyFolder } = await setup();
+  it.each([false, true])(
+    'lists folders that lead to readable collections as navigation-only (simple=%s) and omits api sync metadata',
+    async (simple) => {
+      const { member, dataset, folder, emptyFolder } = await setup();
 
-    const response = await Call(listHandler, {
-      auth: member,
-      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
-    });
+      const response = await Call(listHandler, {
+        auth: member,
+        body: { datasetId: dataset._id, pageSize: 10, offset: 0, simple }
+      });
 
-    expect(response.code).toBe(200);
-    const ids = response.data.list.map((item) => String(item._id));
-    expect(ids).toContain(String(folder._id));
-    expect(ids).not.toContain(String(emptyFolder._id));
-    const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
-    expect(item?.folderAccessMode).toBe('navigate');
-    expect(item?.permission.hasReadPer).toBe(false);
-  });
+      expect(response.code).toBe(200);
+      const ids = response.data.list.map((item) => String(item._id));
+      expect(ids).toContain(String(folder._id));
+      expect(ids).not.toContain(String(emptyFolder._id));
+      const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
+      expect(item?.folderAccessMode).toBe('navigate');
+      expect(item?.permission.hasReadPer).toBe(false);
+      expect(item?.apiFileId).toBeUndefined();
+      expect(item?.syncChildren).toBeUndefined();
+    }
+  );
 
   it('allows browsing into a navigation-only folder and lists its readable children', async () => {
     const { member, dataset, folder, file } = await setup();
@@ -234,6 +334,71 @@ describe('collection listV2 sort', () => {
     ]);
     // 默认 updateTime desc
     expect(await names()).toEqual(['Apple', 'banana', 'cherry']);
+  });
+
+  it('sorts Chinese, English, digits, and symbols by pinyin (normal mode) in asc and strict-reverse desc, and reflects renames', async () => {
+    const { root, createCollection, list } = await createFixture();
+    const renamedDoc = await createCollection('资料库');
+    await createCollection('Apple.pdf');
+    await createCollection('安全规范');
+    await createCollection('单据管理');
+    await createCollection('Doc.md');
+    await createCollection('2号文件');
+    await createCollection('#符号文件');
+
+    const expectedAsc = [
+      '安全规范',
+      'Apple.pdf',
+      '单据管理',
+      'Doc.md',
+      '资料库',
+      '2号文件',
+      '#符号文件'
+    ];
+    expect((await list({ sortBy: 'name', sortOrder: 'asc' })).map((item) => item.name)).toEqual(
+      expectedAsc
+    );
+    expect((await list({ sortBy: 'name', sortOrder: 'desc' })).map((item) => item.name)).toEqual(
+      [...expectedAsc].reverse()
+    );
+
+    // 改名后 nameSortKey 自动同步，排序立即更新
+    await MongoDatasetCollection.updateOne({ _id: renamedDoc._id }, { $set: { name: '阿凡达' } });
+    expect((await list({ sortBy: 'name', sortOrder: 'asc' })).map((item) => item.name)[0]).toBe(
+      '阿凡达'
+    );
+
+    // 公开详情接口不得透出内部排序键 nameSortKey
+    const detailResponse = await Call(detailHandler, {
+      auth: root,
+      query: { id: String(renamedDoc._id) }
+    });
+    expect(detailResponse.code).toBe(200);
+    expect(detailResponse.data).not.toHaveProperty('nameSortKey');
+  });
+
+  it('falls back to lower(name) sorting while unmigrated collections exist in the folder', async () => {
+    const { root, dataset, createCollection, list } = await createFixture();
+    await createCollection('安全规范');
+    await createCollection('Apple');
+
+    // 绕过 Mongoose 写入缺失 nameSortKey 的存量集合
+    await MongoDatasetCollection.collection.insertOne({
+      _id: new Types.ObjectId(),
+      teamId: new Types.ObjectId(root.teamId),
+      tmbId: new Types.ObjectId(root.tmbId),
+      datasetId: new Types.ObjectId(dataset._id),
+      parentId: null,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'beta',
+      createTime: new Date(),
+      updateTime: new Date()
+    });
+
+    const fallbackNames = (await list({ sortBy: 'name', sortOrder: 'asc' })).map(
+      (item) => item.name
+    );
+    expect(fallbackNames).toEqual(['Apple', 'beta', '安全规范']);
   });
 
   it('supports sorting in simple mode', async () => {
@@ -400,5 +565,170 @@ describe('collection listV2 sort', () => {
       });
       expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
     }
+  });
+
+  it('projects apiFileId and syncChildren for API dataset collections', async () => {
+    const { root, dataset } = await createFixture();
+    const pausedDir = await MongoDatasetCollection.create({
+      name: 'paused-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const activeDir = await MongoDatasetCollection.create({
+      name: 'active-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-active',
+      syncChildren: true,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    expect(response.code).toBe(200);
+    const byId = new Map(response.data.list.map((item) => [String(item._id), item]));
+    expect(byId.get(String(pausedDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false
+    });
+    expect(byId.get(String(activeDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-active',
+      syncChildren: true
+    });
+  });
+
+  it('transparently hides legacy SYSTEM_ROOT sentinel and exposes its children at root in browse and search', async () => {
+    const { root, dataset } = await createFixture();
+    await MongoDataset.updateOne(
+      { _id: dataset._id },
+      {
+        $set: {
+          type: DatasetTypeEnum.apiDataset,
+          apiDatasetServer: {
+            apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+          }
+        }
+      }
+    );
+
+    const sentinel = await MongoDatasetCollection.create({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const topFolder = await MongoDatasetCollection.create({
+      name: 'top-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-top',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const directRootFile = await MongoDatasetCollection.create({
+      name: 'direct-root-file',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-root',
+      parentId: null,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+
+    // 根目录浏览：隐藏 SYSTEM_ROOT，直接展示其子节点与原根级文件，且 parentId 归一化为 null
+    const rootRes = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+    expect(rootRes.code).toBe(200);
+    expect(rootRes.data.total).toBe(2);
+    expect(rootRes.data.list.map((item) => String(item._id)).sort()).toEqual(
+      [String(topFolder._id), String(directRootFile._id)].sort()
+    );
+    const listedTopFolder = rootRes.data.list.find(
+      (item) => String(item._id) === String(topFolder._id)
+    );
+    expect(listedTopFolder?.parentId ?? null).toBeNull();
+
+    // 根目录搜索：搜 ROOT_FOLDER 不应命中哨兵
+    const searchRes = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, searchText: 'ROOT_FOLDER', pageSize: 10, offset: 0 }
+    });
+    expect(searchRes.code).toBe(200);
+    expect(searchRes.data.total).toBe(0);
+    expect(searchRes.data.list).toHaveLength(0);
+  });
+
+  it('transparently hides legacy SYSTEM_ROOT sentinel under collection-level permissions', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const dataset = await MongoDataset.create({
+      name: 'legacy-root-acl-dataset',
+      type: DatasetTypeEnum.apiDataset,
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+      },
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId
+    });
+    await MongoResourcePermission.create({
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      resourceType: PerResourceTypeEnum.dataset,
+      resourceId: dataset._id,
+      permission: ReadPermissionVal
+    });
+
+    const sentinel = await MongoDatasetCollection.create({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT',
+      inheritPermission: true,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+    const topFolder = await MongoDatasetCollection.create({
+      name: 'acl-top-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-top',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      inheritPermission: false,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoResourcePermission.create({
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceId: topFolder._id,
+      permission: ReadPermissionVal
+    });
+
+    const res = await Call(listHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), pageSize: 10, offset: 0 }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(1);
+    expect(res.data.list.map((item) => String(item._id))).toEqual([String(topFolder._id)]);
+    expect(res.data.list[0]?.parentId ?? null).toBeNull();
   });
 });

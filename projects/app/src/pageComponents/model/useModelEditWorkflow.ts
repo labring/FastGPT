@@ -1,4 +1,7 @@
 import { getModelDetail, postUpdateModelChannels } from '@/web/core/ai/model/api';
+import { channelListItemToChannelInfo, getChannelList } from '@/web/core/ai/model/channel';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
@@ -35,6 +38,8 @@ export const useModelEditWorkflow = ({
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<ChannelInfoType>();
+  const [loadingEditChannelId, setLoadingEditChannelId] = useState<number | null>(null);
   const { openConfirm: openLeaveConfirm, ConfirmModal: LeaveConfirmModal } = useConfirm();
 
   // 详情一次返回模型参数和渠道展示数据
@@ -61,7 +66,13 @@ export const useModelEditWorkflow = ({
 
   /** 即时渠道写入同时刷新详情和父列表；取消编辑不能撤销已经提交的渠道关联。 */
   const refreshChannelBindings = async () => {
-    await Promise.all([refreshDetail(), onSuccess()]);
+    const results = await Promise.allSettled([refreshDetail(), onSuccess()]);
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (rejected) {
+      throw rejected.reason;
+    }
   };
 
   /** 即时解除渠道与当前模型的关联，由服务端原子清理渠道内的模型映射 */
@@ -111,8 +122,33 @@ export const useModelEditWorkflow = ({
     });
   };
 
-  /** 新建渠道成功后刷新 */
-  const refreshAfterChannelCreated = refreshChannelBindings;
+  /** 按渠道 ID 加载完整渠道配置并打开编辑弹窗，与渠道管理页设置入口一致。 */
+  const openEditChannel = async (channelId: number) => {
+    if (loadingEditChannelId !== null) return;
+    setLoadingEditChannelId(channelId);
+    try {
+      const targetSummary = detail?.channels.find((channel) => channel.id === channelId);
+      const candidates = await getChannelList({
+        search: targetSummary?.name,
+        channelType
+      });
+      const matched =
+        candidates.find((item) => item.id === channelId) ??
+        (targetSummary?.name
+          ? (await getChannelList({ channelType })).find((item) => item.id === channelId)
+          : undefined);
+      if (!matched) return;
+
+      setEditingChannel(channelListItemToChannelInfo(matched));
+    } catch (error) {
+      toast({
+        status: 'error',
+        title: getErrText(error)
+      });
+    } finally {
+      setLoadingEditChannelId(null);
+    }
+  };
 
   const navigateToChannelManagement = () => {
     onClose();
@@ -154,6 +190,11 @@ export const useModelEditWorkflow = ({
     setShowCreateChannel,
     showAssociateChannel,
     setShowAssociateChannel,
+    editingChannel,
+    setEditingChannel,
+    loadingEditChannelId,
+    openEditChannel,
+    refreshChannelBindings,
     goToChannelManagement,
     testModelChannel,
     testingChannelIds,
@@ -161,7 +202,6 @@ export const useModelEditWorkflow = ({
     submitModel,
     removeChannel,
     associateChannels,
-    refreshAfterChannelCreated,
     LeaveConfirmModal
   };
 };

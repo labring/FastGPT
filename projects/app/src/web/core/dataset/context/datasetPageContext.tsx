@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import React, { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
@@ -20,6 +20,7 @@ type DatasetPageContextType = {
   datasetId: string;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
+  patchDatasetDetail: (patch: Partial<DatasetItemType>) => void;
   updateDataset: (data: UpdateDatasetBody) => Promise<void>;
   refreshCollectionList: () => void;
   registerCollectionListRefresh: (refresh: () => void) => () => void;
@@ -51,6 +52,7 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   loadDatasetDetail: function (_id: string): Promise<DatasetItemType> {
     throw new Error('Function not implemented.');
   },
+  patchDatasetDetail: () => {},
   updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -98,6 +100,9 @@ export const DatasetPageContextProvider = ({
     setDatasetDetail(data);
     return data;
   };
+  const patchDatasetDetail = useCallback((patch: Partial<DatasetItemType>) => {
+    setDatasetDetail((prev) => ({ ...prev, ...patch }));
+  }, []);
   const updateDataset = async (data: UpdateDatasetBody) => {
     await putDatasetById(data);
 
@@ -138,21 +143,17 @@ export const DatasetPageContextProvider = ({
     errorToast: ''
   });
 
+  const isDetailLoaded = !!datasetId && datasetDetail._id === datasetId;
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () =>
       getDatasetPaths({
-        sourceId: datasetDetail?._id,
+        sourceId: datasetDetail._id,
         type: 'parent'
-      }).then((res) => {
-        res.push({
-          parentId: '',
-          parentName: datasetDetail.name
-        });
-        return res;
       }),
     {
       manual: false,
-      refreshDeps: [datasetDetail.parentId]
+      ready: isDetailLoaded,
+      refreshDeps: [datasetDetail._id, datasetDetail.parentId]
     }
   );
 
@@ -178,6 +179,7 @@ export const DatasetPageContextProvider = ({
     datasetId,
     datasetDetail,
     loadDatasetDetail,
+    patchDatasetDetail,
     updateDataset,
     refreshCollectionList,
     registerCollectionListRefresh,

@@ -1408,4 +1408,117 @@ describe('logs list API - errorFilter', () => {
       versionFindSpy.mockRestore();
     }
   });
+
+  it('导出与列表查询兼容历史非字符串 originIp，不中断后续正常记录导出', async () => {
+    const baseTime = Date.now();
+    const base = {
+      appId: new Types.ObjectId(testAppId),
+      teamId: new Types.ObjectId(testTeamId),
+      tmbId: new Types.ObjectId(testTmbId),
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api'
+    };
+    // 通过原生 collection 写入非字符串 originIp，且将 updateTime 置前，确保先于正常记录被流式导出读取。
+    await MongoChat.collection.insertMany([
+      {
+        ...base,
+        chatId: 'ip-legacy-number',
+        metadata: { originIp: 12345 },
+        createTime: new Date(baseTime),
+        updateTime: new Date(baseTime)
+      },
+      {
+        ...base,
+        chatId: 'ip-legacy-object',
+        metadata: { originIp: { raw: '139.162.20.230' } },
+        createTime: new Date(baseTime - 1000),
+        updateTime: new Date(baseTime - 1000)
+      },
+      {
+        ...base,
+        chatId: 'ip-public',
+        metadata: { originIp: '139.162.20.230' },
+        createTime: new Date(baseTime - 2000),
+        updateTime: new Date(baseTime - 2000)
+      },
+      {
+        ...base,
+        chatId: 'ip-private',
+        metadata: { originIp: '192.168.1.1' },
+        createTime: new Date(baseTime - 3000),
+        updateTime: new Date(baseTime - 3000)
+      },
+      {
+        ...base,
+        chatId: 'ip-missing',
+        createTime: new Date(baseTime - 4000),
+        updateTime: new Date(baseTime - 4000)
+      }
+    ] as any);
+
+    const listed = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01'
+        }
+      }
+    );
+    expect(listed.code, String(listed.error)).toBe(200);
+    expect(listed.data.list).toHaveLength(5);
+    expect(
+      listed.data.list.find((item) => item.chatId === 'ip-legacy-number')?.originIp
+    ).toBeUndefined();
+    expect(
+      listed.data.list.find((item) => item.chatId === 'ip-legacy-object')?.originIp
+    ).toBeUndefined();
+    expect(listed.data.list.find((item) => item.chatId === 'ip-public')).toMatchObject({
+      originIp: '139.162.20.230',
+      region: '新加坡，新加坡'
+    });
+
+    const exportedZh = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: 'Session,IP及属地',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.REGION]
+      }
+    });
+    expect(exportedZh.code).toBe(200);
+    expect(exportedZh.raw.split('\n')).toHaveLength(6);
+    expect(exportedZh.raw).toContain("\nip-legacy-number,'-,");
+    expect(exportedZh.raw).toContain("\nip-legacy-object,'-,");
+    expect(exportedZh.raw).toContain('\nip-public,新加坡，新加坡: 139.162.20.230,');
+    expect(exportedZh.raw).toContain('\nip-private,其他: 192.168.1.1,');
+    expect(exportedZh.raw).toContain("\nip-missing,'-,");
+
+    const exportedEn = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: { cookie: 'NEXT_LOCALE=en' },
+      body: {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        title: 'Session,IP & Region',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.REGION]
+      }
+    });
+    expect(exportedEn.code).toBe(200);
+    expect(exportedEn.raw.split('\n')).toHaveLength(6);
+    expect(exportedEn.raw).toContain("\nip-legacy-number,'-,");
+    expect(exportedEn.raw).toContain("\nip-legacy-object,'-,");
+    expect(exportedEn.raw).toMatch(/\nip-public,"Singapore, ?Singapore: 139\.162\.20\.230",/);
+    expect(exportedEn.raw).toContain('\nip-private,Other: 192.168.1.1,');
+    expect(exportedEn.raw).toContain("\nip-missing,'-,");
+  });
 });

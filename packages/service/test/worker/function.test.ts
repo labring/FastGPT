@@ -436,6 +436,7 @@ describe('worker/function', () => {
           kind: 's3',
           sizeBytes: 10,
           metadata: { filename: 'a.txt', extension: 'txt' },
+          openStream: vi.fn(),
           materialize
         }
       });
@@ -479,6 +480,7 @@ describe('worker/function', () => {
           kind: 'externalHttp',
           maxSizeBytes: 1024,
           metadata: {},
+          openStream: vi.fn(),
           materialize
         }
       });
@@ -510,6 +512,7 @@ describe('worker/function', () => {
           kind: 'externalHttp',
           maxSizeBytes: 100,
           metadata: { filename: 'a.txt' },
+          openStream: vi.fn(),
           materialize: vi.fn().mockRejectedValue(sourceError)
         }
       });

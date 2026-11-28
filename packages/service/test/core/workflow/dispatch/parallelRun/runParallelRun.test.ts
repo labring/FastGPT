@@ -393,7 +393,7 @@ describe('dispatchParallelRun', () => {
     ]);
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0_attempt_0',
-      error: expect.any(String)
+      errorText: expect.any(String)
     });
     expect(nodeResponseSink.publish.mock.calls[1][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0_attempt_1',

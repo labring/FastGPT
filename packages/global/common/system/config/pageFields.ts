@@ -1,9 +1,8 @@
-import type { SystemInstanceConfigEdition } from './registry';
-import { isConfigFieldVisible } from './permission';
+import { type ConfigFieldVisibilityOptions, isConfigFieldVisible } from './permission';
 
 /**
  * 每个后台配置页面实际展示的实例配置字段集合（可编辑控件及只读连接地址）。
- * 用于按「版本（社区版/商业版）」和「ENABLE_SAAS_ADMIN_CONFIG」动态计算页面可见性：
+ * 用于按「版本（社区版/商业版）」与显示开关（ENABLE_SAAS_ADMIN_CONFIG / ENABLE_SANGFOR_ADMIN_CONFIG）动态计算页面可见性：
  * 当页面内所有字段在当前环境下均不可见时，该页面的菜单项自动隐藏。
  * 仅 API 可配置的字段不登记到页面；同一字段在多个页面有控件时分别登记。
  */
@@ -12,10 +11,11 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'site.publicUrl',
     'providers.documentParse.provider',
     'providers.documentParse.customPdf.url',
+    'providers.documentParse.customPdf.somarkBaseUrl',
+    'providers.documentParse.customPdf.timeoutSeconds',
     'providers.documentParse.customPdf.price',
     'providers.documentParse.sangfor.url',
     'providers.documentParse.sangfor.extensions',
-    'providers.documentParse.sangfor.timeoutSeconds',
     'providers.documentParse.customPdf.key',
     'providers.documentParse.customPdf.somarkApiKey',
     'providers.documentParse.customPdf.doc2xKey',
@@ -31,7 +31,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.email.pass',
     'auth.loginProviders.phone.accessKeySecret',
     'feature.multipleDataToBase64',
-    'feature.agentEngine',
     'storage.fileDomain',
     'storage.downloadMode',
     'storage.externalEndpoint',
@@ -216,12 +215,16 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'subservice.agentSandbox.common.npmRegistry',
     'subservice.agentSandbox.common.pypiIndexUrl',
     'subservice.agentSandbox.common.aptMirror',
+    'subservice.agentSandbox.common.httpProxy',
+    'subservice.agentSandbox.common.httpsProxy',
+    'subservice.agentSandbox.common.noProxy',
     'subservice.agentSandbox.opensandbox.baseUrl',
     'subservice.agentSandbox.opensandbox.runtime',
     'subservice.agentSandbox.opensandbox.cpuOvercommitFactor',
     'subservice.agentSandbox.opensandbox.memoryOvercommitFactor',
     'subservice.agentSandbox.opensandbox.image',
     'subservice.agentSandbox.opensandbox.useServerProxy',
+    'subservice.agentSandbox.opensandbox.enableUpstreamProxy',
     'subservice.agentSandbox.opensandbox.volumeManagerUrl',
     'subservice.agentSandbox.opensandbox.volumeNamePrefix',
     'subservice.agentSandbox.opensandbox.apiKey',
@@ -234,10 +237,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
  */
 export const countPageVisibleFields = (
   route: string,
-  options: {
-    edition: SystemInstanceConfigEdition;
-    enableSaasAdminConfig?: boolean;
-  }
+  options: ConfigFieldVisibilityOptions
 ): number => {
   const fields = adminConfigPageFieldsMap[route];
   if (!fields) return 0;

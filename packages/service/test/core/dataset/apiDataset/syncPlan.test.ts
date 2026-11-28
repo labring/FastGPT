@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileSyncPlan,
   selectApiFileSyncDeletes
@@ -33,17 +32,16 @@ const record = (apiFileId: string, fields: Partial<ApiFileRecord> = {}): ApiFile
 
 describe('buildApiFileSyncPlan', () => {
   it('一次计算目录、文件、改名、移动、删除与内容候选，规划不修改输入或已提交映射', () => {
-    const root = local(RootCollectionId);
     const manual = local();
-    const oldFolder = local('oldFolder', { parentId: root._id });
+    const oldFolder = local('oldFolder', { parentId: null });
     const oldFile = local('oldFile', {
       type: DatasetCollectionTypeEnum.apiFile,
       parentId: oldFolder._id,
       apiFileParentId: 'oldFolder',
       inheritPermission: true
     });
-    const gone = local('gone', { parentId: root._id });
-    const collections = [root, manual, oldFolder, oldFile, gone];
+    const gone = local('gone', { parentId: null });
+    const collections = [manual, oldFolder, oldFile, gone];
     const records = [
       record('newFolder'),
       record('oldFolder', { name: 'folder renamed' }),
@@ -57,11 +55,10 @@ describe('buildApiFileSyncPlan', () => {
       record('newFile', { type: 'file', parentDirId: 'newFolder', depth: 1 })
     ];
     const before = JSON.stringify({ collections, records });
-    const plan = buildApiFileSyncPlan({ collections, records });
+    const plan = buildApiFileSyncPlan({ collections, records, syncAll: true });
     const newFolderId = String(plan.folders[0].id);
     expect(JSON.stringify({ collections, records })).toBe(before);
     expect(plan.idMap.has('newFolder')).toBe(false);
-    expect(plan.rootCollectionId).toBe(String(root._id));
     expect(plan.missingFiles.map((item) => item.apiFileId)).toEqual(['newFile']);
     expect(plan.existingFileIds).toEqual(['oldFile']);
     expect(plan.existingCount).toBe(2);
@@ -78,7 +75,7 @@ describe('buildApiFileSyncPlan', () => {
         inheritPermission: true
       })
     );
-    expect(plan.parentChanges).toContainEqual({ id: newFolderId, parentId: String(root._id) });
+    expect(plan.parentChanges).toContainEqual({ id: newFolderId, parentId: null });
     expect(plan.deleteCandidates).toEqual([gone]);
   });
 
@@ -93,7 +90,6 @@ describe('buildApiFileSyncPlan', () => {
         record('child', { type: 'file', parentDirId: 'doc#dir', apiFileParentId: 'doc', depth: 1 })
       ]
     });
-    expect(plan.rootCollectionId).toBeUndefined();
     expect(plan.parentChanges).toEqual([
       { id: String(plan.folders[0].id), parentId: null },
       { id: String(body._id), parentId: String(plan.folders[0].id) }
@@ -106,6 +102,71 @@ describe('buildApiFileSyncPlan', () => {
     });
     expect(unchanged.parentChanges).toEqual([]);
     expect(unchanged.renames).toEqual([]);
+  });
+
+  it('syncAll=false 时由父目录 syncChildren=false 阻断新增文件（含 docA#dir 删正文），syncAll=true 时覆盖残留暂停状态', () => {
+    const pausedFolder = local('paused', { syncChildren: false });
+    const derivedPaused = local('docA#dir', {
+      syncChildren: false,
+      metadata: { apiFileSourceId: 'docA' }
+    });
+    const keptChild = local('childA', {
+      type: DatasetCollectionTypeEnum.apiFile,
+      parentId: derivedPaused._id,
+      apiFileParentId: 'docA'
+    });
+    const records = [
+      record('rootNew', { type: 'file' }),
+      record('paused'),
+      record('pausedNew', {
+        type: 'file',
+        parentDirId: 'paused',
+        apiFileParentId: 'paused',
+        depth: 1
+      }),
+      record('docA#dir', { sourceId: 'docA' }),
+      record('docA', { type: 'file', parentDirId: 'docA#dir', depth: 1 }),
+      record('childA', {
+        type: 'file',
+        parentDirId: 'docA#dir',
+        apiFileParentId: 'docA',
+        depth: 1
+      }),
+      record('newChildA', {
+        type: 'file',
+        parentDirId: 'docA#dir',
+        apiFileParentId: 'docA',
+        depth: 1
+      })
+    ];
+
+    const planSyncAllOff = buildApiFileSyncPlan({
+      collections: [pausedFolder, derivedPaused, keptChild],
+      records,
+      syncAll: false
+    });
+    expect(planSyncAllOff.missingFiles).toEqual([]);
+    expect(planSyncAllOff.existingFileIds).toEqual(['childA']);
+
+    const planSyncAllOn = buildApiFileSyncPlan({
+      collections: [pausedFolder, derivedPaused, keptChild],
+      records,
+      syncAll: true
+    });
+    expect(planSyncAllOn.missingFiles.map((item) => item.apiFileId)).toEqual([
+      'rootNew',
+      'pausedNew',
+      'docA',
+      'newChildA'
+    ]);
+
+    const planWithBypass = buildApiFileSyncPlan({
+      collections: [pausedFolder, derivedPaused, keptChild],
+      records,
+      syncAll: false,
+      alwaysAllowNewFileIds: new Set(['docA'])
+    });
+    expect(planWithBypass.missingFiles.map((item) => item.apiFileId)).toEqual(['docA']);
   });
 
   it.each([

@@ -1,5 +1,5 @@
 import type { CliCommandSpec } from '../../pipeline';
-import { requireActiveClient } from '../dataset/shared';
+import { requireActiveClient } from '../shared/helpers';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -8,7 +8,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from '../workflow/shared';
+} from '../shared/workflow-options';
 
 /**
  * 工作流文档生命周期命令：init / build / import / inspect / validate。

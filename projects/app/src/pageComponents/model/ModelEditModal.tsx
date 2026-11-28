@@ -42,6 +42,11 @@ const ModelEditModal = ({
     setShowCreateChannel,
     showAssociateChannel,
     setShowAssociateChannel,
+    editingChannel,
+    setEditingChannel,
+    loadingEditChannelId,
+    openEditChannel,
+    refreshChannelBindings,
     goToChannelManagement,
     testModelChannel,
     testingChannelIds,
@@ -49,7 +54,6 @@ const ModelEditModal = ({
     submitModel,
     removeChannel,
     associateChannels,
-    refreshAfterChannelCreated,
     LeaveConfirmModal
   } = useModelEditWorkflow({ model, channelType, onSuccess, onClose });
 
@@ -111,6 +115,8 @@ const ModelEditModal = ({
                   onManage={goToChannelManagement}
                   onTest={(channelId) => void testModelChannel(channelId)}
                   testingChannelIds={testingChannelIds}
+                  onEdit={(channelId) => void openEditChannel(channelId)}
+                  editingChannelId={loadingEditChannelId}
                   onRemove={(channelId) => void removeChannel(channelId)}
                 />
               )
@@ -155,8 +161,17 @@ const ModelEditModal = ({
             avatar: detail.model.avatar
           }}
           channelType={channelType}
-          onSuccess={refreshAfterChannelCreated}
+          onSuccess={refreshChannelBindings}
           onClose={() => setShowCreateChannel(false)}
+        />
+      )}
+
+      {editingChannel && (
+        <EditChannelModal
+          defaultConfig={editingChannel}
+          channelType={channelType}
+          onSuccess={refreshChannelBindings}
+          onClose={() => setEditingChannel(undefined)}
         />
       )}
 

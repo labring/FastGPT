@@ -3,6 +3,7 @@ import { PaginationPageSizeSchema, PaginationResponseSchema } from '../../../../
 import { IntSchema, NumSchema, queryArrayParam } from '../../../../../common/zod';
 import {
   ChannelConfigSchema,
+  ChannelInfoSchema,
   ChannelManualStatusSchema
 } from '../../../../../core/ai/model/channel';
 import { ChannelTypeSchema } from '../../../../../core/ai/model/scope';
@@ -39,12 +40,53 @@ export type CreateChannelResponse = z.infer<typeof CreateChannelResponseSchema>;
 
 // ═══ PUT /api/core/ai/model/channel/update ═══
 // AI Proxy 使用 patch 语义：未提供的字段保持不变，显式空值才会覆盖已有配置。
-export const UpdateChannelBodySchema = ChannelConfigSchema.partial().extend({
-  id: z.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  channelType: ChannelTypeSchema.meta({
-    description: 'system=系统渠道（root 专用）；team=成员渠道'
+// 渠道编辑场景优先使用增量字段（addModels/removeModels、setModelMapping/removeModelMappingKeys），
+// 在服务端锁内基于最新渠道快照合并，避免过期表单覆盖并发导入或手动绑定。
+export const UpdateChannelBodySchema = ChannelConfigSchema.partial()
+  .extend({
+    id: z.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
+    channelType: ChannelTypeSchema.meta({
+      description: 'system=系统渠道（root 专用）；team=成员渠道'
+    }),
+    addModels: z
+      .array(z.string())
+      .optional()
+      .meta({ description: '增量追加的上游模型名，与 models 互斥' }),
+    removeModels: z
+      .array(z.string())
+      .optional()
+      .meta({ description: '增量移除的上游模型名，与 models 互斥' }),
+    setModelMapping: z
+      .record(z.string(), z.string())
+      .optional()
+      .meta({ description: '增量新增或更新的模型别名映射，与 model_mapping 互斥' }),
+    removeModelMappingKeys: z
+      .array(z.string())
+      .optional()
+      .meta({ description: '增量移除的模型别名键，与 model_mapping 互斥' })
   })
-});
+  .superRefine((data, ctx) => {
+    if (
+      data.models !== undefined &&
+      (data.addModels !== undefined || data.removeModels !== undefined)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['models'],
+        message: 'models cannot be combined with addModels or removeModels'
+      });
+    }
+    if (
+      data.model_mapping !== undefined &&
+      (data.setModelMapping !== undefined || data.removeModelMappingKeys !== undefined)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['model_mapping'],
+        message: 'model_mapping cannot be combined with setModelMapping or removeModelMappingKeys'
+      });
+    }
+  });
 export type UpdateChannelBody = z.infer<typeof UpdateChannelBodySchema>;
 
 // ═══ DELETE /api/core/ai/model/channel/delete ═══
@@ -160,6 +202,7 @@ export const ChannelListItemSchema = z.object({
   name: z.string(),
   type: z.number().int().meta({ description: '提供商类型' }),
   status: z.number().int().meta({ description: '1=启用 / 2=禁用' }),
+  keyConfigured: ChannelInfoSchema.shape.keyConfigured,
   models: z.array(z.string()).meta({ description: '上游模型名列表' }),
   model_mapping: z.record(z.string(), z.string()).optional(),
   configs: ChannelConfigSchema.shape.configs.meta({

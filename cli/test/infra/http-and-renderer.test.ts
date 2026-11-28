@@ -277,14 +277,16 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(errJson.error.message).toBe('Authorization: Bearer [REDACTED]');
   });
 
-  it('streams SSE events with chunk parsing and termination', async () => {
+  it('streams SSE events past [DONE] until EOF and cancels reader on early consumer break', async () => {
     const sseBody = [
       ': ping comment\n\n',
       'event: answer\n',
       'data: Hello\n\n',
       'data: World\n',
       'id: msg-1\n\n',
-      'data: [DONE]\n\n'
+      'data: [DONE]\n\n',
+      'event: error\n',
+      'data: {"message":"persist failed"}\n\n'
     ].join('');
 
     const encoder = new TextEncoder();
@@ -312,8 +314,185 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     expect(events).toEqual([
       { event: 'answer', data: 'Hello' },
-      { data: 'World', id: 'msg-1' }
+      { data: 'World', id: 'msg-1' },
+      { data: '[DONE]' },
+      { event: 'error', data: '{"message":"persist failed"}' }
     ]);
+
+    let earlyCancelled = false;
+    const infiniteStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('event: answer\ndata: first\n\n'));
+      },
+      cancel() {
+        earlyCancelled = true;
+      }
+    });
+    const breakClient = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(infiniteStream, { headers: { 'content-type': 'text/event-stream' } })
+    });
+    for await (const evt of breakClient.streamSse({ path: '/v2/chat/completions', body: {} })) {
+      expect(evt.data).toBe('first');
+      break;
+    }
+    expect(earlyCancelled).toBe(true);
+  });
+
+  it('aborts stalled SSE body stream when timeoutMs expires after headers arrive', async () => {
+    const encoder = new TextEncoder();
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('event: answer\ndata: {"partial":true}\n\n'));
+      },
+      cancel() {
+        cancelled = true;
+      }
+    });
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(stream, { headers: { 'content-type': 'text/event-stream' } })
+    });
+
+    const received: string[] = [];
+    await expect(
+      (async () => {
+        for await (const evt of client.streamSse({
+          path: '/core/chat/chatTest',
+          body: {},
+          timeoutMs: 40
+        })) {
+          received.push(evt.data);
+        }
+      })()
+    ).rejects.toThrow(/SSE stream timed out/i);
+    expect(received).toEqual(['{"partial":true}']);
+    expect(cancelled).toBe(true);
+  });
+
+  it('strips signed query parameters and raw XML error bodies from presigned upload errors', async () => {
+    const signedUrl =
+      'https://s3.example.com/bucket/avatar.png?X-Amz-Signature=super-secret-sig&X-Amz-Credential=ak-123';
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(
+          '<Error><Code>AccessDenied</Code><StringToSign>sensitive-canonical-sig</StringToSign></Error>',
+          { status: 403 }
+        )
+    });
+
+    try {
+      await client.putPresignedUrl({
+        url: signedUrl,
+        body: new Uint8Array([1, 2, 3])
+      });
+      expect.unreachable('should fail');
+    } catch (error: any) {
+      expect(error.message).toContain('HTTP 403 (AccessDenied)');
+      expect(error.details?.url).toBe('https://s3.example.com/bucket/avatar.png');
+      expect(JSON.stringify(error)).not.toContain('super-secret-sig');
+      expect(JSON.stringify(error)).not.toContain('ak-123');
+      expect(JSON.stringify(error)).not.toContain('sensitive-canonical-sig');
+    }
+  });
+
+  it('classifies post-header body drops, invalid envelopes, and mutating 5xx responses as outcome unknown', async () => {
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.endsWith('/proxy-html')) {
+          return new Response('<html><body>SSO Login</body></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' }
+          });
+        }
+        if (url.endsWith('/non-200-code')) {
+          return jsonResponse({ code: 0, data: null }, 200);
+        }
+        if (url.endsWith('/plain-json-no-envelope')) {
+          return jsonResponse({ ok: true }, 200);
+        }
+        if (url.endsWith('/empty-200')) {
+          return new Response('', { status: 200 });
+        }
+        if (url.endsWith('/no-content')) {
+          return new Response(null, { status: 204 });
+        }
+        if (url.endsWith('/gateway-502')) {
+          return jsonResponse({ code: 502, message: 'Bad Gateway' }, 502);
+        }
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(new TypeError('socket closed mid-body'));
+            }
+          }),
+          { status: 200 }
+        );
+      }
+    });
+
+    await expect(
+      client.request({ method: 'PUT', path: '/core/app/httpTools/update' })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'response_body',
+        outcome: 'unknown'
+      })
+    });
+    await expect(client.request({ method: 'POST', path: '/proxy-html' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(client.request({ method: 'PUT', path: '/non-200-code' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        serverCode: 0,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(
+      client.request({ method: 'PUT', path: '/plain-json-no-envelope' })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({
+        httpStatus: 200,
+        phase: 'invalid_response',
+        outcome: 'unknown'
+      })
+    });
+    await expect(
+      client.request({ method: 'POST', path: '/plain-json-no-envelope', rawJson: true })
+    ).resolves.toEqual({ ok: true });
+    await expect(client.request({ method: 'GET', path: '/empty-200' })).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      details: expect.objectContaining({ httpStatus: 200, phase: 'invalid_response' })
+    });
+    await expect(client.request({ method: 'PUT', path: '/gateway-502' })).rejects.toMatchObject({
+      code: 'API_ERROR',
+      httpStatus: 502,
+      details: expect.objectContaining({ outcome: 'unknown' })
+    });
+    await expect(
+      client.request({ method: 'DELETE', path: '/no-content' })
+    ).resolves.toBeUndefined();
   });
 
   it('supports uploadMultipart and requestRaw methods', async () => {
@@ -350,6 +529,102 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     const rawRes = await client.requestRaw({ method: 'GET', path: '/download' });
     expect(rawRes.status).toBe(200);
     expect(await rawRes.text()).toBe('file-content-raw');
+  });
+
+  it('supports uploadBinary with content-type/length headers and unified FastGPT error mapping', async () => {
+    let capturedContentType: string | null = null;
+    let capturedContentLength: string | null = null;
+    let capturedBytes: Uint8Array | undefined;
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        if (req.url.includes('/skill/import-ok')) {
+          capturedContentType = req.headers.get('content-type');
+          capturedContentLength = req.headers.get('content-length');
+          capturedBytes = new Uint8Array(await req.arrayBuffer());
+          return jsonResponse({ code: 200, data: '68ad85a7463006c963799a21' });
+        }
+        return jsonResponse(
+          { code: 514, statusText: 'unAuthApiKey', message: 'Invalid API key', data: null },
+          500
+        );
+      }
+    });
+
+    const payload = new Uint8Array([80, 75, 3, 4]);
+    const skillId = await client.uploadBinary<string>({
+      path: '/skill/import-ok',
+      query: { filename: 'demo.zip' },
+      body: payload,
+      contentType: 'application/zip'
+    });
+    expect(skillId).toBe('68ad85a7463006c963799a21');
+    expect(capturedContentType).toBe('application/zip');
+    expect(capturedContentLength).toBe('4');
+    expect(Array.from(capturedBytes ?? [])).toEqual([80, 75, 3, 4]);
+
+    await expect(
+      client.uploadBinary({
+        path: '/skill/import-auth-fail',
+        body: payload,
+        contentType: 'application/zip'
+      })
+    ).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth
+    });
+  });
+
+  it('supports putPresignedUrl for relative and cross-origin URLs without attaching auth headers', async () => {
+    const seen: Array<{ url: string; method: string; headers: Headers; size: number }> = [];
+    const client = createFastGptHttpClient({
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input, init) => {
+        const req = input instanceof Request ? input : new Request(input, init);
+        const buf = await req.arrayBuffer();
+        seen.push({ url: req.url, method: req.method, headers: req.headers, size: buf.byteLength });
+        if (req.url.includes('fail')) {
+          return new Response('AccessDenied', { status: 403 });
+        }
+        return new Response(null, { status: 200 });
+      }
+    });
+
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    await client.putPresignedUrl({
+      url: '/api/system/file/u/abc',
+      body: bytes,
+      headers: { 'content-type': 'image/png' }
+    });
+    await client.putPresignedUrl({
+      url: 'https://oss.example.com/bucket/avatar.png?sig=1',
+      body: bytes,
+      headers: { 'content-type': 'image/png' }
+    });
+
+    expect(seen[0]).toMatchObject({
+      url: 'https://cloud.fastgpt.cn/api/system/file/u/abc',
+      method: 'PUT',
+      size: 4
+    });
+    expect(seen[1]).toMatchObject({
+      url: 'https://oss.example.com/bucket/avatar.png?sig=1',
+      method: 'PUT',
+      size: 4
+    });
+    expect(seen[1].headers.get('token')).toBeNull();
+    expect(seen[1].headers.get('authorization')).toBeNull();
+
+    await expect(
+      client.putPresignedUrl({
+        url: 'https://oss.example.com/fail',
+        body: bytes
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
   });
 
   it('blocks cross-origin redirects in beforeRequest and prevents credential leakage', async () => {

@@ -43,4 +43,38 @@ describe('channel API protocol normalization', () => {
       UpdateChannelBodySchema.parse({ id: 1, channelType: 'system', configs: {} }).configs
     ).toEqual({});
   });
+
+  it('accepts incremental model and mapping deltas and rejects mixing them with full fields', () => {
+    const parsed = UpdateChannelBodySchema.parse({
+      id: 1,
+      channelType: 'team',
+      addModels: ['gpt-4o'],
+      removeModels: ['legacy-model'],
+      setModelMapping: { 'gpt-4o': 'upstream/gpt-4o' },
+      removeModelMappingKeys: ['legacy-model']
+    });
+    expect(parsed).toMatchObject({
+      addModels: ['gpt-4o'],
+      removeModels: ['legacy-model'],
+      setModelMapping: { 'gpt-4o': 'upstream/gpt-4o' },
+      removeModelMappingKeys: ['legacy-model']
+    });
+
+    expect(
+      UpdateChannelBodySchema.safeParse({
+        id: 1,
+        channelType: 'team',
+        models: ['gpt-4o'],
+        addModels: ['claude-3']
+      }).success
+    ).toBe(false);
+    expect(
+      UpdateChannelBodySchema.safeParse({
+        id: 1,
+        channelType: 'team',
+        model_mapping: { 'gpt-4o': 'up' },
+        removeModelMappingKeys: ['gpt-4o']
+      }).success
+    ).toBe(false);
+  });
 });

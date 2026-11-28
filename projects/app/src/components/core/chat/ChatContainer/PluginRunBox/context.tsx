@@ -34,6 +34,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
+import { getChatItemErrorText } from '@/global/core/chat/utils';
 import {
   WorkflowRuntimeContext,
   WorkflowRuntimeContextProvider
@@ -61,6 +62,12 @@ type PluginRunMessageTarget = {
 
 const isAbortByLeave = (reason: unknown) =>
   reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
+
+/** 提取插件运行结果中的顶层失败错误，优先读取 errorText 并回退历史 error 与预计算错误摘要。 */
+const getPluginRunErrorText = (
+  record?: Pick<ChatSiteItemType, 'responseData' | 'errorText'>
+): string | undefined =>
+  getChatItemErrorText(record?.responseData)?.errorText ?? record?.errorText?.errorText;
 
 export const PluginRunContext = createContext<
   Omit<PluginRunContextType, 'appId' | 'chatId' | 'outLinkAuthData'>
@@ -418,20 +425,17 @@ const PluginRunContextInner = ({
             }));
             setChatRecords(normalizedRecords);
 
-            const lastAi = [...normalizedRecords]
+            // 仅按本轮 responseChatItemId 提取节点错误，避免新轮次落库前断流时误把上一轮失败当作本轮错误提示。
+            const currentRoundAi = [...normalizedRecords]
               .reverse()
-              .find((item) => item.obj === ChatRoleEnum.AI);
-            const lastNodeError = lastAi?.responseData?.[lastAi.responseData.length - 1]?.error;
-            if (lastNodeError) {
+              .find((item) => item.obj === ChatRoleEnum.AI && item.dataId === responseChatItemId);
+            const currentRoundErrorText = getPluginRunErrorText(currentRoundAi);
+            if (currentRoundErrorText) {
               toast({
-                title: t(getErrText(lastNodeError)),
+                title: t(currentRoundErrorText),
                 status: 'error'
               });
-            } else if (
-              errorMsg &&
-              previousRecords.length > 0 &&
-              !normalizedRecords.some((item) => item.dataId === responseChatItemId)
-            ) {
+            } else if (errorMsg && previousRecords.length > 0 && !currentRoundAi) {
               toast({ title: errorMsg, status: 'error' });
             }
           } else {
@@ -791,9 +795,10 @@ const PluginRunContextInner = ({
 
               // Check node response error
               const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
-              if (responseData[responseData.length - 1]?.error) {
+              const lastNodeErrorText = getPluginRunErrorText({ responseData });
+              if (lastNodeErrorText) {
                 toast({
-                  title: t(getErrText(responseData[responseData.length - 1].error)),
+                  title: t(lastNodeErrorText),
                   status: 'error'
                 });
               }

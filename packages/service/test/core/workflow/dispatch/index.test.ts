@@ -2418,7 +2418,6 @@ describe('Workflow runtime LLM token summary', () => {
             expect.objectContaining({
               response: expect.objectContaining({
                 nodeId: 'summary-node',
-                error: 'after LLM',
                 errorText: 'after LLM'
               }),
               emit: true
@@ -2505,8 +2504,8 @@ describe('Workflow runtime error summary', () => {
         expect(result.workflowRuntimeSummary).not.toHaveProperty('error');
         for (const call of publish.mock.calls) {
           for (const { response } of call[0]) {
-            expect(typeof (response.error ?? response.errorText)).toBe('string');
             expect(typeof response.errorText).toBe('string');
+            expect(response.error).toBeUndefined();
             expect(JSON.stringify(response)).not.toContain('private-cause');
           }
         }
@@ -2563,11 +2562,11 @@ describe('Workflow runtime error summary', () => {
         expect.objectContaining({
           response: expect.objectContaining({
             nodeId: 'raw-only-node',
-            error: 'Agent runtime crashed',
             errorText: 'Agent runtime crashed'
           })
         })
       ]);
+      expect(publish.mock.calls[0][0][0].response.error).toBeUndefined();
     } finally {
       callbackMap[FlowNodeTypeEnum.textEditor] = original;
     }

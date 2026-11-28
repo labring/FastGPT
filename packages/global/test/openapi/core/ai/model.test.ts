@@ -13,6 +13,7 @@ import {
   UpdateModelStatusBodySchema,
   ImportedSystemModelSchema,
   MyLLMModelItemSchema,
+  PreviewImportFromChannelQuerySchema,
   PreviewImportFromChannelResponseSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
@@ -115,6 +116,7 @@ describe('admin system model API schemas', () => {
 
     const body = ImportFromChannelBodySchema.parse({
       channelId: 1,
+      channelType: 'system',
       models: [{ ...modelData, isActive: false, sortOrder: 10 }, modelData]
     });
 
@@ -126,6 +128,34 @@ describe('admin system model API schemas', () => {
       modelData
     ]);
     expect(body.models[0]).not.toHaveProperty('sortOrder');
+  });
+
+  it('requires channelType to preview and apply a channel import', () => {
+    const preview = PreviewImportFromChannelQuerySchema.safeParse({ channelId: 1 });
+    const apply = ImportFromChannelBodySchema.safeParse({ channelId: 1, models: [] });
+    const scopeIssue = expect.objectContaining({ path: ['channelType'] });
+
+    expect(preview.error?.issues).toEqual([scopeIssue]);
+    expect(apply.error?.issues).toEqual([scopeIssue]);
+  });
+
+  it('accepts 100 channel import models and rejects 101', () => {
+    const models = Array.from({ length: 101 }, (_, index) => ({
+      type: 'llm',
+      provider: 'openai',
+      model: `openai/model-${index}`,
+      name: `Model ${index}`,
+      scope: 'team',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    }));
+    const scope = { channelId: 1, channelType: 'team' };
+
+    expect(
+      ImportFromChannelBodySchema.parse({ ...scope, models: models.slice(0, 100) }).models
+    ).toHaveLength(100);
+    expect(ImportFromChannelBodySchema.safeParse({ ...scope, models }).error?.issues).toEqual([
+      expect.objectContaining({ code: 'too_big', path: ['models'], maximum: 100 })
+    ]);
   });
 
   it('rejects associating an existing model through channel import', () => {

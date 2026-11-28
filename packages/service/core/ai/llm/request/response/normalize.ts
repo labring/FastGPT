@@ -5,6 +5,7 @@ import type {
   StreamResponseType,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
+import type { BlockedToolCallReason } from '../types';
 
 /** 兼容供应商添加的字面量 functions. 前缀，不改变 functions_search 等合法名称。 */
 export const normalizeToolName = (name: string) => name.replace(/^functions\./, '');
@@ -105,4 +106,104 @@ export const normalizeLLMCacheUsage = (usage: LLMCompletionUsage) => {
     safeCount(details?.cache_read_tokens ?? usage.prompt_cache_hit_tokens ?? details?.cached_tokens)
   );
   return { cacheReadTokens, cacheCreationTokens };
+};
+
+/**
+ * 判断 tool call 的 arguments 是否是合法的 JSON 对象字符串（顶层须为普通对象 `{...}`）。
+ * 数组、字符串、数字、布尔值、null 等非对象 JSON 会被部分上游（如 DashScope/Qwen）以 400 拒绝。
+ */
+export const isValidToolArguments = (value: unknown): boolean => {
+  if (typeof value !== 'string') return false;
+  try {
+    const parsed = JSON.parse(value);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+  } catch {
+    return false;
+  }
+};
+
+const withEmptyObjectArguments = (
+  call: ChatCompletionMessageToolCall
+): ChatCompletionMessageToolCall =>
+  call.function.arguments === '{}'
+    ? call
+    : {
+        ...call,
+        function: {
+          ...call.function,
+          arguments: '{}'
+        }
+      };
+
+/** 响应已终止或出错时，未完成的工具调用整组丢弃、不得执行或进入下游上下文。 */
+export const isTerminatedFinishReason = (finishReason: CompletionFinishReason): boolean =>
+  finishReason === 'close' || finishReason === 'error' || finishReason === 'content_filter';
+
+/** 将指定 ID 集合对应的工具参数脱敏为 '{}'，保留其余调用原样。 */
+export const redactToolCalls = (
+  toolCalls: ChatCompletionMessageToolCall[] | undefined,
+  ids: ReadonlySet<string>
+): ChatCompletionMessageToolCall[] | undefined => {
+  if (!toolCalls?.length || ids.size === 0) return toolCalls;
+  return toolCalls.map((call) => (ids.has(call.id) ? withEmptyObjectArguments(call) : call));
+};
+
+/**
+ * 按最终 finish_reason 对模型返回的 toolCalls 做协议收敛与执行控制标记：
+ * - close / error / content_filter：整组丢弃，绝不执行也不进入下游上下文；
+ * - length：整组参数改写为 '{}' 并标为 'length'（审核拦截保留 'moderation'），跳过执行、回填截断提示；
+ * - abnormal_close：逐条判断，合法对象/空串保留，残缺/非对象直接丢弃；
+ * - tool_calls / function_call / stop：合法对象/空串正常保留，残缺/非对象改写为 '{}' 并标为 'invalid_args'，
+ *   跳过执行并回填格式错误文案供模型下轮自修正。
+ */
+export const reconcileFinalToolCalls = ({
+  toolCalls,
+  finishReason,
+  moderatedToolCallIds
+}: {
+  toolCalls?: ChatCompletionMessageToolCall[];
+  finishReason: CompletionFinishReason;
+  moderatedToolCallIds?: ReadonlySet<string>;
+}): {
+  toolCalls?: ChatCompletionMessageToolCall[];
+  blockedToolCalls: Record<string, BlockedToolCallReason>;
+} => {
+  if (!toolCalls?.length) {
+    return { toolCalls, blockedToolCalls: {} };
+  }
+
+  if (isTerminatedFinishReason(finishReason)) {
+    return { toolCalls: [], blockedToolCalls: {} };
+  }
+
+  const blockedToolCalls: Record<string, BlockedToolCallReason> = {};
+
+  if (finishReason === 'length') {
+    return {
+      toolCalls: toolCalls.map((call) => {
+        blockedToolCalls[call.id] = moderatedToolCallIds?.has(call.id) ? 'moderation' : 'length';
+        return withEmptyObjectArguments(call);
+      }),
+      blockedToolCalls
+    };
+  }
+
+  const dropInvalid = finishReason === 'abnormal_close';
+  const reconciledCalls = toolCalls.flatMap((call) => {
+    if (moderatedToolCallIds?.has(call.id)) {
+      blockedToolCalls[call.id] = 'moderation';
+      return [withEmptyObjectArguments(call)];
+    }
+
+    const rawArgs = call.function?.arguments ?? '';
+    if (rawArgs.trim() === '') return [withEmptyObjectArguments(call)];
+    if (isValidToolArguments(rawArgs)) return [call];
+
+    // abnormal_close 下的残缺/非对象参数属于中途断流直接丢弃；正常结束则改 '{}' 并标 invalid_args 供下轮自修正。
+    if (dropInvalid) return [];
+    blockedToolCalls[call.id] = 'invalid_args';
+    return [withEmptyObjectArguments(call)];
+  });
+
+  return { toolCalls: reconciledCalls, blockedToolCalls };
 };

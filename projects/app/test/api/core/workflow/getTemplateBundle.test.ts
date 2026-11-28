@@ -50,6 +50,8 @@ describe('getTemplateBundle', () => {
 
   it.each([
     [{ locale: 'zh-CN' }, 'zh-CN'],
+    [{ locale: 'tr-TR' }, 'tr-TR'],
+    [{ locale: 'ja-JP' }, 'en'],
     [{}, 'ko-KR']
   ])('validates the query and returns a private template bundle for %j', async (query, locale) => {
     const { result, req, setHeader } = request(query);
@@ -76,9 +78,7 @@ describe('getTemplateBundle', () => {
     expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 
-  it('skips catalog lookup for invalid input or failed auth', async () => {
-    await expect(request({ locale: 'invalid' }).result).rejects.toBeDefined();
-    expect(mocks.authCert).not.toHaveBeenCalled();
+  it('skips catalog lookup when auth fails', async () => {
     mocks.authCert.mockRejectedValueOnce(new Error('unauthorized'));
     await expect(request({}).result).rejects.toThrow('unauthorized');
     expect(mocks.getAuthorizedSystemToolTemplateCatalog).not.toHaveBeenCalled();

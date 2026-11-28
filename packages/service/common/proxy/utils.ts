@@ -1,66 +1,126 @@
 import type http from 'http';
-import { ServerConfigError } from '@fastgpt/global/common/error/utils';
-import { ProxyAgent as NodeProxyAgent } from 'proxy-agent';
+import { isIP } from 'net';
+import { HttpProxyAgent, type HttpProxyAgentOptions } from 'http-proxy-agent';
+import { HttpsProxyAgent, type HttpsProxyAgentOptions } from 'https-proxy-agent';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 import { ProxyAgent as UndiciProxyAgent } from 'undici';
+import {
+  parseSupportedOutboundProxyUrl,
+  PROXY_AUTHORIZATION_HEADER,
+  resolveValidatedHttpForwardTargetUri,
+  SUPPORTED_SOCKS5_PROXY_PROTOCOLS
+} from '@fastgpt/global/common/proxy/utils';
 
-export const PROXY_AUTHORIZATION_HEADER = 'Proxy-Authorization';
+type HttpProxySetRequestPropsArgs = Parameters<HttpProxyAgent<string>['setRequestProps']>;
+type HttpsProxyConnectArgs = Parameters<HttpsProxyAgent<string>['connect']>;
+type SocksProxyConnectArgs = Parameters<SocksProxyAgent['connect']>;
 
-const SUPPORTED_HTTP_PROXY_PROTOCOLS = new Set(['http:', 'https:']);
-const SUPPORTED_SOCKS5_PROXY_PROTOCOLS = new Set(['socks:', 'socks5:', 'socks5h:']);
-
-/**
- * 构造不含代理 URL/凭据细节的出站代理配置错误。
- *
- * Node 的 URL 解析异常（TypeError [ERR_INVALID_URL]）会在可枚举属性 `input` 中保留原始代理 URL
- *（可能含 username/password）；直接透传为 `cause` 会被 OTel 日志序列化器递归输出导致凭据泄露。
- * 这里仅保留安全的错误码（如 `ERR_INVALID_URL`）用于排障，绝不附带原始 URL 错误对象。
- */
-export const createOutboundProxyConfigError = (
-  message: string,
-  error?: unknown
-): ServerConfigError => {
-  const code =
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code?: unknown }).code === 'string' &&
-    /^[A-Z0-9_]+$/.test((error as { code: string }).code)
-      ? (error as { code: string }).code
-      : undefined;
-
-  const configError = new ServerConfigError(message);
-  if (code) {
-    Object.assign(configError, { code });
-  }
-  return configError;
+const buildProxyTlsOptions = (proxyUrl: URL): { rejectUnauthorized: true; servername?: string } => {
+  const proxyHost = proxyUrl.hostname.replace(/^\[|\]$/g, '');
+  return {
+    // 代理层 TLS 证书始终严格校验，并为域名形式的 https:// 代理补齐 SNI。
+    rejectUnauthorized: true,
+    ...(proxyUrl.protocol === 'https:' && !isIP(proxyHost) ? { servername: proxyHost } : {})
+  };
 };
 
 /**
- * 解析并校验受支持的出站代理 URL。
- *
- * 统一支持 http: / https: / socks: / socks5: / socks5h:，且全部采用代理侧 DNS 解析语义，
- * 保证共享 Axios、MCP、微信个人号及团队模型自定义端点在无目标 DNS 的隔离环境中可使用同一代理配置。
- * 实例出站代理配置错误属于服务端故障，统一抛出 ServerConfigError 保留 5xx 告警。
+ * 面向明文 HTTP 目标的转发代理 Agent：
+ * 仅覆写 setRequestProps，基于已通过 SSRF 预检的 targetUrl 锁定 Host 与绝对转发 URI，
+ * 阻断 `//127.0.0.1`、`/\\...` 路径二次解析绕过；不触碰 Node 私有 _header。
  */
-export const parseSupportedOutboundProxyUrl = (proxyUrl: string | URL): URL => {
-  const parsed = (() => {
-    try {
-      return proxyUrl instanceof URL ? new URL(proxyUrl.href) : new URL(proxyUrl);
-    } catch (error) {
-      throw createOutboundProxyConfigError('Invalid outbound proxy URL configuration', error);
-    }
-  })();
+class PinnedHttpProxyAgent extends HttpProxyAgent<string> {
+  private readonly targetUrl: URL;
 
-  if (
-    !SUPPORTED_HTTP_PROXY_PROTOCOLS.has(parsed.protocol) &&
-    !SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(parsed.protocol)
+  constructor(proxyUrl: URL, targetUrl: URL, opts?: HttpProxyAgentOptions<string>) {
+    super(proxyUrl, {
+      ...opts,
+      ...buildProxyTlsOptions(proxyUrl)
+    });
+    this.targetUrl = targetUrl;
+  }
+
+  override setRequestProps(
+    req: HttpProxySetRequestPropsArgs[0],
+    opts: HttpProxySetRequestPropsArgs[1]
+  ): void {
+    const validatedHref = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+    const targetPort = this.targetUrl.port ? Number(this.targetUrl.port) : 80;
+    req.setHeader('host', this.targetUrl.host);
+    req.path = validatedHref;
+    super.setRequestProps(req, {
+      ...opts,
+      secureEndpoint: false,
+      port: targetPort
+    });
+    req.path = resolveValidatedHttpForwardTargetUri({
+      targetUrl: this.targetUrl,
+      requestPath: req.path
+    });
+  }
+}
+
+/**
+ * 面向 HTTPS 目标的双层 TLS 代理 Agent：
+ * - 外层连接 https:// 代理服务器时始终严格校验证书（HttpsProxyAgent 内置域名 SNI）；
+ * - 内层隧道连接目标站点时再应用调用方传入的 targetRejectUnauthorized。
+ */
+class TwoLayerHttpsProxyAgent extends HttpsProxyAgent<string> {
+  private readonly targetRejectUnauthorized: boolean;
+
+  constructor(
+    proxyUrl: URL,
+    opts: HttpsProxyAgentOptions<string> & { targetRejectUnauthorized: boolean }
   ) {
-    throw new ServerConfigError(
-      `Unsupported outbound proxy protocol: ${parsed.protocol} (supported: http, https, socks, socks5, socks5h)`
+    const { targetRejectUnauthorized, ...rest } = opts;
+    super(proxyUrl, {
+      ...rest,
+      rejectUnauthorized: true
+    });
+    this.targetRejectUnauthorized = targetRejectUnauthorized;
+  }
+
+  override async connect(req: HttpsProxyConnectArgs[0], opts: HttpsProxyConnectArgs[1]) {
+    return super.connect(
+      req,
+      opts.secureEndpoint
+        ? {
+            ...opts,
+            rejectUnauthorized: this.targetRejectUnauthorized
+          }
+        : opts
     );
   }
-  return parsed;
-};
+}
+
+class TwoLayerSocksProxyAgent extends SocksProxyAgent {
+  private readonly targetRejectUnauthorized: boolean;
+
+  constructor(proxyUrl: URL, targetRejectUnauthorized: boolean) {
+    // socks-proxy-agent 对 socks5:// 会先走本机 dns.lookup，仅 socks5h:// 与 socks:// 委托代理侧解析域名。
+    const normalizedUri =
+      proxyUrl.protocol === 'socks5:'
+        ? proxyUrl.href.replace(/^socks5:/i, 'socks5h:')
+        : proxyUrl.href;
+    super(normalizedUri);
+    this.targetRejectUnauthorized = targetRejectUnauthorized;
+  }
+
+  override async connect(req: SocksProxyConnectArgs[0], opts: SocksProxyConnectArgs[1]) {
+    return super.connect(
+      req,
+      opts.secureEndpoint
+        ? {
+            ...opts,
+            rejectUnauthorized: this.targetRejectUnauthorized
+          }
+        : opts
+    );
+  }
+}
 
 /**
  * 为 undici 客户端构造统一的出站 ProxyAgent。
@@ -76,31 +136,41 @@ export const createUndiciOutboundProxyAgent = (proxyUrl: string | URL): UndiciPr
 };
 
 /**
- * 为 Node http/https 客户端（共享 Axios）构造统一的出站代理 Agent。
+ * 为 Node http/https 客户端（共享 Axios 与 crawlWebsite）构造统一的单跳出站代理 Agent。
  *
- * 直接复用原生 proxy-agent：
- * - 将 socks5: 归一化为 socks5h:，使 socks-proxy-agent 统一由代理侧解析目标域名，不触发本机 DNS；
+ * 直接组合基础代理 Agent 以精确隔离两层 TLS 与转发目标校验：
+ * - SOCKS5 统一将 socks5: 归一化为 socks5h:，由代理侧解析目标域名，不触发本机 DNS；
+ * - 明文 HTTP 目标使用 PinnedHttpProxyAgent 锁定已预检的转发目标并在 https:// 代理上发送 SNI；
+ * - HTTPS 目标使用 TwoLayerHttpsProxyAgent，保持代理层 TLS 严格校验、仅对目标站点应用 rejectUnauthorized；
  * - 代理认证头通过 headers 选项仅注入代理建连/转发阶段，避免泄露到目标站点或直连跳转。
  */
 export const createNodeOutboundProxyAgent = ({
+  targetUrl,
   proxyUrl,
   rejectUnauthorized,
   proxyAuthorization
 }: {
+  targetUrl: URL;
   proxyUrl: string | URL;
   rejectUnauthorized: boolean;
   proxyAuthorization?: string;
 }): http.Agent => {
-  const parsed = parseSupportedOutboundProxyUrl(proxyUrl);
-  // socks-proxy-agent 对 socks5:// 会先走本机 dns.lookup，仅 socks5h:// 与 socks:// 委托代理侧解析域名。
-  const normalizedUri =
-    parsed.protocol === 'socks5:' ? parsed.href.replace(/^socks5:/i, 'socks5h:') : parsed.href;
+  const parsedProxy = parseSupportedOutboundProxyUrl(proxyUrl);
 
-  return new NodeProxyAgent({
-    getProxyForUrl: () => normalizedUri,
-    rejectUnauthorized,
-    ...(proxyAuthorization
-      ? { headers: () => ({ [PROXY_AUTHORIZATION_HEADER]: proxyAuthorization }) }
-      : {})
-  });
+  if (SUPPORTED_SOCKS5_PROXY_PROTOCOLS.has(parsedProxy.protocol)) {
+    return new TwoLayerSocksProxyAgent(parsedProxy, rejectUnauthorized);
+  }
+
+  const headersOption = proxyAuthorization
+    ? { headers: () => ({ [PROXY_AUTHORIZATION_HEADER]: proxyAuthorization }) }
+    : {};
+
+  if (targetUrl.protocol === 'https:') {
+    return new TwoLayerHttpsProxyAgent(parsedProxy, {
+      ...headersOption,
+      targetRejectUnauthorized: rejectUnauthorized
+    });
+  }
+
+  return new PinnedHttpProxyAgent(parsedProxy, targetUrl, headersOption);
 };

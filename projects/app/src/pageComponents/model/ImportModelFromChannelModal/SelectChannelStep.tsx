@@ -1,15 +1,18 @@
 import { Button } from '@chakra-ui/react';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { ModelChannelSelector } from '../ModelChannelModal';
 import StepContent from './StepContent';
 
 const SelectChannelStep = ({
+  channelType,
   channelId,
   channels,
   onChannelChange,
   onSubmit
 }: {
+  channelType: ChannelType;
   channelId: number | '';
   channels: ModelChannelSummary[];
   onSubmit: (channelId: number) => void;
@@ -31,7 +34,7 @@ const SelectChannelStep = ({
       <ModelChannelSelector
         models={[]}
         channels={channels}
-        channelType="system"
+        channelType={channelType}
         selectedChannelIds={channelId === '' ? [] : [channelId]}
         onChange={(channelIds) => onChannelChange(channelIds[0] ?? '')}
         showCurrentModel={false}

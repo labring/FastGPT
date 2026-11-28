@@ -425,6 +425,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         kind: 's3',
         sizeBytes: 8,
         metadata: { filename: 'private.pdf', contentType: 'application/pdf' },
+        openStream: vi.fn(),
         materialize: vi.fn().mockResolvedValue({
           buffer: Buffer.from('%PDF-1.7'),
           metadata: { filename: 'private.pdf', contentType: 'application/pdf' }

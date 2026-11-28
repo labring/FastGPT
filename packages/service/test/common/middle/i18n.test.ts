@@ -28,6 +28,9 @@ describe('getLocale', () => {
     for (const locale of ['ko', 'ko-KR', 'ko-kr', 'KO_KR']) {
       expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: locale }))).toBe(LangEnum.ko_KR);
     }
+    for (const locale of ['tr', 'tr-TR', 'tr-tr', 'TR_TR']) {
+      expect(getLocale(request({ [FASTGPT_LANGUAGE_HEADER]: locale }))).toBe(LangEnum.tr_TR);
+    }
   });
 
   it('falls back to English for unsupported or missing languages', () => {

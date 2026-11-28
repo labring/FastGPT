@@ -128,7 +128,7 @@ const AddModelButton = ({
 }: {
   onCreateFromBlank: () => void;
   onCreateFromTemplate?: () => void;
-  onCreateFromChannel?: () => void;
+  onCreateFromChannel: () => void;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const { t } = useSafeTranslation();
@@ -145,14 +145,10 @@ const AddModelButton = ({
       menuList={[
         {
           children: [
-            ...(onCreateFromChannel
-              ? [
-                  {
-                    label: t('config_model:create_from_channel'),
-                    onClick: onCreateFromChannel
-                  }
-                ]
-              : []),
+            {
+              label: t('config_model:create_from_channel'),
+              onClick: onCreateFromChannel
+            },
             ...(onCreateFromTemplate
               ? [
                   {
@@ -941,9 +937,7 @@ const AddModel = ({
         buttonBoxProps={buttonBoxProps}
         onCreateFromBlank={() => setShowBlankCreate(true)}
         onCreateFromTemplate={() => setShowTemplateCreate(true)}
-        onCreateFromChannel={
-          channelType === 'system' ? () => setShowChannelImport(true) : undefined
-        }
+        onCreateFromChannel={() => setShowChannelImport(true)}
       />
       {showBlankCreate && (
         <BlankModelCreateModal
@@ -958,6 +952,7 @@ const AddModel = ({
       )}
       {showChannelImport && (
         <ImportModelFromChannelModal
+          channelType={channelType}
           channels={channels}
           installedModels={installedModels}
           providers={providers}

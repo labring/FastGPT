@@ -49,7 +49,7 @@ export const getModelConfig = <
 export const getModelTemplates = (data: { channelType: ChannelType }) =>
   GET<GetModelTemplatesResponse>(`${coreModelPath}/templates`, data);
 
-/** Preview upstream models and their local/template matches for one system channel. */
+/** 预览渠道上游模型和模板匹配结果。 */
 export const getImportPreviewFromChannel = (data: PreviewImportFromChannelQuery) =>
   GET<PreviewImportFromChannelResponse>(coreModelPath + '/previewImportFromChannel', data);
 

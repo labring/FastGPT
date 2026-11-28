@@ -1,6 +1,6 @@
 # @fastgpt/cli
 
-FastGPT 官方命令行工具（`0.1.0-beta.3`），支持双轨认证、配置管理、身份探测、环境诊断、知识库管理、多知识库统一搜索及 App 对话管理。
+FastGPT 官方命令行工具（`0.1.0-beta.7`），支持双轨认证、配置管理、身份探测、环境诊断、知识库管理与搜索、Agent/工作流同步与测试、MCP/HTTP 工具集、Skill、头像上传及对话管理。
 
 > 要求 Node.js `~24.22.2`、pnpm `10.x`（仓库内工作区开发）。
 
@@ -51,32 +51,37 @@ fastgpt workflow-build skills changesets-and-plans --format text
 | `config set <key> <value>`  | 更新配置项                                                       | —                                                                                                                           |
 | `doctor`                    | 检查运行时、存储权限、服务可达性与能力矩阵                       | —                                                                                                                           |
 | `commands`                  | 输出命令注册表元数据（供 Agent 自发现）                          | —                                                                                                                           |
-| `chat run`                  | 调用 App，返回 JSON；不传 `chatId` 时创建新对话                  | `--appId`, `--text` / `--messages`, `--file` / `--stdin`, `--chatId`, `--variables`, `--detail`, `--timeoutMs`, `--dry-run` |
-| `chat stop`                 | 写入 App 对话停止信号，不等待后台收尾                            | `--appId`, `--chatId`, `--dry-run`                                                                                          |
-| `chat init`                 | 读取 App 配置、变量和对话状态，不创建对话                        | `--appId`, `--chatId`                                                                                                       |
-| `chat history list`         | 分页查询可访问的 App 对话                                        | `--appId`, `--pageNum`, `--pageSize`, `--offset`, `--source`                                                                |
-| `chat history status`       | 批量读取 App 对话生成状态与已读状态                              | `--appId`, `--chatIds <id1,id2>`                                                                                            |
-| `chat history mark-read`    | 标记 App 对话已读                                                | `--appId`, `--chatId`, `--dry-run`                                                                                          |
-| `chat history update`       | 修改 App 对话标题、自定义标题或置顶状态                          | `--appId`, `--chatId`, `--title`, `--customTitle`, `--top <true\|false>`, `--dry-run`                                       |
-| `chat history delete`       | 软删除 App 对话                                                  | `--appId`, `--chatId`, `--yes`, `--dry-run`                                                                                 |
-| `chat record list`          | 游标分页读取 App 消息，默认读取最新一页                          | `--appId`, `--chatId`, `--pageSize`, `--prevId` / `--nextId` / `--initialId`                                                |
-| `chat record detail`        | 读取 App 某条 AI 回复的详细响应                                  | `--appId`, `--chatId`, `--dataId`                                                                                           |
+| `agent *`                   | Agent 生命周期、目录、版本、日志、`pull/save/publish/test/run`   | `--id`, `--name`, `--type`, `--dir`, `--text`, `--detail`, `--local` / `--remote`, `--dry-run`, `--yes`                     |
+| `tool *`                    | 工具目录、MCP 工具集、HTTP 工具集 CRUD、解析与在线试调用         | `--id`, `--url` / `--target-url`, `--tool` / `--tool-path`, `--header-secret`, `--dry-run`, `--yes`                         |
+| `skill *`                   | 平台 Skill 与目录 CRUD 及 `.zip` 导入                            | `--id`, `--name`, `--file`, `--source`, `--parent-id`, `--dry-run`, `--yes`                                                 |
+| `file upload-avatar`        | 预签名上传 PNG/JPG/JPEG 头像（自动过期，绑定资源后持久化）       | `[filePath]` / `--file`, `--dry-run`                                                                                        |
+| `workflow diff/debug/test`  | 工作流差异对比、单步调试与单步断言用例执行                       | `--id`, `--dir`, `--query`, `--cases`, `--remote`, `--timeout`, `--dry-run`                                                 |
+| `chat run` / `agent run`    | 调用已发布 Agent，返回 JSON；不传 `--chat-id` 时创建新对话       | `[agentId]` / `--id`, `--text` / `--messages`, `--file` / `--stdin`, `--chat-id`, `--variables`, `--detail`, `--timeout`, `--dry-run` |
+| `chat stop`                 | 写入对话停止信号，不等待后台收尾                                 | `--id`, `--chat-id`, `--dry-run`                                                                                            |
+| `chat init`                 | 读取 Agent 配置、变量和对话状态，不创建对话                      | `--id`, `--chat-id`                                                                                                         |
+| `chat history list`         | 分页查询可访问的对话                                             | `--id`, `--page`, `--page-size`, `--source`                                                                                 |
+| `chat history status`       | 批量读取对话生成状态与已读状态                                   | `--id`, `--chat-ids <id1,id2>`                                                                                              |
+| `chat history mark-read`    | 标记对话已读                                                     | `--id`, `--chat-id`, `--dry-run`                                                                                            |
+| `chat history update`       | 修改对话标题、自定义标题或置顶状态                               | `--id`, `--chat-id`, `--title`, `--custom-title`, `--top <true\|false>`, `--dry-run`                                        |
+| `chat history delete`       | 软删除对话                                                       | `--id`, `--chat-id`, `--yes`, `--dry-run`                                                                                   |
+| `chat record list`          | 游标分页读取对话消息，默认读取最新一页                           | `--id`, `--chat-id`, `--page-size`, `--prev-id` / `--next-id` / `--initial-id`                                              |
+| `chat record detail`        | 读取某条 AI 回复的详细响应                                       | `--id`, `--chat-id`, `--data-id`                                                                                            |
 
-App 对话命令仅对接 OpenAPI。应用 API Key 可省略 `--appId`，使用其绑定的 App；个人 API Key 和登录态需指定 App。API Key 可用 `--customUid` 指定对话使用者；已启用代理权限的个人 API Key 可用 `--authProxy`，两者互斥。完整参数通过各命令的 `--help` 查看。
+对话命令对接 OpenAPI。应用 API Key 可省略 `--id`，使用其绑定的应用；个人 API Key 和登录态需指定 `--id`（`agent run` 也支持位置参数 `<agentId>`）。API Key 可用 `--custom-uid` 指定对话使用者；已启用代理权限的个人 API Key 可用 `--auth-proxy`，两者互斥。完整参数通过各命令的 `--help` 查看。
 
-`chat record list` 不传游标时读取最新消息，返回的消息按时间正序排列，每次仅查询一页。将 `meta.prevCursor` 传给 `--prevId` 读取更早的轮次，或将 `meta.nextCursor` 传给 `--nextId` 读取更新的轮次；`--initialId` 定位指定 `dataId` 的 AI 回复附近。三个 ID 参数互斥，角色由服务端按方向确定。`--pageSize` 是参考消息条数，为补齐轮次边界，实际返回条数可能略超。
+`chat record list` 不传游标时读取最新消息，返回的消息按时间正序排列，每次仅查询一页。将 `meta.prevCursor` 传给 `--prev-id` 读取更早的轮次，或将 `meta.nextCursor` 传给 `--next-id` 读取更新的轮次；`--initial-id` 定位指定 `dataId` 的 AI 回复附近。三个 ID 参数互斥，角色由服务端按方向确定。`--page-size` 是参考消息条数，为补齐轮次边界，实际返回条数可能略超。
 
 接口直接返回 `prevCursor`、`nextCursor`，CLI 原样放入 `meta`；无对应方向的下一页时为 `null`。
 
 消息详情等业务操作使用 `dataId`；消息中的 `id` 是已弃用的兼容别名。
 
-`chat run` 默认等待最多 300000 毫秒，可用 `--timeoutMs` 调整。HTTP 超时不会主动停止 App；需要停止时另行执行 `chat stop`。生成失败不会自动重试。
+`chat run` 默认等待最多 300000 毫秒，可用 `--timeout` 调整。HTTP 超时不会主动停止应用；需要停止时另行执行 `chat stop`。生成失败不会自动重试。
 
 ## 全局选项与环境变量
 
 **优先级**：命令行选项 > 环境变量 > 当前 Profile。同时设置 `FASTGPT_TOKEN` 与 `FASTGPT_API_KEY` 会报冲突错误。
 
-**JSON 配置覆盖**：显式命令行参数覆盖 `--file` / `--stdin` 中的对应字段，未指定字段保留文件配置。搜索筛选按子字段合并；`--no-rerank` 和 `--no-queryExtension` 会覆盖该功能的整块配置，同次命令中与关闭状态矛盾的子参数仍会报错。
+**JSON 配置覆盖**：显式命令行参数覆盖 `--file` / `--stdin` 中的对应字段，未指定字段保留文件配置；高阶检索与对话调优字段可通过 `--file` / `--stdin` 传入。
 
 - **常用全局选项**：`--profile <name>`、`--base-url <url>`、`--token <token>`、`--api-key <key>`、`--allow-insecure-http`、`--insecure`、`--ca-cert <path>`、`--format <text|json>`、`--no-color`、`--quiet`
 - **环境变量**：`FASTGPT_BASE_URL`、`FASTGPT_API_KEY`、`FASTGPT_TOKEN`、`FASTGPT_PROFILE`、`FASTGPT_CONFIG_DIR`、`FASTGPT_SECRET_STORE=file`、`FASTGPT_FORMAT`

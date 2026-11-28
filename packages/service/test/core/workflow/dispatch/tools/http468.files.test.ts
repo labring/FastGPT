@@ -16,7 +16,12 @@ import {
   createTestWorkflowDispatch
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import {
+  HttpFileReadError,
+  HTTP_MULTIPART_MAX_BYTES
+} from '@fastgpt/service/core/workflow/dispatch/tools/httpFormData';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 
 const requestMock = vi.hoisted(() => vi.fn());
 const preflightMock = vi.hoisted(() => vi.fn());
@@ -45,12 +50,20 @@ describe('HTTP node uploaded file forwarding', () => {
   const downloadObject = vi.fn();
   const getObjectMetadata = vi.fn();
   let received: Record<string, unknown>[];
+  let receivedBytes = 0;
 
   beforeAll(async () => {
     server = createServer(async (req, res) => {
       try {
+        if (req.url === '/early') {
+          res.end('{"ok":true}');
+          return;
+        }
         const parts: Buffer[] = [];
-        for await (const chunk of req) parts.push(Buffer.from(chunk));
+        for await (const chunk of req) {
+          receivedBytes += chunk.length;
+          parts.push(Buffer.from(chunk));
+        }
         const request = new Request('https://receiver.example.com', {
           method: 'POST',
           headers: { 'content-type': req.headers['content-type']! },
@@ -71,8 +84,12 @@ describe('HTTP node uploaded file forwarding', () => {
         );
         received.push({ fields });
         if (req.url === '/hold') return;
+        if (req.url === '/redirect') {
+          res.statusCode = 307;
+          res.setHeader('location', '/upload');
+        }
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ fields }));
+        res.end(JSON.stringify(req.url === '/small' ? { ok: true } : { fields }));
       } catch (error) {
         res.statusCode = 400;
         res.end(String(error));
@@ -93,6 +110,7 @@ describe('HTTP node uploaded file forwarding', () => {
 
   beforeEach(() => {
     received = [];
+    receivedBytes = 0;
     preflightMock.mockReset().mockResolvedValue(false);
     requestMock.mockReset().mockImplementation((config) => axios({ ...config, proxy: false }));
     getObjectMetadata.mockReset().mockResolvedValue({
@@ -260,19 +278,21 @@ describe('HTTP node uploaded file forwarding', () => {
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('maximum allowed size');
     expect(stream.destroyed).toBe(true);
-    expect(requestMock).not.toHaveBeenCalled();
+    expect(received).toHaveLength(0);
   });
 
-  it('propagates source read failures through the HTTP error output without sending an incomplete body', async () => {
+  it('preserves source I/O failures as system errors through Axios wrapping', async () => {
     const { fileContext } = await createContext();
-    downloadObject.mockRejectedValue(new Error('object unavailable'));
+    const failure = Object.assign(new Error('object unavailable'), { code: 'EMFILE' });
+    downloadObject.mockRejectedValue(failure);
     const result = await runWithContext(
       { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
       () => dispatchHttp468Request(buildProps() as any)
     );
-    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    expect(result.rawError).toBeInstanceOf(HttpFileReadError);
+    expect(result.rawError?.cause).toBe(failure);
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('object unavailable');
-    expect(requestMock).not.toHaveBeenCalled();
+    expect(received).toHaveLength(0);
   });
 
   it.each(['stop', 'timeout'] as const)(
@@ -297,7 +317,7 @@ describe('HTTP node uploaded file forwarding', () => {
         mode === 'stop' ? 'stopped' : 'timed out'
       );
       expect(stream.destroyed).toBe(true);
-      expect(requestMock).not.toHaveBeenCalled();
+      expect(received).toHaveLength(0);
     }
   );
 
@@ -407,7 +427,7 @@ describe('HTTP node uploaded file forwarding', () => {
       expect(result?.error?.[NodeOutputKeyEnum.error]).toContain(
         mode === 'stop' ? 'stopped' : 'timed out'
       );
-      expect(downloadObject).toHaveBeenCalledTimes(1);
+      expect(downloadObject).not.toHaveBeenCalled();
       expect(requestMock).not.toHaveBeenCalled();
       expect(received).toHaveLength(0);
     }
@@ -536,11 +556,220 @@ describe('HTTP node uploaded file forwarding', () => {
     expect(received).toHaveLength(1);
   });
 
-  it('bounds the aggregate file bytes before opening a second source', async () => {
-    const { fileContext } = await createContext(10 * 1024 * 1024);
-    const first = Buffer.alloc(6 * 1024 * 1024);
-    getObjectMetadata.mockResolvedValue({ contentLength: first.length });
-    downloadObject.mockImplementation(async () => ({ body: Readable.from([first]) }));
+  it.each([4, 1024])(
+    'streams an authorized external source with its actual byte quota %i',
+    async (limit) => {
+      const { fileContext } = await createContext();
+      const stream = Readable.from([bytes]);
+      const materialize = vi.fn();
+      vi.spyOn(fileContext, 'getSource').mockResolvedValue({
+        sourceKind: 'external',
+        source: {
+          kind: 'externalHttp',
+          maxSizeBytes: limit,
+          metadata: {},
+          materialize,
+          openStream: async () => ({
+            stream,
+            metadata: { filename: 'remote.pdf', contentType: 'application/pdf' }
+          })
+        }
+      });
+      const result = await runWithContext(
+        { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+        () => dispatchHttp468Request(buildProps() as any)
+      );
+      expect(materialize).not.toHaveBeenCalled();
+      expect(stream.destroyed).toBe(true);
+      if (limit < bytes.length) {
+        expect(result.rawError).toBeInstanceOf(UserConfigError);
+        expect(received).toHaveLength(0);
+      } else {
+        expect(result.error).toBeUndefined();
+        expect(received).toHaveLength(1);
+      }
+    }
+  );
+
+  it('classifies an explicit external source quota rejection as a configuration error', async () => {
+    const { fileContext } = await createContext();
+    vi.spyOn(fileContext, 'getSource').mockResolvedValue({
+      sourceKind: 'external',
+      source: {
+        kind: 'externalHttp',
+        maxSizeBytes: 4,
+        metadata: {},
+        materialize: vi.fn(),
+        openStream: async () => {
+          throw new UserError('File exceeds maximum allowed size (4 bytes)');
+        }
+      }
+    });
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
+    );
+    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it('destroys a late external stream after cancellation during opening', async () => {
+    const { fileContext } = await createContext();
+    const stream = new Readable({ read() {} });
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let stopped = false;
+    vi.spyOn(fileContext, 'getSource').mockResolvedValue({
+      sourceKind: 'external',
+      source: {
+        kind: 'externalHttp',
+        maxSizeBytes: 1024,
+        metadata: {},
+        materialize: vi.fn(),
+        openStream: async () => {
+          stopped = true;
+          await gate;
+          return { stream, metadata: {} };
+        }
+      }
+    });
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => stopped, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
+    );
+    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    release();
+    await vi.waitFor(() => expect(stream.destroyed).toBe(true));
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it('sends the first chunks while the file source is still producing the rest', async () => {
+    const { fileContext } = await createContext(1024 * 1024);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const chunk = Buffer.alloc(64 * 1024, 65);
+    getObjectMetadata.mockResolvedValue({ contentLength: chunk.length * 2 });
+    const stream = Readable.from(
+      (async function* () {
+        yield chunk;
+        await gate;
+        yield chunk;
+      })()
+    );
+    downloadObject.mockResolvedValue({ body: stream });
+    const props = buildProps();
+    props.params[NodeInputKeyEnum.httpReqUrl] = receiverUrl.replace('/upload', '/small');
+    const pending = runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(props as any)
+    );
+    try {
+      await vi.waitFor(() => expect(receivedBytes).toBeGreaterThan(chunk.length));
+      expect(received).toHaveLength(0);
+    } finally {
+      release();
+    }
+    const result = await pending;
+    expect(result.error).toBeUndefined();
+    expect(stream.destroyed).toBe(true);
+  });
+
+  it('retains a structured metadata I/O error as a system failure before sending', async () => {
+    const { fileContext } = await createContext();
+    const failure = Object.assign(new Error('metadata unavailable'), { code: 'EMFILE' });
+    getObjectMetadata.mockRejectedValue(failure);
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(buildProps() as any)
+    );
+    expect(result.rawError).toBe(failure);
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps native FormData newline normalization for multipart text', async () => {
+    const { fileContext } = await createContext();
+    const props = buildProps();
+    props.params[NodeInputKeyEnum.httpFormBody][1].value = 'a\nb\rc\r\nd';
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(props as any)
+    );
+    expect(result.error).toBeUndefined();
+    expect(received[0]).toMatchObject({
+      fields: expect.arrayContaining([{ key: 'note', value: 'a\r\nb\r\nc\r\nd' }])
+    });
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.body?.note).toBe('a\nb\rc\r\nd');
+  });
+
+  it('closes a still-producing source when the receiver responds early', async () => {
+    const { fileContext } = await createContext();
+    let started = false;
+    const stream = new Readable({
+      read() {
+        if (!started) {
+          started = true;
+          this.push(bytes);
+        }
+      }
+    });
+    downloadObject.mockResolvedValue({ body: stream });
+    const props = buildProps();
+    props.params[NodeInputKeyEnum.httpReqUrl] = receiverUrl.replace('/upload', '/early');
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(props as any)
+    );
+    expect(result.error).toBeUndefined();
+    expect(stream.destroyed).toBe(true);
+  });
+
+  it('rejects a redirect instead of replaying a consumed upload stream', async () => {
+    const { fileContext } = await createContext();
+    const props = buildProps();
+    props.params[NodeInputKeyEnum.httpReqUrl] = receiverUrl.replace('/upload', '/redirect');
+    const result = await runWithContext(
+      { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+      () => dispatchHttp468Request(props as any)
+    );
+    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    expect(requestMock.mock.calls[0][0].maxRedirects).toBe(0);
+    expect(received).toHaveLength(1);
+  });
+
+  it.each([1, 2])(
+    'keeps a 1.5 MiB upload independent from a %i MiB response limit',
+    async (responseLimit) => {
+      const snapshot = getSystemInstanceConfig();
+      const saved = snapshot.resource.serviceRequestMaxContentLength;
+      snapshot.resource.serviceRequestMaxContentLength = responseLimit;
+      try {
+        const { fileContext } = await createContext(3 * 1024 * 1024);
+        const payload = Buffer.alloc(1.5 * 1024 * 1024, 65);
+        getObjectMetadata.mockResolvedValue({ contentLength: payload.length });
+        downloadObject.mockResolvedValue({ body: Readable.from([payload]) });
+        const props = buildProps();
+        props.params[NodeInputKeyEnum.httpReqUrl] = receiverUrl.replace('/upload', '/small');
+        const result = await runWithContext(
+          { mcpClientMemory: {}, checkIsStopping: () => false, fileContext },
+          () => dispatchHttp468Request(props as any)
+        );
+        expect(result.error).toBeUndefined();
+        expect(requestMock.mock.calls[0][0].maxBodyLength).toBe(HTTP_MULTIPART_MAX_BYTES);
+        expect(requestMock.mock.calls[0][0].maxContentLength).toBe(responseLimit * 1024 * 1024);
+        expect(received).toHaveLength(1);
+      } finally {
+        snapshot.resource.serviceRequestMaxContentLength = saved;
+      }
+    }
+  );
+
+  it('rejects aggregate declared file bytes before opening any source', async () => {
+    const { fileContext } = await createContext(HTTP_MULTIPART_MAX_BYTES);
+    getObjectMetadata.mockResolvedValue({ contentLength: 60 * 1024 * 1024 });
     const props: any = buildProps();
     props.variableContext.toRuntimeRecord = () => ({ uploadedFile: [fileUrl, fileUrl] });
     const result = await runWithContext(
@@ -548,7 +777,7 @@ describe('HTTP node uploaded file forwarding', () => {
       () => dispatchHttp468Request(props)
     );
     expect(result.error?.[NodeOutputKeyEnum.error]).toContain('maximum allowed size');
-    expect(downloadObject).toHaveBeenCalledTimes(1);
+    expect(downloadObject).not.toHaveBeenCalled();
     expect(requestMock).not.toHaveBeenCalled();
   });
 

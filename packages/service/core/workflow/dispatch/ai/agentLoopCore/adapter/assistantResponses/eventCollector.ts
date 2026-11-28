@@ -159,6 +159,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
           group.tools = group.toolCallIds.flatMap(
             (id) => group.tools?.filter((tool) => tool.id === id) ?? []
           );
+        } else if (group.tools?.length) {
+          // 流式阶段产生的临时工具卡片未进入最终确认的 toolCalls（如 close/error/content_filter/abnormal_close 丢弃），
+          // 清理无执行结果的临时卡片，保留已有 response 的工具记录。
+          group.tools = group.tools.filter((tool) => tool.response !== undefined);
+          if (group.tools.length) {
+            group.toolCallIds = group.tools.map((tool) => tool.id);
+          } else {
+            delete group.tools;
+            delete group.toolCallIds;
+          }
         }
         refreshVisibility(group);
         current = undefined;
@@ -249,7 +259,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
       case 'plan_operation': {
         const group = event.id ? (groupsByCall.get(event.id) ?? ensureCurrent()) : ensureCurrent();
         if (event.success) group.plan = event.plan;
-        // Pi 或旧事件未提供 request-end 调用时仍按显式 call ID 补齐，不猜测相邻工具。
+        // 旧事件未提供 request-end 调用时仍按显式 call ID 补齐，不猜测相邻工具。
         if (event.id) {
           const { tool } = ensureTool(
             {

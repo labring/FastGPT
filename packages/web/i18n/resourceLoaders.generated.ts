@@ -132,6 +132,37 @@ export const generatedLoaders: Record<localeType, Record<I18nNsType[number], Res
     admin: () => import('./ko-KR/admin.json'),
     skill: () => import('./ko-KR/skill.json'),
     price: () => import('./ko-KR/price.json')
+  },
+  'tr-TR': {
+    common: () => import('./tr-TR/common.json'),
+    dataset: () => import('./tr-TR/dataset.json'),
+    app: () => import('./tr-TR/app.json'),
+    file: () => import('./tr-TR/file.json'),
+    publish: () => import('./tr-TR/publish.json'),
+    workflow: () => import('./tr-TR/workflow.json'),
+    user: () => import('./tr-TR/user.json'),
+    chat: () => import('./tr-TR/chat.json'),
+    login: () => import('./tr-TR/login.json'),
+    account_info: () => import('./tr-TR/account_info.json'),
+    account_usage: () => import('./tr-TR/account_usage.json'),
+    account_bill: () => import('./tr-TR/account_bill.json'),
+    discount_coupon: () => import('./tr-TR/discount_coupon.json'),
+    apikey: () => import('./tr-TR/apikey.json'),
+    account_setting: () => import('./tr-TR/account_setting.json'),
+    account_inform: () => import('./tr-TR/account_inform.json'),
+    account_thirdParty: () => import('./tr-TR/account_thirdParty.json'),
+    account: () => import('./tr-TR/account.json'),
+    account_team: () => import('./tr-TR/account_team.json'),
+    account_custom_domain: () => import('./tr-TR/account_custom_domain.json'),
+    config: () => import('./tr-TR/config.json'),
+    config_model: () => import('./tr-TR/config_model.json'),
+    system_migration: () => import('./tr-TR/system_migration.json'),
+    marketplace: () => import('./tr-TR/marketplace.json'),
+    dashboard_mcp: () => import('./tr-TR/dashboard_mcp.json'),
+    dashboard_evaluation: () => import('./tr-TR/dashboard_evaluation.json'),
+    admin: () => import('./tr-TR/admin.json'),
+    skill: () => import('./tr-TR/skill.json'),
+    price: () => import('./tr-TR/price.json')
   }
 };
 
@@ -139,5 +170,6 @@ export const generatedLanguageBundles: Record<localeType, BundleLoader> = {
   en: () => import(/* webpackChunkName: "i18n-en" */ './bundles/en'),
   'zh-CN': () => import(/* webpackChunkName: "i18n-zh-CN" */ './bundles/zh-CN'),
   'zh-Hant': () => import(/* webpackChunkName: "i18n-zh-Hant" */ './bundles/zh-Hant'),
-  'ko-KR': () => import(/* webpackChunkName: "i18n-ko-KR" */ './bundles/ko-KR')
+  'ko-KR': () => import(/* webpackChunkName: "i18n-ko-KR" */ './bundles/ko-KR'),
+  'tr-TR': () => import(/* webpackChunkName: "i18n-tr-TR" */ './bundles/tr-TR')
 };

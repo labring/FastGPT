@@ -13,7 +13,10 @@ export type ViewDataKey = 'debugResult' | 'searchedText' | 'courseUrl' | 'readme
 
 /** ReactFlow 投影数据：节点字段与问题、输入输出值由 scoped reader 提供。 */
 export type CanvasNodeData<T extends FlowNodeTypeEnum = FlowNodeTypeEnum> = DeepReadonly<
-  Omit<FlowNodeItemType, 'inputs' | 'outputs' | 'catchError' | 'issues' | 'flowNodeType'> & {
+  Omit<
+    FlowNodeItemType,
+    'inputs' | 'outputs' | 'catchError' | 'issues' | 'isError' | 'flowNodeType'
+  > & {
     flowNodeType: T;
   }
 >;
@@ -57,7 +60,7 @@ export type ViewOverlayData = Pick<CanvasNodeData, ViewDataKey>;
  * 只属于画布视图的数据字段：不进文档，由 host overlay 持有并在投影时合并。
  * courseUrl/userGuide 是旧路径也从不持久化的展示元信息（保存白名单会剥离），
  * 归入视图字段避免 updateNode 时被 store schema 丢弃。
- * isError 不在此列：标红焦点由 host 持有、投影时合并；问题文案由节点组件读 Runtime snapshot。
+ * 节点组件直接读取 host 的标红状态和 Runtime snapshot 中的问题文案。
  */
 
 /** 单个节点的视图 overlay 变更。 */

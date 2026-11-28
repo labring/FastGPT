@@ -256,7 +256,11 @@ export function createDatasetCollectionService(): DatasetCollectionService {
 
       const formData = new FormData();
       const blob = new Blob([Buffer.from(file.data)], { type: file.mimeType });
-      formData.append('file', blob, file.filename);
+      // Multer 默认按 Latin-1 解析 multipart filename，非 ASCII 文件名须经 URI 编码以便服务端 decodeMultipartFilename 还原中文/Emoji。
+      const uploadFilename = /[^\x00-\x7f]/.test(file.filename)
+        ? encodeURIComponent(file.filename)
+        : file.filename;
+      formData.append('file', blob, uploadFilename);
       formData.append('data', JSON.stringify(validatedBody));
 
       const res = await client.uploadMultipart<CreateCollectionWithResultResponseType>({

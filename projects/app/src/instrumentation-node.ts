@@ -14,7 +14,7 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
-      { configureMongoDalRuntime },
+      { configureDalRuntime, registerDalRuntimeShutdown },
       { connectionMongo, connectionLogMongo, hasSeparateMongoLogUri, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
@@ -35,7 +35,7 @@ export async function registerNodeInstrumentation() {
       { configureLogger, getLogger, LogCategories },
       { configureMetrics, createRedisRuntimeMetrics },
       { configureTracing },
-      { configureRedisRuntime, registerRedisRuntimeShutdown },
+      { configureRedisRuntime },
       { serviceEnv },
       { InitialErrorEnum },
       { getReadableSystemResourceInfo },
@@ -44,7 +44,7 @@ export async function registerNodeInstrumentation() {
       { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
-      import('@fastgpt/service/common/mongo/dalRuntime'),
+      import('@fastgpt/service/common/db/dalRuntime'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
@@ -111,15 +111,15 @@ export async function registerNodeInstrumentation() {
         getErrText
       }),
       runInitializationStep({
-        step: 'register-redis-shutdown',
-        action: () => registerRedisRuntimeShutdown({ logger }),
+        step: 'register-dal-shutdown',
+        action: () => registerDalRuntimeShutdown({ logger }),
         logger,
         getErrText
       }),
       runInitializationStep({
         step: 'configure-db-runtime',
         stage: InitialErrorEnum.MONGO_ERROR,
-        action: () => configureMongoDalRuntime(),
+        action: () => configureDalRuntime(),
         logger,
         getErrText
       }),
@@ -167,7 +167,7 @@ export async function registerNodeInstrumentation() {
     // 加载初始化配置
     await runInitializationStep({
       step: 'get-init-config',
-      action: () => getInitConfig({ refreshLLMRequestRecordTTL: false }),
+      action: () => getInitConfig(),
       logger,
       getErrText
     });

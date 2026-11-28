@@ -13,6 +13,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 const Header = () => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail?.name);
   const router = useRouter();
 
   const { lastAppListRouteType } = useSystemStore();
@@ -41,10 +42,11 @@ const Header = () => {
   return (
     <Box h={14}>
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'}>
+        <Box flex={'1'} minW={0} overflow={'hidden'}>
           <FolderPath
-            rootName={t('common:All')}
+            rootName={t('app:tools')}
             paths={paths}
+            currentName={appName}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
             fontSize={'14px'}

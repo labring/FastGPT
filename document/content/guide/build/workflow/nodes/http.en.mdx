@@ -58,7 +58,7 @@ Use `POST`, `PUT`, or `PATCH` and select `form-data` for the Body. Each row supp
 - File fields reference a file URL registered in the current workflow, such as the start node's `userFiles` output or a file variable. A URL array produces repeated file parts with the same field name.
 - Files are sent as binary data with their filename and MIME type. Execution details show filename, type, and size.
 
-Workflow file authorization, file count, and per-file size limits apply. File bytes and text also share the `SERVICE_REQUEST_MAX_CONTENT_LENGTH` request budget, in MB; the complete encoded multipart request must fit this limit too. An administrator can adjust this existing setting for larger uploads.
+Workflow file authorization, file count, and per-file size limits apply. The complete encoded multipart request (files, text, part headers and boundaries) has a separate 100 MiB budget. Attachments are streamed with actual-byte quota checks; stopping or timing out closes their streams. File requests do not automatically follow redirects; use the final upload endpoint. The workflow HTTP response-body limit only constrains responses and does not change the upload budget. The legacy `SERVICE_REQUEST_MAX_CONTENT_LENGTH` environment variable only initializes the corresponding instance setting.
 
 File reading and sending share the node timeout. Stopping the workflow cancels a pending read or request. The receiving service must accept multipart uploads; configure its required authentication, form fields, and upload policy separately.
 

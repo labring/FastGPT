@@ -1,4 +1,5 @@
 import type {
+  CredentialProxyConfig,
   FileInfo as SdkFileInfo,
   NetworkPolicy,
   SandboxId,
@@ -60,6 +61,7 @@ export type SandboxCreateSpec = {
   metadata?: Record<string, string>;
   volumes?: Volume[];
   networkPolicy?: NetworkPolicy;
+  credentialProxy?: CredentialProxyConfig;
   extensions?: Record<string, string>;
   skipHealthCheck?: boolean;
   readyTimeoutSeconds?: number;

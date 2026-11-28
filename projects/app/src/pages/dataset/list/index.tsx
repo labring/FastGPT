@@ -125,7 +125,9 @@ const Dataset = () => {
           <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
             <Box flexShrink={0}>
               <FolderPath
+                rootName={t('common:navbar.Datasets')}
                 paths={paths}
+                hoverStyle={{ bg: 'myGray.200' }}
                 FirstPathDom={
                   <Flex alignItems={'center'}>
                     <Box

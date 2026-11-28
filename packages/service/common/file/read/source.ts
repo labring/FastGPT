@@ -8,7 +8,7 @@ import {
 import type { Readable } from 'node:stream';
 import { readStreamToBuffer } from '../../s3/utils';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeExtension } from '../../s3/utils/mime';
-import { readExternalFileBuffer } from './external';
+import { readExternalFileBuffer, openExternalFileStream } from './external';
 import { isLikelyTextBuffer, detectUtf16Text } from './text';
 
 const documentExtensionSet = new Set(
@@ -35,6 +35,8 @@ export type MaterializeFileSourceOptions = {
 
 type FileSourceBase = {
   metadata: FileSourceMetadata;
+  /** 打开已授权来源，调用方负责消费或销毁流；不物化附件内容。 */
+  openStream: (signal: AbortSignal) => Promise<{ stream: Readable; metadata: FileSourceMetadata }>;
   /** 每次调用都重新打开来源，不能缓存已 transfer 的 Buffer。 */
   materialize: (options: MaterializeFileSourceOptions) => Promise<MaterializedFileSource>;
 };
@@ -130,6 +132,7 @@ export const createS3FileSource = ({
   kind: 's3',
   sizeBytes: Math.max(0, sizeBytes),
   metadata,
+  openStream: async (signal) => ({ stream: await getStream(signal), metadata }),
   materialize: async ({ signal, onReadBytes }) => {
     const stream = await getStream(signal);
     const buffer = await readStreamToBuffer({ stream, signal, onReadBytes });
@@ -155,6 +158,20 @@ export const createExternalHttpFileSource = ({
   kind: 'externalHttp',
   maxSizeBytes: Math.max(0, maxSizeBytes),
   metadata,
+  openStream: async (signal) => {
+    const response = await openExternalFileStream({ url, maxSizeBytes, timeoutMs, signal });
+    return {
+      stream: response.stream,
+      metadata: {
+        ...metadata,
+        filename:
+          (trustMetadataFilename ? metadata.filename : undefined) ||
+          parseContentDispositionFilename(response.contentDisposition ?? '') ||
+          metadata.filename,
+        contentType: response.contentType ?? metadata.contentType
+      }
+    };
+  },
   materialize: async ({ signal, onReadBytes }) => {
     const response = await readExternalFileBuffer({
       url,

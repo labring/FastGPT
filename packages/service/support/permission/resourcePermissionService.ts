@@ -1,3 +1,4 @@
+import type { DbSession } from '@fastgpt/dal/db/types';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { MongoDeleteResult } from '../../common/mongo';
@@ -182,24 +183,50 @@ export const createResourcePermissions = async ({
  * 这样取消继承的节点及其独立子树都不会被父级更新覆盖。
  * `stopResourceIds` 用于批量移动：停止节点已有按自身新父级算出的 ACL，不能沿用祖先的传播结果覆盖它。
  */
+type SyncChildrenPermissionDescendantType = Pick<
+  SyncChildrenPermissionResourceType,
+  '_id' | 'parentId' | 'inheritPermission'
+>;
+
 export const syncResourceTreePermissions = async ({
   resource,
   resourceModel,
+  findCollectionDatasetId,
+  findDirectChildren,
   resourceType,
   oldParentCollaborators,
   newParentCollaborators,
   stopResourceIds,
-  session
+  session,
+  tx
 }: {
   resource: SyncChildrenPermissionResourceType;
-  resourceModel: ResourceModel;
+  /** 存量调用方透传的裸 Model；新调用方应注入 `findDirectChildren` 并传 `tx: DbSession`。 */
+  resourceModel?: ResourceModel;
+  /** 新调用方注入的集合归属查询函数（仅 collection 资源且未提供 resource.datasetId 时调用）。 */
+  findCollectionDatasetId?: (params: {
+    teamId: string;
+    collectionId: string;
+    tx?: DbSession;
+  }) => Promise<string | undefined>;
+  /** 新调用方注入的按层后代读取函数，由所属仓储解包 `DbSession`。 */
+  findDirectChildren?: (params: {
+    teamId: string;
+    datasetId?: string;
+    parentIds: string[];
+    tx?: DbSession;
+  }) => Promise<SyncChildrenPermissionDescendantType[]>;
   resourceType: PerResourceTypeEnum;
   oldParentCollaborators: CollaboratorItemType[];
   newParentCollaborators: CollaboratorItemType[];
   /** 停在这些节点之前：它们会由调用方使用各自的新快照单独同步。 */
   stopResourceIds?: Set<string>;
-  session: ClientSession;
+  session?: ClientSession;
+  tx?: DbSession;
 }) => {
+  if (!findDirectChildren && !resourceModel) {
+    throw new Error('findDirectChildren or resourceModel is required for resource tree sync');
+  }
   const oldInheritedCollaborators = toInheritedCollaborators(oldParentCollaborators);
   const newInheritedCollaborators = toInheritedCollaborators(newParentCollaborators);
   const parentCollaboratorsById = new Map(
@@ -243,33 +270,50 @@ export const syncResourceTreePermissions = async ({
 
   // Collection 的 parentId 索引以 datasetId 为前缀；固定根的范围并复用于每层查询。
   // 兼容未携带 datasetId 的旧调用方，避免后续每层跨知识库定位 parentId。
-  const collectionScope = await (async () => {
-    if (resourceType !== PerResourceTypeEnum.collection) return {};
+  const collectionDatasetId = await (async () => {
+    if (resourceType !== PerResourceTypeEnum.collection) return undefined;
     const datasetId =
       resource.datasetId ??
-      (
-        await resourceModel
-          .findOne({ _id: resource._id, teamId: resource.teamId }, 'datasetId')
-          .lean<{ datasetId?: string } | null>()
-          .session(session)
-      )?.datasetId;
+      (findCollectionDatasetId
+        ? await findCollectionDatasetId({
+            teamId: resource.teamId,
+            collectionId: String(resource._id),
+            tx
+          })
+        : (
+            await resourceModel
+              ?.findOne({ _id: resource._id, teamId: resource.teamId }, 'datasetId')
+              .lean<{ datasetId?: string } | null>()
+              .session(session ?? null)
+          )?.datasetId);
     if (!datasetId) throw new Error('Collection dataset not found');
-    return { datasetId };
+    return String(datasetId);
   })();
 
   const allDescendantIds: string[] = [];
-  const descendantNodes: SyncChildrenPermissionResourceType[] = [];
+  const descendantNodes: SyncChildrenPermissionDescendantType[] = [];
   let pendingParentIds = [String(resource._id)];
 
   // 按层查询资源树，每次只查询当前 frontier 的直接子资源，避免加载整个团队资源。
   while (pendingParentIds.length > 0) {
-    const children = await resourceModel
-      .find(
-        { teamId: resource.teamId, ...collectionScope, parentId: { $in: pendingParentIds } },
-        '_id parentId inheritPermission'
-      )
-      .lean<SyncChildrenPermissionResourceType[]>()
-      .session(session);
+    const children = findDirectChildren
+      ? await findDirectChildren({
+          teamId: resource.teamId,
+          datasetId: collectionDatasetId,
+          parentIds: pendingParentIds,
+          tx
+        })
+      : await resourceModel!
+          .find(
+            {
+              teamId: resource.teamId,
+              ...(collectionDatasetId ? { datasetId: collectionDatasetId } : {}),
+              parentId: { $in: pendingParentIds }
+            },
+            '_id parentId inheritPermission'
+          )
+          .lean<SyncChildrenPermissionDescendantType[]>()
+          .session(session ?? null);
     // 被 stop 的节点不加入下一层 frontier，因此其整个分支都交由调用方的独立同步计划处理。
     const inheritingChildren = children.filter(
       (child) =>
@@ -291,7 +335,8 @@ export const syncResourceTreePermissions = async ({
     resourceType,
     resourceIds: allDescendantIds,
     collaborators: affectedCollaboratorIds,
-    session
+    session,
+    tx
   });
 
   const permissionsByResource = new Map<string, CollaboratorItemType[]>();
@@ -387,7 +432,8 @@ export const syncResourceTreePermissions = async ({
       teamId: resource.teamId,
       resourceType,
       patches: permissionPatches,
-      session
+      session,
+      tx
     });
   }
 };

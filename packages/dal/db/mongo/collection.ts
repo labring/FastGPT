@@ -59,12 +59,15 @@ const assertNoInlineFieldIndexes = (collectionName: string, schema: Schema): voi
  */
 export const defineMongoCollection = <TDoc = Record<string, unknown>>({
   name,
+  modelName,
   datasource = 'main',
   schema,
   indexes = [],
   resolveDynamicIndexes
 }: {
   name: string;
+  /** 可选 Mongoose Model 注册名；缺省等同物理集合名 `name`。 */
+  modelName?: string;
   datasource?: DbDatasource;
   schema: Schema;
   indexes?: readonly MongoCollectionIndexDef[];
@@ -73,6 +76,10 @@ export const defineMongoCollection = <TDoc = Record<string, unknown>>({
   const normalizedName = name.trim();
   if (normalizedName.length === 0) {
     throw new DbConfigurationError('Mongo collection name must be a non-empty string');
+  }
+  const normalizedModelName = modelName?.trim();
+  if (modelName !== undefined && (!normalizedModelName || normalizedModelName.length === 0)) {
+    throw new DbConfigurationError('Mongo collection modelName must be a non-empty string');
   }
 
   assertNoInlineFieldIndexes(normalizedName, schema);
@@ -112,6 +119,7 @@ export const defineMongoCollection = <TDoc = Record<string, unknown>>({
 
   return Object.freeze({
     name: normalizedName,
+    ...(normalizedModelName !== undefined ? { modelName: normalizedModelName } : {}),
     datasource,
     schema,
     indexes: Object.freeze([...indexes]),

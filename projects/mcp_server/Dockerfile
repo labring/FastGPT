@@ -8,7 +8,6 @@ RUN npm install -g pnpm@10.33.2
 
 # 复制package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches ./patches
 COPY packages/dal ./packages/dal
 COPY packages/global ./packages/global
 COPY packages/service ./packages/service

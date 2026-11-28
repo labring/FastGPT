@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { Box, IconButton } from '@chakra-ui/react';
+import { IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -21,11 +21,9 @@ import {
 
 const ToolMenu = ({
   history,
-  reserveSpace,
   chatType
 }: {
   history: ChatItemMiniType[];
-  reserveSpace?: boolean;
   chatType?: ChatTypeEnum;
 }) => {
   const { t } = useTranslation();
@@ -82,26 +80,24 @@ const ToolMenu = ({
       {isPc && <SandboxEntryIcon onOpen={onOpenSandboxModal} />}
       <MyMenu
         Button={
-          <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>
-            <IconButton
-              icon={
-                <MyIcon
-                  name={'more'}
-                  w={'14px'}
-                  color="currentColor"
-                  sx={{
-                    '& path': {
-                      fill: 'currentColor'
-                    }
-                  }}
-                />
-              }
-              aria-label={''}
-              size={'sm'}
-              variant="unstyled"
-              {...(isPc ? chatHeaderIconButtonStyle : mobileChatHeaderIconButtonStyle)}
-            />
-          </Box>
+          <IconButton
+            icon={
+              <MyIcon
+                name={'more'}
+                w={'14px'}
+                color="currentColor"
+                sx={{
+                  '& path': {
+                    fill: 'currentColor'
+                  }
+                }}
+              />
+            }
+            aria-label={''}
+            size={'sm'}
+            variant="unstyled"
+            {...(isPc ? chatHeaderIconButtonStyle : mobileChatHeaderIconButtonStyle)}
+          />
         }
         menuList={[
           {

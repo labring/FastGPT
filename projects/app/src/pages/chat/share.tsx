@@ -301,9 +301,9 @@ const OutLink = (props: Props & BrandingPageProps) => {
   });
 
   const RenderHistoryList = useMemo(() => {
-    // 语言入口跟随历史侧栏挂载：PC 放侧栏底部，移动端放抽屉底部且选择后关闭抽屉。
+    // 语言入口跟随历史侧栏挂载：PC 放侧栏底部，移动端抽屉外层已有内边距，避免重复留白。
     const footerSlot = (
-      <Box flexShrink={0} p={3} mt="auto">
+      <Box flexShrink={0} p={isPc ? 3 : 0} mt="auto">
         <ChatLanguageSelector mode="share" onSelected={isPc ? undefined : onCloseSlider} />
       </Box>
     );
@@ -341,7 +341,7 @@ const OutLink = (props: Props & BrandingPageProps) => {
         minH={0}
         minW={0}
         gap={datasetCiteData ? 0 : 4}
-        {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
+        {...(isEmbed ? { p: '0 !important' } : { p: [0, 5] })}
       >
         {showChatContainer && (
           <PageContainer
@@ -351,11 +351,17 @@ const OutLink = (props: Props & BrandingPageProps) => {
             minW={0}
             p={'0 !important'}
             insertProps={
-              datasetCiteData
+              isEmbed
                 ? {
-                    borderRadius: [0, '16px 0 0 16px']
+                    borderWidth: 0,
+                    borderRadius: 0,
+                    boxShadow: 'none'
                   }
-                : undefined
+                : datasetCiteData
+                  ? {
+                      borderRadius: [0, '16px 0 0 16px']
+                    }
+                  : undefined
             }
           >
             <Flex h={'100%'} minH={0} minW={0} flexDirection={['column', 'row']}>
@@ -382,7 +388,16 @@ const OutLink = (props: Props & BrandingPageProps) => {
                         history={chatRecords}
                         chatType={ChatTypeEnum.share}
                         rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
-                        endActions={headerBrand}
+                        endActions={
+                          showHistory !== '1' ? (
+                            <>
+                              <ChatLanguageSelector mode="share" placement="bottom-end" />
+                              {headerBrand}
+                            </>
+                          ) : (
+                            headerBrand
+                          )
+                        }
                       />
                     ) : (
                       <Flex
@@ -455,17 +470,20 @@ const OutLink = (props: Props & BrandingPageProps) => {
                           {narrowBrand && <ComplianceTip type="chat" pt={0} pb={0} />}
                         </Flex>
 
-                        {hideMenu === '1' ? (
-                          <Box minW="36px" />
-                        ) : (
-                          <Box minW="36px">
-                            <ToolMenu
-                              history={chatRecords}
-                              reserveSpace={showWorkorder !== undefined}
-                              chatType={ChatTypeEnum.share}
-                            />
-                          </Box>
-                        )}
+                        <Flex
+                          minW="36px"
+                          flexShrink={0}
+                          alignItems="center"
+                          justifyContent="flex-end"
+                          gap={1}
+                          // 工单宿主右上角关闭按钮由操作组容器在布局中统一让位，避免仅位移按钮时标题挤入图标区。
+                          pr={showWorkorder !== undefined ? '32px' : 0}
+                        >
+                          {showHistory !== '1' && <ChatLanguageSelector mode="share" isCollapsed />}
+                          {hideMenu !== '1' && (
+                            <ToolMenu history={chatRecords} chatType={ChatTypeEnum.share} />
+                          )}
+                        </Flex>
                       </Flex>
                     ))}
                   {/* 无常规页头时仍保留品牌所在的 header 行，避免覆盖聊天内容。 */}
@@ -552,11 +570,22 @@ const OutLink = (props: Props & BrandingPageProps) => {
             w={0}
             maxW={'560px'}
             p={'0 !important'}
-            insertProps={{
-              borderLeft: '1px solid',
-              borderLeftColor: 'myGray.200',
-              borderRadius: [0, '0 16px 16px 0']
-            }}
+            insertProps={
+              isEmbed
+                ? {
+                    borderWidth: 0,
+                    borderLeftWidth: '1px',
+                    borderLeftStyle: 'solid',
+                    borderLeftColor: 'myGray.200',
+                    borderRadius: 0,
+                    boxShadow: 'none'
+                  }
+                : {
+                    borderLeft: '1px solid',
+                    borderLeftColor: 'myGray.200',
+                    borderRadius: [0, '0 16px 16px 0']
+                  }
+            }
           >
             <ChatQuoteList
               rawSearch={datasetCiteData.rawSearch}

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT 版本发布'
+  short_description: '执行发布前 Pro/版本/文档核查、发版触发镜像构建，并向 main 提交文档与部署模板 PR'
+  default_prompt: '使用 $release-version 发布 v4.17.6：先核查 Pro 联动 PR 与子模块对齐、package.json 版本号、伴生镜像兼容性及中英文发布文档完整性；无阻断后更新版本号并创建 GitHub Release，再向 upstream/main 提交文档（含 releaseTime）与部署模板 YAML 更新 PR。'

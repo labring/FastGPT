@@ -17,6 +17,7 @@ const defaultParams = {
     kind: 's3' as const,
     sizeBytes: 10,
     metadata: { filename: 'template.csv' },
+    openStream: vi.fn(),
     materialize: vi.fn()
   }
 };

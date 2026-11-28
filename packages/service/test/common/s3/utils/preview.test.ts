@@ -335,12 +335,25 @@ describe('replaceS3KeyToPreviewUrl', () => {
     });
 
     // 括号类字符
-    it('alt 文本包含转义方括号不匹配正则，不做替换', async () => {
-      // 由于 markdown 正则 [^\]]* 不匹配包含 ] 的 alt 文本，这种情况不会被替换
-      const text = '![image \\[1\\]](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      // 预期不做替换
-      expect(result).toBe(text);
+    it('alt 文本包含转义方括号和嵌套方括号应正常提取并替换', async () => {
+      const escaped = '![image \\[1\\]](dataset/team1/file.png)';
+      const nested = '![Figure [1]](dataset/team1/chunk-images/col1/file/abc.png)';
+      const nestedWrapped = '![Figure [2]](<dataset/team1/with spaces.png> "fig 2")';
+
+      expect(getS3ObjectKeysFromTexts([escaped, nested, nestedWrapped])).toEqual([
+        'dataset/team1/file.png',
+        'dataset/team1/chunk-images/col1/file/abc.png',
+        'dataset/team1/with spaces.png'
+      ]);
+      await expect(replaceS3KeyToPreviewUrl(escaped, expiredTime)).resolves.toBe(
+        '![image \\[1\\]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/file.png)'
+      );
+      await expect(replaceS3KeyToPreviewUrl(nested, expiredTime)).resolves.toBe(
+        '![Figure [1]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/chunk-images/col1/file/abc.png)'
+      );
+      await expect(replaceS3KeyToPreviewUrl(nestedWrapped, expiredTime)).resolves.toBe(
+        '![Figure [2]](https://example.com/api/system/file/d/mock-short-link-dataset/team1/with spaces.png "fig 2")'
+      );
     });
 
     it('alt 文本包含圆括号应正常处理', async () => {
@@ -728,5 +741,90 @@ describe('批量 S3 预览 URL 格式化', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0]).toHaveLength(500);
     expect(mockCreateS3DownloadAccessUrls.mock.calls[1][0]).toHaveLength(1);
     expect(result.get('dataset/team/500.png')).toContain('mock-short-link-dataset/team/500.png');
+  });
+
+  it('混合语法和大文档应按位置线性合并且不误扫 HTML 属性内的假链接', () => {
+    const mixed = [
+      '![Figure [1]](dataset/team/img-1.png)',
+      '<img alt="[fake](dataset/team/fake.png)" src="dataset/team/html-2.png">',
+      '[doc](chat/app/link-3.pdf "doc title")',
+      '![legacy](<dataset/team/a>b.png>)'
+    ].join('\n');
+
+    expect(getS3ObjectKeysFromTexts([mixed])).toEqual([
+      'dataset/team/img-1.png',
+      'dataset/team/html-2.png',
+      'chat/app/link-3.pdf',
+      'dataset/team/a>b.png'
+    ]);
+
+    // 图片属性中的未闭合 `[` 不应吞掉紧随其后的有效普通链接
+    const unclosedBracketHtml =
+      '<img src="dataset/sample/photo.png" alt="Photo [draft"> [Source](dataset/sample/report.pdf)';
+    expect(getS3ObjectKeysFromTexts([unclosedBracketHtml])).toEqual([
+      'dataset/sample/photo.png',
+      'dataset/sample/report.pdf'
+    ]);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        unclosedBracketHtml,
+        new Map([
+          ['dataset/sample/photo.png', 'https://preview.test/photo'],
+          ['dataset/sample/report.pdf', 'https://preview.test/report']
+        ])
+      )
+    ).toBe(
+      '<img src="https://preview.test/photo" alt="Photo [draft"> [Source](https://preview.test/report)'
+    );
+
+    const externalUnclosedBracketHtml =
+      '<img alt="Photo [draft" src="https://example.com/photo.png"> [Source](dataset/sample/report.pdf)';
+    expect(getS3ObjectKeysFromTexts([externalUnclosedBracketHtml])).toEqual([
+      'dataset/sample/report.pdf'
+    ]);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        externalUnclosedBracketHtml,
+        new Map([['dataset/sample/report.pdf', 'https://preview.test/report']])
+      )
+    ).toBe(
+      '<img alt="Photo [draft" src="https://example.com/photo.png"> [Source](https://preview.test/report)'
+    );
+
+    const largeLines = Array.from({ length: 2000 }, (_, i) =>
+      i % 2 === 0
+        ? `![img ${i}](dataset/team/chunk-images/col1/file/${i}.png)`
+        : `[doc ${i}](dataset/team/chunk-images/col1/file/${i}.pdf)`
+    );
+    const largeText = largeLines.join('\n');
+    const keys = getS3ObjectKeysFromTexts([largeText]);
+    expect(keys).toHaveLength(2000);
+    expect(keys[0]).toBe('dataset/team/chunk-images/col1/file/0.png');
+    expect(keys[1999]).toBe('dataset/team/chunk-images/col1/file/1999.pdf');
+
+    const map = new Map(keys.map((key) => [key, `https://preview.test/${key}`]));
+    const replaced = replaceS3KeysWithPreviewUrlMap(largeText, map);
+    expect(replaced).toContain(
+      '![img 0](https://preview.test/dataset/team/chunk-images/col1/file/0.png)'
+    );
+    expect(replaced).toContain(
+      '[doc 1999](https://preview.test/dataset/team/chunk-images/col1/file/1999.pdf)'
+    );
+
+    // 退化未闭合 HTML 与大量未闭合 `[` 应在线性时间内返回，不触发正则回溯卡死
+    const unclosedImg = '<img' + ' src=x'.repeat(5000) + ' [ok](dataset/team/tail.png)';
+    const unclosedBrackets = '['.repeat(50000) + '](https://example.com) [ok](dataset/team/a.png)';
+    expect(getS3ObjectKeysFromTexts([unclosedImg])).toEqual(['dataset/team/tail.png']);
+    expect(getS3ObjectKeysFromTexts([unclosedBrackets])).toEqual(['dataset/team/a.png']);
+
+    // 紧跟布尔属性（如 ismap）的 HTML img src 仍应被提取与替换
+    const boolAttrImg = '<img ismap src="dataset/team/ismap.png" alt="ok">';
+    expect(getS3ObjectKeysFromTexts([boolAttrImg])).toEqual(['dataset/team/ismap.png']);
+    expect(
+      replaceS3KeysWithPreviewUrlMap(
+        boolAttrImg,
+        new Map([['dataset/team/ismap.png', 'https://preview.test/ismap']])
+      )
+    ).toBe('<img ismap src="https://preview.test/ismap" alt="ok">');
   });
 });

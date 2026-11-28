@@ -55,7 +55,16 @@ export type ViewportFitOptions = {
   minZoom?: number;
   maxZoom?: number;
   useEstimatedDimensions?: boolean;
+  /** 用节点左上角估算缩放，可指定视口中心。 */
+  positionOnly?: { center?: ViewportNode['position'] };
 };
+
+/** 恢复选中节点时，按节点尺寸留白并限制最大缩放。 */
+export const WORKFLOW_NODE_FOCUS_OPTIONS = {
+  padding: 0.3,
+  minZoom: 0,
+  maxZoom: 1
+} satisfies ViewportFitOptions;
 
 type ViewportTransform = Pick<CanvasViewport, 'x' | 'y' | 'zoom'>;
 
@@ -238,7 +247,7 @@ export const getRectBounds = (rects: readonly NodeRect[]): NodeRect | undefined 
 
 /**
  * 基于完整节点图与 Dimension Index 计算 viewport，不依赖 React Flow 当前挂载的节点集合。
- * nodeIds 未提供时适配整张可见画布；提供时只定位指定节点，父节点链仍用于还原绝对坐标。
+ * nodeIds 未提供时适配整张可见画布。positionOnly 用于无需测量的首屏定位。
  */
 export const getViewportForNodeIds = ({
   nodes,
@@ -249,7 +258,8 @@ export const getViewportForNodeIds = ({
   padding = 0.3,
   minZoom = 0.1,
   maxZoom = 3,
-  useEstimatedDimensions = false
+  useEstimatedDimensions = false,
+  positionOnly
 }: {
   nodes: readonly ViewportNode[];
   nodeIds?: readonly string[];
@@ -261,12 +271,14 @@ export const getViewportForNodeIds = ({
 
   const { positionById } = getAbsoluteNodePositions(nodes);
   const fitNodeIds = new Set(getViewportFitNodeIds({ nodes, nodeIds }));
+  const pointDimension = { width: 0, height: 0 };
   const rects = nodes.flatMap((node) => {
     if (!fitNodeIds.has(node.id)) return [];
 
-    const dimension =
-      dimensions.get(node.id)?.card ??
-      (useEstimatedDimensions ? WORKFLOW_NODE_MEASUREMENT_ESTIMATE.card : undefined);
+    const dimension = positionOnly
+      ? pointDimension
+      : (dimensions.get(node.id)?.card ??
+        (useEstimatedDimensions ? WORKFLOW_NODE_MEASUREMENT_ESTIMATE.card : undefined));
     const position = positionById.get(node.id) ?? node.position;
     const rect = getNodeRect({ id: node.id, position }, dimension);
     return rect ? [rect] : [];
@@ -280,9 +292,11 @@ export const getViewportForNodeIds = ({
     height / (Math.max(bounds.height, 1) * (1 + safePadding))
   );
   const clampedZoom = Math.min(Math.max(zoom, minZoom), maxZoom);
+  const centerX = positionOnly?.center?.x ?? bounds.centerX;
+  const centerY = positionOnly?.center?.y ?? bounds.centerY;
   return {
-    x: width / 2 - bounds.centerX * clampedZoom,
-    y: height / 2 - bounds.centerY * clampedZoom,
+    x: width / 2 - centerX * clampedZoom,
+    y: height / 2 - centerY * clampedZoom,
     zoom: clampedZoom
   };
 };

@@ -1,12 +1,12 @@
 import { CliArgumentError } from '../../../shared/errors';
-import { isPlainObject, resolveJsonObjectPayload, resolveJsonPayload } from '../../../shared/input';
-import type { CliCommandSpec } from '../../pipeline';
 import {
-  confirmDestructiveAction,
+  isPlainObject,
   parseOptionalNumber,
-  requireActiveClient,
-  resolveIdArg
-} from './shared';
+  resolveJsonObjectPayload,
+  resolveJsonPayload
+} from '../../../shared/input';
+import type { CliCommandSpec } from '../../pipeline';
+import { confirmDestructiveAction, requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /**
  * 知识库分块数据命令组（System OpenAPI）：list / get / push / update / delete。
@@ -48,9 +48,8 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
           name: 'pageSize',
           flags: '--page-size <n>',
           takesValue: true,
-          description: 'Items per page'
-        },
-        { name: 'offset', flags: '--offset <n>', takesValue: true, description: 'Offset start' }
+          description: 'Items per page (default 20)'
+        }
       ],
       examples: [
         {
@@ -73,8 +72,7 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
             collectionId,
             searchText: typeof options.search === 'string' ? options.search : undefined,
             page: parseOptionalNumber(options.page),
-            pageSize: parseOptionalNumber(options.pageSize),
-            offset: parseOptionalNumber(options.offset)
+            pageSize: parseOptionalNumber(options.pageSize)
           }
         });
       }

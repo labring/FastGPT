@@ -103,24 +103,6 @@ describe('model list', () => {
     expect(result.stdout).not.toContain(auth.value.replace(/^Bearer /, ''));
   });
 
-  it('maps member display options without sending a cache version or outlink identity', async () => {
-    const fetchFn = vi.fn<CliFetchFn>(async (input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init);
-      expect(Object.fromEntries(new URL(request.url).searchParams)).toEqual({
-        includeSourceMember: 'true',
-        orderBy: 'custom'
-      });
-      return Response.json({ code: 200, data: catalog });
-    });
-    const result = await execCli({
-      args: ['--include-source-member', '--order-by', 'custom'],
-      env: { FASTGPT_TOKEN: 'test-session' },
-      fetchFn
-    });
-    expect(result.exitCode).toBe(0);
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
   it('returns an empty member catalog without falling back to public models', async () => {
     const emptyCatalog = { ...catalog, data: { models: [], providers: [], defaultModelIds: {} } };
     const fetchFn = vi.fn<CliFetchFn>(async () => Response.json({ code: 200, data: emptyCatalog }));
@@ -128,17 +110,6 @@ describe('model list', () => {
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).data).toEqual(emptyCatalog);
     expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects unsupported order values before sending a request', async () => {
-    const fetchFn = vi.fn<CliFetchFn>();
-    const result = await execCli({
-      args: ['--order-by', 'invalid'],
-      env: { FASTGPT_TOKEN: 'test-session' },
-      fetchFn
-    });
-    expect(result.exitCode).toBe(2);
-    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it('requires member credentials', async () => {

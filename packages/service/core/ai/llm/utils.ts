@@ -118,7 +118,7 @@ export const loadImageBase64 = (url: string) => {
 };
 
 /**
- * 工具视觉通道专用图片下载入口（fastAgent 与 piAgent 共用）。
+ * 工具视觉通道专用图片下载入口。
  *
  * 工具返回的外链可能返回 200 text/html 登录页或慢响应：这里开启魔数白名单校验与短超时，
  * 防止把非图像字节包装成无效 data:image/... 发给上游视觉模型，同时保留通用下载器的兼容语义。
@@ -657,7 +657,7 @@ export const loadRequestMessages = async ({
    *
    * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）或仅在服务端网络可达（如沙箱预览地址）。
    * 若在 multipleDataToBase64=false 时直接透传外部 URL，上游模型网关拉图失败会直接报错中断工具调用。
-   * 因此工具图片统一走服务端内联（forceBase64），失败时静默丢弃并保留 tool 文本，与 piAgent 保持一致。
+   * 因此工具图片统一走服务端内联（forceBase64），失败时静默丢弃并保留 tool 文本。
    */
   const normalizeToolMediaContentParts = async (
     content: ChatCompletionContentPart[],

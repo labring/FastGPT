@@ -1,0 +1,16 @@
+{
+  "configured": "Yapılandırıldı",
+  "configuration_title": "{{name}} yapılandırması",
+  "error.no_permission": "Yapılandırmak için yöneticiyle iletişime geç",
+  "no_intro": "Henüz açıklama yok",
+  "not_configured": "Yapılandırılmadı",
+  "open_api_notice": "OpenAI/OneAPI anahtarı girebilirsin. Girersen çevrimiçi platformda [AI sohbeti], [Soru sınıflandırma] ve [İçerik çıkarma] senin anahtarınla çalışır ve ücretlendirilmez. Anahtarının ilgili modellere erişim izni olduğundan emin ol. GPT modelleri için FastAI seçilebilir.",
+  "openai_account_configuration": "OpenAI/OneAPI hesabı",
+  "request_address_notice": "İstek adresi, varsayılan olarak resmî OpenAI adresidir. Aktarma (proxy) adresi girebilirsin; \"v1\" otomatik eklenmez.",
+  "third_party_account": "Üçüncü taraf hesap",
+  "third_party_account_desc": "Yönetici burada üçüncü taraf hesapları veya değişkenleri yapılandırabilir. Bu hesap ekibin tüm üyeleri tarafından kullanılır.",
+  "unavailable": "Kullanım bilgisi alınamadı",
+  "usage": "Kullanım:",
+  "value_not_return_tip": "Parametreler yapılandırıldıktan sonra ön yüze tekrar döndürülmez, diğer üyelerle paylaşmana gerek yok",
+  "value_placeholder": "Parametre değerini gir. Boş bırakırsan bu yapılandırma silinir."
+}

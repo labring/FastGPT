@@ -16,7 +16,7 @@ const ChannelTableColumns = () => (
     <col style={{ width: '160px' }} />
     <col />
     <col style={{ width: '100px' }} />
-    <col style={{ width: '100px' }} />
+    <col style={{ width: '120px' }} />
   </colgroup>
 );
 
@@ -29,6 +29,8 @@ const ModelLinkedChannels = ({
   onManage,
   onTest,
   testingChannelIds,
+  onEdit,
+  editingChannelId,
   onRemove
 }: {
   channels: ModelChannelSummary[];
@@ -38,6 +40,8 @@ const ModelLinkedChannels = ({
   onManage: () => void;
   onTest: (channelId: number) => void;
   testingChannelIds: ReadonlySet<number>;
+  onEdit?: (channelId: number) => void;
+  editingChannelId?: number | null;
   onRemove?: (channelId: number) => Promise<unknown> | void;
 }) => {
   const { t, i18n } = useSafeTranslation();
@@ -139,6 +143,14 @@ const ModelLinkedChannels = ({
                         isLoading={testingChannelIds.has(channel.id)}
                         onClick={() => onTest(channel.id)}
                       />
+                      {onEdit && (
+                        <MyIconButton
+                          icon="common/settingLight"
+                          tip={t('config_model:edit')}
+                          isLoading={editingChannelId === channel.id}
+                          onClick={() => onEdit(channel.id)}
+                        />
+                      )}
                       {onRemove && (
                         <PopoverConfirm
                           type={'delete'}

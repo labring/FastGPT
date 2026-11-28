@@ -84,7 +84,7 @@ export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResp
  * API: 获取团队成员列表
  * Route: POST /api/proApi/support/user/team/member/list
  * Method: POST
- * Description: 分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选，并可选择返回权限及组织信息。
+ * Description: 分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选，默认按状态分组后按成员名首字母/拼音排序（同首字母中文优先于英文，数字和其他字符排在后面），并可选择将当前登录成员置顶及返回权限与组织信息。
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
 

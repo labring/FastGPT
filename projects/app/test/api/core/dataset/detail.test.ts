@@ -7,7 +7,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/detail';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -163,5 +164,39 @@ describe('GET /api/core/dataset/detail', () => {
       { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
     );
     expect(await read()).toBe(false);
+  });
+
+  it('reports syncAll=true when an unmigrated API dataset still has a legacy SYSTEM_ROOT sentinel', async () => {
+    const owner = await getUser(`dataset-detail-legacy-root-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'Legacy API dataset',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+      }
+    });
+    await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+
+    const result = await Call<
+      Record<string, never>,
+      GetDatasetDetailQuery,
+      GetDatasetDetailResponse
+    >(handler, {
+      auth: owner,
+      query: { id: String(dataset._id) }
+    });
+
+    expect(result.code).toBe(200);
+    expect(result.data.syncAll).toBe(true);
   });
 });

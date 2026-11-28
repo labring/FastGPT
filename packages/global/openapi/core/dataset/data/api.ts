@@ -18,10 +18,12 @@ import {
 const PushDataChunkSchema = z.object({
   q: z.string().optional().meta({
     example: '什么是 FastGPT？',
-    description: '问题/主文本'
+    description:
+      '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   a: z.string().optional().meta({
-    description: '回答/补充文本'
+    description:
+      '回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   imageId: z.string().optional().meta({
     description: '图片 ID'
@@ -59,7 +61,12 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
  * API: 更新数据集数据
  * Route: PUT /api/core/dataset/data/update
  * ============================================================================ */
-export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema.omit({ metadata: true });
+export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema.omit({
+  metadata: true
+}).meta({
+  description:
+    '更新分块正文；q/a 中新增的 Base64 图片会转存（每条数据 q+a 最多 3 张内联图，单图解码上限 10MB），已有图片地址保持原样'
+});
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
 export const UpdateDatasetDataResponseSchema = z.object({
   q: z.string().optional().meta({
@@ -207,7 +214,8 @@ export type GetQuoteDataResponse = z.infer<typeof GetQuoteDataResponseSchema>;
 export const InsertDataBodySchema = PushDataChunkSchema.omit({ q: true }).extend({
   q: z.string().nonempty().meta({
     example: '什么是 FastGPT？',
-    description: '问题/主文本'
+    description:
+      '问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）'
   }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
@@ -256,7 +264,7 @@ export const PushDataBodySchema = z.object({
     description: '集合 ID'
   }),
   data: z.array(PushDataChunkSchema).max(200).meta({
-    description: '数据列表，最多 200 条'
+    description: '数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界'
   }),
   trainingType: z.enum(DatasetCollectionDataProcessModeEnum).optional().meta({
     description: '训练类型'
@@ -303,6 +311,9 @@ export const GetDataListItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  createTime: z.coerce.date().meta({
+    description: '数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回'
+  }),
   q: z.string().optional().meta({ description: '问题/主文本' }),
   a: z.string().optional().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),

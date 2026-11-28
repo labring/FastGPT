@@ -360,15 +360,16 @@ export const GetModelTemplatesResponseSchema = z.object({
 export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponseSchema>;
 
 /* ============================================================================
- * API: 从系统渠道预览模型导入
+ * API: 从渠道预览模型导入
  * Route: GET /api/core/ai/model/previewImportFromChannel
  * Method: GET
- * Description: 筛除系统已有模型，并将渠道上游模型与模板匹配
+ * Description: 筛除目标作用域已有模型，并将渠道上游模型与模板匹配
  * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const PreviewImportFromChannelQuerySchema = z.object({
-  channelId: IntSchema.positive().meta({ example: 1, description: '目标系统渠道 ID' })
+  channelId: IntSchema.positive().meta({ example: 1, description: '目标渠道 ID' }),
+  channelType: ModelChannelTypeSchema
 });
 export type PreviewImportFromChannelQuery = z.infer<typeof PreviewImportFromChannelQuerySchema>;
 
@@ -482,7 +483,7 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           }
         }
       ],
-      description: '按 AIProxy 原始模型目录顺序排列；仅包含系统尚未配置的模型'
+      description: '按 AIProxy 原始模型目录顺序排列；仅包含当前作用域尚未配置的模型'
     })
 });
 export type PreviewImportFromChannelResponse = z.infer<
@@ -532,30 +533,35 @@ export const CreateModelResponseSchema = z.object({
 export type CreateModelResponse = z.infer<typeof CreateModelResponseSchema>;
 
 /* ============================================================================
- * API: 从系统渠道创建模型
+ * API: 从渠道创建模型
  * Route: POST /api/core/ai/model/importFromChannel
  * Method: POST
- * Description: 逐条创建系统模型并关联到目标渠道，返回每条结果
+ * Description: 逐条创建模型并关联到目标渠道，返回每条结果
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
-// 站内导入接口合并前统一使用创建模型契约，开发预览版的 operations/action 请求不再接收。
+export const MAX_CHANNEL_IMPORT_MODELS = 100;
+
 export const ImportFromChannelBodySchema = z.object({
-  channelId: IntSchema.positive().meta({ example: 1, description: '目标系统渠道 ID' }),
-  models: z.array(CreateModelDataSchema).meta({
-    example: [
-      {
-        type: ModelTypeEnum.llm,
-        provider: 'openai',
-        model: 'openai/gpt-5.4',
-        name: 'GPT-5.4',
-        scope: 'system',
-        isActive: true,
-        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
-      }
-    ],
-    description: '按请求顺序创建的模型配置。model 使用原始上游 ID，isActive 缺省时启用'
-  })
+  channelId: IntSchema.positive().meta({ example: 1, description: '目标渠道 ID' }),
+  channelType: ModelChannelTypeSchema,
+  models: z
+    .array(CreateModelDataSchema)
+    .max(MAX_CHANNEL_IMPORT_MODELS)
+    .meta({
+      example: [
+        {
+          type: ModelTypeEnum.llm,
+          provider: 'openai',
+          model: 'openai/gpt-5.4',
+          name: 'GPT-5.4',
+          scope: 'system',
+          isActive: true,
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+        }
+      ],
+      description: `按请求顺序创建的模型配置，单次最多 ${MAX_CHANNEL_IMPORT_MODELS} 条。model 使用原始上游 ID，isActive 缺省时启用`
+    })
 });
 export type ImportFromChannelBody = z.infer<typeof ImportFromChannelBodySchema>;
 
@@ -575,6 +581,18 @@ const ImportFromChannelResultSchema = z.discriminatedUnion('status', [
     error: z.string().meta({
       example: 'modelAlreadyExists',
       description: '该条创建失败的 FastGPT 错误标识或上游错误信息'
+    })
+  }),
+  z.object({
+    status: z.literal('unknown').meta({
+      example: 'unknown',
+      description: '模型已创建，渠道绑定结果尚未确认'
+    }),
+    model: ImportProviderModelSlugSchema,
+    modelId: ImportResultModelIdSchema,
+    error: z.string().meta({
+      example: 'timeout of 10000ms exceeded',
+      description: '导致绑定结果无法确认的传输错误'
     })
   })
 ]);

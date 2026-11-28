@@ -1,102 +1,63 @@
 # 代码规范
 
-## 目录与分层
+本文档约束新增或修改的业务代码；存量代码在修改相关模块时渐进对齐，不借无关 PR 批量重构。方案取舍见[工程设计原则与质量把控](./design-principles.md)。
 
-采用 DDD 分层架构，跨实例协作使用**依赖注入**（Dependency Injection，遵循依赖倒置原则）：下层不感知上层，同层实例互不引用，需要其他实例的能力时由上层以函数参数传入。新代码必须遵守；存量代码在修改时逐步迁移，不在无关 PR 中批量重构。
+## 模块边界与目录分层
+
+采用 DDD 分层架构与领域仓储边界，跨实例协作遵循依赖倒置：下层不感知上层，同层实例互不引用，所需其他实例能力由上层以函数参数注入。
 
 ### 分层架构
 
-"实例"指拥有独立 `schema.ts` 的业务对象，例如 App、AppVersion、Dataset、Chat；没有独立 schema、只为拆分文件而建的子目录，与上级属于同一实例。
+「实例」指拥有独立持久化 Schema 的业务对象（如 App、AppVersion、Dataset、Chat）；没有独立 Schema、只为拆分文件而建的子目录与上级属于同一实例。
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
-| 1. 实例原子层（实体 / 仓储） | `global/core/<域>/type.ts`、`constants.ts` | 前后端共享的类型与常量 |
-| | `schema.ts` | Mongoose Schema 定义，导出 Model 和 SchemaType |
-| | `entity.ts` | 单次、不可再分的读写，如 `findById`、`create`、`updateById`，不含业务判断 |
-| | `utils.ts` | 纯函数工具，无副作用，可独立单测 |
-| 2. 实例业务层（领域服务） | `service.ts` | 把本实例的原子操作组合成更高阶的业务操作，承载本实例的业务规则 |
-| 3. 业务编排层（应用服务 / 用例） | `orchestration.ts` | 组合多个实例业务层，向上暴露完整用例；开启事务并注入依赖；只涉及单个实例时不创建 |
-| 4. API 层（接口层） | `projects/*/src/pages/api/**`，契约在 `global/openapi/**` | 鉴权、入参校验与出参组装，调用编排层或单个实例业务层 |
+| 1. 共享原子层 | `packages/global/core/<域>/type.ts`、`constants.ts` | 前后端共享的类型、常量与业务 Zod Schema（browser-safe） |
+| 2. 领域仓储层（DAL） | `packages/dal/db/repos/<域>/**`（存量过渡：`schema.ts`、`entity.ts`） | 单表/子域持久化契约、方言实现、归一化读写与索引声明 |
+| 3. 实例业务层 | `packages/service/core/<域>/service.ts`、`utils.ts` | 承载本实例业务规则；`utils.ts` 为无副作用纯函数 |
+| 4. 业务编排层 | `orchestration.ts`（单应用私有放 `projects/*/src/service/<域>/`） | 组合多个实例业务层、开启事务并注入依赖；单实例用例不创建 |
+| 5. API 层 | `projects/*/src/pages/api/**`，契约在 `packages/global/openapi/**` | 鉴权、入参校验与出参组装，调用编排层或单个实例业务层 |
 
-- `orchestration.ts` 放在用例主导业务域目录下；只被单个应用使用且依赖其私有能力时，放在该应用的 `src/service/<域>/`。
-- `auth.ts` 封装资源鉴权，只供 API 层或编排层入口调用。
+分层与文件纯度约束：
 
-依赖规则：
-
-- 只能向下依赖，禁止反向依赖上层。原子层和实例业务层禁止 import 其他实例的 `schema.ts`、`entity.ts`、`service.ts`。
-- 注入的依赖优先传**操作函数**，不传另一个实例的模块对象、Model 或整个 service；函数签名由使用方在本实例内用 `type` 声明所需的最小契约，不用 `typeof` 引用其他实例的实现。
-- 只涉及单个实例的用例，API 层直接调用该实例业务层，不为凑满分层新增只做透传的编排函数；上层也可直接调用下层已有能力。
-- 事务由发起组合的层（通常是编排层）通过 `mongoSessionRun` 开启，`session` 沿参数逐层传递，见[数据写操作函数支持可选 session 参数](#数据写操作函数支持可选-session-参数)。
-- 鉴权与权限判断放在 API 层或编排层入口；实例业务层接收已确认的 `teamId`、`tmbId` 等可信参数。
-- `global/core/` 只放类型和常量，**禁止**引入 mongoose、服务端 SDK；`service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用。
-- 不新增 `controller.ts`。存量 `controller.ts` 按实际职责归入以上各层，在修改相关代码时迁移。
+- **单向依赖**：只能向下依赖，禁止反向依赖上层；原子层与实例业务层禁止 import 其他实例的 `schema.ts`、`entity.ts`、`service.ts`。
+- **操作函数注入**：跨实例依赖优先传操作函数，不传其他实例的模块对象、Model 或整个 service；函数签名由使用方在本实例用 `type` 声明最小契约，不用 `typeof` 引用其他实例实现。单实例用例由 API 层直接调实例业务层，不新增纯透传编排函数。
+- **鉴权与事务归属**：`auth.ts` 仅由 API 层或编排层入口调用，实例业务层接收已确认的 `teamId`、`tmbId` 等可信参数；事务由发起组合的层通过 `runInTransaction` 开启并逐层显式传入 `tx?: DbSession`（见[数据写操作支持可选 `tx?: DbSession` 显式事务参数](#数据写操作支持可选-tx-dbsession-显式事务参数)）。
+- **包与持久化隔离**：`global/core/` 禁止引入 `mongoose`、`kysely`、`pg`、`mysql2`、服务端 SDK，严禁声明物理表名/集合名，实体 ID 统一用 `@fastgpt/global/common/string/entityId`；`service/core/` 禁止被 `packages/web/` 或前端页面直接引用；除 `**/mongo/**`、`**/oceanbase/**` 与 `packages/dal/db/**` 外，业务与 API 代码严禁直接引用数据库驱动或裸 `MongoXxx` Model。
+- **文件职责纯度**：`type.ts` 仅放类型声明与对应 Zod Schema，不塞入业务解析或通用工具函数；`utils.ts` 纯函数禁止原地修改（mutate）调用方传入的对象或数组；仅用于单次迁移的过渡 Schema 留在迁移目录，不污染 `packages/global`；不新增 `controller.ts`（存量按职责渐进迁入上述各层）。
 
 ### 目录结构
 
-按业务域 → 子功能 → 固定文件组织：
+按业务域 → 子功能 → 固定文件组织，子功能目录不超过 **3 层**嵌套；同子域紧密关联的多张子表 Schema 合并置于同一 `mongo/schema.ts` 与 `oceanbase/table.ts`。
 
 ```
 packages/
-├── global/core/              # 原子层：类型、常量（前后端共享，browser-safe，严禁声明物理表名/集合名）
-│   ├── app/
-│   │   ├── type.ts           # 顶层聚合类型
-│   │   ├── constants.ts
-│   │   ├── workflow/
-│   │   │   ├── type.ts
-│   │   │   └── constants.ts
-│   │   ├── version/
-│   │   │   └── type.ts
-│   │   └── evaluation/
-│   │       └── type.ts
-│   ├── chat/
-│   ├── dataset/
-│   └── plugin/
-│
-├── dal/db/repos/             # 纯服务端持久化与仓储边界（开源表；Pro 10 表位于 pro/admin/src/dal/db/repos/）
+├── global/core/              # 共享原子层：类型、常量、业务 Schema（browser-safe）
 │   └── app/
-│       ├── repo.type.ts      # 【公开导出】领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
-│       ├── repo.ts           # 【公开导出】调用 defineRepoToken 导出 AppRepoToken
+│       ├── type.ts           # 顶层聚合类型与 Schema
+│       ├── constants.ts
+│       └── version/type.ts
+│
+├── dal/db/repos/             # 纯服务端持久化与仓储边界（Pro 表位于 pro/admin/src/dal/db/repos/）
+│   └── app/
+│       ├── repo.type.ts      # 【公开导出】仓储契约 type、严进 Write / 宽出 Read Schema 及 .pick() 窄 DTO
+│       ├── repo.ts           # 【公开导出】defineRepoToken 导出 AppRepoToken（模块加载期零副作用）
 │       ├── mongo/            # 【包内私有，package.json exports 不暴露】
-│       │   ├── schema.ts     # 原生 new Schema + defineMongoCollection（含物理集合名与索引，零副作用）
-│       │   └── repo.ts       # MongoAppRepository（extends MongoRepositoryBase，constructor 自动构 readonly model）
+│       │   ├── schema.ts     # 原生 new Schema + defineMongoCollection（含集合名与索引）
+│       │   └── repo.ts       # extends MongoRepositoryBase，封闭 .lean() / ObjectId / 租户过滤，出口走 parseRow/parseList
 │       └── oceanbase/        # 【包内私有，package.json exports 不暴露】
-│           ├── table.ts      # 行类型、表名常量与原生 OceanBase CREATE TABLE DDL（utf8mb4_bin + fg_ 索引）
-│           └── repo.ts       # OceanBaseAppRepository（extends OceanBaseRepositoryBase, implements AppRepository）
-
-└── service/core/             # 后端业务逻辑与编排（不可在前端引用，新代码消费 @fastgpt/dal 公开 Token 与 repo.type）
-    ├── app/                  # App 实例
-    │   ├── service.ts        # 实例业务层：AppService 类（构造函数 deps 注入仓储与协同函数）+ 导出单例
-    │   ├── orchestration.ts  # 业务编排层（如有）：组合多个实例业务层，开启事务并注入依赖
-    │   ├── auth.ts           # 鉴权相关（如有）：供 API 层或编排层入口调用
-    │   ├── utils.ts          # 原子层：纯函数工具，无副作用，可独立单测
-    │   ├── version/          # AppVersion 实例（有独立 schema/repo），与 App 互不引用
-    │   │   ├── service.ts
-    │   │   └── utils.ts
-    │   ├── evaluation/       # 多个子表 schema 合并到同一域下的 mongo/schema.ts 与 oceanbase/table.ts
-    │   ├── logs/
-    │   └── tool/             # 无独立 schema，属于 App 实例的业务拆分
-    │       ├── service.ts
-    │       └── utils.ts
-    ├── chat/
-    ├── dataset/
-    └── plugin/
+│           ├── table.ts      # 行类型、表名常量与原生 CREATE TABLE DDL（utf8mb4_bin + fg_ 索引）
+│           └── repo.ts       # extends OceanBaseRepositoryBase，implements AppRepository
+│
+└── service/core/             # 后端业务逻辑与编排（新代码消费 @fastgpt/dal 公开 Token 与 repo.type）
+    └── app/
+        ├── service.ts        # AppService 类（构造函数 deps 注入仓储与协同函数）+ 导出单例
+        ├── orchestration.ts  # 跨实例编排（如有）
+        ├── auth.ts           # 资源鉴权（如有）
+        └── utils.ts          # 无副作用纯函数工具
 ```
 
-- 子功能目录不超过 **3 层**嵌套。
-- 无需拆子功能时，目录内直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`，需要跨实例组合时再加 `orchestration.ts`。
-- 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`。
-
-> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。存量 `entity.ts` / 旧 `schema.ts` 处于渐进收口阶段，所有新增与重构模块一律采用以下领域仓储结构：
-
-| 文件 | 职责 |
-|------|------|
-| `packages/dal/db/repos/<domain>/repo.type.ts` | 领域仓储 `type` 契约、严进 Write Schema、宽出归一化 Read Schema 及 `.pick()` 窄 DTO（严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型） |
-| `packages/dal/db/repos/<domain>/mongo/schema.ts` | 原生 `new Schema(...)` + `defineMongoCollection`（纯声明、零模块加载副作用，含物理集合名常量与索引，严禁字段内联 `index: true / unique: true`） |
-| `packages/dal/db/repos/<domain>/mongo/repo.ts` | 继承 `@fastgpt/dal/db/mongo/base` 的 `MongoRepositoryBase`，`constructor` 自动按 `DbRuntime` 构出 `readonly model`，内部封闭 `.lean()`、`ObjectId` 转换与软删除/租户过滤，出口统一经过 `parseRow` / `parseList` |
-| `packages/dal/db/repos/<domain>/oceanbase/table.ts` & `oceanbase/repo.ts` | OceanBase（4.3+ / SeekDB，MySQL 兼容模式）行类型与原生 `utf8mb4_bin` DDL，以及继承 `@fastgpt/dal/db/oceanbase/base` `OceanBaseRepositoryBase`（Kysely + `mysql2`）的策略实现 |
-| `packages/dal/db/repos/<domain>/repo.ts` | 统一通过 `defineRepoToken` 定义并导出仓储 DI Token（`{ mongo, oceanbase }`）；日志类仓储未配置 `logWriteUrl` 时透明回退复用主库连接池 |
-| `packages/service/<domain>/service.ts` | 业务编排类 `XxxService`：构造函数通过 `deps: XxxServiceDeps = {}` 注入仓储与协同函数（默认回退 `injectRepo(Token)`），导出默认实例；严禁引入 `mongoose` / `kysely` / `mysql2` |
-| `packages/service/<domain>/utils.ts` | 纯函数工具，无副作用，可独立单测 |
+> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。新增与重构持久化模块一律采用上述领域仓储结构（`repo.type.ts` 严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型；日志类仓储未配置 `logWriteUrl` 时透明回退复用主池）。
 
 ```typescript
 // packages/dal/db/repos/app/repo.ts —— 注册方言工厂，模块加载期零副作用
@@ -105,7 +66,7 @@ export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
   oceanbase: (runtime) => new OceanBaseAppRepository(runtime)
 });
 
-// service.ts —— 构造函数依赖注入（支持单测直接 new AppService({ appRepo: mockRepo }) 零 vi.mock 隔离）
+// service.ts —— 构造函数依赖注入（单测直接 new AppService({ appRepo: mockRepo }) 零 vi.mock 隔离）
 export type AppServiceDeps = {
   appRepo?: AppRepository;
   versionRepo?: AppVersionRepository;
@@ -135,38 +96,38 @@ export const appService = new AppService();
 import { deleteChatsByAppId } from '../chat/service';
 import { MongoAppVersion } from './version/schema';
 
-export const deleteApp = async (appId: string, session?: ClientSession) => {
-  await deleteChatsByAppId({ appId, session });
-  await MongoAppVersion.deleteMany({ appId }, { session });
-  await deleteAppById(appId, session);
+export const deleteApp = async (appId: string, tx?: DbSession) => {
+  await deleteChatsByAppId({ appId, tx });
+  await MongoAppVersion.deleteMany({ appId });
+  await deleteAppById(appId, tx);
 };
 
 // ✅ 好的实践
 // app/service.ts —— 实例业务层：在本实例声明所需的函数契约，由上层注入
-type CleanupAppRelationsFn = (params: { appId: string; session: ClientSession }) => Promise<void>;
+type CleanupAppRelationsFn = (params: { appId: string; tx: DbSession }) => Promise<void>;
 
 export const deleteApp = async (props: {
   appId: string;
-  session: ClientSession;
+  tx: DbSession;
   cleanupRelations: CleanupAppRelationsFn[];
 }) => {
-  const { appId, session, cleanupRelations } = props;
+  const { appId, tx, cleanupRelations } = props;
 
   // 1. 先清理关联数据，再删除 App 本身，避免残留孤儿数据。
   for (const cleanup of cleanupRelations) {
-    await cleanup({ appId, session });
+    await cleanup({ appId, tx });
   }
 
   // 2. 删除 App 主记录。
-  await deleteAppById(appId, session);
+  await deleteAppById({ appId, tx });
 };
 
 // app/orchestration.ts —— 业务编排层：组合多个实例业务层，开启事务并注入依赖
 export const deleteAppWithRelations = (appId: string) =>
-  mongoSessionRun((session) =>
+  runInTransaction((tx) =>
     deleteApp({
       appId,
-      session,
+      tx,
       cleanupRelations: [deleteChatsByAppId, deleteVersionsByAppId]
     })
   );
@@ -177,22 +138,15 @@ await authApp({ req, appId, per: OwnerPermissionVal });
 await deleteAppWithRelations(appId);
 ```
 
-注入函数也是测试接缝：实例业务层的单测直接传入 fake 函数，无需 mock 其他实例的模块。
-
-- `global/core/` 只放类型和常量，**禁止**引入 mongoose、kysely、pg、mysql2、服务端 SDK；实体 ID 统一使用 `@fastgpt/global/common/string/entityId`
-- `service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用
-- 除 `**/mongo/**`、`**/sql/**` 与 `packages/dal/db/**` 外，全仓业务与 API 代码**严禁**直接引用底层数据库驱动或裸 `MongoXxx` Model
-- 子功能目录不超过 **3 层**嵌套
-- 同子域下紧密关联的多张子表 Schema **合并**置于同一子域的 `mongo/schema.ts` 与 `sql/table.ts`
+注入函数同时是测试接缝：实例业务层单测直接传入 fake 函数，无需 mock 其他实例模块。
 
 ### 禁止 re-export
 
 禁止使用 `export { ... } from '...'`、`export type { ... } from '...'` 或 `export * from '...'` 转导其他模块的成员，包括 `index.ts` barrel、目录聚合入口和兼容旧路径的转发文件。
 
-- 每个导出只能由其实际定义文件提供，使用方直接从定义模块导入
-- `index.ts` 可以包含自身的实现和定义，但不能聚合导出其他文件
-- 移动定义时，直接修改所有使用方的 import；确认旧路径无引用后删除旧文件
-- 不为缩短 import 路径、隐藏目录结构或兼容旧路径新增转导层，避免依赖来源不明确、循环依赖和无效模块加载
+- 每个导出只能由其实际定义文件提供，使用方直接从定义模块导入。
+- `index.ts` 可以包含自身的实现和定义，但不能聚合导出其他文件。
+- 移动定义时直接修改全部使用方的 import，确认旧路径无引用后删除旧文件；不为缩短路径、隐藏目录或兼容旧路径新增转导层。
 
 ```typescript
 // ❌ 不好的实践：通过目录入口转导其他模块
@@ -205,130 +159,116 @@ import { createLLMResponse } from '@fastgpt/service/core/ai/llm/createLLMRespons
 import type { LLMResponse } from '@fastgpt/global/core/ai/llm/type';
 ```
 
-## TypeScript 写法
+## 契约、类型与兼容
 
-### 使用 `type` 进行类型声明，不使用 `interface`
+坚持契约单一事实源：**一次定义 → 跨层复用 → 边界收窄 → 兼容演进**。
+
+### 类型声明与契约单一来源
+
+- **使用 `type`，不使用 `interface`**。
+- **Zod Schema 同时承担校验与类型，并跨层直接复用**：用 `z.infer` 从 Schema 推导类型；前端 API 客户端、服务层、CLI 与测试直接复用已导出的共享 Schema、`z.infer` 类型与公共校验器，禁止手写同构类型、重复枚举映射或重命名 alias（`export const A = B`）。仅当表单内部状态与传输契约确实不同构时，才独立定义表单类型。
+- **区分 `z.input` 与 `z.infer`**：含 `transform`、`default`、`catch` 或容错数值转换的 Schema，输入与输出类型不同。调用方入参、客户端请求参数用 `z.input<typeof Schema>`，解析后的结果用 `z.infer<typeof Schema>`；不手写目标类型，也不用 `as any` 把两者桥接起来。
 
 ```typescript
-// ❌ 不好的实践
-interface User {
-  id: string;
-  name: string;
+// ❌ 不好的实践：重复手写与 Schema 同构的传输类型
+interface MessageParam {
+  role: 'user' | 'assistant';
+  content: string;
 }
+const MessageParamSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.string() });
 
-// ✅ 好的实践
-type User = {
-  id: string;
-  name: string;
-}
+// ✅ 好的实践：Schema 单一来源推导类型，客户端与服务端直接复用
+export const MessageParamSchema = z.discriminatedUnion('role', [...]);
+export type MessageParam = z.infer<typeof MessageParamSchema>;
 ```
 
-### 类型守卫
+### 类型守卫与 `unknown` 收窄
 
-用 `is` 关键字收窄 `unknown` / `any` 类型，替代强制断言。
+- **边界值先校验再收窄**：外部输入、JSON/文件载荷、上游 HTTP 2xx 业务载荷与 `catch` 捕获的 `unknown`，统一通过 Zod Schema 或 `is` 类型守卫收窄，**禁止用 `as T`、`as Record<string, unknown>`、`as never`、`as unknown as` 绕过运行时校验**（测试同理：用真实工厂或窄契约替身，不将残缺对象强转为完整上下文）。
+- **读取 `unknown` 对象属性用 `in` 检查存在性**：对象判非空后以 `'code' in err` 或 `Object.hasOwn` 判定，不靠 `as { code?: string }` 扩充形状，避免 `null` 或非对象抛出新异常。
+- **禁止半截类型守卫**：守卫声明的目标类型所依赖的所有字段都须经过验证，不能仅查单个判别字段（如 `role`）即断言为完整复杂类型。
 
 ```typescript
-// ❌ 不好的实践
-function process(value: unknown) {
-  const n = value as number; // 不安全
-}
+// ❌ 不好的实践：直接断言 unknown 或只查单个字段断言全类型
+const statusText = (error as { statusText?: string }).statusText;
+const payload = JSON.parse(raw) as ConfigPayload;
 
-// ✅ 好的实践
+// ✅ 好的实践：存在性检查收窄错误对象，复杂载荷走 Zod Schema
+const getStatusText = (error: unknown): string | undefined => {
+  if (typeof error === 'object' && error !== null && 'statusText' in error) {
+    return typeof error.statusText === 'string' ? error.statusText : undefined;
+  }
+  return undefined;
+};
+
 const isValidNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
-
-if (isValidNumber(value)) {
-  // 此处 value 安全收窄为 number
-}
 ```
 
-### 使用严格相等比较
+### 空值、缺省与增量更新语义
 
-所有相等和不等比较必须使用 `===` 和 `!==`，禁止使用 `==` 或 `!=`，空值判断也不例外，避免依赖隐式类型转换。
-
-- 同时判断 `null` 和 `undefined` 时，显式写成 `value === null || value === undefined`。
-- 同时排除 `null` 和 `undefined` 时，显式写成 `value !== null && value !== undefined`。
-- `0`、`false` 和 `''` 是有效业务值时，不要用 `!value` 代替空值判断；取默认值时使用 `??`。
+- **区分三态**：严格区分 `undefined`（未传/上游缺失，保留原值或模板默认值）、`null`（显式清空）与有效零值（`0`、`false`、`''`）。
+- **严格比较与空值合并**：所有相等比较必须使用 `===` / `!==`（禁止 `== null` / `!= null`）；同时判断空值写成 `value === null || value === undefined`；有效业务值可为 `0`/`false`/`''` 时，禁止 `!value` 判空并用 `??` 替代 `||` 取默认值。
+- **增量更新与导入不误覆写**：外部目录导入、配置解析或局部保存（patch）时，禁止将上游缺失值强转为 `0` 或 `''` 覆盖既有有效配置与模板默认值，也禁止用缺省表单字段覆盖未提交字段。
 
 ```typescript
-// ❌ 不好的实践：宽松比较隐式同时匹配 null 和 undefined
-if (maxInputTokens == null) {
-  return tier;
-}
+// ❌ 不好的实践：宽松比较与 || 误覆盖 0、''
+if (maxInputTokens == null) return tier;
+const version = lastVersion?.version || 0;
 
-// ✅ 好的实践：显式覆盖两种空值，并保留 0 上限的语义
-if (maxInputTokens === null || maxInputTokens === undefined) {
-  return tier;
-}
-
-// ✅ 好的实践：严格排除两种空值
-if (maxInputTokens !== null && maxInputTokens !== undefined) {
-  return currentInputTokens <= maxInputTokens;
-}
-```
-
-### 空值合并取默认值
-
-用 `??` 取代 `||` 处理默认值，避免 `0`、`false`、`''` 被错误覆盖。
-
-```typescript
-// ❌ 不好的实践
-const version = lastVersion?.version || 0;  // version 为 0 时被误覆盖
-const text = item?.value || '';
-
-// ✅ 好的实践
+// ✅ 好的实践：显式空值判断与 ?? 保留有效零值
+if (maxInputTokens === null || maxInputTokens === undefined) return tier;
 const version = (lastVersion?.version ?? -1) + 1;
-const text = item?.value ?? '';
 ```
 
-### 可选链调用回调
+### Zod Schema 与 OpenAPI 风格
 
-用 `?.()` 调用可选回调，取代 `if (fn) fn()` 的冗余写法。
+Zod schema 同时承担运行时校验、TypeScript 类型推导和 OpenAPI 生成来源。新增或调整 API 时遵守：
+
+- **业务结构归属业务目录**：通用结构放在 `packages/global/core/**/type.ts` 等业务归属目录；`packages/global/openapi/**` 只声明接口 query/body/response/path、接口专用兼容 wrapper（须在旁注释原因）与文档元信息，不复制通用业务类型。
+- **优先复用并就地补 `meta`**：OpenAPI schema 直接复用业务 schema；通用字段说明写在业务 schema 的 `meta`，单接口视角说明用 `SomeSchema.shape.field.meta(...)` 补充；每个对外字段补齐 `description`，关键入参与返回值补 `example`。
+- **不定义占位 Schema 与多余信封**：response schema 默认只声明业务 `data`，不重复声明统一响应 envelope（`code`、`statusText`），仅路由直接返回这些字段时才声明。无 query/body/params 时不建 `z.object({})` 且不调 `parseApiInput`；无业务返回数据时不建 `z.undefined()` / `z.null()` / `z.object({})`，handler 直接返回 `undefined`（统一中间件包成 `data: null`）。存在实际业务数据时仍须在 API 边界做 Zod 校验。
+- **容错数值与布尔**：API 入参、客户端传输结构与配置字段优先用 `@fastgpt/global/common/zod` 的 `BoolSchema`、`NumSchema`、`IntSchema`，禁止直接写 `z.coerce.number()`；普通数值用 `NumSchema`，非负整数/数量/分页用 `IntSchema`，布尔用 `BoolSchema`（仅明确拒绝字符串形态时保留 `z.number()` / `z.boolean()`）。仅客户端使用的 API 也须按客户端实际传参形态定义 schema。
+- **废弃标记与 Tag 归属**：废弃字段用 `.meta({ deprecated: true })` 标记（不单靠 `@deprecated` 或文案，已发布字段的弃用流程见[契约兼容与跨仓联动](#契约兼容与跨仓联动)）；通用能力被业务复用时挂通用 + 业务双 tag，业务私有接口只挂业务 tag；仅实际开放接口加 apikey tag。
 
 ```typescript
-// ❌ 不好的实践
-if (onProgress) {
-  onProgress({ phase: 'creatingContainer' });
-}
+import { BoolSchema, IntSchema, NumSchema } from '@fastgpt/global/common/zod';
 
-// ✅ 好的实践
-onProgress?.({ phase: 'creatingContainer' });
+export const UpdateConfigSchema = z.object({
+  enabled: BoolSchema.meta({ description: '是否启用' }),
+  limit: IntSchema.optional().meta({ description: '最大数量' }),
+  temperature: NumSchema.optional().meta({ description: '温度参数' }),
+  teamTags: z.array(z.string()).optional().meta({
+    description: '旧版团队标签',
+    deprecated: true
+  })
+});
 ```
 
-### 使用 IIFE 取代 if/else 进行变量条件赋值
+### 契约兼容与跨仓联动
+
+- **不使用 `.strict()`**：新增 Schema 一律使用默认的 `z.object`（未知字段自动剔除），不使用 `.strict()` 或 `z.strictObject`。新版服务端、`pro` 或客户端增加字段是滚动升级的常态，`.strict()` 会让旧版本直接解析失败。存量 `.strict()` 在修改相关 Schema 时移除，不批量改造。
+- **已发布字段只弃用不删除**：已发布版本（以 `document/content/self-host/upgrading/` 的发布状态为准）的 API、OpenAPI、SDK 或持久化 Schema 字段，不得直接删除、重命名或改变类型；用 `.meta({ deprecated: true })` 标记弃用并保留读取兼容，替代字段与旧字段并存，在后续版本经迁移确认无消费者后再移除。仍在开发中、未发布的字段可以直接调整。
+- **读宽写严与迁移窗口保护**：写入 Schema 的约束（整数、必填、长度、新增枚举值等）不得直接复用为列表、详情或历史数据的读取 Schema；读取侧单独派生宽松 Schema，容忍历史 `null`、缺省或旧字段（在读取归一化边界兜底，避免单条旧记录阻断整页列表），新写入保持严格校验。回填迁移完成前，常规表单编辑与导入导出不得静默覆盖待回填字段。
+- **跨包与 `pro` / `sdk` 消费方同步**：修改 `packages/*` 公开签名、错误信封、工作流运行时字段或 OpenAPI Schema 时，必须同步检索主仓、`pro/` 与 `sdk/` 全部消费方；引用 workspace 包子路径时，目标包声明了 `package.json` `exports`（如 `@fastgpt/dal`、`@fastgpt/workflow-core`）则只能使用其中声明的公开入口，未声明 `exports` 的包按现有模块边界与类型检查验证。
+
+### Zod 枚举变更与历史兼容
+
+- **变更 Zod 枚举默认必须兼容旧数据与旧客户端**：增删改 `z.enum()`、`z.literal()` 或 `z.discriminatedUnion()` 判别结构时，须核对历史库数据、缓存、旧客户端与上下游返回值。
+- **最小范围 `.catch()` 兜底并显式处理**：无法识别的旧值按语义降级为 `undefined`（`.optional().catch(undefined)`）或将 `'unknown'` 纳入枚举用 `.catch('unknown')`（必填非空字符串先校验再 `.pipe()` 兜底）；严禁将未知值映射为有效业务动作，也不得对整个对象/响应兜底掩盖其他错误。业务侧须显式处理兜底分支。
+- **读写分离与有意不兼容注释**：共享 Schema 同时用于读写时，优先在读取边界派生兼容 Schema，不因兼容旧数据放宽新写入约束；仅在 Schema 或校验处明确注释「不兼容旧值」（含原因、影响版本及迁移/拒绝策略）时才允许有意拒绝旧数据。回归验证须同时覆盖合法值、旧/未知值降级及业务兜底分支。
 
 ```typescript
-// ❌ 不好的实践
-if (condition) {
-  value = true;
-} else {
-  value = false;
-}
+// 历史消息中的旧动作允许降级为未识别，不推断用户原本的操作。
+const PersistedActionSchema = z.enum(['confirm', 'revise', 'cancel']).optional().catch(undefined);
 
-// ✅ 好的实践
-const value = (() => {
-  if (condition) {
-    return true;
-  }
-  return false;
-})();
+const StoredStatusEnum = z.enum(['active', 'archived', 'unknown']);
+// 历史读取允许缺失或无效状态统一降级；必填输入先校验非空字符串再对枚举兜底。
+const StoredStatusSchema = StoredStatusEnum.catch('unknown');
+const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
 ```
 
-### 解构重命名
-
-同名变量来自多个来源时，解构时重命名，避免命名冲突。
-
-```typescript
-// ❌ 不好的实践
-const r1 = await getSkillGuidance(...);
-const r2 = await createLLMResponse(...);
-const inputTokens = r1.usage.inputTokens + r2.usage.inputTokens;
-
-// ✅ 好的实践
-const { usage: guidanceUsage } = await getSkillGuidance(...);
-const { usage: generateUsage } = await createLLMResponse(...);
-const inputTokens = guidanceUsage.inputTokens + generateUsage.inputTokens;
-```
+## 写法惯例与文案
 
 ### 函数参数不超过 2 个，多参数用对象传递
 
@@ -342,17 +282,18 @@ function createVersion(skillId: string, teamId: string, tmbId: string, version: 
 function createVersion(data: { skillId: string; teamId: string; tmbId: string; version: number }) {}
 ```
 
-## 流程组织与错误处理
+### 局部表达惯例
+
+- **可选链调用回调**：用 `onProgress?.({ phase: 'creatingContainer' })` 取代 `if (onProgress) onProgress(...)`。
+- **IIFE 取代可变 `let` + `if/else` 赋值**：条件计算单一值时用 `const value = (() => { ... })();` 保持不可变绑定。
+- **解构重命名**：多来源同名字段在解构时直接重命名（如 `const { usage: guidanceUsage } = ...;`），避免 `r1` / `r2` 临时变量。
 
 ### 按处理步骤分段，使用空行和注释说明流程
 
-函数包含多个处理步骤时，按业务职责组织代码，避免把读取、转换、差量计算、写入和清理等操作连续堆在一起。
+多步骤业务函数按职责分段，不同步骤之间留一个空行，同一步骤内紧密语句保持相邻：
 
-- 不同处理步骤之间留一个空行；同一步骤内紧密相关的语句保持相邻，不逐行添加空行。
-- 多步骤业务函数在每个主要步骤前添加简短中文注释，说明该步骤的职责、关键约定或设计原因。顺序明确的长流程可使用 `// 1. ...`、`// 2. ...` 标注，调整流程时同步更新编号。
-- 对并发校验、事务提交、回滚、资源清理等容易误解的边界，说明执行顺序及其原因，例如为什么必须在写入前保存旧 ID、提交成功后才能删除旧资源。
-- 简单且命名已充分表达含义的代码不强行编号或添加注释；避免只复述语句的“查询数据”“设置变量”“返回结果”等注释。
-- 函数级 `/** ... */` 说明整体职责和输入输出约定，步骤注释说明局部流程，两者避免重复。
+- 每个主要步骤前加简短中文注释说明职责或关键约定，顺序明确的长流程可用 `// 1. ...`、`// 2. ...` 标注，调整流程时同步更新编号；简单自解释代码不强行注释，避免复述语句的无效注释。
+- 对并发校验、事务提交、回滚、资源清理等易误解边界，说明执行顺序与原因（如提交成功前保留旧资源）。函数级 `/** ... */` 说明整体职责与契约，步骤注释说明局部流程，两者不重复。
 
 ```typescript
 // 1. 读取索引快照，保留版本以便提交时检查并发修改。
@@ -372,135 +313,40 @@ await commitIndexPatch({ snapshot, patch });
 await cleanupReplacedVectors(oldVectorIds);
 ```
 
-### 非关键清理用 `.catch()` 链
+### i18n 文案
 
-次要的清理操作（不影响主流程）用 `.catch()` 吞掉错误，不污染主 try/catch。
+- 每个用户可见文案 key 必须以完整静态字面量注册：前端 `t('ns:key')`、服务端或映射表 `i18nT('ns:key')`；禁止模板拼接、变量拼接或三元表达式拼出 key，避免清理脚本误删或界面裸显 key。新增 key 时补齐 [LocaleList](../../packages/global/common/i18n/type.ts) 全部语言。
+- 运行时从已静态注册的映射中选取完整 key（如工作流诊断按错误码选取 `i18nT` 注册的 key），或使用后端、配置下发的已注册完整 key 时，按[动态 i18n Key 收窄调用边界](#规避高开销类型实例化热点不以牺牲契约为代价)调用。
 
-```typescript
-// ❌ 不好的实践
-try {
-  await client.delete();
-} catch {
-  // 清理失败，主流程中断
-}
-
-// ✅ 好的实践
-await client.delete().catch(() => {});
-```
-
-## 状态闭环与兼容边界
+## 状态闭环与安全边界
 
 适用于新增或修改的业务链路；不借此改造未改动的存量组件。
 
-### 空值、缺失值与增量更新语义
-
-- 严格区分 `undefined`（未传/上游缺失，应保留原值或模板默认值）、`null`（显式清空）与有效零值（`0`、`false`、`''`）。
-- 外部目录导入、配置解析或增量更新（patch）时，禁止将上游缺失值强转为 `0` 或 `''` 覆盖既有有效配置与模板默认值，也禁止在局部保存时用缺省表单覆盖未提交字段。
-
-### 异步状态闭环与错误分类
+### 异步控制、异常传播与清理
 
 - **隔离在途异步响应**：流式输出、保存后重拉、切换应用/会话等并发场景，须通过请求序号、`AbortController` 或版本标识校验响应归属，防止陈旧响应覆盖新状态或误推进分页游标。
-- **副作用不越过事务与验收边界**：数据库事务内的缓存失效、消息唤醒、外部清理等不可回滚动作统一挂入 `tx.afterCommit(...)` 或在提交成功后执行；升级/迁移中的旧资源须在切换验收确认后再做破坏性删除，保障可回滚。
-- **保留系统级异常与凭据脱敏**：捕获 `fetch`、代理或外部调用异常时，先按结构化 `code` / `cause`（如 `EMFILE`、`ENOSPC`、部署方配置的实例级代理故障）保留系统异常，禁止将通用 `'fetch failed'` 无条件降级为 `UserConfigError`（4xx）；记录异常链时须脱敏 URL/Header 中的凭据。
-- **结果未知时保留未知状态**：超时、连接中断或提交应答丢失只说明结果未知，不能直接报告失败或触发回滚、补偿；先查询权威状态确认终态，无法确认时向上暴露“结果未知”（数据库事务提交结果未知由 DAL 抛出 `DbTransactionOutcomeUnknownError`，不得吞掉或改判为失败）。
-- **自动重试必须重放安全**：只对确认未生效或可安全重放的操作自动重试，通过幂等键、版本号或 compare-and-set 保证重放不重复生效；数据库事务重试交由 `runInTransaction`（仅重跑已确认回滚的冲突）。一次性凭据（下载票据、验证码）、扣费和无幂等键的外部写入不得自动重试；断点续跑不得重复计数已完成项。
+- **不丢失异常，不让清理覆写主结果**：独立后台异步任务不得只写 `void promise`，必须 `.catch(onError)` 接住 rejection；Node Stream 与 `pipeline` 在消费前绑定 `error` 监听避免未处理事件击穿进程；`finally` 与非关键清理（如删临时目录、关辅助连接）统一用 `.catch(() => {})` 或独立 `try/catch` 隔离，防止清理异常中断主流程或覆盖已提交结果。
+- **结果未知时保留未知状态**：超时、连接中断或提交应答丢失只说明结果未知，不能直接报告失败或触发回滚、补偿；先查询权威状态确认终态，无法确认时向上暴露「结果未知」（数据库事务提交结果未知由 DAL 抛出 `DbTransactionOutcomeUnknownError`，不得吞掉或改判失败）。
+- **自动重试必须重放安全**：只对确认未生效或可安全重放的操作自动重试，通过幂等键、版本号或 compare-and-set 保证重放不重复生效；数据库事务冲突重试交由 `runInTransaction`。一次性凭据（下载票据、验证码）、扣费与无幂等键外部写入不得自动重试；断点续跑不得重复计数已完成项。
+- **副作用不越过事务与验收边界**：数据库事务内的缓存失效、消息唤醒、外部清理等不可回滚动作统一挂入 `tx.afterCommit(...)` 或在提交成功后执行；新增或修改受审计字段时同步审计映射与展示文案，审计内容以本次事务实际提交状态为准，且审计补充查询失败不得使已提交写入报错；升级/迁移旧资源须在切换验收确认后再做破坏性删除。
 
-### 读写兼容分离与跨仓契约联动
+### 错误分类与统一日志
 
-- **读宽写严与迁移窗口保护**：已发布版本的持久化读取须容忍历史 `null`、缺省或旧字段（在读取归一化边界兜底，避免单条历史记录阻断整页列表），新写入保持严格校验，枚举细则见 [Zod 枚举变更与历史兼容](#zod-枚举变更与历史兼容)；回填迁移完成前，常规表单编辑、导入导出不得静默覆盖待回填字段。
-- **跨包与 `pro` 消费方同步**：修改 `packages/*` 公开签名、错误信封、工作流运行时字段或 OpenAPI Schema 时，必须同步检索主仓、`pro/` 与 `sdk/` 全部消费方；引用 workspace 包子路径时，目标包声明了 `package.json` `exports`（如 `@fastgpt/dal`、`@fastgpt/workflow-core`）则只能使用其中声明的公开入口；未声明 `exports` 的包按现有模块边界与类型检查验证。
-- **审计随写入同步**：新增或修改受审计的配置、资源字段时，同步审计字段映射与展示文案；审计内容以本次事务实际提交的状态为准，审计补充查询失败不得让已提交的业务写入返回失败。
+- **保留系统级异常分类**：捕获 `fetch`、代理或外部调用异常时，先按结构化 `code` / `cause`（如 `EMFILE`、`ENOSPC`、部署方配置的实例级代理故障）保留系统异常，禁止将通用 `'fetch failed'` 无条件降级为 `UserConfigError`（4xx）。
+- **统一日志入口与载荷脱敏**：服务端（`packages/service`、API 路由、后台任务）及被服务端调用的共享转换一律使用 `@fastgpt/service/common/logger`（`getLogger` + `LogCategories`，详见 [Logger 使用规范](../design/common/logger/index.md)），禁止 `console.*`（CLI 与独立构建脚本除外）；共享纯转换如需告警，返回诊断信息交由调用方记录。错误通过 `error` 字段传入完整对象；日志与 OTel 严禁写入密钥、Token、完整签名 URL、完整 `response.headers`、完整对话/用户输入及上游未脱敏错误原文。
 
-### 数据出口与资源边界
+### 权限、凭据与输入安全
 
-- **出参按调用方权限白名单返回**：子资源、批量结果按各自权限过滤，入口鉴权不覆盖其下全部子资源的元数据。匿名分享和公开接口先完成公开裁剪再提取字段，不透出节点内部错误原文、上游响应体或堆栈。
-- **凭据只写不回显**：密钥、代理账密等保存后，读取接口只返回是否已配置或掩码；部署方的实例级凭据不得注入租户可执行环境（沙箱、插件、用户代码）。
-- **资源有界**：数据规模由用户或外部输入决定时，按稳定游标分批读取，文件和归档流式处理，不整体读入内存；后台并发任务设置进程级上限；子进程输出、远端响应和日志写入设置大小上限，超时后停止派发后续工作。
+- **出参按调用方权限白名单返回**：子资源、批量结果按各自权限过滤，入口鉴权不覆盖其下全部子资源元数据；匿名分享与公开接口先完成公开裁剪再提取字段，不透出节点内部错误原文、上游响应体或堆栈。
+- **凭据只写不回显**：密钥、代理账密保存后，读取接口仅返回是否已配置或掩码；部署方实例级凭据不得注入租户可执行环境（沙箱、插件、用户代码）。
+- **不可信归档与路径边界**：解析用户上传的压缩包或表格（ZIP、tar、XLSX 等）前校验文件大小、解压后累计字节预算与条目路径归一化；目录边界校验使用规范化相对路径（禁仅用 `startsWith`），读写或删除本地路径前防范符号链接逃逸。
 
-## i18n 文案
+### 资源有界与生命周期释放
 
-- 每个用户可见文案 key 都必须以完整静态字面量注册：前端 `t('ns:key')`、服务端或映射表 `i18nT('ns:key')`；禁止模板拼接、变量拼接或三元表达式拼出 key，避免清理脚本误删 key 或界面裸显 key。新增 key 时补齐 [LocaleList](../../packages/global/common/i18n/type.ts) 中的全部语言。
-- 运行时从已静态注册的映射中选取完整 key（如工作流诊断按错误码选取 `i18nT` 注册的 key），或使用后端、配置下发的已注册完整 key 时，按[动态 i18n Key 收窄调用边界](#规避高开销类型实例化热点不以牺牲契约为代价)调用。
+- **用量有界**：数据规模由用户或外部输入决定时，按稳定游标分批读取，文件与归档流式处理（不整文件/整批读入内存）；后台并发任务设进程级上限；子进程输出、远端响应与日志缓冲设大小上限，超时后停止派发后续工作。
+- **生命周期闭环**：使用原生 `fetch` 时，未消费或非 2xx 响应体显式 `cancel()` 或消费释放连接；连接池、socket、Stream、定时器与事件监听器在超时、取消及进程退出路径确定释放并排空缓冲。
 
-## Zod 与 API 契约
-
-### 类型推导：Zod schema 同时承担校验和类型
-
-用 `z.infer` 从 schema 推导类型，不重复手写相同结构的 type。
-
-```typescript
-// ❌ 不好的实践
-type MessageParam = { role: 'user' | 'assistant'; content: string };
-const MessageParamSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.string() });
-
-// ✅ 好的实践
-export const MessageParamSchema = z.discriminatedUnion('role', [...]);
-export type MessageParam = z.infer<typeof MessageParamSchema>;
-```
-
-### Zod Schema 与 OpenAPI 风格
-
-Zod schema 同时承担运行时校验、TypeScript 类型推导和 OpenAPI 生成来源。新增或调整 API 时，按下面规则组织：
-
-- 业务通用结构放在业务归属目录，例如 `packages/global/core/app/type.ts`、`packages/global/core/workflow/type/node.ts`、`packages/global/support/permission/**/controller.ts`。`packages/global/openapi/**` 只声明接口 query/body/response/path、接口专用兼容处理和 OpenAPI 文档信息，不把通用配置类型、权限对象、工具配置等只为文档复制到 openapi 目录。
-- OpenAPI schema 优先复用业务 schema。需要字段说明时，优先在业务 schema 上补齐 `meta`；只属于某个接口视角的说明，可以在 openapi schema 里用 `SomeSchema.shape.field.meta(...)` 补充。不要重复建立同构 schema，也不要用 `export const A = B` 这种重命名 alias 当作新 schema 导出。
-- 只有接口边界确实需要特殊兼容时，才在 openapi 目录定义专用 wrapper，例如把 `{}` 兼容为 `undefined`、或去掉 JSON Schema 不支持的 function 字段。此类 wrapper 附近要写清楚原因。
-- API response schema 默认声明业务 `data` 结构，不重复声明统一响应 envelope，例如 `code`、`statusText`。只有路由实际直接返回这些字段时，才把它们写进 schema。
-- 只为实际存在的业务入参和业务出参定义 Schema。请求完全没有 query、body 或 params 时，不创建 `z.object({})` 占位 Schema，也不调用 `parseApiInput`；OpenAPI 省略对应的 `requestParams`/`requestBody`。没有业务返回数据的成功响应不创建 `z.undefined()`、`z.null()` 或 `z.object({})` 占位 Schema，handler 直接不返回值或返回 `undefined`，OpenAPI 只保留状态码和说明；统一响应中间件会把 `undefined` 包成 `data: null`。存在实际业务数据时仍必须在 API 边界执行 Zod 校验。
-- 每个对外字段补齐 `description`，关键入参和返回值补 `example`。如果字段语义属于业务通用结构，优先把 `meta` 写到通用 schema；如果只是某接口视角，写到 openapi schema。
-- API 入参、客户端传输结构和需要容错解析的配置字段，优先使用 `packages/global/common/zod` 里的 `BoolSchema`、`NumSchema`、`IntSchema`。不要直接写 `z.coerce.number()`；普通数值用 `NumSchema`，非负整数、数量、分页、limit 用 `IntSchema`，布尔配置和查询参数用 `BoolSchema`。只有明确需要严格拒绝字符串/数字形式时，才保留 `z.number()` 或 `z.boolean()`。
-- 废弃字段用 `.meta({ deprecated: true })` 标记，可同时保留业务说明，例如 `description: '旧版团队标签'`。不要只写 `/** @deprecated */`，也不要只把“已废弃”写进 `description`。
-- Tag 归属按能力复用判断：通用模块接口被业务模块使用时，同时加通用模块 tag 和业务模块 tag；业务模块自己的状态查询或状态操作，只加业务模块 tag。API key 文档只给实际开放接口加 apikey 专用 tag，不开放的接口不要为了分类加 tag。
-- 仅客户端使用的 API 也要以客户端实际传参为准定义 schema，避免 `schema.parse` 因 `number`、`boolean` 的字符串形态导致业务不可用。
-
-```typescript
-import { BoolSchema, IntSchema, NumSchema } from '@fastgpt/global/common/zod';
-
-export const UpdateConfigSchema = z.object({
-  enabled: BoolSchema.meta({ description: '是否启用' }),
-  limit: IntSchema.optional().meta({ description: '最大数量' }),
-  temperature: NumSchema.optional().meta({ description: '温度参数' }),
-  teamTags: z.array(z.string()).optional().meta({
-    description: '旧版团队标签',
-    deprecated: true
-  })
-});
-```
-
-### Zod 枚举变更与历史兼容
-
-- **变更 Zod 枚举时，默认必须兼容旧数据和旧客户端。** 新增、删除、重命名 `z.enum()` 枚举值，或调整 `z.literal()`、`z.discriminatedUnion()` 的判别值和分支结构时，都要检查数据库历史记录、缓存、旧客户端请求及上下游返回值，不能只验证当前版本生成的数据。
-- **优先使用 `.catch()` 为无法识别的旧值提供兜底，并在业务侧显式处理。** 可按语义降级为 `undefined` 或明确的 `unknown` 枚举值；不能把未知值自动映射为“确认”等有效业务动作。可选字段使用 `.optional().catch(undefined)`，保持缺省和无法识别时的语义一致。
-- **解析结果必须有值时，将 `'unknown'` 纳入枚举，并使用 `.catch('unknown')`。** 直接兜底也会将缺失值、`null` 和类型错误转成 `'unknown'`，仅在业务允许这些情况统一降级时使用。若输入字段必须存在且为非空字符串，先做该层校验，再用 `.pipe()` 对无法识别的枚举值兜底。业务侧应显式处理 `'unknown'`。
-- `.catch()` 应放在需要兼容的字段或最小子结构上，避免一处旧值导致整条记录、整页列表或整个对话不可读，也避免对整个响应兜底而掩盖其他错误。业务侧应保留仍可读取的内容，跳过无法识别的动作，并处理缺省分支，不能只让 Zod 校验通过后继续假定字段有效。
-- 区分历史读取兼容与新数据写入校验。共享 Schema 同时用于读写时，优先在读取边界派生兼容 Schema，明确兼容范围；不要因为兼容历史数据而意外放宽新请求的业务约束。
-- **只有在相关 Schema 或校验调用处明确注释“不兼容旧值”时，才允许有意拒绝旧数据。** 注释必须说明不兼容的原因、受影响的旧值或版本，以及迁移或拒绝策略；仅删除旧枚举值、修改类型或依赖测试通过，不视为已明确不兼容。
-- 回归验证至少覆盖：当前合法值保持原语义、旧值或未知值按预期降级，以及业务侧正确处理兜底值。只测试新枚举值能通过校验，不足以验证兼容性。
-
-```typescript
-// 历史消息中的旧动作允许降级为未识别，不推断用户原本的操作。
-const PersistedActionSchema = z.enum(['confirm', 'revise', 'cancel']).optional().catch(undefined);
-
-const action = PersistedActionSchema.parse(storedAction);
-if (action === undefined) {
-  // 仍可展示消息正文，但不能恢复或执行无法识别的交互动作。
-  showMessageText();
-} else {
-  handleRecognizedAction(action);
-}
-```
-
-```typescript
-const StoredStatusEnum = z.enum(['active', 'archived', 'unknown']);
-
-// 历史读取允许缺失或无效状态统一降级，解析结果始终有值。
-const StoredStatusSchema = StoredStatusEnum.catch('unknown');
-
-// 输入仍须提供非空字符串，只对无法识别的枚举值兜底。
-const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
-```
-
-## MongoDB 数据访问
+## 数据库与持久化访问
 
 ### 数据写操作支持可选 `tx?: DbSession` 显式事务参数
 
@@ -532,6 +378,11 @@ async createAppAndInitVersion({ data, tx }: { data: CreateAppWriteInput; tx?: Db
 }
 ```
 
+### 显式投影与大字段过滤
+
+- 业务列表、检索与批量回表查询须显式指定投影，仅读取所需字段，避免无投影拉取 `content`、`vectorData`、`fileContent`、大二进制等大字段。
+- DAL 仓储读取出口统一经过 `parseRow` / `parseList` 归一化校验，不得用 `z.unknown()` 绕过仓储出口校验。
+
 ### MongoDB 4.4 `$lookup` 兼容
 
 数据库侧过滤、排序或分页必须保留 `$lookup` 时遵守：
@@ -546,12 +397,12 @@ async createAppAndInitVersion({ data, tx }: { data: CreateAppWriteInput; tx?: Db
 - 入库已由 Mongoose `Schema.Types.ObjectId` 强约束的字段，业务读取与构建/查询 `Map` 直接使用 `String(id)`，不做多余的二次类型校验。
 - 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`：传给后续 `find({ _id: { $in } })` 时由 Mongoose 自动转型，传给 `aggregate` `$match` 时需显式 `new Types.ObjectId(id)`（`aggregate` 不做自动转型）。
 - 多批次弱一致性从库读取（如日志流式导出）可统一走 `readFromSecondary`；跨批次缓存应**仅持久化实际命中的结果**，不得将从库查空永久固化为整次导出内已确认的缺失。对未命中 ID 可采用**批次指数退避 + TTL 过期重查**（如 `createAppVersionNameLoader`），兼顾跨多批复制延迟自动追平与防止已删除历史外键在数百批次中线性空查。
-- 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在 `entity.ts` 共用，避免在 API 路由层双写导致口径漂移。
+- 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在仓储/数据访问层共用，避免在 API 路由层双写导致口径漂移。
 
 ```typescript
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
-// ✅ 好的实践：Schema 已强约束为 ObjectId，直接去重回表并用 String(id) 建 Map
+// ✅ 好的实践：Schema 已强约束为 ObjectId，显式投影批量回表并用 String(id) 建 Map
 const versionIds = Array.from(
   new Set(rows.map((row) => row.appVersionId).filter(Boolean).map(String))
 );

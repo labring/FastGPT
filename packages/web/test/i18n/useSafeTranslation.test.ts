@@ -10,6 +10,7 @@ import enAccountTeam from '../../i18n/en/account_team.json';
 import zhCNAccountTeam from '../../i18n/zh-CN/account_team.json';
 import zhHantAccountTeam from '../../i18n/zh-Hant/account_team.json';
 import koKRAccountTeam from '../../i18n/ko-KR/account_team.json';
+import trTRAccountTeam from '../../i18n/tr-TR/account_team.json';
 
 // next-i18next 使用 CJS 版 react-i18next，测试 Provider 也使用同一模块，避免 ESM/CJS 上下文分离。
 const require = createRequire(import.meta.url);
@@ -76,7 +77,8 @@ describe('useSafeTranslation with SSR member-name resources', () => {
     { language: 'en', resource: enAccountTeam },
     { language: 'zh-CN', resource: zhCNAccountTeam },
     { language: 'zh-Hant', resource: zhHantAccountTeam },
-    { language: 'ko-KR', resource: koKRAccountTeam }
+    { language: 'ko-KR', resource: koKRAccountTeam },
+    { language: 'tr-TR', resource: trTRAccountTeam }
   ])(
     'renders member-name text from preloaded $language resources',
     async ({ language, resource }) => {

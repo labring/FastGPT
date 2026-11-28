@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { getOpenTelemetrySink } from '@fastgpt-sdk/otel/logger';
 import { ServerConfigError, UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
-import { parseSupportedOutboundProxyUrl } from '../../../common/proxy/utils';
+import { parseSupportedOutboundProxyUrl } from '@fastgpt/global/common/proxy/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';

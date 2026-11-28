@@ -45,8 +45,14 @@ import {
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
 import { mergeWorkflowMemories } from '../workflow/memory/utils';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
+import { normalizeOriginIp } from '@fastgpt/global/core/app/logs/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
+
+export type ChatSystemMetadata = {
+  originIp?: string;
+  [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]?: boolean;
+};
 
 export type Props = ChatSourceParams & {
   chatId: string;
@@ -62,7 +68,10 @@ export type Props = ChatSourceParams & {
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   aiContent: AIChatItemType & { dataId?: string };
+  /** 客户端/调用方透传的自定义元数据，合并时不得覆盖服务端保留字段。 */
   metadata?: Record<string, any>;
+  /** 服务端可信的系统元数据（如 originIp、调试沙盒标记），优先级高于客户端 metadata。 */
+  systemMetadata?: ChatSystemMetadata;
   /** 当前 workflow 的统一摘要，包含错误、积分、引用和 LLM-only token。 */
   workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
   durationSeconds: number; //s
@@ -233,11 +242,61 @@ const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummar
   ...(summary?.hasAgentSandbox ? { hasAgentSandbox: true } : {})
 });
 
-/** 过滤客户端可传入的会话 metadata，避免非测试入口覆盖服务端保留的沙盒调试开关。 */
-const sanitizeChatMetadata = (metadata: Record<string, any>, source: `${ChatSourceEnum}`) => {
-  if (source === ChatSourceEnum.test) return metadata;
-  const { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: _ignored, ...rest } = metadata;
-  return rest;
+/**
+ * 合并会话 metadata，隔离客户端自由结构 metadata 与服务端可信 systemMetadata。
+ * 保留系统字段（originIp、调试沙盒标记）只接受 systemMetadata 或既有合法值，禁止客户端覆盖。
+ */
+const mergeChatMetadata = ({
+  existingMetadata,
+  metadata = {},
+  systemMetadata,
+  source
+}: {
+  existingMetadata?: Record<string, any>;
+  metadata?: Record<string, any>;
+  systemMetadata?: ChatSystemMetadata;
+  source: `${ChatSourceEnum}`;
+}) => {
+  const {
+    originIp: _clientOriginIp,
+    [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: _clientSandboxEnabled,
+    ...sanitizedClientMetadata
+  } = metadata;
+
+  const merged: Record<string, any> = {
+    ...existingMetadata,
+    ...sanitizedClientMetadata
+  };
+
+  // originIp 优先取服务端 systemMetadata；传入 systemMetadata 时忽略客户端 originIp，
+  // 未传 systemMetadata 时仅兼容合法字符串（用于滚动升级期尚未迁移的 pro 等内部调用方）。
+  const resolvedOriginIp = (() => {
+    const systemOriginIp = normalizeOriginIp(systemMetadata?.originIp);
+    if (systemOriginIp !== undefined) return systemOriginIp;
+    if (systemMetadata === undefined) {
+      const legacyOriginIp = normalizeOriginIp(_clientOriginIp);
+      if (legacyOriginIp !== undefined) return legacyOriginIp;
+    }
+    return normalizeOriginIp(existingMetadata?.originIp);
+  })();
+  if (resolvedOriginIp !== undefined) {
+    merged.originIp = resolvedOriginIp;
+  } else {
+    delete merged.originIp;
+  }
+
+  if (source === ChatSourceEnum.test) {
+    if (typeof systemMetadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] === 'boolean') {
+      merged[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] =
+        systemMetadata[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
+    } else if (typeof existingMetadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] !== 'boolean') {
+      delete merged[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
+    }
+  } else {
+    delete merged[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
+  }
+
+  return merged;
 };
 
 type FailChatRoundParams = ChatSourceParams & {
@@ -274,7 +333,8 @@ export const finalizeChatRound = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
-    metadata = {}
+    metadata = {},
+    systemMetadata
   } = props;
   const runtimeChatSummary = getRuntimeChatSummary(props.workflowRuntimeSummary);
   const chatSource = {
@@ -324,7 +384,12 @@ export const finalizeChatRound = async (props: Props) => {
       throw new Error(`Pending chat round chat not found: ${chatId}`);
     }
 
-    const metadataUpdate = sanitizeChatMetadata({ ...chat.metadata, ...metadata }, source);
+    const metadataUpdate = mergeChatMetadata({
+      existingMetadata: chat.metadata,
+      metadata,
+      systemMetadata,
+      source
+    });
 
     // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
     // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
@@ -551,7 +616,8 @@ export const pushChatRecords = async (props: Props) => {
     durationSeconds,
     errorMsg,
     workflowRuntimeSummary,
-    metadata = {}
+    metadata = {},
+    systemMetadata
   } = props;
   const runtimeChatSummary = getRuntimeChatSummary(workflowRuntimeSummary);
   const chatSource = {
@@ -572,7 +638,12 @@ export const pushChatRecords = async (props: Props) => {
       '_id metadata'
     );
 
-    const metadataUpdate = sanitizeChatMetadata({ ...chat?.metadata, ...metadata }, source);
+    const metadataUpdate = mergeChatMetadata({
+      existingMetadata: chat?.metadata,
+      metadata,
+      systemMetadata,
+      source
+    });
 
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
@@ -1016,10 +1087,10 @@ export const updateInteractiveChat = async ({
           variables,
           updateTime: new Date(),
           ...(props.source === ChatSourceEnum.test &&
-          typeof props.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] === 'boolean'
+          typeof props.systemMetadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] === 'boolean'
             ? {
                 [`metadata.${APP_SANDBOX_ENABLED_CHAT_METADATA_KEY}`]:
-                  props.metadata[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]
+                  props.systemMetadata[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]
               }
             : {}),
           ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {})
