@@ -16,6 +16,7 @@ import {
   useWorkflowCanvasValue
 } from '../canvas/workflowCanvasContext';
 import {
+  getDebugStepShortcutButton,
   getWorkflowCanvasShortcut,
   getWorkflowHistoryShortcut,
   isExternalHistoryTarget,
@@ -175,6 +176,16 @@ export const useKeyboard = () => {
         event.stopPropagation();
         if (direction === 'redo') redo();
         else undo();
+        return;
+      }
+
+      if (mouseInCanvas && event.key === 'F10') {
+        const button = getDebugStepShortcutButton(event, reactFlowStore.getState().domNode);
+        if (button) {
+          event.preventDefault();
+          event.stopPropagation();
+          button.click();
+        }
         return;
       }
 

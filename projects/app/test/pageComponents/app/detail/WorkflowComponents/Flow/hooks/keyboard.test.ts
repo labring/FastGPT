@@ -1,7 +1,9 @@
+import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   EXTERNAL_HISTORY_SELECTOR,
   getWorkflowCanvasShortcut,
+  getDebugStepShortcutButton,
   getWorkflowHistoryShortcut,
   isExternalHistoryTarget,
   isWorkflowShortcutInputtingTarget,
@@ -132,6 +134,54 @@ describe('getWorkflowCanvasShortcut', () => {
     expect(resolve(equal, true)).toBe('zoomIn');
     expect(resolve({ ...space, target: target as unknown as EventTarget }, true)).toBeUndefined();
     expect(resolve(space, true)).toBe('present');
+  });
+});
+
+describe('getDebugStepShortcutButton', () => {
+  const setup = () => {
+    const dom = new JSDOM(
+      '<main><button aria-keyshortcuts="F10"></button><button aria-keyshortcuts="F10"></button><input /></main>'
+    );
+    const canvas = dom.window.document.querySelector('main')!;
+    const resolve = (init: KeyboardEventInit = {}, target: Element = canvas) => {
+      const event = new dom.window.KeyboardEvent('keydown', { key: 'F10', ...init });
+      target.dispatchEvent(event);
+      return getDebugStepShortcutButton(event, canvas);
+    };
+    return { canvas, resolve };
+  };
+
+  it('selects a single enabled step button in the current canvas', () => {
+    const { canvas, resolve } = setup();
+    const buttons = canvas.querySelectorAll('button');
+    expect(resolve()).toBe(buttons[0]);
+    buttons[0].disabled = true;
+    expect(resolve()).toBe(buttons[1]);
+    buttons[1].remove();
+    expect(resolve()).toBeNull();
+  });
+
+  it('leaves modified keys, repeats and editing alone', () => {
+    const { canvas, resolve } = setup();
+    for (const init of [
+      { key: 'F9' },
+      { repeat: true },
+      { shiftKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { isComposing: true }
+    ]) {
+      expect(resolve(init)).toBeNull();
+    }
+    expect(resolve({}, canvas.querySelector('input')!)).toBeNull();
+  });
+
+  it('waits for interactive input even when another branch has a step button', () => {
+    const { canvas, resolve } = setup();
+    canvas.appendChild(canvas.ownerDocument.createElement('section')).dataset.debugAwaitingInput =
+      'true';
+    expect(resolve()).toBeNull();
   });
 });
 
