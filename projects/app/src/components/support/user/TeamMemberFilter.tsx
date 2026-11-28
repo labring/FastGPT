@@ -50,6 +50,7 @@ const TeamMemberFilter = ({
   const labels = useCommonFilterLabels();
   const { userInfo } = useUserStore();
   const currentTmbId = userInfo?.team.tmbId;
+  const [hasOpened, setHasOpened] = useState(false);
   const [searchKey, setSearchKey] = useState('');
   const selectedIds = useMemo(() => (value.mode === 'selected' ? value.values : []), [value]);
   const selectedIdsKey = selectedIds.join(',');
@@ -67,9 +68,14 @@ const TeamMemberFilter = ({
   const {
     data: members = [],
     ScrollData,
-    isInitialLoading
+    isInitialLoading,
+    isEmpty,
+    error,
+    refreshList
   } = useScrollPagination<any, PaginationResponse<TeamMemberItemType>>(getTeamMembers, {
     pageSize: 20,
+    disabled: !hasOpened,
+    ready: hasOpened,
     params: {
       searchKey,
       ...(activeOnly ? { status: 'active' } : {}),
@@ -85,6 +91,21 @@ const TeamMemberFilter = ({
       </Box>
     )
   });
+
+  const handleOpen = useCallback(() => {
+    if (!hasOpened) {
+      setHasOpened(true);
+      return;
+    }
+    // 仅在首屏尚无已加载候选且上次加载失败时重展重试；续页失败保留已加载候选，不重置回第一页。
+    if (error && !isInitialLoading && members.length === 0) {
+      refreshList();
+    }
+  }, [error, hasOpened, isInitialLoading, members.length, refreshList]);
+
+  // 首次展开到防抖请求真正发出之间保持加载态，避免下拉面板短暂闪烁空白。
+  const isListLoading =
+    isInitialLoading || (hasOpened && members.length === 0 && !isEmpty && !error);
 
   const { data: selectedMembers, loading: isHydratingSelected } = useRequest(
     async () => {
@@ -158,8 +179,9 @@ const TeamMemberFilter = ({
       searchValue={searchKey}
       onSearchChange={setSearchKey}
       filterLocal={false}
+      onOpen={handleOpen}
       ListContainer={ScrollData}
-      isLoading={isInitialLoading}
+      isLoading={isListLoading}
       listSize={'lg'}
       maxW={maxW}
       menuMaxW={menuMaxW}
