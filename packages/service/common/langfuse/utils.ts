@@ -1,4 +1,15 @@
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  extractDeepestInteractive,
+  isValidInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 
 const LANGFUSE_MAX_STRING_LENGTH = 10000;
 const LANGFUSE_MAX_ARRAY_LENGTH = 100;
@@ -100,9 +111,236 @@ export const serializeLangfuseValue = (
   }
 };
 
-/** 提取最终回复中的可见文本，不上传内部推理消息。 */
-export const getLangfuseAssistantOutput = (values: AIChatItemValueItemType[]): string =>
-  values.flatMap((item) => (item.text?.content ? [item.text.content] : [])).join('');
+/**
+ * trace.output 需要放行的字段：1.5.0 的 trace.output 直接序列化 AI 消息项数组，
+ * 其中包含 reasoning 项；1.6 默认会过滤推理内容，这里按上报契约显式放行，
+ * 保证下游拿到的字段集合与 1.5.0 一致。
+ */
+export const langfuseTraceOutputAllowedKeys: ReadonlySet<string> = new Set(['reasoning']);
+
+/** 只有“纯文本 / 纯推理”项参与合并；带 tools/skills/interactive/plan 等字段的项保持边界。 */
+const isPureLangfuseTextItem = (item: AIChatItemValueItemType) =>
+  !!item.text &&
+  !item.reasoning &&
+  !item.tools &&
+  !item.skills &&
+  !item.interactive &&
+  !item.plan &&
+  !item.planStatus &&
+  !item.tool;
+
+const isPureLangfuseReasoningItem = (item: AIChatItemValueItemType) =>
+  !!item.reasoning &&
+  !item.text &&
+  !item.tools &&
+  !item.skills &&
+  !item.interactive &&
+  !item.plan &&
+  !item.planStatus &&
+  !item.tool;
+
+/**
+ * 构造 trace.output 的 AI 消息项数组，合并规则与 1.5.0 的
+ * `mergeAssistantResponseAnswerText` 保持一致：连续纯 text 合并、连续纯 reasoning 合并，
+ * 结果为空时补一个空 text 项。
+ *
+ * 只有“纯文本 / 纯推理”项参与合并：同一项同时带 text + tools，或带 interactive/plan 等字段时
+ * 保持独立边界，避免合并时丢掉工具记录与交互快照。
+ * 合并时生成新对象，不修改调用方的消息项（避免同一数组被多次归一时内容叠加）。
+ */
+export const getLangfuseTraceOutput = (
+  values: AIChatItemValueItemType[]
+): AIChatItemValueItemType[] => {
+  const result: AIChatItemValueItemType[] = [];
+
+  for (const item of values) {
+    const lastItem = result[result.length - 1];
+
+    if (isPureLangfuseTextItem(item)) {
+      if (lastItem && isPureLangfuseTextItem(lastItem) && lastItem.text?.content) {
+        result[result.length - 1] = {
+          ...lastItem,
+          text: { content: (lastItem.text?.content || '') + (item.text?.content || '') }
+        };
+        continue;
+      }
+    } else if (isPureLangfuseReasoningItem(item)) {
+      if (lastItem && isPureLangfuseReasoningItem(lastItem)) {
+        result[result.length - 1] = {
+          ...lastItem,
+          reasoning: {
+            ...(lastItem.reasoning ?? {}),
+            content: (lastItem.reasoning?.content || '') + (item.reasoning?.content || '')
+          }
+        };
+        continue;
+      }
+    }
+
+    result.push(item);
+  }
+
+  // 与 1.5.0 对齐：空结果补一个空 text 项，而不是返回空数组。
+  if (result.length === 0) result.push({ text: { content: '' } });
+
+  return result;
+};
+
+/**
+ * trace.output 中工具记录的上报形状：仅保留标识，不含参数与响应载荷。
+ * 内置读文件等工具的 params 可携带上传文件的完整签名 URL（含访问凭证），
+ * response / content 为原始工具输出，同样不上报。
+ */
+type LangfuseTraceToolItemType = Pick<
+  ToolModuleResponseItemType,
+  'id' | 'toolName' | 'functionName'
+>;
+
+const projectLangfuseToolItem = (tool: ToolModuleResponseItemType): LangfuseTraceToolItemType => ({
+  id: tool.id,
+  toolName: tool.toolName,
+  functionName: tool.functionName
+});
+
+/**
+ * trace.output 中交互的上报形状：type + 结构元数据。
+ * 这是投影后的独立形状，不承载调度字段，也不等同完整运行时交互。
+ */
+type LangfuseTraceInteractiveType = {
+  type: InteractiveNodeResponseType['type'];
+  params: Record<string, unknown>;
+};
+
+/**
+ * 按叶子类型投影遥测所需的结构元数据，剔除运行时值与可展开文本。
+ *
+ * 选择器/表单的说明与标签在节点执行前会展开编辑器变量，可引用工作流开始节点的
+ * 本轮用户输入；动态选项、表单运行时值与模型工具参数（arguments）同样可携带会话
+ * 上下文，一律不上报。只保留与具体数据无关的结构元数据：
+ * - userSelect / paymentPause：仅交互类型；
+ * - userInput：表单仅保留字段名/类型/必填；
+ * - agentAsk / workflowBuilderPreview：仅保留工具调用 ID。
+ */
+const projectLangfuseInteractiveParams = (
+  leaf: InteractiveNodeResponseType
+): Record<string, unknown> => {
+  switch (leaf.type) {
+    case 'userInput':
+      return {
+        inputForm: leaf.params.inputForm.map(({ key, type, required }) => ({
+          key,
+          type,
+          required
+        }))
+      };
+    case 'agentAsk':
+    case 'workflowBuilderPreview':
+      return { toolCallId: leaf.params.toolCallId };
+    default:
+      return {};
+  }
+};
+
+/**
+ * 上报出口只投影“最终展示交互”的结构元数据，不变量：续跑快照、调度状态、可展开文本
+ * 与运行时用户输入不得进入 trace.output。
+ *
+ * 1. 复用 extractDeepestInteractive 解包嵌套包装（childrenInteractive / loopInteractive /
+ *    loopRunInteractive 等），loopHistory / loopResult 等内部续跑快照随整层包装一起丢弃。
+ * 2. 用 isValidInteractive（叶子 Schema 校验）收窄解包结果，非叶子或载荷不完整的交互不上报。
+ * 3. 按叶子类型投影结构元数据（见 projectLangfuseInteractiveParams）。
+ */
+const projectLangfuseInteractive = (
+  value: WorkflowInteractiveResponseType | undefined
+): LangfuseTraceInteractiveType | undefined => {
+  // 调用点 item.interactive 已按 Schema 声明为运行时交互；宽松载荷由叶子校验兜底。
+  if (!value || typeof value !== 'object') return undefined;
+
+  const leaf = extractDeepestInteractive(value);
+  if (!isValidInteractive(leaf)) return undefined;
+
+  return {
+    type: leaf.type,
+    params: projectLangfuseInteractiveParams(leaf)
+  };
+};
+
+/**
+ * 投影后的 trace.output 消息项：interactive / tools / tool 为遥测投影形状，
+ * 不承载调度字段、工具参数与响应载荷。
+ */
+type LangfuseTraceOutputItemType = Omit<
+  AIChatItemValueItemType,
+  'interactive' | 'tools' | 'tool'
+> & {
+  interactive?: LangfuseTraceInteractiveType;
+  tools?: LangfuseTraceToolItemType[];
+  tool?: LangfuseTraceToolItemType;
+};
+
+/**
+ * 按白名单投影消息项，剥离输入上下文、恢复上下文与内部状态。
+ * 逐字段显式构造：投影结果的形状由 LangfuseTraceOutputItemType 声明，
+ * 不把不含调度字段的遥测项强转回完整运行时类型。
+ */
+const projectLangfuseTraceOutputItem = (
+  item: AIChatItemValueItemType
+): LangfuseTraceOutputItemType => {
+  const projected: LangfuseTraceOutputItemType = {};
+  if (item.id) projected.id = item.id;
+  if (item.text) projected.text = item.text;
+  if (item.reasoning) projected.reasoning = item.reasoning;
+  if (item.skills) projected.skills = item.skills;
+  if (item.plan) projected.plan = item.plan;
+  if (item.planStatus) projected.planStatus = item.planStatus;
+  if (item.tools) projected.tools = item.tools.map(projectLangfuseToolItem);
+  if (item.tool) projected.tool = projectLangfuseToolItem(item.tool);
+  const projectedInteractive = projectLangfuseInteractive(item.interactive);
+  if (projectedInteractive !== undefined) projected.interactive = projectedInteractive;
+  return projected;
+};
+
+/** 结果必须是“消息项对象数组”：排除字符串占位（如 "[Truncated]"）与空元素。 */
+const isLangfuseMessageItemArray = (value?: string) => {
+  if (value === undefined) return false;
+  try {
+    const parsed = JSON.parse(value);
+    return (
+      Array.isArray(parsed) &&
+      parsed.every((item) => !!item && typeof item === 'object' && !Array.isArray(item))
+    );
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 序列化 trace.output。
+ *
+ * 1. 只序列化白名单字段，输入与恢复上下文不上报；交互对象只保留展示字段。
+ * 2. 先取最近的完整消息项（最多 LANGFUSE_MAX_ARRAY_LENGTH 条），避免通用序列化按条数
+ *    截断时丢掉最终答复、并在数组里混入 "[Truncated]" 字符串。
+ * 3. 总长度仍超限时继续丢弃较早的项，保证结果始终是消息项对象数组。
+ */
+export const serializeLangfuseTraceOutput = (values: AIChatItemValueItemType[]): string => {
+  const projected = getLangfuseTraceOutput(values).map(projectLangfuseTraceOutputItem);
+  const items = projected.slice(-LANGFUSE_MAX_ARRAY_LENGTH);
+
+  for (let start = 0; start < items.length; start++) {
+    const serialized = serializeLangfuseValue(items.slice(start), {
+      keepExcludedKeys: langfuseTraceOutputAllowedKeys
+    });
+    if (isLangfuseMessageItemArray(serialized)) return serialized as string;
+  }
+
+  // 兜底：单条消息项自身超限时保留其可见文本并标记截断，仍然返回数组。
+  const last = items[items.length - 1];
+  const content = (last?.text?.content ?? last?.reasoning?.content ?? '').slice(
+    0,
+    LANGFUSE_MAX_STRING_LENGTH
+  );
+  return JSON.stringify([{ text: { content: content ? `${content}...[truncated]` : '' } }]);
+};
 
 /** 构造根 workflow span 的初始属性，使 Langfuse 能在 onStart 阶段识别应用根。 */
 export const getLangfuseTraceAttributes = ({

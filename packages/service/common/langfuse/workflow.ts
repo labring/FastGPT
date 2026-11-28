@@ -2,7 +2,6 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   isLangfuseEnabled,
@@ -11,9 +10,9 @@ import {
   setActiveLangfuseTraceAttributes
 } from './index';
 import {
-  getLangfuseAssistantOutput,
   getLangfuseStepStartAttributes,
   getLangfuseTraceAttributes,
+  serializeLangfuseTraceOutput,
   serializeLangfuseValue
 } from './utils';
 
@@ -43,7 +42,7 @@ export const onWorkflowStart = ({
   prepareLangfuseSpan(enabled ? getLangfuseTraceAttributes(traceProps) : undefined, 'trace');
 };
 
-/** 记录工作流最终可见回复，不上传内部推理消息。 */
+/** 记录工作流最终回复；合并规则与字段集合对齐 1.5.0（AI 消息项数组，含 reasoning/tools）。 */
 export const onWorkflowEnd = ({
   output,
   ...lifecycleProps
@@ -51,12 +50,9 @@ export const onWorkflowEnd = ({
   output: AIChatItemValueItemType[];
 }) => {
   if (!isRootChatWorkflow(lifecycleProps) || !isLangfuseEnabled()) return;
-  const serializedOutput = serializeLangfuseValue(
-    getLangfuseAssistantOutput(normalizeAIChatValue(output))
-  );
-  if (serializedOutput !== undefined) {
-    setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': serializedOutput });
-  }
+  setActiveLangfuseTraceAttributes({
+    'langfuse.trace.output': serializeLangfuseTraceOutput(output)
+  });
 };
 
 /** 在 Langfuse 私有上下文中启动节点，不把 observation 标记写入通用 OTEL span。 */
