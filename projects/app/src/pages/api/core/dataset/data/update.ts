@@ -65,13 +65,24 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     authorizedIds
   });
   const vectorModel = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
-  const normalized = await normalizeDatasetDataImages({
-    teamId: String(teamId),
-    datasetId: String(collection.datasetId),
-    collectionId: String(collection._id),
-    data: [{ q: q ?? datasetData.q ?? '', a: a ?? datasetData.a ?? '' }]
-  });
-  const { q: nextQ, a: nextA } = normalized.data[0];
+  // 仅转存本次提交字段；未提交字段只参与已有受管内联图计数，避免误处理未编辑的历史 Base64。
+  const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
+    q !== undefined || a !== undefined
+      ? await normalizeDatasetDataImages({
+          teamId: String(teamId),
+          datasetId: String(collection.datasetId),
+          collectionId: String(collection._id),
+          data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }],
+          existingContent: [
+            {
+              ...(q === undefined && { q: datasetData.q }),
+              ...(a === undefined && { a: datasetData.a })
+            }
+          ]
+        })
+      : { data: [{}], imageUploadKeys: [] };
+  const nextQ = normalized.data[0].q ?? datasetData.q ?? '';
+  const nextA = normalized.data[0].a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {
     addAuditLog({
       tmbId,

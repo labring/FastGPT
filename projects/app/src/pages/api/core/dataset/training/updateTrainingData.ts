@@ -163,20 +163,20 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       : undefined;
 
   const readyUpdate = getTrainingTaskReadyUpdate();
-  // 按当前完整正文预检数量上限，避免仅提交单字段时绕过“每条数据最多 3 张内联图”约束；实际写回仍只更新本次提交字段。
+  // 只转存本次提交字段；未提交的已有字段通过 existingContent 仅参与受管内联图计数，避免误上传或拒绝历史 Base64。
   const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
     q !== undefined || a !== undefined
       ? await normalizeDatasetDataImages({
           teamId: String(collection.teamId),
           datasetId: String(collection.datasetId),
           collectionId: String(collection._id),
-          data: [{ q: q ?? data.q, a: a ?? data.a }]
+          data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }],
+          existingContent: [
+            { ...(q === undefined && { q: data.q }), ...(a === undefined && { a: data.a }) }
+          ]
         })
       : { data: [{}], imageUploadKeys: [] };
-  const submittedFields = {
-    ...(q !== undefined && { q: normalized.data[0].q }),
-    ...(a !== undefined && { a: normalized.data[0].a })
-  };
+  const submittedFields = normalized.data[0];
   await mongoSessionRun(async (session) => {
     // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属与 3 张数量上限校验。
     const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();

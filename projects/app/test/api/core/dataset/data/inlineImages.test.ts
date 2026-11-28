@@ -173,6 +173,75 @@ describe('direct data image ingestion', () => {
     );
     expect(storage.uploadObject).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
+
+    // 历史任务或分块未提交字段含旧 Base64（合法或非法）时，仅编辑另一字段不应上传未提交字段或拒绝编辑
+    const legacyValidTask = await MongoDatasetTraining.create({
+      ...scope,
+      billId: 'legacy-valid-base64-edit',
+      mode: 'index',
+      retryCount: 0,
+      errorMsg: 'failed',
+      q: 'old q',
+      a: imageText
+    });
+    storage.uploadObject.mockClear();
+    const editOnlyQ = await Call(updateTrainingHandler, {
+      auth: root,
+      body: { dataId: String(legacyValidTask._id), q: 'plain text updated q' }
+    });
+    expect(editOnlyQ.code, String(editOnlyQ.error?.message ?? JSON.stringify(editOnlyQ))).toBe(200);
+    expect(storage.uploadObject).not.toHaveBeenCalled();
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
+    const savedLegacyValid = (await MongoDatasetTraining.findById(legacyValidTask._id).lean())!;
+    expect(savedLegacyValid.q).toBe('plain text updated q');
+    expect(savedLegacyValid.a).toBe(imageText);
+
+    const legacyInvalidTask = await MongoDatasetTraining.create({
+      ...scope,
+      billId: 'legacy-invalid-base64-edit',
+      mode: 'index',
+      retryCount: 0,
+      errorMsg: 'failed',
+      q: 'old q',
+      a: '![broken](data:image/png;base64,@@@)'
+    });
+    const editWithInvalidUnsubmitted = await Call(updateTrainingHandler, {
+      auth: root,
+      body: { dataId: String(legacyInvalidTask._id), q: 'fixed q only' }
+    });
+    expect(
+      editWithInvalidUnsubmitted.code,
+      String(
+        editWithInvalidUnsubmitted.error?.message ?? JSON.stringify(editWithInvalidUnsubmitted)
+      )
+    ).toBe(200);
+    expect(storage.uploadObject).not.toHaveBeenCalled();
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
+    const savedLegacyInvalid = (await MongoDatasetTraining.findById(legacyInvalidTask._id).lean())!;
+    expect(savedLegacyInvalid.q).toBe('fixed q only');
+    expect(savedLegacyInvalid.a).toBe('![broken](data:image/png;base64,@@@)');
+
+    // data/update 仅修改 q 时同样不触发未提交历史 Base64 的上传或报错
+    const legacyRow = await MongoDatasetData.create({
+      ...scope,
+      q: 'legacy row q',
+      a: '![broken](data:image/png;base64,@@@)',
+      chunkIndex: 0,
+      indexes: []
+    });
+    const editRowQOnly = await Call(updateHandler, {
+      auth: root,
+      body: { dataId: String(legacyRow._id), q: 'updated row q only' }
+    });
+    expect(
+      editRowQOnly.code,
+      String(editRowQOnly.error?.message ?? JSON.stringify(editRowQOnly))
+    ).toBe(200);
+    expect(storage.uploadObject).not.toHaveBeenCalled();
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
+    const savedLegacyRow = (await MongoDatasetData.findById(legacyRow._id).lean())!;
+    expect(savedLegacyRow.q).toBe('updated row q only');
+    expect(savedLegacyRow.a).toBe('![broken](data:image/png;base64,@@@)');
   });
 
   it.each([false, true])(

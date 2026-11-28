@@ -12,7 +12,8 @@ import {
   countChunkImagesInContent,
   createChunkImageKey,
   MAX_INLINE_IMAGES_PER_DATA_ITEM,
-  parseChunkImageKey
+  parseChunkImageKey,
+  type ChunkImageContent
 } from './utils';
 import { normalizeMimeType, resolveMimeExtension } from '../../../../common/s3/utils/mime';
 import { isValidImageContentType } from '../../../../common/file/image/utils';
@@ -115,31 +116,35 @@ const scanFieldInlineImages = (
 
 /**
  * 将直接写入的 Base64 图片转存为本集合对象，只替换地址，保留分块与正文。
- * 阶段 1 对整批完成数量（每条最多 3 张）、MIME、规范 Base64、字节上限与实际文件魔数校验（逐图释放 Buffer），
- * 全部通过后再执行任何集合前缀初始化、TTL 登记或 S3 上传；同请求按 SHA-256 摘要去重，避免常驻大 Base64 字符串。
+ * 阶段 1a 完成字符串级数量（每条最多 3 张）、MIME、规范 Base64 与字节上限预检，阶段 1b 逐图解码校验魔数并释放 Buffer；
+ * 全部通过后再执行集合前缀初始化、TTL 登记与 S3 上传。部分编辑可通过 `existingContent` 传入未提交字段，
+ * 仅计入其中已有的受管内联图数量，不转存也不校验未提交的历史 Base64。
  */
 export const normalizeDatasetDataImages = async <T extends { q?: string; a?: string }>({
   teamId,
   datasetId,
   collectionId,
-  data
+  data,
+  existingContent
 }: {
   teamId: string;
   datasetId: string;
   collectionId: string;
   data: T[];
+  existingContent?: Array<Pick<ChunkImageContent, 'q' | 'a'>>;
 }): Promise<{ data: T[]; imageUploadKeys: string[] }> => {
-  // 阶段 1a：纯字符串数量与编码预检，优先拦下超限与非法编码。
-  const scannedItems = data.map((item) => {
+  // 阶段 1a：纯字符串数量与编码预检（零 Buffer 分配），优先拦下超限与非法编码。
+  const scannedItems = data.map((item, index) => {
     const qScan = scanFieldInlineImages(item.q);
     const aScan = scanFieldInlineImages(item.a);
     const newCount = qScan.matches.length + aScan.matches.length;
     if (newCount > 0) {
-      // 另一字段不含 Base64 但已有受管内联图时也计入 3 张上限，防止分次编辑绕过。
-      const extraExisting = countChunkImagesInContent({
-        q: item.q && !inlineDataImageHintRegex.test(item.q) ? item.q : undefined,
-        a: item.a && !inlineDataImageHintRegex.test(item.a) ? item.a : undefined
-      });
+      // 同条数据中未含 Base64 的提交字段，以及部分编辑中未提交的现有字段，仅计入已有的受管内联图。
+      const extraExisting =
+        countChunkImagesInContent({
+          q: item.q && !inlineDataImageHintRegex.test(item.q) ? item.q : undefined,
+          a: item.a && !inlineDataImageHintRegex.test(item.a) ? item.a : undefined
+        }) + (existingContent?.[index] ? countChunkImagesInContent(existingContent[index]) : 0);
       const totalCount =
         newCount + qScan.existingChunkImages + aScan.existingChunkImages + extraExisting;
       if (totalCount > MAX_INLINE_IMAGES_PER_DATA_ITEM) {
