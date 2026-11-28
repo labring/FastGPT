@@ -731,6 +731,337 @@ describe('httpTool utils', () => {
       expect(result[0].outputSchema.properties).toHaveProperty('resourceId');
     });
 
+    it('should read 2XX wildcard response schemas', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'createTask',
+          description: 'Create task',
+          method: 'POST',
+          path: '/tasks',
+          params: [],
+          request: {},
+          response: {
+            '2XX': {
+              content: {
+                'application/json': {
+                  schema: {
+                    properties: {
+                      taskId: { type: 'string' },
+                      state: { type: 'string' }
+                    },
+                    required: ['taskId']
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('taskId');
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('state');
+      expect(result[0]?.outputSchema?.required).toContain('taskId');
+    });
+
+    it('should match the 2xx wildcard case-insensitively', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'mixedCaseWildcard',
+          description: 'Mixed case wildcard',
+          method: 'GET',
+          path: '/mixed-case',
+          params: [],
+          request: {},
+          response: {
+            '2Xx': {
+              content: {
+                'application/json': {
+                  schema: { properties: { result: { type: 'string' } } }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('result');
+    });
+
+    it('should prefer the success response that carries a JSON schema', async () => {
+      // 206 声明在前、204 无响应体：整型键按数值升序枚举后是 204, 206，不能只取第一条。
+      const pathData: PathDataType[] = [
+        {
+          name: 'downloadChunk',
+          description: 'Download chunk',
+          method: 'GET',
+          path: '/chunks',
+          params: [],
+          request: {},
+          response: {
+            '206': {
+              content: {
+                'application/json': {
+                  schema: {
+                    properties: {
+                      chunk: { type: 'string' },
+                      total: { type: 'number' }
+                    },
+                    required: ['chunk']
+                  }
+                }
+              }
+            },
+            '204': {
+              description: 'No content'
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('chunk');
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('total');
+      expect(result[0]?.outputSchema?.required).toContain('chunk');
+    });
+
+    it('should ignore non-object response definitions', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'arrayResponse',
+          description: 'Malformed responses',
+          method: 'GET',
+          path: '/malformed',
+          params: [],
+          request: {},
+          response: ['200']
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.outputSchema?.properties).toEqual({});
+    });
+
+    it('should not let a __proto__ property name replace the schema prototype', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'prototypeKeyTool',
+          description: 'Prototype key',
+          method: 'GET',
+          path: '/prototype-key',
+          params: [],
+          request: {},
+          response: {
+            '200': {
+              content: {
+                'application/json': {
+                  // 模拟来自 JSON 文本的 schema：`__proto__` 是合法但无法作为普通对象字段的键名
+                  schema: JSON.parse(
+                    '{"properties":{"__proto__":{"type":"string"},"name":{"type":"string"}},"required":["__proto__","name"]}'
+                  )
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      const properties = result[0]?.outputSchema?.properties ?? {};
+      expect(Object.getPrototypeOf(properties)).toBe(Object.prototype);
+      expect(Object.keys(properties)).toEqual(['name']);
+      expect(result[0]?.outputSchema?.required).toEqual(['name']);
+    });
+
+    it('should keep other operations when one response schema has a malformed property', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'normalTool',
+          description: 'Normal tool',
+          method: 'GET',
+          path: '/normal',
+          params: [],
+          request: {},
+          response: {
+            '200': {
+              content: {
+                'application/json': {
+                  schema: {
+                    properties: { ok: { type: 'string' } },
+                    required: ['ok']
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          name: 'malformedTool',
+          description: 'Malformed tool',
+          method: 'GET',
+          path: '/malformed-property',
+          params: [],
+          request: {},
+          response: {
+            '2XX': {
+              content: {
+                'application/json': {
+                  schema: {
+                    properties: { invalid: null },
+                    required: ['invalid']
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('ok');
+      expect(result[0]?.outputSchema?.required).toContain('ok');
+      expect(result[1]?.outputSchema?.properties).toEqual({});
+      expect(result[1]?.outputSchema?.required).toEqual([]);
+    });
+
+    it('should map true to any and skip false boolean schemas', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'booleanSchemaTool',
+          description: 'Boolean sub schema',
+          method: 'GET',
+          path: '/boolean-schema',
+          params: [],
+          request: {},
+          response: {
+            '200': {
+              content: {
+                'application/json': {
+                  schema: {
+                    // OAS 3.1 允许布尔子 Schema：true 表示任意值，false 表示禁止该字段
+                    properties: { flag: true, retired: false, name: { type: 'string' } },
+                    required: ['flag', 'name', 'retired', 'ghost']
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('flag');
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('name');
+      expect(result[0]?.outputSchema?.properties?.flag.type).toBe('any');
+      expect(result[0]?.outputSchema?.properties).not.toHaveProperty('retired');
+      expect(result[0]?.outputSchema?.required).toEqual(expect.arrayContaining(['flag', 'name']));
+      expect(result[0]?.outputSchema?.required).not.toContain('retired');
+      expect(result[0]?.outputSchema?.required).not.toContain('ghost');
+    });
+
+    it('should skip a success response that only declares forbidden fields', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'forbiddenOnlyFirst',
+          description: 'Only forbidden fields',
+          method: 'GET',
+          path: '/forbidden-only',
+          params: [],
+          request: {},
+          response: {
+            '203': {
+              content: {
+                'application/json': {
+                  schema: { properties: { retired: false } }
+                }
+              }
+            },
+            '206': {
+              content: {
+                'application/json': {
+                  schema: { properties: { chunk: { type: 'string' } }, required: ['chunk'] }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('chunk');
+      expect(result[0]?.outputSchema?.properties).not.toHaveProperty('retired');
+      expect(result[0]?.outputSchema?.required).toEqual(['chunk']);
+    });
+
+    it('should not fall back to default when the document declares success responses', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'bodylessSuccess',
+          description: 'Bodyless success',
+          method: 'POST',
+          path: '/bodyless',
+          params: [],
+          request: {},
+          response: {
+            '200': { description: 'No body' },
+            '2XX': { description: 'No body' },
+            default: {
+              content: {
+                'application/json': {
+                  schema: {
+                    properties: { errorCode: { type: 'string' } },
+                    required: ['errorCode']
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toEqual({});
+      expect(result[0]?.outputSchema?.required).toEqual([]);
+    });
+
+    it('should still use default when no success response is declared', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'defaultOnly',
+          description: 'Default only',
+          method: 'GET',
+          path: '/default-only',
+          params: [],
+          request: {},
+          response: {
+            default: {
+              content: {
+                'application/json': {
+                  schema: { properties: { message: { type: 'string' } } }
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0]?.outputSchema?.properties).toHaveProperty('message');
+    });
+
     it('should handle empty path data', async () => {
       const result = await pathData2ToolList([]);
       expect(result).toEqual([]);

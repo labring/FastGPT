@@ -262,6 +262,89 @@ export const parseHttpToolConfig = (
   };
 };
 
+/** 下游实际会读取的输出契约，字段值保持未收窄的对象，由消费方按需读取。 */
+type HttpResponseOutputSchema = {
+  properties: Record<string, Record<string, unknown>>;
+  required: string[];
+};
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasOwn = (target: Record<string, unknown>, key: string) =>
+  Object.prototype.hasOwnProperty.call(target, key);
+
+/**
+ * 从 `unknown` 的响应定义里投影出下游真正会读的输出契约，沿
+ * `content → application/json → schema` 逐层守卫，不做类型断言。
+ *
+ * - 属性项为对象时原样保留；布尔子 Schema 中 `true` 表示任意值，`false` 表示该字段不合法，
+ *   后者不生成输出端口。
+ * - `required` 只保留仍存在于属性里的字符串，单个坏字段（如 `properties: { invalid: null }`）
+ *   只会被跳过，不会让整份导入失败。
+ */
+const toResponseOutputSchema = (definition: unknown): HttpResponseOutputSchema | undefined => {
+  if (!isPlainRecord(definition)) return undefined;
+  const content = definition.content;
+  if (!isPlainRecord(content)) return undefined;
+  const mediaType = content['application/json'];
+  if (!isPlainRecord(mediaType)) return undefined;
+  const schema = mediaType.schema;
+  if (!isPlainRecord(schema)) return undefined;
+
+  const rawProperties = isPlainRecord(schema.properties) ? schema.properties : {};
+  // 用无原型对象做累加器，避免不可信键名改写原型。
+  const properties: Record<string, Record<string, unknown>> = Object.create(null);
+  for (const [key, value] of Object.entries(rawProperties)) {
+    // `__proto__` 作为属性名时下游普通对象赋值会改写原型而不是新增端口，这里直接跳过，
+    // 保证 `properties` 与 `required` 的口径一致。
+    if (key === '__proto__') continue;
+    if (isPlainRecord(value)) {
+      properties[key] = value;
+    } else if (value === true) {
+      properties[key] = {};
+    }
+    // `false` 表示禁止出现的字段，不投影成输出端口。
+  }
+
+  const rawRequired = Array.isArray(schema.required) ? schema.required : [];
+  const required = rawRequired.filter(
+    (key): key is string => typeof key === 'string' && hasOwn(properties, key)
+  );
+
+  return { properties, required };
+};
+
+/**
+ * 取用于生成输出契约的响应定义，优先级：精确 2xx 码 → 其余 2xx 码 → `2XX` 通配码 → `default`。
+ *
+ * - 整型键在 `Object.keys` 里按数值升序枚举，声明顺序并不可靠，因此在成功响应里挑第一个真能
+ *   投影出属性的 Schema，而不是挑第一条定义（只声明 `false` 字段的响应不算）。
+ * - `default` 只描述其余状态：一旦文档声明了成功响应，就不再回退它，避免把错误字段暴露成输出。
+ */
+const pickResponseOutputSchema = (response: unknown): HttpResponseOutputSchema | undefined => {
+  if (!isPlainRecord(response)) return undefined;
+  const preferredCodes = ['200', '201', '202'].filter((code) => hasOwn(response, code));
+  const otherSuccessCodes = Object.keys(response).filter(
+    (code) => /^2\d{2}$/.test(code) && !preferredCodes.includes(code)
+  );
+  // `2XX` 为 OpenAPI 通配写法，按大小写不敏感匹配。
+  const wildcardCodes = Object.keys(response).filter((code) => /^2xx$/i.test(code));
+
+  const successSchemas = [...preferredCodes, ...otherSuccessCodes, ...wildcardCodes].map((code) =>
+    toResponseOutputSchema(response[code])
+  );
+
+  if (successSchemas.length > 0) {
+    return successSchemas.find((schema) => schema && Object.keys(schema.properties).length > 0);
+  }
+
+  const defaultSchema = toResponseOutputSchema(response.default);
+  return defaultSchema && Object.keys(defaultSchema.properties).length > 0
+    ? defaultSchema
+    : undefined;
+};
+
 export const pathData2ToolList = async (
   pathData: PathDataType[]
 ): Promise<HttpToolConfigType[]> => {
@@ -327,25 +410,16 @@ export const pathData2ToolList = async (
         }
       }
 
-      const responseToProcess =
-        pathItem.response?.['200'] ||
-        pathItem.response?.['201'] ||
-        pathItem.response?.['202'] ||
-        pathItem.response?.default;
+      const responseOutputSchema = pickResponseOutputSchema(pathItem.response);
 
-      if (responseToProcess?.content?.['application/json']?.schema) {
-        const responseSchema = responseToProcess.content['application/json'].schema;
-        if (responseSchema.properties) {
-          Object.entries(responseSchema.properties).forEach(([key, value]: [string, any]) => {
-            outputProperties[key] = {
-              type: value.type || 'any',
-              description: value.description || ''
-            };
-          });
-        }
-        if (responseSchema.required && Array.isArray(responseSchema.required)) {
-          outputRequired.push(...responseSchema.required);
-        }
+      if (responseOutputSchema) {
+        Object.entries(responseOutputSchema.properties).forEach(([key, value]) => {
+          outputProperties[key] = {
+            type: typeof value.type === 'string' ? value.type : 'any',
+            description: typeof value.description === 'string' ? value.description : ''
+          };
+        });
+        outputRequired.push(...responseOutputSchema.required);
       }
 
       return {
