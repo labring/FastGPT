@@ -299,8 +299,9 @@ describe('AuditTable member pagination', () => {
         })
       )
     );
-    // 挂载后不等防抖计时器结束直接展开，不应触发挂载与展开两次重复的首屏请求。
+    // 挂载后不等防抖计时器结束直接展开，完整推进节流（500ms）+ 防抖（200ms）窗口，确认不会触发两次首屏请求。
     await openFilter('成员');
+    await settleRequests();
     expect(mocks.getTeamMembers.mock.calls.map(([params]) => params.offset)).toEqual([0]);
     expect(host.querySelectorAll('[data-filter="成员"] button[data-member]')).toHaveLength(20);
   });
