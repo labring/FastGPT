@@ -33,17 +33,29 @@ const CommercialSettingComponent = () => {
   const showFreeClean = isFieldVisible('commercial.billingNotify.freeClean.zh');
   const showFeatureSection = showCoupon || showDiscountCoupon;
 
+  const [planVisibilityState, setPlanVisibilityState] = useState({
+    loaded: false,
+    enabled: false
+  });
+  // 仅在套餐配置读取成功且明确关闭时隐藏下方商业化配置；加载中或未激活读取失败时保持可见，避免误藏整页。
+  const showPaySections = !planVisibilityState.loaded || planVisibilityState.enabled;
+
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'plans', label: t('admin:pay_section_plans') },
-      ...(showFeatureSection ? [{ id: 'features', label: t('admin:pay_section_features') }] : []),
-      ...(showPayForm ? [{ id: 'paymentForm', label: t('admin:pay_section_corporate') }] : []),
-      { id: 'wxPay', label: t('admin:pay_section_wx') },
-      { id: 'alipay', label: t('admin:pay_section_alipay') },
-      { id: 'bankPay', label: t('admin:pay_section_bank_desc') },
-      { id: 'billingNotify', label: t('admin:pay_section_notify_sms') }
+      ...(showPaySections
+        ? [
+            ...(showFeatureSection
+              ? [{ id: 'features', label: t('admin:pay_section_features') }]
+              : []),
+            { id: 'wxPay', label: t('admin:pay_section_wx') },
+            { id: 'alipay', label: t('admin:pay_section_alipay') },
+            { id: 'bankPay', label: t('admin:pay_section_bank_desc') },
+            { id: 'billingNotify', label: t('admin:pay_section_notify_sms') }
+          ]
+        : [])
     ],
-    [t, showFeatureSection, showPayForm]
+    [t, showPaySections, showFeatureSection]
   );
 
   const {
@@ -88,18 +100,23 @@ const CommercialSettingComponent = () => {
       }
 
       // 2. 只提交当前可见字段，并与库中 overrides 深合并：
-      // 隐藏字段和未编辑的嵌套字段保持原值，不因显示开关被清空或重置。
-      const billingNotify = structuredClone(formData.billingNotify);
-      if (!showFreeClean) {
-        delete (billingNotify as Partial<typeof billingNotify>).freeClean;
-      }
-      const visibleOverrides: DeepPartial<CommercialConfigForm> = {
-        ...(showCoupon ? { showCoupon: Boolean(formData.showCoupon) } : {}),
-        ...(showDiscountCoupon ? { showDiscountCoupon: Boolean(formData.showDiscountCoupon) } : {}),
-        ...(showPayForm ? { payFormUrl: formData.payFormUrl || '' } : {}),
-        payment: formData.payment,
-        billingNotify
-      };
+      // 隐藏字段（含关闭订阅套餐时折叠的支付/通知区块）保持原值，不因显示开关被清空或重置。
+      const visibleOverrides: DeepPartial<CommercialConfigForm> = (() => {
+        if (!showPaySections) return {};
+        const billingNotify = structuredClone(formData.billingNotify);
+        if (!showFreeClean) {
+          delete (billingNotify as Partial<typeof billingNotify>).freeClean;
+        }
+        return {
+          ...(showCoupon ? { showCoupon: Boolean(formData.showCoupon) } : {}),
+          ...(showDiscountCoupon
+            ? { showDiscountCoupon: Boolean(formData.showDiscountCoupon) }
+            : {}),
+          ...(showPayForm ? { payFormUrl: formData.payFormUrl || '' } : {}),
+          payment: formData.payment,
+          billingNotify
+        };
+      })();
       const overrides = deepMergeConfig(
         filterConfigDataByEdition('commercial', commercialOverrides) as Record<string, unknown>,
         visibleOverrides as Record<string, unknown>
@@ -150,358 +167,371 @@ const CommercialSettingComponent = () => {
     >
       {/* 1. 订阅套餐：套餐等级、积分包与活动配置 */}
       <AdminSettingSection id="plans" title={t('admin:pay_section_plans')}>
-        <PlansSettingSection ref={plansRef} onDirtyChange={setIsPlansDirty} />
+        <PlansSettingSection
+          ref={plansRef}
+          onDirtyChange={setIsPlansDirty}
+          onPlanStateChange={setPlanVisibilityState}
+        />
       </AdminSettingSection>
 
-      {/* 2. 功能展示：优惠券策略（SaaS 运营字段） */}
-      {showFeatureSection && (
-        <AdminSettingSection id="features" title={t('admin:pay_section_features')} showDivider>
-          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-            {showCoupon && (
-              <Controller
-                name="showCoupon"
-                control={control}
-                render={({ field }) => (
-                  <AdminSwitchRow
-                    name={field.name}
-                    label={t('admin:show_recharge_coupons')}
-                    tooltip={t(
-                      'admin:show_coupon_redemption_and_available_coupon_entries_on_the_r'
+      {showPaySections && (
+        <>
+          {/* 2. 功能展示：优惠券策略（SaaS 运营字段） */}
+          {showFeatureSection && (
+            <AdminSettingSection id="features" title={t('admin:pay_section_features')} showDivider>
+              <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+                {showCoupon && (
+                  <Controller
+                    name="showCoupon"
+                    control={control}
+                    render={({ field }) => (
+                      <AdminSwitchRow
+                        name={field.name}
+                        label={t('admin:show_recharge_coupons')}
+                        tooltip={t(
+                          'admin:show_coupon_redemption_and_available_coupon_entries_on_the_r'
+                        )}
+                        isChecked={field.value}
+                        onChange={field.onChange}
+                      />
                     )}
-                    isChecked={field.value}
-                    onChange={field.onChange}
                   />
                 )}
-              />
-            )}
 
-            {showDiscountCoupon && (
-              <Controller
-                name="showDiscountCoupon"
-                control={control}
-                render={({ field }) => (
-                  <AdminSwitchRow
-                    name={field.name}
-                    label={t('admin:show_discount_coupons')}
-                    tooltip={t(
-                      'admin:show_instant_discounts_and_coupon_options_during_user_checko'
+                {showDiscountCoupon && (
+                  <Controller
+                    name="showDiscountCoupon"
+                    control={control}
+                    render={({ field }) => (
+                      <AdminSwitchRow
+                        name={field.name}
+                        label={t('admin:show_discount_coupons')}
+                        tooltip={t(
+                          'admin:show_instant_discounts_and_coupon_options_during_user_checko'
+                        )}
+                        isChecked={field.value}
+                        onChange={field.onChange}
+                      />
                     )}
-                    isChecked={field.value}
-                    onChange={field.onChange}
                   />
                 )}
-              />
-            )}
-          </SimpleGrid>
-        </AdminSettingSection>
-      )}
+              </SimpleGrid>
+            </AdminSettingSection>
+          )}
 
-      {/* 3. 对公收款配置（SaaS 运营字段） */}
-      {showPayForm && (
-        <AdminSettingSection id="paymentForm" title={t('admin:pay_section_corporate')} showDivider>
-          <AdminFormItem
-            label={t('admin:bank_transfer_corporate_form_url')}
-            tooltip={t('admin:full_url_of_the_corporate_form_a_user_fills_in_for_large_ban')}
-          >
-            <Input
-              isInvalid={Boolean(form.getFieldState('payFormUrl', form.formState).error)}
-              {...register('payFormUrl')}
-              placeholder="https://form.example.com/pay"
-            />
-          </AdminFormItem>
-        </AdminSettingSection>
-      )}
-
-      {/* 4. 微信支付凭据 */}
-      <AdminSettingSection id="wxPay" title={t('admin:pay_section_wx')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem label="AppId" tooltip={t('admin:appid_bound_to_wechat_pay')}>
-            <Input
-              isInvalid={Boolean(form.getFieldState('payment.wx.appId', form.formState).error)}
-              {...register('payment.wx.appId')}
-              placeholder="wx******"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:merchant_id_mchid')}
-            tooltip={t('admin:wechat_pay_merchant_id')}
-          >
-            <Input
-              isInvalid={Boolean(form.getFieldState('payment.wx.mchId', form.formState).error)}
-              {...register('payment.wx.mchId')}
-              placeholder="1*********"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:certificate_serial_number_serialno')}
-            tooltip={t('admin:api_certificate_serial_no')}
-          >
-            <Input
-              isInvalid={Boolean(form.getFieldState('payment.wx.serialNo', form.formState).error)}
-              {...register('payment.wx.serialNo')}
-              placeholder="******"
-            />
-          </AdminFormItem>
-          <AdminFormItem label={t('admin:apiv3_key')} tooltip={t('admin:wechat_pay_apiv3_key')}>
-            <Controller
-              name="payment.wx.apiV3Key"
-              control={control}
-              render={({ field }) => (
-                <AdminSecretInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  isConfigured={isSecretConfigured('payment.wx.apiV3Key')}
+          {/* 3. 微信支付配置 */}
+          <AdminSettingSection id="wxPay" title={t('admin:pay_section_wx')} showDivider>
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem label="AppId" tooltip={t('admin:appid_bound_to_wechat_pay')}>
+                <Input
+                  isInvalid={Boolean(form.getFieldState('payment.wx.appId', form.formState).error)}
+                  {...register('payment.wx.appId')}
+                  placeholder="wx******"
                 />
-              )}
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:payment_callback_url')}
-            tooltip={t('admin:wechat_pay_async_notification_url')}
-          >
-            <Input
-              isInvalid={Boolean(form.getFieldState('payment.wx.notifyUrl', form.formState).error)}
-              {...register('payment.wx.notifyUrl')}
-              placeholder="https://example.com/api/pay/wx"
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-
-        <AdminFormItem
-          label={t('admin:merchant_private_key_pem')}
-          tooltip={t('admin:wechat_pay_api_certificate_private_key_paste_the_full_conten')}
-        >
-          <Controller
-            name="payment.wx.privateKey"
-            control={control}
-            render={({ field }) => (
-              <AdminSecretInput
-                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                name={field.name}
-                value={field.value}
-                onChange={field.onChange}
-                isConfigured={isSecretConfigured('payment.wx.privateKey')}
-                multiline
-                rows={6}
-                placeholder="-----BEGIN PRIVATE KEY-----"
-              />
-            )}
-          />
-        </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 5. 支付宝凭据 */}
-      <AdminSettingSection id="alipay" title={t('admin:pay_section_alipay')} showDivider>
-        {' '}
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem label="AppId" tooltip={t('admin:alipay_open_platform_appid')}>
-            <Input
-              isInvalid={Boolean(form.getFieldState('payment.alipay.appId', form.formState).error)}
-              {...register('payment.alipay.appId')}
-              placeholder="2021********"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:gateway_url')}
-            tooltip={t('admin:alipay_gateway_url_defaults_to_the_official_gateway')}
-          >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('payment.alipay.gateway', form.formState).error
-              )}
-              {...register('payment.alipay.gateway')}
-              placeholder="https://openapi.alipay.com/gateway.do"
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:application_private_key')}
-            tooltip={t('admin:application_private_key_content_paste_the_full_pem_text')}
-          >
-            <Controller
-              name="payment.alipay.appPrivateKey"
-              control={control}
-              render={({ field }) => (
-                <AdminSecretInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  isConfigured={isSecretConfigured('payment.alipay.appPrivateKey')}
-                  multiline
-                  rows={5}
-                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:merchant_id_mchid')}
+                tooltip={t('admin:wechat_pay_merchant_id')}
+              >
+                <Input
+                  isInvalid={Boolean(form.getFieldState('payment.wx.mchId', form.formState).error)}
+                  {...register('payment.wx.mchId')}
+                  placeholder="1*********"
                 />
-              )}
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:application_public_certificate')}
-            tooltip={t('admin:application_public_certificate_content')}
-          >
-            <Controller
-              name="payment.alipay.appCertContent"
-              control={control}
-              render={({ field }) => (
-                <AdminSecretInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  isConfigured={isSecretConfigured('payment.alipay.appCertContent')}
-                  multiline
-                  rows={5}
-                  placeholder="-----BEGIN CERTIFICATE-----"
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:certificate_serial_number_serialno')}
+                tooltip={t('admin:api_certificate_serial_no')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('payment.wx.serialNo', form.formState).error
+                  )}
+                  {...register('payment.wx.serialNo')}
+                  placeholder="******"
                 />
-              )}
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:alipay_root_certificate')}
-            tooltip={t('admin:alipay_root_certificate_content')}
-          >
-            <Controller
-              name="payment.alipay.rootCertContent"
-              control={control}
-              render={({ field }) => (
-                <AdminSecretInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  isConfigured={isSecretConfigured('payment.alipay.rootCertContent')}
-                  multiline
-                  rows={5}
-                  placeholder="-----BEGIN CERTIFICATE-----"
+              </AdminFormItem>
+              <AdminFormItem label={t('admin:apiv3_key')} tooltip={t('admin:wechat_pay_apiv3_key')}>
+                <Controller
+                  name="payment.wx.apiV3Key"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('payment.wx.apiV3Key')}
+                    />
+                  )}
                 />
-              )}
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:alipay_public_certificate')}
-            tooltip={t('admin:alipay_public_certificate_content')}
-          >
-            <Controller
-              name="payment.alipay.publicCertContent"
-              control={control}
-              render={({ field }) => (
-                <AdminSecretInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  isConfigured={isSecretConfigured('payment.alipay.publicCertContent')}
-                  multiline
-                  rows={5}
-                  placeholder="-----BEGIN CERTIFICATE-----"
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:payment_callback_url')}
+                tooltip={t('admin:wechat_pay_async_notification_url')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('payment.wx.notifyUrl', form.formState).error
+                  )}
+                  {...register('payment.wx.notifyUrl')}
+                  placeholder="https://example.com/api/pay/wx"
                 />
-              )}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+              </AdminFormItem>
+            </SimpleGrid>
 
-      {/* 对公转账说明 */}
-      {/* 6. 对公转账说明 */}
-      <AdminSettingSection id="bankPay" title={t('admin:pay_section_bank_desc')} showDivider>
-        <AdminFormItem
-          label={t('admin:bank_transfer_instructions_copy')}
-          tooltip={t('admin:payee_account_info_and_transfer_instructions_shown_when_the')}
-        >
-          <Textarea
-            isInvalid={Boolean(
-              form.getFieldState('payment.bank.description', form.formState).error
-            )}
-            {...register('payment.bank.description')}
-            rows={4}
-            placeholder={t('admin:bank_xxx_10_account_name_xxx_10_account_no_xxx')}
-          />
-        </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 7. 阿里云短信模板 */}
-      <AdminSettingSection id="billingNotify" title={t('admin:pay_section_notify_sms')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:low_balance_alert_chinese_template')}
-            labelRight={<SmsTemplateExampleButton templateKey="lackOfPoints" />}
-          >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('billingNotify.lackOfPoints.zh', form.formState).error
-              )}
-              {...register('billingNotify.lackOfPoints.zh')}
-              placeholder="SMS_xxx"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:points_thirty_percent_remain_template')}
-            labelRight={<SmsTemplateExampleButton templateKey="pointsThirtyPercentRemain" />}
-          >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('billingNotify.pointsThirtyPercentRemain.zh', form.formState)
-                  .error
-              )}
-              {...register('billingNotify.pointsThirtyPercentRemain.zh')}
-              placeholder="SMS_xxx"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:points_running_out_chinese_template')}
-            labelRight={<SmsTemplateExampleButton templateKey="pointsTenPercentRemain" />}
-          >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('billingNotify.pointsTenPercentRemain.zh', form.formState).error
-              )}
-              {...register('billingNotify.pointsTenPercentRemain.zh')}
-              placeholder="SMS_xxx"
-            />
-          </AdminFormItem>
-          {showFreeClean && (
             <AdminFormItem
-              label={t('admin:free_clean_template')}
-              labelRight={<SmsTemplateExampleButton templateKey="freeClean" />}
+              label={t('admin:merchant_private_key_pem')}
+              tooltip={t('admin:wechat_pay_api_certificate_private_key_paste_the_full_conten')}
             >
-              <Input
-                isInvalid={Boolean(
-                  form.getFieldState('billingNotify.freeClean.zh', form.formState).error
+              <Controller
+                name="payment.wx.privateKey"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={isSecretConfigured('payment.wx.privateKey')}
+                    multiline
+                    rows={6}
+                    placeholder="-----BEGIN PRIVATE KEY-----"
+                  />
                 )}
-                {...register('billingNotify.freeClean.zh')}
-                placeholder="SMS_xxx"
               />
             </AdminFormItem>
-          )}
-          <AdminFormItem
-            label={t('admin:plan_expiring_soon_chinese_template')}
-            labelRight={<SmsTemplateExampleButton templateKey="expireSoon" />}
+          </AdminSettingSection>
+
+          {/* 4. 支付宝支付配置 */}
+          <AdminSettingSection id="alipay" title={t('admin:pay_section_alipay')} showDivider>
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem label="AppId" tooltip={t('admin:alipay_open_platform_appid')}>
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('payment.alipay.appId', form.formState).error
+                  )}
+                  {...register('payment.alipay.appId')}
+                  placeholder="2021********"
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:gateway_url')}
+                tooltip={t('admin:alipay_gateway_url_defaults_to_the_official_gateway')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('payment.alipay.gateway', form.formState).error
+                  )}
+                  {...register('payment.alipay.gateway')}
+                  placeholder="https://openapi.alipay.com/gateway.do"
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem
+                label={t('admin:application_private_key')}
+                tooltip={t('admin:application_private_key_content_paste_the_full_pem_text')}
+              >
+                <Controller
+                  name="payment.alipay.appPrivateKey"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('payment.alipay.appPrivateKey')}
+                      multiline
+                      rows={5}
+                      placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                    />
+                  )}
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:application_public_certificate')}
+                tooltip={t('admin:application_public_certificate_content')}
+              >
+                <Controller
+                  name="payment.alipay.appCertContent"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('payment.alipay.appCertContent')}
+                      multiline
+                      rows={5}
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                    />
+                  )}
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:alipay_root_certificate')}
+                tooltip={t('admin:alipay_root_certificate_content')}
+              >
+                <Controller
+                  name="payment.alipay.rootCertContent"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('payment.alipay.rootCertContent')}
+                      multiline
+                      rows={5}
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                    />
+                  )}
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:alipay_public_certificate')}
+                tooltip={t('admin:alipay_public_certificate_content')}
+              >
+                <Controller
+                  name="payment.alipay.publicCertContent"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={isSecretConfigured('payment.alipay.publicCertContent')}
+                      multiline
+                      rows={5}
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                    />
+                  )}
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+          </AdminSettingSection>
+
+          {/* 5. 其他支付配置（对公转账 + SaaS 更多支付方式） */}
+          <AdminSettingSection id="bankPay" title={t('admin:pay_section_bank_desc')} showDivider>
+            <AdminFormItem
+              label={t('admin:bank_transfer_instructions_copy')}
+              tooltip={t('admin:payee_account_info_and_transfer_instructions_shown_when_the')}
+            >
+              <Textarea
+                isInvalid={Boolean(
+                  form.getFieldState('payment.bank.description', form.formState).error
+                )}
+                {...register('payment.bank.description')}
+                rows={4}
+                placeholder={t('admin:bank_xxx_10_account_name_xxx_10_account_no_xxx')}
+              />
+            </AdminFormItem>
+            {showPayForm && (
+              <AdminFormItem
+                label={t('admin:bank_transfer_corporate_form_url')}
+                tooltip={t('admin:full_url_of_the_corporate_form_a_user_fills_in_for_large_ban')}
+              >
+                <Input
+                  isInvalid={Boolean(form.getFieldState('payFormUrl', form.formState).error)}
+                  {...register('payFormUrl')}
+                  placeholder="https://form.example.com/pay"
+                />
+              </AdminFormItem>
+            )}
+          </AdminSettingSection>
+
+          {/* 6. 阿里云短信模板 */}
+          <AdminSettingSection
+            id="billingNotify"
+            title={t('admin:pay_section_notify_sms')}
+            showDivider
           >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('billingNotify.expireSoon.zh', form.formState).error
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem
+                label={t('admin:low_balance_alert_chinese_template')}
+                labelRight={<SmsTemplateExampleButton templateKey="lackOfPoints" />}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('billingNotify.lackOfPoints.zh', form.formState).error
+                  )}
+                  {...register('billingNotify.lackOfPoints.zh')}
+                  placeholder="SMS_xxx"
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:points_thirty_percent_remain_template')}
+                labelRight={<SmsTemplateExampleButton templateKey="pointsThirtyPercentRemain" />}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('billingNotify.pointsThirtyPercentRemain.zh', form.formState)
+                      .error
+                  )}
+                  {...register('billingNotify.pointsThirtyPercentRemain.zh')}
+                  placeholder="SMS_xxx"
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:points_running_out_chinese_template')}
+                labelRight={<SmsTemplateExampleButton templateKey="pointsTenPercentRemain" />}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('billingNotify.pointsTenPercentRemain.zh', form.formState)
+                      .error
+                  )}
+                  {...register('billingNotify.pointsTenPercentRemain.zh')}
+                  placeholder="SMS_xxx"
+                />
+              </AdminFormItem>
+              {showFreeClean && (
+                <AdminFormItem
+                  label={t('admin:free_clean_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="freeClean" />}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('billingNotify.freeClean.zh', form.formState).error
+                    )}
+                    {...register('billingNotify.freeClean.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
               )}
-              {...register('billingNotify.expireSoon.zh')}
-              placeholder="SMS_xxx"
-            />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:plan_expired_chinese_template')}
-            labelRight={<SmsTemplateExampleButton templateKey="expired" />}
-          >
-            <Input
-              isInvalid={Boolean(
-                form.getFieldState('billingNotify.expired.zh', form.formState).error
-              )}
-              {...register('billingNotify.expired.zh')}
-              placeholder="SMS_xxx"
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+              <AdminFormItem
+                label={t('admin:plan_expiring_soon_chinese_template')}
+                labelRight={<SmsTemplateExampleButton templateKey="expireSoon" />}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('billingNotify.expireSoon.zh', form.formState).error
+                  )}
+                  {...register('billingNotify.expireSoon.zh')}
+                  placeholder="SMS_xxx"
+                />
+              </AdminFormItem>
+              <AdminFormItem
+                label={t('admin:plan_expired_chinese_template')}
+                labelRight={<SmsTemplateExampleButton templateKey="expired" />}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('billingNotify.expired.zh', form.formState).error
+                  )}
+                  {...register('billingNotify.expired.zh')}
+                  placeholder="SMS_xxx"
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+          </AdminSettingSection>
+        </>
+      )}
     </AdminSettingPage>
   );
 };

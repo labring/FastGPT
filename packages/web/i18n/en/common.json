@@ -1058,7 +1058,7 @@
   "pay.package_tip.buy": "The plan you purchased is lower than the current plan. This plan will take effect after the current plan expires.\nYou can view the plan usage in Account - Personal Information - Plan Details.",
   "pay.package_tip.renewal": "You are renewing the plan. You can view the plan usage in Account - Personal Information - Plan Details.",
   "pay.package_tip.upgrade": "The plan you purchased is higher than the current plan. This plan will take effect immediately, and the current plan will take effect later. You can view the plan usage in Account - Personal Information - Plan Details.",
-  "pay.payment_form_tip": "For more payment methods, please <payLink>click the form </payLink>",
+  "pay.payment_form_tip": "Click to view more payment methods",
   "pay.wx_payment": "WeChat Payment",
   "pay_alipay_payment": "Alipay Payment",
   "pay_corporate_payment": "Payment to the public",

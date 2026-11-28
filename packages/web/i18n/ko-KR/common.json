@@ -1049,7 +1049,7 @@
   "pay.package_tip.buy": "구매하신 요금제가 현재 요금제보다 낮습니다. 이 요금제는 현재 요금제가 만료된 후 적용됩니다.\n계정 - 개인정보 - 요금제 상세에서 요금제 사용 현황을 확인할 수 있습니다.",
   "pay.package_tip.renewal": "요금제를 갱신하고 있습니다. 계정 - 개인정보 - 요금제 상세에서 요금제 사용 현황을 확인할 수 있습니다.",
   "pay.package_tip.upgrade": "구매하신 요금제가 현재 요금제보다 높습니다. 이 요금제는 즉시 적용되며, 현재 요금제는 이후에 적용됩니다. 계정 - 개인정보 - 요금제 상세에서 요금제 사용 현황을 확인할 수 있습니다.",
-  "pay.payment_form_tip": "더 많은 결제 방법은 <payLink>양식을 클릭</payLink>해 주세요",
+  "pay.payment_form_tip": "클릭하여 더 많은 결제 수단 보기",
   "pay.wx_payment": "WeChat 결제",
   "pay_alipay_payment": "Alipay 결제",
   "pay_corporate_payment": "공용 계좌 결제",

@@ -1058,7 +1058,7 @@
   "pay.package_tip.buy": "Satın aldığın planın seviyesi mevcut plandan düşük. Bu plan, mevcut plan sona erdikten sonra yürürlüğe girer.\nPlan kullanımını Hesap - Kişisel bilgiler - Plan detayları bölümünden görebilirsin.",
   "pay.package_tip.renewal": "Planı yeniliyorsun. Plan kullanımını Hesap - Kişisel bilgiler - Plan detayları bölümünden görebilirsin.",
   "pay.package_tip.upgrade": "Satın aldığın planın seviyesi mevcut plandan yüksek. Bu plan hemen yürürlüğe girer, mevcut plan daha sonra devreye girer. Plan kullanımını Hesap - Kişisel bilgiler - Plan detayları bölümünden görebilirsin.",
-  "pay.payment_form_tip": "Diğer ödeme yöntemleri için <payLink>formu aç</payLink>",
+  "pay.payment_form_tip": "Daha fazla ödeme yöntemi için tıklayın",
   "pay.wx_payment": "WeChat ile ödeme",
   "pay_alipay_payment": "Alipay ile ödeme",
   "pay_corporate_payment": "Kurumsal hesaptan ödeme",

@@ -330,6 +330,15 @@ describe('pay settings subPlans preservation', () => {
 
     expect(container.textContent).not.toContain('admin:plan_load_failed_tip');
     expect(planSwitch().disabled).toBe(false);
+    // 套餐明确未启用时隐藏下方支付与通知区块，开启开关后再展开编辑。
+    expect(container.querySelector('section#wxPay')).toBeNull();
+    expect(container.querySelector('section#bankPay')).toBeNull();
+    expect(container.querySelector('section#billingNotify')).toBeNull();
+
+    await act(async () => planSwitch().click());
+    expect(container.querySelector('section#wxPay')).not.toBeNull();
+    expect(container.querySelector('section#bankPay')).not.toBeNull();
+    expect(container.querySelector('section#billingNotify')).not.toBeNull();
 
     await fillBankDescription(bankDescription);
     await clickSave();
