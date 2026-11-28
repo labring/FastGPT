@@ -490,18 +490,32 @@ describe('configuration form edition boundary', () => {
     );
     expect(mocks.switchRows.has('admin:show_workflow_builder')).toBe(false);
     expect(mocks.switchRows.has('admin:disable_runtime_cache')).toBe(false);
-    const copyright = mocks.switchRows.get('admin:hide_chat_copyright_setting')!;
-    expect(copyright.isChecked).toBe(true);
-    copyright.onChange(false);
+    // 门户版权配置仅 SaaS 展示，私有化商业版不展示且保存不写入该字段。
+    expect(mocks.switchRows.has('admin:hide_chat_copyright_setting')).toBe(false);
     mocks.switchRows.get('admin:enable_feishu_data_source')!.onChange(false);
     mocks.switchRows.get('admin:publish_channel_personal_wechat')!.onChange(false);
     await mocks.pageSave!();
     const overrides = mocks.patch.mock.calls[0][0];
     expect(() => parseDomainOverrides({ domain: 'feature', overrides })).not.toThrow();
+    expect(overrides).not.toHaveProperty('hideChatCopyrightSetting');
     expect(overrides).toMatchObject({
-      hideChatCopyrightSetting: true,
       showDatasetFeishu: false,
       showPublishWechat: false
+    });
+  });
+
+  it('仅 SaaS 商业版在功能页展示并可保存门户版权配置开关', async () => {
+    mocks.isPro = true;
+    mocks.enableSaasAdminConfig = true;
+    renderToStaticMarkup(React.createElement(FeatureSettings));
+    const copyright = mocks.switchRows.get('admin:hide_chat_copyright_setting')!;
+    expect(copyright.isChecked).toBe(true);
+    copyright.onChange(false);
+    await mocks.pageSave!();
+    const overrides = mocks.patch.mock.calls[0][0];
+    expect(() => parseDomainOverrides({ domain: 'feature', overrides })).not.toThrow();
+    expect(overrides).toMatchObject({
+      hideChatCopyrightSetting: true
     });
   });
 

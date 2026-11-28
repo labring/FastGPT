@@ -14,7 +14,8 @@ type FeatureConfigForm = SystemInstanceConfigDomainMap['feature'];
 
 const FeatureSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { filterConfigData } = useAdminPermission();
+  const { isFieldVisible, filterConfigData } = useAdminPermission();
+  const showHideChatCopyrightSetting = isFieldVisible('feature.hideChatCopyrightSetting');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'chatAndDisplay', label: t('admin:chat_display') },
@@ -54,19 +55,21 @@ const FeatureSettingComponent = () => {
       {/* 1. 会话展示 */}
       <AdminSettingSection id="chatAndDisplay" title={t('admin:chat_display')}>
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="hideChatCopyrightSetting"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                name={field.name}
-                label={t('admin:hide_chat_copyright_setting')}
-                tooltip={t('admin:when_enabled_share_pages_and_embedded_chat_windows_can_turn')}
-                isChecked={!field.value}
-                onChange={(checked) => field.onChange(!checked)}
-              />
-            )}
-          />
+          {showHideChatCopyrightSetting && (
+            <Controller
+              name="hideChatCopyrightSetting"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  name={field.name}
+                  label={t('admin:hide_chat_copyright_setting')}
+                  tooltip={t('admin:when_enabled_share_pages_and_embedded_chat_windows_can_turn')}
+                  isChecked={!field.value}
+                  onChange={(checked) => field.onChange(!checked)}
+                />
+              )}
+            />
+          )}
 
           <Controller
             name="showComplianceCopywriting"

@@ -11,7 +11,7 @@ import {
 describe('resolveFeatureConfigForEdition', () => {
   const config = FeatureConfigSchema.parse({
     multipleDataToBase64: true,
-    hideChatCopyrightSetting: true,
+    hideChatCopyrightSetting: false,
     showComplianceCopywriting: true,
     enableTeamPluginUpload: true,
     enableTeamModel: true,
@@ -29,7 +29,7 @@ describe('resolveFeatureConfigForEdition', () => {
   it('ignores stored community switches while preserving the core multimodal setting', () => {
     expect(resolveFeatureConfigForEdition({ config, commercialService: false })).toEqual({
       multipleDataToBase64: true,
-      hideChatCopyrightSetting: false,
+      hideChatCopyrightSetting: true,
       showComplianceCopywriting: false,
       enableTeamPluginUpload: false,
       enableTeamModel: false,
@@ -43,6 +43,7 @@ describe('resolveFeatureConfigForEdition', () => {
       showPublishOffiaccount: false,
       showPublishWechat: true
     });
+    expect(FeatureConfigSchema.parse({}).hideChatCopyrightSetting).toBe(false);
     expect(config.enableTeamPluginUpload).toBe(true);
     expect(config.showDatasetFeishu).toBe(false);
   });
