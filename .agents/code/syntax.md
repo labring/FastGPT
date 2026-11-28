@@ -268,7 +268,7 @@ const StoredStatusSchema = StoredStatusEnum.catch('unknown');
 const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
 ```
 
-## 写法惯例与文案
+## 写法惯例
 
 ### 函数参数不超过 2 个，多参数用对象传递
 
@@ -312,11 +312,6 @@ await commitIndexPatch({ snapshot, patch });
 // 5. 提交成功后再清理被替换的旧向量。
 await cleanupReplacedVectors(oldVectorIds);
 ```
-
-### i18n 文案
-
-- 每个用户可见文案 key 必须以完整静态字面量注册：前端 `t('ns:key')`、服务端或映射表 `i18nT('ns:key')`；禁止模板拼接、变量拼接或三元表达式拼出 key，避免清理脚本误删或界面裸显 key。新增 key 时补齐 [LocaleList](../../packages/global/common/i18n/type.ts) 全部语言。
-- 运行时从已静态注册的映射中选取完整 key（如工作流诊断按错误码选取 `i18nT` 注册的 key），或使用后端、配置下发的已注册完整 key 时，按[动态 i18n Key 收窄调用边界](#规避高开销类型实例化热点不以牺牲契约为代价)调用。
 
 ## 状态闭环与安全边界
 
@@ -449,6 +444,31 @@ import MyTag from '@fastgpt/web/components/common/Tag';
   </MyTooltip>
   <MyTag flexShrink={0}>{myTeamTagLabel}</MyTag>
 </Flex>
+```
+
+## i18n 与翻译规范
+
+### i18n 文案
+
+- 每个用户可见文案 key 必须以完整静态字面量注册：前端 `t('ns:key')`、服务端或映射表 `i18nT('ns:key')`；禁止模板拼接、变量拼接或三元表达式拼出 key，避免清理脚本误删或界面裸显 key。新增 key 时补齐 [LocaleList](../../packages/global/common/i18n/type.ts) 全部语言。
+- 运行时从已静态注册的映射中选取完整 key（如工作流诊断按错误码选取 `i18nT` 注册的 key），或使用后端、配置下发的已注册完整 key 时，按[动态 i18n Key 收窄调用边界](#规避高开销类型实例化热点不以牺牲契约为代价)调用。
+
+### 禁止在 UI 文案中硬编码品牌名
+
+所有语言包（`packages/web/i18n/*/*.json`）中的用户可见文案禁止硬编码 `FastGPT`，确保自定义站点名称（`feConfigs.systemTitle`）与白标部署表现一致：
+
+- **通用功能、提示与无参文案统一用「系统」或中性表述**：配置说明、操作提示、输入框占位、后端无插值报错等不依赖品牌名的场景，统一使用「系统」（`en`: `the system`、`zh-Hant`: `系統`、`ko-KR`: `시스템`、`tr-TR`: `sistem`）或省略主语的自然表达；外语翻译严禁在中文原文不含品牌名时自行补写 `FastGPT`。
+- **确需展示产品/品牌名称的场景统一用 `{{systemName}}` 变量**：如分享页品牌标识、企业认证引导、套餐权益说明、团队邀请链接等，文案中统一写 `{{systemName}}`，由前端调用方显式传入 `feConfigs?.systemTitle || 'FastGPT'`（确保不裸露未插值占位符）。
+- **允许保留的例外**：官网与文档 URL（如 `https://fastgpt.in`、`https://doc.fastgpt.cn/...`）、静态资源路径（如 `/imgs/...`）、默认配置前缀及服务/镜像名等技术标识（如默认 OpenAPI Key 前缀 `fastgpt`、`fastgpt-plugin`）。
+
+```tsx
+// ❌ 不好的实践：在语言包中硬编码 FastGPT，白标站点无法替换
+// zh-CN: "FastGPT 校验链接并转发文件流" / "显示 FastGPT 标识"
+t('common:share_brand');
+
+// ✅ 好的实践：通用功能写「系统」，品牌展示走 {{systemName}} 变量
+// zh-CN: "系统校验链接并转发文件流" / "显示{{systemName}}标识"
+t('common:share_brand', { systemName: feConfigs?.systemTitle || 'FastGPT' });
 ```
 
 ## TypeScript 编译性能与 Composite 规范

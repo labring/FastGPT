@@ -27,7 +27,7 @@ Use [fastgpt-glossary.json](fastgpt-glossary.json) as the canonical terminology 
 - Translate user-visible `引用` as `Citation`, including `知识库引用` as `Dataset citations`.
 - Preserve the glossary term's spelling while adapting capitalization and number to the sentence.
 
-Keep brand and protocol names official: `FastGPT`, `OpenAI`, `MCP`, `API`, `HTTP`, `JSON`, `Lark`, `WeCom`, and `DingTalk`.
+Keep external brand and protocol names official: `OpenAI`, `MCP`, `API`, `HTTP`, `JSON`, `Lark`, `WeCom`, and `DingTalk`. Do **not** hardcode `FastGPT` into user-facing translations (even when translating generic Chinese subjects like `系统` or subjectless sentences): use generic phrasing (`the system` / `系統` / `시스템` / `sistem`) for general UI copy, preserve `{{systemName}}` whenever the Chinese source parameterizes the system brand name, and keep literal `FastGPT` only inside explicit URLs, asset paths, default prefixes, or technical service identifiers.
 
 For `zh-Hant`, prefer clear, region-neutral Traditional Chinese and follow terminology already used consistently in FastGPT. Do not normalize the entire product toward Taiwan-, Hong Kong-, or another region-specific vocabulary as part of one namespace translation. When existing terms conflict and the UI context cannot resolve them, ask the user instead of guessing.
 
