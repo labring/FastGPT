@@ -3,12 +3,14 @@ import { readFileRawText } from '@fastgpt/service/worker/readFile/extension/rawT
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockReadExternalFileBuffer } = vi.hoisted(() => ({
-  mockReadExternalFileBuffer: vi.fn()
+const { mockReadExternalFileBuffer, mockOpenExternalFileStream } = vi.hoisted(() => ({
+  mockReadExternalFileBuffer: vi.fn(),
+  mockOpenExternalFileStream: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/file/read/external', () => ({
-  readExternalFileBuffer: mockReadExternalFileBuffer
+  readExternalFileBuffer: mockReadExternalFileBuffer,
+  openExternalFileStream: mockOpenExternalFileStream
 }));
 
 const {
@@ -23,6 +25,7 @@ const {
 describe('common/file/read/source', () => {
   beforeEach(() => {
     mockReadExternalFileBuffer.mockReset();
+    mockOpenExternalFileStream.mockReset();
   });
 
   it('S3 source 只保存可信大小，真正物化时才打开对象流', async () => {
@@ -44,6 +47,52 @@ describe('common/file/read/source', () => {
     });
     expect(getStream).toHaveBeenCalledWith(controller.signal);
   });
+
+  it('S3 streaming returns the original stream without materializing its contents', async () => {
+    const stream = new Readable({ read() {} });
+    const source = createS3FileSource({
+      sizeBytes: 100,
+      metadata: { filename: 'file.bin' },
+      getStream: async () => stream
+    });
+    const result = await source.openStream(new AbortController().signal);
+    expect(result.stream).toBe(stream);
+    expect(stream.readableFlowing).toBeNull();
+    stream.destroy();
+  });
+
+  it.each([false, true])(
+    'external streaming preserves response metadata and trusted filename preference: %s',
+    async (trustMetadataFilename) => {
+      const stream = new Readable({ read() {} });
+      mockOpenExternalFileStream.mockResolvedValue({
+        stream,
+        contentType: 'text/plain',
+        contentDisposition: 'attachment; filename="remote.txt"'
+      });
+      const source = createExternalHttpFileSource({
+        url: 'https://example.com/input',
+        maxSizeBytes: 123,
+        metadata: { filename: 'trusted.txt' },
+        trustMetadataFilename
+      });
+      const signal = new AbortController().signal;
+      const result = await source.openStream(signal);
+      expect(result.stream).toBe(stream);
+      expect(result.metadata).toEqual({
+        filename: trustMetadataFilename ? 'trusted.txt' : 'remote.txt',
+        contentType: 'text/plain'
+      });
+      expect(mockOpenExternalFileStream).toHaveBeenCalledWith({
+        url: 'https://example.com/input',
+        maxSizeBytes: 123,
+        timeoutMs: undefined,
+        signal
+      });
+      expect(mockReadExternalFileBuffer).not.toHaveBeenCalled();
+      stream.destroy();
+    }
+  );
 
   it('External source 入队时不下载，物化时透传业务字节上限和读取进度', async () => {
     mockReadExternalFileBuffer.mockResolvedValue({
@@ -77,6 +126,23 @@ describe('common/file/read/source', () => {
       signal: controller.signal,
       onReadBytes
     });
+  });
+
+  it('S3 source 透传消费侧读取限制，并在抛错时销毁流', async () => {
+    const stream = Readable.from([Buffer.from('too large')]);
+    const source = createS3FileSource({
+      sizeBytes: 1,
+      metadata: {},
+      getStream: async () => stream
+    });
+    const onReadBytes = vi.fn(() => {
+      throw new Error('consumer size limit');
+    });
+    await expect(
+      source.materialize({ signal: new AbortController().signal, onReadBytes })
+    ).rejects.toThrow('consumer size limit');
+    expect(onReadBytes).toHaveBeenCalledWith(9);
+    expect(stream.destroyed).toBe(true);
   });
 
   it('可信 File Ref filename 优先于远端 Content-Disposition', async () => {

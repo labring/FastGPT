@@ -216,6 +216,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
           encoding: 'utf-8',
           contentType: 'text/plain'
         },
+        openStream: vi.fn(),
         materialize
       }
     });
@@ -248,6 +249,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
         kind: 'externalHttp',
         maxSizeBytes: 1024,
         metadata: {},
+        openStream: vi.fn(),
         materialize
       }
     });

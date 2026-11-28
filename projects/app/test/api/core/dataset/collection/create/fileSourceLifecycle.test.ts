@@ -95,6 +95,7 @@ const source = {
     encoding: 'utf8',
     contentLength: 128
   },
+  openStream: vi.fn(),
   materialize: vi.fn()
 };
 

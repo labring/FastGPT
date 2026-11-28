@@ -85,7 +85,7 @@ describe('WorkflowFileContext 文件操作', () => {
         .fn()
         .mockResolvedValue({ buffer: Buffer.from('internal'), metadata: {} });
       const getSource = vi.spyOn(fileContext, 'getSource').mockResolvedValue({
-        source: { kind: 's3', sizeBytes: 8, metadata: {}, materialize },
+        source: { kind: 's3', sizeBytes: 8, metadata: {}, openStream: vi.fn(), materialize },
         sourceKind: 'internal'
       });
       const signal = new AbortController().signal;

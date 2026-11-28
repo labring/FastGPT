@@ -1163,6 +1163,7 @@ describe('readFileContentBySource', () => {
         kind: 's3' as const,
         sizeBytes: 10,
         metadata: { filename },
+        openStream: vi.fn(),
         materialize: vi.fn()
       };
       await readFileContentBySource({ teamId, tmbId, source });
@@ -1189,6 +1190,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.PDF' },
+      openStream: vi.fn(),
       materialize: vi.fn().mockResolvedValue(materialized)
     };
     await expect(readFileContentBySource({ teamId, tmbId, source })).resolves.toMatchObject({
@@ -1217,6 +1219,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.xlsx' },
+      openStream: vi.fn(),
       materialize: vi.fn()
     };
 
@@ -1239,6 +1242,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 10,
       metadata: { filename: 'file.txt' },
+      openStream: vi.fn(),
       materialize: vi.fn()
     };
 
@@ -1263,6 +1267,7 @@ describe('readFileContentBySource', () => {
       kind: 's3' as const,
       sizeBytes: 3,
       metadata: { filename: 'file.pdf' },
+      openStream: vi.fn(),
       materialize: vi.fn().mockResolvedValue({
         buffer: Buffer.from('pdf'),
         metadata: { filename: 'file.pdf' }
