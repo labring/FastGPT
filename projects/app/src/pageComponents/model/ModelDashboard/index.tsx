@@ -25,6 +25,7 @@ import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
+import { calcAvgTps } from './utils';
 
 type ModelDashboardData = {
   x: string;
@@ -40,8 +41,11 @@ type ModelDashboardData = {
   totalCost: number;
   avgResponseTime: number;
   avgTtfb: number;
+  avgTps: number;
   maxRpm: number;
   maxTpm: number;
+  cacheHitCount: number;
+  cacheHitRate: number;
 };
 
 const ChartsBoxStyles: BoxProps = {
@@ -137,25 +141,30 @@ const ModelDashboard = ({
     });
     return [{ label: t('common:All'), value: '' }, ...res];
   }, [availableModels, getModelProvider, i18n.language, t]);
-  // Model price map
+  // Model metadata & price map
   const modelPriceMap = useMemo(() => {
     const map = new Map<
       string,
       {
+        name?: string;
+        avatar?: string;
         pricing?: ModelPricingType;
         scope?: ModelScopeEnum;
         type?: ModelTypeEnum;
       }
     >();
     availableModels.forEach((model) => {
+      const provider = getModelProvider(model.provider, i18n.language);
       map.set(model.model, {
+        name: model.name,
+        avatar: model.avatar || provider.avatar,
         pricing: model.pricing,
         scope: model.scope,
         type: model.type
       });
     });
     return map;
-  }, [availableModels]);
+  }, [availableModels, getModelProvider, i18n.language]);
 
   const computeTimespan = (hoursDiff: number) => {
     const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
@@ -354,15 +363,19 @@ const ModelDashboard = ({
         return acc;
       }, 0);
 
-      // Cache hit
-      const llmRequestCount = summary.reduce((acc, item) => {
-        // Check is llm
+      // 仅对 LLM 模型聚合吐字速度（TPS）与缓存命中分母，避免非 LLM 模型耗时拉偏指标。
+      let llmRequestCount = 0;
+      let llmOutputTokens = 0;
+      let llmTotalTimeMs = 0;
+      summary.forEach((item) => {
         if (isLLMModel(item.model)) {
-          return acc + (item.request_count || 0);
+          llmRequestCount += item.request_count ?? 0;
+          llmOutputTokens += item.output_tokens ?? 0;
+          llmTotalTimeMs += item.total_time_milliseconds ?? 0;
         }
-        return acc;
-      }, 0);
+      });
 
+      const avgTps = calcAvgTps(llmOutputTokens, llmTotalTimeMs);
       const cacheHitCount = summary.reduce((acc, item) => acc + (item.cache_hit_count || 0), 0);
 
       return {
@@ -380,6 +393,7 @@ const ModelDashboard = ({
         totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
+        avgTps,
         maxRpm,
         maxTpm,
         cacheHitCount,
@@ -662,12 +676,67 @@ const ModelDashboard = ({
                 </Box>
               </Grid>
 
+              {/* LLM throughput & cache analysis */}
+              {(!filterProps?.model || isLLMModel(filterProps.model)) && (
+                <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+                  <Box {...ChartsBoxStyles}>
+                    <AreaChartComponent
+                      data={chartData}
+                      title={t('config_model:avg_tps')}
+                      enableCumulative={false}
+                      lines={[
+                        {
+                          dataKey: 'avgTps',
+                          name: t('config_model:avg_tps'),
+                          color: '#00B8D9'
+                        }
+                      ]}
+                      tooltipItems={[
+                        {
+                          label: t('config_model:avg_tps'),
+                          dataKey: 'avgTps',
+                          color: '#00B8D9',
+                          formatter: (value: number) => `${value.toFixed(2)} tokens/s`
+                        }
+                      ]}
+                    />
+                  </Box>
+                  <Box {...ChartsBoxStyles}>
+                    <AreaChartComponent
+                      data={chartData}
+                      title={t('config_model:cache_hit_rate')}
+                      enableCumulative={false}
+                      lines={[
+                        {
+                          dataKey: 'cacheHitRate',
+                          name: t('config_model:cache_hit_rate'),
+                          color: '#8774EE'
+                        }
+                      ]}
+                      tooltipItems={[
+                        {
+                          label: t('config_model:cache_hit_rate'),
+                          dataKey: 'cacheHitRate',
+                          color: '#8774EE'
+                        },
+                        {
+                          label: t('config_model:cache_hit_count'),
+                          dataKey: 'cacheHitCount',
+                          color: theme.colors.green['600']
+                        }
+                      ]}
+                    />
+                  </Box>
+                </Grid>
+              )}
+
               {filterProps?.model && (
                 <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                   <Box {...ChartsBoxStyles}>
                     <AreaChartComponent
                       data={chartData}
                       title={t('config_model:max_rpm')}
+                      titleTip={t('config_model:max_rpm_tip')}
                       enableCumulative={false}
                       lines={[
                         {
@@ -689,6 +758,7 @@ const ModelDashboard = ({
                     <AreaChartComponent
                       data={chartData}
                       title={t('config_model:max_tpm')}
+                      titleTip={t('config_model:max_tpm_tip')}
                       enableCumulative={false}
                       lines={[
                         {
@@ -707,36 +777,6 @@ const ModelDashboard = ({
                     />
                   </Box>
                 </Grid>
-              )}
-
-              {/* Cache hit */}
-              {(!filterProps?.model || isLLMModel(filterProps.model)) && (
-                <Box mt={5} {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('config_model:cache_hit_analysis')}
-                    enableCumulative={true}
-                    lines={[
-                      {
-                        dataKey: 'cacheHitRate',
-                        name: t('config_model:cache_hit_rate'),
-                        color: '#8774EE'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('config_model:cache_hit_rate'),
-                        dataKey: 'cacheHitRate',
-                        color: '#8774EE'
-                      },
-                      {
-                        label: t('config_model:cache_hit_count'),
-                        dataKey: 'cacheHitCount',
-                        color: theme.colors.green['600']
-                      }
-                    ]}
-                  />
-                </Box>
               )}
             </>
           )
