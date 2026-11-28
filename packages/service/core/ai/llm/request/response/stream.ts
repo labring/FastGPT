@@ -5,8 +5,9 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { parseLLMStreamResponse } from '../../../utils';
-import { parsePromptToolCall } from '../../promptCall';
+import { matchPromptToolStreamPrefix, parsePromptToolCall } from '../../promptCall';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
 import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
 import type { AIApiRequestMeta } from '../../../config';
@@ -47,6 +48,10 @@ export const createStreamResponse = async ({
     }
   }
 
+  /** 解包消费端或上游抛出的包装错误，保持其他原始异常值不变。 */
+  const unwrapStreamError = (err: unknown): unknown =>
+    typeof err === 'object' && err !== null && 'error' in err && err.error ? err.error : err;
+
   /** 用户中断时未完成的 tool call 不能作为有效调用返回或调度。 */
   let aborted = false;
 
@@ -69,9 +74,9 @@ export const createStreamResponse = async ({
           part
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 包含读取和消费回调异常，先保留 parser 状态，再由上层决定是否抛出。
-      updateError(error?.error || error);
+      updateError(unwrapStreamError(error));
     } finally {
       // 流结束边界复查最终停止状态：若停止信号在最后一个 chunk 回调内转真且上游紧接着 EOF，
       // 循环不会再进入下一轮检查，必须在此兜底判定 close。
@@ -204,24 +209,11 @@ export const createStreamResponse = async ({
             if (responseContent) {
               await onStreaming?.({ text: responseContent });
             }
-          } else if (answer.length >= 3) {
-            answer = answer.trimStart();
-
-            if (/0(:|：)/.test(answer)) {
-              // prompt tool 协议中 0 表示普通回答，可以开始把内容流式展示给用户。
+          } else {
+            const matched = matchPromptToolStreamPrefix(answer);
+            if (matched.type === 'answer' || matched.type === 'plain') {
               startResponseWrite = true;
-
-              const firstIndex =
-                answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-              answer = answer.substring(firstIndex + 2).trim();
-
-              await onStreaming?.({ text: answer });
-            } else if (/1(:|：)/.test(answer)) {
-              // 1 表示工具调用，工具协议内容不应作为可见回答提前输出。
-            } else {
-              // 兼容模型未按 0/1 前缀输出时，当作普通文本直接展示。
-              startResponseWrite = true;
-              await onStreaming?.({ text: answer });
+              await onStreaming?.({ text: matched.text });
             }
           }
         }
@@ -231,8 +223,20 @@ export const createStreamResponse = async ({
       // prompt tool 模式结束后用完整文本解析最终回答和工具调用；用户中断时不对外派发工具回调。
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
-      if (streamAnswer) {
-        await onStreaming?.({ text: streamAnswer });
+      // 未进入流式输出阶段就中止或报错时，尚未经过 onStreaming/审核的待判定正文不能回流到最终结果。
+      const isCompletedNormally = !aborted && !error;
+      const pendingStreamAnswer = isCompletedNormally
+        ? streamAnswer ||
+          (!startResponseWrite ? removeDatasetCiteText(llmAnswer, retainDatasetCite) : '')
+        : '';
+
+      let finalError = error;
+      if (pendingStreamAnswer) {
+        try {
+          await onStreaming?.({ text: pendingStreamAnswer });
+        } catch (err: unknown) {
+          finalError = unwrapStreamError(err);
+        }
       }
 
       if (!aborted) {
@@ -242,8 +246,8 @@ export const createStreamResponse = async ({
       }
 
       return {
-        error,
-        answerText: llmAnswer,
+        error: finalError,
+        answerText: startResponseWrite || isCompletedNormally ? llmAnswer : '',
         reasoningText: reasoningContent,
         finish_reason,
         usage,

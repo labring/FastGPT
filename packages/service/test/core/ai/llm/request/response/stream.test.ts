@@ -105,15 +105,39 @@ describe('createStreamResponse', () => {
     });
 
     expect(result).toMatchObject({
-      answerText: 'Hello world',
+      answerText: ' Hello world',
       reasoningText: 'Thinking...',
       finish_reason: 'stop',
       usage,
       error: undefined
     });
-    expect(callbacks.onStreaming.mock.calls).toEqual([[{ text: 'Hello' }], [{ text: ' world' }]]);
+    expect(callbacks.onStreaming.mock.calls).toEqual([[{ text: ' Hello' }], [{ text: ' world' }]]);
     expect(callbacks.onReasoning).toHaveBeenCalledExactlyOnceWith({ text: 'Thinking...' });
     expect(callbacks.onToolCall).not.toHaveBeenCalled();
+  });
+
+  it('should stream leading newline and full-width indentation verbatim after reasoning', async () => {
+    const callbacks = createCallbacks();
+    const { response } = createStream([
+      chunk({ reasoning_content: '思考中' }),
+      chunk({ content: '\n' }),
+      chunk({ content: '\u3000\u3000' }),
+      chunk({ content: '第一段' }),
+      chunk({ content: '\n\n\u3000\u3000第二段' }, 'stop')
+    ]);
+    const result = await createStreamResponse({
+      body: createBody(),
+      response,
+      ...callbacks
+    });
+
+    expect(result.answerText).toBe('\n\u3000\u3000第一段\n\n\u3000\u3000第二段');
+    expect(callbacks.onStreaming.mock.calls).toEqual([
+      [{ text: '\n' }],
+      [{ text: '\u3000\u3000' }],
+      [{ text: '第一段' }],
+      [{ text: '\n\n\u3000\u3000第二段' }]
+    ]);
   });
 
   it.each([true, false])('should respect model reasoning=%s for think tags', async (reasoning) => {
@@ -127,7 +151,7 @@ describe('createStreamResponse', () => {
       chunk({ content: ' answer' }, 'stop')
     ]);
     const result = await createStreamResponse({ body, response, ...callbacks });
-    const answer = reasoning ? 'answer' : '<think>thinking</think> answer';
+    const answer = reasoning ? ' answer' : '<think>thinking</think> answer';
 
     expect(result.answerText).toBe(answer);
     expect(result.reasoningText).toBe(reasoning ? 'thinking' : '');
@@ -710,6 +734,11 @@ describe('createStreamResponse', () => {
     it.each([
       { label: 'split ASCII prefix', parts: ['0', ':', ' hello', ' world'], callbacks: true },
       { label: 'split full-width prefix', parts: ['0', '：', ' hello', ' world'], callbacks: true },
+      {
+        label: 'bulleted example prefix',
+        parts: ['-', ' ', '0', ':', ' hello', ' world'],
+        callbacks: true
+      },
       { label: 'missing prefix', parts: ['hello', ' world'], callbacks: true },
       { label: 'missing prefix without callbacks', parts: ['hello', ' world'], callbacks: false }
     ])('should stream an answer with $label', async ({ parts, callbacks: observe }) => {
@@ -730,6 +759,61 @@ describe('createStreamResponse', () => {
       });
       if (observe) expect(textOf(callbacks.onStreaming)).toBe('hello world');
     });
+
+    it.each([
+      {
+        label: 'ASCII prefix followed by 1: timestamp chunk',
+        parts: ['0: ', '11:30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'ASCII prefix split inside 1: timestamp',
+        parts: ['0: 11', ':30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'bulleted ASCII prefix followed by 1: timestamp chunk',
+        parts: ['- 0: ', '11:30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'full-width prefix followed by ASCII 20:00 chunk',
+        parts: ['0： ', '20:00', ' 开会'],
+        expected: '20:00 开会'
+      },
+      {
+        label: 'full-width prefix split inside ASCII 20:00',
+        parts: ['0： ', '20', ':00', ' 开会'],
+        expected: '20:00 开会'
+      },
+      {
+        label: 'full-width prefix with both 11:30 and 20:00 in body',
+        parts: ['0： ', '11:30 开始，', '20:00 结束'],
+        expected: '11:30 开始，20:00 结束'
+      }
+    ])(
+      'should keep declared 0:/0： answer intact when body contains colons ($label)',
+      async ({ parts, expected }) => {
+        const callbacks = createCallbacks();
+        const { response } = createStream([
+          ...parts.map((content) => chunk({ content })),
+          chunk({}, 'stop')
+        ]);
+        const result = await createStreamResponse({
+          body: promptBody,
+          response,
+          ...callbacks
+        });
+
+        expect(result).toMatchObject({
+          answerText: expected,
+          toolCalls: undefined,
+          finish_reason: 'stop'
+        });
+        expect(textOf(callbacks.onStreaming)).toBe(expected);
+        expect(callbacks.onToolCall).not.toHaveBeenCalled();
+      }
+    );
 
     it.each([
       { prefix: '1:', callbacks: true },
@@ -761,6 +845,76 @@ describe('createStreamResponse', () => {
           expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
             call: result.toolCalls?.[0]
           });
+      }
+    );
+
+    it.each([
+      {
+        label: 'reasoning_content with separator newlines',
+        chunks: [
+          chunk({ reasoning_content: '思考中' }),
+          chunk({ content: '\n\n' }),
+          chunk({ content: '1' }),
+          chunk({ content: ':' }),
+          chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      },
+      {
+        label: 'think tag with separator newlines',
+        chunks: [
+          chunk({ content: '<think>' }),
+          chunk({ content: '思考中' }),
+          chunk({ content: '</think>\n\n' }),
+          chunk({ content: '1' }),
+          chunk({ content: '：' }),
+          chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      },
+      {
+        label: 'bulleted prompt example prefix after reasoning',
+        chunks: [
+          chunk({ reasoning_content: '思考中' }),
+          chunk({ content: '\n' }),
+          chunk({ content: '-' }),
+          chunk({ content: ' ' }),
+          chunk({ content: '1' }),
+          chunk({ content: ':' }),
+          chunk({ content: ' {"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      }
+    ])(
+      'should suppress split tool protocol after $label without streaming answer text',
+      async ({ chunks }) => {
+        const callbacks = createCallbacks();
+        const body = createBody({
+          tools: [tool('search')],
+          toolCallMode: 'prompt'
+        });
+        body.model.config.reasoning = true;
+        const { response } = createStream(chunks);
+
+        const result = await createStreamResponse({
+          body,
+          response,
+          ...callbacks
+        });
+
+        expect(result.reasoningText).toBe('思考中');
+        expect(result.answerText).toBe('');
+        expect(result.toolCalls).toEqual([
+          {
+            id: expect.any(String),
+            type: 'function',
+            function: { name: 'search', arguments: '{"q":"fastgpt"}' }
+          }
+        ]);
+        expect(callbacks.onStreaming).not.toHaveBeenCalled();
+        expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
+          call: result.toolCalls?.[0]
+        });
       }
     );
 
