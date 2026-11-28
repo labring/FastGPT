@@ -40,7 +40,7 @@ describe('indexStatus schema contract', () => {
   it.each(Object.values(DatasetDataIndexStageEnum))(
     'projects the stored %s stage into the public list contract',
     (indexStatus) => {
-      const item = buildItem({ indexStatus });
+      const item = buildItem({ indexStatus, createTime: new Date() });
       const projected = getPublicDatasetDataIndexStatus({ indexStatus });
       expect(GetDataListItemSchema.parse({ ...item, indexStatus: projected }).indexStatus).toBe(
         projected
