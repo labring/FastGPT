@@ -410,6 +410,15 @@ describe('parsePromptToolCall function tests', () => {
       });
     });
 
+    it('should keep 0: and - 0: answers when body contains 1:', () => {
+      expect(parsePromptToolCall('0: 11:30 开会')).toEqual({
+        answer: '11:30 开会'
+      });
+      expect(parsePromptToolCall('- 0: 11:30 开会')).toEqual({
+        answer: '11:30 开会'
+      });
+    });
+
     it('should handle simple 1: tool call that works', () => {
       const input = '1: {"name": "tool1", "arguments": {"param": "value"}}';
       const result = parsePromptToolCall(input);

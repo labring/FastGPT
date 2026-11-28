@@ -135,6 +135,26 @@ const findPromptToolAnswerPrefixIndex = (trimmedStr: string) => {
   return asciiIndex !== -1 ? asciiIndex : trimmedStr.indexOf('0：');
 };
 
+const detectPromptToolProtocol = (trimmedStr: string) => {
+  const answerPrefixIndex = findPromptToolAnswerPrefixIndex(trimmedStr);
+  const toolPrefixIndex = trimmedStr.search(PROMPT_TOOL_CALL_PREFIX_REG);
+
+  // 协议头窗口内优先确认先出现的 0:/0：，避免正文中出现 "11:30" 等文本把普通答复误判成工具调用。
+  if (
+    answerPrefixIndex > -1 &&
+    answerPrefixIndex < 6 &&
+    (toolPrefixIndex === -1 || answerPrefixIndex < toolPrefixIndex)
+  ) {
+    return { type: 'answer' as const, body: trimmedStr.substring(answerPrefixIndex + 2) };
+  }
+
+  if (toolPrefixIndex !== -1) {
+    return { type: 'tool' as const };
+  }
+
+  return { type: 'plain' as const };
+};
+
 /**
  * 与 `parsePromptToolCall` 共用同一套协议头规则，判定流式缓冲内容属于工具协议、普通答复还是待继续缓冲。
  */
@@ -142,15 +162,15 @@ export const matchPromptToolStreamPrefix = (
   raw: string
 ): { type: 'pending' | 'tool' } | { type: 'answer' | 'plain'; text: string } => {
   const trimmed = raw.trimStart();
+  const protocol = detectPromptToolProtocol(trimmed);
 
-  if (PROMPT_TOOL_CALL_PREFIX_REG.test(trimmed)) {
-    return { type: 'tool' };
+  if (protocol.type === 'answer') {
+    const visibleText = protocol.body.trimStart();
+    return visibleText ? { type: 'answer', text: visibleText } : { type: 'pending' };
   }
 
-  const answerPrefixIndex = findPromptToolAnswerPrefixIndex(trimmed);
-  if (answerPrefixIndex > -1 && answerPrefixIndex < 6) {
-    const visibleText = trimmed.substring(answerPrefixIndex + 2).trimStart();
-    return visibleText ? { type: 'answer', text: visibleText } : { type: 'pending' };
+  if (protocol.type === 'tool') {
+    return { type: 'tool' };
   }
 
   // 等待足够的非空白字符；协议头窗口内以 0/1 结尾时（如 "- 1"）继续等待后续冒号。
@@ -169,8 +189,13 @@ export const parsePromptToolCall = (
   toolCalls?: ChatCompletionMessageToolCall[];
 } => {
   str = str.trim();
-  // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
-  if (PROMPT_TOOL_CALL_PREFIX_REG.test(str)) {
+  const protocol = detectPromptToolProtocol(str);
+
+  if (protocol.type === 'answer') {
+    return { answer: protocol.body.trim() };
+  }
+
+  if (protocol.type === 'tool') {
     const toolString = sliceJsonStr(str);
 
     try {
@@ -190,24 +215,12 @@ export const parsePromptToolCall = (
         ]
       };
     } catch {
-      if (PROMPT_TOOL_CALL_PREFIX_REG.test(str)) {
-        return {
-          answer: `${ERROR_TEXT}: ${str}`,
-          streamAnswer: `${ERROR_TEXT}: ${str}`
-        };
-      } else {
-        return {
-          answer: str,
-          streamAnswer: str
-        };
-      }
+      return {
+        answer: `${ERROR_TEXT}: ${str}`,
+        streamAnswer: `${ERROR_TEXT}: ${str}`
+      };
     }
-  } else {
-    const firstIndex = findPromptToolAnswerPrefixIndex(str);
-    if (firstIndex > -1 && firstIndex < 6) {
-      str = str.substring(firstIndex + 2).trim();
-    }
-
-    return { answer: str };
   }
+
+  return { answer: str };
 };

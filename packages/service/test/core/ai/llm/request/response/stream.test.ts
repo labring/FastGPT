@@ -761,6 +761,34 @@ describe('createStreamResponse', () => {
     });
 
     it.each([
+      { label: 'prefix followed by timestamp chunk', parts: ['0: ', '11:30', ' 开会'] },
+      { label: 'prefix split inside timestamp', parts: ['0: 11', ':30', ' 开会'] },
+      { label: 'bulleted prefix followed by timestamp chunk', parts: ['- 0: ', '11:30', ' 开会'] }
+    ])(
+      'should keep 0: answer as plain text even when body contains 1: ($label)',
+      async ({ parts }) => {
+        const callbacks = createCallbacks();
+        const { response } = createStream([
+          ...parts.map((content) => chunk({ content })),
+          chunk({}, 'stop')
+        ]);
+        const result = await createStreamResponse({
+          body: promptBody,
+          response,
+          ...callbacks
+        });
+
+        expect(result).toMatchObject({
+          answerText: '11:30 开会',
+          toolCalls: undefined,
+          finish_reason: 'stop'
+        });
+        expect(textOf(callbacks.onStreaming)).toBe('11:30 开会');
+        expect(callbacks.onToolCall).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
       { prefix: '1:', callbacks: true },
       { prefix: '1：', callbacks: false }
     ])(
