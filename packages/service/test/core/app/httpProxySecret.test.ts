@@ -1,3 +1,6 @@
+import { createHmac } from 'node:crypto';
+import { getDerivedKey } from '../../../common/secret/aes256gcm';
+import z from 'zod';
 import { describe, expect, it } from 'vitest';
 import {
   formatHttpProxySecrets,
@@ -145,5 +148,40 @@ describe('HTTP proxy credential lifecycle', () => {
     data[0].flowNodeType = FlowNodeTypeEnum.code;
     formatHttpProxySecrets({ nodes: data, project: true });
     expect(data[0].inputs[0].value).toBe(url);
+  });
+});
+
+/** 有效签名的未来字段允许旧解析器剔除，必填身份和签名本身仍必须校验。 */
+describe('HTTP proxy signed source compatibility', () => {
+  it('accepts extra signed source fields while restoring the same saved credential', () => {
+    const stored = nodes({ value: url });
+    formatHttpProxySecrets({ nodes: stored });
+    const detail = structuredClone(stored);
+    formatHttpProxySecrets({
+      nodes: detail,
+      project: true,
+      source: { appId: 'app', versionId: 'version' }
+    });
+    const reference = z.object({ secret: z.string() }).parse(detail[0].inputs[0].value);
+    const prefix = HTTP_PROXY_CONFIGURED + '.';
+    const encoded = reference.secret.slice(prefix.length).split('.')[0];
+    const payload = z
+      .record(z.string(), z.unknown())
+      .parse(JSON.parse(Buffer.from(encoded, 'base64url').toString()));
+    const extended = Buffer.from(
+      JSON.stringify({ ...payload, futureSourceField: { revision: 2 } })
+    ).toString('base64url');
+    const signature = createHmac('sha256', getDerivedKey())
+      .update('http-proxy-source-v1:')
+      .update(extended)
+      .digest('hex');
+    detail[0].inputs[0].value = { secret: `${prefix}${extended}.${signature}` };
+    expect(
+      restoreHttpProxySecrets({
+        nodes: detail,
+        appId: 'app',
+        versions: new Map([['version', stored]])
+      })
+    ).toEqual(stored);
   });
 });

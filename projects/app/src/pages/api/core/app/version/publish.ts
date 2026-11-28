@@ -1,4 +1,4 @@
-import { findAppVersionNodes } from '@fastgpt/service/core/app/version/entity';
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/mongo/entity';
 import { resolveHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -21,7 +21,10 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  mongoSessionRun,
+  bridgeClientSessionToDbSession
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
@@ -143,7 +146,8 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
       nodes: await resolveHttpProxySecrets({
         nodes: normalizedWorkflow.nodes,
         appId,
-        readVersions: (versionIds) => findAppVersionNodes({ appId, versionIds, session })
+        readVersions: (versionIds) =>
+          findAppVersionNodes({ appId, versionIds, tx: bridgeClientSessionToDbSession(session) })
       })
     };
   };

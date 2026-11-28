@@ -349,7 +349,7 @@ describe('AIProxy Error Helpers', () => {
       expect(isAiproxyNotFoundError({ response: { status: 404 } })).toBe(true);
     });
 
-    it('matches 500 status code with record not found message', () => {
+    it('matches 500 status code with record not found message including AxiosError responses', () => {
       expect(
         isAiproxyNotFoundError({
           message: 'Request failed with status code 500',
@@ -357,6 +357,13 @@ describe('AIProxy Error Helpers', () => {
         })
       ).toBe(true);
       expect(isAiproxyNotFoundError({ status: 500, message: 'Record Not Found' })).toBe(true);
+      expect(
+        isAiproxyNotFoundError(
+          Object.assign(new AxiosError('Request failed with status code 500'), {
+            response: { status: 500, data: { message: 'group_channel record not found' } }
+          })
+        )
+      ).toBe(true);
     });
 
     it('returns false for unrelated errors and domain enums', () => {
@@ -369,6 +376,13 @@ describe('AIProxy Error Helpers', () => {
           message: 'record not found',
           response: { status: 500, data: { message: 'database unavailable' } }
         })
+      ).toBe(false);
+      expect(
+        isAiproxyNotFoundError(
+          Object.assign(new AxiosError('Request failed with status code 500'), {
+            response: { status: 500, data: { message: 'internal server error' } }
+          })
+        )
       ).toBe(false);
       expect(isAiproxyNotFoundError(null)).toBe(false);
       expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(false);

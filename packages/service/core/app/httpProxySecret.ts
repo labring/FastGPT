@@ -17,15 +17,13 @@ import z from 'zod';
 /** 密码控件仅用此掩码表示保留已配置值，真实密文不返回编辑客户端。 */
 export const HTTP_PROXY_CONFIGURED = '__fastgpt_http_proxy_configured__';
 const REFERENCE_PREFIX = `${HTTP_PROXY_CONFIGURED}.`;
-const ProxySourceSchema = z
-  .object({
-    appId: z.string(),
-    versionId: z.string(),
-    nodeId: z.string(),
-    field: z.enum(['value', 'defaultValue']),
-    fingerprint: z.string()
-  })
-  .strict();
+const ProxySourceSchema = z.object({
+  appId: z.string(),
+  versionId: z.string(),
+  nodeId: z.string(),
+  field: z.enum(['value', 'defaultValue']),
+  fingerprint: z.string()
+});
 type ProxySource = z.infer<typeof ProxySourceSchema>;
 
 /** 签名只覆盖来源标识及不可逆指纹，不向客户端返回凭据或数据库密文。 */

@@ -142,8 +142,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId, leftBoundar
           zIndex: isFullscreen ? 1299 : 300,
           bg: 'myGray.100',
           opacity: isOpen && isFullscreen ? 1 : 0,
-          pointerEvents: isFullscreen ? 'auto' : 'none',
-          onClick: isFullscreen ? () => setIsFullscreen(false) : undefined
+          ...(isFullscreen ? { onClick: () => setIsFullscreen(false) } : {})
         }}
         trapFocus={isFullscreen && isOpen}
         headerProps={isFullscreen ? { bg: 'myGray.25' } : undefined}

@@ -27,6 +27,9 @@ import {
 } from '@/web/core/workflow/editor/debug/workflowDebugOverlay';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { cloneDeep } from 'lodash-es';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 // region publicApi Debug context and data transforms
@@ -126,7 +129,9 @@ export const createWorkflowDebugData = ({
   };
 };
 
-/** 保存单步调试结果，并保留后续节点和交互续跑所需的 chatId。 */
+/** 保存单步响应；代理配置以本次客户端输入为准，避免脱敏回执使未保存凭据无法续跑。
+ * 仅合并当前会话同一 HTTP 节点的代理字段，不将凭据写入画布文档或其他会话。
+ */
 export const createNextWorkflowDebugData = ({
   debugData,
   response
@@ -140,15 +145,43 @@ export const createNextWorkflowDebugData = ({
     newVariables: DebugDataType['variables'];
     usageId?: DebugDataType['usageId'];
   };
-}): DebugDataType => ({
-  runtimeNodes: response.memoryNodes,
-  runtimeEdges: response.memoryEdges,
-  entryNodeIds: response.entryNodeIds,
-  skipNodeQueue: response.skipNodeQueue,
-  variables: response.newVariables,
-  usageId: response.usageId,
-  chatId: debugData.chatId
-});
+}): DebugDataType => {
+  const submittedProxies = new Map(
+    debugData.runtimeNodes
+      .filter((node) => node.flowNodeType === FlowNodeTypeEnum.httpRequest468)
+      .map(
+        (node) =>
+          [
+            node.nodeId,
+            node.inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)
+          ] as const
+      )
+  );
+  return {
+    runtimeNodes: response.memoryNodes.map((node) => {
+      const submitted = submittedProxies.get(node.nodeId);
+      if (node.flowNodeType !== FlowNodeTypeEnum.httpRequest468 || !submitted) return node;
+      return {
+        ...node,
+        inputs: node.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.httpProxy
+            ? {
+                ...input,
+                value: cloneDeep(submitted.value),
+                defaultValue: cloneDeep(submitted.defaultValue)
+              }
+            : input
+        )
+      };
+    }),
+    runtimeEdges: response.memoryEdges,
+    entryNodeIds: response.entryNodeIds,
+    skipNodeQueue: response.skipNodeQueue,
+    variables: response.newVariables,
+    usageId: response.usageId,
+    chatId: debugData.chatId
+  };
+};
 
 // endregion
 

@@ -1,4 +1,4 @@
-import { findAppVersionNodes } from '@fastgpt/service/core/app/version/entity';
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/mongo/entity';
 import {
   hasConfiguredHttpProxy,
   resolveHttpProxySecrets
