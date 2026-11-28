@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { Types } from '@fastgpt/service/common/mongo';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -11,7 +10,7 @@ import {
   type GetTrainingErrorBody,
   type GetTrainingErrorResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
-import { getTrainingErrorPage } from '@fastgpt/service/core/dataset/training/errorQuery';
+import { getTrainingErrorPage } from '@fastgpt/service/core/dataset/training/mongo/errorQuery';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingErrorResponse> {
   const { collectionId } = parseApiInput({
@@ -30,9 +29,9 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingErrorResponse> 
 
   const { items, total } = await getTrainingErrorPage({
     scope: {
-      teamId: new Types.ObjectId(collection.teamId),
-      datasetId: new Types.ObjectId(collection.datasetId),
-      collectionId: new Types.ObjectId(collection._id)
+      teamId: String(collection.teamId),
+      datasetId: String(collection.datasetId),
+      collectionId: String(collection._id)
     },
     offset,
     limit: pageSize

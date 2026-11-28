@@ -23,7 +23,7 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
@@ -56,10 +56,17 @@ it('reclaims the old synonym version on reconciliation while a QA error remains'
       fingerprint: 'old-version'
     });
     await MongoDatasetData.create({ ...scope, q: '如何退钱', synonymVersion: 2 });
-    const failedQa = await MongoDatasetQaTraining.create({
-      ...scope,
-      q: '未完成的问答',
-      status: 'error'
+    const [failedQa] = await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(scope.teamId),
+          tmbId: String(scope.tmbId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(scope.collectionId),
+          q: '未完成的问答',
+          status: 'error'
+        }
+      ]
     });
     const training = { status: 'active', revision: 1, usageId: String(new Types.ObjectId()) };
     await collection.updateOne({ $set: { training } });
@@ -67,7 +74,7 @@ it('reclaims the old synonym version on reconciliation while a QA error remains'
     await reconcileDatasetTraining(collectionId);
 
     expect(await MongoDatasetSynonymMapping.exists({ _id: oldMapping._id })).toBeNull();
-    expect(await MongoDatasetQaTraining.exists({ _id: failedQa._id })).not.toBeNull();
+    expect(await datasetQaTrainingService.exists({ id: failedQa._id })).toBe(true);
     expect((await MongoDatasetCollection.findById(collectionId).lean())?.training).toMatchObject({
       status: 'active',
       usageId: training.usageId

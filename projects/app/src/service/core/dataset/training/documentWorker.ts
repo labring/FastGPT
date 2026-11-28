@@ -9,7 +9,6 @@ import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -28,7 +27,10 @@ import type { AdminDatasetTrainingEnhanceResponse } from '@fastgpt/global/openap
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import {
   getSystemInstanceConfig,
   onSystemInstanceConfigSnapshot
@@ -39,7 +41,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getRunnableDatasetIndexMatch } from '@fastgpt/service/core/dataset/data/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@fastgpt/service/core/dataset/training/qaSchema';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
@@ -48,6 +50,15 @@ import {
   createPendingDatasetData,
   createQaTrainingData
 } from '@fastgpt/service/core/dataset/training/orchestration';
+import {
+  claimDatasetTrainingRun,
+  clearDatasetTrainingProgress,
+  getMongoTrainingRunMatch,
+  lockDatasetTrainingRun,
+  markDatasetTrainingItemRunning,
+  pauseDatasetTrainingRun,
+  type DatasetTrainingRun
+} from '@fastgpt/service/core/dataset/training/mongo/progress';
 import {
   enqueueDatasetTrainingBatch,
   settleDatasetTrainingRoundAfterWrite
@@ -118,9 +129,13 @@ export const reconcileDatasetTraining = async (collectionId: string): Promise<vo
     session: ClientSession | null = null
   ) =>
     Boolean(
-      (await MongoDatasetQaTraining.exists({ ...scope, status: 'active' })
-        .read('primary')
-        .session(session)) || (await MongoDatasetData.exists(indexWork).read('primary').session(session))
+      (await datasetQaTrainingService.exists({
+        teamId: String(scope.teamId),
+        datasetId: String(scope.datasetId),
+        collectionId: String(scope.collectionId),
+        status: 'active',
+        tx: bridgeClientSessionToDbSession(session)
+      })) || (await MongoDatasetData.exists(indexWork).read('primary').session(session))
     );
 
   const shouldEnqueue =
@@ -142,7 +157,7 @@ export const reconcileDatasetTraining = async (collectionId: string): Promise<vo
       ) {
         return true;
       }
-      await settleDatasetTrainingRoundAfterWrite(scope, session);
+      await settleDatasetTrainingRoundAfterWrite(scope, bridgeClientSessionToDbSession(session));
       // 最后一块提交后进程中断时，对账仍可回收旧词表，包括只剩其他错误项的轮次。
       await cleanupUnusedDatasetSynonymMappings(
         { teamId: String(scope.teamId), datasetId: String(scope.datasetId) },
@@ -201,17 +216,11 @@ function onTrainingCompleted(job: Job<DatasetTrainingJobData>) {
   });
 }
 
-type DocumentTrainingOwnership = {
-  _id: string;
-  'training.status': 'active';
-  'training.runId': string;
-};
-
 type DocumentTrainingContext = {
   collection: DatasetCollectionSchemaType;
   dataset: DatasetSchemaType;
   scope: ReturnType<typeof getWorkScope>;
-  ownership: DocumentTrainingOwnership;
+  ownership: DatasetTrainingRun;
   teamId: string;
   usageId: string;
   documentChunkMaxProcess: number;
@@ -220,43 +229,38 @@ type DocumentTrainingContext = {
 /** 一次 Job 先解析、再处理有限 QA 和索引工作，提交只接受当前 runId。 */
 async function processDatasetTraining(collectionId: string) {
   const runId = randomUUID();
-  const ownership: DocumentTrainingOwnership = {
-    _id: collectionId,
-    'training.status': 'active',
-    'training.runId': runId
-  };
-  const collection = await MongoDatasetCollection.findOneAndUpdate(
-    { _id: collectionId, 'training.status': 'active' },
-    {
-      $set: { 'training.runId': runId },
-      $inc: { 'training.revision': 1 }
-    },
-    { new: true }
-  ).lean();
+  const ownership = { collectionId, runId };
+  const collection = await claimDatasetTrainingRun(ownership);
   if (!collection?.training) return;
 
-  const dataset = await MongoDataset.findOne({
-    _id: collection.datasetId,
-    teamId: collection.teamId,
-    deleteTime: null
-  })
-    .read('primary')
-    .lean();
-  if (!dataset) return;
+  try {
+    const dataset = await MongoDataset.findOne({
+      _id: collection.datasetId,
+      teamId: collection.teamId,
+      deleteTime: null
+    })
+      .read('primary')
+      .lean();
+    if (!dataset) return;
 
-  const context: DocumentTrainingContext = {
-    collection,
-    dataset,
-    scope: getWorkScope(collection),
-    ownership,
-    teamId: String(collection.teamId),
-    usageId: collection.training.usageId,
-    documentChunkMaxProcess: getSystemInstanceConfig().performance.dataset.documentChunkMaxProcess
-  };
+    const context: DocumentTrainingContext = {
+      collection,
+      dataset,
+      scope: getWorkScope(collection),
+      ownership,
+      teamId: String(collection.teamId),
+      usageId: collection.training.usageId,
+      documentChunkMaxProcess: getSystemInstanceConfig().performance.dataset.documentChunkMaxProcess
+    };
 
-  if (!(await processParse(context))) return;
-  const remainingBudget = await processQa(context);
-  if (remainingBudget > 0) await processIndexes(context, remainingBudget);
+    if (!(await processParse(context))) return;
+    const remainingBudget = await processQa(context);
+    if (remainingBudget > 0) await processIndexes(context, remainingBudget);
+  } finally {
+    await clearDatasetTrainingProgress({ run: ownership }).catch((error) => {
+      logger.error('Failed to clear document training progress', { collectionId, runId, error });
+    });
+  }
 }
 
 /** 解析文件并写入下游待办，解析失败后仍可继续处理独立追加的分块。 */
@@ -265,10 +269,10 @@ async function processParse(context: DocumentTrainingContext) {
   if (collection.training?.parse?.status !== 'active') return true;
   if (!(await canStartWork(context))) return false;
   const tmbId = String(collection.tmbId);
-  const parseMatch = { ...ownership, 'training.parse.status': 'active' };
+  const parseMatch = { ...getMongoTrainingRunMatch(ownership), 'training.parse.status': 'active' };
   const prepared = await runItem(ownership, {
-    stage: 'parse',
-    itemId: ownership._id,
+    stage: TrainingModeEnum.parse,
+    itemId: ownership.collectionId,
     run: () => prepareDatasetCollectionParse({ collection, dataset, teamId, tmbId, usageId }),
     markFailed: async (errorMsg, session) => {
       const { matchedCount } = await MongoDatasetCollection.updateOne(
@@ -285,6 +289,7 @@ async function processParse(context: DocumentTrainingContext) {
         ? await getSynonymVersion(context)
         : undefined;
     const committed = await writeWhileOwned(ownership, async (session) => {
+      const tx = bridgeClientSessionToDbSession(session);
       const { matchedCount } = await MongoDatasetCollection.updateOne(
         parseMatch,
         {
@@ -301,7 +306,7 @@ async function processParse(context: DocumentTrainingContext) {
           data: prepared.trainingData,
           maxToken: prepared.agentModelData ? getLLMMaxChunkSize(prepared.agentModelData) : Infinity
         });
-        await createQaTrainingData({ scope: { ...scope, tmbId }, sourceChunks }, session);
+        await createQaTrainingData({ scope: { ...scope, tmbId }, sourceChunks }, tx);
       } else {
         const indexStatus = datasetDataDocumentTrainingStatusByMode[prepared.trainingMode];
         if (!indexStatus)
@@ -322,7 +327,7 @@ async function processParse(context: DocumentTrainingContext) {
             indexSize: collection.indexSize,
             synonymVersion
           },
-          session
+          tx
         );
       }
       return true;
@@ -339,15 +344,17 @@ async function processQa(context: DocumentTrainingContext) {
   const { collection, dataset, scope, ownership, teamId, usageId } = context;
 
   // 原文成功裂变后立刻删除，子分块和删除在同一事务提交。
-  const qaItems = await MongoDatasetQaTraining.find({ ...scope, status: 'active' })
-    .read('primary')
-    .sort({ chunkIndex: 1, _id: 1 })
-    .limit(maxItemsPerJob)
-    .lean();
+  const qaItems = await datasetQaTrainingService.list({
+    teamId: String(scope.teamId),
+    datasetId: String(scope.datasetId),
+    collectionId: String(scope.collectionId),
+    status: 'active',
+    sort: 'chunkOrder',
+    limit: maxItemsPerJob
+  });
   const processItem = async (item: (typeof qaItems)[number]) => {
-    const itemMatch = { ...scope, _id: item._id, status: 'active' as const };
     const generated = await runItem(ownership, {
-      stage: 'qa',
+      stage: TrainingModeEnum.qa,
       itemId: String(item._id),
       run: async () => {
         const handle = await getTeamModelHandle({ teamId });
@@ -365,19 +372,29 @@ async function processQa(context: DocumentTrainingContext) {
         return { chunks, model, usage: result.usage };
       },
       markFailed: async (errorMsg, session) => {
-        const { matchedCount } = await MongoDatasetQaTraining.updateOne(
-          itemMatch,
-          { $set: { status: 'error', errorMsg } },
-          { session }
-        );
-        return matchedCount > 0;
+        return datasetQaTrainingService.markFailed({
+          teamId: String(scope.teamId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(scope.collectionId),
+          id: String(item._id),
+          errorMsg,
+          tx: bridgeClientSessionToDbSession(session)
+        });
       }
     });
     if (!generated) return;
 
     const synonymVersion = await getSynonymVersion(context);
     const committed = await writeWhileOwned(ownership, async (session) => {
-      const { deletedCount } = await MongoDatasetQaTraining.deleteOne(itemMatch, { session });
+      const tx = bridgeClientSessionToDbSession(session);
+      const deletedCount = await datasetQaTrainingService.deleteOne({
+        id: String(item._id),
+        teamId: String(scope.teamId),
+        datasetId: String(scope.datasetId),
+        collectionId: String(scope.collectionId),
+        status: 'active',
+        tx
+      });
       if (deletedCount !== 1) return false;
       await createPendingDatasetData(
         {
@@ -390,7 +407,7 @@ async function processQa(context: DocumentTrainingContext) {
           indexStatus: DatasetDataIndexStageEnum.index,
           synonymVersion
         },
-        session
+        tx
       );
       return true;
     });
@@ -440,7 +457,7 @@ async function processIndexes(context: DocumentTrainingContext, remainingBudget:
     ) {
       const stage = item.indexStatus;
       const result = await runItem<AdminDatasetTrainingEnhanceResponse>(ownership, {
-        stage,
+        stage: TrainingModeEnum[stage],
         itemId: String(item._id),
         run: async () => {
           if (
@@ -467,7 +484,7 @@ async function processIndexes(context: DocumentTrainingContext, remainingBudget:
             datasetId: String(scope.datasetId),
             collectionId: String(scope.collectionId),
             dataId: String(item._id),
-            runId: ownership['training.runId'],
+            runId: ownership.runId,
             modelId: model.modelId,
             usageId
           };
@@ -556,7 +573,11 @@ async function processIndexes(context: DocumentTrainingContext, remainingBudget:
     const rebuildModel = isDatasetDataModelRebuild(status);
     const itemMatch = { ...pendingIndex, _id: item._id, indexStatus: status };
     const indexed = await runItem(ownership, {
-      stage: diffSynonym ? 'rebuildSynonym' : rebuildModel ? 'rebuildIndex' : 'index',
+      stage: diffSynonym
+        ? TrainingModeEnum.rebuildSynonym
+        : rebuildModel
+          ? TrainingModeEnum.rebuildIndex
+          : TrainingModeEnum.index,
       itemId: String(item._id),
       run: async () => {
         const modelHandle = await getTeamModelHandle({ teamId });
@@ -648,7 +669,7 @@ async function processItems<T>(
 
 /** 处理单项业务重试、失败标记与欠费暂停。 */
 async function runItem<T>(
-  ownership: DocumentTrainingOwnership,
+  ownership: DatasetTrainingRun,
   {
     stage,
     itemId,
@@ -656,15 +677,7 @@ async function runItem<T>(
     markFailed,
     skipOnFailure
   }: {
-    stage:
-      | 'parse'
-      | 'qa'
-      | DatasetDataIndexStageEnum.imageParse
-      | DatasetDataIndexStageEnum.image
-      | DatasetDataIndexStageEnum.auto
-      | 'index'
-      | 'rebuildIndex'
-      | 'rebuildSynonym';
+    stage: TrainingModeEnum;
     itemId: string;
     run: () => Promise<T>;
   } & (
@@ -675,51 +688,70 @@ async function runItem<T>(
     | { markFailed?: never; skipOnFailure: T }
   )
 ): Promise<T | undefined> {
-  const collectionId = ownership._id;
-  for (let attempt = 0; ; attempt++) {
-    if (!(await stillOwnsRun(ownership))) return;
+  const { collectionId } = ownership;
+  // 重建分块已有单独的 Running 状态。其他阶段只标记进入 Worker 调用的工作项。
+  const trackProgress =
+    stage !== TrainingModeEnum.rebuildIndex && stage !== TrainingModeEnum.rebuildSynonym;
+  if (trackProgress && !(await markDatasetTrainingItemRunning({ run: ownership, itemId, stage })))
+    return;
 
-    try {
-      return await run();
-    } catch (error) {
-      if (error instanceof DocumentTrainingRunLostError) {
-        logger.info('Document training commit rejected after losing runId', {
-          collectionId,
-          stage,
-          itemId
-        });
+  try {
+    return await runWithRetries();
+  } finally {
+    if (trackProgress) {
+      // 进度清理失败仍须返回已提交结果，切片收尾或接管会清空本次标记。
+      await clearDatasetTrainingProgress({ run: ownership, itemId }).catch((error) =>
+        logger.error('Failed to clear training item progress', { collectionId, itemId, error })
+      );
+    }
+  }
+
+  async function runWithRetries(): Promise<T | undefined> {
+    for (let attempt = 0; ; attempt++) {
+      if (!(await stillOwnsRun(ownership))) return;
+
+      try {
+        return await run();
+      } catch (error) {
+        if (error instanceof DocumentTrainingRunLostError) {
+          logger.info('Document training commit rejected after losing runId', {
+            collectionId,
+            stage,
+            itemId
+          });
+          return;
+        }
+        // MongoDB / 全文索引故障由对账重投，业务调用重试耗尽才标记该条分块错误。
+        if (error instanceof DocumentTrainingCommitError) throw error.cause;
+        const quotaError = getDatasetParseQuotaErrorCode(error);
+        if (quotaError === TeamErrEnum.aiPointsNotEnough) {
+          await pauseDatasetTrainingRun(ownership);
+          return;
+        }
+        if (
+          attempt < 2 &&
+          !quotaError &&
+          !isModelConfigError(error) &&
+          (!isEmbeddingRequestError(error) || error.retryable)
+        ) {
+          await delay(500);
+          continue;
+        }
+
+        if (!markFailed) {
+          logger.warn('Optional document enhancement skipped after retries', {
+            collectionId,
+            stage,
+            itemId,
+            error
+          });
+          return skipOnFailure;
+        }
+        logger.error('Document training item failed', { collectionId, stage, itemId, error });
+        const errorMsg = getErrText(error, `Dataset ${stage} training failed`);
+        await writeWhileOwned(ownership, (session) => markFailed(errorMsg, session));
         return;
       }
-      // MongoDB / 全文索引故障由对账重投，业务调用重试耗尽才标记该条分块错误。
-      if (error instanceof DocumentTrainingCommitError) throw error.cause;
-      const quotaError = getDatasetParseQuotaErrorCode(error);
-      if (quotaError === TeamErrEnum.aiPointsNotEnough) {
-        await pauseForBalance(ownership);
-        return;
-      }
-      if (
-        attempt < 2 &&
-        !quotaError &&
-        !isModelConfigError(error) &&
-        (!isEmbeddingRequestError(error) || error.retryable)
-      ) {
-        await delay(500);
-        continue;
-      }
-
-      if (!markFailed) {
-        logger.warn('Optional document enhancement skipped after retries', {
-          collectionId,
-          stage,
-          itemId,
-          error
-        });
-        return skipOnFailure;
-      }
-      logger.error('Document training item failed', { collectionId, stage, itemId, error });
-      const errorMsg = getErrText(error, `Dataset ${stage} training failed`);
-      await writeWhileOwned(ownership, (session) => markFailed(errorMsg, session));
-      return;
     }
   }
 }
@@ -731,35 +763,25 @@ async function canStartWork({ ownership, teamId }: DocumentTrainingContext) {
     return true;
   } catch (error) {
     if (error !== TeamErrEnum.aiPointsNotEnough) throw error;
-    await pauseForBalance(ownership);
+    await pauseDatasetTrainingRun(ownership);
     return false;
   }
 }
 
-function stillOwnsRun(ownership: DocumentTrainingOwnership) {
-  return MongoDatasetCollection.exists(ownership).read('primary');
+function stillOwnsRun(ownership: DatasetTrainingRun) {
+  return MongoDatasetCollection.exists(getMongoTrainingRunMatch(ownership)).read('primary');
 }
 
 function writeWhileOwned(
-  ownership: DocumentTrainingOwnership,
+  ownership: DatasetTrainingRun,
   write: (session: ClientSession) => Promise<boolean>
 ) {
   return mongoSessionRun(async (session) => {
-    const claimed = await MongoDatasetCollection.updateOne(
-      ownership,
-      { $inc: { 'training.revision': 1 } },
-      { session }
-    );
     // 和追加、暂停、重新领取争用同一集合写锁，旧 Worker 不能提交任何子记录。
-    return claimed.matchedCount > 0 && (await write(session));
-  });
-}
-
-function pauseForBalance(ownership: DocumentTrainingOwnership) {
-  return MongoDatasetCollection.updateOne(ownership, {
-    $set: { 'training.status': 'paused_unpaid', 'training.pausedAt': new Date() },
-    $unset: { 'training.runId': '' },
-    $inc: { 'training.revision': 1 }
+    return (
+      (await lockDatasetTrainingRun(ownership, bridgeClientSessionToDbSession(session))) &&
+      (await write(session))
+    );
   });
 }
 

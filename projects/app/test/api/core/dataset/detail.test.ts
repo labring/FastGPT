@@ -11,7 +11,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getUser } from '@test/datas/users';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -136,14 +136,21 @@ describe('GET /api/core/dataset/detail', () => {
       return result.data.hasTrainingTask;
     };
     expect(await read()).toBe(false);
-    const training = await MongoDatasetQaTraining.create({
-      ...scope,
-      q: 'QA source',
-      status: 'error',
-      errorMsg: 'manual retry required'
+    const [training] = await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(scope.teamId),
+          tmbId: String(scope.tmbId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(scope.collectionId),
+          q: 'QA source',
+          status: 'error',
+          errorMsg: 'manual retry required'
+        }
+      ]
     });
     expect(await read()).toBe(true);
-    await MongoDatasetQaTraining.deleteOne({ _id: training._id });
+    await datasetQaTrainingService.deleteOne({ id: training._id });
 
     const data = await MongoDatasetData.create({ ...scope, q: 'saved' });
     for (const stage of [

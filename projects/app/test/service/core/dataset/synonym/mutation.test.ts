@@ -49,7 +49,6 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -144,7 +143,6 @@ describe('createDatasetSynonymMutation', () => {
       MongoDataset.init(),
       MongoDatasetCollection.init(),
       MongoDatasetData.init(),
-      MongoDatasetQaTraining.init(),
       MongoDatasetTraining.init(),
       MongoDatasetSynonym.init(),
       MongoDatasetSynonymMapping.init()

@@ -1,7 +1,7 @@
 import handler from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
@@ -54,7 +54,18 @@ it('returns only task existence, using data for rebuilds and excluding stale or 
     teamId: new Types.ObjectId(),
     indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymFailed
   });
-  const qa = await MongoDatasetQaTraining.create({ ...scope, q: 'pending', status: 'active' });
+  const [qa] = await datasetQaTrainingService.createMany({
+    items: [
+      {
+        teamId: String(scope.teamId),
+        tmbId: String(scope.tmbId),
+        datasetId: String(scope.datasetId),
+        collectionId: String(scope.collectionId),
+        q: 'pending',
+        status: 'active'
+      }
+    ]
+  });
   const res = await Call(handler, { auth: root, query: { datasetId: dataset._id } });
   expect(res.code).toBe(200);
   expect(res.data).toEqual({ hasTrainingTask: true });
@@ -67,7 +78,7 @@ it('returns only task existence, using data for rebuilds and excluding stale or 
   expect((await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data).toEqual({
     hasTrainingTask: true
   });
-  await qa.deleteOne();
+  await datasetQaTrainingService.deleteOne({ id: qa._id });
   expect((await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data).toEqual({
     hasTrainingTask: false
   });

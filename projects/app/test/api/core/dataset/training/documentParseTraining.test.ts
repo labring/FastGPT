@@ -1,6 +1,7 @@
 import fileHandler from '@/pages/api/core/dataset/collection/create/fileId';
 import linkHandler from '@/pages/api/core/dataset/collection/create/link';
 import detailHandler from '@/pages/api/core/dataset/collection/detail';
+import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 import pushHandler from '@/pages/api/core/dataset/data/pushData';
 import { initDatasetTrainingWorker } from '@/service/core/dataset/training/documentWorker';
 import { bullMQ } from '@fastgpt/dal/redis/bullmq';
@@ -176,6 +177,12 @@ it.skipIf(!redisUrl)(
       await initDatasetTrainingWorker();
       await parsing.promise;
       expect(
+        await Call(trainingDetailHandler, { auth: root, query: { collectionId } })
+      ).toMatchObject({
+        code: 200,
+        data: { queuedCounts: { parse: 0 }, trainingCounts: { parse: 1 } }
+      });
+      expect(
         await Call(pushHandler, {
           auth: root,
           body: {
@@ -193,6 +200,16 @@ it.skipIf(!redisUrl)(
           expect(await detail(collectionId)).toMatchObject({
             code: 200,
             data: { activeTrainingAmount: 0, finalErrorAmount: 1 }
+          });
+          expect(
+            await Call(trainingDetailHandler, { auth: root, query: { collectionId } })
+          ).toMatchObject({
+            code: 200,
+            data: {
+              queuedCounts: { parse: 0 },
+              trainingCounts: { parse: 0 },
+              errorCounts: { parse: 1 }
+            }
           });
           expect(await MongoDatasetCollection.findById(collectionId).lean()).toMatchObject({
             training: { parse: { status: 'error', errorMsg: 'Source cannot be read' } }

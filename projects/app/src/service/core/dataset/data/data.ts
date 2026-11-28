@@ -441,10 +441,9 @@ export class DatasetDataOperation {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
           }
+          const tx = bridgeClientSessionToDbSession(mongoSession);
           const documentTraining =
-            !commit &&
-            isDocumentTraining &&
-            (await touchDatasetTrainingRound(mongoData, mongoSession));
+            !commit && isDocumentTraining && (await touchDatasetTrainingRound(mongoData, tx));
           // 重试只改变状态、不更新 updateTime；失败修复还需校验状态，不能覆盖已恢复的任务。
           const updateResult = await MongoDatasetData.updateOne(
             {
@@ -520,7 +519,7 @@ export class DatasetDataOperation {
             tx: bridgeClientSessionToDbSession(mongoSession)
           });
 
-          if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, mongoSession);
+          if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, tx);
         }
       });
     } catch (error) {
@@ -836,8 +835,9 @@ export class DatasetDataOperation {
         if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
+        const tx = bridgeClientSessionToDbSession(session);
         const documentTraining =
-          isDocumentTraining && (await touchDatasetTrainingRound(mongoData, session));
+          isDocumentTraining && (await touchDatasetTrainingRound(mongoData, tx));
         const updateResult = await MongoDatasetData.updateOne(
           {
             _id: mongoData._id,
@@ -941,7 +941,7 @@ export class DatasetDataOperation {
           tx: bridgeClientSessionToDbSession(session)
         });
 
-        if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, session);
+        if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, tx);
       });
     } catch (error) {
       if (newVectorIdList.length > 0) {
@@ -983,7 +983,8 @@ export class DatasetDataOperation {
     await this.commitDataWrite({
       session,
       fn: async (session) => {
-        const inTraining = await touchDatasetTrainingRound(data, session);
+        const tx = bridgeClientSessionToDbSession(session);
+        const inTraining = await touchDatasetTrainingRound(data, tx);
         await MongoDatasetData.deleteOne({ _id: data.id }, { session });
         // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
         await getFullTextStore().deleteByDataId(data.id, session);
@@ -1005,7 +1006,7 @@ export class DatasetDataOperation {
           datasetId: data.datasetId,
           idList: data.indexes.map((item) => item.dataId)
         });
-        if (inTraining) await settleDatasetTrainingRoundAfterWrite(data, session);
+        if (inTraining) await settleDatasetTrainingRoundAfterWrite(data, tx);
       }
     });
 

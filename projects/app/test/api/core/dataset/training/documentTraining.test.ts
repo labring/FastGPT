@@ -2,8 +2,6 @@ import detailHandler from '@/pages/api/core/dataset/collection/detail';
 import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 import pushHandler from '@/pages/api/core/dataset/data/pushData';
 import dataDetailHandler from '@/pages/api/core/dataset/data/detail';
-import { bullMQ } from '@fastgpt/dal/redis/bullmq';
-import { closeRedisRuntime, configureRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import {
   CollectionTrainingStatusEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -27,6 +25,7 @@ import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/e
 import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { expect, it, vi } from 'vitest';
+import { openTrainingQueue } from '../../../../utils/datasetTrainingQueue';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -146,11 +145,7 @@ const redisUrl = process.env.FASTGPT_TEST_REDIS_URL;
 it.skipIf(!redisUrl)(
   'runs one BullMQ job for two pushes and shows completed indexes in detail',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    vi.mocked(bullMQ.getQueue).mockRestore();
-    vi.mocked(bullMQ.getWorker).mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
 
     try {
       const { datasetTrainingMQService } =
@@ -215,13 +210,16 @@ it.skipIf(!redisUrl)(
         await import('@/service/core/dataset/training/documentWorker');
       try {
         await initDatasetTrainingWorker();
-        await vi.waitFor(async () => {
-          expect(mockGetVectors).toHaveBeenCalledTimes(2);
-          expect(await trainingDetail()).toMatchObject({
-            code: 200,
-            data: { queuedCounts: { index: 3 }, trainingCounts: { index: 0 } }
-          });
-        });
+        await vi.waitFor(
+          async () => {
+            expect(mockGetVectors).toHaveBeenCalledTimes(2);
+            expect(await trainingDetail()).toMatchObject({
+              code: 200,
+              data: { queuedCounts: { index: 1 }, trainingCounts: { index: 2 } }
+            });
+          },
+          { timeout: 10_000 }
+        );
       } finally {
         embeddings.resolve();
       }
@@ -234,6 +232,10 @@ it.skipIf(!redisUrl)(
               finalErrorAmount: 0,
               slowestTrainingStatus: CollectionTrainingStatusEnum.ready
             }
+          });
+          expect(await trainingDetail()).toMatchObject({
+            code: 200,
+            data: { queuedCounts: { index: 0 }, trainingCounts: { index: 0 }, trainedCount: 3 }
           });
           const rows = await MongoDatasetData.find({ collectionId: scope.collectionId }).lean();
           expect(rows).toHaveLength(3);
@@ -264,7 +266,7 @@ it.skipIf(!redisUrl)(
         { timeout: 10_000 }
       );
     } finally {
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );

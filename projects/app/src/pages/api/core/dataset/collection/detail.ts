@@ -8,7 +8,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaSchema';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';

@@ -1,5 +1,9 @@
 import { getModelTestDefaults } from '@test/modelCache';
-import { appendDatasetIndexTraining } from '@fastgpt/service/core/dataset/training/orchestration';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import {
+  appendDatasetIndexTraining,
+  appendDatasetQaTraining
+} from '@fastgpt/service/core/dataset/training/orchestration';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetDataIndexStageEnum,
@@ -9,7 +13,8 @@ import {
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
+import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
 
@@ -111,6 +116,47 @@ describe('indexStatus downstream contracts', () => {
     expect(await MongoDatasetDataText.countDocuments({ dataId: result.dataIds[0] })).toBe(0);
   });
 
+  it('rolls back appended indexes, QA and the training bill with the caller transaction', async () => {
+    const { root, dataset, collection } = await createContext();
+    const { embedding, llm } = getModelTestDefaults();
+    if (!embedding?.modelId || !llm?.modelId)
+      throw new Error('Training model fixtures are required');
+    const scope = {
+      teamId: String(root.teamId),
+      tmbId: String(root.tmbId),
+      datasetId: String(dataset._id),
+      collectionId: String(collection._id)
+    };
+    const input = { ...scope, vectorModelId: embedding.modelId, agentModelId: llm.modelId };
+    const abort = new Error('Abort caller transaction');
+
+    await expect(
+      runInTransaction(
+        async (tx) => {
+          expect(
+            await appendDatasetIndexTraining({ ...input, data: [{ q: 'index chunk' }] }, tx)
+          ).toMatchObject({ insertLen: 1 });
+          expect(
+            await appendDatasetQaTraining(
+              { ...input, data: [{ q: 'QA source' }], agentModel: llm },
+              tx
+            )
+          ).toMatchObject({ insertLen: 1 });
+          expect(await datasetQaTrainingService.count({ ...scope, tx })).toBe(1);
+          throw abort;
+        },
+        { dialect: 'mongo' }
+      )
+    ).rejects.toBe(abort);
+
+    expect(
+      (await MongoDatasetCollection.findById(scope.collectionId).lean())?.training
+    ).toBeUndefined();
+    expect(await MongoDatasetData.countDocuments({ collectionId: scope.collectionId })).toBe(0);
+    expect(await datasetQaTrainingService.count(scope)).toBe(0);
+    expect(await MongoUsage.countDocuments({ trainingCollectionId: scope.collectionId })).toBe(0);
+  });
+
   /** DS-18 / CP-10：集合删除按 collectionId 清理，不做状态筛选。 */
   it('cleans pending index data and in-flight tasks on collection delete', async () => {
     const { root, dataset, collection, createData } = await createContext();
@@ -119,13 +165,17 @@ describe('indexStatus downstream contracts', () => {
       indexStatus: DatasetDataIndexStageEnum.index,
       withFullText: true
     });
-    await MongoDatasetQaTraining.create({
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id,
-      q: 'pending QA source',
-      status: 'active'
+    await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'pending QA source',
+          status: 'active'
+        }
+      ]
     });
 
     const fullCollection = await MongoDatasetCollection.findById(collection._id).lean();
@@ -139,7 +189,7 @@ describe('indexStatus downstream contracts', () => {
     });
 
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
-    expect(await MongoDatasetQaTraining.countDocuments({ collectionId: collection._id })).toBe(0);
+    expect(await datasetQaTrainingService.count({ collectionId: String(collection._id) })).toBe(0);
     expect(await MongoDatasetDataText.countDocuments({ collectionId: collection._id })).toBe(0);
   });
 });

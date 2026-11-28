@@ -10,17 +10,25 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { Types } from '@fastgpt/service/common/mongo';
+import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 type EmptyQuery = Record<string, never>;
 
 describe('training error list test', () => {
+  beforeEach(() => {
+    const previousStrictQuery = connectionMongo.get('strictQuery') ?? false;
+    connectionMongo.set('strictQuery', 'throw');
+    return () => {
+      connectionMongo.set('strictQuery', previousStrictQuery);
+    };
+  });
+
   it('should return final error list in collection scope', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
@@ -92,8 +100,19 @@ describe('training error list test', () => {
         }
       }
     });
-    const [qa, data] = await Promise.all([
-      MongoDatasetQaTraining.create({ ...scope, q: 'QA source', status: 'active' }),
+    const [[qa], data] = await Promise.all([
+      datasetQaTrainingService.createMany({
+        items: [
+          {
+            teamId: String(scope.teamId),
+            tmbId: String(scope.tmbId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            q: 'QA source',
+            status: 'active'
+          }
+        ]
+      }),
       MongoDatasetData.create({
         ...scope,
         q: 'Pending data',

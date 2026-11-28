@@ -6,7 +6,10 @@ import {
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { Types } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -104,11 +107,12 @@ export const createDatasetSynonymMutation = async ({
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
   const modelHandle = await getTeamModelHandle({ teamId });
   const { affectedDataCount, collectionIds } = await mongoSessionRun(async (session) => {
+    const tx = bridgeClientSessionToDbSession(session);
     const dataset = await MongoDataset.findOne({ _id: datasetId, teamId, deleteTime: null })
       .session(session)
       .lean();
     if (!dataset) throw new Error('Dataset not found');
-    if (await hasBlockingDatasetTrainingTask({ teamId, datasetId }, session)) {
+    if (await hasBlockingDatasetTrainingTask({ teamId, datasetId }, tx)) {
       throw new Error('知识库正在训练或者重建中，请稍后再修改同义词');
     }
     // 分批发送 mapping，避免单个 bulkWrite 命令接近 MongoDB 的批量上限。
@@ -219,7 +223,7 @@ export const createDatasetSynonymMutation = async ({
         indexStatus: DatasetDataIndexStageEnum.rebuildSynonymPending,
         synonymVersion: fileVersion
       },
-      session
+      tx
     );
     if (result.affectedDataCount === 0) {
       await cleanupUnusedDatasetSynonymMappings({ teamId, datasetId }, session);

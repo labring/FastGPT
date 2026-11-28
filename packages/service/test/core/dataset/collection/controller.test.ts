@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
+import { bridgeDbSessionToClientSession } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import * as s3Utils from '@fastgpt/service/common/s3/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -749,6 +750,9 @@ describe('createApiFileCollectionsBatch', () => {
           trainingCollectionId: collectionId
         }))
       }),
+      expect.objectContaining({ dialect: 'mongo', datasource: 'main' })
+    );
+    expect(bridgeDbSessionToClientSession(mockCreateTrainingUsages.mock.calls[0][1])).toBe(
       mockInsertMany.mock.calls[0][1].session
     );
     expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();
@@ -786,7 +790,10 @@ describe('createApiFileCollectionsBatch', () => {
           { appName: 'second', trainingCollectionId: result.collectionIds[1] }
         ]
       }),
-      transaction
+      transaction ? expect.objectContaining({ dialect: 'mongo', datasource: 'main' }) : undefined
+    );
+    expect(bridgeDbSessionToClientSession(mockCreateTrainingUsages.mock.calls[0][1])).toBe(
+      transaction ?? undefined
     );
     if (session) {
       expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();

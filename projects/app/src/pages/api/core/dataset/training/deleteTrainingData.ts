@@ -1,5 +1,4 @@
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -34,9 +33,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     datasetId: collection.datasetId,
     collectionId: collection._id
   };
-  const deleted = await mongoSessionRun((session) =>
-    cancelDocumentTrainingTask({ scope, taskId: dataId }, session)
-  );
+  const deleted = await cancelDocumentTrainingTask({ scope, taskId: dataId });
 
   // 没有实际删除记录时不写审计，避免重复点击产生空日志。
   if (deleted) {

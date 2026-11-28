@@ -1,6 +1,4 @@
 import { expect, it, vi } from 'vitest';
-import { configureRedisRuntime, closeRedisRuntime } from '@fastgpt/dal/redis/runtime';
-import { bullMQ } from '@fastgpt/dal/redis/bullmq';
 import { datasetTrainingMQService } from '@fastgpt/dal/redis/bullmq/services/datasetTraining';
 import { LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -14,6 +12,7 @@ import { initDatasetTrainingWorker } from '@/service/core/dataset/training/docum
 import * as datasetRead from '@fastgpt/service/core/dataset/read';
 import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { getModelTestDefaults } from '@test/modelCache';
+import { openTrainingQueue } from '../../../../utils/datasetTrainingQueue';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -23,11 +22,7 @@ const migrationId = '20261125_migrate_dataset_document_training';
 it.skipIf(!redisUrl)(
   '管理入口失败重试后，通过真实 Redis 对账让文档 Worker 完成历史解析',
   async () => {
-    if (!redisUrl) throw new Error('A dedicated test Redis connection is required');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    vi.mocked(bullMQ.getQueue).mockRestore();
-    vi.mocked(bullMQ.getWorker).mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
 
     const db = connectionMongo.connection.db;
     const registered = systemMigrations.find(({ id }) => id === migrationId);
@@ -212,8 +207,7 @@ it.skipIf(!redisUrl)(
       runner.stop();
       read.mockRestore();
       balance.mockRestore();
-      if (await queue.isPaused()) await queue.resume();
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );

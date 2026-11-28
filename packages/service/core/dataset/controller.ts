@@ -4,7 +4,8 @@ import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';
 import { deleteCollectionPermissions } from '../../support/permission/collection/controller';
 import { type ClientSession } from '../../common/mongo';
-import { MongoDatasetQaTraining } from './training/qaSchema';
+import { bridgeClientSessionToDbSession } from '../../common/mongo/sessionRun';
+import { datasetQaTrainingService } from './training/qaService';
 import { MongoDatasetData } from './data/schema';
 import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { getFullTextStore } from './data/textStore';
@@ -145,7 +146,11 @@ export async function delDatasetRelevantData(
 
   // 集合先参与事务写入，阻止仍持有 runId 的 Worker 在清理期间提交新分块。
   await MongoDatasetCollection.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
-  await MongoDatasetQaTraining.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
+  await datasetQaTrainingService.deleteMany({
+    teamId: String(teamId),
+    datasetIds: datasetIds.map(String),
+    tx: bridgeClientSessionToDbSession(session)
+  });
 
   // 同义词配置和映射属于 dataset 数据，即使功能关闭也必须随知识库删除。
   // 例外：web 站点改分块设置等「数据重建而非删除知识库」的调用方传

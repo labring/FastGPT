@@ -1,4 +1,5 @@
 import detailHandler from '@/pages/api/core/dataset/collection/detail';
+import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 import pushHandler from '@/pages/api/core/dataset/data/pushData';
 import retryHandler from '@/pages/api/core/dataset/training/updateTrainingData';
 import { initDatasetTrainingWorker } from '@/service/core/dataset/training/documentWorker';
@@ -11,7 +12,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
@@ -75,13 +76,20 @@ it.skipIf(!redisUrl)('converts one QA document job into ready searchable data', 
   configureRedisRuntime({ redisUrl });
   vi.mocked(bullMQ.getQueue).mockRestore();
   vi.mocked(bullMQ.getWorker).mockRestore();
-  generateQa.mockResolvedValue({
-    answerText: 'Q1: Who owns the document?\nA1: The team.\nQ2: What is indexed?\nA2: Its content.',
-    usage: { inputTokens: 8, outputTokens: 12 }
+  const generating = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  generateQa.mockImplementationOnce(async () => {
+    generating.resolve();
+    await release.promise;
+    return {
+      answerText:
+        'Q1: Who owns the document?\nA1: The team.\nQ2: What is indexed?\nA2: Its content.',
+      usage: { inputTokens: 8, outputTokens: 12 }
+    };
   });
 
   try {
-    const { push, detail, scope } = await createQaContext();
+    const { push, detail, root, scope } = await createQaContext();
     expect((await push()).code).toBe(200);
     const queue = datasetTrainingMQService.getQueue();
     expect(
@@ -91,6 +99,14 @@ it.skipIf(!redisUrl)('converts one QA document job into ready searchable data', 
     ).toEqual([{ collectionId: scope.collectionId }]);
 
     await initDatasetTrainingWorker();
+    await generating.promise;
+    expect(
+      await Call(trainingDetailHandler, { auth: root, query: { collectionId: scope.collectionId } })
+    ).toMatchObject({
+      code: 200,
+      data: { queuedCounts: { qa: 0 }, trainingCounts: { qa: 1 } }
+    });
+    release.resolve();
     await vi.waitFor(
       async () => {
         expect(await detail()).toMatchObject({
@@ -116,6 +132,7 @@ it.skipIf(!redisUrl)('converts one QA document job into ready searchable data', 
     expect(await MongoUsage.countDocuments({ teamId: scope.teamId })).toBe(1);
     expect(await MongoDatasetTraining.countDocuments({ collectionId: scope.collectionId })).toBe(0);
   } finally {
+    release.resolve();
     await closeRedisRuntime();
   }
 });
@@ -152,10 +169,26 @@ it.skipIf(!redisUrl)(
           }
         })
       ).toMatchObject({ code: 200, data: { insertLen: 1 } });
-      const [retry, other] = await MongoDatasetQaTraining.create([
-        { ...scope, status: 'error', q: 'Retry this source' },
-        { ...scope, status: 'error', q: 'Keep this failure' }
-      ]);
+      const [retry, other] = await datasetQaTrainingService.createMany({
+        items: [
+          {
+            teamId: String(scope.teamId),
+            tmbId: String(scope.tmbId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            status: 'error',
+            q: 'Retry this source'
+          },
+          {
+            teamId: String(scope.teamId),
+            tmbId: String(scope.tmbId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            status: 'error',
+            q: 'Keep this failure'
+          }
+        ]
+      });
       await initDatasetTrainingWorker();
       await embeddingStarted.promise;
       expect(
@@ -177,8 +210,8 @@ it.skipIf(!redisUrl)(
           expect(rows.every(({ indexStatus, indexes }) => !indexStatus && indexes.length > 0)).toBe(
             true
           );
-          expect(await MongoDatasetQaTraining.findById(retry._id)).toBeNull();
-          expect(await MongoDatasetQaTraining.findById(other._id).lean()).toMatchObject({
+          expect(await datasetQaTrainingService.findById({ id: retry._id })).toBeNull();
+          expect(await datasetQaTrainingService.findById({ id: other._id })).toMatchObject({
             status: 'error'
           });
           expect(generateQa).toHaveBeenCalledTimes(1);

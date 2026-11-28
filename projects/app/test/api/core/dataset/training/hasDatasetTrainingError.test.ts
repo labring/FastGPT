@@ -5,7 +5,7 @@ import handler, {
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -30,13 +30,17 @@ describe('dataset training error existence test', () => {
       datasetId: dataset._id
     });
 
-    const qa = await MongoDatasetQaTraining.create({
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id,
-      q: 'a QA source',
-      status: 'active'
+    const [qa] = await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'a QA source',
+          status: 'active'
+        }
+      ]
     });
 
     const noFinalErrorRes = await Call<
@@ -53,7 +57,13 @@ describe('dataset training error existence test', () => {
     expect(noFinalErrorRes.code).toBe(200);
     expect(noFinalErrorRes.data.hasError).toBe(false);
 
-    await qa.updateOne({ $set: { status: 'error', errorMsg: 'QA failed' } });
+    await datasetQaTrainingService.markFailed({
+      teamId: String(root.teamId),
+      datasetId: String(dataset._id),
+      collectionId: String(collection._id),
+      id: qa._id,
+      errorMsg: 'QA failed'
+    });
 
     const finalErrorRes = await Call<
       EmptyBody,

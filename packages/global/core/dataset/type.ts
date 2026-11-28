@@ -228,6 +228,7 @@ export const DatasetCollectionTrainingSchema = z.object({
     .optional(),
   usageId: ObjectIdSchema,
   runId: z.string().optional(),
+  runningItems: z.record(ObjectIdSchema, z.enum(TrainingModeEnum)).optional(),
   revision: z.int().nonnegative()
 });
 
@@ -388,23 +389,6 @@ export type DatasetDataTextSchemaType = z.infer<typeof DatasetDataTextSchema>;
 
 /* ===== Training ===== */
 export type DatasetTrainingAppendResultType = { insertLen: number; dataIds: string[] };
-
-/** 待生成问答的原文块。生命周期由文档训练管理。 */
-export const DatasetQaTrainingSchema = z.object({
-  _id: ObjectIdSchema,
-  teamId: ObjectIdSchema,
-  tmbId: ObjectIdSchema,
-  datasetId: ObjectIdSchema,
-  collectionId: ObjectIdSchema,
-  q: z.string(),
-  chunkIndex: z.number(),
-  dataMetadata: z.record(z.string(), z.unknown()).optional(),
-  status: z.enum(['active', 'error']),
-  errorMsg: z.string().optional(),
-  createTime: z.date(),
-  updateTime: z.date()
-});
-export type DatasetQaTrainingSchemaType = z.infer<typeof DatasetQaTrainingSchema>;
 
 /** @deprecated 旧 `dataset_trainings` 记录结构，仅供存量迁移和接口兼容投影。 */
 export const DatasetTrainingSchema = z.object({

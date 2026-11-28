@@ -46,7 +46,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   DatasetDataIndexStageEnum,
@@ -346,11 +346,35 @@ describe('collection training status api', () => {
         }
       }
     });
-    await MongoDatasetQaTraining.create([
-      { ...current.scope, q: 'source', status: 'active' },
-      { ...foreign.scope, q: 'source', status: 'active' },
-      { ...foreign.scope, q: 'failed source', status: 'error', errorMsg: 'failed' }
-    ]);
+    await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(current.scope.teamId),
+          tmbId: String(current.scope.tmbId),
+          datasetId: String(current.scope.datasetId),
+          collectionId: String(current.scope.collectionId),
+          q: 'source',
+          status: 'active'
+        },
+        {
+          teamId: String(foreign.scope.teamId),
+          tmbId: String(foreign.scope.tmbId),
+          datasetId: String(foreign.scope.datasetId),
+          collectionId: String(foreign.scope.collectionId),
+          q: 'source',
+          status: 'active'
+        },
+        {
+          teamId: String(foreign.scope.teamId),
+          tmbId: String(foreign.scope.tmbId),
+          datasetId: String(foreign.scope.datasetId),
+          collectionId: String(foreign.scope.collectionId),
+          q: 'failed source',
+          status: 'error',
+          errorMsg: 'failed'
+        }
+      ]
+    });
 
     expect(await readStatus(current)).toMatchObject({
       modal: {

@@ -1,11 +1,13 @@
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { datasetDataDocumentWorkStatuses } from '@fastgpt/global/core/dataset/data/utils';
-import type { ClientSession } from '../../../common/mongo';
+import { bridgeDbSessionToClientSession } from '../../../common/mongo/sessionRun';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { MongoDatasetCollection } from '../collection/schema';
 import { datasetDataTrainingStatusMatch } from '../data/query';
 import { MongoDatasetData } from '../data/schema';
-import { MongoDatasetQaTraining } from './qaSchema';
+import { datasetQaTrainingService } from './qaService';
 import { datasetTrainingMQService } from '@fastgpt/dal/redis/bullmq/services/datasetTraining';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { teamPoint } from '../../../support/wallet/sub/utils';
@@ -43,30 +45,50 @@ type TrainingScope = { teamId: string; datasetId: string; collectionId: string }
 /** 数据手工编辑或删除前写集合轮次，使操作和 Worker 提交、追加共享冲突检测。 */
 export const touchDatasetTrainingRound = async (
   { collectionId, teamId, datasetId }: TrainingScope,
-  session: ClientSession
+  tx?: DbSession
 ) =>
   (
     await MongoDatasetCollection.updateOne(
       { _id: collectionId, teamId, datasetId, training: { $exists: true } },
       { $inc: { 'training.revision': 1 } },
-      { session }
+      { session: bridgeDbSessionToClientSession(tx) }
     )
   ).matchedCount > 0;
 
 /** 手工写事务已锁住轮次时收尾，后续追加即刻开启新账单。 */
 export const settleDatasetTrainingRoundAfterWrite = async (
   { teamId, datasetId, collectionId }: TrainingScope,
-  session: ClientSession
-) => {
+  tx?: DbSession
+): Promise<boolean> => {
   // 调用方也会传入完整分块，只能用文档范围查询余下工作。
   const scope = { teamId, datasetId, collectionId };
-  if (await MongoDatasetQaTraining.exists(scope).read('primary').session(session)) return false;
+  if (!tx) {
+    return runInTransaction(
+      async (tx) => {
+        return (
+          (await touchDatasetTrainingRound(scope, tx)) &&
+          (await settleDatasetTrainingRoundAfterWrite(scope, tx))
+        );
+      },
+      { dialect: 'mongo' }
+    );
+  }
+  const session = bridgeDbSessionToClientSession(tx);
+  if (
+    await datasetQaTrainingService.exists({
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      tx
+    })
+  )
+    return false;
   // 历史重建失败也属于未处理项，等待重试或删除时保留本轮账单。
   if (
     await MongoDatasetData.exists({
       ...scope,
       ...datasetDataTrainingStatusMatch
-    }).session(session)
+    }).session(session ?? null)
   ) {
     return false;
   }
@@ -139,7 +161,8 @@ export const resumeUnpaidDatasetTraining = async ({
         $set: { 'training.status': 'active' },
         $unset: {
           'training.pausedAt': '',
-          'training.runId': ''
+          'training.runId': '',
+          'training.runningItems': ''
         },
         $inc: { 'training.revision': 1 }
       },
@@ -150,7 +173,12 @@ export const resumeUnpaidDatasetTraining = async ({
     const scope = { teamId, datasetId: document.datasetId, collectionId: document._id };
     if (
       resumed.training?.parse?.status === 'active' ||
-      (await MongoDatasetQaTraining.exists({ ...scope, status: 'active' }).read('primary')) ||
+      (await datasetQaTrainingService.exists({
+        teamId: String(teamId),
+        datasetId: String(document.datasetId),
+        collectionId: String(document._id),
+        status: 'active'
+      })) ||
       (await MongoDatasetData.exists({
         ...scope,
         indexStatus: { $in: datasetDataDocumentWorkStatuses },

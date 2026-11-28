@@ -1,7 +1,6 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import { Types } from '@fastgpt/service/common/mongo';
 import {
   canShortCircuitCollectionPermission,
   getCollectionPermissionMap,
@@ -20,7 +19,7 @@ export const getDatasetTrainingErrorReadScope = async ({
   dataset
 }: Awaited<ReturnType<typeof authDataset>>) => {
   const datasetId = String(dataset._id);
-  const scope = { teamId: new Types.ObjectId(teamId), datasetId: new Types.ObjectId(datasetId) };
+  const scope = { teamId: String(teamId), datasetId };
   if (
     isRoot ||
     dataset.collectionPermissionEnabled !== true ||
@@ -43,7 +42,7 @@ export const getDatasetTrainingErrorReadScope = async ({
     datasetPermission: dataset.permission.role,
     collectionPermissionEnabled: true
   });
-  return { ...scope, collectionIds: readableIds.map((id) => new Types.ObjectId(id)) };
+  return { ...scope, collectionIds: readableIds };
 };
 
 /** 从已鉴权的知识库取得批量重试范围，集合权限启用时显式限定可写文档。 */

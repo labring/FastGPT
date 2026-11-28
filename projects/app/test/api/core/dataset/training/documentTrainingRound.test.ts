@@ -5,7 +5,7 @@ import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/datas
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
@@ -50,11 +50,18 @@ it('keeps the current round when QA or a failed chunk is removed while indexing 
   const originalUsageId = (await getRound())?.usageId;
   expect(originalUsageId).toBeDefined();
 
-  const qa = await MongoDatasetQaTraining.create({
-    ...scope,
-    q: 'Cancel this QA task',
-    chunkIndex: 0,
-    status: 'active'
+  const [qa] = await datasetQaTrainingService.createMany({
+    items: [
+      {
+        teamId: String(scope.teamId),
+        tmbId: String(scope.tmbId),
+        datasetId: String(scope.datasetId),
+        collectionId: String(scope.collectionId),
+        q: 'Cancel this QA task',
+        chunkIndex: 0,
+        status: 'active'
+      }
+    ]
   });
   expect(
     await Call(deleteTrainingDataHandler, {
@@ -62,7 +69,7 @@ it('keeps the current round when QA or a failed chunk is removed while indexing 
       body: { collectionId, dataId: String(qa._id) }
     })
   ).toMatchObject({ code: 200 });
-  expect(await MongoDatasetQaTraining.findById(qa._id)).toBeNull();
+  expect(await datasetQaTrainingService.findById({ id: qa._id })).toBeNull();
   expect(String((await getRound())?.usageId)).toBe(String(originalUsageId));
 
   await deleteFailed(removedId);

@@ -19,7 +19,7 @@ const ParsePerformanceConfigSchema = z.strictObject({
   maxHtmlTransformChars: nonNegativeInteger(1_000_000)
 });
 
-const DatasetPerformanceConfigSchema = z.strictObject({
+const DatasetPerformanceConfigSchema = z.object({
   documentMaxProcess: positiveInteger(10),
   documentChunkMaxProcess: positiveInteger(2),
   // 兼容已保存的实例配置。

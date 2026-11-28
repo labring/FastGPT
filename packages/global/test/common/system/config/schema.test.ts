@@ -1,7 +1,10 @@
 import { vi, describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
-import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
+import {
+  clampLlmTraceRetentionHours,
+  PerformanceConfigSchema
+} from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   getSomarkRegionPreset,
   resolveSomarkBaseUrl,
@@ -204,6 +207,10 @@ describe('Domain default config and overrides validation', () => {
 
   it('ignores the retired retrieval log limit while preserving dataset concurrency', () => {
     const overrides = { dataset: { retrievalResultsLimit: 20, vectorMaxProcess: 3 } };
+    expect(PerformanceConfigSchema.parse(overrides).dataset).toEqual({
+      ...getDomainDefaultConfig('performance').dataset,
+      vectorMaxProcess: 3
+    });
     expect(
       parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
     ).toEqual({

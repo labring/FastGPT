@@ -7,7 +7,7 @@ import {
   delDatasetRelevantData,
   dispatchDatasetStorageCleanup
 } from '@fastgpt/service/core/dataset/controller';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -34,7 +34,6 @@ const { executeS3DeleteJob } = await vi.importActual<
 >('@fastgpt/service/common/s3/queue/delete');
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
-
 
 /**
  * 构造「冬瓜 ← 枕瓜」词条的两个版本：version-1 是历史残留，version 是当前生效版本。
@@ -79,7 +78,17 @@ it('rolls back collection, QA source and pending chunk deletion together', async
     type: DatasetCollectionTypeEnum.virtual
   });
   const scope = { teamId, datasetId, tmbId, collectionId: collection._id };
-  const qa = await MongoDatasetQaTraining.create({ ...scope, q: 'Pending QA source' });
+  const [qa] = await datasetQaTrainingService.createMany({
+    items: [
+      {
+        teamId: String(teamId),
+        datasetId: String(datasetId),
+        tmbId: String(tmbId),
+        collectionId: String(collection._id),
+        q: 'Pending QA source'
+      }
+    ]
+  });
   const chunk = await MongoDatasetData.create({
     ...scope,
     q: 'Pending index chunk',
@@ -96,13 +105,13 @@ it('rolls back collection, QA source and pending chunk deletion together', async
   ).rejects.toBe(failure);
 
   expect(await MongoDatasetCollection.exists({ _id: collection._id })).toBeTruthy();
-  expect(await MongoDatasetQaTraining.exists({ _id: qa._id })).toBeTruthy();
+  expect(await datasetQaTrainingService.exists({ id: qa._id })).toBe(true);
   expect(await MongoDatasetData.exists({ _id: chunk._id })).toBeTruthy();
 
   await mongoSessionRun((session) => delDatasetRelevantData({ datasets, session }));
 
   expect(await MongoDatasetCollection.exists({ _id: collection._id })).toBeNull();
-  expect(await MongoDatasetQaTraining.exists({ _id: qa._id })).toBeNull();
+  expect(await datasetQaTrainingService.exists({ id: qa._id })).toBe(false);
   expect(await MongoDatasetData.exists({ _id: chunk._id })).toBeNull();
 });
 

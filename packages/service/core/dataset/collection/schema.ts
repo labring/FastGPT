@@ -4,7 +4,7 @@ import {
   DatasetCollectionTrainingSchema,
   type DatasetCollectionSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeMap, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ChunkSettings, DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
@@ -52,6 +52,7 @@ const CollectionTrainingSchema = new Schema(
         DatasetCollectionTrainingSchema.shape.usageId.safeParse(value).success
     },
     runId: String,
+    runningItems: { type: Map, of: { type: String, enum: Object.values(TrainingModeEnum) } },
     revision: { type: Number, required: true }
   },
   { _id: false }

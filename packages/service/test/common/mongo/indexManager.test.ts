@@ -18,7 +18,6 @@ import {
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -759,24 +758,6 @@ describe('dataset collection index consolidation', () => {
     expect(names).not.toContain('teamId_1_datasetId_1_tags_1');
     expect(names).not.toContain('teamId_1_metadata.relatedImgId_1');
     expect(names).not.toContain('teamId_1_datasetId_1_parentId_1_inheritPermission_1');
-  });
-});
-
-describe('dataset QA training indexes', () => {
-  it('creates a document-stage index with chunk ordering and no automatic expiry', async () => {
-    const schema = new Schema({}, { autoIndex: false });
-    MongoDatasetQaTraining.schema.indexes().forEach(([key, options]) => {
-      defineIndex(schema, { key, options });
-    });
-    const model = createModel({ schema, prefix: 'DatasetQaTrainingIndex' });
-    await MongoIndexManager.syncModelIndexes({ model, logger });
-
-    const indexes = await model.collection.indexes();
-    expect(indexes.map(({ name }) => name).sort()).toEqual([
-      '_id_',
-      'fg_dataset_qa_training_scope_stage_order'
-    ]);
-    expect(indexes.every(({ expireAfterSeconds }) => expireAfterSeconds === undefined)).toBe(true);
   });
 });
 

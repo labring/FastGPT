@@ -3,7 +3,7 @@ import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/con
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
 import { expect, it, vi } from 'vitest';
@@ -26,7 +26,17 @@ it('saves permitted edits to pending training work while the document is still u
     { $set: { training: { status: 'paused_unpaid', pausedAt, usageId, revision: 1 } } }
   );
   const common = { ...scope, tmbId: root.tmbId };
-  const qa = await MongoDatasetQaTraining.create({ ...common, q: 'Original QA source' });
+  const [qa] = await datasetQaTrainingService.createMany({
+    items: [
+      {
+        teamId: String(common.teamId),
+        tmbId: String(common.tmbId),
+        datasetId: String(common.datasetId),
+        collectionId: String(common.collectionId),
+        q: 'Original QA source'
+      }
+    ]
+  });
   const [chunk, image, rebuild] = await MongoDatasetData.create([
     { ...common, q: 'Original text', indexStatus: DatasetDataIndexStageEnum.index },
     { ...common, imageId: 'example.png', indexStatus: DatasetDataIndexStageEnum.imageParse },
@@ -52,7 +62,7 @@ it('saves permitted edits to pending training work while the document is still u
   }
   expect((await retry(String(rebuild._id), 'Disallowed edit')).code).not.toBe(200);
 
-  const updatedQa = await MongoDatasetQaTraining.findById(qa._id).lean();
+  const updatedQa = await datasetQaTrainingService.findById({ id: qa._id });
   expect(updatedQa).toMatchObject({ q: 'Edited QA source', chunkIndex: 3, status: 'active' });
   expect(updatedQa).not.toHaveProperty('a');
   expect(await MongoDatasetData.findById(chunk._id).lean()).toMatchObject({

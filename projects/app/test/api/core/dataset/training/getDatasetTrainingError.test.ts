@@ -20,7 +20,7 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
@@ -196,16 +196,27 @@ describe('dataset training error list test', () => {
       indexErrorMsg: 'file error',
       chunkIndex: 2
     });
-    await MongoDatasetQaTraining.create([
-      { ...scope, collectionId: fileCollection._id, q: 'pending', status: 'active' },
-      {
-        ...scope,
-        collectionId: linkCollection._id,
-        q: 'source',
-        status: 'error',
-        errorMsg: 'link error'
-      }
-    ]);
+    await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(scope.teamId),
+          tmbId: String(scope.tmbId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(fileCollection._id),
+          q: 'pending',
+          status: 'active'
+        },
+        {
+          teamId: String(scope.teamId),
+          tmbId: String(scope.tmbId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(linkCollection._id),
+          q: 'source',
+          status: 'error',
+          errorMsg: 'link error'
+        }
+      ]
+    });
 
     const firstPageRes = await Call<
       getDatasetTrainingErrorBody,
@@ -297,18 +308,18 @@ describe('dataset training error list test', () => {
         datasetId: dataset._id
       }))
     );
-    await MongoDatasetQaTraining.insertMany(
-      collections.map((collection) => ({
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
+    await datasetQaTrainingService.createMany({
+      items: collections.map((collection) => ({
+        teamId: String(root.teamId),
+        tmbId: String(root.tmbId),
+        datasetId: String(dataset._id),
+        collectionId: String(collection._id),
         q: 'source',
-        status: 'error',
+        status: 'error' as const,
         errorMsg: 'training failed',
         chunkIndex: 0
       }))
-    );
+    });
 
     const defaultPage = await Call<
       getDatasetTrainingErrorBody,

@@ -1,3 +1,5 @@
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetDataIndexStageEnum,
@@ -12,15 +14,15 @@ import {
   isDatasetDataModelRebuild,
   isDatasetDataSynonymRebuild
 } from '@fastgpt/global/core/dataset/data/utils';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
 import {
   bridgeClientSessionToDbSession,
+  bridgeDbSessionToClientSession,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
 import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@fastgpt/service/core/dataset/training/qaSchema';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { documentIndexTrainingModes } from '@fastgpt/service/core/dataset/data/query';
 import {
   enqueueDatasetTrainingBatch,
@@ -41,7 +43,16 @@ export const findDocumentTrainingTask = async (id: string, scope?: TrainingScope
         $in: [...datasetDataDocumentWorkStatuses, ...datasetDataRebuildFailedStatuses]
       }
     }).lean(),
-    MongoDatasetQaTraining.findOne(match).lean(),
+    datasetQaTrainingService.findById({
+      id: String(id),
+      scope: scope
+        ? {
+            teamId: String(scope.teamId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId)
+          }
+        : undefined
+    }),
     !scope || scope.collectionId.toLowerCase() === id.toLowerCase()
       ? MongoDatasetCollection.findOne({
           _id: id,
@@ -129,18 +140,23 @@ const retryDocumentTrainingItems = async ({
       editFields &&
       (editFields.q !== undefined || editFields.a !== undefined || imageUploadKeys?.length)
     ) {
-      const [currentData, currentQa] = await Promise.all([
-        MongoDatasetData.findOne({
-          ...indexMatch,
-          indexStatus: { $in: datasetDataDocumentTrainingStatuses }
-        })
-          .session(session)
-          .lean(),
-        MongoDatasetQaTraining.findOne({ ...match, ...(!editingWhilePaused && { status: 'error' }) })
-          .session(session)
-          .lean()
-      ]);
-      const current = currentData ?? currentQa;
+      // 同一 Mongo ClientSession 事务内不并发发起查询，避免触发事务号冲突。
+      const currentData = await MongoDatasetData.findOne({
+        ...indexMatch,
+        indexStatus: { $in: datasetDataDocumentTrainingStatuses }
+      })
+        .session(session)
+        .lean();
+      const current =
+        currentData ??
+        (await datasetQaTrainingService.findOneEditable({
+          teamId: String(teamId),
+          datasetId: String(datasetId),
+          collectionId: String(collectionId),
+          taskId: String(taskId!),
+          includeActive: editingWhilePaused,
+          tx: bridgeClientSessionToDbSession(session)
+        }));
       if (current) {
         await persistChunkImageReferences({
           teamId: String(teamId),
@@ -217,19 +233,21 @@ const retryDocumentTrainingItems = async ({
         { session }
       );
     })();
-    const qa = await MongoDatasetQaTraining.updateMany(
-      { ...match, ...(!editingWhilePaused && { status: 'error' }) },
-      {
-        $set: {
-          status: 'active',
-          ...(editFields?.q !== undefined && { q: editFields.q }),
-          ...(editFields?.chunkIndex !== undefined && { chunkIndex: editFields.chunkIndex })
-        },
-        $unset: { errorMsg: '' }
-      },
-      { session }
-    );
-    return retryParse || data.modifiedCount > 0 || qa.matchedCount > 0;
+    const qaMatchedCount = await datasetQaTrainingService.retryMany({
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      ...(taskId !== undefined && { taskId: String(taskId) }),
+      includeActive: editingWhilePaused,
+      ...(editFields && {
+        edit: {
+          ...(editFields.q !== undefined && { q: editFields.q }),
+          ...(editFields.chunkIndex !== undefined && { chunkIndex: editFields.chunkIndex })
+        }
+      }),
+      tx: bridgeClientSessionToDbSession(session)
+    });
+    return retryParse || data.modifiedCount > 0 || qaMatchedCount > 0;
   });
 };
 
@@ -288,8 +306,14 @@ export const retryDatasetDocumentTrainingWork = async ({
 /** 取消一项文档工作并使正在执行的切片失去提交权，首次索引取消时仍保留分块。 */
 export const cancelDocumentTrainingTask = async (
   { scope, taskId }: { scope: TrainingScope; taskId: string },
-  session: ClientSession
+  tx?: DbSession
 ): Promise<boolean> => {
+  if (!tx) {
+    return runInTransaction((tx) => cancelDocumentTrainingTask({ scope, taskId }, tx), {
+      dialect: 'mongo'
+    });
+  }
+  const session = bridgeDbSessionToClientSession(tx);
   const { teamId, datasetId, collectionId } = scope;
   const task = { ...scope, _id: taskId };
   const cancelParse = taskId.toLowerCase() === collectionId.toLowerCase();
@@ -299,14 +323,22 @@ export const cancelDocumentTrainingTask = async (
   };
   const cancelIndex = cancelParse
     ? null
-    : await MongoDatasetData.findOne(index).session(session).lean();
+    : await MongoDatasetData.findOne(index)
+        .session(session ?? null)
+        .lean();
   const cancelledIndexErrorMsg = 'Training task deleted';
   const isInitialIndex = isDatasetDataDocumentTrainingStatus(cancelIndex?.indexStatus);
 
   if (
     !cancelParse &&
     !cancelIndex &&
-    !(await MongoDatasetQaTraining.exists(task).read('primary').session(session))
+    !(await datasetQaTrainingService.exists({
+      id: String(taskId),
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      tx
+    }))
   ) {
     return false;
   }
@@ -323,16 +355,13 @@ export const cancelDocumentTrainingTask = async (
       $inc: { 'training.revision': 1 },
       $unset: {
         'training.runId': '',
+        'training.runningItems': '',
         ...(cancelParse && { 'training.parse': '' })
       }
     },
     { session }
   );
   if (!updated.matchedCount) return false;
-  if (cancelParse) {
-    await settleDatasetTrainingRoundAfterWrite(scope, session);
-    return true;
-  }
 
   if (cancelIndex) {
     if (isInitialIndex) {
@@ -351,10 +380,15 @@ export const cancelDocumentTrainingTask = async (
     } else {
       await deleteDatasetData({ ...cancelIndex, id: String(cancelIndex._id) }, session);
     }
-    await settleDatasetTrainingRoundAfterWrite(scope, session);
-  } else {
-    await MongoDatasetQaTraining.deleteOne(task, { session });
-    await settleDatasetTrainingRoundAfterWrite(scope, session);
+  } else if (!cancelParse) {
+    await datasetQaTrainingService.deleteOne({
+      id: String(taskId),
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      tx
+    });
   }
+  await settleDatasetTrainingRoundAfterWrite(scope, tx);
   return true;
 };

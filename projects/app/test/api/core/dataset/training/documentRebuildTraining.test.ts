@@ -7,18 +7,13 @@ import deleteDatasetHandler from '@/pages/api/core/dataset/delete';
 import retryTrainingHandler from '@/pages/api/core/dataset/training/updateTrainingData';
 import pushHandler from '@/pages/api/core/dataset/data/pushData';
 import { initDatasetTrainingWorker } from '@/service/core/dataset/training/documentWorker';
-import { bullMQ } from '@fastgpt/dal/redis/bullmq';
 import { RedisBullMQRuntime } from '@fastgpt/dal/redis/bullmq/runtime';
 import {
   datasetTrainingMQService,
   type DatasetTrainingJobData
 } from '@fastgpt/dal/redis/bullmq/services/datasetTraining';
 import type { Processor } from '@fastgpt/dal/redis/bullmq/types';
-import {
-  closeRedisRuntime,
-  configureRedisRuntime,
-  getRedisRuntime
-} from '@fastgpt/dal/redis/runtime';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import {
   CollectionTrainingStatusEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -41,7 +36,8 @@ import { mockVectorDelete, mockVectorInsert } from '@test/mocks/common/vector';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { openTrainingQueue } from '../../../../utils/datasetTrainingQueue';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 vi.unmock(import('@fastgpt/service/core/ai/model/catalog/service'));
@@ -139,13 +135,16 @@ it('keeps one bill with complete usage items when QA is appended during a rebuil
 
 const redisUrl = process.env.FASTGPT_TEST_REDIS_URL;
 
+beforeEach(() => {
+  mockGetVectors.mockReset();
+  mockVectorInsert.mockReset();
+  mockVectorDelete.mockReset();
+});
+
 it.skipIf(!redisUrl)(
   'hands a stalled rebuild to a second Redis worker and rejects the first result',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    if (vi.isMockFunction(bullMQ.getQueue)) bullMQ.getQueue.mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
     const redisRuntime = getRedisRuntime();
     const firstRuntime = new RedisBullMQRuntime({
       redisRuntime,
@@ -163,13 +162,13 @@ it.skipIf(!redisUrl)(
       .mockImplementation((processor) => {
         processJob = processor;
         return firstRuntime.getWorker(queue.name, processor, {
+          prefix: redis.prefix,
           lockDuration: 1600,
           stalledInterval: 200,
           skipLockRenewal: true,
           skipStalledCheck: true
         });
       });
-    mockGetVectors.mockClear();
     mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
       await release.promise;
       return createMockVectorsResponse(inputs.map(({ input }) => input));
@@ -192,7 +191,10 @@ it.skipIf(!redisUrl)(
       await first.pause(true);
 
       if (!processJob) throw new Error('The first worker must register the document processor');
-      const second = secondRuntime.getWorker(queue.name, processJob, { stalledInterval: 200 });
+      const second = secondRuntime.getWorker(queue.name, processJob, {
+        prefix: redis.prefix,
+        stalledInterval: 200
+      });
       const stalled = vi.fn();
       second.on('stalled', stalled);
       await vi.waitFor(
@@ -221,7 +223,11 @@ it.skipIf(!redisUrl)(
     } finally {
       release.resolve();
       registerFirst.mockRestore();
-      await closeRedisRuntime();
+      try {
+        await Promise.all([firstRuntime.close(), secondRuntime.close()]);
+      } finally {
+        await redis.close();
+      }
     }
   }
 );
@@ -229,13 +235,8 @@ it.skipIf(!redisUrl)(
 it.skipIf(!redisUrl)(
   'rejects an in-flight rebuild after the dataset delete is accepted',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    if (vi.isMockFunction(bullMQ.getQueue)) bullMQ.getQueue.mockRestore();
-    if (vi.isMockFunction(bullMQ.getWorker)) bullMQ.getWorker.mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
     const release = Promise.withResolvers<void>();
-    mockGetVectors.mockClear();
     mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
       await release.promise;
       return createMockVectorsResponse(inputs.map(({ input }) => input));
@@ -271,7 +272,7 @@ it.skipIf(!redisUrl)(
       ).not.toHaveProperty('runId');
     } finally {
       release.resolve();
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );
@@ -279,13 +280,8 @@ it.skipIf(!redisUrl)(
 it.skipIf(!redisUrl)(
   'resumes a running rebuild after rejecting a stale worker commit',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    if (vi.isMockFunction(bullMQ.getQueue)) bullMQ.getQueue.mockRestore();
-    if (vi.isMockFunction(bullMQ.getWorker)) bullMQ.getWorker.mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
     const release = Promise.withResolvers<void>();
-    mockGetVectors.mockClear();
     mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
       await release.promise;
       return createMockVectorsResponse(inputs.map(({ input }) => input));
@@ -330,7 +326,7 @@ it.skipIf(!redisUrl)(
       );
     } finally {
       release.resolve();
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );
@@ -338,12 +334,7 @@ it.skipIf(!redisUrl)(
 it.skipIf(!redisUrl)(
   'rebuilds stored indexes with the new model through one document job',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    if (vi.isMockFunction(bullMQ.getQueue)) bullMQ.getQueue.mockRestore();
-    if (vi.isMockFunction(bullMQ.getWorker)) bullMQ.getWorker.mockRestore();
-    mockGetVectors.mockClear();
+    const redis = await openTrainingQueue(redisUrl);
 
     try {
       const { indexed, rebuild, nextModel, detail, scope } = await createRebuildContext();
@@ -392,7 +383,7 @@ it.skipIf(!redisUrl)(
       expect(result?.indexes[0].dataId).not.toBe('old-vector');
       expect(await MongoUsage.countDocuments({ teamId: scope.teamId })).toBe(1);
     } finally {
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );
@@ -400,14 +391,9 @@ it.skipIf(!redisUrl)(
 it.skipIf(!redisUrl)(
   'retries and deletes failed model rebuild tasks through the public APIs',
   async () => {
-    if (!redisUrl) throw new Error('FASTGPT_TEST_REDIS_URL must point to a dedicated test Redis');
-    await closeRedisRuntime();
-    configureRedisRuntime({ redisUrl });
-    if (vi.isMockFunction(bullMQ.getQueue)) bullMQ.getQueue.mockRestore();
-    if (vi.isMockFunction(bullMQ.getWorker)) bullMQ.getWorker.mockRestore();
+    const redis = await openTrainingQueue(redisUrl);
 
     let rejectEmbedding = true;
-    const originalEmbedding = mockGetVectors.getMockImplementation();
     mockGetVectors.mockImplementation(async ({ inputs }) => {
       if (rejectEmbedding) throw new Error('Rebuild embedding failed');
       return createMockVectorsResponse(inputs.map(({ input }) => input));
@@ -506,8 +492,7 @@ it.skipIf(!redisUrl)(
       expect(await errors()).toMatchObject({ code: 200, data: { total: 0 } });
       expect(await MongoUsage.countDocuments({ teamId: scope.teamId })).toBe(1);
     } finally {
-      if (originalEmbedding) mockGetVectors.mockImplementation(originalEmbedding);
-      await closeRedisRuntime();
+      await redis.close();
     }
   }
 );

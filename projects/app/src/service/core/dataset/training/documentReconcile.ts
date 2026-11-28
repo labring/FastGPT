@@ -1,6 +1,9 @@
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetQaTraining } from '@fastgpt/service/core/dataset/training/qaSchema';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import {
   resumeUnpaidDatasetTraining,
   settleDatasetTrainingRoundAfterWrite
@@ -70,8 +73,16 @@ async function reconcilePausedDocuments(assertValid: () => void) {
     for await (const { _id, datasetId, training } of documents) {
       assertValid();
       const scope = { teamId, datasetId, collectionId: String(_id) };
-      if (!(await MongoDatasetQaTraining.exists(scope).read('primary'))) continue;
+      if (
+        !(await datasetQaTrainingService.exists({
+          teamId: String(teamId),
+          datasetId: String(datasetId),
+          collectionId: String(_id)
+        }))
+      )
+        continue;
       await mongoSessionRun(async (session) => {
+        const tx = bridgeClientSessionToDbSession(session);
         // 和充值恢复竞争同一个集合写锁，只清理仍处于本次暂停的 QA。
         const result = await MongoDatasetCollection.updateOne(
           { ...paused, _id, teamId, datasetId, 'training.pausedAt': training?.pausedAt },
@@ -80,8 +91,13 @@ async function reconcilePausedDocuments(assertValid: () => void) {
         );
         if (!result.matchedCount) return;
 
-        await MongoDatasetQaTraining.deleteMany(scope, { session });
-        await settleDatasetTrainingRoundAfterWrite(scope, session);
+        await datasetQaTrainingService.deleteMany({
+          teamId: String(teamId),
+          datasetId: String(datasetId),
+          collectionId: String(_id),
+          tx
+        });
+        await settleDatasetTrainingRoundAfterWrite(scope, tx);
       }).catch((error) => {
         logger.error('Failed to expire unpaid dataset QA', { ...scope, error });
       });

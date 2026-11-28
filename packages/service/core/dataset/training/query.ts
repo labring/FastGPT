@@ -3,7 +3,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { CollectionTrainingStatusType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetQaTrainingCounts } from './qaSchema';
+import type { DatasetQaTrainingCounts } from '@fastgpt/dal/db/repos/datasetQaTraining/repo.type';
 import { documentIndexTrainingModes, type DatasetDataTrainingStatusCounts } from '../data/query';
 
 type TrainingStatusCount = {

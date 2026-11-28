@@ -1,5 +1,5 @@
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaSchema';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -32,7 +32,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   imageParse: 0
 };
 
-/** 汇总各阶段的待处理、重建中和失败数量。 */
+/** 汇总各阶段的排队、处理中和失败数量。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
     req,
@@ -56,8 +56,15 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
   const [document, [dataStatus], [qaCounts]] = await Promise.all([
     MongoDatasetCollection.findOne(
       { _id: match.collectionId, teamId: match.teamId, datasetId: match.datasetId },
-      { 'training.status': 1, 'training.parse.status': 1 }
-    ).lean(),
+      {
+        'training.status': 1,
+        'training.parse.status': 1,
+        'training.runId': 1,
+        'training.runningItems': 1
+      }
+    )
+      .read('primary')
+      .lean(),
     MongoDatasetData.aggregate<
       DatasetDataStatusCounts & {
         rebuildIndexRunningCount: number;
@@ -83,12 +90,17 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
   const queuedCounts = { ...defaultCounts };
   const trainingCounts = { ...defaultCounts };
   const errorCounts = { ...defaultCounts };
-  // 解析、QA 与首次索引只有待处理状态；重建阶段单独记录已领取。
+  const runningCounts = { ...defaultCounts };
+  if (document?.training?.runId) {
+    for (const mode of Object.values(document.training.runningItems ?? {})) {
+      runningCounts[mode]++;
+    }
+  }
   const addDocumentCounts = ({
     mode,
     active = 0,
     failed = 0,
-    running = 0
+    running = runningCounts[mode]
   }: {
     mode: TrainingModeEnum;
     active?: number;
@@ -99,8 +111,9 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       errorCounts[mode] = active + failed;
       return;
     }
-    queuedCounts[mode] = active - running;
-    trainingCounts[mode] = running;
+    // 分块可能在读取集合进度和汇总期间完成，处理中数不能超过该阶段的待办总数。
+    trainingCounts[mode] = Math.min(active, running);
+    queuedCounts[mode] = active - trainingCounts[mode];
     errorCounts[mode] = failed;
   };
   for (const mode of documentIndexTrainingModes) {
@@ -124,13 +137,13 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     mode: TrainingModeEnum.rebuildIndex,
     active: dataStatus?.rebuildIndexActiveCount,
     failed: dataStatus?.rebuildIndexFailedCount,
-    running: dataStatus?.rebuildIndexRunningCount
+    running: dataStatus?.rebuildIndexRunningCount ?? 0
   });
   addDocumentCounts({
     mode: TrainingModeEnum.rebuildSynonym,
     active: dataStatus?.rebuildSynonymActiveCount,
     failed: dataStatus?.rebuildSynonymFailedCount,
-    running: dataStatus?.rebuildSynonymRunningCount
+    running: dataStatus?.rebuildSynonymRunningCount ?? 0
   });
 
   return GetCollectionTrainingDetailResponseSchema.parse({

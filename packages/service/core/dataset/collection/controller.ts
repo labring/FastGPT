@@ -18,7 +18,7 @@ import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { Types } from '../../../common/mongo';
 import type { ClientSession } from '../../../common/mongo';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
 import { createTrainingUsages } from '../../../support/wallet/usage/controller';
@@ -27,7 +27,7 @@ import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
 import { rawText2Chunks } from '../read';
-import { MongoDatasetQaTraining } from '../training/qaSchema';
+import { datasetQaTrainingService } from '../training/qaService';
 import { MongoDatasetCollection } from './schema';
 import { createOrGetCollectionTags } from './utils';
 
@@ -599,6 +599,7 @@ export const createCollectionAndInsertData = async ({
     });
 
     const collectionId = String(collection._id);
+    const tx = bridgeClientSessionToDbSession(session);
     const scope = { teamId, tmbId, datasetId: String(dataset._id), collectionId };
     const models = {
       vectorModelId: embeddingModelData.modelId!,
@@ -608,13 +609,13 @@ export const createCollectionAndInsertData = async ({
     const { insertLen } = await (async () => {
       const input = { ...scope, ...models };
       if (needsParse) {
-        await ensureDatasetCollectionTraining({ ...input, parse: true }, session);
+        await ensureDatasetCollectionTraining({ ...input, parse: true }, tx);
         return { insertLen: 0 };
       }
       if (trainingMode === TrainingModeEnum.qa) {
         return appendDatasetQaTraining(
           { ...input, data: formattedData, agentModel: agentModelData },
-          session
+          tx
         );
       }
       const indexStatus = datasetDataDocumentTrainingStatusByMode[trainingMode];
@@ -630,7 +631,7 @@ export const createCollectionAndInsertData = async ({
           vlmModel: vlmModelData,
           supportImageEmbedding: isImageEmbeddingModel(embeddingModelData)
         },
-        session
+        tx
       );
     })();
 
@@ -938,7 +939,7 @@ export const createApiFileCollectionsBatch = async ({
           trainingCollectionId: String(ids[index])
         }))
       },
-      s
+      bridgeClientSessionToDbSession(s)
     );
     // 2. 复用通用持久化：标签、字段与 ACL 初始化不再维护单独的 API 文件实现。
     const collections = await createCollections({
@@ -1098,10 +1099,12 @@ export async function delCollection({
     // 同一 session 不并行发起 Mongo 写入；重建失败时旧分块和旧任务必须随集合一起恢复。
     // 先写集合记录，使删除与文档 Worker 的 runId 提交互斥。
     await MongoDatasetCollection.deleteMany({ teamId, _id: { $in: collectionIds } }, { session });
-    await MongoDatasetQaTraining.deleteMany(
-      { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
-      { session }
-    );
+    await datasetQaTrainingService.deleteMany({
+      teamId: String(teamId),
+      datasetIds: datasetIds.map(String),
+      collectionIds: collectionIds.map(String),
+      tx: bridgeClientSessionToDbSession(session)
+    });
     await getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session);
     await MongoDatasetData.deleteMany(
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },

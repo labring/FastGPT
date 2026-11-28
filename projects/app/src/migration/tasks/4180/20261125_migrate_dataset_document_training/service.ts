@@ -10,13 +10,13 @@ import {
 import { DatasetCollectionTrainingSchema } from '@fastgpt/global/core/dataset/type';
 import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { DatasetQaTrainingCollectionName } from '@fastgpt/dal/db/mongo/datasetQaTrainingCollectionName';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { DatasetColCollectionName } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetCollectionName } from '@fastgpt/service/core/dataset/schema';
-import { DatasetQaTrainingCollectionName } from '@fastgpt/service/core/dataset/training/qaSchema';
 import {
   createMigrationBill,
   getCurrentBalance,

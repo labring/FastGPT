@@ -2,12 +2,13 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
-import {
-  markDatasetsForDeletion,
-  removeDatasetSyncSchedulers
-} from '@fastgpt/service/core/dataset/delete/processor';
+import { removeDatasetSyncSchedulers } from '@fastgpt/service/core/dataset/delete/processor';
+import { markDatasetsForDeletion } from '@fastgpt/service/core/dataset/delete/mongo/mark';
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -39,7 +40,7 @@ export const deleteDataset = async ({
 
   await removeDatasetSyncSchedulers(datasetIds);
   await mongoSessionRun(async (session) => {
-    await markDatasetsForDeletion({ teamId, datasetIds }, session);
+    await markDatasetsForDeletion({ teamId, datasetIds }, bridgeClientSessionToDbSession(session));
     await addDatasetDeleteJob({ teamId, datasetId: id });
   });
 

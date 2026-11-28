@@ -24,10 +24,8 @@ import {
   type CollectionTagLabelType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import {
-  countDatasetQaTrainingByCollection,
-  type DatasetQaTrainingCounts
-} from '@fastgpt/service/core/dataset/training/qaSchema';
+import type { DatasetQaTrainingCounts } from '@fastgpt/dal/db/repos/datasetQaTraining/repo.type';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

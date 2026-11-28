@@ -1,3 +1,5 @@
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -12,43 +14,43 @@ import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils'
 import type { DatasetTrainingAppendResultType } from '@fastgpt/global/core/dataset/type';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ApiHttpError } from '../../../common/http/apiError';
-import { Types, type ClientSession } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { Types } from '../../../common/mongo';
+import { bridgeDbSessionToClientSession } from '../../../common/mongo/sessionRun';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import {
   createTrainingUsage,
-  createTrainingUsages,
-  ensureTrainingUsageItems
+  createTrainingUsages
 } from '../../../support/wallet/usage/controller';
+import { ensureTrainingUsageItems } from '../../../support/wallet/usage/mongo/training';
 import { MongoUsage } from '../../../support/wallet/usage/schema';
 import { serviceEnv } from '../../../env';
 import { MongoDatasetCollection } from '../collection/schema';
+import { persistChunkImageReferences } from '../data/inlineImages/entity';
 import { datasetDataTrainingStatusMatch, getRunnableDatasetIndexMatch } from '../data/query';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
 import { MongoDataset } from '../schema';
 import { getDatasetSynonymTransformContext } from '../synonym/entity';
-import { MongoDatasetQaTraining } from './qaSchema';
+import { datasetQaTrainingService } from './qaService';
 import { enqueueDatasetTrainingBatch } from './runtime';
 import { filterTrainingDataList, prepareDatasetIndexTrainingChunks } from './utils';
 
 /** 预落库一批分块，并在同一事务取消已引用图片的临时过期设置。 */
 export const createPendingDatasetData = async (
-  {
-    scope,
-    data,
-    indexStatus,
-    synonymVersion,
-    indexSize
-  }: {
+  input: {
     scope: { teamId: string; tmbId: string; datasetId: string; collectionId: string };
     data: (PushDataChunkType & { indexStatus?: DatasetDataDocumentTrainingStatus })[];
     indexStatus: DatasetDataDocumentTrainingStatus;
     synonymVersion?: number;
     indexSize?: number;
   },
-  session: ClientSession
+  tx?: DbSession
 ): Promise<string[]> => {
+  if (!tx) {
+    return runInTransaction((tx) => createPendingDatasetData(input, tx), { dialect: 'mongo' });
+  }
+  const { scope, data, indexStatus, synonymVersion, indexSize } = input;
+  const session = bridgeDbSessionToClientSession(tx);
   const createdData = await MongoDatasetData.create(
     data.map((item) => ({
       ...scope,
@@ -84,19 +86,22 @@ export const createQaTrainingData = async (
     scope: { teamId: string; tmbId: string; datasetId: string; collectionId: string };
     sourceChunks: PushDataChunkType[];
   },
-  session: ClientSession
+  tx?: DbSession
 ): Promise<number> => {
   if (sourceChunks.length === 0) return 0;
-  const inserted = await MongoDatasetQaTraining.insertMany(
-    sourceChunks.map(({ q, chunkIndex, metadata }) => ({
-      ...scope,
+  const inserted = await datasetQaTrainingService.createMany({
+    items: sourceChunks.map(({ q, chunkIndex, metadata }) => ({
+      teamId: String(scope.teamId),
+      tmbId: String(scope.tmbId),
+      datasetId: String(scope.datasetId),
+      collectionId: String(scope.collectionId),
       q: q ?? '',
       chunkIndex: chunkIndex ?? 0,
       dataMetadata: metadata,
       status: 'active' as const
     })),
-    { session, ordered: true }
-  );
+    tx
+  });
   return inserted.length;
 };
 
@@ -106,19 +111,27 @@ type DatasetTrainingScope = { teamId: string; datasetId: string };
 const hasDatasetTrainingTaskMatching = async ({
   scope,
   indexStatus,
-  session
+  tx
 }: {
   scope: DatasetTrainingScope;
   indexStatus: typeof datasetDataTrainingStatusMatch.indexStatus;
-  session: ClientSession | null;
+  tx?: DbSession;
 }): Promise<boolean> => {
+  const session = bridgeDbSessionToClientSession(tx) ?? null;
   if (
     await MongoDatasetData.exists({ ...scope, indexStatus })
       .read('primary')
       .session(session)
   )
     return true;
-  if (await MongoDatasetQaTraining.exists(scope).read('primary').session(session)) return true;
+  if (
+    await datasetQaTrainingService.exists({
+      teamId: String(scope.teamId),
+      datasetId: String(scope.datasetId),
+      tx
+    })
+  )
+    return true;
   return Boolean(
     await MongoDatasetCollection.exists({
       ...scope,
@@ -130,14 +143,11 @@ const hasDatasetTrainingTaskMatching = async ({
 };
 
 /** 查询训练状态时包含旧版重建失败，保证知识库状态和异常列表一致。 */
-export const hasDatasetTrainingTask = (
-  scope: DatasetTrainingScope,
-  session: ClientSession | null = null
-) =>
+export const hasDatasetTrainingTask = (scope: DatasetTrainingScope, tx?: DbSession) =>
   hasDatasetTrainingTaskMatching({
     scope,
     indexStatus: datasetDataTrainingStatusMatch.indexStatus,
-    session
+    tx
   });
 
 /** 检查仍可执行的解析、QA 和分块工作，供知识库同步判断。 */
@@ -158,7 +168,12 @@ export const hasActiveDatasetTrainingTask = async (
 
   const workScope = { ...scope, collectionId: { $in: collectionIds } };
   return Boolean(
-    (await MongoDatasetQaTraining.exists({ ...workScope, status: 'active' }).read('primary')) ||
+    (await datasetQaTrainingService.exists({
+      teamId: String(scope.teamId),
+      datasetId: String(scope.datasetId),
+      collectionIds: collectionIds.map(String),
+      status: 'active'
+    })) ||
     (await MongoDatasetData.exists({
       ...workScope,
       ...getRunnableDatasetIndexMatch(serviceEnv.DATASET_SYNONYM_ENABLED)
@@ -167,14 +182,11 @@ export const hasActiveDatasetTrainingTask = async (
 };
 
 /** 保护文档训练的现有工作项，允许新重建处理旧版取消后遗留的失败分块。 */
-export const hasBlockingDatasetTrainingTask = (
-  scope: DatasetTrainingScope,
-  session: ClientSession
-) =>
+export const hasBlockingDatasetTrainingTask = (scope: DatasetTrainingScope, tx?: DbSession) =>
   hasDatasetTrainingTaskMatching({
     scope,
     indexStatus: { $in: datasetDataDocumentWorkStatuses },
-    session
+    tx
   });
 
 type DocumentTrainingAdmission = {
@@ -190,7 +202,15 @@ type DocumentTrainingAdmission = {
 
 /** 在写入工作项的事务内绑定账单并更新集合版本，和 Worker 关账互斥。 */
 export const ensureDatasetCollectionTraining = async (
-  {
+  input: DocumentTrainingAdmission & { hasWork?: boolean; parse?: boolean },
+  tx?: DbSession
+): Promise<void> => {
+  if (!tx) {
+    return runInTransaction((tx) => ensureDatasetCollectionTraining(input, tx), {
+      dialect: 'mongo'
+    });
+  }
+  const {
     teamId,
     tmbId,
     datasetId,
@@ -201,9 +221,8 @@ export const ensureDatasetCollectionTraining = async (
     vlmModelId,
     hasWork = true,
     parse = false
-  }: DocumentTrainingAdmission & { hasWork?: boolean; parse?: boolean },
-  session: ClientSession
-): Promise<void> => {
+  } = input;
+  const session = bridgeDbSessionToClientSession(tx);
   const collectionMatch = { _id: collectionId, teamId, datasetId };
   const requestedBillId = billId?.toLowerCase();
   const invalidBill = () => new ApiHttpError(400, 'Invalid training bill');
@@ -214,7 +233,7 @@ export const ensureDatasetCollectionTraining = async (
     name: 1,
     training: 1
   })
-    .session(session)
+    .session(session ?? null)
     .lean();
   if (!collection) throw DatasetErrEnum.unExistCollection;
 
@@ -235,10 +254,7 @@ export const ensureDatasetCollectionTraining = async (
       },
       { session }
     );
-    await ensureTrainingUsageItems(
-      { ...usageItems, usageId: collection.training.usageId },
-      session
-    );
+    await ensureTrainingUsageItems({ ...usageItems, usageId: collection.training.usageId }, tx);
     return;
   }
 
@@ -250,7 +266,7 @@ export const ensureDatasetCollectionTraining = async (
         appName: collection.name,
         billSource: UsageSourceEnum.training,
         trainingCollectionId: collectionId,
-        session
+        tx
       });
       return usage.usageId;
     }
@@ -269,7 +285,7 @@ export const ensureDatasetCollectionTraining = async (
       { session }
     );
     if (result.matchedCount === 0) throw invalidBill();
-    await ensureTrainingUsageItems({ ...usageItems, usageId: requestedBillId }, session);
+    await ensureTrainingUsageItems({ ...usageItems, usageId: requestedBillId }, tx);
     return requestedBillId;
   })();
 
@@ -293,6 +309,7 @@ export const ensureDatasetCollectionTraining = async (
 export const appendDatasetIndexTraining = async (
   {
     data,
+    imageUploadKeys,
     indexSize,
     indexStatus = DatasetDataIndexStageEnum.index,
     agentModel,
@@ -302,6 +319,7 @@ export const appendDatasetIndexTraining = async (
     ...admission
   }: DocumentTrainingAdmission & {
     data: PushDataChunkType[];
+    imageUploadKeys?: string[];
     indexSize?: number;
     indexStatus?: DatasetDataDocumentTrainingStatus;
     agentModel?: LLMModelDataType;
@@ -309,7 +327,7 @@ export const appendDatasetIndexTraining = async (
     vlmModelConfigured?: boolean;
     supportImageEmbedding?: boolean;
   },
-  session?: ClientSession
+  tx?: DbSession
 ): Promise<DatasetTrainingAppendResultType> => {
   const dataToIndex = prepareDatasetIndexTrainingChunks({
     data,
@@ -321,12 +339,18 @@ export const appendDatasetIndexTraining = async (
   });
   const { teamId, tmbId, datasetId, collectionId } = admission;
 
-  const append = async (session: ClientSession): Promise<DatasetTrainingAppendResultType> => {
-    await ensureDatasetCollectionTraining(
-      { ...admission, hasWork: dataToIndex.length > 0 },
-      session
-    );
+  const append = async (tx: DbSession): Promise<DatasetTrainingAppendResultType> => {
+    await ensureDatasetCollectionTraining({ ...admission, hasWork: dataToIndex.length > 0 }, tx);
     if (dataToIndex.length === 0) return { insertLen: 0, dataIds: [] };
+
+    await persistChunkImageReferences({
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      data: dataToIndex,
+      imageUploadKeys,
+      tx
+    });
 
     const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
       ? await getDatasetSynonymTransformContext({ teamId, datasetId })
@@ -339,51 +363,57 @@ export const appendDatasetIndexTraining = async (
         synonymVersion: synonymContext?.version,
         indexSize
       },
-      session
+      tx
     );
     return { insertLen: dataIds.length, dataIds };
   };
 
-  return session ? append(session) : mongoSessionRun(append);
+  return tx ? append(tx) : runInTransaction(append, { dialect: 'mongo' });
 };
 
 /** 追加 QA 原文，数据 ID 由 Worker 生成问答分块时创建。 */
 export const appendDatasetQaTraining = async (
   {
     data,
+    imageUploadKeys,
     agentModel,
     ...admission
-  }: DocumentTrainingAdmission & { data: PushDataChunkType[]; agentModel: LLMModelDataType },
-  session?: ClientSession
+  }: DocumentTrainingAdmission & {
+    data: PushDataChunkType[];
+    imageUploadKeys?: string[];
+    agentModel: LLMModelDataType;
+  },
+  tx?: DbSession
 ): Promise<DatasetTrainingAppendResultType> => {
   const sourceChunks = filterTrainingDataList({ data, maxToken: getLLMMaxChunkSize(agentModel) });
   const { teamId, tmbId, datasetId, collectionId } = admission;
 
-  const append = async (session: ClientSession): Promise<DatasetTrainingAppendResultType> => {
-    await ensureDatasetCollectionTraining(
-      { ...admission, hasWork: sourceChunks.length > 0 },
-      session
-    );
+  const append = async (tx: DbSession): Promise<DatasetTrainingAppendResultType> => {
+    await ensureDatasetCollectionTraining({ ...admission, hasWork: sourceChunks.length > 0 }, tx);
+    if (sourceChunks.length === 0) return { insertLen: 0, dataIds: [] };
+
+    await persistChunkImageReferences({
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      data: sourceChunks,
+      imageUploadKeys,
+      tx
+    });
 
     const insertLen = await createQaTrainingData(
       { scope: { teamId, tmbId, datasetId, collectionId }, sourceChunks },
-      session
+      tx
     );
     return { insertLen, dataIds: [] };
   };
 
-  return session ? append(session) : mongoSessionRun(append);
+  return tx ? append(tx) : runInTransaction(append, { dialect: 'mongo' });
 };
 
 /** 数据集变更事务内批次标记待重建数据，仅为有实际分块的集合准备账单。 */
 export const markDatasetDocumentRebuild = async (
-  {
-    teamId,
-    tmbId,
-    datasetId,
-    vectorModelId,
-    ...rebuild
-  }: {
+  input: {
     teamId: string;
     tmbId: string;
     datasetId: string;
@@ -392,8 +422,13 @@ export const markDatasetDocumentRebuild = async (
     | { indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending; synonymVersion?: never }
     | { indexStatus: DatasetDataIndexStageEnum.rebuildSynonymPending; synonymVersion: number }
   ),
-  session: ClientSession
+  tx?: DbSession
 ): Promise<{ affectedDataCount: number; collectionIds: string[] }> => {
+  if (!tx) {
+    return runInTransaction((tx) => markDatasetDocumentRebuild(input, tx), { dialect: 'mongo' });
+  }
+  const { teamId, tmbId, datasetId, vectorModelId, ...rebuild } = input;
+  const session = bridgeDbSessionToClientSession(tx);
   const scope = { teamId, datasetId };
   const match = {
     ...scope,
@@ -411,7 +446,7 @@ export const markDatasetDocumentRebuild = async (
       }
     },
     { $group: { _id: '$collectionId' } }
-  ]).session(session);
+  ]).session(session ?? null);
   const targetIds = targets.map(({ _id }) => _id);
   const collectionIds: string[] = [];
   let affectedDataCount = 0;
@@ -422,7 +457,7 @@ export const markDatasetDocumentRebuild = async (
       { ...scope, _id: { $in: targetIds.slice(offset, offset + batchSize) } },
       { _id: 1, name: 1, training: 1 }
     )
-      .session(session)
+      .session(session ?? null)
       .lean();
     if (collections.length === 0) continue;
 
@@ -431,9 +466,6 @@ export const markDatasetDocumentRebuild = async (
     const newRounds = startsNewRound
       ? collections
       : collections.filter(({ training }) => !training);
-    const existingRounds = startsNewRound
-      ? []
-      : collections.filter(({ training }) => Boolean(training));
     const usageIds = await createTrainingUsages(
       {
         teamId,
@@ -444,16 +476,17 @@ export const markDatasetDocumentRebuild = async (
           trainingCollectionId: String(_id)
         }))
       },
-      session
+      tx
     );
     const newUsageByCollection = new Map(
       newRounds.map(({ _id }, index) => [String(_id), usageIds[index]])
     );
 
-    // 同义词重建复用进行中的轮次时，补齐当前向量模型的账单明细。
-    for (const { training } of existingRounds) {
-      if (!training?.usageId) continue;
-      await ensureTrainingUsageItems({ teamId, vectorModelId, usageId: training.usageId }, session);
+    // 同义词重建复用文档账单，延用该向量模型的计费明细。
+    for (const { training } of collections) {
+      if (!startsNewRound && training) {
+        await ensureTrainingUsageItems({ teamId, vectorModelId, usageId: training.usageId }, tx);
+      }
     }
 
     await MongoDatasetCollection.bulkWrite(
@@ -467,7 +500,11 @@ export const markDatasetDocumentRebuild = async (
                 training.status === 'paused_unpaid'
                   ? {
                       $set: { 'training.status': 'active' as const },
-                      $unset: { 'training.pausedAt': '', 'training.runId': '' },
+                      $unset: {
+                        'training.pausedAt': '',
+                        'training.runId': '',
+                        'training.runningItems': ''
+                      },
                       $inc: { 'training.revision': 1 }
                     }
                   : { $inc: { 'training.revision': 1 } }
@@ -529,40 +566,45 @@ export const switchDatasetEmbeddingModel = async ({
   vectorModelId: string;
   supportsImageEmbedding: boolean;
 }) => {
-  const { collectionIds, previous } = await mongoSessionRun(async (session) => {
-    const datasetMatch = { _id: datasetId, teamId, deleteTime: null };
-    const dataset = await MongoDataset.findOne(datasetMatch).session(session).lean();
-    if (!dataset) throw DatasetErrEnum.unExist;
-    if (String(dataset.vectorModelId || '') === vectorModelId) throw 'vectorModel 不合法';
-    if (await hasBlockingDatasetTrainingTask({ teamId, datasetId }, session)) {
-      throw '数据集正在训练或者重建中，请稍后再试';
-    }
+  return runInTransaction(
+    async (tx) => {
+      const session = bridgeDbSessionToClientSession(tx);
+      const datasetMatch = { _id: datasetId, teamId, deleteTime: null };
+      const dataset = await MongoDataset.findOne(datasetMatch)
+        .session(session ?? null)
+        .lean();
+      if (!dataset) throw DatasetErrEnum.unExist;
+      if (String(dataset.vectorModelId || '') === vectorModelId) throw 'vectorModel 不合法';
+      if (await hasBlockingDatasetTrainingTask({ teamId, datasetId }, tx)) {
+        throw '数据集正在训练或者重建中，请稍后再试';
+      }
 
-    const imageIndex = supportsImageEmbedding || !!(dataset.vlmModelId || dataset.vlmModel);
-    await MongoDataset.updateOne(
-      datasetMatch,
-      { $set: { vectorModelId, ...(!imageIndex && { 'chunkSettings.imageIndex': false }) } },
-      { session }
-    );
-    if (!imageIndex) {
-      await MongoDatasetCollection.updateMany(
-        { teamId, datasetId },
-        { $set: { imageIndex: false } },
+      const imageIndex = supportsImageEmbedding || !!(dataset.vlmModelId || dataset.vlmModel);
+      await MongoDataset.updateOne(
+        datasetMatch,
+        { $set: { vectorModelId, ...(!imageIndex && { 'chunkSettings.imageIndex': false }) } },
         { session }
       );
-    }
-    const { collectionIds } = await markDatasetDocumentRebuild(
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        vectorModelId,
-        indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
-      },
-      session
-    );
-    return { collectionIds, previous: getDatasetModelReference(dataset, 'embedding') };
-  });
-  await enqueueDatasetTrainingBatch({ teamId, collectionIds });
-  return previous;
+      if (!imageIndex) {
+        await MongoDatasetCollection.updateMany(
+          { teamId, datasetId },
+          { $set: { imageIndex: false } },
+          { session }
+        );
+      }
+      const { collectionIds } = await markDatasetDocumentRebuild(
+        {
+          teamId,
+          tmbId,
+          datasetId,
+          vectorModelId,
+          indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
+        },
+        tx
+      );
+      tx.afterCommit(() => enqueueDatasetTrainingBatch({ teamId, collectionIds }));
+      return getDatasetModelReference(dataset, 'embedding');
+    },
+    { dialect: 'mongo' }
+  );
 };

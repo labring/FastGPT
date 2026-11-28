@@ -9,7 +9,7 @@ import { CollectionTrainingStatusEnum } from '@fastgpt/global/core/dataset/const
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetQaTraining } from '@test/datas/datasetQaTraining';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { resumeUnpaidDatasetTraining } from '@fastgpt/service/core/dataset/training/runtime';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
@@ -48,10 +48,27 @@ it.skipIf(!redisUrl)(
           }
         }
       );
-      await MongoDatasetQaTraining.create([
-        { ...scope, tmbId: root.tmbId, q: 'Pending QA source', status: 'active' },
-        { ...scope, tmbId: root.tmbId, q: 'Failed QA source', status: 'error', errorMsg: 'failed' }
-      ]);
+      await datasetQaTrainingService.createMany({
+        items: [
+          {
+            teamId: String(scope.teamId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            tmbId: String(root.tmbId),
+            q: 'Pending QA source',
+            status: 'active'
+          },
+          {
+            teamId: String(scope.teamId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            tmbId: String(root.tmbId),
+            q: 'Failed QA source',
+            status: 'error',
+            errorMsg: 'failed'
+          }
+        ]
+      });
       await MongoDatasetData.create({ ...scope, tmbId: root.tmbId, q: 'Previously indexed' });
       return {
         scope,
@@ -69,7 +86,13 @@ it.skipIf(!redisUrl)(
         code: 200,
         data: { trainingAmount: 0, slowestTrainingStatus: CollectionTrainingStatusEnum.ready }
       });
-      expect(await MongoDatasetQaTraining.countDocuments(old.scope)).toBe(0);
+      expect(
+        await datasetQaTrainingService.count({
+          teamId: String(old.scope.teamId),
+          datasetId: String(old.scope.datasetId),
+          collectionId: String(old.scope.collectionId)
+        })
+      ).toBe(0);
       expect(await MongoDatasetData.countDocuments(old.scope)).toBe(1);
       expect(
         await MongoDatasetCollection.findById(old.scope.collectionId).lean()
@@ -105,7 +128,17 @@ it.skipIf(!redisUrl)(
           }
         }
       );
-      await MongoDatasetQaTraining.create({ ...scope, q: 'Pending QA source' });
+      await datasetQaTrainingService.createMany({
+        items: [
+          {
+            teamId: String(scope.teamId),
+            tmbId: String(scope.tmbId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            q: 'Pending QA source'
+          }
+        ]
+      });
 
       vi.mocked(checkTeamAIPoints).mockRejectedValueOnce(new Error('Balance read interrupted'));
       await expect(
@@ -117,7 +150,13 @@ it.skipIf(!redisUrl)(
         training: { status: 'active', usageId }
       });
       expect(checkTeamAIPoints).toHaveBeenLastCalledWith(scope.teamId, { refreshBalance: true });
-      expect(await MongoDatasetQaTraining.countDocuments(scope)).toBe(1);
+      expect(
+        await datasetQaTrainingService.count({
+          teamId: String(scope.teamId),
+          datasetId: String(scope.datasetId),
+          collectionId: String(scope.collectionId)
+        })
+      ).toBe(1);
       expect(
         await datasetTrainingMQService.getQueue().getDeduplicationJobId(scope.collectionId)
       ).toEqual(expect.any(String));
@@ -147,11 +186,17 @@ it.skipIf(!redisUrl)(
           }
         }
       );
-      const qa = await MongoDatasetQaTraining.create({
-        ...scope,
-        tmbId: root.tmbId,
-        q: 'Pending QA source',
-        status: 'active'
+      const [qa] = await datasetQaTrainingService.createMany({
+        items: [
+          {
+            teamId: String(scope.teamId),
+            datasetId: String(scope.datasetId),
+            collectionId: String(scope.collectionId),
+            tmbId: String(root.tmbId),
+            q: 'Pending QA source',
+            status: 'active'
+          }
+        ]
       });
 
       expect(
