@@ -129,16 +129,18 @@ export const promptToolCallMessageRewrite = (
 
 /**
  * 剥离 prompt tool 协议的 `0:` / `0：` 前缀与紧随冒号的 ASCII 空格，
- * 保留正文前导换行与全角缩进（如 U+3000）。
+ * 保留正文前导换行与全角缩进（如 U+3000）；若剥离协议头后仅剩空白则返回空字符串，
+ * 避免仅含协议头与空白的输出被当作有效正文。
  */
 export const stripPromptToolAnswerPrefix = (str: string): string => {
   const trimmedStart = str.trimStart();
   const firstIndex =
     trimmedStart.indexOf('0:') !== -1 ? trimmedStart.indexOf('0:') : trimmedStart.indexOf('0：');
-  if (firstIndex > -1 && firstIndex < 6) {
-    return trimmedStart.substring(firstIndex + 2).replace(/^[ \t]+/, '');
-  }
-  return str;
+  const answer =
+    firstIndex > -1 && firstIndex < 6
+      ? trimmedStart.substring(firstIndex + 2).replace(/^[ \t]+/, '')
+      : str;
+  return answer.trim() ? answer : '';
 };
 
 const ERROR_TEXT = 'Tool call error';

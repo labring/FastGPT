@@ -5,6 +5,7 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { parseLLMStreamResponse } from '../../../utils';
 import { parsePromptToolCall, stripPromptToolAnswerPrefix } from '../../promptCall';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
@@ -231,8 +232,20 @@ export const createStreamResponse = async ({
       // prompt tool 模式结束后用完整文本解析最终回答和工具调用；用户中断时不对外派发工具回调。
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
-      if (streamAnswer) {
-        await onStreaming?.({ text: streamAnswer });
+      // 短正文在流式阶段可能因未达协议头判定长度而尚未输出；正常结束时经同一路径补发一次。
+      let finalError = error;
+      const pendingStreamAnswer =
+        streamAnswer ||
+        (!startResponseWrite && !aborted && !error
+          ? removeDatasetCiteText(llmAnswer, retainDatasetCite)
+          : '');
+
+      if (pendingStreamAnswer) {
+        try {
+          await onStreaming?.({ text: pendingStreamAnswer });
+        } catch (err: any) {
+          finalError = err?.error || err;
+        }
       }
 
       if (!aborted) {
@@ -242,7 +255,7 @@ export const createStreamResponse = async ({
       }
 
       return {
-        error,
+        error: finalError,
         answerText: llmAnswer,
         reasoningText: reasoningContent,
         finish_reason,

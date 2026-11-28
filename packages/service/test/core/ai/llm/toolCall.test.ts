@@ -39,6 +39,12 @@ describe('parsePromptToolCall function tests', () => {
       expect(parsePromptToolCall('\n\u3000\u3000无前缀首段')).toEqual({
         answer: '\n\u3000\u3000无前缀首段'
       });
+      expect(parsePromptToolCall('0:\n\u3000\u3000')).toEqual({
+        answer: ''
+      });
+      expect(parsePromptToolCall('0:   ')).toEqual({
+        answer: ''
+      });
     });
 
     it('should handle 0: in the middle of string when within first 6 characters', () => {
