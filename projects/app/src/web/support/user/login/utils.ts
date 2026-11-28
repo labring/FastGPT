@@ -63,7 +63,7 @@ type LoginMethodLabels = {
   microsoft: string;
 };
 
-/** 将登录页表单类型映射为可持久化的登录方式标识；找回密码并登录后归类为密码登录。 */
+/** 将可恢复的站内登录页类型映射为持久化登录方式标识。 */
 export const getLastLoginMethodByPageType = (
   pageType?: `${LoginPageTypeEnum}`
 ): LastLoginMethod | undefined => {
@@ -71,7 +71,6 @@ export const getLastLoginMethodByPageType = (
     case LoginPageTypeEnum.codeLogin:
       return 'page:code';
     case LoginPageTypeEnum.passwordLogin:
-    case LoginPageTypeEnum.forgetPassword:
       return 'page:password';
     case LoginPageTypeEnum.wechat:
       return 'page:wechat';
@@ -101,7 +100,7 @@ export const readLastLoginMethod = (): LastLoginMethod | undefined => {
   }
 };
 
-/** 在登录成功后记录本次登录方式；存储不可用时静默忽略，不阻断登录主流程。 */
+/** 在用户切换登录方式时立即记录偏好；存储不可用时静默忽略，不阻断登录主流程。 */
 export const saveLastLoginMethod = (method?: LastLoginMethod): void => {
   if (!method || typeof window === 'undefined' || !validLastLoginMethods.has(method)) return;
   try {
@@ -183,7 +182,9 @@ export const resolveAutoLoginProvider = ({
 };
 
 /**
- * 按既有渠道顺序生成可见登录方式，选择页始终将密码登录追加到末尾。
+ * 生成可见登录方式列表：
+ * - 表单底部切换栏（alternatives）：密码/验证码登录置顶，其余第三方登录紧随其后；
+ * - 独立方式选择页（selection，用于开启 SSO 禁用密码优先展示）：保留第三方优先、站内登录置底。
  * 企业微信登录只保留终端内自动跳转，不在选择页提供可点按钮，与旧实现保持一致。
  */
 export const getLoginMethodItems = ({
@@ -203,6 +204,28 @@ export const getLoginMethodItems = ({
   const result: LoginMethodItem[] = [];
   const codeLoginEnabled = getLoginMethods(feConfigs).length > 0;
 
+  if (mode === 'alternatives') {
+    if (pageType !== LoginPageTypeEnum.passwordLogin) {
+      result.push({
+        id: 'page:password',
+        type: 'page',
+        pageType: LoginPageTypeEnum.passwordLogin,
+        label: labels.password,
+        icon: 'support/permission/privateLight'
+      });
+    }
+
+    if (codeLoginEnabled && pageType !== LoginPageTypeEnum.codeLogin) {
+      result.push({
+        id: 'page:code',
+        type: 'page',
+        pageType: LoginPageTypeEnum.codeLogin,
+        label: labels.code,
+        icon: 'support/account/codeLogin'
+      });
+    }
+  }
+
   if (feConfigs.sso?.enabled) {
     result.push({
       id: 'oauth:sso',
@@ -220,26 +243,6 @@ export const getLoginMethodItems = ({
       pageType: LoginPageTypeEnum.wechat,
       label: labels.wechat,
       icon: 'common/wechatFill'
-    });
-  }
-
-  if (codeLoginEnabled && pageType !== LoginPageTypeEnum.codeLogin) {
-    result.push({
-      id: 'page:code',
-      type: 'page',
-      pageType: LoginPageTypeEnum.codeLogin,
-      label: labels.code,
-      icon: 'key'
-    });
-  }
-
-  if (mode === 'alternatives' && pageType !== LoginPageTypeEnum.passwordLogin) {
-    result.push({
-      id: 'page:password',
-      type: 'page',
-      pageType: LoginPageTypeEnum.passwordLogin,
-      label: labels.password,
-      icon: 'support/permission/privateLight'
     });
   }
 
@@ -274,6 +277,16 @@ export const getLoginMethodItems = ({
   }
 
   if (mode === 'selection') {
+    if (codeLoginEnabled) {
+      result.push({
+        id: 'page:code',
+        type: 'page',
+        pageType: LoginPageTypeEnum.codeLogin,
+        label: labels.code,
+        icon: 'support/account/codeLogin'
+      });
+    }
+
     result.push({
       id: 'page:password',
       type: 'page',

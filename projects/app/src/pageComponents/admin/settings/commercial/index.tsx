@@ -1,7 +1,7 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
+import { Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
@@ -9,6 +9,7 @@ import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useD
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import SmsTemplateExampleButton from '@/pageComponents/admin/settings/SmsTemplateExampleButton';
 import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
@@ -421,16 +422,12 @@ const CommercialSettingComponent = () => {
         </AdminFormItem>
       </AdminSettingSection>
 
-      {/* 7. 账单通知短信 */}
+      {/* 7. 阿里云短信模板 */}
       <AdminSettingSection id="billingNotify" title={t('admin:pay_section_notify_sms')} showDivider>
-        <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
-          {t('admin:billing_notification_sms_templates_apply_for_template_ids_in')}
-        </Text>
-
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem
             label={t('admin:low_balance_alert_chinese_template')}
-            tooltip={t('admin:sms_template_id_for_low_points_balance_alert_chinese')}
+            labelRight={<SmsTemplateExampleButton templateKey="lackOfPoints" />}
           >
             <Input
               isInvalid={Boolean(
@@ -440,7 +437,10 @@ const CommercialSettingComponent = () => {
               placeholder="SMS_xxx"
             />
           </AdminFormItem>
-          <AdminFormItem label={t('admin:points_thirty_percent_remain_template')}>
+          <AdminFormItem
+            label={t('admin:points_thirty_percent_remain_template')}
+            labelRight={<SmsTemplateExampleButton templateKey="pointsThirtyPercentRemain" />}
+          >
             <Input
               isInvalid={Boolean(
                 form.getFieldState('billingNotify.pointsThirtyPercentRemain.zh', form.formState)
@@ -452,7 +452,7 @@ const CommercialSettingComponent = () => {
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:points_running_out_chinese_template')}
-            tooltip={t('admin:sms_template_id_for_10_points_remaining_reminder_chinese')}
+            labelRight={<SmsTemplateExampleButton templateKey="pointsTenPercentRemain" />}
           >
             <Input
               isInvalid={Boolean(
@@ -463,7 +463,10 @@ const CommercialSettingComponent = () => {
             />
           </AdminFormItem>
           {showFreeClean && (
-            <AdminFormItem label={t('admin:free_clean_template')}>
+            <AdminFormItem
+              label={t('admin:free_clean_template')}
+              labelRight={<SmsTemplateExampleButton templateKey="freeClean" />}
+            >
               <Input
                 isInvalid={Boolean(
                   form.getFieldState('billingNotify.freeClean.zh', form.formState).error
@@ -475,7 +478,7 @@ const CommercialSettingComponent = () => {
           )}
           <AdminFormItem
             label={t('admin:plan_expiring_soon_chinese_template')}
-            tooltip={t('admin:sms_template_id_for_plan_expiry_reminder_chinese')}
+            labelRight={<SmsTemplateExampleButton templateKey="expireSoon" />}
           >
             <Input
               isInvalid={Boolean(
@@ -487,7 +490,7 @@ const CommercialSettingComponent = () => {
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:plan_expired_chinese_template')}
-            tooltip={t('admin:sms_template_id_for_plan_expired_notification_chinese')}
+            labelRight={<SmsTemplateExampleButton templateKey="expired" />}
           >
             <Input
               isInvalid={Boolean(

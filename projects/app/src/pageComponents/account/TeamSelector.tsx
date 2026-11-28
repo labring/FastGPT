@@ -13,11 +13,20 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
+
+const TeamNameText = ({ name }: { name: string }) => (
+  <MyTooltip label={name} showOnlyWhenOverflow>
+    <Box flex={1} minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      {name}
+    </Box>
+  </MyTooltip>
+);
 
 const TeamSelector = ({
   showAvatar = true,
@@ -149,7 +158,7 @@ const TeamSelector = ({
       searchText: team.teamName,
       label: team.isOwner ? (
         <Flex alignItems={'center'} justifyContent={'space-between'} flex={1} minW={0} gap={2}>
-          <Box noOfLines={1}>{team.teamName}</Box>
+          <TeamNameText name={team.teamName} />
           <MyTag
             colorSchema={'blue'}
             type={'fill'}
@@ -162,7 +171,7 @@ const TeamSelector = ({
           </MyTag>
         </Flex>
       ) : (
-        team.teamName
+        <TeamNameText name={team.teamName} />
       ),
       value: team.teamId
     });
@@ -209,8 +218,10 @@ const TeamSelector = ({
     }
     return (
       <>
-        {showAvatar && currentTeamAvatar && <Avatar mr={2} src={currentTeamAvatar} w={'1.25rem'} />}
-        <Box noOfLines={1}>{currentTeamName}</Box>
+        {showAvatar && currentTeamAvatar && (
+          <Avatar mr={2} src={currentTeamAvatar} w={'1.25rem'} flexShrink={0} />
+        )}
+        <TeamNameText name={currentTeamName} />
       </>
     );
   }, [currentTeamAvatar, currentTeamId, currentTeamName, showAvatar]);

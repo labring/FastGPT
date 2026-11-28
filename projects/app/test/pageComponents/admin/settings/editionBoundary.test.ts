@@ -531,41 +531,69 @@ describe('configuration form edition boundary', () => {
 
   it('keeps Pro SMTP/SMS editable and preserves another hidden provider override', async () => {
     mocks.isPro = true;
-    mocks.authOverrides = { loginProviders: { wecom: { providerSecret: 'keep-hidden-secret' } } };
+    mocks.authOverrides = {
+      loginProviders: {
+        wecom: { providerSecret: 'keep-hidden-secret' },
+        sms: {
+          register: { zh: 'LEGACY_REGISTER_TPL' },
+          modelDeprecation: { zh: 'MODEL_DEP_TPL' }
+        }
+      }
+    };
     const html = renderToStaticMarkup(React.createElement(CoreSettings));
     expect(html).toContain('id="email"');
     expect(html).toContain('id="sms"');
+    expect(mocks.formLabels).toContain('admin:login_code_chinese_template');
+    expect(mocks.formLabels).toContain('admin:reset_password_chinese_template');
+    expect(mocks.formLabels).toContain('admin:change_password_chinese_template');
+    expect(mocks.formLabels).toContain('admin:binding_notification_chinese_template');
+    expect(mocks.formLabels).toContain('admin:model_deprecation_chinese_template');
+
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       email: { ...config.auth.loginProviders.email, smtp: 'smtp.example.com' },
       documentParse: config.providers.documentParse,
-      phone: config.auth.loginProviders.phone
+      phone: config.auth.loginProviders.phone,
+      sms: {
+        login: { zh: 'CORE_LOGIN_TPL' },
+        resetPassword: { zh: 'CORE_RESET_TPL' },
+        changePassword: { zh: 'CORE_CHANGE_TPL' },
+        bindNotification: { zh: 'CORE_BIND_TPL' },
+        modelDeprecation: { zh: 'CORE_MODEL_DEP_TPL' }
+      }
     });
     const auth = mocks.update.mock.calls[0][0].items.find(
       (item: { domain: string }) => item.domain === 'auth'
     );
     expect(auth.overrides.loginProviders).toMatchObject({
       email: { smtp: 'smtp.example.com' },
-      wecom: { providerSecret: 'keep-hidden-secret' }
+      wecom: { providerSecret: 'keep-hidden-secret' },
+      sms: {
+        login: { zh: 'CORE_LOGIN_TPL' },
+        resetPassword: { zh: 'CORE_RESET_TPL' },
+        changePassword: { zh: 'CORE_CHANGE_TPL' },
+        bindNotification: { zh: 'CORE_BIND_TPL' },
+        modelDeprecation: { zh: 'CORE_MODEL_DEP_TPL' }
+      }
     });
+    expect(auth.overrides.loginProviders.sms).not.toHaveProperty('register');
   });
 
   it.each([false, true])(
-    'preserves email registration when saving SMTP settings: register=%s',
+    'shows and saves email registration switch on core page when SMTP is configured: register=%s',
     async (register) => {
       mocks.isPro = true;
-      mocks.authOverrides = { loginProviders: { email: { register } } };
+      mocks.authOverrides = { loginProviders: { email: { register: !register } } };
       renderToStaticMarkup(React.createElement(CoreSettings));
-      expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(false);
+      expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
 
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
         documentParse: config.providers.documentParse,
-        // 即便传入旧页面遗留的注册值，核心页也只提交自己负责的 SMTP 字段。
         email: {
           ...config.auth.loginProviders.email,
           smtp: 'smtp.example.com',
-          register: !register
+          register
         },
         phone: config.auth.loginProviders.phone
       });
@@ -576,6 +604,22 @@ describe('configuration form edition boundary', () => {
         smtp: 'smtp.example.com',
         register
       });
+
+      // 清空 SMTP 时强制关闭邮箱注册开关，避免留下无法发码的注册入口。
+      mocks.update.mockClear();
+      await mocks.save!({
+        documentParse: config.providers.documentParse,
+        email: {
+          ...config.auth.loginProviders.email,
+          smtp: '',
+          register: true
+        },
+        phone: config.auth.loginProviders.phone
+      });
+      const clearedAuth = mocks.update.mock.calls[0][0].items.find(
+        (item: { domain: string }) => item.domain === 'auth'
+      );
+      expect(clearedAuth.overrides.loginProviders.email.register).toBe(false);
     }
   );
 

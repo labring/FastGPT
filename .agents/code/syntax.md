@@ -419,6 +419,38 @@ const versionNameMap = new Map(
 );
 ```
 
+## 前端组件规范
+
+### 单行可能溢出文本使用 `MyTooltip` 的 `showOnlyWhenOverflow`
+
+下拉选项、选择器回显、侧栏标题、列表单元格，以及与右侧标签/操作按钮同行排列的文本等**单行展示且可能发生截断的文案**（尤其是团队名、应用名、知识库名、用户名、文件名等长度不可控内容），必须统一使用 `@fastgpt/web/components/common/MyTooltip` 并开启 `showOnlyWhenOverflow`：
+
+- **`label` 传完整原始文本，并启用 `showOnlyWhenOverflow`**：未溢出时不弹出多余提示，真正截断时 hover/focus 展示完整文案；禁止只加省略号不给提示、无条件弹出 Tooltip、仅用原生 `title`，或在业务组件里重复手写按字数估算 / `scrollWidth > clientWidth` 测量逻辑。
+- **直接子节点为单个可转发 `ref` 的截断元素**：`showOnlyWhenOverflow` 会自动以 `shouldWrapChildren={false}` 向直接子节点注入测量 `ref`，因此直接子节点应为 Chakra `Box` / `Text` 或原生元素（不可包 Fragment 或非 `forwardRef` 组件）。
+- **单行截断与 Flex 布局约束**：单行文本优先使用 `overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}`（或 `isTruncated` / `className={'textEllipsis'}`），在 Flex 容器内配合 `minW={0}`（占满剩余宽度时加 `flex={1}`），相邻图标或标签加 `flexShrink={0}`；避免在继承 `whiteSpace="pre-wrap"` 的菜单项中只用 `noOfLines={1}` 导致按空格提前折行截断。
+
+```tsx
+import { Box, Flex } from '@chakra-ui/react';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag';
+
+// ❌ 不好的实践：仅做单行截断，溢出后无法查看完整名称；或无条件弹出 Tooltip
+<Flex alignItems={'center'} flex={1} minW={0} gap={2}>
+  <Box noOfLines={1}>{team.teamName}</Box>
+  <MyTag flexShrink={0}>{myTeamTagLabel}</MyTag>
+</Flex>
+
+// ✅ 好的实践：单行省略配合 MyTooltip showOnlyWhenOverflow，仅溢出时提示完整文案
+<Flex alignItems={'center'} flex={1} minW={0} gap={2}>
+  <MyTooltip label={team.teamName} showOnlyWhenOverflow>
+    <Box flex={1} minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      {team.teamName}
+    </Box>
+  </MyTooltip>
+  <MyTag flexShrink={0}>{myTeamTagLabel}</MyTag>
+</Flex>
+```
+
 ## TypeScript 编译性能与 Composite 规范
 
 `packages/{global,dal,web,service}` 通过 `tsconfig.composite.json` 接入 Project References（`tsc -b`），用于将 `projects/app` 的类型检查拆分为分层增量构建。日常开发须遵守以下约定：

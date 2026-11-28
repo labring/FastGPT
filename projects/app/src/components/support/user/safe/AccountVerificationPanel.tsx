@@ -7,7 +7,6 @@ import {
   Input,
   InputGroup,
   InputRightElement,
-  Spinner,
   Text,
   VStack,
   useDisclosure
@@ -19,6 +18,7 @@ import type {
   AccountVerificationMethod,
   CaptchaVerificationPurpose
 } from '@fastgpt/global/support/user/account/verification/type';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SendCodeAuthModal, { type GetCaptchaPic } from './SendCodeAuthModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -51,6 +51,10 @@ type Props = {
   createWechatVerification?: () => Promise<WechatVerificationMaterial>;
   submitWechatVerification?: (code: string) => Promise<VerificationSubmitResult>;
   startOAuthVerification?: () => Promise<{ url: string }>;
+  /** 通知外层容器（如 v2 MyModal）接管旧密码校验初始化时的 loading 状态。 */
+  onLoadingChange?: (loading: boolean) => void;
+  /** 可选提示文案，展示在主操作按钮上方（例如设置密码流程的登录说明）。 */
+  tip?: string;
 };
 
 const isOAuthMethod = (
@@ -84,7 +88,9 @@ export const AccountVerificationPanel = ({
   submitOldPasswordVerification,
   createWechatVerification,
   submitWechatVerification,
-  startOAuthVerification
+  startOAuthVerification,
+  onLoadingChange,
+  tip
 }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -99,7 +105,7 @@ export const AccountVerificationPanel = ({
   const [oldPassword, setOldPassword] = useState('');
   const [wechatQR, setWechatQR] = useState<WechatVerificationMaterial>();
   const [wechatNow, setWechatNow] = useState(() => Date.now());
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(() => method === 'oldPassword' || method === 'wechat');
   const [createFailed, setCreateFailed] = useState(false);
   const createRequested = useRef(false);
   const wechatPolling = useRef(false);
@@ -157,6 +163,14 @@ export const AccountVerificationPanel = ({
     createRequested.current = true;
     void createBoundVerification();
   }, [createBoundVerification, method]);
+
+  useEffect(() => {
+    if (method !== 'oldPassword' || !onLoadingChange) return;
+    onLoadingChange(creating);
+    return () => {
+      onLoadingChange(false);
+    };
+  }, [creating, method, onLoadingChange]);
 
   useEffect(() => {
     if (codeCountDown <= 0) return;
@@ -396,7 +410,11 @@ export const AccountVerificationPanel = ({
             <Text color="myGray.600" fontSize="16px" fontWeight="500" lineHeight="24px">
               {t('account_info:account_cancellation_wechat_scan', '微信扫码登录')}
             </Text>
-            <Center
+            <MyBox
+              isLoading={creating}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
               position="relative"
               w="226px"
               h="226px"
@@ -407,9 +425,7 @@ export const AccountVerificationPanel = ({
               borderRadius="md"
               p="4px"
             >
-              {creating ? (
-                <Spinner color="primary.600" />
-              ) : wechatQR && !wechatExpired ? (
+              {creating ? null : wechatQR && !wechatExpired ? (
                 <Image
                   src={wechatQR.codeUrl}
                   alt={t('account_info:account_cancellation_wechat_qr', '微信二维码')}
@@ -435,7 +451,7 @@ export const AccountVerificationPanel = ({
                   </Button>
                 </VStack>
               )}
-            </Center>
+            </MyBox>
           </VStack>
         </VStack>
       );
@@ -475,53 +491,61 @@ export const AccountVerificationPanel = ({
 
   if (method === 'code') {
     return (
-      <VStack align="stretch" spacing={6}>
-        <Input
-          h={10}
-          value={username}
-          isDisabled
-          bg="myGray.25"
-          borderColor="myGray.100"
-          _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
-          aria-label={t('common:user.Account')}
-        />
-        <InputGroup>
+      <Box>
+        <VStack align="stretch" spacing={6}>
           <Input
             h={10}
-            pr="120px"
-            value={code}
-            isDisabled={submitting}
-            inputMode="numeric"
-            maxLength={6}
-            bg="myGray.50"
-            borderColor="myGray.200"
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder={t('common:support.user.info.verification_code')}
-            aria-label={t('common:support.user.info.verification_code')}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') void submitCode(code.trim());
-            }}
+            value={username}
+            isDisabled
+            bg="myGray.25"
+            borderColor="myGray.100"
+            _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
+            aria-label={t('common:user.Account')}
           />
-          <InputRightElement h={10} w="120px" justifyContent="flex-end" pr={3}>
-            <Button
-              h="18px"
-              minW={0}
-              p={0}
-              variant="unstyled"
-              color={codeCountDown > 0 ? 'myGray.400' : 'primary.700'}
-              fontSize="mini"
-              isDisabled={codeSending || submitting || codeCountDown > 0}
-              onClick={onOpenCaptcha}
-            >
-              {codeSending
-                ? t('common:password_code_sending')
-                : codeCountDown > 0
-                  ? t('common:password_code_countdown', { seconds: codeCountDown })
-                  : t('common:password_send_code')}
-            </Button>
-          </InputRightElement>
-        </InputGroup>
+          <InputGroup>
+            <Input
+              h={10}
+              pr="120px"
+              value={code}
+              isDisabled={submitting}
+              inputMode="numeric"
+              maxLength={6}
+              bg="myGray.50"
+              borderColor="myGray.200"
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder={t('common:support.user.info.verification_code')}
+              aria-label={t('common:support.user.info.verification_code')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void submitCode(code.trim());
+              }}
+            />
+            <InputRightElement h={10} w="120px" justifyContent="flex-end" pr={3}>
+              <Button
+                h="18px"
+                minW={0}
+                p={0}
+                variant="unstyled"
+                color={codeCountDown > 0 ? 'myGray.400' : 'primary.700'}
+                fontSize="mini"
+                isDisabled={codeSending || submitting || codeCountDown > 0}
+                onClick={onOpenCaptcha}
+              >
+                {codeSending
+                  ? t('common:password_code_sending')
+                  : codeCountDown > 0
+                    ? t('common:password_code_countdown', { seconds: codeCountDown })
+                    : t('common:password_send_code')}
+              </Button>
+            </InputRightElement>
+          </InputGroup>
+        </VStack>
+        {tip && (
+          <Text mt={3} fontSize="mini" lineHeight="16px" color="myGray.500" textAlign="center">
+            {tip}
+          </Text>
+        )}
         <Button
+          mt={tip ? 3 : 6}
           h={10}
           w="100%"
           isLoading={submitting}
@@ -540,7 +564,7 @@ export const AccountVerificationPanel = ({
             getCaptchaPic={getCaptchaPic}
           />
         )}
-      </VStack>
+      </Box>
     );
   }
 
@@ -558,9 +582,11 @@ export const AccountVerificationPanel = ({
         />
         <VStack align="stretch" spacing={6}>
           {creating ? (
-            <Center h="104px">
-              <Spinner color="primary.600" />
-            </Center>
+            onLoadingChange ? (
+              <Box h="104px" />
+            ) : (
+              <MyBox isLoading position="relative" h="104px" />
+            )
           ) : createFailed ? (
             <Center h="104px">
               <Button w="100%" onClick={retryCreate}>
@@ -603,7 +629,12 @@ export const AccountVerificationPanel = ({
         <Text color="myGray.600" fontSize="md" fontWeight="medium" lineHeight={6}>
           {t('common:password_wechat_scan')}
         </Text>
-        <Center
+        <MyBox
+          isLoading={creating}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          position="relative"
           w="226px"
           h="226px"
           overflow="hidden"
@@ -613,9 +644,7 @@ export const AccountVerificationPanel = ({
           borderRadius="md"
           p={1}
         >
-          {creating ? (
-            <Spinner color="primary.600" />
-          ) : wechatQR && !wechatExpired ? (
+          {creating ? null : wechatQR && !wechatExpired ? (
             <Image
               src={wechatQR.codeUrl}
               alt={t('common:password_wechat_qr')}
@@ -635,7 +664,12 @@ export const AccountVerificationPanel = ({
               </Button>
             </VStack>
           )}
-        </Center>
+        </MyBox>
+        {tip && (
+          <Text fontSize="mini" lineHeight="16px" color="myGray.500" textAlign="center">
+            {tip}
+          </Text>
+        )}
       </VStack>
     );
   }
@@ -653,7 +687,18 @@ export const AccountVerificationPanel = ({
         _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
         aria-label={t('common:user.Account')}
       />
-      <Button mt={6} h={10} w="100%" isLoading={submitting} onClick={() => void submitOAuth()}>
+      {tip && (
+        <Text mt={3} fontSize="mini" lineHeight="16px" color="myGray.500" textAlign="center">
+          {tip}
+        </Text>
+      )}
+      <Button
+        mt={tip ? 3 : 6}
+        h={10}
+        w="100%"
+        isLoading={submitting}
+        onClick={() => void submitOAuth()}
+      >
         {t('common:password_oauth_start', { provider: providerLabel })}
       </Button>
     </Box>

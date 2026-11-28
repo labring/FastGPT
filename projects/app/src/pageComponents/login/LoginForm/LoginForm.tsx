@@ -1,4 +1,4 @@
-import React, { type Dispatch, useCallback, useEffect, useRef, useState } from 'react';
+import React, { type Dispatch, useCallback, useEffect, useState } from 'react';
 import {
   FormControl,
   Flex,
@@ -40,12 +40,8 @@ import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/ut
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AccountVerificationPanel } from '@/components/support/user/safe/AccountVerificationPanel';
-import type { LoginFormSuccessOptions } from '@/pageComponents/login';
 
-type LoginSuccessHandler = (
-  res: LoginSuccessResponseType,
-  options?: LoginFormSuccessOptions
-) => void | Promise<void>;
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -136,8 +132,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const hasFindPasswordMethod = !!feConfigs?.find_password_method?.length;
   const [loginVerification, setLoginVerification] =
     useState<LoginVerificationRequiredResponseType>();
-  // 按单次登录提交来源区分自动凭据（?u=&p=）与手动登录，避免取消 2FA 或自动登录报错后原地手动重试丢失偏好记录。
-  const isAutoLoginFlowRef = useRef(false);
 
   /**
    * Challenge 和验证码材料共用同一 TTL，过期后服务端只会回“验证码错误”。
@@ -160,7 +154,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
    * 导致用户改完密码重新登录后回不到原本要访问的页面。
    */
   const backToLogin = useCallback(() => {
-    isAutoLoginFlowRef.current = false;
     setLoginVerification(undefined);
   }, []);
 
@@ -196,9 +189,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
   const finishLogin = useCallback(
     async (response: LoginSuccessResponseType) => {
-      const skipLastLoginMethod = isAutoLoginFlowRef.current;
-      isAutoLoginFlowRef.current = false;
-      await onFastGPTLoginSuccess((res) => loginSuccess(res, { skipLastLoginMethod }), response);
+      await onFastGPTLoginSuccess(loginSuccess, response);
       toast({
         status: 'success',
         title: t('login:login_success')
@@ -208,12 +199,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   );
 
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
-    async ({
-      username,
-      password,
-      isAutoLogin = false
-    }: LoginFormType & { isAutoLogin?: boolean }) => {
-      isAutoLoginFlowRef.current = isAutoLogin;
+    async ({ username, password }: LoginFormType) => {
       setLoginVerification(undefined);
       const { code } = await getPreLogin(username);
       const loginResponse = await postLogin({
@@ -235,7 +221,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     {
       refreshDeps: [finishLogin],
       onError: (error: any) => {
-        isAutoLoginFlowRef.current = false;
         // 密码错误，需要清空 query 参数
         if (error.statusText === UserErrEnum.account_psw_error) {
           router.replace(
@@ -254,11 +239,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         }
       }
     }
-  );
-
-  const submitManualLogin = useCallback(
-    (data: LoginFormType) => onclickLogin({ ...data, isAutoLogin: false }),
-    [onclickLogin]
   );
 
   const createLoginCodeVerification = useCallback(
@@ -329,8 +309,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     if (username && password) {
       onclickLogin({
         username,
-        password,
-        isAutoLogin: true
+        password
       });
     }
   });
@@ -350,7 +329,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 !e.shiftKey &&
                 !requesting
               ) {
-                handleSubmit(submitManualLogin)();
+                handleSubmit(onclickLogin)();
               }
             }}
           >
@@ -392,7 +371,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               fontWeight={['medium', 'medium']}
               colorScheme="blue"
               isLoading={requesting}
-              onClick={handleSubmit(submitManualLogin)}
+              onClick={handleSubmit(onclickLogin)}
             >
               {t('login:Login')}
             </Button>

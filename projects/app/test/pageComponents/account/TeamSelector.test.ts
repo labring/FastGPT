@@ -73,6 +73,26 @@ vi.mock('@fastgpt/web/components/common/Tag', () => ({
   default: ({ children }: { children: React.ReactNode }) =>
     React.createElement('span', { 'data-testid': 'my-team-tag' }, children)
 }));
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({
+    children,
+    label,
+    showOnlyWhenOverflow
+  }: {
+    children: React.ReactNode;
+    label?: string;
+    showOnlyWhenOverflow?: boolean;
+  }) =>
+    React.createElement(
+      'span',
+      {
+        'data-testid': 'overflow-tooltip',
+        'data-tooltip-label': label,
+        'data-show-only-when-overflow': String(Boolean(showOnlyWhenOverflow))
+      },
+      children
+    )
+}));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   default: (props: any) => {
     mocks.lastMySelectProps = props;
@@ -147,15 +167,24 @@ describe('TeamSelector', () => {
       'Older Switched Team',
       'Never Switched Team'
     ]);
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain('Alice Team');
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain(
-      'account_team:my_team'
-    );
-    expect(mocks.lastMySelectProps.list[1].label).toBe('Shared Team');
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.valueLabel)).toContain('Alice Team');
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.valueLabel)).not.toContain(
-      'account_team:my_team'
-    );
+    const ownerLabelHtml = renderToStaticMarkup(mocks.lastMySelectProps.list[0].label);
+    const sharedLabelHtml = renderToStaticMarkup(mocks.lastMySelectProps.list[1].label);
+    const valueLabelHtml = renderToStaticMarkup(mocks.lastMySelectProps.valueLabel);
+
+    expect(ownerLabelHtml).toContain('Alice Team');
+    expect(ownerLabelHtml).toContain('data-tooltip-label="Alice Team"');
+    expect(ownerLabelHtml).toContain('data-show-only-when-overflow="true"');
+    expect(ownerLabelHtml).toContain('account_team:my_team');
+
+    expect(sharedLabelHtml).toContain('Shared Team');
+    expect(sharedLabelHtml).toContain('data-tooltip-label="Shared Team"');
+    expect(sharedLabelHtml).toContain('data-show-only-when-overflow="true"');
+    expect(sharedLabelHtml).not.toContain('account_team:my_team');
+
+    expect(valueLabelHtml).toContain('Alice Team');
+    expect(valueLabelHtml).toContain('data-tooltip-label="Alice Team"');
+    expect(valueLabelHtml).toContain('data-show-only-when-overflow="true"');
+    expect(valueLabelHtml).not.toContain('account_team:my_team');
     expect(mocks.lastMySelectProps.list.some((item: any) => item.value === 'manage')).toBe(false);
 
     await mocks.lastMySelectProps.onChange('t-2');
@@ -197,11 +226,18 @@ describe('TeamSelector', () => {
       'root-team',
       'tenant-1'
     ]);
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain('Root Team');
-    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain(
-      'account_team:my_team'
-    );
-    expect(mocks.lastMySelectProps.list[1].label).toBe('Tenant One');
+    const rootLabelHtml = renderToStaticMarkup(mocks.lastMySelectProps.list[0].label);
+    const tenantLabelHtml = renderToStaticMarkup(mocks.lastMySelectProps.list[1].label);
+
+    expect(rootLabelHtml).toContain('Root Team');
+    expect(rootLabelHtml).toContain('data-tooltip-label="Root Team"');
+    expect(rootLabelHtml).toContain('data-show-only-when-overflow="true"');
+    expect(rootLabelHtml).toContain('account_team:my_team');
+
+    expect(tenantLabelHtml).toContain('Tenant One');
+    expect(tenantLabelHtml).toContain('data-tooltip-label="Tenant One"');
+    expect(tenantLabelHtml).toContain('data-show-only-when-overflow="true"');
+    expect(tenantLabelHtml).not.toContain('account_team:my_team');
 
     await mocks.lastMySelectProps.onChange('tenant-1');
     expect(mocks.putAdminSwitchTeam).toHaveBeenCalledWith({ teamId: 'tenant-1' });

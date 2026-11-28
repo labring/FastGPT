@@ -26,6 +26,7 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
+import SmsTemplateExampleButton from '@/pageComponents/admin/settings/SmsTemplateExampleButton';
 import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import DocumentParseTestBar from '@/pageComponents/admin/settings/DocumentParseTestBar';
@@ -48,6 +49,11 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 
+type CoreSmsTemplates = Pick<
+  SystemInstanceConfigDomainMap['auth']['loginProviders']['sms'],
+  'login' | 'resetPassword' | 'changePassword' | 'bindNotification' | 'modelDeprecation'
+>;
+
 type CoreConfigForm = {
   publicUrl: SystemInstanceConfigDomainMap['site']['publicUrl'];
   documentParse: SystemInstanceConfigDomainMap['providers']['documentParse'];
@@ -56,8 +62,9 @@ type CoreConfigForm = {
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
   externalEndpoint: SystemInstanceConfigDomainMap['storage']['externalEndpoint'];
   cdnEndpoint: SystemInstanceConfigDomainMap['storage']['cdnEndpoint'];
-  email: Omit<SystemInstanceConfigDomainMap['auth']['loginProviders']['email'], 'register'>;
+  email: SystemInstanceConfigDomainMap['auth']['loginProviders']['email'];
   phone: SystemInstanceConfigDomainMap['auth']['loginProviders']['phone'];
+  sms: CoreSmsTemplates;
 };
 
 /** 数字输入统一尺寸：两列布局下不撑满单元格，避免与文本输入宽度不一致 */
@@ -89,6 +96,7 @@ const CoreSettingComponent = () => {
   const pdfParseDocUrl = feConfigs?.docUrl ? getDocPath('/self-host/pdf-parse') : '';
   const showEmail = isFieldVisible('auth.loginProviders.email.smtp');
   const showPhone = isFieldVisible('auth.loginProviders.phone.signName');
+  const showAccountSmsTemplates = isFieldVisible('auth.loginProviders.sms.login.zh');
   const showSangfor = isFieldVisible('providers.documentParse.sangfor.url');
 
   const tocItems: SettingTOCItem[] = useMemo(
@@ -134,9 +142,17 @@ const CoreSettingComponent = () => {
         smtp: '',
         user: '',
         port: 465,
-        secure: true
+        secure: true,
+        register: false
       },
-      phone: { accessKeyId: '', signName: '' }
+      phone: { accessKeyId: '', signName: '' },
+      sms: {
+        login: { zh: '' },
+        resetPassword: { zh: '' },
+        changePassword: { zh: '' },
+        bindNotification: { zh: '' },
+        modelDeprecation: { zh: '' }
+      }
     }
   });
   const {
@@ -175,6 +191,7 @@ const CoreSettingComponent = () => {
   const emailPass = useWatch({ control, name: 'email.pass' });
   const emailPort = useWatch({ control, name: 'email.port' });
   const emailSecure = useWatch({ control, name: 'email.secure' });
+  const emailRegister = useWatch({ control, name: 'email.register' });
   const phoneAccessKeyId = useWatch({ control, name: 'phone.accessKeyId' });
   const phoneAccessKeySecret = useWatch({ control, name: 'phone.accessKeySecret' });
   const phoneSignName = useWatch({ control, name: 'phone.signName' });
@@ -189,7 +206,8 @@ const CoreSettingComponent = () => {
     emailUser?.trim() ||
     isEmailPassFilled ||
     (emailPort !== undefined && emailPort !== 465) ||
-    emailSecure === false
+    emailSecure === false ||
+    emailRegister === true
   );
   const isPhoneSecretFilled =
     typeof phoneAccessKeySecret === 'string'
@@ -206,6 +224,7 @@ const CoreSettingComponent = () => {
     setValue('email.pass', '', { shouldDirty: true });
     setValue('email.port', 465, { shouldDirty: true });
     setValue('email.secure', true, { shouldDirty: true });
+    setValue('email.register', false, { shouldDirty: true });
     setEmailClearSeq((seq) => seq + 1);
   };
   const handleClearPhone = () => {
@@ -254,11 +273,23 @@ const CoreSettingComponent = () => {
         smtp: auth.effectiveConfig?.loginProviders?.email.smtp ?? '',
         user: auth.effectiveConfig?.loginProviders?.email.user ?? '',
         port: auth.effectiveConfig?.loginProviders?.email.port ?? 465,
-        secure: auth.effectiveConfig?.loginProviders?.email.secure ?? true
+        secure: auth.effectiveConfig?.loginProviders?.email.secure ?? true,
+        register: auth.effectiveConfig?.loginProviders?.email.register ?? false
       },
       phone: auth.effectiveConfig?.loginProviders?.phone ?? {
         accessKeyId: '',
         signName: ''
+      },
+      sms: {
+        login: { zh: auth.effectiveConfig?.loginProviders?.sms?.login?.zh ?? '' },
+        resetPassword: { zh: auth.effectiveConfig?.loginProviders?.sms?.resetPassword?.zh ?? '' },
+        changePassword: { zh: auth.effectiveConfig?.loginProviders?.sms?.changePassword?.zh ?? '' },
+        bindNotification: {
+          zh: auth.effectiveConfig?.loginProviders?.sms?.bindNotification?.zh ?? ''
+        },
+        modelDeprecation: {
+          zh: auth.effectiveConfig?.loginProviders?.sms?.modelDeprecation?.zh ?? ''
+        }
       }
     });
   }, [
@@ -355,16 +386,17 @@ const CoreSettingComponent = () => {
               preservedAuthOverrides,
               filterConfigData('auth', {
                 loginProviders: {
-                  // 核心页只维护 SMTP 凭据；关闭/清空 SMTP 时同步关闭邮箱自助注册，避免留下无法发码的注册开关。
+                  // 关闭/清空 SMTP 时同步关闭邮箱注册开关，避免留下无法发码的注册入口。
                   email: {
                     smtp: formData.email.smtp,
                     user: formData.email.user,
                     pass: formData.email.pass,
                     port: formData.email.port,
                     secure: formData.email.secure,
-                    ...(!formData.email.smtp?.trim() ? { register: false } : {})
+                    register: formData.email.smtp?.trim() ? Boolean(formData.email.register) : false
                   },
-                  phone: formData.phone
+                  phone: formData.phone,
+                  ...(formData.sms ? { sms: formData.sms } : {})
                 }
               })
             )
@@ -413,7 +445,11 @@ const CoreSettingComponent = () => {
   return (
     <AdminSettingPage
       form={form}
-      fieldAliases={{ 'auth.loginProviders.email': 'email', 'auth.loginProviders.phone': 'phone' }}
+      fieldAliases={{
+        'auth.loginProviders.email': 'email',
+        'auth.loginProviders.phone': 'phone',
+        'auth.loginProviders.sms': 'sms'
+      }}
       headerTitle={t('admin:page_title_core')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -487,34 +523,6 @@ const CoreSettingComponent = () => {
           </HStack>
         )}
         <AdminFormItem
-          label={t('admin:file_service_domain')}
-          tooltip={t('admin:file_service_domain_tip')}
-          mb={4}
-        >
-          <Controller
-            name="fileDomain"
-            control={control}
-            rules={{
-              validate: (value) =>
-                !value || isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url')
-            }}
-            render={({ field }) => (
-              <ConnectivityTestInput
-                {...field}
-                isEditable
-                service="fileService"
-                isInvalid={Boolean(errors.fileDomain)}
-                placeholder="https://files.example.com"
-              />
-            )}
-          />
-          {errors.fileDomain && (
-            <Text color={'red.500'} fontSize={'xs'} mt={1}>
-              {errors.fileDomain.message}
-            </Text>
-          )}
-        </AdminFormItem>
-        <AdminFormItem
           label={t('admin:download_link_mode')}
           tooltip={t('admin:short_proxy_streamed_proxy_download_via_the_main_site_hides')}
           isRequired
@@ -546,6 +554,7 @@ const CoreSettingComponent = () => {
             columns={[1, supportsExternalEndpoint && supportsCdnEndpoint ? 2 : 1]}
             spacing={5}
             mt={4}
+            mb={4}
           >
             {supportsExternalEndpoint && (
               <AdminFormItem
@@ -583,6 +592,35 @@ const CoreSettingComponent = () => {
             )}
           </SimpleGrid>
         )}
+
+        <AdminFormItem
+          label={t('admin:file_service_domain')}
+          tooltip={t('admin:file_service_domain_tip')}
+          mb={0}
+        >
+          <Controller
+            name="fileDomain"
+            control={control}
+            rules={{
+              validate: (value) =>
+                !value || isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url')
+            }}
+            render={({ field }) => (
+              <ConnectivityTestInput
+                {...field}
+                isEditable
+                service="fileService"
+                isInvalid={Boolean(errors.fileDomain)}
+                placeholder="https://files.example.com"
+              />
+            )}
+          />
+          {errors.fileDomain && (
+            <Text color={'red.500'} fontSize={'xs'} mt={1}>
+              {errors.fileDomain.message}
+            </Text>
+          )}
+        </AdminFormItem>
       </AdminSettingSection>
 
       {/* 文档增强解析 */}
@@ -1247,6 +1285,20 @@ const CoreSettingComponent = () => {
                 />
               )}
             />
+            <Controller
+              name="email.register"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  name={field.name}
+                  label={t('admin:enable_email_self_registration')}
+                  tooltip={t('admin:allow_users_to_register_with_email')}
+                  isChecked={field.value}
+                  isDisabled={!isSmtpFieldsRequired && !field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </SimpleGrid>
         </AdminSettingSection>
       )}
@@ -1329,6 +1381,74 @@ const CoreSettingComponent = () => {
               />
             </AdminFormItem>
           </SimpleGrid>
+
+          {showAccountSmsTemplates && (
+            <Box mt={4}>
+              <Text fontSize={'sm'} fontWeight={'semibold'} color={'myGray.900'} mb={4}>
+                {t('admin:sms_templates')}
+              </Text>
+              <SimpleGrid columns={[1, 2]} spacing={5}>
+                <AdminFormItem
+                  label={t('admin:login_code_chinese_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="login" />}
+                >
+                  <Input
+                    isInvalid={Boolean(form.getFieldState('sms.login.zh', form.formState).error)}
+                    {...register('sms.login.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:reset_password_chinese_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="resetPassword" />}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('sms.resetPassword.zh', form.formState).error
+                    )}
+                    {...register('sms.resetPassword.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:change_password_chinese_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="changePassword" />}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('sms.changePassword.zh', form.formState).error
+                    )}
+                    {...register('sms.changePassword.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:binding_notification_chinese_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="bindNotification" />}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('sms.bindNotification.zh', form.formState).error
+                    )}
+                    {...register('sms.bindNotification.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+                <AdminFormItem
+                  label={t('admin:model_deprecation_chinese_template')}
+                  labelRight={<SmsTemplateExampleButton templateKey="modelDeprecation" />}
+                >
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('sms.modelDeprecation.zh', form.formState).error
+                    )}
+                    {...register('sms.modelDeprecation.zh')}
+                    placeholder="SMS_xxx"
+                  />
+                </AdminFormItem>
+              </SimpleGrid>
+            </Box>
+          )}
         </AdminSettingSection>
       )}
     </AdminSettingPage>

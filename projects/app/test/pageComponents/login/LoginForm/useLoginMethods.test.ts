@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useLoginMethods } from '@/pageComponents/login/LoginForm/useLoginMethods';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import { LAST_LOGIN_METHOD_STORAGE_KEY } from '@/web/support/user/login/utils';
 
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -50,9 +51,17 @@ const renderLoginMethods = () => {
 };
 
 describe('useLoginMethods authorization destinations', () => {
+  const storage = new Map<string, string>();
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('window', { location: { origin: 'https://app.example.com' } });
+    storage.clear();
+    vi.stubGlobal('window', {
+      location: { origin: 'https://app.example.com' },
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value)
+      }
+    });
     vi.stubGlobal('navigator', { userAgent: 'Chrome' });
     mocks.getSsoAuthURL.mockResolvedValue('https://identity.example.com/authorize');
   });
@@ -63,6 +72,7 @@ describe('useLoginMethods authorization destinations', () => {
     const sso = methods.find((method) => method.id === 'oauth:sso')!;
     await startLogin(sso);
 
+    expect(storage.get(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('oauth:sso');
     expect(mocks.getSsoAuthURL).toHaveBeenCalledExactlyOnceWith({
       redirectUri: 'https://app.example.com/login/provider',
       isWecomWorkTerminal: false
@@ -80,10 +90,14 @@ describe('useLoginMethods authorization destinations', () => {
     );
   });
 
-  it('still builds the GitHub login address on the client using its Client ID', async () => {
+  it('still builds the GitHub login address on the client using its Client ID and respects skipRemember', async () => {
     const { methods, startLogin } = renderLoginMethods();
     const github = methods.find((method) => method.id === 'oauth:github')!;
+    await startLogin(github, { skipRemember: true });
+    expect(storage.get(LAST_LOGIN_METHOD_STORAGE_KEY)).toBeUndefined();
+
     await startLogin(github);
+    expect(storage.get(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('oauth:github');
 
     const url = new URL(mocks.replace.mock.calls[0][0]);
     expect(url.origin + url.pathname).toBe('https://github.com/login/oauth/authorize');

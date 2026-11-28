@@ -1364,6 +1364,7 @@
   "password_oauth_start": "前往 {{provider}} 验证",
   "password_old_placeholder": "填写旧密码",
   "password_send_code": "获取验证码",
+  "password_set_login_tip": "设置密码后，可使用密码登录",
   "password_set_success": "密码设置成功",
   "password_set_title": "设置密码",
   "password_tip": "至少 8 位，需包含任意两类：大写字母、小写字母、数字、特殊字符",

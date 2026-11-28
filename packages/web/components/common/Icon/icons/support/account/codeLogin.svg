@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <path
+    d="M6.52 17.52C5.26 15.85 4.5 13.74 4.5 11.2V5.3C7.1 5.3 9.8 4.4 12 2.7C14.2 4.4 16.9 5.3 19.5 5.3V11.2C19.5 16.5 16.2 19.9 12 21.4C10.49 20.86 9.09 20.07 7.93 19.04"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.65"
+    stroke-linecap="butt"
+    stroke-linejoin="miter"
+  />
+  <path
+    d="M8.5 11.9L11.2 14.6L16.1 8.9"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.65"
+    stroke-linecap="butt"
+    stroke-linejoin="miter"
+  />
+</svg>

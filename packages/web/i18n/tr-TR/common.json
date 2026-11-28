@@ -1364,6 +1364,7 @@
   "password_oauth_start": "{{provider}} ile doğrula",
   "password_old_placeholder": "Eski şifreyi gir",
   "password_send_code": "Doğrulama kodu al",
+  "password_set_login_tip": "Şifre belirledikten sonra şifre ile giriş yapabilirsin",
   "password_set_success": "Şifre belirlendi",
   "password_set_title": "Şifre belirle",
   "password_tip": "En az 8 karakter olmalı ve şunlardan herhangi ikisini içermeli: büyük harf, küçük harf, rakam, özel karakter",

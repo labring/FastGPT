@@ -1,11 +1,12 @@
 import React from 'react';
-import { Box, FormControl, FormErrorMessage, HStack, Text } from '@chakra-ui/react';
+import { Box, Flex, FormControl, FormErrorMessage, HStack, Text } from '@chakra-ui/react';
 import { useFormContext, type FieldError } from 'react-hook-form';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type AdminFormItemProps = {
   label: string;
+  labelRight?: React.ReactNode;
   name?: string;
   tooltip?: string;
   description?: string;
@@ -15,11 +16,12 @@ type AdminFormItemProps = {
 };
 
 /**
- * 统一的表单字段垂直排布项（Label + 提示问号 + 下方输入控件）。
+ * 统一的表单字段垂直排布项（Label + 提示问号/右侧动作 + 下方输入控件）。
  * 文案由调用方传入已翻译的字符串，本组件只负责布局。
  */
 const AdminFormItem = ({
   label,
+  labelRight,
   name,
   tooltip,
   description,
@@ -53,17 +55,20 @@ const AdminFormItem = ({
   );
   return (
     <FormControl isInvalid={Boolean(error)} mb={mb}>
-      <HStack spacing={1.5} mb={2}>
-        {isRequired && (
-          <Text as={'span'} color={'red.500'}>
-            *
+      <Flex alignItems={'center'} justifyContent={'space-between'} gap={2} mb={2}>
+        <HStack spacing={1.5} minW={0}>
+          {isRequired && (
+            <Text as={'span'} color={'red.500'}>
+              *
+            </Text>
+          )}
+          <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+            {label}
           </Text>
-        )}
-        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-          {label}
-        </Text>
-        {tooltip && <QuestionTip label={tooltip} />}
-      </HStack>
+          {tooltip && <QuestionTip label={tooltip} />}
+        </HStack>
+        {labelRight && <Box flexShrink={0}>{labelRight}</Box>}
+      </Flex>
       <Box w={'100%'}>{children}</Box>
       {!hasInlineError && error && (
         <FormErrorMessage>{error.message || t('admin:failed_to_save_settings')}</FormErrorMessage>

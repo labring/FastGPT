@@ -29,9 +29,7 @@ const mocks = vi.hoisted(() => ({
   startLogin: vi.fn().mockResolvedValue(undefined),
   resetChatCache: vi.fn(),
   setPageType: undefined as ((pageType: `${LoginPageTypeEnum}`) => void) | undefined,
-  loginSuccess: undefined as
-    | ((res: any, options?: { skipLastLoginMethod?: boolean }) => Promise<void> | void)
-    | undefined
+  loginSuccess: undefined as ((res: any) => Promise<void> | void) | undefined
 }));
 
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
@@ -140,7 +138,8 @@ describe('LoginContainer route initialization', () => {
     mocks.system.initd = true;
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
     await render();
     expect(mocks.startLogin).toHaveBeenCalledOnce();
@@ -163,7 +162,8 @@ describe('LoginContainer route initialization', () => {
     mocks.system.feConfigs.sso!.enabled = true;
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
     await render();
     expect(mocks.startLogin).toHaveBeenCalledOnce();
@@ -186,7 +186,8 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'wecom' })
+      expect.objectContaining({ provider: 'wecom' }),
+      { skipRemember: true }
     );
   });
 
@@ -199,7 +200,8 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
   });
 
@@ -212,7 +214,8 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'wecom' })
+      expect.objectContaining({ provider: 'wecom' }),
+      { skipRemember: true }
     );
   });
 
@@ -233,24 +236,27 @@ describe('LoginContainer route initialization', () => {
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
   });
 
-  it('restores the saved last login method when available, falls back when unavailable, and records login success', async () => {
+  it('records the login method immediately on switch, restores when available, and falls back when unavailable', async () => {
     mocks.system.feConfigs = {
       isPlus: true,
       login_method: ['email'],
       oauth: { wechat: 'wechat-app-id' }
     };
 
-    // 1. 首次登录后记录用户切换的密码登录方式
+    // 1. 只要点击切换登录方式就立即记忆，无需等待登录成功
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBeNull();
 
     await act(async () => {
       mocks.setPageType?.(LoginPageTypeEnum.passwordLogin);
     });
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
 
+    // 点击忘记密码不覆盖已记住的登录方式
     await act(async () => {
-      await mocks.loginSuccess?.({ user: { _id: 'u1' } });
+      mocks.setPageType?.(LoginPageTypeEnum.forgetPassword);
     });
     expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
 
@@ -260,8 +266,12 @@ describe('LoginContainer route initialization', () => {
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
 
-    // 3. 微信登录可用时恢复微信登录；微信关闭后回退默认验证码登录
-    window.localStorage.setItem(LAST_LOGIN_METHOD_STORAGE_KEY, 'page:wechat');
+    // 3. 切换微信后立即记住并在刷新后恢复；微信关闭后回退默认验证码登录
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.wechat);
+    });
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:wechat');
+
     await act(async () => root.unmount());
     root = createRoot(container);
     await render();
@@ -276,7 +286,7 @@ describe('LoginContainer route initialization', () => {
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
 
-    // 4. rootLogin 运维登录不覆盖本地记录的上次登录方式
+    // 4. rootLogin 运维入口不覆盖本地记录的登录方式
     window.localStorage.setItem(LAST_LOGIN_METHOD_STORAGE_KEY, 'page:code');
     mocks.router.query = { rootLogin: '1' };
     await act(async () => root.unmount());
@@ -284,7 +294,7 @@ describe('LoginContainer route initialization', () => {
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
     await act(async () => {
-      await mocks.loginSuccess?.({ user: { _id: 'root' } });
+      mocks.setPageType?.(LoginPageTypeEnum.passwordLogin);
     });
     expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:code');
   });
@@ -308,23 +318,13 @@ describe('LoginContainer route initialization', () => {
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
     expect(mocks.startLogin).not.toHaveBeenCalled();
-
-    // 2FA 完成后若来源仍为自动凭据，不得覆盖用户原本保存的登录方式偏好。
-    await act(async () => {
-      await mocks.loginSuccess?.({ user: { _id: 'u-auto' } }, { skipLastLoginMethod: true });
-    });
     expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:wechat');
 
-    // 取消 2FA 或密码错误后在同一密码表单手动登录成功，即使页面仍锁存在密码页也应记录本地偏好。
-    await act(async () => {
-      await mocks.loginSuccess?.({ user: { _id: 'u-manual' } }, { skipLastLoginMethod: false });
-    });
-    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
-
-    // 用户显式切走页面后，释放自动登录锁存态。
+    // 用户显式切换其他登录方式后，立即记住新方式并释放自动登录锁存态。
     await act(async () => {
       mocks.setPageType?.(LoginPageTypeEnum.codeLogin);
     });
     expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:code');
   });
 });

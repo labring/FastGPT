@@ -25,10 +25,6 @@ import { useLoginMethods } from './LoginForm/useLoginMethods';
 import LoginGuideLink from './LoginForm/LoginGuideLink';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
-export type LoginFormSuccessOptions = {
-  /** 自动凭据登录（?u=&p=）成功时不覆盖用户本地保存的日常登录偏好。 */
-  skipLastLoginMethod?: boolean;
-};
 
 /** 等待系统配置和自动登录结果，避免方式选择页在自动跳转前短暂闪现。 */
 export const LoginContainer = ({
@@ -53,19 +49,30 @@ export const LoginContainer = ({
   const rootLogin = router.query.rootLogin === '1';
   const hasQueryAutoLoginCredentials = Boolean(router.query.u && router.query.p);
   // 密码登录触发二次验证时会主动清理 URL 中的明文凭据；锁存本次自动登录态，
-  // 防止清除 URL 后表单被切走卸载 Challenge 弹窗或完成后覆盖本地登录偏好。
+  // 防止清除 URL 后表单被切走卸载 Challenge 弹窗或被 SSO 自动跳转劫持。
   const [latchedAutoLoginFlow, setLatchedAutoLoginFlow] = useState(hasQueryAutoLoginCredentials);
   if (hasQueryAutoLoginCredentials && !latchedAutoLoginFlow) {
     setLatchedAutoLoginFlow(true);
   }
   const hasAutoLoginCredentials = hasQueryAutoLoginCredentials || latchedAutoLoginFlow;
 
-  const setPageType = useCallback((nextPageType: `${LoginPageTypeEnum}`) => {
-    if (nextPageType !== LoginPageTypeEnum.passwordLogin) {
-      setLatchedAutoLoginFlow(false);
-    }
-    setSelectedPageType(nextPageType);
-  }, []);
+  const setPageType = useCallback(
+    (nextPageType: `${LoginPageTypeEnum}`) => {
+      if (nextPageType !== LoginPageTypeEnum.passwordLogin) {
+        setLatchedAutoLoginFlow(false);
+      }
+      // 只要用户主动点击切换登录方式即立即写入记忆；rootLogin 运维入口不覆盖日常偏好。
+      if (!rootLogin) {
+        const method = getLastLoginMethodByPageType(nextPageType);
+        if (method) {
+          saveLastLoginMethod(method);
+          setLastLoginMethod(method);
+        }
+      }
+      setSelectedPageType(nextPageType);
+    },
+    [rootLogin]
+  );
 
   const { startLogin } = useLoginMethods({
     mode: 'selection',
@@ -113,18 +120,10 @@ export const LoginContainer = ({
     pageType === LoginPageTypeEnum.passwordLogin || pageType === LoginPageTypeEnum.codeLogin;
 
   const loginSuccess = useCallback(
-    async (res: LoginSuccessResponseType, options?: LoginFormSuccessOptions) => {
-      // 运维入口与自动凭据提交不覆盖用户日常偏好的上次登录方式；退出自动流程后的原地手动登录正常记录。
-      if (!rootLogin && !options?.skipLastLoginMethod) {
-        const method = getLastLoginMethodByPageType(pageType);
-        if (method) {
-          saveLastLoginMethod(method);
-          setLastLoginMethod(method);
-        }
-      }
+    async (res: LoginSuccessResponseType) => {
       await onSuccess?.(res);
     },
-    [onSuccess, pageType, rootLogin]
+    [onSuccess]
   );
 
   useEffect(() => {
@@ -136,7 +135,7 @@ export const LoginContainer = ({
     if (!initd || initializedRef.current || !autoLoginMethod) return;
     initializedRef.current = true;
 
-    void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
+    void startLogin(autoLoginMethod, { skipRemember: true }).catch(() => setAutoLoginFailed(true));
   }, [autoLoginMethod, initd, startLogin]);
 
   return (

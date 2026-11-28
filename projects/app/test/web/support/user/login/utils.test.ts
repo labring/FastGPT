@@ -192,7 +192,7 @@ describe('last login method storage helpers', () => {
   it('maps login page types and OAuth providers to canonical method ids', () => {
     expect(getLastLoginMethodByPageType(LoginPageTypeEnum.codeLogin)).toBe('page:code');
     expect(getLastLoginMethodByPageType(LoginPageTypeEnum.passwordLogin)).toBe('page:password');
-    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.forgetPassword)).toBe('page:password');
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.forgetPassword)).toBeUndefined();
     expect(getLastLoginMethodByPageType(LoginPageTypeEnum.wechat)).toBe('page:wechat');
     expect(getLastLoginMethodByPageType(LoginPageTypeEnum.methodSelection)).toBeUndefined();
 
@@ -408,15 +408,15 @@ describe('getLoginMethodItems', () => {
       })
     });
 
-    expect(methods.map(({ id }) => id)).toEqual(['oauth:sso', 'page:password', 'oauth:google']);
-    expect(methods[0]).toMatchObject({ label: 'SSO' });
+    expect(methods.map(({ id }) => id)).toEqual(['page:password', 'oauth:sso', 'oauth:google']);
+    expect(methods[1]).toMatchObject({ label: 'SSO' });
   });
 
-  it('shows password login under verification-code login and vice versa when code login is enabled', () => {
+  it('places password/code login before third-party providers in alternatives and keeps selection order', () => {
     const feConfigs = createFeConfigs({
       isPlus: true,
       login_method: ['email', 'phone'],
-      oauth: { github: 'github-client-id' }
+      oauth: { wechat: 'wechat-app-id', github: 'github-client-id' }
     });
 
     const onCodePage = getLoginMethodItems({
@@ -425,7 +425,11 @@ describe('getLoginMethodItems', () => {
       labels,
       feConfigs
     });
-    expect(onCodePage.map(({ id }) => id)).toEqual(['page:password', 'oauth:github']);
+    expect(onCodePage.map(({ id }) => id)).toEqual([
+      'page:password',
+      'page:wechat',
+      'oauth:github'
+    ]);
 
     const onPasswordPage = getLoginMethodItems({
       mode: 'alternatives',
@@ -433,7 +437,23 @@ describe('getLoginMethodItems', () => {
       labels,
       feConfigs
     });
-    expect(onPasswordPage.map(({ id }) => id)).toEqual(['page:code', 'oauth:github']);
+    expect(onPasswordPage.map(({ id }) => id)).toEqual([
+      'page:code',
+      'page:wechat',
+      'oauth:github'
+    ]);
+
+    const onWechatPage = getLoginMethodItems({
+      mode: 'alternatives',
+      pageType: LoginPageTypeEnum.wechat,
+      labels,
+      feConfigs
+    });
+    expect(onWechatPage.map(({ id }) => id)).toEqual([
+      'page:password',
+      'page:code',
+      'oauth:github'
+    ]);
 
     const onSelectionPage = getLoginMethodItems({
       mode: 'selection',
@@ -442,8 +462,9 @@ describe('getLoginMethodItems', () => {
       feConfigs
     });
     expect(onSelectionPage.map(({ id }) => id)).toEqual([
-      'page:code',
+      'page:wechat',
       'oauth:github',
+      'page:code',
       'page:password'
     ]);
   });
