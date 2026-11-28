@@ -241,7 +241,8 @@ describe('login page invitation redirects', () => {
         lastTmbId: 'tmb-a'
       });
       expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
-      expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('oauth:sso');
+      // 登录方式偏好改为点击登录入口时记录，OAuth 回调阶段不覆盖本地偏好。
+      expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBeNull();
     });
   });
 

@@ -56,6 +56,14 @@ describe('probeUrlConnection', () => {
         const key = req.url.split('/').slice(3).join('/');
         res.writeHead(probeObjects.has(key) ? 200 : 404, { 'Content-Type': 'text/plain' });
         res.end(probeObjects.get(key) ?? 'not found');
+      } else if (req.url?.startsWith(`/${S3Buckets.public}/`)) {
+        const parsed = new URL(req.url, 'http://127.0.0.1');
+        const key = parsed.pathname.slice(`/${S3Buckets.public}/`.length);
+        const signed = parsed.searchParams.has('X-Amz-Signature');
+        res.writeHead(signed && probeObjects.has(key) ? 200 : 403, {
+          'Content-Type': 'text/plain'
+        });
+        res.end(signed && probeObjects.has(key) ? probeObjects.get(key) : 'forbidden');
       } else if (req.url?.endsWith('/api/system/file/health')) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
@@ -191,6 +199,62 @@ describe('probeUrlConnection', () => {
       ).resolves.toMatchObject({ connected: false, status: 200, errorCode: 'response' });
     } finally {
       Object.assign(serviceEnv, { NEXT_PUBLIC_BASE_URL: previous });
+    }
+  });
+
+  it('verifies storage external endpoint via signed probe object and cleans up temporary probes', async () => {
+    const previous = global.s3BucketMap;
+    const vendor = serviceEnv.STORAGE_VENDOR;
+    const forcePathStyle = serviceEnv.STORAGE_S3_FORCE_PATH_STYLE;
+    Object.assign(serviceEnv, { STORAGE_VENDOR: 'minio', STORAGE_S3_FORCE_PATH_STYLE: true });
+    const remove = vi.fn(async ({ key }: { key: string }) => {
+      probeObjects.delete(key);
+    });
+    global.s3BucketMap = {
+      [S3Buckets.public]: {
+        bucketName: S3Buckets.public,
+        client: {
+          uploadObject: async ({ key, body }: { key: string; body: Buffer }) => {
+            probeObjects.set(key, body.toString());
+          },
+          deleteObject: remove
+        }
+      }
+    } as any;
+    try {
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: baseUrl,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: true, status: 200 });
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: `${baseUrl}/wrong-prefix`,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, status: 404, errorCode: 'response' });
+      Object.assign(serviceEnv, { STORAGE_VENDOR: 'oss' });
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: baseUrl,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, errorCode: 'response' });
+      await vi.waitFor(async () => {
+        expect(remove).toHaveBeenCalledTimes(2);
+        expect(probeObjects.size).toBe(0);
+        expect(await MongoS3TTL.countDocuments({ minioKey: /^system\/probe\// })).toBe(0);
+      });
+    } finally {
+      global.s3BucketMap = previous;
+      Object.assign(serviceEnv, {
+        STORAGE_VENDOR: vendor,
+        STORAGE_S3_FORCE_PATH_STYLE: forcePathStyle
+      });
     }
   });
 

@@ -6,6 +6,8 @@ import type {
   ProbeConnectionResponse,
   ProbeConnectionService
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
+import { createStorage } from '@fastgpt-sdk/storage';
+import { getStorageVendorCapabilities } from '@fastgpt/global/common/system/config/schemas/storage';
 import { axiosWithoutSSRF } from '../../api/axios';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { serviceEnv } from '../../../env';
@@ -99,15 +101,23 @@ export const probeUrlConnection = async ({
       return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
     };
 
-    const probeCdn = async (): Promise<ProbeConnectionResponse> => {
-      // 测试唯一的临时对象，避免根路径 403 或普通网站的 200 被当成 CDN 可用。
-      if (serviceEnv.STORAGE_VENDOR === 'r2') return invalidResponse();
+    const probeStorageObjectByUrl = async ({
+      markerPrefix,
+      resolveTargetUrl
+    }: {
+      markerPrefix: string;
+      resolveTargetUrl: (args: {
+        bucket: NonNullable<NonNullable<typeof global.s3BucketMap>[string]>;
+        key: string;
+      }) => Promise<string> | string;
+    }): Promise<ProbeConnectionResponse> => {
+      // 测试唯一的临时对象，避免根路径 403 或普通网站的 200 被误判为对象存储/CDN 可用。
       const bucket = global.s3BucketMap?.[S3Buckets.public];
       if (!bucket) return invalidResponse();
       const key = `system/probe/${randomUUID()}.txt`;
-      const marker = `fastgpt-cdn-probe-${randomUUID()}`;
+      const marker = `${markerPrefix}-${randomUUID()}`;
       /** 超时后仍等待已开始的上传完成，再清理对象；删除失败时保留 TTL 供后台回收。 */
-      const runCdnProbe = async (): Promise<ProbeConnectionResponse> => {
+      const runProbe = async (): Promise<ProbeConnectionResponse> => {
         await MongoS3TTL.create({
           bucketName: bucket.bucketName,
           minioKey: key,
@@ -125,8 +135,9 @@ export const probeUrlConnection = async ({
           });
           if (controller.signal.aborted) throw new Error('Probe timed out');
 
-          const publicUrl = bucket.externalClient.generatePublicGetUrl({ key }).url;
-          const target = replaceS3UrlWithCdnEndpoint(publicUrl, url);
+          const target = await resolveTargetUrl({ bucket, key });
+          if (controller.signal.aborted) throw new Error('Probe timed out');
+
           const response = await axiosWithoutSSRF.get<string>(target, {
             ...options,
             responseType: 'text'
@@ -151,10 +162,56 @@ export const probeUrlConnection = async ({
         if (controller.signal.aborted) onAbort();
       });
       try {
-        return await Promise.race([runCdnProbe(), timeout]);
+        return await Promise.race([runProbe(), timeout]);
       } finally {
         controller.signal.removeEventListener('abort', onAbort);
       }
+    };
+
+    const probeStorageExternalEndpoint = async (): Promise<ProbeConnectionResponse> => {
+      const vendor = serviceEnv.STORAGE_VENDOR;
+      if (
+        !getStorageVendorCapabilities(vendor).supportsExternalEndpoint ||
+        (vendor !== 'minio' && vendor !== 'aws-s3')
+      ) {
+        return invalidResponse();
+      }
+      return probeStorageObjectByUrl({
+        markerPrefix: 'fastgpt-storage-probe',
+        resolveTargetUrl: async ({ bucket, key }) => {
+          // 与运行期 S3Bucket 使用一致的参数生成预签名直连地址，同时验证端点可达性与 SigV4 签名。
+          const externalClient = createStorage({
+            bucket: bucket.bucketName,
+            vendor,
+            endpoint: url.replace(/\/+$/, ''),
+            region: serviceEnv.STORAGE_REGION,
+            credentials: {
+              accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+              secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
+            },
+            forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
+            maxRetries: serviceEnv.STORAGE_S3_MAX_RETRIES,
+            publicAccessExtraSubPath: serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH
+          });
+          return (
+            await externalClient.generatePresignedGetUrl({
+              key,
+              expiredSeconds: 60
+            })
+          ).url;
+        }
+      });
+    };
+
+    const probeCdn = async (): Promise<ProbeConnectionResponse> => {
+      if (!getStorageVendorCapabilities(serviceEnv.STORAGE_VENDOR).supportsCdnEndpoint) {
+        return invalidResponse();
+      }
+      return probeStorageObjectByUrl({
+        markerPrefix: 'fastgpt-cdn-probe',
+        resolveTargetUrl: ({ bucket, key }) =>
+          replaceS3UrlWithCdnEndpoint(bucket.externalClient.generatePublicGetUrl({ key }).url, url)
+      });
     };
 
     const probeCodeSandbox = async (): Promise<ProbeConnectionResponse> => {
@@ -297,6 +354,7 @@ export const probeUrlConnection = async ({
       agentSandboxWsProxy: probeAgentSandboxProxy,
       agentSandboxPreviewProxy: probeAgentSandboxProxy,
       fileService: probeFileService,
+      storageExternalEndpoint: probeStorageExternalEndpoint,
       cdn: probeCdn,
       codeSandbox: probeCodeSandbox,
       opensandbox: probeOpenSandbox,

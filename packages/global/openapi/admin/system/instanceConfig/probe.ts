@@ -19,13 +19,14 @@ export const ProbeConnectionServiceSchema = z
     'volumeManager',
     'mcpSse',
     'fileService',
+    'storageExternalEndpoint',
     'cdn',
     'agentSandboxWsProxy',
     'agentSandboxPreviewProxy'
   ])
   .meta({
     description:
-      '服务类型；Code Sandbox 执行算术探针，OpenSandbox 校验 /v1/sandboxes 与 API Key，Volume Manager 校验 /v1/volumes 与 Token，MCP SSE 验证握手，Agent Sandbox 代理检查 /health'
+      '服务类型；Code Sandbox 执行算术探针，OpenSandbox 校验 /v1/sandboxes 与 API Key，Volume Manager 校验 /v1/volumes 与 Token，MCP SSE 验证握手，文件服务校验健康端点，文件系统外部访问端点与 CDN 校验临时探针对象读取，Agent Sandbox 代理检查 /health'
   });
 export type ProbeConnectionService = z.infer<typeof ProbeConnectionServiceSchema>;
 

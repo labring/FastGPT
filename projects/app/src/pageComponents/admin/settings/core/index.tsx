@@ -25,6 +25,7 @@ import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import SmsTemplateExampleButton from '@/pageComponents/admin/settings/SmsTemplateExampleButton';
 import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
@@ -503,57 +504,46 @@ const CoreSettingComponent = () => {
 
       {/* 2. 文件系统 */}
       <AdminSettingSection id="download" title={t('admin:core_section_download')} showDivider>
-        {storageCapabilities?.vendor && (
-          <HStack mb={4} spacing={2} data-storage-vendor={storageCapabilities.vendor}>
-            <Text fontSize={'sm'} color={'myGray.600'}>
-              {t('admin:object_storage_backend_read_only')}:
-            </Text>
-            <Box
-              px={2}
-              py={0.5}
-              borderRadius={'sm'}
-              bg={'myGray.100'}
-              color={'myGray.800'}
-              fontSize={'xs'}
-              fontWeight={'medium'}
-              fontFamily={'mono'}
-            >
-              {storageCapabilities.vendor}
-            </Box>
-          </HStack>
-        )}
-        <AdminFormItem
-          label={t('admin:download_link_mode')}
-          tooltip={t('admin:short_proxy_streamed_proxy_download_via_the_main_site_hides')}
-          isRequired
-          mb={4}
-        >
-          <Controller
-            name="downloadMode"
-            control={control}
-            render={({ field }) => (
-              <MySelect<'short-proxy' | 'short-redirect'>
-                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                width={'400px'}
-                list={[
-                  {
-                    label: t('admin:short_proxy_proxy_download_via_main_site'),
-                    value: 'short-proxy'
-                  },
-                  { label: t('admin:short_redirect_s3_signed_redirect'), value: 'short-redirect' }
-                ]}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </AdminFormItem>
+        <SimpleGrid columns={[1, storageCapabilities?.vendor ? 2 : 1]} spacing={5} mb={4}>
+          {storageCapabilities?.vendor && (
+            <AdminFormItem label={t('admin:object_storage_backend_read_only')} mb={0}>
+              <Box data-storage-vendor={storageCapabilities.vendor}>
+                <AdminReadonlyInput value={storageCapabilities.vendor} />
+              </Box>
+            </AdminFormItem>
+          )}
+          <AdminFormItem label={t('admin:download_link_mode')} isRequired mb={0}>
+            <Controller
+              name="downloadMode"
+              control={control}
+              render={({ field }) => (
+                <MySelect<'short-proxy' | 'short-redirect'>
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                  width={'full'}
+                  list={[
+                    {
+                      label: t('admin:short_proxy_proxy_download_via_main_site'),
+                      description: t('admin:short_proxy_proxy_download_via_main_site_desc'),
+                      value: 'short-proxy'
+                    },
+                    {
+                      label: t('admin:short_redirect_s3_signed_redirect'),
+                      description: t('admin:short_redirect_s3_signed_redirect_desc'),
+                      value: 'short-redirect'
+                    }
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </AdminFormItem>
+        </SimpleGrid>
 
         {showRedirectEndpoints && (
           <SimpleGrid
             columns={[1, supportsExternalEndpoint && supportsCdnEndpoint ? 2 : 1]}
             spacing={5}
-            mt={4}
             mb={4}
           >
             {supportsExternalEndpoint && (
@@ -562,10 +552,18 @@ const CoreSettingComponent = () => {
                 tooltip={t('admin:storage_external_endpoint_tip')}
                 mb={0}
               >
-                <Input
-                  isInvalid={Boolean(form.getFieldState('externalEndpoint', form.formState).error)}
-                  {...register('externalEndpoint')}
-                  placeholder="https://storage.example.com"
+                <Controller
+                  name="externalEndpoint"
+                  control={control}
+                  render={({ field }) => (
+                    <ConnectivityTestInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      {...field}
+                      isEditable
+                      service="storageExternalEndpoint"
+                      placeholder="https://storage.example.com"
+                    />
+                  )}
                 />
               </AdminFormItem>
             )}
