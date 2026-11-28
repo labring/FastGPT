@@ -127,22 +127,6 @@ export const promptToolCallMessageRewrite = (
   return rewritten;
 };
 
-/**
- * 剥离 prompt tool 协议的 `0:` / `0：` 前缀与紧随冒号的 ASCII 空格，
- * 保留正文前导换行与全角缩进（如 U+3000）；若剥离协议头后仅剩空白则返回空字符串，
- * 避免仅含协议头与空白的输出被当作有效正文。
- */
-export const stripPromptToolAnswerPrefix = (str: string): string => {
-  const trimmedStart = str.trimStart();
-  const firstIndex =
-    trimmedStart.indexOf('0:') !== -1 ? trimmedStart.indexOf('0:') : trimmedStart.indexOf('0：');
-  const answer =
-    firstIndex > -1 && firstIndex < 6
-      ? trimmedStart.substring(firstIndex + 2).replace(/^[ \t]+/, '')
-      : str;
-  return answer.trim() ? answer : '';
-};
-
 const ERROR_TEXT = 'Tool call error';
 export const parsePromptToolCall = (
   str: string
@@ -151,16 +135,12 @@ export const parsePromptToolCall = (
   streamAnswer?: string;
   toolCalls?: ChatCompletionMessageToolCall[];
 } => {
-  const trimmedStr = str.trim();
-  if (!trimmedStr) {
-    return { answer: '' };
-  }
-
+  str = str.trim();
   // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
   const prefixReg = /1(:|：)/;
 
-  if (prefixReg.test(trimmedStr)) {
-    const toolString = sliceJsonStr(trimmedStr);
+  if (prefixReg.test(str)) {
+    const toolString = sliceJsonStr(str);
 
     try {
       const toolCall = json5.parse(toolString) as { name: string; arguments: object };
@@ -179,19 +159,24 @@ export const parsePromptToolCall = (
         ]
       };
     } catch {
-      if (prefixReg.test(trimmedStr)) {
+      if (prefixReg.test(str)) {
         return {
-          answer: `${ERROR_TEXT}: ${trimmedStr}`,
-          streamAnswer: `${ERROR_TEXT}: ${trimmedStr}`
+          answer: `${ERROR_TEXT}: ${str}`,
+          streamAnswer: `${ERROR_TEXT}: ${str}`
         };
       } else {
         return {
-          answer: trimmedStr,
-          streamAnswer: trimmedStr
+          answer: str,
+          streamAnswer: str
         };
       }
     }
   } else {
-    return { answer: stripPromptToolAnswerPrefix(str) };
+    const firstIndex = str.indexOf('0:') !== -1 ? str.indexOf('0:') : str.indexOf('0：');
+    if (firstIndex > -1 && firstIndex < 6) {
+      str = str.substring(firstIndex + 2).trim();
+    }
+
+    return { answer: str };
   }
 };

@@ -29,21 +29,12 @@ describe('parsePromptToolCall function tests', () => {
       });
     });
 
-    it('should strip only ASCII spaces after 0: prefix while preserving indentation and trailing content', () => {
-      expect(parsePromptToolCall('   0:    This is a response with whitespace   ')).toEqual({
-        answer: 'This is a response with whitespace   '
-      });
-      expect(parsePromptToolCall('0: \n\u3000\u3000第一段\n\n\u3000\u3000第二段')).toEqual({
-        answer: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段'
-      });
-      expect(parsePromptToolCall('\n\u3000\u3000无前缀首段')).toEqual({
-        answer: '\n\u3000\u3000无前缀首段'
-      });
-      expect(parsePromptToolCall('0:\n\u3000\u3000')).toEqual({
-        answer: ''
-      });
-      expect(parsePromptToolCall('0:   ')).toEqual({
-        answer: ''
+    it('should return trimmed answer when input starts with 0: and has extra whitespace', () => {
+      const input = '   0:    This is a response with whitespace   ';
+      const result = parsePromptToolCall(input);
+
+      expect(result).toEqual({
+        answer: 'This is a response with whitespace'
       });
     });
 
@@ -369,7 +360,7 @@ describe('parsePromptToolCall function tests', () => {
       const result = parsePromptToolCall(input);
 
       expect(result).toEqual({
-        answer: 'This\thas\ttabs\t'
+        answer: 'This\thas\ttabs'
       });
     });
 

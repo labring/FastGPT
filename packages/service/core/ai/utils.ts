@@ -44,9 +44,7 @@ export const computedTemperature = ({
 
 // LLM utils
 /**
- * 从非流式模型结果中拆分 <think></think> 思考内容和最终回答。
- * 仅当 </think> 后全部是空白时返回空字符串，避免 reasoning-only 输出被解析成 answerText="\n"；
- * 只要存在实际正文，原样保留前导换行与缩进（如全角空格 U+3000）。
+ * 从非流式模型结果中拆分 <think></think> 思考内容和最终回答，原样保留正文内容。
  */
 export const parseReasoningContent = (text: string): [string, string] => {
   const regex = /<think>([\s\S]*?)<\/think>/;
@@ -59,7 +57,7 @@ export const parseReasoningContent = (text: string): [string, string] => {
   const thinkContent = match[1].trim();
   const answerContent = text.slice(match.index! + match[0].length);
 
-  return [thinkContent, answerContent.trim() ? answerContent : ''];
+  return [thinkContent, answerContent];
 };
 
 // Parse llm stream part
@@ -80,35 +78,6 @@ export const parseLLMStreamResponse = () => {
   let buffer_reasoningContent = '';
   let buffer_content = '';
   let error: any = undefined;
-  let shouldNormalizeFirstAnswer = false;
-  let pendingLeadingWhitespace = '';
-
-  const normalizeContentBoundary = ({
-    reasoningContent,
-    content
-  }: {
-    reasoningContent: string;
-    content: string;
-  }) => {
-    if (reasoningContent) {
-      shouldNormalizeFirstAnswer = true;
-    }
-
-    if (!content || !shouldNormalizeFirstAnswer) return content;
-
-    if (!content.trim()) {
-      // 思考结束后的纯空白先暂存：若整轮无正文（如 reasoning-only / reasoning+tool_calls）则丢弃，
-      // 避免误触发空正文流事件；一旦后续出现实际正文，连同前导空白原样释放。
-      pendingLeadingWhitespace += content;
-      return '';
-    }
-
-    const normalizedContent = `${pendingLeadingWhitespace}${content}`;
-    pendingLeadingWhitespace = '';
-    shouldNormalizeFirstAnswer = false;
-
-    return normalizedContent;
-  };
 
   /* 
     parseThinkTag - 只控制是否主动解析 <think></think>，如果接口已经解析了，则不再解析。
@@ -151,7 +120,7 @@ export const parseLLMStreamResponse = () => {
       const isStreamEnd = !!buffer_finishReason;
 
       // Parse think
-      const { reasoningContent: parsedThinkReasoningContent, content: rawParsedThinkContent } =
+      const { reasoningContent: parsedThinkReasoningContent, content: parsedThinkContent } =
         (() => {
           if (reasoningContent || !parseThinkTag) {
             isInThinkTag = false;
@@ -267,11 +236,6 @@ export const parseLLMStreamResponse = () => {
             content: ''
           };
         })();
-
-      const parsedThinkContent = normalizeContentBoundary({
-        reasoningContent: parsedThinkReasoningContent,
-        content: rawParsedThinkContent
-      });
 
       // Parse datset cite
       if (retainDatasetCite) {

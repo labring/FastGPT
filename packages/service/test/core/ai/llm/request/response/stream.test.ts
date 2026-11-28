@@ -116,40 +116,28 @@ describe('createStreamResponse', () => {
     expect(callbacks.onToolCall).not.toHaveBeenCalled();
   });
 
-  it('should buffer leading whitespace after reasoning until visible text arrives and drop it for reasoning-only', async () => {
-    const withAnswerCallbacks = createCallbacks();
-    const { response: withAnswerStream } = createStream([
+  it('should stream leading newline and full-width indentation verbatim after reasoning', async () => {
+    const callbacks = createCallbacks();
+    const { response } = createStream([
       chunk({ reasoning_content: '思考中' }),
       chunk({ content: '\n' }),
       chunk({ content: '\u3000\u3000' }),
       chunk({ content: '第一段' }),
       chunk({ content: '\n\n\u3000\u3000第二段' }, 'stop')
     ]);
-    const withAnswerResult = await createStreamResponse({
+    const result = await createStreamResponse({
       body: createBody(),
-      response: withAnswerStream,
-      ...withAnswerCallbacks
+      response,
+      ...callbacks
     });
 
-    expect(withAnswerResult.answerText).toBe('\n\u3000\u3000第一段\n\n\u3000\u3000第二段');
-    expect(withAnswerCallbacks.onStreaming.mock.calls).toEqual([
-      [{ text: '\n\u3000\u3000第一段' }],
+    expect(result.answerText).toBe('\n\u3000\u3000第一段\n\n\u3000\u3000第二段');
+    expect(callbacks.onStreaming.mock.calls).toEqual([
+      [{ text: '\n' }],
+      [{ text: '\u3000\u3000' }],
+      [{ text: '第一段' }],
       [{ text: '\n\n\u3000\u3000第二段' }]
     ]);
-
-    const reasoningOnlyCallbacks = createCallbacks();
-    const { response: reasoningOnlyStream } = createStream([
-      chunk({ reasoning_content: '仅思考' }),
-      chunk({ content: '\n' }, 'stop')
-    ]);
-    const reasoningOnlyResult = await createStreamResponse({
-      body: createBody(),
-      response: reasoningOnlyStream,
-      ...reasoningOnlyCallbacks
-    });
-
-    expect(reasoningOnlyResult.answerText).toBe('');
-    expect(reasoningOnlyCallbacks.onStreaming).not.toHaveBeenCalled();
   });
 
   it.each([true, false])('should respect model reasoning=%s for think tags', async (reasoning) => {
@@ -765,128 +753,6 @@ describe('createStreamResponse', () => {
         finish_reason: 'stop'
       });
       if (observe) expect(textOf(callbacks.onStreaming)).toBe('hello world');
-    });
-
-    it.each([
-      {
-        label: 'prefixed full-width indent',
-        parts: ['0:', ' ', '\n\u3000\u3000第一段', '\n\n\u3000\u3000第二段'],
-        expected: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段'
-      },
-      {
-        label: 'unprefixed leading newline and full-width indent',
-        parts: ['\n', '\u3000\u3000', '第一段', '\n\n\u3000\u3000第二段'],
-        expected: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段'
-      },
-      {
-        label: 'unprefixed short answer after leading newline and full-width indent',
-        parts: ['\n', '\u3000\u3000', '好'],
-        expected: '\n\u3000\u3000好'
-      },
-      {
-        label: 'prefixed chunked leading whitespace before short answer',
-        parts: ['0:', '\n', '\u3000\u3000', '好'],
-        expected: '\n\u3000\u3000好'
-      }
-    ])('should preserve leading indentation for $label', async ({ parts, expected }) => {
-      const callbacks = createCallbacks();
-      const { response } = createStream([
-        ...parts.map((content) => chunk({ content })),
-        chunk({}, 'stop')
-      ]);
-      const result = await createStreamResponse({
-        body: promptBody,
-        response,
-        ...callbacks
-      });
-      expect(result.answerText).toBe(expected);
-      expect(textOf(callbacks.onStreaming)).toBe(expected);
-    });
-
-    it('should drop prompt-prefix-only whitespace after reasoning without streaming empty text', async () => {
-      const callbacks = createCallbacks();
-      const { response } = createStream([
-        chunk({ reasoning_content: '仅思考' }),
-        chunk({ content: '0:' }),
-        chunk({ content: '\n' }),
-        chunk({ content: '\u3000\u3000' }, 'stop')
-      ]);
-      const result = await createStreamResponse({
-        body: promptBody,
-        response,
-        ...callbacks
-      });
-
-      expect(result.reasoningText).toBe('仅思考');
-      expect(result.answerText).toBe('');
-      expect(result.toolCalls).toBeUndefined();
-      expect(callbacks.onStreaming).not.toHaveBeenCalled();
-    });
-
-    it('should drop unstreamed pending short answer when aborted before protocol threshold', async () => {
-      const callbacks = createCallbacks();
-      let chunkChecks = 0;
-      const { response, abort } = createStream([
-        chunk({ content: '\n' }),
-        chunk({ content: '\u3000\u3000' }),
-        chunk({ content: '好' }),
-        chunk({ content: '的，继续' }, 'stop')
-      ]);
-
-      const result = await createStreamResponse({
-        body: promptBody,
-        response,
-        isAborted: () => {
-          chunkChecks += 1;
-          return chunkChecks > 3;
-        },
-        ...callbacks
-      });
-
-      expect(result).toMatchObject({
-        answerText: '',
-        finish_reason: 'close',
-        error: undefined
-      });
-      expect(callbacks.onStreaming).not.toHaveBeenCalled();
-      expect(abort).toHaveBeenCalledTimes(1);
-    });
-
-    it.each([
-      {
-        label: 'wrapped error object',
-        thrown: { error: new Error('eof callback failed') },
-        expected: 'eof callback failed'
-      },
-      {
-        label: 'primitive error value',
-        thrown: 'eof callback string error',
-        expected: 'eof callback string error'
-      }
-    ])('should safely capture $label from EOF short-answer flush', async ({ thrown, expected }) => {
-      const callbacks = createCallbacks();
-      callbacks.onStreaming.mockImplementation(() => {
-        throw thrown;
-      });
-      const { response } = createStream([
-        chunk({ content: '\n' }),
-        chunk({ content: '\u3000\u3000' }),
-        chunk({ content: '好' }, 'stop')
-      ]);
-
-      const result = await createStreamResponse({
-        body: promptBody,
-        response,
-        ...callbacks
-      });
-
-      expect(callbacks.onStreaming).toHaveBeenCalledExactlyOnceWith({ text: '\n\u3000\u3000好' });
-      expect(result.answerText).toBe('\n\u3000\u3000好');
-      if (result.error instanceof Error) {
-        expect(result.error.message).toBe(expected);
-      } else {
-        expect(result.error).toBe(expected);
-      }
     });
 
     it.each([

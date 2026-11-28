@@ -100,12 +100,8 @@ describe('parseReasoningContent', () => {
     expect(parseReasoningContent('<think>reasoning</think>')).toEqual(['reasoning', '']);
   });
 
-  it('should drop whitespace-only tail and preserve leading whitespace before real answer', () => {
-    expect(parseReasoningContent('<think>reasoning</think>\n')).toEqual(['reasoning', '']);
-    expect(parseReasoningContent('<think>reasoning</think>\n\u3000\u3000')).toEqual([
-      'reasoning',
-      ''
-    ]);
+  it('should preserve raw answer content after think tag', () => {
+    expect(parseReasoningContent('<think>reasoning</think>\n')).toEqual(['reasoning', '\n']);
     expect(parseReasoningContent('<think>reasoning</think>\n\nanswer')).toEqual([
       'reasoning',
       '\n\nanswer'
@@ -222,15 +218,7 @@ describe('parseLLMStreamResponse', () => {
       },
       {
         data: [{ content: '<think>这是' }, { content: '思考过程</think>\n' }],
-        correct: { answer: '', reasoning: '这是思考过程' }
-      },
-      {
-        data: [
-          { reasoning_content: '这是思考过程' },
-          { content: '\n' },
-          { content: '\u3000\u3000' }
-        ],
-        correct: { answer: '', reasoning: '这是思考过程' }
+        correct: { answer: '\n', reasoning: '这是思考过程' }
       },
       {
         data: [{ content: '<think>这是' }, { content: '思考过程</think>\n' }, { content: '你好1' }],
