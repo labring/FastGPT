@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginContainer from '@/pageComponents/login';
 import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import { LAST_LOGIN_METHOD_STORAGE_KEY } from '@/web/support/user/login/utils';
 
 const mocks = vi.hoisted(() => ({
   router: { isReady: false, query: {} as Record<string, string> },
@@ -14,13 +15,21 @@ const mocks = vi.hoisted(() => ({
     feConfigs: {
       sso: { enabled: true, autoLogin: true }
     } as {
-      sso?: { enabled?: boolean; autoLogin?: boolean };
-      oauth?: { wecom?: boolean };
+      isPlus?: boolean;
+      login_method?: Array<'email' | 'phone'>;
+      sso?: {
+        enabled?: boolean;
+        autoLogin?: boolean;
+        disablePasswordForSsoUsers?: boolean;
+      };
+      oauth?: { wecom?: boolean; wechat?: string };
       wecomLoginAutoRedirect?: boolean;
     }
   },
   startLogin: vi.fn().mockResolvedValue(undefined),
-  resetChatCache: vi.fn()
+  resetChatCache: vi.fn(),
+  setPageType: undefined as ((pageType: `${LoginPageTypeEnum}`) => void) | undefined,
+  loginSuccess: undefined as ((res: any) => Promise<void> | void) | undefined
 }));
 
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
@@ -37,8 +46,19 @@ vi.mock('@/pageComponents/login/LoginForm/useLoginMethods', () => ({
   useLoginMethods: () => ({ startLogin: mocks.startLogin })
 }));
 vi.mock('@/pageComponents/login/components/LoginFormPanel', () => ({
-  default: ({ pageType }: { pageType?: string }) =>
-    React.createElement('span', null, pageType ?? 'pending')
+  default: ({
+    pageType,
+    setPageType,
+    loginSuccess
+  }: {
+    pageType?: string;
+    setPageType: (pageType: `${LoginPageTypeEnum}`) => void;
+    loginSuccess: (res: any) => Promise<void> | void;
+  }) => {
+    mocks.setPageType = setPageType;
+    mocks.loginSuccess = loginSuccess;
+    return React.createElement('span', null, pageType ?? 'pending');
+  }
 }));
 vi.mock('@/pageComponents/login/components/ChineseRedirectModal', () => ({ default: () => null }));
 vi.mock('@/pageComponents/login/components/CookieConsentModal', () => ({ default: () => null }));
@@ -61,13 +81,17 @@ describe('LoginContainer route initialization', () => {
   };
 
   beforeEach(() => {
-    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'http://localhost'
+    });
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('navigator', dom.window.navigator);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.clearAllMocks();
     mocks.startLogin.mockResolvedValue(undefined);
+    mocks.setPageType = undefined;
+    mocks.loginSuccess = undefined;
     mocks.router.isReady = false;
     mocks.router.query = {};
     mocks.system.initd = true;
@@ -114,7 +138,8 @@ describe('LoginContainer route initialization', () => {
     mocks.system.initd = true;
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
     await render();
     expect(mocks.startLogin).toHaveBeenCalledOnce();
@@ -137,7 +162,8 @@ describe('LoginContainer route initialization', () => {
     mocks.system.feConfigs.sso!.enabled = true;
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
     await render();
     expect(mocks.startLogin).toHaveBeenCalledOnce();
@@ -160,7 +186,8 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'wecom' })
+      expect.objectContaining({ provider: 'wecom' }),
+      { skipRemember: true }
     );
   });
 
@@ -173,7 +200,8 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
+      expect.objectContaining({ provider: 'sso' }),
+      { skipRemember: true }
     );
   });
 
@@ -186,7 +214,117 @@ describe('LoginContainer route initialization', () => {
     };
     await render();
     expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'wecom' })
+      expect.objectContaining({ provider: 'wecom' }),
+      { skipRemember: true }
     );
+  });
+
+  it('prefers code login when email or phone code login is enabled, while keeping rootLogin and query credentials on password login', async () => {
+    mocks.system.feConfigs = {
+      isPlus: true,
+      login_method: ['email']
+    };
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+
+    mocks.router.query = { rootLogin: '1' };
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+
+    mocks.router.query = { u: 'user@example.com', p: 'secret' };
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+  });
+
+  it('records the login method immediately on switch, restores when available, and falls back when unavailable', async () => {
+    mocks.system.feConfigs = {
+      isPlus: true,
+      login_method: ['email'],
+      oauth: { wechat: 'wechat-app-id' }
+    };
+
+    // 1. 只要点击切换登录方式就立即记忆，无需等待登录成功
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBeNull();
+
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.passwordLogin);
+    });
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
+
+    // 点击忘记密码不覆盖已记住的登录方式
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.forgetPassword);
+    });
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
+
+    // 2. 重新挂载登录页时恢复上次的密码登录方式
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+
+    // 3. 切换微信后立即记住并在刷新后恢复；微信关闭后回退默认验证码登录
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.wechat);
+    });
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:wechat');
+
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.wechat);
+
+    mocks.system.feConfigs = {
+      isPlus: true,
+      login_method: ['email']
+    };
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+
+    // 4. rootLogin 运维入口不覆盖本地记录的登录方式
+    window.localStorage.setItem(LAST_LOGIN_METHOD_STORAGE_KEY, 'page:code');
+    mocks.router.query = { rootLogin: '1' };
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.passwordLogin);
+    });
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:code');
+  });
+
+  it('keeps password login latched and blocks SSO auto-redirect across query cleanup during auto-login 2FA', async () => {
+    window.localStorage.setItem(LAST_LOGIN_METHOD_STORAGE_KEY, 'page:wechat');
+    mocks.system.feConfigs = {
+      isPlus: true,
+      login_method: ['email'],
+      sso: { enabled: true, autoLogin: true, disablePasswordForSsoUsers: true },
+      oauth: { wechat: 'wechat-app-id' }
+    };
+    mocks.router.query = { u: 'user@example.com', p: 'secret' };
+
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(mocks.startLogin).not.toHaveBeenCalled();
+
+    // 模拟密码表单收到 2FA Challenge 后清理 URL 中的明文凭据：不得卸载密码表单，也不得触发 SSO 跳转。
+    mocks.router.query = { u: '', p: '' };
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(mocks.startLogin).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:wechat');
+
+    // 用户显式切换其他登录方式后，立即记住新方式并释放自动登录锁存态。
+    await act(async () => {
+      mocks.setPageType?.(LoginPageTypeEnum.codeLogin);
+    });
+    expect(container.textContent).toBe(LoginPageTypeEnum.codeLogin);
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:code');
   });
 });

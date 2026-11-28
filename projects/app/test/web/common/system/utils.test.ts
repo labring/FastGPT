@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
-import { downloadFetch, getIsMemberSyncMode, getRegisterMethods } from '@/web/common/system/utils';
+import { downloadFetch, getIsMemberSyncMode, getLoginMethods } from '@/web/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   FASTGPT_WEB_REQUEST_HEADER,
@@ -135,29 +135,54 @@ describe('downloadFetch', () => {
 });
 
 describe('system fe config utils', () => {
-  it('filters legacy sync from register methods', () => {
-    expect(getRegisterMethods(createFeConfigs({ register_method: ['sync'] }))).toEqual([]);
-    expect(
-      getRegisterMethods(createFeConfigs({ register_method: ['email', 'sync', 'phone'] }))
-    ).toEqual(['email', 'phone']);
+  it('detects member sync mode from authoritative teamMode', () => {
+    expect(getIsMemberSyncMode(createFeConfigs({ teamMode: 'sync' }))).toBe(true);
+    expect(getIsMemberSyncMode(createFeConfigs({ teamMode: 'single' }))).toBe(false);
+    expect(getIsMemberSyncMode(createFeConfigs({ teamMode: 'multi' }))).toBe(false);
+    expect(getIsMemberSyncMode(createFeConfigs({}))).toBe(false);
   });
 
-  it('detects member sync mode from new teamMode and legacy register_method', () => {
-    expect(getIsMemberSyncMode(createFeConfigs({ teamMode: 'sync', register_method: [] }))).toBe(
-      true
-    );
-    expect(getIsMemberSyncMode(createFeConfigs({ register_method: ['sync'] }))).toBe(true);
+  it('reads login_method while excluding sync mode and community edition', () => {
     expect(
-      getIsMemberSyncMode(createFeConfigs({ teamMode: 'single', register_method: ['sync'] }))
-    ).toBe(false);
+      getLoginMethods(
+        createFeConfigs({
+          isPlus: true,
+          login_method: ['email', 'phone']
+        })
+      )
+    ).toEqual(['email', 'phone']);
     expect(
-      getIsMemberSyncMode(createFeConfigs({ teamMode: 'multi', register_method: ['sync'] }))
-    ).toBe(false);
+      getLoginMethods(
+        createFeConfigs({
+          isPlus: true,
+          login_method: ['email']
+        })
+      )
+    ).toEqual(['email']);
     expect(
-      getIsMemberSyncMode(createFeConfigs({ teamMode: 'multi', register_method: ['phone'] }))
-    ).toBe(false);
-    expect(getIsMemberSyncMode(createFeConfigs({ teamMode: 'single', register_method: [] }))).toBe(
-      false
-    );
+      getLoginMethods(
+        createFeConfigs({
+          isPlus: true,
+          login_method: []
+        })
+      )
+    ).toEqual([]);
+    expect(
+      getLoginMethods(
+        createFeConfigs({
+          isPlus: true,
+          teamMode: 'sync',
+          login_method: ['email']
+        })
+      )
+    ).toEqual([]);
+    expect(
+      getLoginMethods(
+        createFeConfigs({
+          isPlus: false,
+          login_method: ['email', 'phone']
+        })
+      )
+    ).toEqual([]);
   });
 });

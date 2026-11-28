@@ -183,6 +183,12 @@ describe('getAdminMenuList', () => {
         enableSaasAdminConfig: false
       })
     ).toBe(false);
+    expect(
+      isConfigFieldVisible('feature.hideChatCopyrightSetting', {
+        edition: 'pro',
+        enableSaasAdminConfig: false
+      })
+    ).toBe(false);
 
     // 开启 SaaS 后可见
     expect(
@@ -193,6 +199,12 @@ describe('getAdminMenuList', () => {
     ).toBe(true);
     expect(
       isConfigFieldVisible('commercial.payFormUrl', {
+        edition: 'pro',
+        enableSaasAdminConfig: true
+      })
+    ).toBe(true);
+    expect(
+      isConfigFieldVisible('feature.hideChatCopyrightSetting', {
         edition: 'pro',
         enableSaasAdminConfig: true
       })

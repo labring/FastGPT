@@ -56,7 +56,7 @@
   "log_request_id_search": "requestId ile ara",
   "log_status": "Durum",
   "mapping": "Model eşleme",
-  "mapping_tip": "Gerçek adrese istek gönderilirken model adlarını eşleyebilirsin. Örneğin gpt-4o modeli gpt-4o-test olarak eşlenirse, FastGPT gpt-4o istediğinde gerçek adrese gpt-4o-test gönderilir.",
+  "mapping_tip": "Gerçek adrese istek gönderilirken model adlarını eşleyebilirsin. Örneğin gpt-4o modeli gpt-4o-test olarak eşlenirse, sistem gpt-4o istediğinde gerçek adrese gpt-4o-test gönderilir.",
   "compact_mapping_tip": "Üst akışın gerçekte aldığı model ID'si",
   "mapping_key_placeholder": "İstenen modeli seç",
   "mapping_value_placeholder": "Hedef model adı (ör. gpt-4o-test)",

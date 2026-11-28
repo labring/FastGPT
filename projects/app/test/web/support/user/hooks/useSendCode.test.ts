@@ -61,8 +61,8 @@ describe('useSendCode', () => {
   it('does not include the username validator in the API payload', async () => {
     const validateBeforeSend = vi.fn(() => true as const);
     const { sendCode } = useSendCode({
-      type: VerificationCodeTypeEnum.register,
-      purpose: 'register',
+      type: VerificationCodeTypeEnum.login,
+      purpose: 'login',
       validateBeforeSend
     });
 
@@ -70,8 +70,8 @@ describe('useSendCode', () => {
 
     expect(sendAuthCode).toHaveBeenCalledWith({
       username: 'user@example.com',
-      type: VerificationCodeTypeEnum.register,
-      purpose: 'register',
+      type: VerificationCodeTypeEnum.login,
+      purpose: 'login',
       captcha: 'captcha',
       lang: 'en'
     });

@@ -347,22 +347,12 @@ export function formatFormData2ConfigStore({
       alipay: !!alipay?.ALIPAY_ROOT_CERT_CONTENT,
       bank: !!bank?.description
     },
-    register_method: (() => {
-      const methods: FastGPTRegisterMethodType[] = [];
-      if (loginSettings?.email?.register) {
-        methods.push('email');
-      }
-      if (loginSettings?.sms?.REGISTER) {
-        methods.push('phone');
-      }
-      return methods;
-    })(),
     login_method: (() => {
       const methods: FastGPTRegisterMethodType[] = [];
       if (loginSettings?.email?.register) {
         methods.push('email');
       }
-      if (loginSettings?.sms?.REGISTER) {
+      if (loginSettings?.sms?.LOGIN) {
         methods.push('phone');
       }
       return methods;

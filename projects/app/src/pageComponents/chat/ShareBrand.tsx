@@ -8,7 +8,11 @@ import type { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { useShareBrandTracking, type ShareBrandSession } from './useShareBrandTracking';
 
-/** 渲染品牌入口；页面级曝光和点击由专用 hook 管理。 */
+/**
+ * 渲染 FastGPT 免登录品牌水印；页面级曝光和点击由专用 hook 管理。
+ * 该版权标识仅面向开源社区版（未配置 PRO_URL 时默认开启）及显式通过环境变量开启 `SHOW_OUTLINK_BRAND=true` 的官方部署；
+ * 私有商业版部署默认关闭，不影响白标自定义站点名称场景。
+ */
 const ShareBrand = ({
   narrow,
   session,
@@ -22,6 +26,7 @@ const ShareBrand = ({
 }) => {
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const systemName = feConfigs.systemTitle || 'FastGPT';
   const element = useRef<HTMLDivElement>(null);
   const brandUrl =
     typeof window !== 'undefined' && window.location.hostname.includes('fastgpt.cn')
@@ -72,7 +77,7 @@ const ShareBrand = ({
       }
     >
       <MyTooltip
-        label={t('common:share_brand_visit')}
+        label={t('common:share_brand_visit', { systemName })}
         shouldWrapChildren={false}
         placement="bottom"
         offset={[0, 12]}
@@ -81,7 +86,7 @@ const ShareBrand = ({
           href={brandUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={t('common:share_brand_visit')}
+          aria-label={t('common:share_brand_visit', { systemName })}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -134,7 +139,7 @@ const ShareBrand = ({
         >
           <Box w="1px" h="12px" bg="myGray.500" flexShrink={0} />
           <IconButton
-            aria-label={t('common:share_brand_dismiss')}
+            aria-label={t('common:share_brand_dismiss', { systemName })}
             icon={<MyIcon name="common/closeLight" w="16px" />}
             size="xs"
             variant="unstyled"

@@ -1,8 +1,4 @@
-import type {
-  FastGPTFeConfigsType,
-  FastGPTRegisterMethodCompatType,
-  FastGPTRegisterMethodType
-} from '../types';
+import type { FastGPTFeConfigsType, FastGPTRegisterMethodType } from '../types';
 import type { SystemInstanceConfig } from './schema';
 
 /** 公开配置仅暴露自定义域名开关及 CNAME，部署凭据始终留在服务端实例配置中。 */
@@ -67,50 +63,40 @@ const hasEmailService = (auth: SystemInstanceConfig['auth']) => {
 };
 
 /**
- * 从当前认证配置推导注册方式。
- * 邮箱注册由显式开关决定；手机号注册必须同时具备短信模板和发送通道，
- * 不再沿用旧 register_method 中的手机号或默认手机号。
+ * 从当前认证配置推导可用的邮箱/手机号登录（含验证码登录与自动建号）渠道。
+ * - 邮箱：需开启邮箱开关（email.register）；
+ * - 手机号：需同时具备短信通道与登录模板（sms.login.zh）；未配置登录模板时不回退已弃用的注册模板。
  */
-export const buildRegisterMethods = ({
-  legacyMethods,
+export const buildLoginMethods = ({
   auth
 }: {
-  legacyMethods?: FastGPTRegisterMethodCompatType[];
   auth: SystemInstanceConfig['auth'];
-}): FastGPTRegisterMethodCompatType[] => {
-  const methods: FastGPTRegisterMethodCompatType[] = [];
+}): FastGPTRegisterMethodType[] => {
+  const methods: FastGPTRegisterMethodType[] = [];
 
   if (auth?.loginProviders?.email?.register) {
     methods.push('email');
   }
-  if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth?.loginProviders?.sms?.register?.zh)) {
+  if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth?.loginProviders?.sms?.login?.zh)) {
     methods.push('phone');
   }
-  // 仅保留旧传输形状；调用侧根据 Pro ENV 的生效团队模式统一移除或补充 sync。
-  if (legacyMethods?.includes('sync')) {
-    methods.push('sync');
-  }
+
   return methods;
 };
 
 /**
- * 从当前认证配置推导四个兼容前端字段。
+ * 从当前认证配置推导前端认证能力字段。
  *
- * - 邮箱密码登录不依赖 SMTP，login_method 始终保留 email；
- * - 手机号密码登录跟随手机注册能力（短信通道 + 注册模板）推导，不依赖登录二次验证模板；
- * - 手机号注册/找回/绑定入口必须同时具备短信通道和对应模板；
+ * - login_method 统一表示开放的邮箱/手机号登录与验证码登录渠道（用户名密码登录始终可用）；
  * - 邮箱找回/绑定通知需要可发送邮件的 SMTP 配置；
- * - legacyRegisterMethods 只用于保留 sync 历史兼容，不再提供 phone 默认值。
+ * - 手机找回/绑定通知需要短信通道及对应模板。
  */
 export const buildAuthMethodProjection = ({
-  auth,
-  legacyRegisterMethods
+  auth
 }: {
   auth: SystemInstanceConfig['auth'];
-  legacyRegisterMethods?: FastGPTRegisterMethodCompatType[];
 }): {
   login_method: FastGPTRegisterMethodType[];
-  register_method: FastGPTRegisterMethodCompatType[];
   find_password_method: FastGPTRegisterMethodType[];
   bind_notification_method: FastGPTRegisterMethodType[];
 } => {
@@ -120,14 +106,7 @@ export const buildAuthMethodProjection = ({
   const emailReady = hasEmailService(auth);
 
   return {
-    login_method: [
-      'email',
-      ...(phoneReady && hasSmsTemplate(sms?.register?.zh) ? (['phone'] as const) : [])
-    ],
-    register_method: buildRegisterMethods({
-      legacyMethods: legacyRegisterMethods,
-      auth
-    }),
+    login_method: buildLoginMethods({ auth }),
     find_password_method: [
       ...(emailReady ? (['email'] as const) : []),
       ...(phoneReady && hasSmsTemplate(sms?.resetPassword?.zh) ? (['phone'] as const) : [])

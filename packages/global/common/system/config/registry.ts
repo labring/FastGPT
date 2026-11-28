@@ -156,7 +156,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.email.secure',
       'loginProviders.email.register',
       'loginProviders.sms.login.zh',
-      'loginProviders.sms.register.zh',
       'loginProviders.sms.resetPassword.zh',
       'loginProviders.sms.changePassword.zh',
       'loginProviders.sms.bindNotification.zh',
@@ -235,11 +234,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     keys: ['multipleDataToBase64'],
     options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
+  // 门户版权配置开关：商业版默认允许配置（hideChatCopyrightSetting = false），社区版始终隐藏；仅 SaaS 运营可在管理端切换。
+  ...createEntries({
+    section: 'feature',
+    keys: ['hideChatCopyrightSetting'],
+    options: { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
+  }),
   // 社区版固定使用功能默认值；核心页的多模态设置仍独立配置。
   ...createEntries({
     section: 'feature',
     keys: [
-      'hideChatCopyrightSetting',
       'enableTeamPluginUpload',
       'showOpenaiAccount',
       'enableTeamModel',

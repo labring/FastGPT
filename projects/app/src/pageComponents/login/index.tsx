@@ -2,10 +2,14 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import {
+  getLastLoginMethodByPageType,
+  readLastLoginMethod,
   resolveAutoLoginProvider,
-  resolveInitialLoginPageType
+  resolveInitialLoginPageType,
+  saveLastLoginMethod,
+  type LastLoginMethod,
+  type LoginMethodItem
 } from '@/web/support/user/login/utils';
-import type { LoginMethodItem } from '@/web/support/user/login/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
@@ -16,6 +20,7 @@ import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useRouter } from 'next/router';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
+import { getLoginMethods } from '@/web/common/system/utils';
 import { useLoginMethods } from './LoginForm/useLoginMethods';
 import LoginGuideLink from './LoginForm/LoginGuideLink';
 
@@ -36,22 +41,58 @@ export const LoginContainer = ({
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
   const initializedRef = useRef(false);
 
-  const [selectedPageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
+  const [selectedPageType, setSelectedPageType] = useState<`${LoginPageTypeEnum}`>();
+  const [lastLoginMethod, setLastLoginMethod] = useState<LastLoginMethod | undefined>(() =>
+    readLastLoginMethod()
+  );
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+  const rootLogin = router.query.rootLogin === '1';
+  const hasQueryAutoLoginCredentials = Boolean(router.query.u && router.query.p);
+  // 密码登录触发二次验证时会主动清理 URL 中的明文凭据；锁存本次自动登录态，
+  // 防止清除 URL 后表单被切走卸载 Challenge 弹窗或被 SSO 自动跳转劫持。
+  const [latchedAutoLoginFlow, setLatchedAutoLoginFlow] = useState(hasQueryAutoLoginCredentials);
+  if (hasQueryAutoLoginCredentials && !latchedAutoLoginFlow) {
+    setLatchedAutoLoginFlow(true);
+  }
+  const hasAutoLoginCredentials = hasQueryAutoLoginCredentials || latchedAutoLoginFlow;
+
+  const setPageType = useCallback(
+    (nextPageType: `${LoginPageTypeEnum}`) => {
+      if (nextPageType !== LoginPageTypeEnum.passwordLogin) {
+        setLatchedAutoLoginFlow(false);
+      }
+      // 只要用户主动点击切换登录方式即立即写入记忆；rootLogin 运维入口不覆盖日常偏好。
+      if (!rootLogin) {
+        const method = getLastLoginMethodByPageType(nextPageType);
+        if (method) {
+          saveLastLoginMethod(method);
+          setLastLoginMethod(method);
+        }
+      }
+      setSelectedPageType(nextPageType);
+    },
+    [rootLogin]
+  );
+
   const { startLogin } = useLoginMethods({
     mode: 'selection',
     pageType: LoginPageTypeEnum.methodSelection,
     setPageType
   });
-  const rootLogin = router.query.rootLogin === '1';
+  const codeLoginEnabled = getLoginMethods(feConfigs).length > 0;
   const isWecomTerminal = typeof navigator === 'undefined' ? false : checkIsWecomTerminal();
   const initialPageType = resolveInitialLoginPageType({
     rootLogin,
+    hasAutoLoginCredentials,
     // 共享策略消费服务端派生的 SSO 能力，不需要下发 SSO 根地址。
-    sso: feConfigs?.sso
+    sso: feConfigs?.sso,
+    codeLoginEnabled,
+    wechatEnabled: Boolean(feConfigs?.oauth?.wechat),
+    lastLoginMethod
   });
   const autoLoginProvider = resolveAutoLoginProvider({
     rootLogin,
+    hasAutoLoginCredentials,
     ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
@@ -75,6 +116,8 @@ export const LoginContainer = ({
   const pageType =
     selectedPageType ??
     (initd && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
+  const isPrimaryFormPage =
+    pageType === LoginPageTypeEnum.passwordLogin || pageType === LoginPageTypeEnum.codeLogin;
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -92,7 +135,7 @@ export const LoginContainer = ({
     if (!initd || initializedRef.current || !autoLoginMethod) return;
     initializedRef.current = true;
 
-    void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
+    void startLogin(autoLoginMethod, { skipRemember: true }).catch(() => setAutoLoginFailed(true));
   }, [autoLoginMethod, initd, startLogin]);
 
   return (
@@ -115,14 +158,12 @@ export const LoginContainer = ({
           pageType={pageType}
           setPageType={setPageType}
           loginSuccess={loginSuccess}
-          reserveLoginGuideSpace={
-            pageType === LoginPageTypeEnum.passwordLogin && Boolean(loginGuideDocUrl)
-          }
+          reserveLoginGuideSpace={isPrimaryFormPage && Boolean(loginGuideDocUrl)}
         />
 
         {children}
 
-        {pageType === LoginPageTypeEnum.passwordLogin && <LoginGuideLink mt={8} />}
+        {isPrimaryFormPage && <LoginGuideLink mt={8} />}
       </Flex>
 
       <CookieConsentModal />

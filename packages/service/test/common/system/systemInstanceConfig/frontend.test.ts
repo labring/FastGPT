@@ -14,7 +14,7 @@ describe('buildSystemFrontendConfig', () => {
   it('returns fixed community feature flags even when the candidate snapshot contains Pro overrides', () => {
     const config = resolveSystemInstanceConfig({
       feature: {
-        hideChatCopyrightSetting: true,
+        hideChatCopyrightSetting: false,
         showComplianceCopywriting: true,
         enableTeamPluginUpload: true,
         enableTeamModel: true,
@@ -26,7 +26,7 @@ describe('buildSystemFrontendConfig', () => {
       }
     });
     expect(buildSystemFrontendConfig(config, { commercialService: false })).toMatchObject({
-      hideChatCopyrightSetting: false,
+      hideChatCopyrightSetting: true,
       show_compliance_copywriting: false,
       enable_team_plugin_upload: false,
       enable_team_model: false,
@@ -41,6 +41,7 @@ describe('buildSystemFrontendConfig', () => {
       show_publish_wechat: true
     });
     expect(buildSystemFrontendConfig(config, { commercialService: true })).toMatchObject({
+      hideChatCopyrightSetting: false,
       enable_team_plugin_upload: true,
       enable_team_model: true,
       show_dataset_feishu: false,
@@ -131,10 +132,11 @@ describe('buildSystemFrontendConfig', () => {
       show_workorder: false
     });
     expect(frontend.sso?.enabled).toBe(false);
-    expect(frontend.register_method).not.toContain('sync');
+    expect(frontend.login_method).toEqual([]);
     expect(config.proEnv.teamMode).toBe('sync');
     expect(buildSystemFrontendConfig(config, { commercialService: true })).toMatchObject({
       teamMode: 'sync',
+      login_method: [],
       isProService: true,
       login2faEnabled: true
     });

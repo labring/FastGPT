@@ -51,7 +51,7 @@ describe('SystemInstanceConfigManager', () => {
         revision: 1,
         overrides: {
           multipleDataToBase64: true,
-          hideChatCopyrightSetting: true,
+          hideChatCopyrightSetting: false,
           enableTeamPluginUpload: true,
           enableTeamModel: true,
           showComplianceCopywriting: true,
@@ -76,7 +76,7 @@ describe('SystemInstanceConfigManager', () => {
     expect(getSystemInstanceConfig().feature).not.toHaveProperty('agentEngine');
     expect(getSystemInstanceConfig().feature).toMatchObject({
       multipleDataToBase64: true,
-      hideChatCopyrightSetting: false,
+      hideChatCopyrightSetting: true,
       enableTeamPluginUpload: false,
       enableTeamModel: false,
       showComplianceCopywriting: false,
@@ -89,6 +89,7 @@ describe('SystemInstanceConfigManager', () => {
       showPublishOffiaccount: false,
       showPublishWechat: true
     });
+    expect(global.feConfigs.hideChatCopyrightSetting).toBe(true);
     expect(global.feConfigs.enable_team_plugin_upload).toBe(false);
     expect(global.feConfigs.show_publish_wechat).toBe(true);
     systemInstanceConfig.setFrontendContext({ commercialService: true });
@@ -97,6 +98,7 @@ describe('SystemInstanceConfigManager', () => {
     expect(pro.proEnv.teamMode).toBe('multi');
     expect(pro.commercial.subPlans?.extraDatasetSize?.price).toBe(7);
     expect(pro.license.data).toEqual(license);
+    expect(pro.feature.hideChatCopyrightSetting).toBe(false);
     expect(pro.feature.enableTeamPluginUpload).toBe(true);
     expect(pro.feature.enableTeamModel).toBe(true);
     expect(pro.feature.showDatasetFeishu).toBe(false);

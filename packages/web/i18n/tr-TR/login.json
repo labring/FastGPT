@@ -2,6 +2,7 @@
   "Chinese_ip_tip": "Çin anakarası IP adresi algılandı. Çin anakarası sürümüne gitmek için tıkla.",
   "Login": "Giriş yap",
   "agree": "Kabul et",
+  "code_login_auto_register_tip": "Kayıtsız hesaplar doğrulamadan sonra otomatik olarak oluşturulur",
   "cookies_tip": "Bu web sitesi daha iyi bir hizmet deneyimi sunmak için çerez kullanır. Kullanmaya devam etmen Çerez Politikamızı kabul ettiğin anlamına gelir.",
   "forget_password": "Şifreni mi unuttun?",
   "login_redirect_failed": "Giriş tamamlandı ancak sayfa yönlendirmesi başarısız oldu. Sayfayı yenile.",

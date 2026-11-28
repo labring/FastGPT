@@ -1,6 +1,5 @@
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Trans } from 'next-i18next';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex, Button, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
@@ -17,7 +16,6 @@ import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getPaymentRenderType, type PaymentRenderData } from './utils';
 
 export type QRPayProps = CreateBillResponseType & {
@@ -56,9 +54,11 @@ const QRCodePayModal = ({
 
   useEffect(() => {
     const calculateQRSize = () => {
-      const windowHeight = window.innerHeight;
-      const reservedSpace = 470 + (tip ? 60 : 0) + (discountCouponName ? 30 : 0);
-      const availableHeight = windowHeight - reservedSpace;
+      // 弹窗最大高度为 90vh，按实际非二维码区域扣减后计算二维码尺寸，避免常规视口出现多余滚动条。
+      const modalMaxHeight = window.innerHeight * 0.9;
+      const reservedSpace =
+        320 + (tip ? 90 : 0) + (discountCouponName ? 28 : 0) + (feConfigs.payFormUrl ? 36 : 0);
+      const availableHeight = modalMaxHeight - reservedSpace;
 
       const newSize = Math.min(QR_CODE_SIZE, Math.max(MIN_QR_SIZE, availableHeight));
 
@@ -71,7 +71,7 @@ const QRCodePayModal = ({
     return () => {
       window.removeEventListener('resize', calculateQRSize);
     };
-  }, [tip, discountCouponName]);
+  }, [tip, discountCouponName, feConfigs.payFormUrl]);
 
   const [payWayRenderData, setPayWayRenderData] = useState<PaymentRenderData>({
     qrCode,
@@ -211,8 +211,10 @@ const QRCodePayModal = ({
     <MyModal
       isLoading={isUpdating}
       isOpen
+      isCentered
       title={t('common:user.Pay')}
       w={'600px'}
+      maxH={'90vh'}
       onClose={onClose}
       closeOnOverlayClick={false}
       blockScrollOnMount
@@ -307,12 +309,14 @@ const QRCodePayModal = ({
 
       {feConfigs.payFormUrl && (
         <Box mt={4} textAlign="center" fontSize="sm">
-          <Trans
-            i18nKey={i18nT('common:pay.payment_form_tip')}
-            components={{
-              payLink: <Link href={feConfigs.payFormUrl} target="_blank" color="primary.600" />
-            }}
-          />
+          <Link
+            href={feConfigs.payFormUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            color="primary.600"
+          >
+            {t('common:pay.payment_form_tip')}
+          </Link>
         </Box>
       )}
     </MyModal>

@@ -2,6 +2,7 @@
   "Chinese_ip_tip": "检测到您是中国大陆 IP，点击跳转访问中国大陆版。",
   "Login": "登录",
   "agree": "同意",
+  "code_login_auto_register_tip": "未注册的账号验证通过后将自动创建",
   "cookies_tip": "本网站使用 cookies 提供更好的服务体验。继续使用即表示您同意我们的 Cookie 政策。",
   "forget_password": "忘记密码?",
   "login_redirect_failed": "登录已完成，但页面跳转失败，请刷新页面",

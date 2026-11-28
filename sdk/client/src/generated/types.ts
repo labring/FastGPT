@@ -7011,6 +7011,8 @@ export type DatasetsCollectionsDetailRes = {
   inheritPermission?: boolean;
   /** 文件 ID */
   fileId?: string;
+  /** 直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承 */
+  chunkImagePrefixId?: string;
   /** 原始链接 */
   rawLink?: string;
   /** 外部文件 ID */
@@ -7673,6 +7675,8 @@ export type DatasetsDataListRes = {
     datasetId: string;
     /** 集合 ID */
     collectionId: string;
+    /** 数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回 */
+    createTime: string;
     /** 问题/主文本 */
     q?: string;
     /** 回答/补充文本 */
@@ -7707,11 +7711,11 @@ export type DatasetsDataListRes = {
 export type DatasetsDataPushBatchReq = {
   /** 集合 ID */
   collectionId: string;
-  /** 数据列表，最多 200 条 */
+  /** 数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界 */
   data: Array<{
-    /** 问题/主文本 */
+    /** 问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB） */
     q?: string;
-    /** 回答/补充文本 */
+    /** 回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB） */
     a?: string;
     /** 图片 ID */
     imageId?: string;
@@ -8082,6 +8086,8 @@ export type DatasetsDetailRes = {
       video?: boolean;
       reasoning?: boolean;
       reasoningEffort?: boolean;
+      /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+      reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
       functionCall?: boolean;
       toolChoice?: boolean;
       defaultSystemChatPrompt?: string;
@@ -8138,6 +8144,8 @@ export type DatasetsDetailRes = {
       video?: boolean;
       reasoning?: boolean;
       reasoningEffort?: boolean;
+      /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+      reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
       functionCall?: boolean;
       toolChoice?: boolean;
       defaultSystemChatPrompt?: string;
@@ -8762,6 +8770,8 @@ export type ModelsCatalogRes = {
             video?: boolean;
             reasoning?: boolean;
             reasoningEffort?: boolean;
+            /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+            reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
             functionCall?: boolean;
             toolChoice?: boolean;
           };

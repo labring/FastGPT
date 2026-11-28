@@ -35,7 +35,12 @@ const ShareBrandFeature = ({
       >
         {t('common:share_brand_control')}
       </Box>
-      {showTip && <QuestionTip ml={1} label={t('common:share_brand_tip')} />}
+      {showTip && (
+        <QuestionTip
+          ml={1}
+          label={t('common:share_brand_tip', { systemName: feConfigs.systemTitle || 'FastGPT' })}
+        />
+      )}
     </Flex>
   ) : null;
 };

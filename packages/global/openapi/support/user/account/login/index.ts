@@ -1,6 +1,7 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
+  LoginByCodeBodySchema,
   LoginByPasswordBodySchema,
   PreLoginQuerySchema,
   PreLoginResponseSchema,
@@ -181,6 +182,30 @@ export const LoginPath: OpenAPIPath = {
       responses: {
         200: {
           description: '验证成功并完成登录',
+          content: {
+            'application/json': {
+              schema: LoginSuccessResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/code': {
+    post: {
+      summary: '用户验证码登录',
+      description: '使用邮箱或手机号验证码登录，未注册账号自动创建空密码账号',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: LoginByCodeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '登录成功，返回用户信息和令牌',
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema

@@ -74,7 +74,7 @@ export const UserInformPath: OpenAPIPath = {
   '/proApi/support/user/inform/sendAuthCode': {
     post: {
       summary: '发送验证码',
-      description: '发送注册、找回密码或绑定通知账号使用的邮箱/短信验证码',
+      description: '发送登录、找回密码或绑定通知账号使用的邮箱/短信验证码',
       tags: [DevApiTagsMap.userInform],
       requestBody: {
         content: {

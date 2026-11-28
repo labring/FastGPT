@@ -3,6 +3,7 @@ import { openAPIDocument } from '../../../../../../openapi/provider/devapi';
 import { openAPIPaths } from '../../../../../../openapi/path';
 import {
   FastLoginBodySchema,
+  LoginByCodeBodySchema,
   LoginByPasswordBodySchema,
   OpenAPIUserSchema,
   LoginSuccessResponseSchema,
@@ -15,7 +16,6 @@ import {
 } from '../../../../../../openapi/support/user/account/login/api';
 import { GetImgCaptchaQuerySchema } from '../../../../../../openapi/support/user/account/captcha/api';
 import { UpdatePasswordByCodeBodySchema } from '../../../../../../openapi/support/user/account/password/api';
-import { AccountRegisterBodySchema } from '../../../../../../openapi/support/user/account/register/api';
 import {
   AccountEmailUsernameSchema,
   ExternalAuthStringSchema,
@@ -26,6 +26,7 @@ const captchaPath = '/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
 const wecomRedirectPath = '/proApi/support/user/account/login/wecom/getRedirectUrl';
 const updatePasswordByCodePath = '/proApi/support/user/account/password/updateByCode';
+const loginByCodePath = '/proApi/support/user/account/login/code';
 const objectId = '68ad85a7463006c963799a05';
 const objectIdLike = { toString: () => objectId };
 
@@ -68,6 +69,33 @@ describe('user account OpenAPI contracts', () => {
     expect(openAPIPaths[updatePasswordByCodePath]).toBeDefined();
     expect(openAPIDocument.paths?.[updatePasswordByCodePath]?.post).toBeDefined();
     expect(openAPIPaths['/support/user/account/password/updateByCode']).toBeUndefined();
+  });
+
+  it('registers and validates the verification-code login route under the Pro API path', () => {
+    expect(openAPIPaths[loginByCodePath]).toBeDefined();
+    expect(openAPIDocument.paths?.[loginByCodePath]?.post).toBeDefined();
+    expect(
+      LoginByCodeBodySchema.parse({
+        username: '  user@example.com  ',
+        code: ' 123456 '
+      })
+    ).toEqual({
+      username: 'user@example.com',
+      code: '123456',
+      language: 'zh-CN'
+    });
+    expect(() =>
+      LoginByCodeBodySchema.parse({
+        username: 'plain-username',
+        code: '123456'
+      })
+    ).toThrow();
+    expect(() =>
+      LoginByCodeBodySchema.parse({
+        username: '13800138000',
+        code: 'a'.repeat(101)
+      })
+    ).toThrow();
   });
 
   it('declares null while the WeChat QR login is waiting for a scan', () => {
@@ -115,13 +143,6 @@ describe('user account OpenAPI contracts', () => {
         password: 'password'
       })
     ).toThrow();
-    expect(
-      AccountRegisterBodySchema.parse({
-        username: 'user@example.com',
-        code: 'code',
-        password: 'password'
-      })
-    ).toMatchObject({ username: 'user@example.com' });
     expect(
       OauthLoginBodySchema.parse({
         type: 'github',

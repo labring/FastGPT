@@ -5832,6 +5832,8 @@ type DatasetsCollectionsDetailRes struct {
 	InheritPermission *bool `json:"inheritPermission,omitempty"`
 	// 文件 ID
 	FileID *string `json:"fileId,omitempty"`
+	// 直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承
+	ChunkImagePrefixID *string `json:"chunkImagePrefixId,omitempty"`
 	// 原始链接
 	RawLink *string `json:"rawLink,omitempty"`
 	// 外部文件 ID
@@ -6273,6 +6275,8 @@ type DatasetsDataListResListItem struct {
 	DatasetID string `json:"datasetId"`
 	// 集合 ID
 	CollectionID string `json:"collectionId"`
+	// 数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回
+	CreateTime string `json:"createTime"`
 	// 问题/主文本
 	Q *string `json:"q,omitempty"`
 	// 回答/补充文本
@@ -6310,9 +6314,9 @@ type DatasetsDataPushBatchParamsDataItemIndexesItem struct {
 }
 
 type DatasetsDataPushBatchParamsDataItem struct {
-	// 问题/主文本
+	// 问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）
 	Q Opt[string] `json:"q,omitzero"`
-	// 回答/补充文本
+	// 回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）
 	A Opt[string] `json:"a,omitzero"`
 	// 图片 ID
 	ImageID Opt[string] `json:"imageId,omitzero"`
@@ -6328,7 +6332,7 @@ type DatasetsDataPushBatchParamsDataItem struct {
 type DatasetsDataPushBatchParams struct {
 	// 集合 ID
 	CollectionID string `json:"collectionId"`
-	// 数据列表，最多 200 条
+	// 数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界
 	Data []DatasetsDataPushBatchParamsDataItem `json:"data"`
 	// 训练类型
 	// Allowed values: "chunk", "qa", "imageParse", "backup", "template", "auto".
@@ -6470,19 +6474,21 @@ type DatasetsDetailResAgentModelPricing struct {
 }
 
 type DatasetsDetailResAgentModelConfig struct {
-	MaxContext              float64           `json:"maxContext"`
-	MaxResponse             float64           `json:"maxResponse"`
-	QuoteMaxToken           float64           `json:"quoteMaxToken"`
-	MaxTemperature          *float64          `json:"maxTemperature,omitempty"`
-	ShowTopP                *bool             `json:"showTopP,omitempty"`
-	ResponseFormatList      []string          `json:"responseFormatList,omitempty"`
-	ShowStopSign            *bool             `json:"showStopSign,omitempty"`
-	Censor                  *bool             `json:"censor,omitempty"`
-	Vision                  *bool             `json:"vision,omitempty"`
-	Audio                   *bool             `json:"audio,omitempty"`
-	Video                   *bool             `json:"video,omitempty"`
-	Reasoning               *bool             `json:"reasoning,omitempty"`
-	ReasoningEffort         *bool             `json:"reasoningEffort,omitempty"`
+	MaxContext         float64  `json:"maxContext"`
+	MaxResponse        float64  `json:"maxResponse"`
+	QuoteMaxToken      float64  `json:"quoteMaxToken"`
+	MaxTemperature     *float64 `json:"maxTemperature,omitempty"`
+	ShowTopP           *bool    `json:"showTopP,omitempty"`
+	ResponseFormatList []string `json:"responseFormatList,omitempty"`
+	ShowStopSign       *bool    `json:"showStopSign,omitempty"`
+	Censor             *bool    `json:"censor,omitempty"`
+	Vision             *bool    `json:"vision,omitempty"`
+	Audio              *bool    `json:"audio,omitempty"`
+	Video              *bool    `json:"video,omitempty"`
+	Reasoning          *bool    `json:"reasoning,omitempty"`
+	ReasoningEffort    *bool    `json:"reasoningEffort,omitempty"`
+	// 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置
+	ReasoningEffortList     []string          `json:"reasoningEffortList,omitempty"`
 	FunctionCall            *bool             `json:"functionCall,omitempty"`
 	ToolChoice              *bool             `json:"toolChoice,omitempty"`
 	DefaultSystemChatPrompt *string           `json:"defaultSystemChatPrompt,omitempty"`
@@ -7319,8 +7325,10 @@ type ModelsCatalogResDataModelsItemLLMConfig struct {
 	Video              *bool    `json:"video,omitempty"`
 	Reasoning          *bool    `json:"reasoning,omitempty"`
 	ReasoningEffort    *bool    `json:"reasoningEffort,omitempty"`
-	FunctionCall       *bool    `json:"functionCall,omitempty"`
-	ToolChoice         *bool    `json:"toolChoice,omitempty"`
+	// 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置
+	ReasoningEffortList []string `json:"reasoningEffortList,omitempty"`
+	FunctionCall        *bool    `json:"functionCall,omitempty"`
+	ToolChoice          *bool    `json:"toolChoice,omitempty"`
 }
 
 type ModelsCatalogResDataModelsItemLLM struct {

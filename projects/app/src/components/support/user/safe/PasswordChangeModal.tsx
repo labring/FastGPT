@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
-import { Box, Button, Center, Flex, Spinner, Text, VStack } from '@chakra-ui/react';
+import { Box, Button, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/support/user/account/verification/type';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -83,6 +83,7 @@ const PasswordChangeModal = ({
     return isPlus ? { type: 'authorizing' } : { type: 'password' };
   });
   const [submitting, setSubmitting] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
   const form = useForm<PasswordFormType>({
     defaultValues: { oldPassword: '', newPassword: '', confirmPassword: '' }
   });
@@ -95,15 +96,20 @@ const PasswordChangeModal = ({
     try {
       const result = await authorizePasswordChange({ source: 'verificationMethod' });
       if (result.status === 'authorized') {
+        setVerificationLoading(false);
         setStage({ type: 'password', authorization: result });
         return;
       }
       if (result.status === 'verificationRequired') {
+        // oldPassword 验证进入面板后会立即创建校验上下文，先衔接 loading 避免两段加载间闪烁。
+        setVerificationLoading(result.method === 'oldPassword');
         setStage({ type: 'verification', method: result.method });
         return;
       }
+      setVerificationLoading(false);
       setStage({ type: 'unavailable' });
     } catch {
+      setVerificationLoading(false);
       setStage({ type: 'unavailable' });
       toast({ status: 'error', title: t('common:password_verification_failed') });
     }
@@ -123,6 +129,7 @@ const PasswordChangeModal = ({
   );
 
   const handleAuthorized = useCallback((authorization: Authorization) => {
+    setVerificationLoading(false);
     setStage({ type: 'password', authorization });
   }, []);
 
@@ -280,67 +287,50 @@ const PasswordChangeModal = ({
   })();
 
   const isWechatVerification = stage.type === 'verification' && stage.method === 'wechat';
-  const modalWidth = isWechatVerification ? '560px' : '400px';
+  const isModalLoading =
+    stage.type === 'authorizing' || (stage.type === 'verification' && verificationLoading);
+  const bodyStyles = stage.type === 'password' ? { pt: 0 } : undefined;
 
   return (
     <MyModal
       isOpen
+      title={title}
       onClose={required ? undefined : closeFlow}
       closeOnOverlayClick={!required && stage.type !== 'password'}
+      closeOnEsc={!required}
       isCentered
-      w={modalWidth}
-      maxW={['calc(100vw - 32px)', modalWidth]}
+      isLoading={isModalLoading}
+      size={isWechatVerification ? 'md' : 'sm'}
       borderRadius="semilg"
-      boxShadow="3.5"
-      overflow="hidden"
+      bodyStyles={bodyStyles}
+      footer={
+        stage.type === 'prompt' ? (
+          <Button
+            h={8}
+            minH={8}
+            w={16}
+            px={3.5}
+            borderRadius="sm"
+            fontSize="mini"
+            lineHeight={4}
+            onClick={() => setStage(isPlus ? { type: 'authorizing' } : { type: 'password' })}
+          >
+            {t('common:password_expired_action')}
+          </Button>
+        ) : undefined
+      }
     >
       {stage.type === 'prompt' && (
-        <VStack align="stretch" spacing={6} p={8}>
-          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
-            {title}
-          </Text>
-          <Text fontSize="sm" lineHeight="20px">
-            {t('common:password_expired_tip')}
-          </Text>
-          <Flex justify="flex-end">
-            <Button
-              h={8}
-              minH={8}
-              w={16}
-              px={3.5}
-              borderRadius="sm"
-              fontSize="mini"
-              lineHeight={4}
-              onClick={() => setStage(isPlus ? { type: 'authorizing' } : { type: 'password' })}
-            >
-              {t('common:password_expired_action')}
-            </Button>
-          </Flex>
-        </VStack>
+        <Text fontSize="sm" lineHeight="20px">
+          {t('common:password_expired_tip')}
+        </Text>
       )}
 
-      {stage.type === 'authorizing' && (
-        <Box p={8}>
-          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
-            {title}
-          </Text>
-          <Center minH="120px" mt={6}>
-            <VStack spacing={3}>
-              <Spinner color="primary.600" />
-              <Text color="myGray.600" fontSize="sm">
-                {t('common:password_authorizing')}
-              </Text>
-            </VStack>
-          </Center>
-        </Box>
-      )}
+      {stage.type === 'authorizing' && <Box minH="120px" />}
 
       {stage.type === 'unavailable' && (
-        <Box p={8}>
-          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
-            {title}
-          </Text>
-          <Text mt={6} color="myGray.600" fontSize="sm" lineHeight="20px" textAlign="center">
+        <>
+          <Text color="myGray.600" fontSize="sm" lineHeight="20px" textAlign="center">
             {t('common:password_verification_unavailable')}
           </Text>
           <Button
@@ -351,49 +341,34 @@ const PasswordChangeModal = ({
           >
             {t('common:password_verification_retry')}
           </Button>
-        </Box>
+        </>
       )}
 
       {stage.type === 'verification' && (
-        <Box p={8}>
-          <VStack align="stretch" spacing={2}>
-            <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
-              {title}
-            </Text>
-            <Text fontSize="sm" lineHeight="20px">
-              {t('common:password_verification_description')}
-            </Text>
-          </VStack>
-          <Box mt={6}>
-            <AccountVerificationPanel
-              method={stage.method}
-              username={userInfo?.username ?? ''}
-              purpose="changePassword"
-              createCodeVerification={createCodeVerification}
-              submitCodeVerification={submitCodeVerification}
-              createOldPasswordVerification={createOldPasswordVerification}
-              submitOldPasswordVerification={submitOldPasswordVerification}
-              createWechatVerification={createWechatVerification}
-              submitWechatVerification={submitWechatVerification}
-              startOAuthVerification={startOAuthVerification}
-            />
-          </Box>
-        </Box>
+        <AccountVerificationPanel
+          method={stage.method}
+          username={userInfo?.username ?? ''}
+          purpose="changePassword"
+          createCodeVerification={createCodeVerification}
+          submitCodeVerification={submitCodeVerification}
+          createOldPasswordVerification={createOldPasswordVerification}
+          submitOldPasswordVerification={submitOldPasswordVerification}
+          createWechatVerification={createWechatVerification}
+          submitWechatVerification={submitWechatVerification}
+          startOAuthVerification={startOAuthVerification}
+          onLoadingChange={setVerificationLoading}
+          tip={!userInfo?.hasPassword ? t('common:password_set_login_tip') : undefined}
+        />
       )}
 
       {stage.type === 'password' && (
-        <Box p={8}>
-          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
-            {title}
-          </Text>
-          <PasswordForm
-            form={form}
-            submitting={submitting}
-            onSubmit={form.handleSubmit(submitNewPassword)}
-            onKeyDown={handlePasswordEnterKeyDown}
-            showOldPassword={!stage.authorization && !!userInfo?.hasPassword}
-          />
-        </Box>
+        <PasswordForm
+          form={form}
+          submitting={submitting}
+          onSubmit={form.handleSubmit(submitNewPassword)}
+          onKeyDown={handlePasswordEnterKeyDown}
+          showOldPassword={!stage.authorization && !!userInfo?.hasPassword}
+        />
       )}
     </MyModal>
   );

@@ -10,7 +10,7 @@ const common = {
 
 describe('SendAuthCodeBodySchema', () => {
   it.each([
-    [VerificationCodeTypeEnum.register, 'register'],
+    [VerificationCodeTypeEnum.login, 'login'],
     [VerificationCodeTypeEnum.findPassword, 'forgetPassword'],
     [VerificationCodeTypeEnum.bindNotification, 'bindNotification']
   ] as const)('accepts the purpose assigned to %s', (type, purpose) => {
@@ -21,11 +21,12 @@ describe('SendAuthCodeBodySchema', () => {
   });
 
   it.each([
-    [VerificationCodeTypeEnum.register, 'forgetPassword'],
+    [VerificationCodeTypeEnum.login, 'register'],
+    [VerificationCodeTypeEnum.register, 'register'],
     [VerificationCodeTypeEnum.findPassword, 'register'],
     [VerificationCodeTypeEnum.bindNotification, 'login'],
-    [VerificationCodeTypeEnum.register, 'arbitrary-purpose']
-  ] as const)('rejects %s with an invalid purpose %s', (type, purpose) => {
+    [VerificationCodeTypeEnum.login, 'arbitrary-purpose']
+  ] as const)('rejects %s with an invalid or removed purpose %s', (type, purpose) => {
     expect(() => SendAuthCodeBodySchema.parse({ ...common, type, purpose })).toThrow();
   });
 
@@ -44,16 +45,16 @@ describe('SendAuthCodeBodySchema', () => {
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: `  ${'a'.repeat(64)}  `,
-        type: VerificationCodeTypeEnum.register,
-        purpose: 'register'
+        type: VerificationCodeTypeEnum.login,
+        purpose: 'login'
       }).captcha
     ).toBe('a'.repeat(64));
     expect(() =>
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: 'a'.repeat(65),
-        type: VerificationCodeTypeEnum.register,
-        purpose: 'register'
+        type: VerificationCodeTypeEnum.login,
+        purpose: 'login'
       })
     ).toThrow();
   });
@@ -63,8 +64,8 @@ describe('SendAuthCodeBodySchema', () => {
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: '   ',
-        type: VerificationCodeTypeEnum.register,
-        purpose: 'register'
+        type: VerificationCodeTypeEnum.login,
+        purpose: 'login'
       })
     ).toThrow();
   });

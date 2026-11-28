@@ -54,8 +54,35 @@ describe('probeUrlConnection', () => {
         }
       } else if (req.url?.startsWith('/cdn/')) {
         const key = req.url.split('/').slice(3).join('/');
-        res.writeHead(probeObjects.has(key) ? 200 : 404, { 'Content-Type': 'text/plain' });
-        res.end(probeObjects.get(key) ?? 'not found');
+        const objectKey = `${S3Buckets.public}/${key}`;
+        res.writeHead(probeObjects.has(objectKey) ? 200 : 404, { 'Content-Type': 'text/plain' });
+        res.end(probeObjects.get(objectKey) ?? 'not found');
+      } else if (
+        req.url?.startsWith(`/${S3Buckets.public}/`) ||
+        req.url?.startsWith(`/${S3Buckets.private}/`) ||
+        req.url?.startsWith(`/public-only/${S3Buckets.public}/`) ||
+        req.url?.startsWith(`/public-only/${S3Buckets.private}/`)
+      ) {
+        const parsed = new URL(req.url, 'http://127.0.0.1');
+        const publicOnly = parsed.pathname.startsWith('/public-only/');
+        const pathWithoutPrefix = publicOnly
+          ? parsed.pathname.slice('/public-only'.length)
+          : parsed.pathname;
+        const bucket = pathWithoutPrefix.startsWith(`/${S3Buckets.private}/`)
+          ? S3Buckets.private
+          : S3Buckets.public;
+        const key = pathWithoutPrefix.slice(`/${bucket}/`.length);
+        const objectKey = `${bucket}/${key}`;
+        const signed = parsed.searchParams.has('X-Amz-Signature');
+        const allowed = !(publicOnly && bucket === S3Buckets.private);
+        res.writeHead(allowed && signed && probeObjects.has(objectKey) ? 200 : 403, {
+          'Content-Type': 'text/plain'
+        });
+        res.end(
+          allowed && signed && probeObjects.has(objectKey)
+            ? probeObjects.get(objectKey)
+            : 'forbidden'
+        );
       } else if (req.url?.endsWith('/api/system/file/health')) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
@@ -194,19 +221,111 @@ describe('probeUrlConnection', () => {
     }
   });
 
+  it('verifies storage external endpoint across public and private buckets and cleans up temporary probes', async () => {
+    const previous = global.s3BucketMap;
+    const vendor = serviceEnv.STORAGE_VENDOR;
+    const forcePathStyle = serviceEnv.STORAGE_S3_FORCE_PATH_STYLE;
+    Object.assign(serviceEnv, { STORAGE_VENDOR: 'minio', STORAGE_S3_FORCE_PATH_STYLE: true });
+    const uploadedBuckets: string[] = [];
+    const removedBuckets: string[] = [];
+    const createMockBucket = (bucketName: string) => ({
+      bucketName,
+      client: {
+        uploadObject: async ({ key, body }: { key: string; body: Buffer }) => {
+          uploadedBuckets.push(bucketName);
+          probeObjects.set(`${bucketName}/${key}`, body.toString());
+        },
+        deleteObject: vi.fn(async ({ key }: { key: string }) => {
+          removedBuckets.push(bucketName);
+          probeObjects.delete(`${bucketName}/${key}`);
+        })
+      }
+    });
+    const publicBucket = createMockBucket(S3Buckets.public);
+    const privateBucket = createMockBucket(S3Buckets.private);
+    global.s3BucketMap = {
+      [S3Buckets.public]: publicBucket,
+      [S3Buckets.private]: privateBucket
+    } as any;
+    try {
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: baseUrl,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: true, status: 200 });
+      expect(uploadedBuckets).toEqual([S3Buckets.public, S3Buckets.private]);
+
+      // 仅路由公开桶、私有桶不可读时必须返回失败，避免私有文件 302 重定向误判为可用。
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: `${baseUrl}/public-only`,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, status: 403, errorCode: 'response' });
+
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: `${baseUrl}/wrong-prefix`,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, status: 404, errorCode: 'response' });
+
+      global.s3BucketMap = { [S3Buckets.public]: publicBucket } as any;
+      const uploadsBeforeMissingPrivate = uploadedBuckets.length;
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: baseUrl,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, errorCode: 'response' });
+      expect(uploadedBuckets.length).toBe(uploadsBeforeMissingPrivate);
+
+      global.s3BucketMap = {
+        [S3Buckets.public]: publicBucket,
+        [S3Buckets.private]: privateBucket
+      } as any;
+      Object.assign(serviceEnv, { STORAGE_VENDOR: 'oss' });
+      await expect(
+        probeUrlConnection({
+          service: 'storageExternalEndpoint',
+          url: baseUrl,
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: false, errorCode: 'response' });
+      await vi.waitFor(async () => {
+        expect(publicBucket.client.deleteObject).toHaveBeenCalledTimes(3);
+        expect(privateBucket.client.deleteObject).toHaveBeenCalledTimes(2);
+        expect(removedBuckets.filter((b) => b === S3Buckets.private)).toHaveLength(2);
+        expect(probeObjects.size).toBe(0);
+        expect(await MongoS3TTL.countDocuments({ minioKey: /^system\/probe\// })).toBe(0);
+      });
+    } finally {
+      global.s3BucketMap = previous;
+      Object.assign(serviceEnv, {
+        STORAGE_VENDOR: vendor,
+        STORAGE_S3_FORCE_PATH_STYLE: forcePathStyle
+      });
+    }
+  });
+
   it('verifies CDN object content and cleans temporary probes after success or failure', async () => {
     const previous = global.s3BucketMap;
     const vendor = serviceEnv.STORAGE_VENDOR;
     Object.assign(serviceEnv, { STORAGE_VENDOR: 'minio' });
     const remove = vi.fn(async ({ key }: { key: string }) => {
-      probeObjects.delete(key);
+      probeObjects.delete(`${S3Buckets.public}/${key}`);
     });
     global.s3BucketMap = {
       [S3Buckets.public]: {
         bucketName: S3Buckets.public,
         client: {
           uploadObject: async ({ key, body }: { key: string; body: Buffer }) => {
-            probeObjects.set(key, body.toString());
+            probeObjects.set(`${S3Buckets.public}/${key}`, body.toString());
           },
           deleteObject: remove
         },
@@ -294,13 +413,13 @@ describe('probeUrlConnection', () => {
     });
     const upload = vi.fn(async ({ key, body }: { key: string; body: Buffer }) => {
       await pendingUpload;
-      probeObjects.set(key, body.toString());
+      probeObjects.set(`${S3Buckets.public}/${key}`, body.toString());
     });
     const remove = vi.fn(async ({ key }: { key: string }) => {
       expect(await MongoS3TTL.countDocuments({ bucketName: S3Buckets.public, minioKey: key })).toBe(
         1
       );
-      probeObjects.delete(key);
+      probeObjects.delete(`${S3Buckets.public}/${key}`);
     });
     const generatePublicGetUrl = vi.fn();
     global.s3BucketMap = {

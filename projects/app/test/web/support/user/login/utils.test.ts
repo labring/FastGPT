@@ -1,14 +1,20 @@
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import {
+  LAST_LOGIN_METHOD_STORAGE_KEY,
+  getLastLoginMethodByOAuthProvider,
+  getLastLoginMethodByPageType,
   getLoginMethodItems,
+  readLastLoginMethod,
   resolveAutoLoginProvider,
-  resolveInitialLoginPageType
+  resolveInitialLoginPageType,
+  saveLastLoginMethod
 } from '@/web/support/user/login/utils';
 
 const labels = {
   wechat: 'WeChat',
+  code: 'Verification Code',
   password: 'Password',
   google: 'Google',
   github: 'GitHub',
@@ -58,6 +64,174 @@ describe('resolveInitialLoginPageType', () => {
       })
     ).toBe(LoginPageTypeEnum.passwordLogin);
   });
+
+  it('prefers verification-code login when enabled unless rootLogin, auto-login credentials, or SSO policy take precedence', () => {
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: true
+      })
+    ).toBe(LoginPageTypeEnum.codeLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: true,
+        codeLoginEnabled: true
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        hasAutoLoginCredentials: true,
+        codeLoginEnabled: true
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        sso: { enabled: true, disablePasswordForSsoUsers: true },
+        codeLoginEnabled: true
+      })
+    ).toBe(LoginPageTypeEnum.methodSelection);
+  });
+
+  it('restores the last login method when it is still available and falls back to default when unavailable', () => {
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: true,
+        lastLoginMethod: 'page:password'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: true,
+        wechatEnabled: true,
+        lastLoginMethod: 'page:wechat'
+      })
+    ).toBe(LoginPageTypeEnum.wechat);
+
+    // 微信登录被关闭后，不再在可选项内，回退到默认（开启验证码登录时为 codeLogin，否则为 passwordLogin）
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: true,
+        wechatEnabled: false,
+        lastLoginMethod: 'page:wechat'
+      })
+    ).toBe(LoginPageTypeEnum.codeLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: false,
+        wechatEnabled: false,
+        lastLoginMethod: 'page:wechat'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+
+    // 验证码登录被关闭后，回退到默认密码登录
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: false,
+        lastLoginMethod: 'page:code'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+
+    // 外跳 OAuth 不自动跳转，回退到当前默认表单页
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: true,
+        lastLoginMethod: 'oauth:github'
+      })
+    ).toBe(LoginPageTypeEnum.codeLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        codeLoginEnabled: false,
+        lastLoginMethod: 'oauth:sso'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+
+    // 运维入口、自动凭据与 SSO 禁用密码策略优先级高于上次登录方式
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: true,
+        codeLoginEnabled: true,
+        wechatEnabled: true,
+        lastLoginMethod: 'page:wechat'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        hasAutoLoginCredentials: true,
+        codeLoginEnabled: true,
+        wechatEnabled: true,
+        lastLoginMethod: 'page:wechat'
+      })
+    ).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(
+      resolveInitialLoginPageType({
+        rootLogin: false,
+        sso: { enabled: true, disablePasswordForSsoUsers: true },
+        codeLoginEnabled: true,
+        lastLoginMethod: 'page:password'
+      })
+    ).toBe(LoginPageTypeEnum.methodSelection);
+  });
+});
+
+describe('last login method storage helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('maps login page types and OAuth providers to canonical method ids', () => {
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.codeLogin)).toBe('page:code');
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.passwordLogin)).toBe('page:password');
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.forgetPassword)).toBeUndefined();
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.wechat)).toBe('page:wechat');
+    expect(getLastLoginMethodByPageType(LoginPageTypeEnum.methodSelection)).toBeUndefined();
+
+    expect(getLastLoginMethodByOAuthProvider('github')).toBe('oauth:github');
+    expect(getLastLoginMethodByOAuthProvider('sso')).toBe('oauth:sso');
+    expect(getLastLoginMethodByOAuthProvider('wechat')).toBe('page:wechat');
+    expect(getLastLoginMethodByOAuthProvider('unknown')).toBeUndefined();
+  });
+
+  it('reads and writes localStorage safely and ignores invalid values or storage errors', () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value)
+      }
+    });
+
+    expect(readLastLoginMethod()).toBeUndefined();
+    saveLastLoginMethod('page:password');
+    expect(store.get(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('page:password');
+    expect(readLastLoginMethod()).toBe('page:password');
+
+    store.set(LAST_LOGIN_METHOD_STORAGE_KEY, 'invalid-method');
+    expect(readLastLoginMethod()).toBeUndefined();
+
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => {
+          throw new Error('storage blocked');
+        },
+        setItem: () => {
+          throw new Error('storage blocked');
+        }
+      }
+    });
+    expect(readLastLoginMethod()).toBeUndefined();
+    expect(() => saveLastLoginMethod('page:code')).not.toThrow();
+  });
 });
 
 describe('resolveAutoLoginProvider', () => {
@@ -72,6 +246,9 @@ describe('resolveAutoLoginProvider', () => {
 
     expect(resolveAutoLoginProvider({ ...input, rootLogin: false })).toBe('sso');
     expect(resolveAutoLoginProvider({ ...input, rootLogin: true })).toBeUndefined();
+    expect(
+      resolveAutoLoginProvider({ ...input, rootLogin: false, hasAutoLoginCredentials: true })
+    ).toBeUndefined();
   });
 
   it('redirects to WeCom OAuth when both switches are enabled and WeCom OAuth is configured', () => {
@@ -231,7 +408,64 @@ describe('getLoginMethodItems', () => {
       })
     });
 
-    expect(methods.map(({ id }) => id)).toEqual(['oauth:sso', 'page:password', 'oauth:google']);
-    expect(methods[0]).toMatchObject({ label: 'SSO' });
+    expect(methods.map(({ id }) => id)).toEqual(['page:password', 'oauth:sso', 'oauth:google']);
+    expect(methods[1]).toMatchObject({ label: 'SSO' });
+  });
+
+  it('places password/code login before third-party providers in alternatives and keeps selection order', () => {
+    const feConfigs = createFeConfigs({
+      isPlus: true,
+      login_method: ['email', 'phone'],
+      oauth: { wechat: 'wechat-app-id', github: 'github-client-id' }
+    });
+
+    const onCodePage = getLoginMethodItems({
+      mode: 'alternatives',
+      pageType: LoginPageTypeEnum.codeLogin,
+      labels,
+      feConfigs
+    });
+    expect(onCodePage.map(({ id }) => id)).toEqual([
+      'page:password',
+      'page:wechat',
+      'oauth:github'
+    ]);
+
+    const onPasswordPage = getLoginMethodItems({
+      mode: 'alternatives',
+      pageType: LoginPageTypeEnum.passwordLogin,
+      labels,
+      feConfigs
+    });
+    expect(onPasswordPage.map(({ id }) => id)).toEqual([
+      'page:code',
+      'page:wechat',
+      'oauth:github'
+    ]);
+
+    const onWechatPage = getLoginMethodItems({
+      mode: 'alternatives',
+      pageType: LoginPageTypeEnum.wechat,
+      labels,
+      feConfigs
+    });
+    expect(onWechatPage.map(({ id }) => id)).toEqual([
+      'page:password',
+      'page:code',
+      'oauth:github'
+    ]);
+
+    const onSelectionPage = getLoginMethodItems({
+      mode: 'selection',
+      pageType: LoginPageTypeEnum.methodSelection,
+      labels,
+      feConfigs
+    });
+    expect(onSelectionPage.map(({ id }) => id)).toEqual([
+      'page:wechat',
+      'oauth:github',
+      'page:code',
+      'page:password'
+    ]);
   });
 });

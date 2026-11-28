@@ -136,7 +136,8 @@ vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
     React.createElement('section', { id, 'aria-label': title }, rightContent, children)
 }));
 vi.mock('@/pageComponents/admin/settings/AdminFormItem', () => ({
-  default: ({ children }: any) => React.createElement('div', null, children)
+  default: ({ label, children }: any) =>
+    React.createElement('div', { 'data-label': label }, children)
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({ default: () => null }));
 vi.mock('@/pageComponents/admin/settings/AdminNumberInput', () => ({
@@ -367,9 +368,11 @@ describe('system configuration secret forms', () => {
       expect(
         container.querySelector('[name="fileDomain"][data-service="fileService"]')
       ).not.toBeNull();
-      expect(container.querySelector('[name="externalEndpoint"]') !== null).toBe(
-        mode === 'short-redirect'
-      );
+      expect(
+        container.querySelector(
+          '[name="externalEndpoint"][data-service="storageExternalEndpoint"]'
+        ) !== null
+      ).toBe(mode === 'short-redirect');
       expect(container.querySelector('[name="cdnEndpoint"][data-service="cdn"]') !== null).toBe(
         mode === 'short-redirect'
       );
@@ -425,9 +428,10 @@ describe('system configuration secret forms', () => {
       };
       await act(async () => root.render(React.createElement(CoreSettings)));
 
-      expect(container.textContent).toContain(
-        `admin:object_storage_backend_read_only:${capabilities.vendor}`
-      );
+      expect(
+        container.querySelector('[data-label="admin:object_storage_backend_read_only"]')
+          ?.textContent
+      ).toBe(capabilities.vendor);
       expect(container.querySelector('[name="externalEndpoint"]') !== null).toBe(expectExternal);
       expect(container.querySelector('[name="cdnEndpoint"][data-service="cdn"]') !== null).toBe(
         expectCdn

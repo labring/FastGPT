@@ -300,6 +300,36 @@ export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.ext
 export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
 
 /* ============================================================================
+ * API: 用户验证码登录
+ * Route: POST /api/proApi/support/user/account/login/code
+ * Method: POST
+ * Description: 使用邮箱或手机号验证码登录，未注册用户自动创建空密码账号
+ * Tags: ['User Login']
+ * ============================================================================ */
+export const LoginByCodeBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
+  username: AccountContactUsernameSchema.meta({
+    example: 'user@example.com',
+    description: '用户名（邮箱或手机号）'
+  }),
+  code: ShortAuthStringSchema.meta({
+    example: '123456',
+    description: '邮箱或手机登录验证码'
+  }),
+  language: LanguageSchema.optional().default('zh-CN').meta({
+    example: 'zh-CN',
+    description: '用户语言偏好'
+  })
+}).meta({
+  example: {
+    username: 'user@example.com',
+    code: '123456',
+    language: 'zh-CN'
+  }
+});
+export type LoginByCodeBodyType = z.infer<typeof LoginByCodeBodySchema>;
+export type LoginByCodeRequestBodyType = z.input<typeof LoginByCodeBodySchema>;
+
+/* ============================================================================
  * API: 获取企业微信登录跳转地址
  * Route: POST /api/proApi/support/user/account/login/wecom/getRedirectUrl
  * Method: POST

@@ -528,6 +528,7 @@ export const iconPaths = {
   sliderTag: () => import('./icons/sliderTag.svg'),
   star: () => import('./icons/star.svg'),
   stop: () => import('./icons/stop.svg'),
+  'support/account/codeLogin': () => import('./icons/support/account/codeLogin.svg'),
   'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
   'support/account/customDomain/provider/aliyun': () =>
     import('./icons/support/account/customDomain/provider/aliyun.svg'),

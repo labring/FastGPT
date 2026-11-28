@@ -10,7 +10,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getSsoAuthURL, getWecomRedirectURL } from '@/web/support/user/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LoginPageTypeEnum } from '@/web/support/user/login/constants';
-import { getLoginMethodItems, type LoginMethodItem } from '@/web/support/user/login/utils';
+import {
+  getLastLoginMethodByOAuthProvider,
+  getLoginMethodItems,
+  saveLastLoginMethod,
+  type LoginMethodItem
+} from '@/web/support/user/login/utils';
 
 /** 直连 OAuth 的 Provider 映射，登录与重新认证共用同一套授权地址构造逻辑。 */
 const directOAuthProviders = {
@@ -53,6 +58,7 @@ export const useLoginMethods = ({
         feConfigs,
         labels: {
           wechat: t('common:support.user.login.Wechat'),
+          code: t('common:support.user.login.Verification code login'),
           password: t('common:support.user.login.Password login'),
           google: t('common:support.user.login.Google'),
           github: t('common:support.user.login.Github'),
@@ -63,10 +69,14 @@ export const useLoginMethods = ({
   );
 
   const startLogin = useCallback(
-    async (method: LoginMethodItem) => {
+    async (method: LoginMethodItem, options?: { skipRemember?: boolean }) => {
       if (method.type === 'page') {
         setPageType(method.pageType);
         return;
+      }
+
+      if (!options?.skipRemember && router.query.rootLogin !== '1') {
+        saveLastLoginMethod(getLastLoginMethodByOAuthProvider(method.provider));
       }
 
       try {

@@ -79,17 +79,14 @@ async function handler(
       // 探测结果未知时不擅自降级；Pro 不可用时业务请求本身会失败。
       externalUserSystemConfigured: ssoConfigured !== false
     });
-    const shouldDowngradeSyncTeamMode = effectiveTeamMode !== configuredTeamMode;
-    const effectiveRegisterMethod = shouldDowngradeSyncTeamMode
-      ? runtimeSnapshot.feConfigs?.register_method?.filter((method) => method !== 'sync')
-      : runtimeSnapshot.feConfigs?.register_method;
+
+    // 独立自助注册已退役；仅为 V4.17.6 旧前端保留已弃用的 register_method 响应兼容数组。
+    const deprecatedRegisterMethod: 'sync'[] = effectiveTeamMode === 'sync' ? ['sync'] : [];
 
     const config = {
       ...runtimeSnapshot.feConfigs,
       ...(effectiveTeamMode !== undefined ? { teamMode: effectiveTeamMode } : {}),
-      ...(effectiveRegisterMethod !== undefined
-        ? { register_method: effectiveRegisterMethod }
-        : {}),
+      register_method: deprecatedRegisterMethod,
       // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {

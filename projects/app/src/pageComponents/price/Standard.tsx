@@ -656,7 +656,10 @@ const Standard = ({
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {isWecomTeam && item.level === StandardSubLevelEnum.free
                     ? t('price:support.wallet.subscription.standardSubLevel.trial_desc')
-                    : t(item.desc as any, { title: feConfigs?.systemTitle })}
+                    : t(item.desc as any, {
+                        title: feConfigs?.systemTitle,
+                        systemName: feConfigs?.systemTitle || 'FastGPT'
+                      })}
                 </Box>
 
                 {/* Button */}

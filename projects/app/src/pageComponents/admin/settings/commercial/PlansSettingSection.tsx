@@ -132,6 +132,7 @@ export type PlansSettingSectionHandle = {
 type PlansSettingSectionProps = {
   className?: string;
   onDirtyChange?: (isDirty: boolean) => void;
+  onPlanStateChange?: (state: { loaded: boolean; enabled: boolean }) => void;
 };
 
 /**
@@ -175,7 +176,7 @@ const DateInput = ({
  * 提交时不带 subPlans 键，避免把读取失败写成清空套餐。
  */
 const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSectionProps>(
-  ({ onDirtyChange }, ref) => {
+  ({ onDirtyChange, onPlanStateChange }, ref) => {
     const { t } = useSafeTranslation();
 
     const [openPlan, setOpenPlan] = useState(false);
@@ -246,6 +247,10 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
      */
     const subPlansLoaded =
       configStore !== null && configStore !== undefined && typeof subPlansRevision === 'number';
+
+    useEffect(() => {
+      onPlanStateChange?.({ loaded: subPlansLoaded, enabled: openPlan });
+    }, [onPlanStateChange, subPlansLoaded, openPlan]);
 
     /**
      * 读取失败已由 useRequest 的 errorToast 呈现，这里吞掉 rejection：

@@ -56,7 +56,7 @@
   "log_request_id_search": "根據 requestId 搜尋",
   "log_status": "狀態",
   "mapping": "模型對映",
-  "mapping_tip": "可在向實際端點傳送請求前對模型名稱進行對應。例如將 gpt-4o 對應為 gpt-4o-test：當 FastGPT 請求 gpt-4o 時，實際端點會收到 gpt-4o-test。",
+  "mapping_tip": "可在向實際端點傳送請求前對模型名稱進行對應。例如將 gpt-4o 對應為 gpt-4o-test：當系統請求 gpt-4o 時，實際端點會收到 gpt-4o-test。",
   "compact_mapping_tip": "上游實際收到的模型 ID",
   "mapping_key_placeholder": "選擇請求模型",
   "mapping_value_placeholder": "目標模型名（如 gpt-4o-test）",

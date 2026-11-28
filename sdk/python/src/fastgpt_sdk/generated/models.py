@@ -2138,6 +2138,7 @@ class DatasetsCollectionsDetailRes(FastGPTResponseModel):
     forbid: bool | None = Field(default=None, description="是否禁用")
     inherit_permission: bool | None = Field(default=None, validation_alias=AliasChoices("inherit_permission", "inheritPermission"), serialization_alias="inheritPermission", description="继承权限：true=快照合并父级，false=独立配置")
     file_id: str | None = Field(default=None, validation_alias=AliasChoices("file_id", "fileId"), serialization_alias="fileId", description="文件 ID")
+    chunk_image_prefix_id: str | None = Field(default=None, validation_alias=AliasChoices("chunk_image_prefix_id", "chunkImagePrefixId"), serialization_alias="chunkImagePrefixId", description="直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承")
     raw_link: str | None = Field(default=None, validation_alias=AliasChoices("raw_link", "rawLink"), serialization_alias="rawLink", description="原始链接")
     external_file_id: str | None = Field(default=None, validation_alias=AliasChoices("external_file_id", "externalFileId"), serialization_alias="externalFileId", description="外部文件 ID")
     api_file_id: str | None = Field(default=None, validation_alias=AliasChoices("api_file_id", "apiFileId"), serialization_alias="apiFileId", description="API 文件 ID")
@@ -2382,6 +2383,7 @@ class DatasetsDataListResListItem(FastGPTResponseModel):
     id_: str = Field(validation_alias=AliasChoices("id_", "_id"), serialization_alias="_id", description="数据 ID")
     dataset_id: str = Field(validation_alias=AliasChoices("dataset_id", "datasetId"), serialization_alias="datasetId", description="数据集 ID")
     collection_id: str = Field(validation_alias=AliasChoices("collection_id", "collectionId"), serialization_alias="collectionId", description="集合 ID")
+    create_time: str = Field(validation_alias=AliasChoices("create_time", "createTime"), serialization_alias="createTime", description="数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回")
     q: str | None = Field(default=None, description="问题/主文本")
     a: str | None = Field(default=None, description="回答/补充文本")
     image_id: str | None = Field(default=None, validation_alias=AliasChoices("image_id", "imageId"), serialization_alias="imageId", description="图片 ID")
@@ -2405,8 +2407,8 @@ class DatasetsDataPushBatchReqDataItemIndexesItem(FastGPTRequestModel):
 
 
 class DatasetsDataPushBatchReqDataItem(FastGPTRequestModel):
-    q: str | None = Field(default=None, description="问题/主文本")
-    a: str | None = Field(default=None, description="回答/补充文本")
+    q: str | None = Field(default=None, description="问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）")
+    a: str | None = Field(default=None, description="回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）")
     image_id: str | None = Field(default=None, validation_alias=AliasChoices("image_id", "imageId"), serialization_alias="imageId", description="图片 ID")
     chunk_index: float | None = Field(default=None, validation_alias=AliasChoices("chunk_index", "chunkIndex"), serialization_alias="chunkIndex", description="块索引")
     indexes: list[DatasetsDataPushBatchReqDataItemIndexesItem] | None = Field(default=None, description="额外向量索引")
@@ -2416,7 +2418,7 @@ class DatasetsDataPushBatchReqDataItem(FastGPTRequestModel):
 class DatasetsDataPushBatchReq(FastGPTRequestModel):
     """推送数据到训练队列 请求参数（POST /core/dataset/data/pushData）"""
     collection_id: str = Field(validation_alias=AliasChoices("collection_id", "collectionId"), serialization_alias="collectionId", description="集合 ID")
-    data: list[DatasetsDataPushBatchReqDataItem] = Field(description="数据列表，最多 200 条")
+    data: list[DatasetsDataPushBatchReqDataItem] = Field(description="数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界")
     training_type: Literal["chunk", "qa", "imageParse", "backup", "template", "auto"] | None = Field(default=None, validation_alias=AliasChoices("training_type", "trainingType"), serialization_alias="trainingType", description="训练类型")
     index_size: float | None = Field(default=None, validation_alias=AliasChoices("index_size", "indexSize"), serialization_alias="indexSize", description="索引大小限制")
     auto_indexes: bool | None = Field(default=None, validation_alias=AliasChoices("auto_indexes", "autoIndexes"), serialization_alias="autoIndexes", description="是否自动生成索引")
@@ -2530,6 +2532,7 @@ class DatasetsDetailResAgentModelConfig(FastGPTResponseModel):
     video: bool | None = None
     reasoning: bool | None = None
     reasoning_effort: bool | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort", "reasoningEffort"), serialization_alias="reasoningEffort")
+    reasoning_effort_list: list[Literal["none", "minimal", "low", "medium", "high", "xhigh"]] | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort_list", "reasoningEffortList"), serialization_alias="reasoningEffortList", description="模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置")
     function_call: bool | None = Field(default=None, validation_alias=AliasChoices("function_call", "functionCall"), serialization_alias="functionCall")
     tool_choice: bool | None = Field(default=None, validation_alias=AliasChoices("tool_choice", "toolChoice"), serialization_alias="toolChoice")
     default_system_chat_prompt: str | None = Field(default=None, validation_alias=AliasChoices("default_system_chat_prompt", "defaultSystemChatPrompt"), serialization_alias="defaultSystemChatPrompt")
@@ -2898,6 +2901,7 @@ class ModelsCatalogResDataModelsItemVariant1Config(FastGPTResponseModel):
     video: bool | None = None
     reasoning: bool | None = None
     reasoning_effort: bool | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort", "reasoningEffort"), serialization_alias="reasoningEffort")
+    reasoning_effort_list: list[Literal["none", "minimal", "low", "medium", "high", "xhigh"]] | None = Field(default=None, validation_alias=AliasChoices("reasoning_effort_list", "reasoningEffortList"), serialization_alias="reasoningEffortList", description="模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置")
     function_call: bool | None = Field(default=None, validation_alias=AliasChoices("function_call", "functionCall"), serialization_alias="functionCall")
     tool_choice: bool | None = Field(default=None, validation_alias=AliasChoices("tool_choice", "toolChoice"), serialization_alias="toolChoice")
 

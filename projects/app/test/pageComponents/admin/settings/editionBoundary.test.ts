@@ -164,20 +164,45 @@ describe('configuration form edition boundary', () => {
 
   it.each([
     [false, true, false],
-    [true, false, false],
+    [true, false, true],
     [true, true, true]
   ])(
-    'shows login 2FA SMS template input only for Pro=%s / 2FA=%s',
-    (isPro, login2faEnabled, visible) => {
+    'shows login SMS template input for Pro=%s regardless of 2FA=%s and removes deprecated registration template input',
+    async (isPro, login2faEnabled, visible) => {
       mocks.isPro = isPro;
       mocks.login2faEnabled = login2faEnabled;
       mocks.authOverrides = {
-        loginProviders: { phone: { accessKeyId: 'ak', signName: 'sign' } }
+        loginProviders: {
+          phone: { accessKeyId: 'ak', signName: 'sign' },
+          sms: { register: { zh: 'LEGACY_REGISTER_TPL' }, login: { zh: 'LOGIN_TPL' } }
+        }
       };
       mocks.authSecretKeys = new Set(['loginProviders.phone.accessKeySecret']);
       const html = renderToStaticMarkup(React.createElement(AuthSettings));
       expect(html.includes('id="smsLogin"')).toBe(isPro);
       expect(mocks.formLabels.includes('admin:login_code_chinese_template')).toBe(visible);
+      expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+
+      // 保存 auth 配置时不再提交已弃用的 sms.register，服务端局部合并自动保留库内历史模板以便回滚。
+      if (isPro) {
+        const config = resolveSystemInstanceConfig({ auth: mocks.authOverrides as any });
+        await mocks.save!({
+          ...config.auth,
+          passwordLoginMinuteLimitCount: 10,
+          maxLoginSession: 10
+        });
+        const authItem = mocks.update.mock.calls[0][0].items.find(
+          (item: { domain: string }) => item.domain === 'auth'
+        );
+        expect(authItem.overrides.loginProviders.sms).toEqual({
+          login: { zh: 'LOGIN_TPL' },
+          resetPassword: { zh: '' },
+          changePassword: { zh: '' },
+          bindNotification: { zh: '' },
+          modelDeprecation: { zh: '' }
+        });
+        expect(authItem.overrides.loginProviders.sms).not.toHaveProperty('register');
+      }
     }
   );
 
@@ -192,7 +217,7 @@ describe('configuration form edition boundary', () => {
     expect(unconfiguredHtml).toContain('href="/admin/settings/core#sms"');
     expect(unconfiguredHtml).toContain('admin:aliyun_sms_not_configured');
     expect(unconfiguredHtml).toContain('admin:aliyun_sms');
-    expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+    expect(mocks.formLabels).not.toContain('admin:login_code_chinese_template');
 
     mocks.switchRows.clear();
     mocks.authOverrides = { loginProviders: { email: { register: true } } };
@@ -216,7 +241,7 @@ describe('configuration form edition boundary', () => {
     expect(configuredHtml).not.toContain('href="/admin/settings/core#email"');
     expect(configuredHtml).not.toContain('href="/admin/settings/core#sms"');
     expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
-    expect(mocks.formLabels).toContain('admin:registration_code_chinese_template');
+    expect(mocks.formLabels).toContain('admin:login_code_chinese_template');
   });
 
   it.each([false, true])(
@@ -465,18 +490,32 @@ describe('configuration form edition boundary', () => {
     );
     expect(mocks.switchRows.has('admin:show_workflow_builder')).toBe(false);
     expect(mocks.switchRows.has('admin:disable_runtime_cache')).toBe(false);
-    const copyright = mocks.switchRows.get('admin:hide_chat_copyright_setting')!;
-    expect(copyright.isChecked).toBe(true);
-    copyright.onChange(false);
+    // 门户版权配置仅 SaaS 展示，私有化商业版不展示且保存不写入该字段。
+    expect(mocks.switchRows.has('admin:hide_chat_copyright_setting')).toBe(false);
     mocks.switchRows.get('admin:enable_feishu_data_source')!.onChange(false);
     mocks.switchRows.get('admin:publish_channel_personal_wechat')!.onChange(false);
     await mocks.pageSave!();
     const overrides = mocks.patch.mock.calls[0][0];
     expect(() => parseDomainOverrides({ domain: 'feature', overrides })).not.toThrow();
+    expect(overrides).not.toHaveProperty('hideChatCopyrightSetting');
     expect(overrides).toMatchObject({
-      hideChatCopyrightSetting: true,
       showDatasetFeishu: false,
       showPublishWechat: false
+    });
+  });
+
+  it('仅 SaaS 商业版在功能页展示并可保存门户版权配置开关', async () => {
+    mocks.isPro = true;
+    mocks.enableSaasAdminConfig = true;
+    renderToStaticMarkup(React.createElement(FeatureSettings));
+    const copyright = mocks.switchRows.get('admin:hide_chat_copyright_setting')!;
+    expect(copyright.isChecked).toBe(true);
+    copyright.onChange(false);
+    await mocks.pageSave!();
+    const overrides = mocks.patch.mock.calls[0][0];
+    expect(() => parseDomainOverrides({ domain: 'feature', overrides })).not.toThrow();
+    expect(overrides).toMatchObject({
+      hideChatCopyrightSetting: true
     });
   });
 
@@ -506,41 +545,69 @@ describe('configuration form edition boundary', () => {
 
   it('keeps Pro SMTP/SMS editable and preserves another hidden provider override', async () => {
     mocks.isPro = true;
-    mocks.authOverrides = { loginProviders: { wecom: { providerSecret: 'keep-hidden-secret' } } };
+    mocks.authOverrides = {
+      loginProviders: {
+        wecom: { providerSecret: 'keep-hidden-secret' },
+        sms: {
+          register: { zh: 'LEGACY_REGISTER_TPL' },
+          modelDeprecation: { zh: 'MODEL_DEP_TPL' }
+        }
+      }
+    };
     const html = renderToStaticMarkup(React.createElement(CoreSettings));
     expect(html).toContain('id="email"');
     expect(html).toContain('id="sms"');
+    expect(mocks.formLabels).toContain('admin:login_code_chinese_template');
+    expect(mocks.formLabels).toContain('admin:reset_password_chinese_template');
+    expect(mocks.formLabels).toContain('admin:change_password_chinese_template');
+    expect(mocks.formLabels).toContain('admin:binding_notification_chinese_template');
+    expect(mocks.formLabels).toContain('admin:model_deprecation_chinese_template');
+
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       email: { ...config.auth.loginProviders.email, smtp: 'smtp.example.com' },
       documentParse: config.providers.documentParse,
-      phone: config.auth.loginProviders.phone
+      phone: config.auth.loginProviders.phone,
+      sms: {
+        login: { zh: 'CORE_LOGIN_TPL' },
+        resetPassword: { zh: 'CORE_RESET_TPL' },
+        changePassword: { zh: 'CORE_CHANGE_TPL' },
+        bindNotification: { zh: 'CORE_BIND_TPL' },
+        modelDeprecation: { zh: 'CORE_MODEL_DEP_TPL' }
+      }
     });
     const auth = mocks.update.mock.calls[0][0].items.find(
       (item: { domain: string }) => item.domain === 'auth'
     );
     expect(auth.overrides.loginProviders).toMatchObject({
       email: { smtp: 'smtp.example.com' },
-      wecom: { providerSecret: 'keep-hidden-secret' }
+      wecom: { providerSecret: 'keep-hidden-secret' },
+      sms: {
+        login: { zh: 'CORE_LOGIN_TPL' },
+        resetPassword: { zh: 'CORE_RESET_TPL' },
+        changePassword: { zh: 'CORE_CHANGE_TPL' },
+        bindNotification: { zh: 'CORE_BIND_TPL' },
+        modelDeprecation: { zh: 'CORE_MODEL_DEP_TPL' }
+      }
     });
+    expect(auth.overrides.loginProviders.sms).not.toHaveProperty('register');
   });
 
   it.each([false, true])(
-    'preserves email registration when saving SMTP settings: register=%s',
+    'shows and saves email registration switch on core page when SMTP is configured: register=%s',
     async (register) => {
       mocks.isPro = true;
-      mocks.authOverrides = { loginProviders: { email: { register } } };
+      mocks.authOverrides = { loginProviders: { email: { register: !register } } };
       renderToStaticMarkup(React.createElement(CoreSettings));
-      expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(false);
+      expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
 
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
         documentParse: config.providers.documentParse,
-        // 即便传入旧页面遗留的注册值，核心页也只提交自己负责的 SMTP 字段。
         email: {
           ...config.auth.loginProviders.email,
           smtp: 'smtp.example.com',
-          register: !register
+          register
         },
         phone: config.auth.loginProviders.phone
       });
@@ -551,6 +618,22 @@ describe('configuration form edition boundary', () => {
         smtp: 'smtp.example.com',
         register
       });
+
+      // 清空 SMTP 时强制关闭邮箱注册开关，避免留下无法发码的注册入口。
+      mocks.update.mockClear();
+      await mocks.save!({
+        documentParse: config.providers.documentParse,
+        email: {
+          ...config.auth.loginProviders.email,
+          smtp: '',
+          register: true
+        },
+        phone: config.auth.loginProviders.phone
+      });
+      const clearedAuth = mocks.update.mock.calls[0][0].items.find(
+        (item: { domain: string }) => item.domain === 'auth'
+      );
+      expect(clearedAuth.overrides.loginProviders.email.register).toBe(false);
     }
   );
 

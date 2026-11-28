@@ -45,10 +45,10 @@ export const buildSystemFrontendConfig = (
         showWecomConfig: false
       };
   const isPlus = isLicenseActive(licenseData);
+  const teamMode = proEnv.teamMode ?? 'single';
   const payConfig = buildPayConfig(instanceConfig?.commercial);
   const authMethods = buildAuthMethodProjection({
-    auth: instanceConfig?.auth,
-    legacyRegisterMethods: proEnv.teamMode === 'sync' ? ['sync'] : []
+    auth: instanceConfig?.auth
   });
   const pluginRemoteDebug = context.pluginRemoteDebug ?? false;
   const feConfigs: FastGPTFeConfigsType = {
@@ -64,7 +64,7 @@ export const buildSystemFrontendConfig = (
     navbarItems: instanceConfig?.site?.navbarItems,
 
     // 团队模式由 Pro ENV 控制，Pro 重启时刷新此共享快照；实例 auth.teamMode 不能覆盖。
-    teamMode: proEnv.teamMode ?? 'single',
+    teamMode,
     wecomLoginAutoRedirect: context.wecomLoginAutoRedirect ?? false,
     oauth: buildOauthFeConfig(instanceConfig?.auth),
     sso: {
@@ -73,8 +73,8 @@ export const buildSystemFrontendConfig = (
       autoLogin: instanceConfig?.auth?.sso?.autoLogin,
       disablePasswordForSsoUsers: instanceConfig?.auth?.sso?.disablePasswordForSsoUsers
     },
-    login_method: authMethods.login_method,
-    register_method: authMethods.register_method,
+    // 开源版与成员同步模式（sync）均不开放邮箱/手机号验证码登录。
+    login_method: isPlus && teamMode !== 'sync' ? authMethods.login_method : [],
     find_password_method: authMethods.find_password_method,
     bind_notification_method: authMethods.bind_notification_method,
     accountCancellation: {

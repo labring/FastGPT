@@ -136,8 +136,9 @@ const provider = () => {
           return;
         }
 
+        const providerType = loginStore?.provider || OAuthEnum.sso;
         const res = await oauthLogin({
-          type: loginStore?.provider || OAuthEnum.sso,
+          type: providerType,
           props,
           callbackUrl: `${location.origin}/login/provider`,
           bd_vid: getBdVId(),

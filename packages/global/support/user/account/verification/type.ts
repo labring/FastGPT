@@ -125,7 +125,6 @@ export type VerificationMaterialMatch<T extends VerificationType> = Partial<{
 }>;
 
 export const VERIFICATION_CODE_TYPES = [
-  VerificationCodeTypeEnum.register,
   VerificationCodeTypeEnum.findPassword,
   VerificationCodeTypeEnum.passwordChange,
   VerificationCodeTypeEnum.unsubscribe,
@@ -142,7 +141,6 @@ export type CodeVerificationPurpose = z.infer<typeof CodeVerificationPurposeSche
 
 /** Each verification code type has exactly one account-verification purpose. */
 export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
-  [VerificationCodeTypeEnum.register]: 'register',
   [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
   [VerificationCodeTypeEnum.passwordChange]: 'changePassword',
   [VerificationCodeTypeEnum.unsubscribe]: 'unsubscribe',

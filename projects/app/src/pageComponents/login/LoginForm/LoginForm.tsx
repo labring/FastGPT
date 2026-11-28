@@ -35,7 +35,7 @@ import type {
   LoginVerificationRequiredResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import PolicyTip from './PolicyTip';
-import { getRegisterMethods } from '@/web/common/system/utils';
+import { getLoginMethods } from '@/web/common/system/utils';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -128,8 +128,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
   const router = useRouter();
-  const registerMethods = getRegisterMethods(feConfigs);
-  const hasRegisterMethod = registerMethods.length > 0;
+  const loginMethods = getLoginMethods(feConfigs);
   const hasFindPasswordMethod = !!feConfigs?.find_password_method?.length;
   const [loginVerification, setLoginVerification] =
     useState<LoginVerificationRequiredResponseType>();
@@ -284,7 +283,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     return getLoginVerificationCaptcha(loginVerification.challenge);
   }, [loginVerification]);
 
-  const isCommunityVersion = hasRegisterMethod && !feConfigs?.isPlus;
+  const isCommunityVersion = !feConfigs?.isPlus;
 
   const placeholder = (() => {
     if (isCommunityVersion) {
@@ -292,14 +291,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     }
     return [t('common:support.user.login.Username')]
       .concat(
-        feConfigs?.login_method?.map((item) => {
+        loginMethods.map((item) => {
           switch (item) {
             case 'email':
               return t('common:support.user.login.Email');
             case 'phone':
               return t('common:support.user.login.Phone number');
           }
-        }) ?? []
+        })
       )
       .join('/');
   })();
@@ -377,7 +376,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               {t('login:Login')}
             </Button>
 
-            {(hasFindPasswordMethod || hasRegisterMethod) && (
+            {hasFindPasswordMethod && (
               <Flex
                 mt={6}
                 align={'center'}
@@ -388,36 +387,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 h={'16px'}
                 lineHeight={'16px'}
               >
-                {hasFindPasswordMethod && (
-                  <Box
-                    cursor={'pointer'}
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={() => setPageType('forgetPassword')}
-                    fontSize="mini"
-                  >
-                    {t('login:forget_password')}
-                  </Box>
-                )}
-                {hasFindPasswordMethod && hasRegisterMethod && (
-                  <Box
-                    display={['block', 'block']}
-                    mx={3}
-                    h={'12px'}
-                    w={'1px'}
-                    bg={'myGray.250'}
-                  ></Box>
-                )}
-                {hasRegisterMethod && (
-                  <Box
-                    cursor={'pointer'}
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={() => setPageType('register')}
-                    fontSize="mini"
-                    lineHeight="16px"
-                  >
-                    {t('login:register')}
-                  </Box>
-                )}
+                <Box
+                  cursor={'pointer'}
+                  _hover={{ textDecoration: 'underline' }}
+                  onClick={() => setPageType('forgetPassword')}
+                  fontSize="mini"
+                >
+                  {t('login:forget_password')}
+                </Box>
               </Flex>
             )}
           </Box>

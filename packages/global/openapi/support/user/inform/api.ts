@@ -22,15 +22,19 @@ const SendAuthCodeCommonSchema = z.object({
   })
 });
 
+/**
+ * 公开验证码发送入参。
+ * 旧自助注册（type=register）已随注册接口一并退役并由本 Schema 拒绝，版本升级或回滚需主应用与 Pro 协调切换。
+ */
 export const SendAuthCodeBodySchema = z.discriminatedUnion('type', [
   SendAuthCodeCommonSchema.extend({
-    type: z.literal(VerificationCodeTypeEnum.register).meta({
+    type: z.literal(VerificationCodeTypeEnum.login).meta({
       description: '验证码类型',
-      example: VerificationCodeTypeEnum.register
+      example: VerificationCodeTypeEnum.login
     }),
-    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[VerificationCodeTypeEnum.register]).meta({
+    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[VerificationCodeTypeEnum.login]).meta({
       description: '验证码业务场景',
-      example: 'register'
+      example: 'login'
     })
   }),
   SendAuthCodeCommonSchema.extend({
