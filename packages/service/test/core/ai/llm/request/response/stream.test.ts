@@ -788,6 +788,63 @@ describe('createStreamResponse', () => {
       }
     );
 
+    it.each([
+      {
+        label: 'reasoning_content with separator newlines',
+        chunks: [
+          chunk({ reasoning_content: '思考中' }),
+          chunk({ content: '\n\n' }),
+          chunk({ content: '1' }),
+          chunk({ content: ':' }),
+          chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      },
+      {
+        label: 'think tag with separator newlines',
+        chunks: [
+          chunk({ content: '<think>' }),
+          chunk({ content: '思考中' }),
+          chunk({ content: '</think>\n\n' }),
+          chunk({ content: '1' }),
+          chunk({ content: '：' }),
+          chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]
+      }
+    ])(
+      'should suppress split tool protocol after $label without streaming answer text',
+      async ({ chunks }) => {
+        const callbacks = createCallbacks();
+        const body = createBody({
+          tools: [tool('search')],
+          toolCallMode: 'prompt'
+        });
+        body.model.config.reasoning = true;
+        const { response } = createStream(chunks);
+
+        const result = await createStreamResponse({
+          body,
+          response,
+          ...callbacks
+        });
+
+        expect(result.reasoningText).toBe('思考中');
+        expect(result.answerText).toBe('');
+        expect(result.toolCalls).toEqual([
+          {
+            id: expect.any(String),
+            type: 'function',
+            function: { name: 'search', arguments: '{"q":"fastgpt"}' }
+          }
+        ]);
+        expect(callbacks.onStreaming).not.toHaveBeenCalled();
+        expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
+          call: result.toolCalls?.[0]
+        });
+      }
+    );
+
     it.each([true, false])(
       'should return malformed protocol as a visible error with callbacks=%s',
       async (observe) => {

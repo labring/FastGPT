@@ -204,21 +204,20 @@ export const createStreamResponse = async ({
             if (responseContent) {
               await onStreaming?.({ text: responseContent });
             }
-          } else if (answer.length >= 3) {
+          } else {
+            // 先忽略前导空白再判定 0:/1: 协议，避免思考后的分隔换行把未完整的协议前缀误判为普通文本。
             answer = answer.trimStart();
 
-            if (/0(:|：)/.test(answer)) {
-              // prompt tool 协议中 0 表示普通回答，可以开始把内容流式展示给用户。
-              startResponseWrite = true;
-
-              const firstIndex =
-                answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-              answer = answer.substring(firstIndex + 2).trim();
-
-              await onStreaming?.({ text: answer });
-            } else if (/1(:|：)/.test(answer)) {
+            if (/^0(:|：)/.test(answer)) {
+              const visibleAnswer = answer.slice(2).trimStart();
+              if (visibleAnswer) {
+                // prompt tool 协议中 0 表示普通回答，可以开始把内容流式展示给用户。
+                startResponseWrite = true;
+                await onStreaming?.({ text: visibleAnswer });
+              }
+            } else if (/^1(:|：)/.test(answer)) {
               // 1 表示工具调用，工具协议内容不应作为可见回答提前输出。
-            } else {
+            } else if (answer && answer !== '0' && answer !== '1') {
               // 兼容模型未按 0/1 前缀输出时，当作普通文本直接展示。
               startResponseWrite = true;
               await onStreaming?.({ text: answer });
