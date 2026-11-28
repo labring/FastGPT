@@ -74,11 +74,17 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
       options,
       searchValue,
       onSearchChange,
+      onOpen,
       ListContainer
     }: MultiSelectFilterProps) =>
       React.createElement(
         'section',
         { 'data-filter': title },
+        React.createElement('button', {
+          type: 'button',
+          'data-open': title,
+          onClick: () => onOpen?.()
+        }),
         React.createElement('input', {
           'aria-label': title as string,
           value: searchValue ?? '',
@@ -168,14 +174,31 @@ describe('AuditTable member pagination', () => {
     });
   };
 
-  it('loads and selects members beyond the first page, including historical audit actors', async () => {
+  const openFilter = async (title: string) => {
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(`[data-open="${title}"]`)!.click();
+    });
+    await settleRequests();
+  };
+
+  it('loads and selects members beyond the first page after opening, without fetching on mount', async () => {
     await act(async () => root.render(React.createElement(AuditTable)));
     await settleRequests();
-    expect(host.querySelectorAll('[data-filter="admin:operator"] button')).toHaveLength(20);
+    expect(mocks.getTeamMembers).not.toHaveBeenCalled();
+
+    await openFilter('admin:operator');
+    expect(
+      host.querySelectorAll('[data-filter="admin:operator"] button[data-member]')
+    ).toHaveLength(20);
     expect(mocks.getTeamMembers).toHaveBeenCalledWith(
       expect.objectContaining({ offset: 0, pageSize: 20 }),
       expect.any(AbortController)
     );
+
+    // 再次展开复用已加载列表，不重复触发首屏请求。
+    const callsAfterFirstOpen = mocks.getTeamMembers.mock.calls.length;
+    await openFilter('admin:operator');
+    expect(mocks.getTeamMembers).toHaveBeenCalledTimes(callsAfterFirstOpen);
 
     const list = host.querySelector<HTMLDivElement>('[data-testid="admin:operator-members"]')!;
     await act(async () => {
@@ -187,7 +210,9 @@ describe('AuditTable member pagination', () => {
       expect.objectContaining({ offset: 20, pageSize: 20 }),
       expect.any(AbortController)
     );
-    expect(host.querySelectorAll('[data-filter="admin:operator"] button')).toHaveLength(30);
+    expect(
+      host.querySelectorAll('[data-filter="admin:operator"] button[data-member]')
+    ).toHaveLength(30);
 
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[data-member="member-30"]')!.click()
@@ -204,7 +229,7 @@ describe('AuditTable member pagination', () => {
 
   it('searches remotely and can select a member absent from the first page', async () => {
     await act(async () => root.render(React.createElement(AuditTable)));
-    await settleRequests();
+    await openFilter('admin:operator');
     expect(host.querySelector('[data-member="member-30"]')).toBeNull();
 
     const input = host.querySelector<HTMLInputElement>('input[aria-label="admin:operator"]')!;
@@ -225,7 +250,7 @@ describe('AuditTable member pagination', () => {
     expect(mocks.auditParams.tmbIds).toEqual(['member-30']);
   });
 
-  it('keeps the existing active-only default for other member filters', async () => {
+  it('keeps the existing active-only default for other member filters after opening', async () => {
     await act(async () =>
       root.render(
         React.createElement(TeamMemberFilter, {
@@ -236,9 +261,73 @@ describe('AuditTable member pagination', () => {
       )
     );
     await settleRequests();
+    expect(mocks.getTeamMembers).not.toHaveBeenCalled();
+
+    await openFilter('成员');
     expect(mocks.getTeamMembers).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'active' }),
       expect.any(AbortController)
     );
+  });
+
+  it('retries loading when reopened after an initial load error', async () => {
+    mocks.getTeamMembers.mockRejectedValueOnce(new Error('temporary error'));
+
+    await act(async () =>
+      root.render(
+        React.createElement(TeamMemberFilter, {
+          title: '成员',
+          value: { mode: 'all', values: [] },
+          onChange: vi.fn()
+        })
+      )
+    );
+    await openFilter('成员');
+    expect(host.querySelectorAll('[data-filter="成员"] button[data-member]')).toHaveLength(0);
+
+    await openFilter('成员');
+    expect(host.querySelectorAll('[data-filter="成员"] button[data-member]')).toHaveLength(20);
+  });
+
+  it('requests the first page only once when opened immediately after mount', async () => {
+    await act(async () =>
+      root.render(
+        React.createElement(TeamMemberFilter, {
+          title: '成员',
+          value: { mode: 'all', values: [] },
+          onChange: vi.fn()
+        })
+      )
+    );
+    // 挂载后不等防抖计时器结束直接展开，完整推进节流（500ms）+ 防抖（200ms）窗口，确认不会触发两次首屏请求。
+    await openFilter('成员');
+    await settleRequests();
+    expect(mocks.getTeamMembers.mock.calls.map(([params]) => params.offset)).toEqual([0]);
+    expect(host.querySelectorAll('[data-filter="成员"] button[data-member]')).toHaveLength(20);
+  });
+
+  it('preserves loaded candidates when reopened after a load-more error', async () => {
+    await act(async () => root.render(React.createElement(AuditTable)));
+    await openFilter('admin:operator');
+    expect(
+      host.querySelectorAll('[data-filter="admin:operator"] button[data-member]')
+    ).toHaveLength(20);
+
+    mocks.getTeamMembers.mockRejectedValueOnce(new Error('load more failed'));
+    const list = host.querySelector<HTMLDivElement>('[data-testid="admin:operator-members"]')!;
+    await act(async () => {
+      list.scrollTop = 800;
+      list.dispatchEvent(new Event('scroll'));
+    });
+    await settleRequests();
+
+    expect(mocks.getTeamMembers.mock.calls.map(([params]) => params.offset)).toEqual([0, 20]);
+
+    // 续页失败后重新展开不应触发 offset=0 重置，已加载的第一页候选保持可见。
+    await openFilter('admin:operator');
+    expect(mocks.getTeamMembers.mock.calls.map(([params]) => params.offset)).toEqual([0, 20]);
+    expect(
+      host.querySelectorAll('[data-filter="admin:operator"] button[data-member]')
+    ).toHaveLength(20);
   });
 });
