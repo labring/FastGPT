@@ -1,6 +1,7 @@
 import { resolveLegacyWelcomeConfig } from './legacy/utils';
 import type { AppChatConfigType } from '../../core/app/type';
 import type { VariableItemType } from '../../core/app/variable/type';
+import { VariableInputEnum } from '../../core/workflow/constants';
 import { normalizeAndParseVariableList } from '../../core/app/variable/utils';
 import {
   defaultAutoExecuteConfig,
@@ -45,4 +46,35 @@ export const getAppChatConfig = ({
   }
 
   return config;
+};
+
+/** 开场白只使用普通标量输入和调用方传入的自定义变量。 */
+export const canMatchWelcomeVariable = (variable: VariableItemType) =>
+  [
+    VariableInputEnum.input,
+    VariableInputEnum.textarea,
+    VariableInputEnum.select,
+    VariableInputEnum.numberInput,
+    VariableInputEnum.switch,
+    VariableInputEnum.custom
+  ].includes(variable.type);
+
+/** 仅比较已声明变量的标量值，按配置顺序返回首条完整匹配的文案。 */
+export const resolveWelcomeText = (
+  config?: AppChatConfigType,
+  values?: Record<string, unknown>
+) => {
+  const fallback = config?.welcomeConfig?.welcomeText ?? config?.welcomeText;
+  const rule = config?.welcomeConfig?.byVariable;
+  const variable = rule && config?.variables?.find((item) => item.key === rule.key);
+  if (!rule || !variable || !canMatchWelcomeVariable(variable)) return fallback;
+
+  const value = values?.[variable.key] ?? values?.[variable.label] ?? variable.defaultValue;
+  if (typeof value !== 'string' && typeof value !== 'boolean' && typeof value !== 'number') {
+    return fallback;
+  }
+  return (
+    rule.cases.find((item) => item.value !== '' && item.value === String(value) && item.text.trim())
+      ?.text ?? fallback
+  );
 };

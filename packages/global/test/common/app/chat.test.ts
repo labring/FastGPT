@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
+import { getAppChatConfig, resolveWelcomeText } from '@fastgpt/global/common/app/chat';
 import {
   WorkflowIOValueTypeEnum,
   VariableInputEnum
@@ -88,5 +88,58 @@ describe('getAppChatConfig', () => {
       isPublicFetch: false
     });
     expect(result.scheduledTriggerConfig).toBeUndefined();
+  });
+});
+
+describe('variable-based welcome text', () => {
+  const chatConfig = {
+    welcomeText: 'Legacy',
+    variables: [{ key: 'v1', label: 'locale', description: '', type: VariableInputEnum.input }],
+    welcomeConfig: {
+      welcomeText: 'Default',
+      byVariable: {
+        key: 'v1',
+        cases: [
+          { value: 'en', text: 'Hello' },
+          { value: 'zh', text: '你好' }
+        ]
+      }
+    }
+  };
+  it('matches the declared variable after sharing or editing the app', () => {
+    const config = getAppChatConfig({ chatConfig, isPublicFetch: true });
+    expect(resolveWelcomeText(config, { v1: 'en' })).toBe('Hello');
+    expect(resolveWelcomeText(config, { v1: 'zh' })).toBe('你好');
+  });
+  it('falls back for missing, unknown, structured or deleted variables', () => {
+    for (const values of [{}, { v1: 'es' }, { v1: ['en'] }]) {
+      expect(resolveWelcomeText(chatConfig, values)).toBe('Default');
+    }
+    expect(resolveWelcomeText({ ...chatConfig, variables: [] }, { v1: 'en' })).toBe('Default');
+    expect(resolveWelcomeText({ welcomeText: 'Legacy' }, {})).toBe('Legacy');
+  });
+  it('uses variable labels and defaults consistently with the share form', () => {
+    expect(resolveWelcomeText(chatConfig, { locale: 'en' })).toBe('Hello');
+    const config = {
+      ...chatConfig,
+      variables: [{ ...chatConfig.variables[0], defaultValue: 'zh' }]
+    };
+    expect(resolveWelcomeText(config, {})).toBe('你好');
+    expect(resolveWelcomeText(config, { v1: '', locale: 'en' })).toBe('Default');
+    expect(
+      resolveWelcomeText(
+        {
+          ...chatConfig,
+          variables: [{ ...chatConfig.variables[0], type: VariableInputEnum.password }]
+        },
+        { v1: 'en' }
+      )
+    ).toBe('Default');
+  });
+  it('preserves an explicit historical snapshot including an empty one', () => {
+    for (const storeWelcomeText of ['', 'Snapshot']) {
+      const config = getAppChatConfig({ chatConfig, storeWelcomeText, isPublicFetch: true });
+      expect(resolveWelcomeText(config, { v1: 'en' })).toBe(storeWelcomeText);
+    }
   });
 });

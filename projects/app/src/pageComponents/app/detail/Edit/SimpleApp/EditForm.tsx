@@ -1,3 +1,4 @@
+import type { AppWelcomeConfigType } from '@fastgpt/global/core/app/type';
 import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import {
   Box,
@@ -50,6 +51,7 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const VariableWelcomeConfig = dynamic(() => import('@/components/core/app/VariableWelcomeConfig'));
 const WelcomeQuestionsConfig = dynamic(
   () => import('@/components/core/app/WelcomeQuestionsConfig')
 );
@@ -129,15 +131,15 @@ const EditForm = ({
     [setAppForm]
   );
 
-  const updateWelcomeQuestions = useCallback(
-    (value: string[]) => {
+  const updateWelcomeConfig = useCallback(
+    (patch: Partial<AppWelcomeConfigType>) => {
       setAppForm((state) => ({
         ...state,
         chatConfig: {
           ...state.chatConfig,
           welcomeConfig: {
             ...state.chatConfig.welcomeConfig,
-            welcomeQuestions: value
+            ...patch
           }
         }
       }));
@@ -443,9 +445,14 @@ const EditForm = ({
           />
           {!isWelcomeTextFolded && (
             <Box mt={3}>
+              <VariableWelcomeConfig
+                variables={appForm.chatConfig.variables}
+                rule={appForm.chatConfig.welcomeConfig?.byVariable}
+                onChange={(byVariable) => updateWelcomeConfig({ byVariable })}
+              />
               <WelcomeQuestionsConfig
                 value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
-                onChange={updateWelcomeQuestions}
+                onChange={(welcomeQuestions) => updateWelcomeConfig({ welcomeQuestions })}
               />
             </Box>
           )}

@@ -109,6 +109,7 @@ export const getScheduleTriggerApp = async () => {
       };
 
       const preparedRound = await preChatRound({
+        appChatConfig: chatConfig,
         ...chatSource,
         chatId,
         teamId: String(app.teamId),

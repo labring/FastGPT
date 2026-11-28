@@ -15,7 +15,7 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
+import { getAppChatConfig, resolveWelcomeText } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
@@ -375,7 +375,7 @@ export const finalizeChatRound = async (props: Props) => {
         ...buildChatSourceQuery(chatSource),
         chatId
       },
-      '_id metadata'
+      '_id metadata hasVariableWelcomeSnapshot'
     )
       .session(session)
       .lean();
@@ -443,7 +443,8 @@ export const finalizeChatRound = async (props: Props) => {
           appVersionId: versionId,
           chatId,
           variableList,
-          welcomeText,
+          ...(!chat?.hasVariableWelcomeSnapshot &&
+            !appChatConfig?.welcomeConfig?.byVariable && { welcomeText }),
           variables: variables || {},
           pluginInputs,
           outLinkUid,
@@ -630,21 +631,6 @@ export const pushChatRecords = async (props: Props) => {
   if (!chatId || isSkipSaveChatId(chatId)) return;
 
   try {
-    const chat = await MongoChat.findOne(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId
-      },
-      '_id metadata'
-    );
-
-    const metadataUpdate = mergeChatMetadata({
-      existingMetadata: chat?.metadata,
-      metadata,
-      systemMetadata,
-      source
-    });
-
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
       isPublicFetch: false
@@ -663,6 +649,23 @@ export const pushChatRecords = async (props: Props) => {
     const processedContent = [userContent, aiResponse];
 
     await mongoSessionRun(async (session) => {
+      const chat = await MongoChat.findOne(
+        {
+          ...buildChatSourceQuery(chatSource),
+          chatId
+        },
+        '_id metadata hasVariableWelcomeSnapshot'
+      )
+        .session(session)
+        .lean();
+
+      const metadataUpdate = mergeChatMetadata({
+        existingMetadata: chat?.metadata,
+        metadata,
+        systemMetadata,
+        source
+      });
+
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.create(
         processedContent.map((item) => ({
           chatId,
@@ -687,7 +690,8 @@ export const pushChatRecords = async (props: Props) => {
             appVersionId: versionId,
             chatId,
             variableList,
-            welcomeText,
+            ...(!chat?.hasVariableWelcomeSnapshot &&
+              !appChatConfig?.welcomeConfig?.byVariable && { welcomeText }),
             variables: variables || {},
             pluginInputs,
             outLinkUid,
@@ -696,6 +700,12 @@ export const pushChatRecords = async (props: Props) => {
             updateTime: new Date()
           },
           $setOnInsert: {
+            ...(appChatConfig?.welcomeConfig?.byVariable
+              ? {
+                  welcomeText: resolveWelcomeText(appChatConfig, variables) ?? '',
+                  hasVariableWelcomeSnapshot: true
+                }
+              : {}),
             createTime: new Date()
           },
           $inc: {

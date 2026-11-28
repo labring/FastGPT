@@ -317,6 +317,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     const preparedRound = await preChatRound({
+      appChatConfig: chatConfig,
       ...chatSource,
       chatId,
       teamId,

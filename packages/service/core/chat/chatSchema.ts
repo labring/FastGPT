@@ -79,6 +79,7 @@ const ChatSchema = new Schema({
   welcomeText: {
     type: String
   },
+  hasVariableWelcomeSnapshot: Boolean,
   variables: {
     // variable value
     type: Object,

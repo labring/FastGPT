@@ -373,6 +373,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       value: workflowQuery
     };
     const preparedRound = await preChatRound({
+      appChatConfig: chatConfig,
       ...chatSource,
       chatId,
       teamId: String(outLinkConfig.teamId),

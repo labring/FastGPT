@@ -26,6 +26,7 @@ import {
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -140,6 +141,37 @@ describe('prepare chat round', () => {
       ]);
     } finally {
       await result.releaseGenerationLease?.();
+    }
+  });
+
+  it('keeps the first welcome text when later rounds use a different variable value', async () => {
+    const params = createPreChatRoundParams(
+      {},
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    const appChatConfig = {
+      welcomeConfig: {
+        welcomeText: 'Default',
+        byVariable: { key: 'locale', cases: [{ value: 'en', text: 'Hello' }] }
+      },
+      variables: [
+        { key: 'locale', label: 'Language', type: VariableInputEnum.input, description: '' }
+      ]
+    };
+    for (const locale of ['en', 'zh']) {
+      const round = await preChatRound({
+        ...params,
+        responseChatItemId: locale,
+        variables: { locale },
+        appChatConfig
+      });
+      try {
+        expect(
+          (await MongoChat.findOne({ appId: testAppId, chatId: round.chatId }).lean())?.welcomeText
+        ).toBe('Hello');
+      } finally {
+        await round.releaseGenerationLease?.();
+      }
     }
   });
 

@@ -18,6 +18,27 @@ import type {
 } from '@fastgpt/web/hooks/useLinkedScroll';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
+import { useWatch } from 'react-hook-form';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { resolveWelcomeText } from '@fastgpt/global/common/app/chat';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { MarkdownActionProps } from '@/components/Markdown/type';
+
+/** 分享入口和预览在同一个变量表单上执行 reset；只在启用匹配规则时订阅该表单。 */
+function VariableWelcomeBox({
+  config,
+  ...actions
+}: { config: AppChatConfigType } & MarkdownActionProps) {
+  const form = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const values = useWatch({
+    control: form.control,
+    name: 'variables',
+    defaultValue: form.getValues('variables')
+  });
+  const text = resolveWelcomeText(config, values);
+  return text ? <WelcomeBox welcomeText={text} {...actions} /> : null;
+}
+
 type ScrollDataComponent = (props: LinkedScrollDataProps) => React.JSX.Element;
 
 type AppChatMainProps = BoxProps & {
@@ -61,6 +82,7 @@ const AppChatMain = ({
   EmptyState,
   workflowBuilderStyle = false
 }: AppChatMainProps) => {
+  const config = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
   const visibleWelcomeQuestions = welcomeQuestions.map((text) => text.trim()).filter(Boolean);
   const hasEmptyState = recordsListProps.records.length === 0 && !!EmptyState;
   // 复用快捷回复的发送通道：它不受 canSendPrompt 限制，开场白阶段的预设问题也能直接发送，
@@ -108,12 +130,20 @@ const AppChatMain = ({
             maxW={workflowBuilderStyle ? '100%' : ['calc(100% - 25px)', ChatBoxContentMaxWidth]}
             mx={workflowBuilderStyle ? 0 : 'auto'}
           >
-            {!!welcomeText && (
-              <WelcomeBox
-                welcomeText={welcomeText}
+            {config?.welcomeConfig?.byVariable ? (
+              <VariableWelcomeBox
+                config={config}
                 onSendQuestion={onSendQuestion}
                 onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
               />
+            ) : (
+              !!welcomeText && (
+                <WelcomeBox
+                  welcomeText={welcomeText}
+                  onSendQuestion={onSendQuestion}
+                  onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
+                />
+              )
             )}
             {visibleWelcomeQuestions.length > 0 && (
               <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>

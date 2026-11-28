@@ -151,6 +151,46 @@ describe('pushChatRecords', () => {
     serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX = originalChatLogSourceIdPrefix;
   });
 
+  it.each(['prepared', 'legacy'] as const)(
+    '%s retains the first variable welcome after rules are removed',
+    async (path) => {
+      const props = createMockProps(
+        {
+          variables: { locale: 'en' },
+          appChatConfig: {
+            variables: [
+              { key: 'locale', label: 'Language', type: VariableInputEnum.input, description: '' }
+            ],
+            welcomeConfig: {
+              byVariable: { key: 'locale', cases: [{ value: 'en', text: 'Hello' }] }
+            }
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      for (const dataId of ['first', 'second']) {
+        const round = {
+          ...props,
+          appChatConfig: dataId === 'first' ? props.appChatConfig : { welcomeText: 'New default' },
+          userContent: { ...props.userContent, dataId },
+          aiContent: { ...props.aiContent, dataId }
+        };
+        if (path === 'legacy') {
+          await pushChatRecords(round);
+        } else {
+          const prepared = await preChatRound({ ...round, responseChatItemId: dataId });
+          try {
+            await finalizeChatRound(round);
+          } finally {
+            await prepared.releaseGenerationLease?.();
+          }
+        }
+        const stored = await MongoChat.findOne({ appId: testAppId, chatId: round.chatId }).lean();
+        expect(stored?.welcomeText).toBe('Hello');
+      }
+    }
+  );
+
   describe('publishSource 保存边界', () => {
     it.each(['finalize', 'fail', 'legacy'] as const)(
       '%s 尾部保存不回写旧来源和兼容字段',

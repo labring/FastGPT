@@ -110,6 +110,13 @@ export const AppAutoExecuteConfigTypeSchema = z.object({
 export type AppAutoExecuteConfigType = z.infer<typeof AppAutoExecuteConfigTypeSchema>;
 
 export const AppWelcomeConfigTypeSchema = z.object({
+  byVariable: z
+    .object({
+      key: z.string(),
+      cases: z.array(z.object({ value: z.string(), text: z.string() }))
+    })
+    .optional()
+    .meta({ description: '按会话变量的值匹配开场白，未命中时使用默认文案' }),
   welcomeText: z.string().optional().meta({
     description: '新会话开始时展示给用户的欢迎语'
   }),

@@ -11,6 +11,12 @@ In the app editor, find **Conversation Opening** and expand the section to edit 
 
 ![Welcome text settings](/imgs/optimized/current/welcome-config.png.webp)
 
+## Choose a welcome message by variable
+
+Add a session variable such as `locale`, then select it in the welcome settings. Choose **Add matching value** to enter a greeting for each value, such as `en` and `zh`. Opening a shared chat with `locale=en` displays the English greeting.
+
+Values match exactly and are case-sensitive. If more than one entry matches, the first one with a message wins. An unmatched value uses the default greeting.
+
 ## Markdown Support
 
 Welcome Text supports standard Markdown syntax, including headings, lists, links, and bold text. This helps users quickly understand what the app can help with.

@@ -1,3 +1,4 @@
+import type { AppWelcomeConfigType } from '@fastgpt/global/core/app/type';
 import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { Box } from '@chakra-ui/react';
 
@@ -30,6 +31,7 @@ import {
 } from '@/web/core/workflow/editor/session/workflowSession';
 import type { WorkflowCommand } from '@fastgpt/global/core/workflow/editor/types';
 import { FlowNodeOutputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
+import VariableWelcomeConfig from '@/components/core/app/VariableWelcomeConfig';
 import WelcomeQuestionsConfig from '@/components/core/app/WelcomeQuestionsConfig';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -197,19 +199,20 @@ function WelcomeText({
 }
 
 function WelcomeQuestions({ setAppDetail, mode }: ComponentProps) {
-  const welcomeQuestions = useContextSelector(
+  const variables = useContextSelector(AppContext, (v) => v.appDetail.chatConfig?.variables);
+  const welcomeConfig = useContextSelector(
     AppContext,
-    (v) => v.appDetail.chatConfig?.welcomeConfig?.welcomeQuestions
+    (v) => v.appDetail.chatConfig?.welcomeConfig
   );
-  const updateWelcomeQuestions = useCallback(
-    (value: string[]) => {
+  const updateWelcomeConfig = useCallback(
+    (patch: Partial<AppWelcomeConfigType>) => {
       setAppDetail((state) => ({
         ...state,
         chatConfig: {
           ...state.chatConfig,
           welcomeConfig: {
             ...state.chatConfig.welcomeConfig,
-            welcomeQuestions: value
+            ...patch
           }
         }
       }));
@@ -219,7 +222,15 @@ function WelcomeQuestions({ setAppDetail, mode }: ComponentProps) {
 
   return (
     <Box className="nodrag" w={'100%'} mt={mode === 'drawer' ? 0 : 2}>
-      <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
+      <VariableWelcomeConfig
+        variables={variables}
+        rule={welcomeConfig?.byVariable}
+        onChange={(byVariable) => updateWelcomeConfig({ byVariable })}
+      />
+      <WelcomeQuestionsConfig
+        value={welcomeConfig?.welcomeQuestions}
+        onChange={(welcomeQuestions) => updateWelcomeConfig({ welcomeQuestions })}
+      />
     </Box>
   );
 }
