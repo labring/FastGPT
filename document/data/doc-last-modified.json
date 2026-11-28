@@ -1,6 +1,6 @@
 {
-  "content/developers/coze-migration.en.mdx": "2026-11-27T21:25:30+08:00",
-  "content/developers/coze-migration.mdx": "2026-11-27T21:25:30+08:00",
+  "content/developers/coze-migration.en.mdx": "2026-11-28T07:02:13+08:00",
+  "content/developers/coze-migration.mdx": "2026-11-28T07:02:13+08:00",
   "content/developers/index.en.mdx": "2026-11-19T17:16:49+08:00",
   "content/developers/index.mdx": "2026-11-19T17:16:49+08:00",
   "content/faq/chat.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -179,8 +179,8 @@
   "content/guide/dataset/websync.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/application-types.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/application-types.mdx": "2026-11-12T14:01:38+08:00",
-  "content/guide/getting-started/cli.en.mdx": "2026-11-13T15:34:01+08:00",
-  "content/guide/getting-started/cli.mdx": "2026-11-13T15:34:01+08:00",
+  "content/guide/getting-started/cli.en.mdx": "2026-11-28T07:02:13+08:00",
+  "content/guide/getting-started/cli.mdx": "2026-11-28T07:02:13+08:00",
   "content/guide/getting-started/concepts.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/concepts.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/examples/civil-code-qa.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -583,8 +583,8 @@
   "content/self-host/upgrading/4-17/4176.mdx": "2026-11-26T21:31:01+08:00",
   "content/self-host/upgrading/4-17/4177.en.mdx": "2026-11-27T15:59:57+08:00",
   "content/self-host/upgrading/4-17/4177.mdx": "2026-11-27T15:59:57+08:00",
-  "content/self-host/upgrading/4-18/4180.en.mdx": "2026-11-27T16:45:31+08:00",
-  "content/self-host/upgrading/4-18/4180.mdx": "2026-11-27T16:45:31+08:00",
+  "content/self-host/upgrading/4-18/4180.en.mdx": "2026-11-28T19:23:18+08:00",
+  "content/self-host/upgrading/4-18/4180.mdx": "2026-11-28T19:23:18+08:00",
   "content/self-host/upgrading/mongodb-8.en.mdx": "2026-11-26T17:49:14+08:00",
   "content/self-host/upgrading/mongodb-8.mdx": "2026-11-26T17:49:14+08:00",
   "content/self-host/upgrading/outdated/40.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -729,6 +729,6 @@
   "content/self-host/upgrading/upgrade-instruction.mdx": "2026-11-26T17:49:14+08:00",
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-08-16T23:16:43+08:00",
-  "content/toc.en.mdx": "2026-11-27T21:25:30+08:00",
-  "content/toc.mdx": "2026-11-27T21:25:30+08:00"
+  "content/toc.en.mdx": "2026-11-28T07:02:13+08:00",
+  "content/toc.mdx": "2026-11-28T07:02:13+08:00"
 }
