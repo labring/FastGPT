@@ -245,13 +245,76 @@ describe('dispatchParallelRun', () => {
     const fileContext = await createTestWorkflowFileContext();
     const props = makeProps();
 
-    await runWithTestWorkflowContext({ checkIsStopping, mcpClientMemory: {}, fileContext }, () =>
-      dispatchParallelRunWithoutContext(props)
+    const result = await runWithTestWorkflowContext(
+      { checkIsStopping, mcpClientMemory: {}, fileContext },
+      () => dispatchParallelRunWithoutContext(props)
     );
 
     expect(checkIsStopping).toHaveBeenCalled();
     expect(runWorkflowMock).not.toHaveBeenCalled();
     expect(props).not.toHaveProperty('checkIsStopping');
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.failed);
+    expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+      { success: false, data: null }
+    ]);
+  });
+
+  it('保留停止前完成的结果和未执行项的输入位置', async () => {
+    const checkIsStopping = vi.fn(() => true).mockReturnValueOnce(false);
+    const fileContext = await createTestWorkflowFileContext();
+    const props = makeProps();
+    props.params.loopInputArray = ['a', 'b', 'c'];
+    runWorkflowMock.mockResolvedValueOnce(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'done'
+          })
+        ]
+      })
+    );
+
+    const result = await runWithTestWorkflowContext(
+      { checkIsStopping, mcpClientMemory: {}, fileContext },
+      () => dispatchParallelRun(props)
+    );
+
+    expect(runWorkflowMock).toHaveBeenCalledTimes(1);
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
+      ParallelRunStatusEnum.partial_success
+    );
+    expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
+    expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+      { success: true, data: 'done' },
+      { success: false, data: null },
+      { success: false, data: null }
+    ]);
+  });
+
+  it('保留停止前失败的尝试结果，不再执行下一次重试', async () => {
+    const checkIsStopping = vi.fn(() => true).mockReturnValueOnce(false);
+    const fileContext = await createTestWorkflowFileContext();
+    const props = makeProps();
+    props.params.parallelRunMaxRetryTimes = 1;
+    runWorkflowMock.mockResolvedValueOnce(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('chatNode', { error: 'task failed before stop' })],
+        flowUsages: [{ moduleName: 'parallel', totalPoints: 2 }]
+      })
+    );
+
+    const result = await runWithTestWorkflowContext(
+      { checkIsStopping, mcpClientMemory: {}, fileContext },
+      () => dispatchParallelRun(props)
+    );
+
+    expect(runWorkflowMock).toHaveBeenCalledTimes(1);
+    expect(props.usagePush).toHaveBeenCalledWith([{ moduleName: 'ParallelRun-0', totalPoints: 2 }]);
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.failed);
+    expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+      { success: false, data: null, message: 'task failed before stop' }
+    ]);
   });
 
   it('共用 nodeResponseSink 时发布任务包装节点，父响应只保留轻量统计', async () => {

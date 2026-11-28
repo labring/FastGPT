@@ -20,6 +20,7 @@ import {
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
 import { getWorkflowContext, runWithContext } from '../context';
 
@@ -83,7 +84,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
       for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
         if (checkIsStopping()) {
-          return;
+          // 停止不能丢弃输入位置，也不能丢失上次尝试的失败信息和已累计积分。
+          return lastResult ?? parseTaskError(index, i18nT('workflow:parallel_task_not_reach_end'));
         }
         const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
           runtimeNodes,
