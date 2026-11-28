@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { resolveChannelForOperation } from '@fastgpt/service/core/ai/model/channel/resolve';
 import { testModelConnection } from '@fastgpt/service/core/ai/model/test';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
@@ -30,6 +31,8 @@ async function handleDraftTest(req: ApiRequestProps<TestDraftModelBody>): Promis
   }).body;
 
   const actor = await authModelScope({ req, channelType });
+  // 草稿测试契约要求显式指定渠道；在 FastGPT 侧校验归属，避免旧版 AI Proxy 忽略分组隔离头导致跨作用域路由。
+  await resolveChannelForOperation({ id: channelId, channelType, tmbId: actor.tmbId });
   const draftModel = {
     ...draftModelData,
     modelId: 'draft-model-test',
@@ -56,14 +59,19 @@ async function handleInstalledTest(
   }).query;
 
   const {
-    actor: { teamId },
+    actor: { teamId, tmbId },
     models: [installedModel]
   } = await authModelConfig({ req, modelIds: [modelId], channelType });
 
+  if (channelId !== undefined) {
+    await resolveChannelForOperation({ id: channelId, channelType, tmbId });
+  }
+
   // 显式渠道只覆盖本次测试的连接配置，不能修改全局运行时模型缓存
-  const modelData = channelId
-    ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
-    : installedModel;
+  const modelData =
+    channelId !== undefined
+      ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
+      : installedModel;
 
   logger.debug('Test installed model', { model: modelData.model, type: modelData.type, channelId });
   return testModelConnection({ model: modelData, teamId, channelId });

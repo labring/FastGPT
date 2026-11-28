@@ -12,6 +12,7 @@ import type { NextApiResponse } from 'next';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
   CreateQuestionGuideResponseSchema,
   CreateQuestionGuideV2BodySchema,
@@ -107,7 +108,11 @@ async function handler(
     explicitModel ??
     modelHandle.getDefaultModelData('llm', {
       authorizedIds: await getAuthorizedModelIds({
-        actor: { teamId, tmbId, isRoot },
+        // 外链身份固定按非管理员口径计算且不读写发布者的成员模型缓存。
+        actor:
+          authType === AuthUserTypeEnum.outLink
+            ? { source: 'outLink', teamId, tmbId }
+            : { teamId, tmbId, isRoot },
         handle: modelHandle
       })
     });
