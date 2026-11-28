@@ -48,6 +48,10 @@ export const createStreamResponse = async ({
     }
   }
 
+  /** 解包消费端或上游抛出的包装错误，保持其他原始异常值不变。 */
+  const unwrapStreamError = (err: unknown): unknown =>
+    typeof err === 'object' && err !== null && 'error' in err && err.error ? err.error : err;
+
   /** 用户中断时未完成的 tool call 不能作为有效调用返回或调度。 */
   let aborted = false;
 
@@ -70,9 +74,9 @@ export const createStreamResponse = async ({
           part
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 包含读取和消费回调异常，先保留 parser 状态，再由上层决定是否抛出。
-      updateError(error?.error || error);
+      updateError(unwrapStreamError(error));
     } finally {
       // 流结束边界复查最终停止状态：若停止信号在最后一个 chunk 回调内转真且上游紧接着 EOF，
       // 循环不会再进入下一轮检查，必须在此兜底判定 close。
@@ -232,19 +236,19 @@ export const createStreamResponse = async ({
       // prompt tool 模式结束后用完整文本解析最终回答和工具调用；用户中断时不对外派发工具回调。
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
-      // 短正文在流式阶段可能因未达协议头判定长度而尚未输出；正常结束时经同一路径补发一次。
-      let finalError = error;
-      const pendingStreamAnswer =
-        streamAnswer ||
-        (!startResponseWrite && !aborted && !error
-          ? removeDatasetCiteText(llmAnswer, retainDatasetCite)
-          : '');
+      // 未进入流式输出阶段就中止或报错时，尚未经过 onStreaming/审核的待判定正文不能回流到最终结果。
+      const isCompletedNormally = !aborted && !error;
+      const pendingStreamAnswer = isCompletedNormally
+        ? streamAnswer ||
+          (!startResponseWrite ? removeDatasetCiteText(llmAnswer, retainDatasetCite) : '')
+        : '';
 
+      let finalError = error;
       if (pendingStreamAnswer) {
         try {
           await onStreaming?.({ text: pendingStreamAnswer });
-        } catch (err: any) {
-          finalError = err?.error || err;
+        } catch (err: unknown) {
+          finalError = unwrapStreamError(err);
         }
       }
 
@@ -256,7 +260,7 @@ export const createStreamResponse = async ({
 
       return {
         error: finalError,
-        answerText: llmAnswer,
+        answerText: startResponseWrite || isCompletedNormally ? llmAnswer : '',
         reasoningText: reasoningContent,
         finish_reason,
         usage,

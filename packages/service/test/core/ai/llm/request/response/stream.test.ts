@@ -823,6 +823,72 @@ describe('createStreamResponse', () => {
       expect(callbacks.onStreaming).not.toHaveBeenCalled();
     });
 
+    it('should drop unstreamed pending short answer when aborted before protocol threshold', async () => {
+      const callbacks = createCallbacks();
+      let chunkChecks = 0;
+      const { response, abort } = createStream([
+        chunk({ content: '\n' }),
+        chunk({ content: '\u3000\u3000' }),
+        chunk({ content: '好' }),
+        chunk({ content: '的，继续' }, 'stop')
+      ]);
+
+      const result = await createStreamResponse({
+        body: promptBody,
+        response,
+        isAborted: () => {
+          chunkChecks += 1;
+          return chunkChecks > 3;
+        },
+        ...callbacks
+      });
+
+      expect(result).toMatchObject({
+        answerText: '',
+        finish_reason: 'close',
+        error: undefined
+      });
+      expect(callbacks.onStreaming).not.toHaveBeenCalled();
+      expect(abort).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      {
+        label: 'wrapped error object',
+        thrown: { error: new Error('eof callback failed') },
+        expected: 'eof callback failed'
+      },
+      {
+        label: 'primitive error value',
+        thrown: 'eof callback string error',
+        expected: 'eof callback string error'
+      }
+    ])('should safely capture $label from EOF short-answer flush', async ({ thrown, expected }) => {
+      const callbacks = createCallbacks();
+      callbacks.onStreaming.mockImplementation(() => {
+        throw thrown;
+      });
+      const { response } = createStream([
+        chunk({ content: '\n' }),
+        chunk({ content: '\u3000\u3000' }),
+        chunk({ content: '好' }, 'stop')
+      ]);
+
+      const result = await createStreamResponse({
+        body: promptBody,
+        response,
+        ...callbacks
+      });
+
+      expect(callbacks.onStreaming).toHaveBeenCalledExactlyOnceWith({ text: '\n\u3000\u3000好' });
+      expect(result.answerText).toBe('\n\u3000\u3000好');
+      if (result.error instanceof Error) {
+        expect(result.error.message).toBe(expected);
+      } else {
+        expect(result.error).toBe(expected);
+      }
+    });
+
     it.each([
       { prefix: '1:', callbacks: true },
       { prefix: '1：', callbacks: false }
