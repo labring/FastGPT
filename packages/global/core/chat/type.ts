@@ -152,6 +152,7 @@ export const ChatSchema = z.object({
 
   variableList: z.array(VariableItemTypeSchema).optional(),
   welcomeText: z.string().optional(),
+  hasVariableWelcomeSnapshot: z.boolean().optional(),
   variables: z.record(z.string(), z.any()),
   pluginInputs: z.array(FlowNodeInputItemTypeSchema).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
