@@ -438,6 +438,14 @@ describe('EditChannelModal channel metadata', () => {
       key: 'sk-new-secret'
     });
 
+    mocks.secretKey?.onChange?.('');
+    await mocks.submit();
+    expect(putChannel).toHaveBeenLastCalledWith({
+      id: 12,
+      channelType: 'system',
+      key: ''
+    });
+
     render({
       channelType: 'team',
       config: {

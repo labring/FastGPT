@@ -267,8 +267,8 @@ const EditChannelModal = ({
             ...((formData.base_url ?? '') !== (defaultConfig.base_url ?? '') && {
               base_url: formData.base_url ?? ''
             }),
-            // 未修改密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
-            ...(hasEditedKeyRef.current && formData.key ? { key: formData.key } : {}),
+            // 未修改密钥时不传 key 保持原值；确认编辑后保留显式空字符串以支持清空密钥。
+            ...(hasEditedKeyRef.current ? { key: formData.key ?? '' } : {}),
             ...(shouldUpdateProtocol && {
               configs: { chat_upstream_protocol: nextProtocol }
             }),

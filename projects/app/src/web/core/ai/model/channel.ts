@@ -127,11 +127,11 @@ export const putChannelStatus = (id: number, status: ChannelStatusType, channelT
     channelType
   });
 
-/** 更新渠道配置；空密钥表示保留服务端已有密钥。 */
+/** 更新渠道配置；未传 key 保留服务端已有密钥，显式空字符串用于清空密钥。 */
 export const putChannel = ({ key, ...data }: UpdateChannelBody) =>
   PUT<void>(`${channelBasePath}/update`, {
     ...data,
-    ...(key ? { key } : {}),
+    ...(key !== undefined ? { key } : {}),
     ...(data.priority !== undefined && { priority: Math.max(data.priority, 1) })
   });
 
