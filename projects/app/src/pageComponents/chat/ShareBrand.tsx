@@ -22,6 +22,7 @@ const ShareBrand = ({
 }) => {
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const systemName = feConfigs.systemTitle || 'FastGPT';
   const element = useRef<HTMLDivElement>(null);
   const brandUrl =
     typeof window !== 'undefined' && window.location.hostname.includes('fastgpt.cn')
@@ -72,7 +73,7 @@ const ShareBrand = ({
       }
     >
       <MyTooltip
-        label={t('common:share_brand_visit')}
+        label={t('common:share_brand_visit', { systemName })}
         shouldWrapChildren={false}
         placement="bottom"
         offset={[0, 12]}
@@ -81,7 +82,7 @@ const ShareBrand = ({
           href={brandUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={t('common:share_brand_visit')}
+          aria-label={t('common:share_brand_visit', { systemName })}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -134,7 +135,7 @@ const ShareBrand = ({
         >
           <Box w="1px" h="12px" bg="myGray.500" flexShrink={0} />
           <IconButton
-            aria-label={t('common:share_brand_dismiss')}
+            aria-label={t('common:share_brand_dismiss', { systemName })}
             icon={<MyIcon name="common/closeLight" w="16px" />}
             size="xs"
             variant="unstyled"

@@ -56,7 +56,7 @@
   "log_request_id_search": "根据 requestId 搜索",
   "log_status": "状态",
   "mapping": "模型映射",
-  "mapping_tip": "可在向实际地址发送请求时，对模型名称进行映射。例如将 gpt-4o 映射为 gpt-4o-test：当 FastGPT 请求 gpt-4o 时，会向实际地址发送 gpt-4o-test。",
+  "mapping_tip": "可在向实际地址发送请求时，对模型名称进行映射。例如将 gpt-4o 映射为 gpt-4o-test：当系统请求 gpt-4o 时，会向实际地址发送 gpt-4o-test。",
   "compact_mapping_tip": "上游实际收到的模型 ID",
   "mapping_key_placeholder": "选择请求模型",
   "mapping_value_placeholder": "目标模型名（如 gpt-4o-test）",

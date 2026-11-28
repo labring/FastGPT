@@ -165,7 +165,11 @@ const EnterpriseAuthNoticeModal = ({
           </Text>
 
           <Text mb={2}>{t('common:enterprise_auth_notice_greeting')}</Text>
-          <Text mb={4}>{t('common:enterprise_auth_notice_intro')}</Text>
+          <Text mb={4}>
+            {t('common:enterprise_auth_notice_intro', {
+              systemName: feConfigs?.systemTitle || 'FastGPT'
+            })}
+          </Text>
 
           <Box as="section" mb={4}>
             <Flex alignItems="flex-start" gap={2}>

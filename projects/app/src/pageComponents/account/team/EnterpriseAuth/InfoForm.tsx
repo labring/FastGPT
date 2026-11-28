@@ -11,6 +11,7 @@ import {
 } from 'react-hook-form';
 import type { TFunction } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { StartEnterpriseAuthBodyType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import {
   isBankAccount,
@@ -298,6 +299,7 @@ const EnterpriseAuthDemandField = ({
   startForm,
   hasSubmittedStartForm
 }: EnterpriseAuthDemandFieldProps) => {
+  const { feConfigs } = useSystemStore();
   const { value, error, fieldRegister } = useEnterpriseAuthField({
     startForm,
     name: 'demand',
@@ -308,7 +310,9 @@ const EnterpriseAuthDemandField = ({
     <Field label={t('account_team:enterprise_auth_demand')} colSpan={2}>
       <Textarea
         {...textareaStyles}
-        placeholder={t('account_team:enterprise_auth_demand_placeholder')}
+        placeholder={t('account_team:enterprise_auth_demand_placeholder', {
+          systemName: feConfigs?.systemTitle || 'FastGPT'
+        })}
         isInvalid={(hasSubmittedStartForm && !value.trim()) || !!error}
         _invalid={invalidInputStyles}
         {...fieldRegister}

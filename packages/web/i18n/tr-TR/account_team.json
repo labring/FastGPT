@@ -475,7 +475,7 @@
   "enterprise_auth_contact_phone": "İletişim bilgisi",
   "enterprise_auth_contact_phone_placeholder": "Telefon numaranı gir. Yalnızca satış ekibinin sana ulaşması için kullanılır.",
   "enterprise_auth_demand": "İhtiyacın",
-  "enterprise_auth_demand_placeholder": "Sana daha iyi hizmet verebilmemiz için senin ve şirketinin FastGPT'yi hangi senaryolarda kullandığını anlat",
+  "enterprise_auth_demand_placeholder": "Sana daha iyi hizmet verebilmemiz için senin ve şirketinin {{systemName}} kullanım senaryolarını anlat",
   "enterprise_auth_amount_sent_prefix": "Yukarıdaki hesaba havale gönderildi. Doğrulama tutarı Shanghai UnionPay tarafından rastgele bir miktarda yatırılır, genellikle anında ulaşır ve 24 saat geçerlidir. Tutar ulaşmadıysa lütfen ",
   "enterprise_auth_contact_business": "satış ekibiyle iletişime geç",
   "enterprise_auth_amount_sent_suffix": ".",

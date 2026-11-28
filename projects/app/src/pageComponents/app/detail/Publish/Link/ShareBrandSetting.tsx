@@ -84,13 +84,14 @@ const ShareBrandSetting = ({
   );
 
   if (!feConfigs.show_outlink_brand) return null;
+  const systemName = feConfigs.systemTitle || 'FastGPT';
   return (
     <>
       <Flex alignItems="center" gap={2} p={2} borderRadius="md" bg="myWhite.600" borderWidth="1px">
-        <Box flex={1}>{t('common:share_brand')}</Box>
-        <QuestionTip label={t('common:share_brand_tip')} />
+        <Box flex={1}>{t('common:share_brand', { systemName })}</Box>
+        <QuestionTip label={t('common:share_brand_tip', { systemName })} />
         <Switch
-          aria-label={t('common:share_brand')}
+          aria-label={t('common:share_brand', { systemName })}
           isChecked={isShowBrand === true || (isShowBrand === false && canHideShareBrand === false)}
           isDisabled={
             canHideShareBrand === undefined || isFetching || busy || teamId !== share.teamId
