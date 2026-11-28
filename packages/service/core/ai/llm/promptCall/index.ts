@@ -128,18 +128,14 @@ export const promptToolCallMessageRewrite = (
 };
 
 const ERROR_TEXT = 'Tool call error';
+const PROMPT_TOOL_ANSWER_PREFIX_REG = /0(:|：)/;
 const PROMPT_TOOL_CALL_PREFIX_REG = /1(:|：)/;
 
-const findPromptToolAnswerPrefixIndex = (trimmedStr: string) => {
-  const asciiIndex = trimmedStr.indexOf('0:');
-  return asciiIndex !== -1 ? asciiIndex : trimmedStr.indexOf('0：');
-};
-
 const detectPromptToolProtocol = (trimmedStr: string) => {
-  const answerPrefixIndex = findPromptToolAnswerPrefixIndex(trimmedStr);
+  const answerPrefixIndex = trimmedStr.search(PROMPT_TOOL_ANSWER_PREFIX_REG);
   const toolPrefixIndex = trimmedStr.search(PROMPT_TOOL_CALL_PREFIX_REG);
 
-  // 协议头窗口内优先确认先出现的 0:/0：，避免正文中出现 "11:30" 等文本把普通答复误判成工具调用。
+  // 协议头窗口内优先确认最先出现的 0:/0：，避免正文中的 "20:00"、"11:30" 覆盖或误判已声明的答复头。
   if (
     answerPrefixIndex > -1 &&
     answerPrefixIndex < 6 &&

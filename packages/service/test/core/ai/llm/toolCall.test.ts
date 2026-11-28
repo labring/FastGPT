@@ -391,13 +391,15 @@ describe('parsePromptToolCall function tests', () => {
       });
     });
 
-    it('should prioritize English colon over Chinese colon - but not when beyond position limit', () => {
-      const input = '0： Chinese 0: English colon';
-      const result = parsePromptToolCall(input);
-
-      // The English '0:' is at position 11, beyond the limit, so returns original string
-      expect(result).toEqual({
-        answer: '0： Chinese 0: English colon'
+    it('should pick the earliest 0:/0： prefix so later 0: in answer body does not shadow leading 0：', () => {
+      expect(parsePromptToolCall('0： Chinese 0: English colon')).toEqual({
+        answer: 'Chinese 0: English colon'
+      });
+      expect(parsePromptToolCall('0： 20:00 开会')).toEqual({
+        answer: '20:00 开会'
+      });
+      expect(parsePromptToolCall('0： 11:30 开始，20:00 结束')).toEqual({
+        answer: '11:30 开始，20:00 结束'
       });
     });
 

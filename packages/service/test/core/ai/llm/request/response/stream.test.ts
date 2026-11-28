@@ -761,12 +761,39 @@ describe('createStreamResponse', () => {
     });
 
     it.each([
-      { label: 'prefix followed by timestamp chunk', parts: ['0: ', '11:30', ' 开会'] },
-      { label: 'prefix split inside timestamp', parts: ['0: 11', ':30', ' 开会'] },
-      { label: 'bulleted prefix followed by timestamp chunk', parts: ['- 0: ', '11:30', ' 开会'] }
+      {
+        label: 'ASCII prefix followed by 1: timestamp chunk',
+        parts: ['0: ', '11:30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'ASCII prefix split inside 1: timestamp',
+        parts: ['0: 11', ':30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'bulleted ASCII prefix followed by 1: timestamp chunk',
+        parts: ['- 0: ', '11:30', ' 开会'],
+        expected: '11:30 开会'
+      },
+      {
+        label: 'full-width prefix followed by ASCII 20:00 chunk',
+        parts: ['0： ', '20:00', ' 开会'],
+        expected: '20:00 开会'
+      },
+      {
+        label: 'full-width prefix split inside ASCII 20:00',
+        parts: ['0： ', '20', ':00', ' 开会'],
+        expected: '20:00 开会'
+      },
+      {
+        label: 'full-width prefix with both 11:30 and 20:00 in body',
+        parts: ['0： ', '11:30 开始，', '20:00 结束'],
+        expected: '11:30 开始，20:00 结束'
+      }
     ])(
-      'should keep 0: answer as plain text even when body contains 1: ($label)',
-      async ({ parts }) => {
+      'should keep declared 0:/0： answer intact when body contains colons ($label)',
+      async ({ parts, expected }) => {
         const callbacks = createCallbacks();
         const { response } = createStream([
           ...parts.map((content) => chunk({ content })),
@@ -779,11 +806,11 @@ describe('createStreamResponse', () => {
         });
 
         expect(result).toMatchObject({
-          answerText: '11:30 开会',
+          answerText: expected,
           toolCalls: undefined,
           finish_reason: 'stop'
         });
-        expect(textOf(callbacks.onStreaming)).toBe('11:30 开会');
+        expect(textOf(callbacks.onStreaming)).toBe(expected);
         expect(callbacks.onToolCall).not.toHaveBeenCalled();
       }
     );
