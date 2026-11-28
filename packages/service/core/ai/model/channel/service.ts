@@ -9,10 +9,12 @@ import { aiProxyClient } from '../../../../thirdProvider/aiproxy/client';
 import { isAiproxyNotImplementedError } from '../../../../thirdProvider/aiproxy/error';
 import type {
   BatchChannelBody,
+  UpdateChannelBody,
   UpdateChannelStatusBody,
   ProviderMetasResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import type { UpdateChannelData } from '../../../../thirdProvider/aiproxy/type';
 import { getCachedTypeMetas } from './cache';
 import { resolveChannelForOperation, resolveChannelsForOperation } from './resolve';
 import { getAiproxyClientByScope } from './client';
@@ -136,14 +138,35 @@ export const createChannel = async ({
   }
 };
 
+type UpdateChannelPatch = Omit<UpdateChannelBody, 'id' | 'channelType'>;
+
 /** 更新渠道并统一处理 system/team 两种 AIProxy scope；与绑定变更共用单渠道写锁。 */
 export const updateChannel = async ({
   id,
   channelType,
   tmbId,
   channelData
-}: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> =>
-  withChannelWriteLock({
+}: ChannelScope & { id: number; channelData: UpdateChannelPatch }): Promise<void> => {
+  const { addModels, removeModels, setModelMapping, removeModelMappingKeys, ...baseChannelData } =
+    channelData;
+  const hasModelsDelta = addModels !== undefined || removeModels !== undefined;
+  const hasMappingDelta = setModelMapping !== undefined || removeModelMappingKeys !== undefined;
+
+  if (
+    (baseChannelData.models !== undefined && hasModelsDelta) ||
+    (baseChannelData.model_mapping !== undefined && hasMappingDelta)
+  ) {
+    return Promise.reject(ModelErrEnum.invalidModelConfig);
+  }
+
+  // 无任何有效修改字段时只校验渠道归属，不占写锁也不下发无意义 PUT。
+  const hasAnyUpdateField = Object.values(channelData).some((value) => value !== undefined);
+  if (!hasAnyUpdateField) {
+    await resolveChannelForOperation({ id, channelType, tmbId });
+    return;
+  }
+
+  await withChannelWriteLock({
     channelId: id,
     channelType,
     tmbId,
@@ -151,19 +174,73 @@ export const updateChannel = async ({
       const channel = await resolveChannelForOperation({ id, channelType, tmbId });
       const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
 
-      if (channelData.name) {
-        await assertChannelNameUnique({ client, name: channelData.name, excludeId: id });
+      if (baseChannelData.name) {
+        await assertChannelNameUnique({ client, name: baseChannelData.name, excludeId: id });
       }
+
+      const aiproxyPatch: UpdateChannelData = {
+        ...(baseChannelData.name !== undefined && { name: baseChannelData.name }),
+        ...(baseChannelData.type !== undefined && { type: baseChannelData.type }),
+        ...(baseChannelData.key !== undefined && { key: baseChannelData.key }),
+        ...(baseChannelData.base_url !== undefined && { base_url: baseChannelData.base_url }),
+        ...(baseChannelData.models !== undefined && { models: baseChannelData.models }),
+        ...(baseChannelData.model_mapping !== undefined && {
+          model_mapping: baseChannelData.model_mapping
+        }),
+        ...(baseChannelData.priority !== undefined && { priority: baseChannelData.priority }),
+        ...(baseChannelData.status !== undefined && { status: baseChannelData.status }),
+        ...(baseChannelData.sets !== undefined && { sets: baseChannelData.sets }),
+        // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
+        ...(baseChannelData.configs !== undefined && {
+          configs: { ...channel.configs, ...baseChannelData.configs }
+        })
+      };
+
+      // 模型列表与映射增删基于锁内最新快照合并，避免过期表单擦除并发导入或手动绑定。
+      if (hasModelsDelta) {
+        const currentModels = channel.models ?? [];
+        const addList = Array.from(new Set(addModels ?? []));
+        const addSet = new Set(addList);
+        const removeSet = new Set((removeModels ?? []).filter((model) => !addSet.has(model)));
+        const keptModels = currentModels.filter((model) => !removeSet.has(model));
+        const keptSet = new Set(keptModels);
+        const nextModels = [...keptModels, ...addList.filter((model) => !keptSet.has(model))];
+        const modelsChanged =
+          nextModels.length !== currentModels.length ||
+          nextModels.some((model, index) => model !== currentModels[index]);
+        if (modelsChanged) {
+          aiproxyPatch.models = nextModels;
+        }
+      }
+
+      if (hasMappingDelta) {
+        const currentMapping = channel.model_mapping ?? {};
+        const removeKeySet = new Set(removeModelMappingKeys ?? []);
+        const setEntries = Object.entries(setModelMapping ?? {});
+        const setKeySet = new Set(setEntries.map(([key]) => key));
+        const nextMapping = Object.fromEntries([
+          ...Object.entries(currentMapping).filter(
+            ([key]) => !removeKeySet.has(key) && !setKeySet.has(key)
+          ),
+          ...setEntries
+        ]);
+        const currentKeys = Object.keys(currentMapping);
+        const nextKeys = Object.keys(nextMapping);
+        const mappingChanged =
+          currentKeys.length !== nextKeys.length ||
+          nextKeys.some(
+            (key) => !Object.hasOwn(currentMapping, key) || currentMapping[key] !== nextMapping[key]
+          );
+        if (mappingChanged) {
+          aiproxyPatch.model_mapping = nextMapping;
+        }
+      }
+
+      if (Object.keys(aiproxyPatch).length === 0) return;
 
       assertValid();
       try {
-        await client.update(id, {
-          ...channelData,
-          // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
-          ...(channelData.configs !== undefined && {
-            configs: { ...channel.configs, ...channelData.configs }
-          })
-        });
+        await client.update(id, aiproxyPatch);
       } catch (error) {
         if (isChannelNameConflictError(error)) {
           return Promise.reject(ModelErrEnum.channelNameConflict);
@@ -172,6 +249,7 @@ export const updateChannel = async ({
       }
     }
   });
+};
 
 /** 切换渠道状态。 */
 export const updateChannelStatus = async ({

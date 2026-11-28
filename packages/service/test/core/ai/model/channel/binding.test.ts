@@ -123,6 +123,52 @@ describe('channel binding write serialization', () => {
     });
   });
 
+  it('preserves concurrently imported bindings when saving a stale edit form with metadata or incremental binding changes', async () => {
+    setChannel(1, {
+      name: 'old-name',
+      models: ['base-model', 'drop-model'],
+      model_mapping: { 'base-model': 'up/base-v1', 'drop-model': 'up/drop' }
+    });
+
+    // 模拟渠道编辑弹窗打开后，另一并发流程向同一渠道导入并绑定了新模型。
+    await updateModelChannelBindings({
+      model: 'imported-model',
+      addChannelIds: [1],
+      channelType: 'team',
+      tmbId: TMB_ID
+    });
+
+    // 1. 仅改名保存不提交 models/model_mapping，导入绑定保持不变。
+    await updateChannel({
+      id: 1,
+      channelType: 'team',
+      tmbId: TMB_ID,
+      channelData: { name: 'renamed-channel' }
+    });
+    expect(channels.get(1)).toMatchObject({
+      name: 'renamed-channel',
+      models: ['base-model', 'drop-model', 'imported-model']
+    });
+
+    // 2. 基于旧快照修改模型与映射时提交增删差异，同样保留并发导入的模型。
+    await updateChannel({
+      id: 1,
+      channelType: 'team',
+      tmbId: TMB_ID,
+      channelData: {
+        addModels: ['manual-added'],
+        removeModels: ['drop-model'],
+        setModelMapping: { 'base-model': 'up/base-v2' },
+        removeModelMappingKeys: ['drop-model']
+      }
+    });
+    expect(channels.get(1)).toMatchObject({
+      name: 'renamed-channel',
+      models: ['base-model', 'imported-model', 'manual-added'],
+      model_mapping: { 'base-model': 'up/base-v2' }
+    });
+  });
+
   it('preserves concurrently added models when rolling back a partial rename failure', async () => {
     setChannel(1, {
       models: ['old-model', 'keep-model'],
@@ -226,7 +272,7 @@ describe('channel binding write serialization', () => {
       }).catch((error) => error);
       expect(acquireError).toMatchObject({
         name: 'ServerConfigError',
-        message: ModelErrEnum.channelWriteBusy
+        message: ModelErrEnum.serviceUnavailable
       });
       expect(isServerConfigError(acquireError)).toBe(true);
     } finally {

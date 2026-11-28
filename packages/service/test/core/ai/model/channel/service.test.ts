@@ -392,7 +392,7 @@ describe('channel service', () => {
         channels: [makeChannel(1, { name: 'old-name' })],
         total: 1
       });
-      mocks.group.update.mockRejectedValue(new Error('channel name duplicated'));
+      mocks.group.update.mockRejectedValueOnce(new Error('channel name duplicated'));
 
       await expect(
         updateChannel({
@@ -418,6 +418,81 @@ describe('channel service', () => {
 
       expect(mocks.groupFactory).not.toHaveBeenCalled();
       expect(mocks.system.update).not.toHaveBeenCalled();
+    });
+
+    it('merges incremental model and mapping deltas against the latest channel state without clobbering concurrent additions', async () => {
+      mocks.group.get.mockResolvedValue(
+        makeChannel(1, {
+          models: ['base-model', 'removed-model', 'concurrently-imported'],
+          model_mapping: {
+            'base-model': 'up/base-old',
+            'removed-model': 'up/removed',
+            'concurrently-imported': 'up/imported'
+          }
+        })
+      );
+
+      await updateChannel({
+        id: 1,
+        channelType: 'team',
+        tmbId: TMB_ID,
+        channelData: {
+          addModels: ['added-model'],
+          removeModels: ['removed-model'],
+          setModelMapping: { 'base-model': 'up/base-new', 'added-model': 'up/added' },
+          removeModelMappingKeys: ['removed-model']
+        }
+      });
+
+      expect(mocks.group.update).toHaveBeenCalledWith(1, {
+        models: ['base-model', 'concurrently-imported', 'added-model'],
+        model_mapping: {
+          'concurrently-imported': 'up/imported',
+          'base-model': 'up/base-new',
+          'added-model': 'up/added'
+        }
+      });
+    });
+
+    it('skips AI Proxy writes when an update patch has no effective changes', async () => {
+      mocks.group.get.mockResolvedValue(makeChannel(1, { models: ['m1'], model_mapping: {} }));
+
+      await updateChannel({
+        id: 1,
+        channelType: 'team',
+        tmbId: TMB_ID,
+        channelData: {}
+      });
+      await updateChannel({
+        id: 1,
+        channelType: 'team',
+        tmbId: TMB_ID,
+        channelData: { addModels: ['m1'], removeModelMappingKeys: ['missing'] }
+      });
+
+      expect(mocks.group.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects mixing full models or model_mapping with incremental deltas', async () => {
+      await expect(
+        updateChannel({
+          id: 1,
+          channelType: 'team',
+          tmbId: TMB_ID,
+          channelData: { models: ['m1'], addModels: ['m2'] }
+        })
+      ).rejects.toBe(ModelErrEnum.invalidModelConfig);
+
+      await expect(
+        updateChannel({
+          id: 1,
+          channelType: 'team',
+          tmbId: TMB_ID,
+          channelData: { model_mapping: {}, setModelMapping: { m1: 'up' } }
+        })
+      ).rejects.toBe(ModelErrEnum.invalidModelConfig);
+
+      expect(mocks.group.update).not.toHaveBeenCalled();
     });
   });
 

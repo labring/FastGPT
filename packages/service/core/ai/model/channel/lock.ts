@@ -52,7 +52,7 @@ export const withChannelWriteLock = async <T>({
   } catch (error) {
     if (!isRedisLeaseError(error)) throw error;
 
-    // 避免把内部 Redis 锁键和成员 ID 透传给前端；Redis 故障保留 500 系统异常分类，并发争用归一为 409。
+    // 避免把内部 Redis 锁键和成员 ID 透传给前端；Redis 故障保留 500 与服务不可用码，并发争用归一为 409。
     if (error instanceof RedisLeaseAcquireError) {
       logger.error('Failed to acquire channel write lock', {
         channelId,
@@ -60,7 +60,7 @@ export const withChannelWriteLock = async <T>({
         tmbId,
         error
       });
-      throw new ServerConfigError(ModelErrEnum.channelWriteBusy, undefined, { cause: error });
+      throw new ServerConfigError(ModelErrEnum.serviceUnavailable, undefined, { cause: error });
     }
     logger.warn('Channel write lock contention or lease lost', {
       channelId,

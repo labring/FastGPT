@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
     | {
         isLoading?: boolean;
         list: { label: string; value: string }[];
+        onSelect?: (value: string[]) => void;
       },
   options: [] as { label: string; value: number; icon?: string }[],
   protocol: undefined as
@@ -293,23 +294,58 @@ describe('EditChannelModal channel metadata', () => {
     expect(mocks.protocol?.value).toBe('chat_completions');
   });
 
-  it('sends the selected protocol and retains other configs on update', async () => {
+  it('sends only changed protocol config on update without resending untouched models or extra configs', async () => {
     render({
       channelType: 'system',
       config: {
         name: 'test-channel',
         id: 12,
         models: ['gpt-5.4-nano'],
+        model_mapping: { 'gpt-5.4-nano': 'upstream-nano' },
         configs: { responses_first_event_timeout: 10 }
       }
     });
     mocks.protocol?.onChange('chat_completions');
     await mocks.submit();
-    expect(putChannel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        configs: { chat_upstream_protocol: 'chat_completions', responses_first_event_timeout: 10 }
-      })
-    );
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 12,
+      channelType: 'system',
+      configs: { chat_upstream_protocol: 'chat_completions' }
+    });
+  });
+
+  it('sends incremental model and mapping deltas on edit instead of full stale snapshots', async () => {
+    render({
+      channelType: 'team',
+      config: {
+        id: 18,
+        name: 'team-channel',
+        models: ['gpt-4o', 'legacy-model'],
+        model_mapping: {
+          'gpt-4o': 'upstream/gpt-4o-v1',
+          'legacy-model': 'upstream/legacy'
+        }
+      }
+    });
+
+    mocks.multipleSelect?.onSelect?.(['gpt-4o', 'claude-sonnet']);
+    mocks.modelMapping?.onChange?.({
+      'gpt-4o': 'upstream/gpt-4o-v2',
+      'claude-sonnet': 'upstream/claude-sonnet'
+    });
+    await mocks.submit();
+
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 18,
+      channelType: 'team',
+      addModels: ['claude-sonnet'],
+      removeModels: ['legacy-model'],
+      setModelMapping: {
+        'gpt-4o': 'upstream/gpt-4o-v2',
+        'claude-sonnet': 'upstream/claude-sonnet'
+      },
+      removeModelMappingKeys: ['legacy-model']
+    });
   });
 
   it('submits auto by default for a newly created channel', async () => {
@@ -387,22 +423,20 @@ describe('EditChannelModal channel metadata', () => {
     expect(mocks.secretKey?.value).toBe('');
 
     await mocks.submit();
-    expect(putChannel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 12,
-        key: undefined
-      })
-    );
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 12,
+      channelType: 'system'
+    });
+    expect(vi.mocked(putChannel).mock.calls[0]?.[0]).not.toHaveProperty('key');
     expect(vi.mocked(putChannel).mock.calls[0]?.[0]).not.toHaveProperty('keyConfigured');
 
     mocks.secretKey?.onChange?.('sk-new-secret');
     await mocks.submit();
-    expect(putChannel).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        id: 12,
-        key: 'sk-new-secret'
-      })
-    );
+    expect(putChannel).toHaveBeenLastCalledWith({
+      id: 12,
+      channelType: 'system',
+      key: 'sk-new-secret'
+    });
 
     render({
       channelType: 'team',

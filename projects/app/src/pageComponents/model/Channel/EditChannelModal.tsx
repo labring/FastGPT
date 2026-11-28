@@ -1,5 +1,8 @@
 import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
-import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type {
+  CreateChannelResponse,
+  UpdateChannelBody
+} from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import {
   CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES,
   ChatUpstreamProtocolSchema,
@@ -221,35 +224,74 @@ const EditChannelModal = ({
       if (hasDuplicateModelMappingRef.current) {
         return Promise.reject(t('config_model:mapping_key_duplicate'));
       }
-      const { chat_upstream_protocol, ...otherConfigs } = formData.configs ?? {};
-      const { keyConfigured: _keyConfigured, ...restFormData } = formData;
-      const data = {
-        ...restFormData,
-        configs: {
-          ...otherConfigs,
-          ...(supportsChatUpstreamProtocol ? { chat_upstream_protocol } : {})
-        }
-      };
-      if (!allowEmptyModels && data.models.length === 0) {
+      if (!allowEmptyModels && formData.models.length === 0) {
         return Promise.reject(t('config_model:selected_model_empty'));
       }
       const createdChannel = await (async () => {
         if (isEdit) {
-          await putChannel({
-            ...data,
-            // 未修改已保存密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
-            ...(defaultConfig.keyConfigured && !hasEditedKeyRef.current ? { key: undefined } : {}),
-            status: data.status === 1 || data.status === 2 ? data.status : undefined,
-            channelType
-          });
+          // 编辑只提交发生变化的字段；模型和映射发送增删差异，避免旧弹窗快照覆盖并发导入或手动绑定。
+          const initialSupportsProtocol = CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some(
+            (type) => type === defaultConfig.type
+          );
+          const initialProtocol = ChatUpstreamProtocolSchema.parse(
+            defaultConfig.configs?.chat_upstream_protocol
+          );
+          const nextProtocol = ChatUpstreamProtocolSchema.parse(
+            formData.configs?.chat_upstream_protocol
+          );
+          const shouldUpdateProtocol =
+            supportsChatUpstreamProtocol &&
+            (nextProtocol !== initialProtocol || !initialSupportsProtocol);
+
+          const initialModels = new Set(defaultConfig.models);
+          const nextModels = new Set(formData.models);
+          const addModels = Array.from(nextModels).filter((model) => !initialModels.has(model));
+          const removeModels = Array.from(initialModels).filter((model) => !nextModels.has(model));
+
+          const initialMapping = defaultConfig.model_mapping ?? {};
+          const nextMapping = formData.model_mapping ?? {};
+          const setModelMapping = Object.fromEntries(
+            Object.entries(nextMapping).filter(
+              ([key, value]) => !Object.hasOwn(initialMapping, key) || initialMapping[key] !== value
+            )
+          );
+          const removeModelMappingKeys = Object.keys(initialMapping).filter(
+            (key) => !Object.hasOwn(nextMapping, key)
+          );
+
+          const editPatch: UpdateChannelBody = {
+            id: defaultConfig.id,
+            channelType,
+            ...(formData.name !== defaultConfig.name && { name: formData.name }),
+            ...(formData.type !== defaultConfig.type && { type: formData.type }),
+            ...((formData.base_url ?? '') !== (defaultConfig.base_url ?? '') && {
+              base_url: formData.base_url ?? ''
+            }),
+            // 未修改密钥时不传 key，遵循 AIProxy patch 语义保持原密钥不变。
+            ...(hasEditedKeyRef.current && formData.key ? { key: formData.key } : {}),
+            ...(shouldUpdateProtocol && {
+              configs: { chat_upstream_protocol: nextProtocol }
+            }),
+            ...(addModels.length > 0 && { addModels }),
+            ...(removeModels.length > 0 && { removeModels }),
+            ...(Object.keys(setModelMapping).length > 0 && { setModelMapping }),
+            ...(removeModelMappingKeys.length > 0 && { removeModelMappingKeys })
+          };
+          await putChannel(editPatch);
           return undefined;
         }
 
+        const { chat_upstream_protocol, ...otherConfigs } = formData.configs ?? {};
+        const { keyConfigured: _keyConfigured, ...restFormData } = formData;
         return postCreateChannel({
-          ...data,
-          status: data.status === 1 || data.status === 2 ? data.status : undefined,
+          ...restFormData,
+          configs: {
+            ...otherConfigs,
+            ...(supportsChatUpstreamProtocol ? { chat_upstream_protocol } : {})
+          },
+          status: formData.status === 1 || formData.status === 2 ? formData.status : undefined,
           channelType,
-          model_mapping: data.model_mapping ?? {}
+          model_mapping: formData.model_mapping ?? {}
         });
       })();
 

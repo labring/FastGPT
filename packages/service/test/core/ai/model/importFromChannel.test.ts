@@ -1,4 +1,8 @@
-import { LeaseCache, RedisLeaseWaitTimeoutError } from '@fastgpt/dal/redis/caches/lease';
+import {
+  LeaseCache,
+  RedisLeaseAcquireError,
+  RedisLeaseWaitTimeoutError
+} from '@fastgpt/dal/redis/caches/lease';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { CreateModelData } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -418,32 +422,62 @@ describe('apply model imports from channel', () => {
     expect(channel.models).toEqual(['imported-model', 'manual-model']);
   });
 
-  it('maps channel write lock timeout to a stable localized error without leaking internal keys', async () => {
-    createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
-    const leaseSpy = vi.spyOn(LeaseCache.prototype, 'withConcurrency').mockRejectedValueOnce(
-      new RedisLeaseWaitTimeoutError({
-        key: `model-channel-write:team:${scope.tmbId}:1`,
-        label: 'model-channel-write'
-      })
-    );
+  it('maps channel write lock timeout and Redis acquire errors to distinct localized codes without leaking internal keys', async () => {
+    createModelMock
+      .mockResolvedValueOnce({ modelId: 'busy-id' })
+      .mockResolvedValueOnce({ modelId: 'redis-down-id' });
+    const leaseSpy = vi
+      .spyOn(LeaseCache.prototype, 'withConcurrency')
+      .mockRejectedValueOnce(
+        new RedisLeaseWaitTimeoutError({
+          key: `model-channel-write:team:${scope.tmbId}:1`,
+          label: 'model-channel-write'
+        })
+      )
+      .mockRejectedValueOnce(
+        new RedisLeaseAcquireError({
+          key: `model-channel-write:team:${scope.tmbId}:1`,
+          label: 'model-channel-write',
+          cause: new Error('redis down')
+        })
+      );
 
     try {
-      const { results } = await importFromChannel({
+      const busyRes = await importFromChannel({
         ...scope,
         channelType: 'team',
         channelId: 1,
         models: [createModelData('busy-model')]
       });
-
-      expect(results).toEqual([
+      expect(busyRes.results).toEqual([
         {
           status: 'failed',
           model: 'busy-model',
-          modelId: 'created-id',
+          modelId: 'busy-id',
           error: ModelErrEnum.channelWriteBusy
         }
       ]);
-      expect(results[0].status === 'failed' && results[0].error).not.toContain(scope.tmbId);
+      expect(busyRes.results[0].status === 'failed' && busyRes.results[0].error).not.toContain(
+        scope.tmbId
+      );
+
+      const acquireRes = await importFromChannel({
+        ...scope,
+        channelType: 'team',
+        channelId: 1,
+        models: [createModelData('redis-down-model')]
+      });
+      expect(acquireRes.results).toEqual([
+        {
+          status: 'failed',
+          model: 'redis-down-model',
+          modelId: 'redis-down-id',
+          error: ModelErrEnum.serviceUnavailable
+        }
+      ]);
+      expect(
+        acquireRes.results[0].status === 'failed' && acquireRes.results[0].error
+      ).not.toContain(scope.tmbId);
     } finally {
       leaseSpy.mockRestore();
     }
