@@ -153,6 +153,10 @@ export class AIProxyClient {
       list,
       listAll,
       get: (id: number): Promise<T> => this.get<T>(`${basePath}/channel/${id}`),
+      getModelCatalog: async (id: number): Promise<AiproxyChannelModel[]> =>
+        AiproxyChannelModelsSchema.parse(
+          await this.get<unknown>(`${basePath}/channel/${id}/models`)
+        ),
       /** 上游旧版创建返回空 data；在同一分组内分页精确查名补齐资源 ID，协议差异不泄露到 UI。 */
       create: async (data: AddChannelData): Promise<{ id: number }> => {
         const result = await this.post<{ id: number } | null>(`${basePath}/channel/`, data);
@@ -258,22 +262,19 @@ export class AIProxyClient {
     dashboard: this.createDashboardOperations((query) => `/api/dashboardv2/${query}`)
   };
 
-  public async getSystemChannelModels(id: number): Promise<AiproxyChannelModel[]> {
-    return AiproxyChannelModelsSchema.parse(await this.get<unknown>(`/api/channel/${id}/models`));
-  }
-
   /* ═══ Group Scope Operations ═══ */
 
   public group(groupId: string) {
     const encodedGroupId = encodeURIComponent(groupId);
+    const basePath = `/api/group/${encodedGroupId}`;
 
     return {
-      channels: this.createChannelOperations<AiproxyGroupChannel>(`/api/group/${encodedGroupId}`, {
+      channels: this.createChannelOperations<AiproxyGroupChannel>(basePath, {
         fallbackEmptyOnNotFound: true
       }),
       logs: this.createLogOperations(`/api/log/${encodedGroupId}/group_channel`),
       dashboard: this.createDashboardOperations(
-        (query) => `/api/group/${encodedGroupId}/channel-dashboardv2${query}`,
+        (query) => `${basePath}/channel-dashboardv2${query}`,
         { isGroup: true }
       )
     };

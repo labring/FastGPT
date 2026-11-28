@@ -65,7 +65,7 @@ export const ChannelPath: OpenAPIPath = {
     put: {
       summary: '更新渠道',
       description:
-        '按指定 system/team 作用域校验渠道归属，成员仅本人渠道；未传入的字段保持原值，configs 与已有渠道配置合并，避免只修改协议时覆盖高级配置。Key 轮换即时生效。',
+        '按指定 system/team 作用域校验渠道归属，成员仅本人渠道；未传入的字段保持原值，configs 与已有渠道配置合并，模型列表与映射支持按增删差异在单渠道写锁内基于最新快照合并。Key 轮换即时生效。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: UpdateChannelBodySchema } }

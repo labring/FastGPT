@@ -4,25 +4,32 @@ import {
   type ChannelConfig
 } from '@fastgpt/global/core/ai/model/channel';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { aiProxyClient } from '../../../../thirdProvider/aiproxy/client';
+import { isAiproxyNotImplementedError } from '../../../../thirdProvider/aiproxy/error';
 import type {
   BatchChannelBody,
+  UpdateChannelBody,
   UpdateChannelStatusBody,
   ProviderMetasResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import type { UpdateChannelData } from '../../../../thirdProvider/aiproxy/type';
 import { getCachedTypeMetas } from './cache';
 import { resolveChannelForOperation, resolveChannelsForOperation } from './resolve';
 import { getAiproxyClientByScope } from './client';
+import { withChannelWriteLock } from './lock';
 import { getChannelsAffectedModels } from './association';
 import { getModelProviderMetadata } from '../provider/controller';
+
+const getCachedChannelTypeMetas = () => getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
 
 /**
  * 合并上游表单配置与 Plugin 展示元数据，不返回实例渠道或密钥。
  * 展示元数据和顺序每次读取最新缓存；仅两边均存在的类型可创建，历史类型仍可展示。
  */
 export const getChannelTypeMetas = async (): Promise<ProviderMetasResponse> => {
-  const typeMetas = await getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
+  const typeMetas = await getCachedChannelTypeMetas();
   const result: ProviderMetasResponse = Object.fromEntries(
     Object.entries(typeMetas).map(([id, meta]) => [
       id,
@@ -131,34 +138,117 @@ export const createChannel = async ({
   }
 };
 
-/** 更新渠道并统一处理 system/team 两种 AIProxy scope。 */
+type UpdateChannelPatch = Omit<UpdateChannelBody, 'id' | 'channelType'>;
+
+/** 更新渠道并统一处理 system/team 两种 AIProxy scope；与绑定变更共用单渠道写锁。 */
 export const updateChannel = async ({
   id,
   channelType,
   tmbId,
   channelData
-}: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> => {
-  const channel = await resolveChannelForOperation({ id, channelType, tmbId });
-  const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
+}: ChannelScope & { id: number; channelData: UpdateChannelPatch }): Promise<void> => {
+  const { addModels, removeModels, setModelMapping, removeModelMappingKeys, ...baseChannelData } =
+    channelData;
+  const hasModelsDelta = addModels !== undefined || removeModels !== undefined;
+  const hasMappingDelta = setModelMapping !== undefined || removeModelMappingKeys !== undefined;
 
-  if (channelData.name) {
-    await assertChannelNameUnique({ client, name: channelData.name, excludeId: id });
+  if (
+    (baseChannelData.models !== undefined && hasModelsDelta) ||
+    (baseChannelData.model_mapping !== undefined && hasMappingDelta)
+  ) {
+    return Promise.reject(ModelErrEnum.invalidModelConfig);
   }
 
-  try {
-    await client.update(id, {
-      ...channelData,
-      // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
-      ...(channelData.configs !== undefined && {
-        configs: { ...channel.configs, ...channelData.configs }
-      })
-    });
-  } catch (error) {
-    if (isChannelNameConflictError(error)) {
-      return Promise.reject(ModelErrEnum.channelNameConflict);
+  // 无任何有效修改字段时只校验渠道归属，不占写锁也不下发无意义 PUT。
+  const hasAnyUpdateField = Object.values(channelData).some((value) => value !== undefined);
+  if (!hasAnyUpdateField) {
+    await resolveChannelForOperation({ id, channelType, tmbId });
+    return;
+  }
+
+  await withChannelWriteLock({
+    channelId: id,
+    channelType,
+    tmbId,
+    fn: async ({ assertValid }) => {
+      const channel = await resolveChannelForOperation({ id, channelType, tmbId });
+      const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
+
+      if (baseChannelData.name) {
+        await assertChannelNameUnique({ client, name: baseChannelData.name, excludeId: id });
+      }
+
+      const aiproxyPatch: UpdateChannelData = {
+        ...(baseChannelData.name !== undefined && { name: baseChannelData.name }),
+        ...(baseChannelData.type !== undefined && { type: baseChannelData.type }),
+        ...(baseChannelData.key !== undefined && { key: baseChannelData.key }),
+        ...(baseChannelData.base_url !== undefined && { base_url: baseChannelData.base_url }),
+        ...(baseChannelData.models !== undefined && { models: baseChannelData.models }),
+        ...(baseChannelData.model_mapping !== undefined && {
+          model_mapping: baseChannelData.model_mapping
+        }),
+        ...(baseChannelData.priority !== undefined && { priority: baseChannelData.priority }),
+        ...(baseChannelData.status !== undefined && { status: baseChannelData.status }),
+        ...(baseChannelData.sets !== undefined && { sets: baseChannelData.sets }),
+        // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
+        ...(baseChannelData.configs !== undefined && {
+          configs: { ...channel.configs, ...baseChannelData.configs }
+        })
+      };
+
+      // 模型列表与映射增删基于锁内最新快照合并，避免过期表单擦除并发导入或手动绑定。
+      if (hasModelsDelta) {
+        const currentModels = channel.models ?? [];
+        const addList = Array.from(new Set(addModels ?? []));
+        const addSet = new Set(addList);
+        const removeSet = new Set((removeModels ?? []).filter((model) => !addSet.has(model)));
+        const keptModels = currentModels.filter((model) => !removeSet.has(model));
+        const keptSet = new Set(keptModels);
+        const nextModels = [...keptModels, ...addList.filter((model) => !keptSet.has(model))];
+        const modelsChanged =
+          nextModels.length !== currentModels.length ||
+          nextModels.some((model, index) => model !== currentModels[index]);
+        if (modelsChanged) {
+          aiproxyPatch.models = nextModels;
+        }
+      }
+
+      if (hasMappingDelta) {
+        const currentMapping = channel.model_mapping ?? {};
+        const removeKeySet = new Set(removeModelMappingKeys ?? []);
+        const setEntries = Object.entries(setModelMapping ?? {});
+        const setKeySet = new Set(setEntries.map(([key]) => key));
+        const nextMapping = Object.fromEntries([
+          ...Object.entries(currentMapping).filter(
+            ([key]) => !removeKeySet.has(key) && !setKeySet.has(key)
+          ),
+          ...setEntries
+        ]);
+        const currentKeys = Object.keys(currentMapping);
+        const nextKeys = Object.keys(nextMapping);
+        const mappingChanged =
+          currentKeys.length !== nextKeys.length ||
+          nextKeys.some(
+            (key) => !Object.hasOwn(currentMapping, key) || currentMapping[key] !== nextMapping[key]
+          );
+        if (mappingChanged) {
+          aiproxyPatch.model_mapping = nextMapping;
+        }
+      }
+
+      if (Object.keys(aiproxyPatch).length === 0) return;
+
+      assertValid();
+      try {
+        await client.update(id, aiproxyPatch);
+      } catch (error) {
+        if (isChannelNameConflictError(error)) {
+          return Promise.reject(ModelErrEnum.channelNameConflict);
+        }
+        throw error;
+      }
     }
-    throw error;
-  }
+  });
 };
 
 /** 切换渠道状态。 */
@@ -221,4 +311,33 @@ export const batchOperateChannels = async ({
 
   await client.batchUpdateStatus(body.ids, body.status);
   return {};
+};
+
+/**
+ * 读取导入预览所需的渠道快照、上游模型目录和渠道协议名。
+ * 501 目录不支持错误在渠道层统一归一化为业务错误；type-meta 仅用于推断 provider，失败时降级为空。
+ */
+export const getChannelCatalogForImport = async ({
+  channelId,
+  channelType,
+  tmbId
+}: ChannelScope & { channelId: number }) => {
+  const scope = { channelType, tmbId };
+  const channel = await resolveChannelForOperation({ id: channelId, ...scope });
+  const { channels } = getAiproxyClientByScope(scope);
+  const [channelModels, typeMetas] = await Promise.all([
+    channels.getModelCatalog(channelId).catch((error) => {
+      if (isAiproxyNotImplementedError(error)) {
+        throw new UserError(ModelErrEnum.channelCatalogUnsupported);
+      }
+      throw error;
+    }),
+    getCachedChannelTypeMetas().catch(() => undefined)
+  ]);
+
+  return {
+    channel,
+    channelModels,
+    channelTypeName: typeMetas?.[channel.type]?.name
+  };
 };

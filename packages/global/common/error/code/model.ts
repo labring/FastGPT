@@ -32,7 +32,8 @@ export enum ModelErrEnum {
   networkError = 'modelNetworkError',
   invalidResponse = 'modelInvalidResponse',
   channelCatalogUnsupported = 'modelChannelCatalogUnsupported',
-  channelModelMappingConflict = 'channelModelMappingConflict'
+  channelModelMappingConflict = 'channelModelMappingConflict',
+  channelWriteBusy = 'modelChannelWriteBusy'
 }
 
 const modelErrList: Array<{
@@ -189,6 +190,11 @@ const modelErrList: Array<{
   {
     statusText: ModelErrEnum.channelModelMappingConflict,
     message: i18nT('config_model:channel_import_mapping_conflict'),
+    httpStatus: 409
+  },
+  {
+    statusText: ModelErrEnum.channelWriteBusy,
+    message: i18nT('config_model:channel_write_busy'),
     httpStatus: 409
   }
 ];

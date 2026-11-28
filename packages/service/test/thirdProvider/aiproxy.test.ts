@@ -37,7 +37,7 @@ describe('AIProxyClient', () => {
     );
     mockAxiosWithoutSSRF.mockRejectedValue(error);
 
-    await expect(client.getSystemChannelModels(1)).rejects.toBe(error);
+    await expect(client.system.channels.getModelCatalog(1)).rejects.toBe(error);
     await expect(client.system.channels.get(1)).rejects.toBe(error);
   });
 
@@ -46,8 +46,10 @@ describe('AIProxyClient', () => {
       .mockResolvedValueOnce({ data: { success: true, data: [{ id: 'vendor/model' }] } })
       .mockResolvedValueOnce({ data: { success: true, data: [{ id: ' vendor/model ' }] } });
 
-    await expect(client.getSystemChannelModels(1)).resolves.toEqual([{ id: 'vendor/model' }]);
-    await expect(client.getSystemChannelModels(1)).rejects.toMatchObject({
+    await expect(client.system.channels.getModelCatalog(1)).resolves.toEqual([
+      { id: 'vendor/model' }
+    ]);
+    await expect(client.system.channels.getModelCatalog(1)).rejects.toMatchObject({
       issues: [expect.objectContaining({ path: [0, 'id'] })]
     });
   });
@@ -349,7 +351,10 @@ describe('AIProxy Error Helpers', () => {
 
     it('matches 500 status code with record not found message', () => {
       expect(
-        isAiproxyNotFoundError({ response: { status: 500, data: { message: 'record not found' } } })
+        isAiproxyNotFoundError({
+          message: 'Request failed with status code 500',
+          response: { status: 500, data: { message: 'group_channel record not found' } }
+        })
       ).toBe(true);
       expect(isAiproxyNotFoundError({ status: 500, message: 'Record Not Found' })).toBe(true);
     });
@@ -359,6 +364,12 @@ describe('AIProxy Error Helpers', () => {
       expect(isAiproxyNotFoundError({ response: { status: 500, data: { message: 'boom' } } })).toBe(
         false
       );
+      expect(
+        isAiproxyNotFoundError({
+          message: 'record not found',
+          response: { status: 500, data: { message: 'database unavailable' } }
+        })
+      ).toBe(false);
       expect(isAiproxyNotFoundError(null)).toBe(false);
       expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(false);
     });
