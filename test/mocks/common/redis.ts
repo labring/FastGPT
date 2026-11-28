@@ -5,6 +5,7 @@ import { configureRedisRuntime as configureTestRedisRuntime } from '@fastgpt/dal
 const createRedisStorage = () => {
   const storage = new Map<string, any>();
   const expiryMap = new Map<string, number>();
+  const zsets = new Map<string, Map<string, number>>();
 
   // Check and remove expired keys
   const isExpired = (key: string): boolean => {
@@ -12,9 +13,25 @@ const createRedisStorage = () => {
     if (expiry && expiry < Date.now()) {
       storage.delete(key);
       expiryMap.delete(key);
+      zsets.delete(key);
       return true;
     }
     return false;
+  };
+
+  const getZSet = (key: string) => {
+    let zset = zsets.get(key);
+    if (!zset) {
+      zset = new Map<string, number>();
+      zsets.set(key, zset);
+    }
+    return zset;
+  };
+
+  const pruneZSet = (zset: Map<string, number>, now: number) => {
+    for (const [member, score] of zset.entries()) {
+      if (score <= now) zset.delete(member);
+    }
   };
 
   return {
@@ -114,12 +131,47 @@ const createRedisStorage = () => {
     clear: () => {
       storage.clear();
       expiryMap.clear();
+      zsets.clear();
     },
     eval: (_script: string, numberOfKeys: number, ...args: any[]) => {
       const keys = args.slice(0, numberOfKeys);
       const argv = args.slice(numberOfKeys);
       const key = keys[0];
       const expectedValue = argv[0];
+
+      if (_script.includes('ZREMRANGEBYSCORE') && _script.includes('ZADD')) {
+        const now = Date.now();
+        const zset = getZSet(key);
+        pruneZSet(zset, now);
+        const ttlMs = Number(argv[1]);
+        if (_script.includes('return redis.call("ZCARD"')) {
+          zset.set(String(expectedValue), now + ttlMs);
+          return zset.size;
+        }
+        const limit = Number(argv[2]);
+        if (zset.size >= limit) return 0;
+        zset.set(String(expectedValue), now + ttlMs);
+        return 1;
+      }
+
+      if (_script.includes('ZSCORE')) {
+        const now = Date.now();
+        const zset = zsets.get(key);
+        const member = String(expectedValue);
+        const expires = zset?.get(member);
+        if (expires === undefined) return 0;
+        if (expires <= now) {
+          zset?.delete(member);
+          return 0;
+        }
+        zset?.set(member, now + Number(argv[1]));
+        return 1;
+      }
+
+      if (_script.includes('ZREM')) {
+        const zset = zsets.get(key);
+        return zset?.delete(String(expectedValue)) ? 1 : 0;
+      }
 
       if (_script.includes('redis.call("SET", KEYS[1]')) {
         if (!isExpired(key) && storage.has(key)) return [0, storage.get(key)];

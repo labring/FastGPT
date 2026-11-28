@@ -1,3 +1,4 @@
+import { LeaseCache, RedisLeaseWaitTimeoutError } from '@fastgpt/dal/redis/caches/lease';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { CreateModelData } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -31,7 +32,9 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: getSystemModelHandleMock
 }));
 vi.mock('@fastgpt/service/core/ai/model/channel/resolve', () => ({
-  resolveChannelForOperation: resolveChannelMock
+  resolveChannelForOperation: resolveChannelMock,
+  resolveChannelsForOperation: ({ ids }: { ids: number[] }) =>
+    Promise.all(ids.map((id) => resolveChannelMock({ id })))
 }));
 vi.mock('@fastgpt/service/core/ai/model/channel/cache', () => ({
   getCachedTypeMetas: (fetch: () => Promise<unknown>) => fetch()
@@ -53,6 +56,7 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
   }
 }));
 
+import { updateModelChannelBindings } from '@fastgpt/service/core/ai/model/channel/binding';
 import {
   importFromChannel,
   previewImportFromChannel
@@ -310,14 +314,14 @@ describe('apply model imports from channel', () => {
   );
 
   it.each(['system', 'team'] as const)(
-    'keeps an unconfirmed %s binding unknown after a server error',
+    'keeps an unconfirmed %s binding unknown after a server error and prefers response body message',
     async (channelType) => {
       const model = 'vendor/unconfirmed-model';
       createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
       const update = channelType === 'system' ? updateChannelMock : updateGroupChannelMock;
       update.mockRejectedValueOnce(
-        Object.assign(new AxiosError('failed to bind model to channel'), {
-          response: { status: 500 }
+        Object.assign(new AxiosError('Request failed with status code 500'), {
+          response: { status: 500, data: { message: 'failed to bind model to channel' } }
         })
       );
 
@@ -339,7 +343,7 @@ describe('apply model imports from channel', () => {
     }
   );
 
-  it('keeps the created ID when another import is writing the same channel', async () => {
+  it('queues concurrent imports on the same channel so both batches bind without losing models', async () => {
     const updateStarted = Promise.withResolvers<void>();
     const completeUpdate = Promise.withResolvers<void>();
     createModelMock
@@ -357,34 +361,92 @@ describe('apply model imports from channel', () => {
     });
     await Promise.race([updateStarted.promise, first]);
 
-    try {
-      await expect(
-        importFromChannel({
-          ...scope,
-          channelId: 1,
-          tmbId: '60000000000000000000000b',
-          models: [createModelData('second')]
-        })
-      ).resolves.toEqual({
-        results: [
-          {
-            status: 'failed',
-            model: 'second',
-            modelId: 'second-id',
-            error: expect.stringContaining('Redis lease is already held for model-channel-import')
-          }
-        ]
-      });
-      expect(updateChannelMock).toHaveBeenCalledTimes(1);
-    } finally {
-      completeUpdate.resolve();
-      await first;
-    }
+    const second = importFromChannel({
+      ...scope,
+      channelId: 1,
+      tmbId: '60000000000000000000000b',
+      models: [createModelData('second')]
+    });
+    // 第一批尚未释放锁前，第二批只应等待而不抢先覆盖写入。
+    await Promise.resolve();
+    expect(updateChannelMock).toHaveBeenCalledTimes(1);
 
+    completeUpdate.resolve();
     await expect(first).resolves.toEqual({
       results: [{ status: 'success', model: 'first', modelId: 'first-id' }]
     });
-    expect(channel.models).toEqual(['first']);
+    await expect(second).resolves.toEqual({
+      results: [{ status: 'success', model: 'second', modelId: 'second-id' }]
+    });
+    expect(updateChannelMock).toHaveBeenCalledTimes(2);
+    expect(channel.models).toEqual(['first', 'second']);
+  });
+
+  it('serializes team import with concurrent manual channel binding without overwriting either', async () => {
+    const updateStarted = Promise.withResolvers<void>();
+    const completeUpdate = Promise.withResolvers<void>();
+    createModelMock.mockResolvedValueOnce({ modelId: 'imported-id' });
+    updateGroupChannelMock.mockImplementationOnce(async (_id, patch) => {
+      updateStarted.resolve();
+      await completeUpdate.promise;
+      Object.assign(channel, patch);
+    });
+
+    const importing = importFromChannel({
+      ...scope,
+      channelType: 'team',
+      channelId: 1,
+      models: [createModelData('imported-model')]
+    });
+    await Promise.race([updateStarted.promise, importing]);
+
+    const manualBinding = updateModelChannelBindings({
+      model: 'manual-model',
+      addChannelIds: [1],
+      channelType: 'team',
+      tmbId: scope.tmbId
+    });
+    await Promise.resolve();
+    expect(updateGroupChannelMock).toHaveBeenCalledTimes(1);
+
+    completeUpdate.resolve();
+    await expect(importing).resolves.toEqual({
+      results: [{ status: 'success', model: 'imported-model', modelId: 'imported-id' }]
+    });
+    await expect(manualBinding).resolves.toBeUndefined();
+    expect(updateGroupChannelMock).toHaveBeenCalledTimes(2);
+    expect(channel.models).toEqual(['imported-model', 'manual-model']);
+  });
+
+  it('maps channel write lock timeout to a stable localized error without leaking internal keys', async () => {
+    createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
+    const leaseSpy = vi.spyOn(LeaseCache.prototype, 'withConcurrency').mockRejectedValueOnce(
+      new RedisLeaseWaitTimeoutError({
+        key: `model-channel-write:team:${scope.tmbId}:1`,
+        label: 'model-channel-write'
+      })
+    );
+
+    try {
+      const { results } = await importFromChannel({
+        ...scope,
+        channelType: 'team',
+        channelId: 1,
+        models: [createModelData('busy-model')]
+      });
+
+      expect(results).toEqual([
+        {
+          status: 'failed',
+          model: 'busy-model',
+          modelId: 'created-id',
+          error: ModelErrEnum.channelWriteBusy
+        }
+      ]);
+      expect(results[0].status === 'failed' && results[0].error).not.toContain(scope.tmbId);
+    } finally {
+      leaseSpy.mockRestore();
+    }
   });
 
   it('returns confirmed model IDs when the lease expires just after the write', async () => {

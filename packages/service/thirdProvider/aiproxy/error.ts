@@ -23,6 +23,15 @@ export const isAiproxyNotFoundError = (error: unknown): boolean => {
 export const isAiproxyNotImplementedError = (error: unknown): boolean =>
   isAxiosError(error) && (error.response?.status ?? error.status) === 501;
 
+const AMBIGUOUS_WRITE_STATUSES = new Set([408, 500, 502, 503, 504]);
+
+/** 识别写操作结果未确认的传输/服务端异常（无响应或超时/5xx），供调用方触发读回对账。 */
+export const isAiproxyAmbiguousWriteError = (error: unknown): boolean => {
+  if (!isAxiosError(error)) return false;
+  const status = error.response?.status;
+  return status === undefined || AMBIGUOUS_WRITE_STATUSES.has(status);
+};
+
 /**
  * 执行 AI Proxy 请求，资源不存在时返回 fallback，其余错误原样抛出。
  * 用于「桶尚未创建 / 渠道已被删除」这类应按空结果处理的读取场景。

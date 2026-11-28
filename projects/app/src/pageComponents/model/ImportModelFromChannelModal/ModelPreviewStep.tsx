@@ -631,6 +631,15 @@ const ModelPreviewStep = ({
     () => previewItems.filter((row) => state.rowSelections.get(row.providerModelSlug)?.selected),
     [previewItems, state.rowSelections]
   );
+  // 同步最新选择计数到 ref，保持 toggleSelected 引用稳定，避免单行勾选触发全表 memo 重渲染。
+  const selectionMetaRef = useRef({
+    rowSelections: state.rowSelections,
+    selectedCount: selectedItems.length
+  });
+  selectionMetaRef.current = {
+    rowSelections: state.rowSelections,
+    selectedCount: selectedItems.length
+  };
 
   const resetPreviewSelections = () => {
     updateState((draft) => {
@@ -645,8 +654,9 @@ const ModelPreviewStep = ({
 
   const toggleSelected = useCallback(
     (providerModelSlug: string) => {
-      const isSelected = state.rowSelections.get(providerModelSlug)?.selected;
-      if (!isSelected && selectedItems.length >= MAX_CHANNEL_IMPORT_MODELS) {
+      const { rowSelections, selectedCount } = selectionMetaRef.current;
+      const isSelected = rowSelections.get(providerModelSlug)?.selected;
+      if (!isSelected && selectedCount >= MAX_CHANNEL_IMPORT_MODELS) {
         toast({
           status: 'warning',
           title: t('config_model:channel_import_selection_limit', {
@@ -663,7 +673,7 @@ const ModelPreviewStep = ({
         });
       });
     },
-    [selectedItems.length, state.rowSelections, t, toast, updateState]
+    [t, toast, updateState]
   );
 
   const handleModelTypeChange = useCallback(

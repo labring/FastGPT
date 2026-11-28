@@ -4,7 +4,9 @@ import {
   type ChannelConfig
 } from '@fastgpt/global/core/ai/model/channel';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { aiProxyClient } from '../../../../thirdProvider/aiproxy/client';
+import { isAiproxyNotImplementedError } from '../../../../thirdProvider/aiproxy/error';
 import type {
   BatchChannelBody,
   UpdateChannelStatusBody,
@@ -14,15 +16,18 @@ import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getCachedTypeMetas } from './cache';
 import { resolveChannelForOperation, resolveChannelsForOperation } from './resolve';
 import { getAiproxyClientByScope } from './client';
+import { withChannelWriteLock } from './lock';
 import { getChannelsAffectedModels } from './association';
 import { getModelProviderMetadata } from '../provider/controller';
+
+const getCachedChannelTypeMetas = () => getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
 
 /**
  * 合并上游表单配置与 Plugin 展示元数据，不返回实例渠道或密钥。
  * 展示元数据和顺序每次读取最新缓存；仅两边均存在的类型可创建，历史类型仍可展示。
  */
 export const getChannelTypeMetas = async (): Promise<ProviderMetasResponse> => {
-  const typeMetas = await getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
+  const typeMetas = await getCachedChannelTypeMetas();
   const result: ProviderMetasResponse = Object.fromEntries(
     Object.entries(typeMetas).map(([id, meta]) => [
       id,
@@ -131,35 +136,42 @@ export const createChannel = async ({
   }
 };
 
-/** 更新渠道并统一处理 system/team 两种 AIProxy scope。 */
+/** 更新渠道并统一处理 system/team 两种 AIProxy scope；与绑定变更共用单渠道写锁。 */
 export const updateChannel = async ({
   id,
   channelType,
   tmbId,
   channelData
-}: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> => {
-  const channel = await resolveChannelForOperation({ id, channelType, tmbId });
-  const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
+}: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> =>
+  withChannelWriteLock({
+    channelId: id,
+    channelType,
+    tmbId,
+    fn: async ({ assertValid }) => {
+      const channel = await resolveChannelForOperation({ id, channelType, tmbId });
+      const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
 
-  if (channelData.name) {
-    await assertChannelNameUnique({ client, name: channelData.name, excludeId: id });
-  }
+      if (channelData.name) {
+        await assertChannelNameUnique({ client, name: channelData.name, excludeId: id });
+      }
 
-  try {
-    await client.update(id, {
-      ...channelData,
-      // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
-      ...(channelData.configs !== undefined && {
-        configs: { ...channel.configs, ...channelData.configs }
-      })
-    });
-  } catch (error) {
-    if (isChannelNameConflictError(error)) {
-      return Promise.reject(ModelErrEnum.channelNameConflict);
+      assertValid();
+      try {
+        await client.update(id, {
+          ...channelData,
+          // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
+          ...(channelData.configs !== undefined && {
+            configs: { ...channel.configs, ...channelData.configs }
+          })
+        });
+      } catch (error) {
+        if (isChannelNameConflictError(error)) {
+          return Promise.reject(ModelErrEnum.channelNameConflict);
+        }
+        throw error;
+      }
     }
-    throw error;
-  }
-};
+  });
 
 /** 切换渠道状态。 */
 export const updateChannelStatus = async ({
@@ -221,4 +233,33 @@ export const batchOperateChannels = async ({
 
   await client.batchUpdateStatus(body.ids, body.status);
   return {};
+};
+
+/**
+ * 读取导入预览所需的渠道快照、上游模型目录和渠道协议名。
+ * 501 目录不支持错误在渠道层统一归一化为业务错误；type-meta 仅用于推断 provider，失败时降级为空。
+ */
+export const getChannelCatalogForImport = async ({
+  channelId,
+  channelType,
+  tmbId
+}: ChannelScope & { channelId: number }) => {
+  const scope = { channelType, tmbId };
+  const channel = await resolveChannelForOperation({ id: channelId, ...scope });
+  const { channels } = getAiproxyClientByScope(scope);
+  const [channelModels, typeMetas] = await Promise.all([
+    channels.getModelCatalog(channelId).catch((error) => {
+      if (isAiproxyNotImplementedError(error)) {
+        throw new UserError(ModelErrEnum.channelCatalogUnsupported);
+      }
+      throw error;
+    }),
+    getCachedChannelTypeMetas().catch(() => undefined)
+  ]);
+
+  return {
+    channel,
+    channelModels,
+    channelTypeName: typeMetas?.[channel.type]?.name
+  };
 };
