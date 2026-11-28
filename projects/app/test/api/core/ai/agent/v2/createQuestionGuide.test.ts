@@ -1,11 +1,14 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
   getAppLatestVersion: vi.fn(),
   getLLMModelData: vi.fn(),
+  getDefaultModelData: vi.fn(),
+  getAuthorizedModelIds: vi.fn(),
   createQuestionGuide: vi.fn(),
   getChatItems: vi.fn()
 }));
@@ -21,13 +24,16 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
     getModelData: mocks.getLLMModelData,
     getLLMModelData: mocks.getLLMModelData,
-    getDefaultModelData: vi.fn()
+    getDefaultModelData: mocks.getDefaultModelData
   }),
   getTeamModelHandle: async () => ({
     getModelData: mocks.getLLMModelData,
     getLLMModelData: mocks.getLLMModelData,
-    getDefaultModelData: vi.fn()
+    getDefaultModelData: mocks.getDefaultModelData
   })
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
 vi.mock('@fastgpt/service/core/ai/functions/createQuestionGuide', () => ({
   createQuestionGuide: mocks.createQuestionGuide
@@ -114,5 +120,84 @@ describe('createQuestionGuide model resource permission', () => {
     ).resolves.toEqual(['q1']);
 
     expect(mocks.createQuestionGuide).toHaveBeenCalledOnce();
+  });
+
+  it('uses outLink actor semantics when falling back to the default LLM for share links', async () => {
+    const authorizedIds = new Set(['default-llm']);
+    const defaultModel = { modelId: 'default-llm', model: 'gpt-4o-mini' };
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      teamId: 'team-id',
+      tmbId: 'publisher-tmb-id',
+      isRoot: false,
+      authType: AuthUserTypeEnum.outLink,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '65f000000000000000000071'
+    });
+    mocks.getLLMModelData.mockReturnValueOnce(undefined);
+    mocks.getAuthorizedModelIds.mockResolvedValueOnce(authorizedIds);
+    mocks.getDefaultModelData.mockReturnValueOnce(defaultModel);
+    mocks.createQuestionGuide.mockResolvedValueOnce({
+      result: ['q1'],
+      inputTokens: 1,
+      outputTokens: 1
+    });
+
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            outLinkAuthData: { shareId: 'share-id', outLinkUid: 'visitor-id' }
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toEqual(['q1']);
+
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledExactlyOnceWith({
+      actor: { source: 'outLink', teamId: 'team-id', tmbId: 'publisher-tmb-id' },
+      handle: expect.anything()
+    });
+    expect(mocks.getDefaultModelData).toHaveBeenCalledExactlyOnceWith('llm', { authorizedIds });
+  });
+
+  it('uses member actor semantics when falling back to the default LLM for token callers', async () => {
+    const authorizedIds = new Set(['default-llm']);
+    const defaultModel = { modelId: 'default-llm', model: 'gpt-4o-mini' };
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      teamId: 'team-id',
+      tmbId: 'member-tmb-id',
+      isRoot: true,
+      authType: AuthUserTypeEnum.token,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '65f000000000000000000071'
+    });
+    mocks.getLLMModelData.mockReturnValueOnce(undefined);
+    mocks.getAuthorizedModelIds.mockResolvedValueOnce(authorizedIds);
+    mocks.getDefaultModelData.mockReturnValueOnce(defaultModel);
+    mocks.createQuestionGuide.mockResolvedValueOnce({
+      result: ['q1'],
+      inputTokens: 1,
+      outputTokens: 1
+    });
+
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id'
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toEqual(['q1']);
+
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-id', tmbId: 'member-tmb-id', isRoot: true },
+      handle: expect.anything()
+    });
+    expect(mocks.getDefaultModelData).toHaveBeenCalledExactlyOnceWith('llm', { authorizedIds });
   });
 });
