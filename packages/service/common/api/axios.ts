@@ -1,4 +1,6 @@
 import _, {
+  getAdapter,
+  isAxiosError,
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
@@ -8,6 +10,7 @@ import dns from 'dns/promises';
 import http from 'http';
 import https from 'https';
 import { isIP } from 'net';
+import { finished, Readable } from 'stream';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
@@ -67,8 +70,17 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
     // 理论上 request interceptor 会注入状态；缺失时按普通响应返回,避免误处理其它实例响应。
     if (!redirectState || !currentUrl) return response;
 
+    // 重定向正文不会交给调用方；流式代理响应需主动结束当前跳，释放其连接生命周期。
+    if (config.__safeAxios?.proxyUrl && response.data instanceof Readable) {
+      response.data.destroy();
+    }
+
     if (redirectState.count >= redirectState.maxRedirects) {
-      return Promise.reject(new Error(`Maximum redirects exceeded: ${redirectState.maxRedirects}`));
+      return Promise.reject(
+        Object.assign(new Error(`Maximum redirects exceeded: ${redirectState.maxRedirects}`), {
+          code: 'ERR_FR_TOO_MANY_REDIRECTS'
+        })
+      );
     }
 
     const redirectUrl = resolveRedirectUrl(response.headers.location, currentUrl);
@@ -103,6 +115,8 @@ export type SafeAxiosRequestOptions = {
   /** 请求前及每次重定向时执行入口专属的 URL 策略。 */
   validateUrl?: (url: string) => boolean;
   rejectUnauthorized?: boolean;
+  /** 单次请求专属的 HTTP(S) 代理；覆盖环境代理，每一跳仍校验目标和代理地址。 */
+  proxyUrl?: string;
 };
 
 export type SafeAxiosRequestConfig = AxiosRequestConfig & {
@@ -164,6 +178,70 @@ const prepareSafeRequestConfig = async (
 
   if (await isInternalAddress(requestUrl)) {
     return Promise.reject(new Error(PRIVATE_URL_TEXT));
+  }
+
+  const proxyUrl = config.__safeAxios?.proxyUrl;
+  if (proxyUrl) {
+    // 节点代理来自用户配置，与环境代理不同，代理端点自身也必须通过地址策略。
+    if (await isInternalAddress(proxyUrl)) {
+      throw new Error(PRIVATE_URL_TEXT);
+    }
+    const parsedProxyUrl = new URL(proxyUrl);
+    if (!['http:', 'https:'].includes(parsedProxyUrl.protocol)) {
+      throw new Error('Unsupported HTTP proxy protocol');
+    }
+    const resolvedProxy = await resolveSafeConnectAddress(
+      parsedProxyUrl.hostname.replace(/^\[|\]$/g, '')
+    );
+    // 节点代理也遵循共享入口的凭据隔离：认证头只交给代理，不能转发到目标。
+    const proxyAuthorization = getRequestProxyAuthorization(config, parsedProxyUrl);
+    const connectionAbortController = new AbortController();
+    const agent = createProxyAgent({
+      getProxyForUrl: () => proxyUrl,
+      ...(typeof proxyAuthorization === 'string'
+        ? { headers: () => ({ [PROXY_AUTHORIZATION_HEADER]: proxyAuthorization }) }
+        : {}),
+      // 代理主机也固定 DNS 结果，防止预检后第二次解析转向本机或云元数据地址。
+      lookup: createPinnedLookup(resolvedProxy),
+      // net/tls 在 CONNECT 完成前已创建 socket，必须直接持有其取消信号。
+      signal: connectionAbortController.signal,
+      rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
+    });
+    const requestAdapter = getAdapter(config.adapter ?? _.defaults.adapter);
+    const closeProxyConnections = () => {
+      connectionAbortController.abort();
+      agent.destroy();
+    };
+    /** 成功或 HTTP 错误中的流正文都交给调用方，消费结束/出错/关闭时再清理连接。 */
+    const releaseProxyAfterResponse = (response?: AxiosResponse) => {
+      if (config.responseType === 'stream' && response?.data instanceof Readable) {
+        const removeListeners = finished(response.data, () => {
+          removeListeners();
+          closeProxyConnections();
+        });
+      } else {
+        closeProxyConnections();
+      }
+    };
+
+    return {
+      ...config,
+      proxy: false,
+      httpAgent: agent,
+      httpsAgent: agent,
+      adapter: async (requestConfig) => {
+        try {
+          // 保留原 adapter，重定向时重新创建单跳生命周期，避免嵌套旧的清理 wrapper。
+          const response = await requestAdapter({ ...requestConfig, adapter: requestAdapter });
+          releaseProxyAfterResponse(response);
+          return response;
+        } catch (error) {
+          // Axios 的超时/取消已经结束调用，但握手 socket 可能还未登记到 agent 中。
+          releaseProxyAfterResponse(isAxiosError(error) ? error.response : undefined);
+          throw error;
+        }
+      }
+    };
   }
 
   return attachRequestAgent(config, requestUrl);
@@ -298,25 +376,14 @@ const attachRequestAgent = async (
   const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
 
   // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定到对应代理 origin，每跳都从目标请求移除。
-  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION_HEADER);
-  config.headers.delete(PROXY_AUTHORIZATION_HEADER);
-  const redirectState = config.__safeRedirect;
-  if (redirectState?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
-    http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyHeader);
-    const proxyOrigin = proxyUrl.origin;
-    // 凭据保存在闭包里，避免出现在 Axios 可序列化的请求配置中。
-    redirectState.getProxyAuthorization = (origin) =>
-      origin === proxyOrigin ? proxyHeader : undefined;
-  }
+  const proxyAuthorization = getRequestProxyAuthorization(config, proxyUrl);
 
   const isHttps = parsedUrl.protocol === 'https:';
   const agent = await createSingleHopAgent({
     parsedUrl,
     proxyUrl,
     rejectUnauthorized,
-    proxyAuthorization: proxyUrl
-      ? redirectState?.getProxyAuthorization?.(proxyUrl.origin)
-      : undefined
+    proxyAuthorization
   });
 
   return {
@@ -325,6 +392,19 @@ const attachRequestAgent = async (
     httpAgent: isHttps ? undefined : agent,
     httpsAgent: isHttps ? agent : undefined
   };
+};
+
+/** 每跳剥离目标请求的代理认证，仅在首跳按代理 origin 保存，供后续同代理跳转复用。 */
+const getRequestProxyAuthorization = (config: SafeRedirectInternalConfig, proxyUrl?: URL) => {
+  const proxyHeader = config.headers.get(PROXY_AUTHORIZATION_HEADER);
+  config.headers.delete(PROXY_AUTHORIZATION_HEADER);
+  const state = config.__safeRedirect;
+  if (state?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
+    http.validateHeaderValue(PROXY_AUTHORIZATION_HEADER, proxyHeader);
+    const origin = proxyUrl.origin;
+    state.getProxyAuthorization = (nextOrigin) => (nextOrigin === origin ? proxyHeader : undefined);
+  }
+  return proxyUrl ? state?.getProxyAuthorization?.(proxyUrl.origin) : undefined;
 };
 
 const resolveSafeConnectAddress = async (hostname: string): Promise<ResolvedAddress> => {

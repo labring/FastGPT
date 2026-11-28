@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import SecretInputModal, {
   type SecretReferenceList
@@ -1016,7 +1017,7 @@ const MenuRender = React.memo(function MenuRender({
       t
     });
     clearCanvasSelection();
-    actions.addNode(canvasNodeToStoreNode(newNode));
+    actions.addNode(clearHttpProxyValues([canvasNodeToStoreNode(newNode)])[0]);
   }, [actions, clearCanvasSelection, computedNewNodeName, nodeId, runtime, t]);
   const Render = useMemo(() => {
     const menuList = [

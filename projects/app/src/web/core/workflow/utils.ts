@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { stripAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
@@ -477,7 +478,7 @@ export const filterSensitiveChatConfig = (chatConfig: AppChatConfigType): AppCha
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
   // 只清理已确认的凭据容器，避免误删普通业务字段中的 value/defaultValue。
-  const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
+  const cloneNodes = clearHttpProxyValues(nodes);
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
   const keepSecretRef = (value: unknown) => isRecord(value) && 'ref' in value;

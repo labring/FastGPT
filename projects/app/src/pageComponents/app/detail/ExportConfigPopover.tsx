@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { fileDownload } from '@/web/common/file/utils';
 import { getModelList } from '@/web/core/ai/model/modelData';
 import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
@@ -93,7 +94,7 @@ const ExportConfigPopover = ({
       } else if (getWorkflowData) {
         const workflowData = getWorkflowData();
         if (!workflowData) return;
-        const nodes = cloneDeep(
+        const nodes = clearHttpProxyValues(
           filterSensitiveInfo ? filterSensitiveNodesData(workflowData.nodes) : workflowData.nodes
         );
         const sourceChatConfig = workflowData.chatConfig ?? chatConfig;

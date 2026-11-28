@@ -1,3 +1,4 @@
+import { formatHttpProxySecrets } from './httpProxySecret';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -54,12 +55,15 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
-  teamId
+  teamId,
+  allowConfiguredHttpProxy = false
 }: {
   nodes?: StoreNodeItemType[];
   teamId?: string;
+  allowConfiguredHttpProxy?: boolean;
 }) => {
   if (!nodes) return;
+  formatHttpProxySecrets({ nodes, allowConfigured: allowConfiguredHttpProxy });
 
   /**
    * 格式化知识库选择值，仅保留 datasetId；详情接口实时补全展示信息，编辑态临时字段不落库。

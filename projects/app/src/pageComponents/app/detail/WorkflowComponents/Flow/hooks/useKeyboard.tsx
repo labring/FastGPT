@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   isNestedParentNodeType,
@@ -72,7 +73,7 @@ export const useKeyboard = () => {
           id: node.id,
           type: node.type,
           // 只序列化 Runtime canonical data；overlay 和 ReactFlow 投影字段不进入剪贴板。
-          data,
+          data: clearHttpProxyValues([data])[0],
           position: runtime.getNodeView(node.id)?.position ?? node.position
         }
       ];
@@ -119,7 +120,7 @@ export const useKeyboard = () => {
           ...item,
           id: nodeId,
           data: {
-            ...item.data,
+            ...clearHttpProxyValues([item.data])[0],
             name: computedNewNodeName({
               templateName: item.data?.name || '',
               flowNodeType: item.data?.flowNodeType || '',

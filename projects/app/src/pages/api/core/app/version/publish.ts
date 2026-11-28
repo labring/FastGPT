@@ -1,3 +1,5 @@
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/mongo/entity';
+import { resolveHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -19,7 +21,10 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  mongoSessionRun,
+  bridgeClientSessionToDbSession
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
@@ -106,7 +111,8 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
   });
   await beforeUpdateAppFormat({
     nodes: normalizedWorkflow.nodes,
-    teamId
+    teamId,
+    allowConfiguredHttpProxy: true
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
@@ -134,7 +140,16 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
       session,
       draftVersion
     });
-    return { referenceSnapshots: compactedSnapshots, resources };
+    return {
+      referenceSnapshots: compactedSnapshots,
+      resources,
+      nodes: await resolveHttpProxySecrets({
+        nodes: normalizedWorkflow.nodes,
+        appId,
+        readVersions: (versionIds) =>
+          findAppVersionNodes({ appId, versionIds, tx: bridgeClientSessionToDbSession(session) })
+      })
+    };
   };
 
   /** 从本次写入的快照构造回执，避免重读最新草稿时将其他成员的并发保存纳入同步基线。 */
@@ -146,6 +161,9 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     const workflow = normalizeAppVersionWorkflow(savedVersion, app.type);
     await rewriteAppWorkflowToDetail({
       nodes: workflow.nodes,
+      proxySource: workflow.versionId
+        ? { appId: String(app._id), versionId: workflow.versionId }
+        : undefined,
       teamId,
       viewerTmbId: tmbId,
       ownerTmbId: String(app.tmbId),
@@ -158,7 +176,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
 
   if (autoSave) {
     const savedVersion = await mongoSessionRun(async (session) => {
-      const metadata = await resolveSaveMetadata(session);
+      const { nodes: storageNodes, ...metadata } = await resolveSaveMetadata(session);
       const version = await MongoAppVersion.findOneAndUpdate(
         {
           appId,
@@ -168,7 +186,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
           tmbId,
           appId,
           isAutoSave: true,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -208,7 +226,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
   }
 
   const savedVersion = await mongoSessionRun(async (session) => {
-    const metadata = await resolveSaveMetadata(session);
+    const { nodes: storageNodes, ...metadata } = await resolveSaveMetadata(session);
     if (isPublish) {
       await assertAppDatasetIndexModelsAvailable({
         resources: metadata.resources,
@@ -224,7 +242,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
       [
         {
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,

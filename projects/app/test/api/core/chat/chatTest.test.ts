@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { formatHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const mocks = vi.hoisted(() => ({
   authApp: vi.fn(),
@@ -99,6 +105,56 @@ const buildRequest = () => ({
 });
 
 describe('chatTest API permission', () => {
+  it('restores the selected proxy version before preparing a chat test request', async () => {
+    const stored = {
+      nodeId: 'http',
+      name: 'HTTP',
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.httpProxy,
+          label: 'Proxy',
+          renderTypeList: [],
+          value: encryptSecretValue({ value: 'http://old:private@proxy.example.com' })
+        }
+      ],
+      outputs: []
+    };
+    const version = await MongoAppVersion.create({
+      appId,
+      tmbId: 'owner',
+      nodes: [stored],
+      edges: []
+    });
+    const selected = structuredClone([stored]);
+    formatHttpProxySecrets({
+      nodes: selected,
+      project: true,
+      source: { appId, versionId: String(version._id) }
+    });
+    await MongoAppVersion.create({ appId, tmbId: 'owner', nodes: [], edges: [] });
+    mocks.authApp.mockResolvedValue({
+      app: { _id: appId, type: AppTypeEnum.workflow },
+      teamId: 'team',
+      tmbId: 'owner',
+      isRoot: false
+    });
+    mocks.prepareAppWorkflowResources.mockResolvedValue([]);
+    const req = buildRequest();
+    req.body.nodes = selected as any;
+    await handler(req as any, { status: vi.fn().mockReturnThis(), end: vi.fn() } as any);
+    expect(mocks.prepareAppWorkflowResources).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({
+            inputs: expect.arrayContaining([
+              expect.objectContaining({ value: stored.inputs[0].value })
+            ])
+          })
+        ])
+      })
+    );
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getIpFromRequest.mockReturnValue('127.0.0.1');
