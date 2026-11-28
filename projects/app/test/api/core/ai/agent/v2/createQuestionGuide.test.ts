@@ -1,7 +1,10 @@
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
@@ -45,6 +48,46 @@ vi.mock('@/service/support/wallet/usage/push', () => ({ pushQuestionGuideUsage: 
 
 import handler from '@/pages/api/core/ai/agent/v2/createQuestionGuide';
 
+/** 构造真实 Node HTTP 载体上的类型化 NextApiRequest / NextApiResponse，避免局部对象强转。 */
+const createHttpContext = (body: unknown): { req: NextApiRequest; res: NextApiResponse } => {
+  const socket = new Socket();
+  const req: NextApiRequest = Object.assign(new IncomingMessage(socket), {
+    method: 'POST',
+    url: '/api/core/ai/agent/v2/createQuestionGuide',
+    cookies: {},
+    env: {},
+    body,
+    query: {}
+  });
+
+  function redirect(url: string): NextApiResponse;
+  function redirect(status: number, url: string): NextApiResponse;
+  function redirect(): NextApiResponse {
+    return res;
+  }
+
+  const res: NextApiResponse = Object.assign(new ServerResponse(req), {
+    send: vi.fn(() => undefined),
+    json: vi.fn(() => undefined),
+    status(statusCode: number) {
+      res.statusCode = statusCode;
+      return res;
+    },
+    redirect,
+    setDraftMode: () => res,
+    setPreviewData: () => res,
+    clearPreviewData: () => res,
+    revalidate: async () => undefined
+  });
+
+  onTestFinished(() => {
+    res.destroy();
+    socket.destroy();
+  });
+
+  return { req, res };
+};
+
 describe('createQuestionGuide model resource permission', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,35 +107,26 @@ describe('createQuestionGuide model resource permission', () => {
   });
 
   it('rejects a model that is not declared by the published App version', async () => {
-    await expect(
-      handler(
-        {
-          body: {
-            appId: '65f000000000000000000071',
-            chatId: 'chat-id',
-            questionGuide: { open: true, modelId: 'model-id' }
-          }
-        } as any,
-        {} as any
-      )
-    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    const { req, res } = createHttpContext({
+      appId: '65f000000000000000000071',
+      chatId: 'chat-id',
+      questionGuide: { open: true, modelId: 'model-id' }
+    });
+
+    await expect(handler(req, res)).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
 
     expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
   });
 
   it('enforces model resource check when only legacy model is configured', async () => {
-    await expect(
-      handler(
-        {
-          body: {
-            appId: '65f000000000000000000071',
-            chatId: 'chat-id',
-            questionGuide: { open: true, model: 'legacy-model' }
-          }
-        } as any,
-        {} as any
-      )
-    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    const unauthorizedCtx = createHttpContext({
+      appId: '65f000000000000000000071',
+      chatId: 'chat-id',
+      questionGuide: { open: true, model: 'legacy-model' }
+    });
+    await expect(handler(unauthorizedCtx.req, unauthorizedCtx.res)).rejects.toMatchObject({
+      message: ModelErrEnum.unAuthModel
+    });
 
     expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
 
@@ -105,19 +139,13 @@ describe('createQuestionGuide model resource permission', () => {
       inputTokens: 1,
       outputTokens: 1
     });
+    const authorizedCtx = createHttpContext({
+      appId: '65f000000000000000000071',
+      chatId: 'chat-id',
+      questionGuide: { open: true, model: 'legacy-model' }
+    });
 
-    await expect(
-      handler(
-        {
-          body: {
-            appId: '65f000000000000000000071',
-            chatId: 'chat-id',
-            questionGuide: { open: true, model: 'legacy-model' }
-          }
-        } as any,
-        {} as any
-      )
-    ).resolves.toEqual(['q1']);
+    await expect(handler(authorizedCtx.req, authorizedCtx.res)).resolves.toEqual(['q1']);
 
     expect(mocks.createQuestionGuide).toHaveBeenCalledOnce();
   });
@@ -141,19 +169,13 @@ describe('createQuestionGuide model resource permission', () => {
       inputTokens: 1,
       outputTokens: 1
     });
+    const { req, res } = createHttpContext({
+      appId: '65f000000000000000000071',
+      chatId: 'chat-id',
+      outLinkAuthData: { shareId: 'share-id', outLinkUid: 'visitor-id' }
+    });
 
-    await expect(
-      handler(
-        {
-          body: {
-            appId: '65f000000000000000000071',
-            chatId: 'chat-id',
-            outLinkAuthData: { shareId: 'share-id', outLinkUid: 'visitor-id' }
-          }
-        } as any,
-        {} as any
-      )
-    ).resolves.toEqual(['q1']);
+    await expect(handler(req, res)).resolves.toEqual(['q1']);
 
     expect(mocks.getAuthorizedModelIds).toHaveBeenCalledExactlyOnceWith({
       actor: { source: 'outLink', teamId: 'team-id', tmbId: 'publisher-tmb-id' },
@@ -181,18 +203,12 @@ describe('createQuestionGuide model resource permission', () => {
       inputTokens: 1,
       outputTokens: 1
     });
+    const { req, res } = createHttpContext({
+      appId: '65f000000000000000000071',
+      chatId: 'chat-id'
+    });
 
-    await expect(
-      handler(
-        {
-          body: {
-            appId: '65f000000000000000000071',
-            chatId: 'chat-id'
-          }
-        } as any,
-        {} as any
-      )
-    ).resolves.toEqual(['q1']);
+    await expect(handler(req, res)).resolves.toEqual(['q1']);
 
     expect(mocks.getAuthorizedModelIds).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-id', tmbId: 'member-tmb-id', isRoot: true },

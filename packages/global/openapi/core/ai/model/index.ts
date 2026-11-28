@@ -164,7 +164,8 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/test': {
     get: {
       summary: '测试模型配置',
-      description: '校验模型配置权限后发起连通性测试；指定 channelId 时先校验渠道归属当前作用域',
+      description:
+        '校验模型配置权限后发起连通性测试；传入可选 channelId 时先校验渠道归属当前作用域，省略时沿用模型原有连接配置',
       tags: [DevApiTagsMap.model],
       requestParams: { query: TestModelQuerySchema },
       responses: {
@@ -173,8 +174,7 @@ export const AIModelPath: OpenAPIPath = {
     },
     post: {
       summary: '测试新增或编辑中的模型草稿',
-      description:
-        '使用当前表单草稿和指定渠道发起测试，不持久化模型；指定 channelId 时先校验渠道归属当前作用域',
+      description: '使用当前表单草稿和指定渠道发起测试，不持久化模型；先校验渠道归属当前作用域',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: TestDraftModelBodySchema } }

@@ -1,7 +1,11 @@
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authModelScope: vi.fn(),
@@ -58,6 +62,54 @@ const makeInstalledModel = (scope: ModelScopeEnum): AIModelDataType => ({
   }
 });
 
+/** 构造真实 Node HTTP 载体上的类型化 NextApiRequest / NextApiResponse，避免局部对象强转。 */
+const createHttpContext = ({
+  method,
+  body,
+  query = {}
+}: {
+  method: 'GET' | 'POST';
+  body?: unknown;
+  query?: NextApiRequest['query'];
+}): { req: NextApiRequest; res: NextApiResponse } => {
+  const socket = new Socket();
+  const req: NextApiRequest = Object.assign(new IncomingMessage(socket), {
+    method,
+    url: '/api/core/ai/model/test',
+    cookies: {},
+    env: {},
+    body,
+    query
+  });
+
+  function redirect(url: string): NextApiResponse;
+  function redirect(status: number, url: string): NextApiResponse;
+  function redirect(): NextApiResponse {
+    return res;
+  }
+
+  const res: NextApiResponse = Object.assign(new ServerResponse(req), {
+    send: vi.fn(() => undefined),
+    json: vi.fn(() => undefined),
+    status(statusCode: number) {
+      res.statusCode = statusCode;
+      return res;
+    },
+    redirect,
+    setDraftMode: () => res,
+    setPreviewData: () => res,
+    clearPreviewData: () => res,
+    revalidate: async () => undefined
+  });
+
+  onTestFinished(() => {
+    res.destroy();
+    socket.destroy();
+  });
+
+  return { req, res };
+};
+
 describe('/api/core/ai/model/test channel ownership verification', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,17 +121,16 @@ describe('/api/core/ai/model/test channel ownership verification', () => {
   it.each(['system', 'team'] as const)(
     'verifies %s channel ownership before running draft model test',
     async (channelType) => {
-      await handler(
-        {
-          method: 'POST',
-          body: {
-            channelType,
-            channelId: 7,
-            modelData: draftModelData
-          }
-        } as Parameters<typeof handler>[0],
-        {} as Parameters<typeof handler>[1]
-      );
+      const { req, res } = createHttpContext({
+        method: 'POST',
+        body: {
+          channelType,
+          channelId: 7,
+          modelData: draftModelData
+        }
+      });
+
+      await handler(req, res);
 
       expect(mocks.resolveChannelForOperation).toHaveBeenCalledExactlyOnceWith({
         id: 7,
@@ -102,22 +153,33 @@ describe('/api/core/ai/model/test channel ownership verification', () => {
     }
   );
 
+  it('rejects draft model test without channelId during input validation', async () => {
+    const { req, res } = createHttpContext({
+      method: 'POST',
+      body: {
+        channelType: 'team',
+        modelData: draftModelData
+      }
+    });
+
+    await expect(handler(req, res)).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    expect(mocks.authModelScope).not.toHaveBeenCalled();
+    expect(mocks.resolveChannelForOperation).not.toHaveBeenCalled();
+    expect(mocks.testModelConnection).not.toHaveBeenCalled();
+  });
+
   it('blocks draft model test when channelId is outside the caller scope', async () => {
     mocks.resolveChannelForOperation.mockRejectedValueOnce(ModelErrEnum.channelNotExist);
+    const { req, res } = createHttpContext({
+      method: 'POST',
+      body: {
+        channelType: 'team',
+        channelId: 999,
+        modelData: draftModelData
+      }
+    });
 
-    await expect(
-      handler(
-        {
-          method: 'POST',
-          body: {
-            channelType: 'team',
-            channelId: 999,
-            modelData: draftModelData
-          }
-        } as Parameters<typeof handler>[0],
-        {} as Parameters<typeof handler>[1]
-      )
-    ).rejects.toBe(ModelErrEnum.channelNotExist);
+    await expect(handler(req, res)).rejects.toBe(ModelErrEnum.channelNotExist);
 
     expect(mocks.testModelConnection).not.toHaveBeenCalled();
   });
@@ -132,18 +194,16 @@ describe('/api/core/ai/model/test channel ownership verification', () => {
         actor: { teamId: TEAM_ID, tmbId: TMB_ID },
         models: [installed]
       });
+      const { req, res } = createHttpContext({
+        method: 'GET',
+        query: {
+          modelId: MODEL_ID,
+          channelType,
+          channelId: '7'
+        }
+      });
 
-      await handler(
-        {
-          method: 'GET',
-          query: {
-            modelId: MODEL_ID,
-            channelType,
-            channelId: '7'
-          }
-        } as Parameters<typeof handler>[0],
-        {} as Parameters<typeof handler>[1]
-      );
+      await handler(req, res);
 
       expect(mocks.resolveChannelForOperation).toHaveBeenCalledExactlyOnceWith({
         id: 7,
@@ -171,41 +231,35 @@ describe('/api/core/ai/model/test channel ownership verification', () => {
       models: [makeInstalledModel(ModelScopeEnum.team)]
     });
     mocks.resolveChannelForOperation.mockRejectedValueOnce(ModelErrEnum.channelNotExist);
+    const { req, res } = createHttpContext({
+      method: 'GET',
+      query: {
+        modelId: MODEL_ID,
+        channelType: 'team',
+        channelId: '1'
+      }
+    });
 
-    await expect(
-      handler(
-        {
-          method: 'GET',
-          query: {
-            modelId: MODEL_ID,
-            channelType: 'team',
-            channelId: '1'
-          }
-        } as Parameters<typeof handler>[0],
-        {} as Parameters<typeof handler>[1]
-      )
-    ).rejects.toBe(ModelErrEnum.channelNotExist);
+    await expect(handler(req, res)).rejects.toBe(ModelErrEnum.channelNotExist);
 
     expect(mocks.testModelConnection).not.toHaveBeenCalled();
   });
 
-  it('skips channel resolution and keeps custom endpoint when channelId is omitted', async () => {
+  it('skips channel resolution and keeps custom endpoint when channelId is omitted on GET', async () => {
     const installed = makeInstalledModel(ModelScopeEnum.team);
     mocks.authModelConfig.mockResolvedValue({
       actor: { teamId: TEAM_ID, tmbId: TMB_ID },
       models: [installed]
     });
+    const { req, res } = createHttpContext({
+      method: 'GET',
+      query: {
+        modelId: MODEL_ID,
+        channelType: 'team'
+      }
+    });
 
-    await handler(
-      {
-        method: 'GET',
-        query: {
-          modelId: MODEL_ID,
-          channelType: 'team'
-        }
-      } as Parameters<typeof handler>[0],
-      {} as Parameters<typeof handler>[1]
-    );
+    await handler(req, res);
 
     expect(mocks.resolveChannelForOperation).not.toHaveBeenCalled();
     expect(mocks.testModelConnection).toHaveBeenCalledExactlyOnceWith({

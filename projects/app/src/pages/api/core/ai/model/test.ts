@@ -31,10 +31,8 @@ async function handleDraftTest(req: ApiRequestProps<TestDraftModelBody>): Promis
   }).body;
 
   const actor = await authModelScope({ req, channelType });
-  if (channelId !== undefined) {
-    // 在 FastGPT 侧显式校验渠道归属，避免旧版 AI Proxy 忽略分组隔离头导致跨作用域路由。
-    await resolveChannelForOperation({ id: channelId, channelType, tmbId: actor.tmbId });
-  }
+  // 草稿测试契约要求显式指定渠道；在 FastGPT 侧校验归属，避免旧版 AI Proxy 忽略分组隔离头导致跨作用域路由。
+  await resolveChannelForOperation({ id: channelId, channelType, tmbId: actor.tmbId });
   const draftModel = {
     ...draftModelData,
     modelId: 'draft-model-test',
