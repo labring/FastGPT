@@ -115,6 +115,28 @@ export const getWorkflowHistoryShortcut = (
   return event.shiftKey ? 'redo' : 'undo';
 };
 
+/** 多个并行节点可能同时显示下一步；一次按键只触发当前画布的一次普通单步。 */
+export const getDebugStepShortcutButton = (event: KeyboardEvent, canvas: HTMLElement | null) => {
+  if (
+    event.key !== 'F10' ||
+    !canvas ||
+    event.defaultPrevented ||
+    event.repeat ||
+    event.isComposing ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    isWorkflowShortcutInputtingTarget(event.target)
+  )
+    return null;
+
+  const target = getElementFromNode(event.target);
+  if (target && target !== canvas.ownerDocument.body && !canvas.contains(target)) return null;
+  if (canvas.querySelector('[data-debug-awaiting-input]')) return null;
+  return canvas.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="F10"]:enabled');
+};
+
 /** 缩放和演示模式只在画布内接管按键，输入、按钮和浏览器保留自己的行为。 */
 export const getWorkflowCanvasShortcut = ({
   event,

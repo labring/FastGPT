@@ -141,7 +141,13 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   return !!debugResult && !!statusData ? (
     <>
       {/* Status header */}
-      <Flex px={3} bg={statusData.bg} borderTopRadius={'md'} py={3}>
+      <Flex
+        data-debug-awaiting-input={(!!interactive && !debugResult.isExpired) || undefined}
+        px={3}
+        bg={statusData.bg}
+        borderTopRadius={'md'}
+        py={3}
+      >
         <MyIcon name={statusData.icon as any} w={'16px'} mr={2} />
         <Box color={'myGray.900'} fontWeight={'bold'} flex={'1 0 0'}>
           {statusData.text}
@@ -215,9 +221,10 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                       size={'sm'}
                       leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
                       variant={'primary'}
+                      aria-keyshortcuts="F10"
                       onClick={() => onNextNodeDebug(workflowDebugData)}
                     >
-                      {t('common:next_step')}
+                      {t('common:next_step')} (F10)
                     </Button>
                   )}
                 {workflowDebugData?.entryNodeIds &&
