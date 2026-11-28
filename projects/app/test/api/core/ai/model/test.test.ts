@@ -1,11 +1,9 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createNextHttpContext } from '../../../httpFixture';
 
 const mocks = vi.hoisted(() => ({
   authModelScope: vi.fn(),
@@ -62,53 +60,11 @@ const makeInstalledModel = (scope: ModelScopeEnum): AIModelDataType => ({
   }
 });
 
-/** 构造真实 Node HTTP 载体上的类型化 NextApiRequest / NextApiResponse，避免局部对象强转。 */
-const createHttpContext = ({
-  method,
-  body,
-  query = {}
-}: {
+const createHttpContext = (params: {
   method: 'GET' | 'POST';
   body?: unknown;
-  query?: NextApiRequest['query'];
-}): { req: NextApiRequest; res: NextApiResponse } => {
-  const socket = new Socket();
-  const req: NextApiRequest = Object.assign(new IncomingMessage(socket), {
-    method,
-    url: '/api/core/ai/model/test',
-    cookies: {},
-    env: {},
-    body,
-    query
-  });
-
-  function redirect(url: string): NextApiResponse;
-  function redirect(status: number, url: string): NextApiResponse;
-  function redirect(): NextApiResponse {
-    return res;
-  }
-
-  const res: NextApiResponse = Object.assign(new ServerResponse(req), {
-    send: vi.fn(() => undefined),
-    json: vi.fn(() => undefined),
-    status(statusCode: number) {
-      res.statusCode = statusCode;
-      return res;
-    },
-    redirect,
-    setDraftMode: () => res,
-    setPreviewData: () => res,
-    clearPreviewData: () => res,
-    revalidate: async () => undefined
-  });
-
-  onTestFinished(() => {
-    res.destroy();
-    socket.destroy();
-  });
-
-  return { req, res };
-};
+  query?: Record<string, string | string[] | undefined>;
+}) => createNextHttpContext({ url: '/api/core/ai/model/test', ...params });
 
 describe('/api/core/ai/model/test channel ownership verification', () => {
   beforeEach(() => {

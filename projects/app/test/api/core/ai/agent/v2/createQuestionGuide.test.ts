@@ -1,10 +1,8 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createNextHttpContext } from '../../../../httpFixture';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
@@ -48,45 +46,12 @@ vi.mock('@/service/support/wallet/usage/push', () => ({ pushQuestionGuideUsage: 
 
 import handler from '@/pages/api/core/ai/agent/v2/createQuestionGuide';
 
-/** 构造真实 Node HTTP 载体上的类型化 NextApiRequest / NextApiResponse，避免局部对象强转。 */
-const createHttpContext = (body: unknown): { req: NextApiRequest; res: NextApiResponse } => {
-  const socket = new Socket();
-  const req: NextApiRequest = Object.assign(new IncomingMessage(socket), {
+const createHttpContext = (body: unknown) =>
+  createNextHttpContext({
     method: 'POST',
     url: '/api/core/ai/agent/v2/createQuestionGuide',
-    cookies: {},
-    env: {},
-    body,
-    query: {}
+    body
   });
-
-  function redirect(url: string): NextApiResponse;
-  function redirect(status: number, url: string): NextApiResponse;
-  function redirect(): NextApiResponse {
-    return res;
-  }
-
-  const res: NextApiResponse = Object.assign(new ServerResponse(req), {
-    send: vi.fn(() => undefined),
-    json: vi.fn(() => undefined),
-    status(statusCode: number) {
-      res.statusCode = statusCode;
-      return res;
-    },
-    redirect,
-    setDraftMode: () => res,
-    setPreviewData: () => res,
-    clearPreviewData: () => res,
-    revalidate: async () => undefined
-  });
-
-  onTestFinished(() => {
-    res.destroy();
-    socket.destroy();
-  });
-
-  return { req, res };
-};
 
 describe('createQuestionGuide model resource permission', () => {
   beforeEach(() => {
