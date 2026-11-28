@@ -116,7 +116,7 @@ export const pushTrack = {
       });
     }
   },
-  login: (data: PushTrackUserType & { type: `${OAuthEnum}` | 'password' }) => {
+  login: (data: PushTrackUserType & { type: `${OAuthEnum}` | 'password' | 'code' }) => {
     return createTrack({
       event: TrackEnum.login,
       data

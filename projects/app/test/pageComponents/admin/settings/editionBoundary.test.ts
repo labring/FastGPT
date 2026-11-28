@@ -164,20 +164,45 @@ describe('configuration form edition boundary', () => {
 
   it.each([
     [false, true, false],
-    [true, false, false],
+    [true, false, true],
     [true, true, true]
   ])(
-    'shows login 2FA SMS template input only for Pro=%s / 2FA=%s',
-    (isPro, login2faEnabled, visible) => {
+    'shows login SMS template input for Pro=%s regardless of 2FA=%s and removes deprecated registration template input',
+    async (isPro, login2faEnabled, visible) => {
       mocks.isPro = isPro;
       mocks.login2faEnabled = login2faEnabled;
       mocks.authOverrides = {
-        loginProviders: { phone: { accessKeyId: 'ak', signName: 'sign' } }
+        loginProviders: {
+          phone: { accessKeyId: 'ak', signName: 'sign' },
+          sms: { register: { zh: 'LEGACY_REGISTER_TPL' }, login: { zh: 'LOGIN_TPL' } }
+        }
       };
       mocks.authSecretKeys = new Set(['loginProviders.phone.accessKeySecret']);
       const html = renderToStaticMarkup(React.createElement(AuthSettings));
       expect(html.includes('id="smsLogin"')).toBe(isPro);
       expect(mocks.formLabels.includes('admin:login_code_chinese_template')).toBe(visible);
+      expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+
+      // 保存 auth 配置时不再提交已弃用的 sms.register，服务端局部合并自动保留库内历史模板以便回滚。
+      if (isPro) {
+        const config = resolveSystemInstanceConfig({ auth: mocks.authOverrides as any });
+        await mocks.save!({
+          ...config.auth,
+          passwordLoginMinuteLimitCount: 10,
+          maxLoginSession: 10
+        });
+        const authItem = mocks.update.mock.calls[0][0].items.find(
+          (item: { domain: string }) => item.domain === 'auth'
+        );
+        expect(authItem.overrides.loginProviders.sms).toEqual({
+          login: { zh: 'LOGIN_TPL' },
+          resetPassword: { zh: '' },
+          changePassword: { zh: '' },
+          bindNotification: { zh: '' },
+          modelDeprecation: { zh: '' }
+        });
+        expect(authItem.overrides.loginProviders.sms).not.toHaveProperty('register');
+      }
     }
   );
 
@@ -192,7 +217,7 @@ describe('configuration form edition boundary', () => {
     expect(unconfiguredHtml).toContain('href="/admin/settings/core#sms"');
     expect(unconfiguredHtml).toContain('admin:aliyun_sms_not_configured');
     expect(unconfiguredHtml).toContain('admin:aliyun_sms');
-    expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+    expect(mocks.formLabels).not.toContain('admin:login_code_chinese_template');
 
     mocks.switchRows.clear();
     mocks.authOverrides = { loginProviders: { email: { register: true } } };
@@ -216,7 +241,7 @@ describe('configuration form edition boundary', () => {
     expect(configuredHtml).not.toContain('href="/admin/settings/core#email"');
     expect(configuredHtml).not.toContain('href="/admin/settings/core#sms"');
     expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
-    expect(mocks.formLabels).toContain('admin:registration_code_chinese_template');
+    expect(mocks.formLabels).toContain('admin:login_code_chinese_template');
   });
 
   it.each([false, true])(

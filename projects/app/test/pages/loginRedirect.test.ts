@@ -149,6 +149,8 @@ vi.mock('@fastgpt/global/common/error/utils', () => ({
   getErrText: (error: unknown) => String(error)
 }));
 
+import { LAST_LOGIN_METHOD_STORAGE_KEY } from '@/web/support/user/login/utils';
+
 const Login = (await import('@/pages/login')).default;
 const Provider = (await import('@/pages/login/provider')).default;
 
@@ -175,7 +177,9 @@ describe('login page invitation redirects', () => {
   };
 
   beforeEach(() => {
-    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://fastgpt.example.com'
+    });
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -237,6 +241,7 @@ describe('login page invitation redirects', () => {
         lastTmbId: 'tmb-a'
       });
       expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
+      expect(window.localStorage.getItem(LAST_LOGIN_METHOD_STORAGE_KEY)).toBe('oauth:sso');
     });
   });
 

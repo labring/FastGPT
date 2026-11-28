@@ -1,4 +1,4 @@
-import React, { type Dispatch, useCallback, useEffect, useState } from 'react';
+import React, { type Dispatch, useCallback, useEffect, useRef, useState } from 'react';
 import {
   FormControl,
   Flex,
@@ -35,13 +35,17 @@ import type {
   LoginVerificationRequiredResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import PolicyTip from './PolicyTip';
-import { getRegisterMethods } from '@/web/common/system/utils';
+import { getLoginMethods } from '@/web/common/system/utils';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AccountVerificationPanel } from '@/components/support/user/safe/AccountVerificationPanel';
+import type { LoginFormSuccessOptions } from '@/pageComponents/login';
 
-type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+type LoginSuccessHandler = (
+  res: LoginSuccessResponseType,
+  options?: LoginFormSuccessOptions
+) => void | Promise<void>;
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -128,11 +132,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
   const router = useRouter();
-  const registerMethods = getRegisterMethods(feConfigs);
-  const hasRegisterMethod = registerMethods.length > 0;
+  const loginMethods = getLoginMethods(feConfigs);
   const hasFindPasswordMethod = !!feConfigs?.find_password_method?.length;
   const [loginVerification, setLoginVerification] =
     useState<LoginVerificationRequiredResponseType>();
+  // 按单次登录提交来源区分自动凭据（?u=&p=）与手动登录，避免取消 2FA 或自动登录报错后原地手动重试丢失偏好记录。
+  const isAutoLoginFlowRef = useRef(false);
 
   /**
    * Challenge 和验证码材料共用同一 TTL，过期后服务端只会回“验证码错误”。
@@ -155,6 +160,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
    * 导致用户改完密码重新登录后回不到原本要访问的页面。
    */
   const backToLogin = useCallback(() => {
+    isAutoLoginFlowRef.current = false;
     setLoginVerification(undefined);
   }, []);
 
@@ -190,7 +196,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
   const finishLogin = useCallback(
     async (response: LoginSuccessResponseType) => {
-      await onFastGPTLoginSuccess(loginSuccess, response);
+      const skipLastLoginMethod = isAutoLoginFlowRef.current;
+      isAutoLoginFlowRef.current = false;
+      await onFastGPTLoginSuccess((res) => loginSuccess(res, { skipLastLoginMethod }), response);
       toast({
         status: 'success',
         title: t('login:login_success')
@@ -200,7 +208,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   );
 
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
-    async ({ username, password }: LoginFormType) => {
+    async ({
+      username,
+      password,
+      isAutoLogin = false
+    }: LoginFormType & { isAutoLogin?: boolean }) => {
+      isAutoLoginFlowRef.current = isAutoLogin;
       setLoginVerification(undefined);
       const { code } = await getPreLogin(username);
       const loginResponse = await postLogin({
@@ -222,6 +235,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     {
       refreshDeps: [finishLogin],
       onError: (error: any) => {
+        isAutoLoginFlowRef.current = false;
         // 密码错误，需要清空 query 参数
         if (error.statusText === UserErrEnum.account_psw_error) {
           router.replace(
@@ -240,6 +254,11 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         }
       }
     }
+  );
+
+  const submitManualLogin = useCallback(
+    (data: LoginFormType) => onclickLogin({ ...data, isAutoLogin: false }),
+    [onclickLogin]
   );
 
   const createLoginCodeVerification = useCallback(
@@ -284,7 +303,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     return getLoginVerificationCaptcha(loginVerification.challenge);
   }, [loginVerification]);
 
-  const isCommunityVersion = hasRegisterMethod && !feConfigs?.isPlus;
+  const isCommunityVersion = !feConfigs?.isPlus;
 
   const placeholder = (() => {
     if (isCommunityVersion) {
@@ -292,14 +311,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     }
     return [t('common:support.user.login.Username')]
       .concat(
-        feConfigs?.login_method?.map((item) => {
+        loginMethods.map((item) => {
           switch (item) {
             case 'email':
               return t('common:support.user.login.Email');
             case 'phone':
               return t('common:support.user.login.Phone number');
           }
-        }) ?? []
+        })
       )
       .join('/');
   })();
@@ -310,7 +329,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     if (username && password) {
       onclickLogin({
         username,
-        password
+        password,
+        isAutoLogin: true
       });
     }
   });
@@ -330,7 +350,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 !e.shiftKey &&
                 !requesting
               ) {
-                handleSubmit(onclickLogin)();
+                handleSubmit(submitManualLogin)();
               }
             }}
           >
@@ -372,12 +392,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               fontWeight={['medium', 'medium']}
               colorScheme="blue"
               isLoading={requesting}
-              onClick={handleSubmit(onclickLogin)}
+              onClick={handleSubmit(submitManualLogin)}
             >
               {t('login:Login')}
             </Button>
 
-            {(hasFindPasswordMethod || hasRegisterMethod) && (
+            {hasFindPasswordMethod && (
               <Flex
                 mt={6}
                 align={'center'}
@@ -388,36 +408,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 h={'16px'}
                 lineHeight={'16px'}
               >
-                {hasFindPasswordMethod && (
-                  <Box
-                    cursor={'pointer'}
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={() => setPageType('forgetPassword')}
-                    fontSize="mini"
-                  >
-                    {t('login:forget_password')}
-                  </Box>
-                )}
-                {hasFindPasswordMethod && hasRegisterMethod && (
-                  <Box
-                    display={['block', 'block']}
-                    mx={3}
-                    h={'12px'}
-                    w={'1px'}
-                    bg={'myGray.250'}
-                  ></Box>
-                )}
-                {hasRegisterMethod && (
-                  <Box
-                    cursor={'pointer'}
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={() => setPageType('register')}
-                    fontSize="mini"
-                    lineHeight="16px"
-                  >
-                    {t('login:register')}
-                  </Box>
-                )}
+                <Box
+                  cursor={'pointer'}
+                  _hover={{ textDecoration: 'underline' }}
+                  onClick={() => setPageType('forgetPassword')}
+                  fontSize="mini"
+                >
+                  {t('login:forget_password')}
+                </Box>
               </Flex>
             )}
           </Box>

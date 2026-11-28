@@ -12,23 +12,25 @@ import {
 } from '@fastgpt/global/common/system/constants';
 
 /**
- * 获取真实支持的自助注册方式，兼容过滤旧配置中被混入的 sync 团队模式。
+ * 判断是否为成员同步模式（由权威字段 teamMode 决定）。
  */
-export const getRegisterMethods = (feConfigs?: FastGPTFeConfigsType): FastGPTRegisterMethodType[] =>
-  feConfigs?.register_method?.filter(
-    (method): method is FastGPTRegisterMethodType => method === 'email' || method === 'phone'
-  ) ?? [];
+export const getIsMemberSyncMode = (feConfigs?: Pick<FastGPTFeConfigsType, 'teamMode'>) =>
+  feConfigs?.teamMode === 'sync';
 
 /**
- * 判断是否为成员同步模式。teamMode 是当前权威字段；旧 register_method: ['sync']
- * 仅用于兼容缺少 teamMode 的历史配置，避免新旧字段冲突时前后端模式不一致。
+ * 获取当前商业版可用的邮箱/手机号登录（含验证码登录与自动建号）渠道。
+ * 开源版（isPlus === false）与成员同步模式（sync）均不开放。
  */
-export const getIsMemberSyncMode = (feConfigs?: FastGPTFeConfigsType) => {
-  if (feConfigs?.teamMode) {
-    return feConfigs.teamMode === 'sync';
-  }
+export const getLoginMethods = (
+  feConfigs?: Pick<FastGPTFeConfigsType, 'login_method' | 'teamMode' | 'isPlus'>
+): FastGPTRegisterMethodType[] => {
+  if (feConfigs?.isPlus === false || getIsMemberSyncMode(feConfigs)) return [];
 
-  return !!feConfigs?.register_method?.includes('sync');
+  return (
+    feConfigs?.login_method?.filter(
+      (method): method is FastGPTRegisterMethodType => method === 'email' || method === 'phone'
+    ) ?? []
+  );
 };
 
 /**

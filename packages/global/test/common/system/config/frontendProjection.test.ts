@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAuthMethodProjection,
+  buildLoginMethods,
   buildOauthFeConfig,
   buildPayConfig,
-  buildRegisterMethods,
   hasPayChannel
 } from '../../../../common/system/config/frontendProjection';
 import { resolveSystemInstanceConfig } from '../../../../common/system/config/schema';
@@ -48,7 +48,7 @@ describe('buildOauthFeConfig', () => {
   });
 });
 
-describe('buildRegisterMethods', () => {
+describe('buildLoginMethods', () => {
   const phoneReadyAuth = createAuth({
     loginProviders: {
       email: { smtp: 'smtp.example.com', user: 'user', pass: 'pass', register: true },
@@ -62,43 +62,55 @@ describe('buildRegisterMethods', () => {
     }
   });
 
-  it('derives registration methods from the email switch and SMS channel', () => {
-    expect(buildRegisterMethods({ auth: createAuth({}) })).toEqual([]);
+  it('derives login methods from email switch and SMS login template without falling back to deprecated register template', () => {
+    expect(buildLoginMethods({ auth: createAuth({}) })).toEqual([]);
     expect(
-      buildRegisterMethods({ auth: createAuth({ loginProviders: { email: { register: true } } }) })
+      buildLoginMethods({ auth: createAuth({ loginProviders: { email: { register: true } } }) })
     ).toEqual(['email']);
-    expect(buildRegisterMethods({ auth: phoneReadyAuth })).toEqual(['email', 'phone']);
-  });
-
-  it('does not add phone registration without both SMS channel and template', () => {
-    const noTemplate = createAuth({
-      loginProviders: {
-        phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' }
-      }
-    });
-    expect(buildRegisterMethods({ auth: noTemplate })).toEqual([]);
-
-    const noChannel = createAuth({
-      loginProviders: { sms: { register: { zh: 'REGISTER' } } }
-    });
-    expect(buildRegisterMethods({ auth: noChannel })).toEqual([]);
-  });
-
-  it('preserves sync as a historical team-mode compatibility value', () => {
-    expect(buildRegisterMethods({ legacyMethods: ['sync'], auth: createAuth({}) })).toEqual([
-      'sync'
-    ]);
     expect(
-      buildRegisterMethods({
-        auth: createAuth({ teamMode: 'sync', loginProviders: { email: { register: true } } })
+      buildLoginMethods({
+        auth: createAuth({
+          loginProviders: {
+            phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' }
+          }
+        })
       })
-    ).toEqual(['email']);
+    ).toEqual([]);
+    expect(
+      buildLoginMethods({
+        auth: createAuth({
+          loginProviders: {
+            sms: { login: { zh: 'LOGIN' } }
+          }
+        })
+      })
+    ).toEqual([]);
+    expect(
+      buildLoginMethods({
+        auth: createAuth({
+          loginProviders: {
+            phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
+            sms: { register: { zh: 'REGISTER' } }
+          }
+        })
+      })
+    ).toEqual([]);
+    expect(
+      buildLoginMethods({
+        auth: createAuth({
+          loginProviders: {
+            phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
+            sms: { login: { zh: 'LOGIN' } }
+          }
+        })
+      })
+    ).toEqual(['phone']);
+    expect(buildLoginMethods({ auth: phoneReadyAuth })).toEqual(['email', 'phone']);
   });
 
   it('derives login, find-password and bind-notification methods', () => {
     expect(buildAuthMethodProjection({ auth: phoneReadyAuth })).toEqual({
       login_method: ['email', 'phone'],
-      register_method: ['email', 'phone'],
       find_password_method: ['email', 'phone'],
       bind_notification_method: ['email', 'phone']
     });
@@ -109,23 +121,18 @@ describe('buildRegisterMethods', () => {
         sms: { login: { zh: '' }, register: { zh: 'REGISTER' } }
       }
     });
-    expect(buildAuthMethodProjection({ auth: registerOnlyAuth }).login_method).toEqual([
-      'email',
-      'phone'
-    ]);
+    expect(buildAuthMethodProjection({ auth: registerOnlyAuth }).login_method).toEqual([]);
 
-    const login2faOnlyAuth = createAuth({
+    const loginOnlyAuth = createAuth({
       loginProviders: {
         phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
         sms: { login: { zh: 'LOGIN' }, register: { zh: '' } }
       }
     });
-    expect(buildAuthMethodProjection({ auth: login2faOnlyAuth }).login_method).toEqual(['email']);
+    expect(buildAuthMethodProjection({ auth: loginOnlyAuth }).login_method).toEqual(['phone']);
 
-    const emailLoginOnly = createAuth({});
-    expect(buildAuthMethodProjection({ auth: emailLoginOnly })).toEqual({
-      login_method: ['email'],
-      register_method: [],
+    expect(buildAuthMethodProjection({ auth: createAuth({}) })).toEqual({
+      login_method: [],
       find_password_method: [],
       bind_notification_method: []
     });

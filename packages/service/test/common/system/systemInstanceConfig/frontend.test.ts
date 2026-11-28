@@ -131,10 +131,11 @@ describe('buildSystemFrontendConfig', () => {
       show_workorder: false
     });
     expect(frontend.sso?.enabled).toBe(false);
-    expect(frontend.register_method).not.toContain('sync');
+    expect(frontend.login_method).toEqual([]);
     expect(config.proEnv.teamMode).toBe('sync');
     expect(buildSystemFrontendConfig(config, { commercialService: true })).toMatchObject({
       teamMode: 'sync',
+      login_method: [],
       isProService: true,
       login2faEnabled: true
     });

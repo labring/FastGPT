@@ -28,6 +28,10 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
+import {
+  getLastLoginMethodByOAuthProvider,
+  saveLastLoginMethod
+} from '@/web/support/user/login/utils';
 
 const provider = () => {
   const { t, i18n } = useSafeTranslation();
@@ -136,8 +140,9 @@ const provider = () => {
           return;
         }
 
+        const providerType = loginStore?.provider || OAuthEnum.sso;
         const res = await oauthLogin({
-          type: loginStore?.provider || OAuthEnum.sso,
+          type: providerType,
           props,
           callbackUrl: `${location.origin}/login/provider`,
           bd_vid: getBdVId(),
@@ -156,6 +161,7 @@ const provider = () => {
           }, 1000);
         }
 
+        saveLastLoginMethod(getLastLoginMethodByOAuthProvider(providerType));
         await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({

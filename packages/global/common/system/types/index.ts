@@ -50,9 +50,6 @@ export type ExternalProviderWorkflowVarType = z.infer<typeof ExternalProviderWor
 export const FastGPTRegisterMethodSchema = z.enum(['email', 'phone']);
 export type FastGPTRegisterMethodType = z.infer<typeof FastGPTRegisterMethodSchema>;
 
-export const FastGPTRegisterMethodCompatSchema = z.enum(['email', 'phone', 'sync']);
-export type FastGPTRegisterMethodCompatType = z.infer<typeof FastGPTRegisterMethodCompatSchema>;
-
 export const FastGPTTeamModeSchema = z.enum(['multi', 'single', 'sync']);
 export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
@@ -82,9 +79,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否隐藏对话版权自定义设置' }),
-  register_method: z.array(FastGPTRegisterMethodCompatSchema).optional().meta({
-    description: '用户自助注册方式列表（支持邮箱、手机号，兼容历史 sync 配置）'
-  }),
   enableSaasAdminConfig: z.boolean().optional().meta({
     description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
   }),
@@ -94,10 +88,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
   }),
-  login_method: z
-    .array(FastGPTRegisterMethodSchema)
-    .optional()
-    .meta({ description: '支持的账号登录方式列表（邮箱、手机号）' }),
+  login_method: z.array(FastGPTRegisterMethodSchema).optional().meta({
+    description:
+      '商业版开放的邮箱/手机号登录（含验证码登录）渠道列表；为空表示仅支持用户名密码或第三方登录'
+  }),
   find_password_method: z
     .array(FastGPTRegisterMethodSchema)
     .optional()

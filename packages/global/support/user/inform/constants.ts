@@ -45,6 +45,7 @@ export const InformLevelMap = {
 };
 
 export enum SendInformTemplateCodeEnum {
+  /** @deprecated 旧自助注册已移除，保留枚举值仅用于兼容历史通知数据。 */
   REGISTER = 'REGISTER', // 注册
   RESET_PASSWORD = 'RESET_PASSWORD', // 重置密码
   CHANGE_PASSWORD = 'CHANGE_PASSWORD', // 修改密码

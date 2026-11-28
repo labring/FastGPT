@@ -2,10 +2,14 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import {
+  getLastLoginMethodByPageType,
+  readLastLoginMethod,
   resolveAutoLoginProvider,
-  resolveInitialLoginPageType
+  resolveInitialLoginPageType,
+  saveLastLoginMethod,
+  type LastLoginMethod,
+  type LoginMethodItem
 } from '@/web/support/user/login/utils';
-import type { LoginMethodItem } from '@/web/support/user/login/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
@@ -16,10 +20,15 @@ import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useRouter } from 'next/router';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
+import { getLoginMethods } from '@/web/common/system/utils';
 import { useLoginMethods } from './LoginForm/useLoginMethods';
 import LoginGuideLink from './LoginForm/LoginGuideLink';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+export type LoginFormSuccessOptions = {
+  /** 自动凭据登录（?u=&p=）成功时不覆盖用户本地保存的日常登录偏好。 */
+  skipLastLoginMethod?: boolean;
+};
 
 /** 等待系统配置和自动登录结果，避免方式选择页在自动跳转前短暂闪现。 */
 export const LoginContainer = ({
@@ -36,22 +45,47 @@ export const LoginContainer = ({
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
   const initializedRef = useRef(false);
 
-  const [selectedPageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
+  const [selectedPageType, setSelectedPageType] = useState<`${LoginPageTypeEnum}`>();
+  const [lastLoginMethod, setLastLoginMethod] = useState<LastLoginMethod | undefined>(() =>
+    readLastLoginMethod()
+  );
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+  const rootLogin = router.query.rootLogin === '1';
+  const hasQueryAutoLoginCredentials = Boolean(router.query.u && router.query.p);
+  // 密码登录触发二次验证时会主动清理 URL 中的明文凭据；锁存本次自动登录态，
+  // 防止清除 URL 后表单被切走卸载 Challenge 弹窗或完成后覆盖本地登录偏好。
+  const [latchedAutoLoginFlow, setLatchedAutoLoginFlow] = useState(hasQueryAutoLoginCredentials);
+  if (hasQueryAutoLoginCredentials && !latchedAutoLoginFlow) {
+    setLatchedAutoLoginFlow(true);
+  }
+  const hasAutoLoginCredentials = hasQueryAutoLoginCredentials || latchedAutoLoginFlow;
+
+  const setPageType = useCallback((nextPageType: `${LoginPageTypeEnum}`) => {
+    if (nextPageType !== LoginPageTypeEnum.passwordLogin) {
+      setLatchedAutoLoginFlow(false);
+    }
+    setSelectedPageType(nextPageType);
+  }, []);
+
   const { startLogin } = useLoginMethods({
     mode: 'selection',
     pageType: LoginPageTypeEnum.methodSelection,
     setPageType
   });
-  const rootLogin = router.query.rootLogin === '1';
+  const codeLoginEnabled = getLoginMethods(feConfigs).length > 0;
   const isWecomTerminal = typeof navigator === 'undefined' ? false : checkIsWecomTerminal();
   const initialPageType = resolveInitialLoginPageType({
     rootLogin,
+    hasAutoLoginCredentials,
     // 共享策略消费服务端派生的 SSO 能力，不需要下发 SSO 根地址。
-    sso: feConfigs?.sso
+    sso: feConfigs?.sso,
+    codeLoginEnabled,
+    wechatEnabled: Boolean(feConfigs?.oauth?.wechat),
+    lastLoginMethod
   });
   const autoLoginProvider = resolveAutoLoginProvider({
     rootLogin,
+    hasAutoLoginCredentials,
     ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
@@ -75,12 +109,22 @@ export const LoginContainer = ({
   const pageType =
     selectedPageType ??
     (initd && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
+  const isPrimaryFormPage =
+    pageType === LoginPageTypeEnum.passwordLogin || pageType === LoginPageTypeEnum.codeLogin;
 
   const loginSuccess = useCallback(
-    async (res: LoginSuccessResponseType) => {
+    async (res: LoginSuccessResponseType, options?: LoginFormSuccessOptions) => {
+      // 运维入口与自动凭据提交不覆盖用户日常偏好的上次登录方式；退出自动流程后的原地手动登录正常记录。
+      if (!rootLogin && !options?.skipLastLoginMethod) {
+        const method = getLastLoginMethodByPageType(pageType);
+        if (method) {
+          saveLastLoginMethod(method);
+          setLastLoginMethod(method);
+        }
+      }
       await onSuccess?.(res);
     },
-    [onSuccess]
+    [onSuccess, pageType, rootLogin]
   );
 
   useEffect(() => {
@@ -115,14 +159,12 @@ export const LoginContainer = ({
           pageType={pageType}
           setPageType={setPageType}
           loginSuccess={loginSuccess}
-          reserveLoginGuideSpace={
-            pageType === LoginPageTypeEnum.passwordLogin && Boolean(loginGuideDocUrl)
-          }
+          reserveLoginGuideSpace={isPrimaryFormPage && Boolean(loginGuideDocUrl)}
         />
 
         {children}
 
-        {pageType === LoginPageTypeEnum.passwordLogin && <LoginGuideLink mt={8} />}
+        {isPrimaryFormPage && <LoginGuideLink mt={8} />}
       </Flex>
 
       <CookieConsentModal />

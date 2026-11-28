@@ -3,6 +3,7 @@ import type { OAuthAccountVerificationMethod } from './type';
 
 /** 邮件和短信验证码的业务模板类型。 */
 export enum VerificationCodeTypeEnum {
+  /** @deprecated 旧自助注册已收敛至验证码登录（login），仅保留用于兼容历史迁移数据。 */
   register = 'register',
   findPassword = 'findPassword',
   passwordChange = 'passwordChange',

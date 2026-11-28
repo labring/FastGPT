@@ -1,7 +1,7 @@
 export enum LoginPageTypeEnum {
+  codeLogin = 'codeLogin',
   passwordLogin = 'passwordLogin',
   methodSelection = 'methodSelection',
-  register = 'register',
   forgetPassword = 'forgetPassword',
   wechat = 'wechat'
 }

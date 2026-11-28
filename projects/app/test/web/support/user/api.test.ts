@@ -15,7 +15,7 @@ beforeEach(() => {
 
 describe('user api', () => {
   it.each([
-    [VerificationCodeTypeEnum.register, 'register'],
+    [VerificationCodeTypeEnum.login, 'login'],
     [VerificationCodeTypeEnum.findPassword, 'forgetPassword'],
     [VerificationCodeTypeEnum.bindNotification, 'bindNotification']
   ] as const)('should send %s auth code through the shared endpoint', async (type, purpose) => {
@@ -47,22 +47,6 @@ describe('user api', () => {
       token: 'token123'
     };
     await api.postFastLogin(params);
-  });
-
-  it('should register user', async () => {
-    const data = {
-      username: 'test@test.com',
-      password: 'password123',
-      code: '123456',
-      bd_vid: 'vid123',
-      msclkid: 'click123',
-      fastgpt_sem: {
-        keyword: 'sem123',
-        visitor_id: 'visitor-1',
-        sourceDomain: 'https://example.com'
-      }
-    };
-    await api.postRegister(data);
   });
 
   it('should find password', async () => {
@@ -100,6 +84,15 @@ describe('user api', () => {
       password: 'password123'
     };
     await api.postLogin(data);
+  });
+
+  it('should login by verification code without requiring optional language', async () => {
+    const data = {
+      username: 'test@test.com',
+      code: '123456'
+    };
+    await api.postLoginByCode(data);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/login/code', data);
   });
 
   it('should logout', async () => {

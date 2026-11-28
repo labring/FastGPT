@@ -1192,6 +1192,7 @@
   "support.user.login.Phone number": "전화번호",
   "support.user.login.Provider error": "로그인 오류, 다시 시도해 주세요",
   "support.user.login.Username": "사용자 이름",
+  "support.user.login.Verification code login": "인증 코드 로그인",
   "support.user.login.Wechat": "WeChat 로그인",
   "support.user.login.Wecom": "WeCom 로그인",
   "support.user.login.can_not_login": "로그인할 수 없나요?",

@@ -85,7 +85,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.passwordExpiredMonth',
     'auth.loginProviders.email.register',
     'auth.loginProviders.sms.login.zh',
-    'auth.loginProviders.sms.register.zh',
     'auth.loginProviders.sms.resetPassword.zh',
     'auth.loginProviders.sms.changePassword.zh',
     'auth.loginProviders.sms.bindNotification.zh',

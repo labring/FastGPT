@@ -28977,6 +28977,20 @@
                             "required": false
                           },
                           {
+                            "name": "reasoningEffortList",
+                            "schema": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "enum",
+                                "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                                "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                              },
+                              "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                            },
+                            "required": false,
+                            "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          {
                             "name": "functionCall",
                             "schema": {
                               "kind": "primitive",
@@ -29379,6 +29393,20 @@
                               "type": "boolean"
                             },
                             "required": false
+                          },
+                          {
+                            "name": "reasoningEffortList",
+                            "schema": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "enum",
+                                "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                                "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                              },
+                              "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                            },
+                            "required": false,
+                            "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                           },
                           {
                             "name": "functionCall",
@@ -33948,6 +33976,16 @@
                     "description": "文件 ID"
                   },
                   {
+                    "name": "chunkImagePrefixId",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承"
+                    },
+                    "required": false,
+                    "description": "直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承"
+                  },
+                  {
                     "name": "rawLink",
                     "schema": {
                       "kind": "primitive",
@@ -36709,6 +36747,16 @@
                             "description": "集合 ID"
                           },
                           {
+                            "name": "createTime",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "string",
+                              "description": "数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回"
+                            },
+                            "required": true,
+                            "description": "数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回"
+                          },
+                          {
                             "name": "q",
                             "schema": {
                               "kind": "primitive",
@@ -36870,20 +36918,20 @@
                             "schema": {
                               "kind": "primitive",
                               "type": "string",
-                              "description": "问题/主文本"
+                              "description": "问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                             },
                             "required": false,
-                            "description": "问题/主文本"
+                            "description": "问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                           },
                           {
                             "name": "a",
                             "schema": {
                               "kind": "primitive",
                               "type": "string",
-                              "description": "回答/补充文本"
+                              "description": "回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                             },
                             "required": false,
-                            "description": "回答/补充文本"
+                            "description": "回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                           },
                           {
                             "name": "imageId",
@@ -36960,10 +37008,10 @@
                           }
                         ]
                       },
-                      "description": "数据列表，最多 200 条"
+                      "description": "数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界"
                     },
                     "required": true,
-                    "description": "数据列表，最多 200 条"
+                    "description": "数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界"
                   },
                   {
                     "name": "trainingType",
@@ -37678,6 +37726,27 @@
                                           "type": "boolean"
                                         },
                                         "required": false
+                                      },
+                                      {
+                                        "name": "reasoningEffortList",
+                                        "schema": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "enum",
+                                            "values": [
+                                              "none",
+                                              "minimal",
+                                              "low",
+                                              "medium",
+                                              "high",
+                                              "xhigh"
+                                            ],
+                                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                                          },
+                                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                                        },
+                                        "required": false,
+                                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                                       },
                                       {
                                         "name": "functionCall",
@@ -68219,6 +68288,16 @@
             "description": "文件 ID"
           },
           {
+            "name": "chunkImagePrefixId",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承"
+            },
+            "required": false,
+            "description": "直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承"
+          },
+          {
             "name": "rawLink",
             "schema": {
               "kind": "primitive",
@@ -71407,6 +71486,16 @@
                     "description": "集合 ID"
                   },
                   {
+                    "name": "createTime",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回"
+                    },
+                    "required": true,
+                    "description": "数据创建时间；历史数据（无 createTime 字段）按 ObjectId 生成时间返回"
+                  },
+                  {
                     "name": "q",
                     "schema": {
                       "kind": "primitive",
@@ -71568,20 +71657,20 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "description": "问题/主文本"
+                      "description": "问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                     },
                     "required": false,
-                    "description": "问题/主文本"
+                    "description": "问题/主文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                   },
                   {
                     "name": "a",
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "description": "回答/补充文本"
+                      "description": "回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                     },
                     "required": false,
-                    "description": "回答/补充文本"
+                    "description": "回答/补充文本；内嵌 Base64 图片会转存为所属集合的私有图片对象（每条数据 q+a 最多 3 张，单图解码上限 10MB）"
                   },
                   {
                     "name": "imageId",
@@ -71658,10 +71747,10 @@
                   }
                 ]
               },
-              "description": "数据列表，最多 200 条"
+              "description": "数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界"
             },
             "required": true,
-            "description": "数据列表，最多 200 条"
+            "description": "数据列表，最多 200 条；q/a 中内嵌 Base64 图片会转存为私有对象，保留传入分块边界"
           },
           {
             "name": "trainingType",
@@ -73516,6 +73605,20 @@
                         "required": false
                       },
                       {
+                        "name": "reasoningEffortList",
+                        "schema": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "enum",
+                            "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                        },
+                        "required": false,
+                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                      },
+                      {
                         "name": "functionCall",
                         "schema": {
                           "kind": "primitive",
@@ -73918,6 +74021,20 @@
                           "type": "boolean"
                         },
                         "required": false
+                      },
+                      {
+                        "name": "reasoningEffortList",
+                        "schema": {
+                          "kind": "array",
+                          "items": {
+                            "kind": "enum",
+                            "values": ["none", "minimal", "low", "medium", "high", "xhigh"],
+                            "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                          },
+                          "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                        },
+                        "required": false,
+                        "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                       },
                       {
                         "name": "functionCall",
@@ -77111,6 +77228,27 @@
                                       "type": "boolean"
                                     },
                                     "required": false
+                                  },
+                                  {
+                                    "name": "reasoningEffortList",
+                                    "schema": {
+                                      "kind": "array",
+                                      "items": {
+                                        "kind": "enum",
+                                        "values": [
+                                          "none",
+                                          "minimal",
+                                          "low",
+                                          "medium",
+                                          "high",
+                                          "xhigh"
+                                        ],
+                                        "description": "模型支持的思考等级，取值对齐 AI Proxy 思考等级配置"
+                                      },
+                                      "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
+                                    },
+                                    "required": false,
+                                    "description": "模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置"
                                   },
                                   {
                                     "name": "functionCall",

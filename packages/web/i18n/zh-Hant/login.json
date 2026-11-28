@@ -2,6 +2,7 @@
   "Chinese_ip_tip": "偵測到您使用中國大陸 IP，點選這裡前往中國大陸版本。",
   "Login": "登入",
   "agree": "同意",
+  "code_login_auto_register_tip": "未註冊的帳號驗證通過後將自動建立",
   "cookies_tip": "本網站使用 cookies 提供更好的服務體驗。繼續使用即表示您同意我們的 Cookie 政策。",
   "forget_password": "忘記密碼？",
   "login_redirect_failed": "登入已完成，但頁面跳轉失敗，請重新整理頁面",

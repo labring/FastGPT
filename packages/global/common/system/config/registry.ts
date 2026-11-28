@@ -156,7 +156,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.email.secure',
       'loginProviders.email.register',
       'loginProviders.sms.login.zh',
-      'loginProviders.sms.register.zh',
       'loginProviders.sms.resetPassword.zh',
       'loginProviders.sms.changePassword.zh',
       'loginProviders.sms.bindNotification.zh',

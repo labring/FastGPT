@@ -677,19 +677,27 @@ describe('systemInstanceConfigRegistry', () => {
       return paths;
     };
 
-    // 旧团队模式仅兼容解析；套餐使用专用输入，两者都不属于通用配置字段注册表。
+    // 旧团队模式与旧注册短信模板仅兼容历史解析与版本回滚；套餐使用专用输入，均不属于通用配置字段注册表。
     expect(AuthConfigSchema.shape.teamMode.meta()?.deprecated).toBe(true);
+    expect(
+      AuthConfigSchema.shape.loginProviders.unwrap().shape.sms.unwrap().shape.register.meta()
+        ?.deprecated
+    ).toBe(true);
     const editableConfig = Object.fromEntries(
       Object.entries(config).filter(([key]) =>
         systemInstanceConfigRegistry.some((item) => item.section === key)
       )
     );
     const leafPaths = getLeafPaths(editableConfig).filter(
-      (path) => path !== 'auth.teamMode' && path !== 'commercial.subPlans'
+      (path) =>
+        path !== 'auth.teamMode' &&
+        path !== 'auth.loginProviders.sms.register.zh' &&
+        path !== 'commercial.subPlans'
     );
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
     expect(registryKeys.has('auth.teamMode')).toBe(false);
+    expect(registryKeys.has('auth.loginProviders.sms.register.zh')).toBe(false);
     for (const leafPath of leafPaths) {
       expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }

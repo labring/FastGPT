@@ -36,7 +36,6 @@ const publicConfig = {
   scripts: [{ src: 'https://analytics.example.com/script.js' }],
   isPlus: true,
   login_method: ['email', 'phone'],
-  register_method: ['email', 'phone', 'sync'],
   find_password_method: ['email'],
   loginGuideDocUrl: 'https://docs.example.com/login',
   docUrl: 'https://docs.example.com/',
@@ -682,14 +681,12 @@ describe('getInitData anonymous configuration filtering', () => {
   it('downgrades legacy sync teamMode to single when Pro reports SSO is not configured', async () => {
     global.feConfigs = {
       ...global.feConfigs,
-      teamMode: 'sync',
-      register_method: ['email', 'sync']
+      teamMode: 'sync'
     };
     global.getSsoConfiguredHandler = () => false;
 
     const { code, data } = await Call(handler, { auth, headers: {} });
     expect(code).toBe(200);
     expect(data.feConfigs?.teamMode).toBe('single');
-    expect(data.feConfigs?.register_method).toEqual(['email']);
   });
 });

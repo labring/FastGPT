@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   handleSubmit: vi.fn(),
   submit: vi.fn(),
   register: vi.fn(() => ({ name: 'field' })),
-  registerMethods: ['email'] as Array<'email' | 'phone'>,
+  isPlus: true,
+  loginMethods: ['email'] as Array<'email' | 'phone'>,
   requesting: false,
   useSendCode: vi.fn()
 }));
@@ -39,12 +40,14 @@ vi.mock('@/components/support/user/safe/AccountVerificationPanel', () => ({
 
 vi.mock('react-hook-form', () => ({
   useForm: () => ({
+    control: {},
     register: mocks.register,
     handleSubmit: mocks.handleSubmit,
     getValues: vi.fn(),
     watch: vi.fn(),
     formState: { errors: {} }
-  })
+  }),
+  useWatch: vi.fn(() => '')
 }));
 
 vi.mock('@chakra-ui/react', () => ({
@@ -73,6 +76,7 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({
     feConfigs: {
+      isPlus: mocks.isPlus,
       systemTitle: 'FastGPT',
       find_password_method: ['email']
     }
@@ -80,7 +84,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 
 vi.mock('@/web/common/system/utils', () => ({
-  getRegisterMethods: () => mocks.registerMethods
+  getLoginMethods: () => (mocks.isPlus ? mocks.loginMethods : [])
 }));
 
 vi.mock('@/web/support/user/hooks/useSendCode', () => ({
@@ -95,7 +99,7 @@ vi.mock('@/web/support/user/hooks/useSendCode', () => ({
 
 vi.mock('@/web/support/user/api', () => ({
   postFindPassword: vi.fn(),
-  postRegister: vi.fn()
+  postLoginByCode: vi.fn()
 }));
 
 vi.mock('@/web/support/marketing/utils', () => ({
@@ -107,7 +111,7 @@ vi.mock('@/web/support/marketing/utils', () => ({
 
 vi.stubGlobal('React', await import('react'));
 
-const RegisterForm = (await import('@/pageComponents/login/RegisterForm')).default;
+const CodeLoginForm = (await import('@/pageComponents/login/LoginForm/CodeLoginForm')).default;
 const ForgetPasswordForm = (await import('@/pageComponents/login/ForgetPasswordForm')).default;
 const LoginForm = (await import('@/pageComponents/login/LoginForm/LoginForm')).default;
 
@@ -134,7 +138,7 @@ const findElement = (
 
 const forms = [
   ['login', LoginForm],
-  ['registration', RegisterForm],
+  ['code login', CodeLoginForm],
   ['password recovery', ForgetPasswordForm]
 ] as const;
 
@@ -155,7 +159,8 @@ describe.each(forms)('%s form Enter submission', (_name, Form) => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.registerMethods = ['email'];
+    mocks.isPlus = true;
+    mocks.loginMethods = ['email'];
     mocks.requesting = false;
     mocks.handleSubmit.mockReturnValue(mocks.submit);
   });
@@ -229,23 +234,29 @@ describe.each(forms)('%s form Enter submission', (_name, Form) => {
   });
 });
 
-describe('registration method validation', () => {
+describe('code login method validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.registerMethods = ['email'];
+    mocks.isPlus = true;
+    mocks.loginMethods = ['email'];
     mocks.handleSubmit.mockReturnValue(mocks.submit);
   });
 
-  it('uses the enabled registration methods for both the field and send-code guard', () => {
-    RegisterForm({
+  it('uses the enabled code-login methods for both the field and login send-code guard', () => {
+    CodeLoginForm({
       setPageType: vi.fn(),
       loginSuccess: vi.fn()
     });
 
     const usernameOptions = mocks.register.mock.calls.find(([field]) => field === 'username')?.[1];
     const validateField = usernameOptions?.validate;
-    const validateBeforeSend = mocks.useSendCode.mock.calls[0]?.[0]?.validateBeforeSend;
+    const sendCodeParams = mocks.useSendCode.mock.calls[0]?.[0];
+    const validateBeforeSend = sendCodeParams?.validateBeforeSend;
 
+    expect(sendCodeParams).toMatchObject({
+      type: 'login',
+      purpose: 'login'
+    });
     expect(validateField('user@example.com')).toBe(true);
     expect(validateField('13800138000')).toBe('common:error.registration_method_not_supported');
     expect(validateField('invalid-account')).toBe('user:password.email_phone_error');
@@ -254,6 +265,28 @@ describe('registration method validation', () => {
       'common:error.registration_method_not_supported'
     );
     expect(validateBeforeSend('invalid-account')).toBe('user:password.email_phone_error');
+  });
+
+  it('does not render the standalone registration link and uses fixed community placeholders when not Plus', () => {
+    const rendered = LoginForm({
+      setPageType: vi.fn(),
+      loginSuccess: vi.fn()
+    });
+    const commercialJson = JSON.stringify(rendered);
+    expect(commercialJson).not.toContain('login:register');
+    expect(commercialJson).toContain(
+      'common:support.user.login.Username/common:support.user.login.Email'
+    );
+
+    mocks.isPlus = false;
+    const communityJson = JSON.stringify(
+      LoginForm({
+        setPageType: vi.fn(),
+        loginSuccess: vi.fn()
+      })
+    );
+    expect(communityJson).toContain('login:use_root_login');
+    expect(communityJson).toContain('login:root_password_placeholder');
   });
 });
 

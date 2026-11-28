@@ -86,9 +86,7 @@ const AuthSettingComponent = () => {
   const showPasswordSecurity = isFieldVisible('auth.passwordExpiredMonth');
   const showLoginProtection = isFieldVisible('security.passwordLoginMinuteLimitCount');
   const showEmail = isFieldVisible('auth.loginProviders.email.register');
-  const showSms = isFieldVisible('auth.loginProviders.sms.register.zh');
-  const showLoginSmsCode =
-    isFieldVisible('auth.loginProviders.sms.login.zh') && Boolean(feConfigs?.login2faEnabled);
+  const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
   const showWechat = isFieldVisible('auth.loginProviders.wechat.appId');
   const showWecom = isFieldVisible('auth.loginProviders.wecom.suiteId');
   const showGithub = isFieldVisible('auth.loginProviders.github.clientId');
@@ -516,29 +514,15 @@ const AuthSettingComponent = () => {
               </Text>
 
               <SimpleGrid columns={[1, 2]} spacing={5}>
-                {showLoginSmsCode && (
-                  <AdminFormItem
-                    label={t('admin:login_code_chinese_template')}
-                    tooltip={t('admin:sms_template_id_for_login_chinese')}
-                  >
-                    <Input
-                      isInvalid={Boolean(
-                        form.getFieldState('loginProviders.sms.login.zh', form.formState).error
-                      )}
-                      {...register('loginProviders.sms.login.zh')}
-                      placeholder="SMS_xxx"
-                    />
-                  </AdminFormItem>
-                )}
                 <AdminFormItem
-                  label={t('admin:registration_code_chinese_template')}
-                  tooltip={t('admin:sms_template_id_for_registration_chinese')}
+                  label={t('admin:login_code_chinese_template')}
+                  tooltip={t('admin:sms_template_id_for_login_chinese')}
                 >
                   <Input
                     isInvalid={Boolean(
-                      form.getFieldState('loginProviders.sms.register.zh', form.formState).error
+                      form.getFieldState('loginProviders.sms.login.zh', form.formState).error
                     )}
-                    {...register('loginProviders.sms.register.zh')}
+                    {...register('loginProviders.sms.login.zh')}
                     placeholder="SMS_xxx"
                   />
                 </AdminFormItem>

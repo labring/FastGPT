@@ -8,7 +8,11 @@ const SmsTemplateConfigSchema = z.strictObject({
 
 const LoginSmsConfigSchema = z.strictObject({
   login: SmsTemplateConfigSchema.prefault({}),
-  register: SmsTemplateConfigSchema.prefault({}),
+  // 仅兼容历史实例文档与版本回滚；旧手机号注册功能已移除，不再开放配置写入。
+  register: SmsTemplateConfigSchema.prefault({}).meta({
+    deprecated: true,
+    description: '已弃用；旧手机号注册短信模板，保留用于兼容历史实例文档与版本回滚'
+  }),
   resetPassword: SmsTemplateConfigSchema.prefault({}),
   changePassword: SmsTemplateConfigSchema.prefault({}),
   bindNotification: SmsTemplateConfigSchema.prefault({}),

@@ -5,6 +5,7 @@ import type { UserType } from '@fastgpt/global/support/user/type';
 import type { SearchMembersOrgsGroupsResponseType } from '@fastgpt/global/openapi/support/user/team/api';
 import type {
   PreLoginResponseType,
+  LoginByCodeRequestBodyType,
   LoginByPasswordBodyType,
   OauthLoginBodyType,
   SsoGetAuthorizationURLBodyType,
@@ -24,7 +25,6 @@ import type {
 } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user/account/update/api';
-import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
 import type {
@@ -66,6 +66,8 @@ export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>
     ...props,
     password: hashStr(password)
   });
+export const postLoginByCode = (params: LoginByCodeRequestBodyType) =>
+  POST<LoginSuccessResponseType>('/proApi/support/user/account/login/code', params);
 export const getLoginVerificationCaptcha = (challenge: string) =>
   POST<LoginVerificationCaptchaResponseType>('/support/user/account/login/verification/captcha', {
     challenge
@@ -86,26 +88,6 @@ export const getWXLoginResult = (params: WxLoginBodyType) =>
     maxQuantity: 1
   });
 export const loginOut = () => GET('/support/user/account/loginout');
-
-/* ===== register ===== */
-export const postRegister = ({
-  username,
-  password,
-  code,
-  bd_vid,
-  msclkid,
-  fastgpt_sem,
-  language
-}: AccountRegisterBodyType) =>
-  POST<LoginSuccessResponseType>(`/proApi/support/user/account/register/emailAndPhone`, {
-    username,
-    code,
-    bd_vid,
-    msclkid,
-    fastgpt_sem,
-    language,
-    password: hashStr(password)
-  });
 
 /* =====  password ===== */
 export const postFindPassword = ({

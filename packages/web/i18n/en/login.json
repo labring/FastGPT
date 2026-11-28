@@ -2,6 +2,7 @@
   "Chinese_ip_tip": "It is detected that you are a mainland Chinese IP, click to jump to visit the mainland China version.",
   "Login": "Login",
   "agree": "agree",
+  "code_login_auto_register_tip": "Unregistered accounts will be automatically created upon verification",
   "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
   "forget_password": "Find Password",
   "login_redirect_failed": "You are signed in, but the redirect failed. Please refresh the page.",
