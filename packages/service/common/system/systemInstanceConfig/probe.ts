@@ -102,9 +102,11 @@ export const probeUrlConnection = async ({
     };
 
     const probeStorageObjectByUrl = async ({
+      bucketName,
       markerPrefix,
       resolveTargetUrl
     }: {
+      bucketName: string;
       markerPrefix: string;
       resolveTargetUrl: (args: {
         bucket: NonNullable<NonNullable<typeof global.s3BucketMap>[string]>;
@@ -112,7 +114,7 @@ export const probeUrlConnection = async ({
       }) => Promise<string> | string;
     }): Promise<ProbeConnectionResponse> => {
       // 测试唯一的临时对象，避免根路径 403 或普通网站的 200 被误判为对象存储/CDN 可用。
-      const bucket = global.s3BucketMap?.[S3Buckets.public];
+      const bucket = global.s3BucketMap?.[bucketName];
       if (!bucket) return invalidResponse();
       const key = `system/probe/${randomUUID()}.txt`;
       const marker = `${markerPrefix}-${randomUUID()}`;
@@ -176,31 +178,50 @@ export const probeUrlConnection = async ({
       ) {
         return invalidResponse();
       }
-      return probeStorageObjectByUrl({
-        markerPrefix: 'fastgpt-storage-probe',
-        resolveTargetUrl: async ({ bucket, key }) => {
-          // 与运行期 S3Bucket 使用一致的参数生成预签名直连地址，同时验证端点可达性与 SigV4 签名。
-          const externalClient = createStorage({
-            bucket: bucket.bucketName,
-            vendor,
-            endpoint: url.replace(/\/+$/, ''),
-            region: serviceEnv.STORAGE_REGION,
-            credentials: {
-              accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
-              secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
-            },
-            forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
-            maxRetries: serviceEnv.STORAGE_S3_MAX_RETRIES,
-            publicAccessExtraSubPath: serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH
-          });
-          return (
-            await externalClient.generatePresignedGetUrl({
-              key,
-              expiredSeconds: 60
-            })
-          ).url;
-        }
-      });
+      // 聊天附件与知识库文件通过私有桶签发 302 直链，公开资源走公开桶；外部端点须同时覆盖两类桶。
+      const bucketNames = Array.from(new Set([S3Buckets.public, S3Buckets.private]));
+      if (bucketNames.some((bucketName) => !global.s3BucketMap?.[bucketName])) {
+        return invalidResponse();
+      }
+      const resolveTargetUrl = async ({
+        bucket,
+        key
+      }: {
+        bucket: NonNullable<NonNullable<typeof global.s3BucketMap>[string]>;
+        key: string;
+      }) => {
+        // 与运行期 S3Bucket 使用一致的参数生成预签名直连地址，同时验证端点可达性与 SigV4 签名。
+        const externalClient = createStorage({
+          bucket: bucket.bucketName,
+          vendor,
+          endpoint: url.replace(/\/+$/, ''),
+          region: serviceEnv.STORAGE_REGION,
+          credentials: {
+            accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+            secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
+          },
+          forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
+          maxRetries: serviceEnv.STORAGE_S3_MAX_RETRIES,
+          publicAccessExtraSubPath: serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH
+        });
+        return (
+          await externalClient.generatePresignedGetUrl({
+            key,
+            expiredSeconds: 60
+          })
+        ).url;
+      };
+
+      let lastResult: ProbeConnectionResponse = invalidResponse();
+      for (const bucketName of bucketNames) {
+        lastResult = await probeStorageObjectByUrl({
+          bucketName,
+          markerPrefix: 'fastgpt-storage-probe',
+          resolveTargetUrl
+        });
+        if (!lastResult.connected) return lastResult;
+      }
+      return lastResult;
     };
 
     const probeCdn = async (): Promise<ProbeConnectionResponse> => {
@@ -208,6 +229,7 @@ export const probeUrlConnection = async ({
         return invalidResponse();
       }
       return probeStorageObjectByUrl({
+        bucketName: S3Buckets.public,
         markerPrefix: 'fastgpt-cdn-probe',
         resolveTargetUrl: ({ bucket, key }) =>
           replaceS3UrlWithCdnEndpoint(bucket.externalClient.generatePublicGetUrl({ key }).url, url)

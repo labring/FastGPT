@@ -8,7 +8,11 @@ import type { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { useShareBrandTracking, type ShareBrandSession } from './useShareBrandTracking';
 
-/** 渲染品牌入口；页面级曝光和点击由专用 hook 管理。 */
+/**
+ * 渲染 FastGPT 免登录品牌水印；页面级曝光和点击由专用 hook 管理。
+ * 该版权标识仅面向开源社区版（未配置 PRO_URL 时默认开启）及显式通过环境变量开启 `SHOW_OUTLINK_BRAND=true` 的官方部署；
+ * 私有商业版部署默认关闭，不影响白标自定义站点名称场景。
+ */
 const ShareBrand = ({
   narrow,
   session,
