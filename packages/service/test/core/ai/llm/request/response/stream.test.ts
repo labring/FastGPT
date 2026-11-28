@@ -105,15 +105,51 @@ describe('createStreamResponse', () => {
     });
 
     expect(result).toMatchObject({
-      answerText: 'Hello world',
+      answerText: ' Hello world',
       reasoningText: 'Thinking...',
       finish_reason: 'stop',
       usage,
       error: undefined
     });
-    expect(callbacks.onStreaming.mock.calls).toEqual([[{ text: 'Hello' }], [{ text: ' world' }]]);
+    expect(callbacks.onStreaming.mock.calls).toEqual([[{ text: ' Hello' }], [{ text: ' world' }]]);
     expect(callbacks.onReasoning).toHaveBeenCalledExactlyOnceWith({ text: 'Thinking...' });
     expect(callbacks.onToolCall).not.toHaveBeenCalled();
+  });
+
+  it('should buffer leading whitespace after reasoning until visible text arrives and drop it for reasoning-only', async () => {
+    const withAnswerCallbacks = createCallbacks();
+    const { response: withAnswerStream } = createStream([
+      chunk({ reasoning_content: '思考中' }),
+      chunk({ content: '\n' }),
+      chunk({ content: '\u3000\u3000' }),
+      chunk({ content: '第一段' }),
+      chunk({ content: '\n\n\u3000\u3000第二段' }, 'stop')
+    ]);
+    const withAnswerResult = await createStreamResponse({
+      body: createBody(),
+      response: withAnswerStream,
+      ...withAnswerCallbacks
+    });
+
+    expect(withAnswerResult.answerText).toBe('\n\u3000\u3000第一段\n\n\u3000\u3000第二段');
+    expect(withAnswerCallbacks.onStreaming.mock.calls).toEqual([
+      [{ text: '\n\u3000\u3000第一段' }],
+      [{ text: '\n\n\u3000\u3000第二段' }]
+    ]);
+
+    const reasoningOnlyCallbacks = createCallbacks();
+    const { response: reasoningOnlyStream } = createStream([
+      chunk({ reasoning_content: '仅思考' }),
+      chunk({ content: '\n' }, 'stop')
+    ]);
+    const reasoningOnlyResult = await createStreamResponse({
+      body: createBody(),
+      response: reasoningOnlyStream,
+      ...reasoningOnlyCallbacks
+    });
+
+    expect(reasoningOnlyResult.answerText).toBe('');
+    expect(reasoningOnlyCallbacks.onStreaming).not.toHaveBeenCalled();
   });
 
   it.each([true, false])('should respect model reasoning=%s for think tags', async (reasoning) => {
@@ -127,7 +163,7 @@ describe('createStreamResponse', () => {
       chunk({ content: ' answer' }, 'stop')
     ]);
     const result = await createStreamResponse({ body, response, ...callbacks });
-    const answer = reasoning ? 'answer' : '<think>thinking</think> answer';
+    const answer = reasoning ? ' answer' : '<think>thinking</think> answer';
 
     expect(result.answerText).toBe(answer);
     expect(result.reasoningText).toBe(reasoning ? 'thinking' : '');
@@ -729,6 +765,32 @@ describe('createStreamResponse', () => {
         finish_reason: 'stop'
       });
       if (observe) expect(textOf(callbacks.onStreaming)).toBe('hello world');
+    });
+
+    it.each([
+      {
+        label: 'prefixed full-width indent',
+        parts: ['0:', ' ', '\n\u3000\u3000第一段', '\n\n\u3000\u3000第二段'],
+        expected: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段'
+      },
+      {
+        label: 'unprefixed leading newline and full-width indent',
+        parts: ['\n', '\u3000\u3000', '第一段', '\n\n\u3000\u3000第二段'],
+        expected: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段'
+      }
+    ])('should preserve leading indentation for $label', async ({ parts, expected }) => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        ...parts.map((content) => chunk({ content })),
+        chunk({}, 'stop')
+      ]);
+      const result = await createStreamResponse({
+        body: promptBody,
+        response,
+        ...callbacks
+      });
+      expect(result.answerText).toBe(expected);
+      expect(textOf(callbacks.onStreaming)).toBe(expected);
     });
 
     it.each([

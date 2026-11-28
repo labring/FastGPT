@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseLLMStreamResponse } from '../../../utils';
-import { parsePromptToolCall } from '../../promptCall';
+import { parsePromptToolCall, stripPromptToolAnswerPrefix } from '../../promptCall';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
 import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
 import type { AIApiRequestMeta } from '../../../config';
@@ -204,24 +204,24 @@ export const createStreamResponse = async ({
             if (responseContent) {
               await onStreaming?.({ text: responseContent });
             }
-          } else if (answer.length >= 3) {
-            answer = answer.trimStart();
-
-            if (/0(:|：)/.test(answer)) {
-              // prompt tool 协议中 0 表示普通回答，可以开始把内容流式展示给用户。
-              startResponseWrite = true;
-
-              const firstIndex =
-                answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-              answer = answer.substring(firstIndex + 2).trim();
-
-              await onStreaming?.({ text: answer });
-            } else if (/1(:|：)/.test(answer)) {
-              // 1 表示工具调用，工具协议内容不应作为可见回答提前输出。
-            } else {
-              // 兼容模型未按 0/1 前缀输出时，当作普通文本直接展示。
-              startResponseWrite = true;
-              await onStreaming?.({ text: answer });
+          } else {
+            const trimmedAnswer = answer.trimStart();
+            // 仅在积累到足够的非空白前缀后再判定 0:/1: 协议，避免前导换行和全角缩进被提前裁掉。
+            if (trimmedAnswer.length >= 3) {
+              if (/0(:|：)/.test(trimmedAnswer)) {
+                const visibleAnswer = stripPromptToolAnswerPrefix(answer);
+                if (visibleAnswer) {
+                  // prompt tool 协议中 0 表示普通回答，可以开始把内容流式展示给用户。
+                  startResponseWrite = true;
+                  await onStreaming?.({ text: visibleAnswer });
+                }
+              } else if (/1(:|：)/.test(trimmedAnswer)) {
+                // 1 表示工具调用，工具协议内容不应作为可见回答提前输出。
+              } else {
+                // 兼容模型未按 0/1 前缀输出时，原样保留前导空白与缩进直接展示。
+                startResponseWrite = true;
+                await onStreaming?.({ text: answer });
+              }
             }
           }
         }

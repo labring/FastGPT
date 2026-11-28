@@ -100,12 +100,19 @@ describe('parseReasoningContent', () => {
     expect(parseReasoningContent('<think>reasoning</think>')).toEqual(['reasoning', '']);
   });
 
-  it('should remove separator whitespace after think tag', () => {
+  it('should drop whitespace-only tail and preserve leading whitespace before real answer', () => {
     expect(parseReasoningContent('<think>reasoning</think>\n')).toEqual(['reasoning', '']);
+    expect(parseReasoningContent('<think>reasoning</think>\n\u3000\u3000')).toEqual([
+      'reasoning',
+      ''
+    ]);
     expect(parseReasoningContent('<think>reasoning</think>\n\nanswer')).toEqual([
       'reasoning',
-      'answer'
+      '\n\nanswer'
     ]);
+    expect(
+      parseReasoningContent('<think>reasoning</think>\n\u3000\u3000第一段\n\n\u3000\u3000第二段')
+    ).toEqual(['reasoning', '\n\u3000\u3000第一段\n\n\u3000\u3000第二段']);
   });
 
   it('should handle multiline think content', () => {
@@ -218,16 +225,37 @@ describe('parseLLMStreamResponse', () => {
         correct: { answer: '', reasoning: '这是思考过程' }
       },
       {
+        data: [
+          { reasoning_content: '这是思考过程' },
+          { content: '\n' },
+          { content: '\u3000\u3000' }
+        ],
+        correct: { answer: '', reasoning: '这是思考过程' }
+      },
+      {
         data: [{ content: '<think>这是' }, { content: '思考过程</think>\n' }, { content: '你好1' }],
-        correct: { answer: '你好1', reasoning: '这是思考过程' }
+        correct: { answer: '\n你好1', reasoning: '这是思考过程' }
       },
       {
         data: [{ content: '<think>这是' }, { content: '思考过程</think>\n\n你好1' }],
-        correct: { answer: '你好1', reasoning: '这是思考过程' }
+        correct: { answer: '\n\n你好1', reasoning: '这是思考过程' }
       },
       {
         data: [{ reasoning_content: '这是思考过程' }, { content: '\n' }, { content: '你好1' }],
-        correct: { answer: '你好1', reasoning: '这是思考过程' }
+        correct: { answer: '\n你好1', reasoning: '这是思考过程' }
+      },
+      {
+        data: [
+          { reasoning_content: '这是思考过程' },
+          { content: '\n' },
+          { content: '\u3000' },
+          { content: '\u3000第一段' },
+          { content: '\n\n\u3000\u3000第二段' }
+        ],
+        correct: {
+          answer: '\n\u3000\u3000第一段\n\n\u3000\u3000第二段',
+          reasoning: '这是思考过程'
+        }
       },
       {
         data: [

@@ -124,8 +124,7 @@ export const getHistoryPreview = (
                 ''
               );
             })
-            .join('')
-            .trim() || ''
+            .join('') || ''
         );
       }
       return '';

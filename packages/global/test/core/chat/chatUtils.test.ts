@@ -135,6 +135,13 @@ describe('getHistoryPreview', () => {
     expect(result[0].value).toContain('System prompt');
   });
 
+  it('should preserve leading newline and full-width spaces in AI messages', () => {
+    const content = '\n\u3000\u3000第一段正文\n\n\u3000\u3000第二段正文';
+    const result = getHistoryPreview([{ obj: ChatRoleEnum.AI, value: [{ text: { content } }] }]);
+
+    expect(result).toEqual([{ obj: ChatRoleEnum.AI, value: content }]);
+  });
+
   it('should handle empty messages', () => {
     const result = getHistoryPreview([]);
 

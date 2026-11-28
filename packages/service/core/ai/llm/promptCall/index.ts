@@ -127,6 +127,20 @@ export const promptToolCallMessageRewrite = (
   return rewritten;
 };
 
+/**
+ * 剥离 prompt tool 协议的 `0:` / `0：` 前缀与紧随冒号的 ASCII 空格，
+ * 保留正文前导换行与全角缩进（如 U+3000）。
+ */
+export const stripPromptToolAnswerPrefix = (str: string): string => {
+  const trimmedStart = str.trimStart();
+  const firstIndex =
+    trimmedStart.indexOf('0:') !== -1 ? trimmedStart.indexOf('0:') : trimmedStart.indexOf('0：');
+  if (firstIndex > -1 && firstIndex < 6) {
+    return trimmedStart.substring(firstIndex + 2).replace(/^[ \t]+/, '');
+  }
+  return str;
+};
+
 const ERROR_TEXT = 'Tool call error';
 export const parsePromptToolCall = (
   str: string
@@ -135,12 +149,16 @@ export const parsePromptToolCall = (
   streamAnswer?: string;
   toolCalls?: ChatCompletionMessageToolCall[];
 } => {
-  str = str.trim();
+  const trimmedStr = str.trim();
+  if (!trimmedStr) {
+    return { answer: '' };
+  }
+
   // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
   const prefixReg = /1(:|：)/;
 
-  if (prefixReg.test(str)) {
-    const toolString = sliceJsonStr(str);
+  if (prefixReg.test(trimmedStr)) {
+    const toolString = sliceJsonStr(trimmedStr);
 
     try {
       const toolCall = json5.parse(toolString) as { name: string; arguments: object };
@@ -159,24 +177,19 @@ export const parsePromptToolCall = (
         ]
       };
     } catch {
-      if (prefixReg.test(str)) {
+      if (prefixReg.test(trimmedStr)) {
         return {
-          answer: `${ERROR_TEXT}: ${str}`,
-          streamAnswer: `${ERROR_TEXT}: ${str}`
+          answer: `${ERROR_TEXT}: ${trimmedStr}`,
+          streamAnswer: `${ERROR_TEXT}: ${trimmedStr}`
         };
       } else {
         return {
-          answer: str,
-          streamAnswer: str
+          answer: trimmedStr,
+          streamAnswer: trimmedStr
         };
       }
     }
   } else {
-    const firstIndex = str.indexOf('0:') !== -1 ? str.indexOf('0:') : str.indexOf('0：');
-    if (firstIndex > -1 && firstIndex < 6) {
-      str = str.substring(firstIndex + 2).trim();
-    }
-
-    return { answer: str };
+    return { answer: stripPromptToolAnswerPrefix(str) };
   }
 };

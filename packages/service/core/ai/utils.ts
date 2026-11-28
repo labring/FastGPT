@@ -43,12 +43,10 @@ export const computedTemperature = ({
 };
 
 // LLM utils
-const normalizeFirstAnswerAfterReasoning = (answer: string) => answer.trimStart();
-
 /**
  * 从非流式模型结果中拆分 <think></think> 思考内容和最终回答。
- * </think> 后面的前导空白只用于分隔 reasoning 与 answer，不作为正文保留，
- * 避免 reasoning-only 输出被解析成 answerText="\n"。
+ * 仅当 </think> 后全部是空白时返回空字符串，避免 reasoning-only 输出被解析成 answerText="\n"；
+ * 只要存在实际正文，原样保留前导换行与缩进（如全角空格 U+3000）。
  */
 export const parseReasoningContent = (text: string): [string, string] => {
   const regex = /<think>([\s\S]*?)<\/think>/;
@@ -59,13 +57,9 @@ export const parseReasoningContent = (text: string): [string, string] => {
   }
 
   const thinkContent = match[1].trim();
+  const answerContent = text.slice(match.index! + match[0].length);
 
-  // Add answer (remaining text after think tag)
-  const answerContent = normalizeFirstAnswerAfterReasoning(
-    text.slice(match.index! + match[0].length)
-  );
-
-  return [thinkContent, answerContent];
+  return [thinkContent, answerContent.trim() ? answerContent : ''];
 };
 
 // Parse llm stream part
@@ -87,6 +81,7 @@ export const parseLLMStreamResponse = () => {
   let buffer_content = '';
   let error: any = undefined;
   let shouldNormalizeFirstAnswer = false;
+  let pendingLeadingWhitespace = '';
 
   const normalizeContentBoundary = ({
     reasoningContent,
@@ -101,11 +96,16 @@ export const parseLLMStreamResponse = () => {
 
     if (!content || !shouldNormalizeFirstAnswer) return content;
 
-    const normalizedContent = normalizeFirstAnswerAfterReasoning(content);
-
-    if (normalizedContent) {
-      shouldNormalizeFirstAnswer = false;
+    if (!content.trim()) {
+      // 思考结束后的纯空白先暂存：若整轮无正文（如 reasoning-only / reasoning+tool_calls）则丢弃，
+      // 避免误触发空正文流事件；一旦后续出现实际正文，连同前导空白原样释放。
+      pendingLeadingWhitespace += content;
+      return '';
     }
+
+    const normalizedContent = `${pendingLeadingWhitespace}${content}`;
+    pendingLeadingWhitespace = '';
+    shouldNormalizeFirstAnswer = false;
 
     return normalizedContent;
   };
