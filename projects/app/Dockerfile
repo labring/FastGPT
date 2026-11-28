@@ -9,7 +9,6 @@ RUN npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY patches ./patches
 COPY ./packages ./packages
 COPY ./sdk ./sdk
 COPY ./projects/app/package.json ./projects/app/package.json
@@ -94,8 +93,6 @@ COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@
 
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
-# 用于 STT 测试
-COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
 # 用于 IP 推测
 COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
 

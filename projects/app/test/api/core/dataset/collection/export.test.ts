@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getCollectionWithDataset: vi.fn(),
   loggerError: vi.fn(),
   nextAPI: vi.fn((handler) => handler),
+  replaceS3KeysToPreviewUrls: vi.fn(async (texts: string[]) => texts),
   responseWriteController: vi.fn(),
   query: {
     sort: vi.fn(),
@@ -45,6 +46,9 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/member', () => ({
 }));
 vi.mock('@fastgpt/service/common/response', () => ({
   responseWriteController: mocks.responseWriteController
+}));
+vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
+  replaceS3KeysToPreviewUrls: mocks.replaceS3KeysToPreviewUrls
 }));
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: vi.fn(() => ({ error: mocks.loggerError })),
@@ -157,5 +161,32 @@ describe('POST /core/dataset/collection/export audit scope', () => {
     cursor.emit('end');
 
     expect(mocks.addAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('signs raw Markdown and HTML img S3 keys before CSV-escaping exported cells', async () => {
+    const writes: string[] = [];
+    mocks.responseWriteController.mockReturnValueOnce((chunk: string) => writes.push(chunk));
+    const key = `dataset/${collection.datasetId}/chunk-images/prefix1/file/img.png`;
+    mocks.replaceS3KeysToPreviewUrls.mockImplementationOnce(async (texts: string[]) =>
+      texts.map((text) => text.replaceAll(key, 'https://preview.test/signed.png'))
+    );
+
+    const res = createResponse();
+    await handler({ body: { collectionId: collection._id } } as any, res as any);
+    cursor.emit('data', {
+      q: `=cmd ![Figure [1]](${key}) <img src="${key}" alt="pic" />`,
+      a: `Answer with "quote"`
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    cursor.emit('end');
+
+    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      [`=cmd ![Figure [1]](${key}) <img src="${key}" alt="pic" />`, `Answer with "quote"`],
+      expect.any(Date),
+      expect.objectContaining({ filter: expect.any(Function) })
+    );
+    expect(writes[1]).toBe(
+      `\n"'=cmd ![Figure [1]](https://preview.test/signed.png) <img src=""https://preview.test/signed.png"" alt=""pic"" />","Answer with ""quote"""`
+    );
   });
 });

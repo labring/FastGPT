@@ -19,15 +19,20 @@ import type {
   AIModelDataType,
   AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/utils';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import {
+  channelTypeToScope,
+  mergeChannelTemplateModelData
+} from '@fastgpt/global/core/ai/model/utils';
 import {
   defaultProvider,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/model/provider';
-import type {
-  CreateModelData,
-  ImportPreviewCandidate,
-  ModelChannelSummary
+import {
+  MAX_CHANNEL_IMPORT_MODELS,
+  type CreateModelData,
+  type ImportPreviewCandidate,
+  type ModelChannelSummary
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -39,6 +44,7 @@ import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleR
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { enableMapSet, produce, type Draft } from 'immer';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -83,6 +89,7 @@ export const isUnsupportedChannelCatalogError = (error: unknown) =>
     error.statusText === ModelErrEnum.channelCatalogUnsupported
   );
 type RowCatalog = {
+  channelType: ChannelType;
   availableTemplates: AIModelDocumentDataType[];
   templateMap: Map<string, AIModelDocumentDataType>;
   providerById: Map<string, ModelProviderItemType>;
@@ -147,12 +154,14 @@ export const resolveRowSelection = ({
 /** 用同一份草稿测试和导入，模型标识始终采用上游 ID。 */
 const resolveImportDraft = ({
   row,
+  channelType,
   presetKey,
   selectedPresetData,
   modelType,
   createModelData
 }: {
   row: ImportPreviewRow;
+  channelType: ChannelType;
   presetKey: string;
   selectedPresetData: PreviewModelData;
   modelType?: ModelTypeEnum;
@@ -177,7 +186,8 @@ const resolveImportDraft = ({
       contextLength,
       maxCompletionTokens
     }),
-    model: providerModelSlug
+    model: providerModelSlug,
+    scope: channelTypeToScope(channelType)
   };
 };
 
@@ -191,10 +201,12 @@ export const resolveModelTestTarget = (
 
 const ImportModelTestButton = ({
   target,
+  channelType,
   channelId,
   channelName
 }: {
   target: ImportModelTestTarget;
+  channelType: ChannelType;
   channelId: number;
   channelName: string;
 }) => {
@@ -202,7 +214,7 @@ const ImportModelTestButton = ({
   const { testingChannelIds, testModelChannel } = useModelChannelTest({
     target,
     channels: [{ id: channelId, name: channelName }],
-    channelType: 'system'
+    channelType
   });
 
   return (
@@ -299,6 +311,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     : undefined;
   const modelTestTarget = resolveModelTestTarget({
     row,
+    channelType: catalog.channelType,
     presetKey: selectedPresetKey,
     selectedPresetData,
     modelType,
@@ -423,6 +436,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
         {catalog.channel && (
           <ImportModelTestButton
             target={modelTestTarget}
+            channelType={catalog.channelType}
             channelId={catalog.channel.id}
             channelName={catalog.channel.name}
           />
@@ -433,6 +447,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
 });
 
 const ModelPreviewStep = ({
+  channelType,
   channelId,
   channel,
   installedModels,
@@ -441,6 +456,7 @@ const ModelPreviewStep = ({
   onSubmit,
   onPrevious
 }: {
+  channelType: ChannelType;
   channelId: number;
   channel?: ModelChannelSummary;
   installedModels: Pick<AIModelDataType, 'model'>[];
@@ -450,6 +466,7 @@ const ModelPreviewStep = ({
   onPrevious: () => void;
 }) => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
   const [state, setState] = useState<PreviewState>(() => ({
     items: undefined,
     loading: false,
@@ -482,7 +499,7 @@ const ModelPreviewStep = ({
     });
 
     try {
-      const preview = await getImportPreviewFromChannel({ channelId });
+      const preview = await getImportPreviewFromChannel({ channelId, channelType });
       if (!isCurrentRequest()) return;
       updateState((draft) => {
         draft.items = preview.items;
@@ -493,7 +510,7 @@ const ModelPreviewStep = ({
           draft.templateLoading = true;
         });
         try {
-          const templateResponse = await getModelTemplates({ channelType: 'system' });
+          const templateResponse = await getModelTemplates({ channelType });
           if (isCurrentRequest()) {
             updateState((draft) => {
               draft.templates = templateResponse.models;
@@ -526,7 +543,7 @@ const ModelPreviewStep = ({
         });
       }
     }
-  }, [channelId, updateState]);
+  }, [channelId, channelType, updateState]);
 
   useEffect(() => {
     void loadPreview();
@@ -561,6 +578,7 @@ const ModelPreviewStep = ({
   );
   const catalog = useMemo<RowCatalog>(
     () => ({
+      channelType,
       availableTemplates,
       templateMap,
       providerById,
@@ -570,6 +588,7 @@ const ModelPreviewStep = ({
       templateLoading: state.templateLoading
     }),
     [
+      channelType,
       availableTemplates,
       templateMap,
       providerById,
@@ -612,6 +631,15 @@ const ModelPreviewStep = ({
     () => previewItems.filter((row) => state.rowSelections.get(row.providerModelSlug)?.selected),
     [previewItems, state.rowSelections]
   );
+  // 同步最新选择计数到 ref，保持 toggleSelected 引用稳定，避免单行勾选触发全表 memo 重渲染。
+  const selectionMetaRef = useRef({
+    rowSelections: state.rowSelections,
+    selectedCount: selectedItems.length
+  });
+  selectionMetaRef.current = {
+    rowSelections: state.rowSelections,
+    selectedCount: selectedItems.length
+  };
 
   const resetPreviewSelections = () => {
     updateState((draft) => {
@@ -626,6 +654,17 @@ const ModelPreviewStep = ({
 
   const toggleSelected = useCallback(
     (providerModelSlug: string) => {
+      const { rowSelections, selectedCount } = selectionMetaRef.current;
+      const isSelected = rowSelections.get(providerModelSlug)?.selected;
+      if (!isSelected && selectedCount >= MAX_CHANNEL_IMPORT_MODELS) {
+        toast({
+          status: 'warning',
+          title: t('config_model:channel_import_selection_limit', {
+            max: MAX_CHANNEL_IMPORT_MODELS
+          })
+        });
+        return;
+      }
       updateState((draft) => {
         const current = draft.rowSelections.get(providerModelSlug);
         draft.rowSelections.set(providerModelSlug, {
@@ -634,7 +673,7 @@ const ModelPreviewStep = ({
         });
       });
     },
-    [updateState]
+    [t, toast, updateState]
   );
 
   const handleModelTypeChange = useCallback(
@@ -712,6 +751,7 @@ const ModelPreviewStep = ({
       const { isActive, presetKey, modelType, selectedPresetData } = resolveSelection(row);
       const modelData = resolveImportDraft({
         row,
+        channelType,
         presetKey,
         modelType,
         selectedPresetData,

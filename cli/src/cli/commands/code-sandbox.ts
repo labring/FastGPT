@@ -1,6 +1,6 @@
 import { listCodeSandboxPackages } from '../../domain/code-sandbox/code-sandbox-service';
 import type { CliCommandSpec } from '../pipeline';
-import { requireActiveClient } from './dataset/shared';
+import { requireActiveClient } from './shared/helpers';
 
 /** 注册实例级代码沙盒的依赖查询命令。 */
 export function createCodeSandboxCommandSpec(): CliCommandSpec {

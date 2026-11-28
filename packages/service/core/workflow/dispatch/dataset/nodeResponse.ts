@@ -1,6 +1,7 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { pickUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const datasetSearchModuleLogo = 'core/workflow/template/datasetSearch';
@@ -39,6 +40,7 @@ const createDatasetSearchChildNodeResponse = ({
     llmRequestIds: requestIds,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    ...pickUsedCacheTokens(usage),
     ...(embeddingTokens ? { embeddingTokens } : {}),
     totalPoints: usage.totalPoints,
     textOutput

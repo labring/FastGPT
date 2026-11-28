@@ -6,7 +6,6 @@ export type AgentLoopInput<TChildrenResponse = unknown> = {
   messages: ChatCompletionMessageParam[];
   systemPrompt?: string;
   activePlan?: AgentPlanType;
-  providerState?: unknown;
   userAnswer?: string;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
 };

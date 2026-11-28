@@ -5,7 +5,7 @@ import { createManagedDbSession, runInTransaction } from '@fastgpt/dal/db/transa
 import type { DbSession } from '@fastgpt/dal/db/types';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { configureDalRuntime } from '@fastgpt/service/common/db/dalRuntime';
 import {
   bridgeClientSessionToDbSession,
   bridgeDbSessionToClientSession,
@@ -37,7 +37,7 @@ describe('mongoSessionRun', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     await closeDbRuntime();
-    configureMongoDalRuntime();
+    configureDalRuntime({ dialect: 'mongo' });
   });
 
   it('does not retry a business error or rerun its callback', async () => {
@@ -269,7 +269,8 @@ describe('mongoSessionRun', () => {
   });
 
   it('bridges DbSession back to ClientSession under mongo runInTransaction with unified afterCommit ordering, retry clearing, and rollback isolation', async () => {
-    configureMongoDalRuntime({
+    configureDalRuntime({
+      dialect: 'mongo',
       transactionRunner: createMongoTransactionRunner({
         getMainClient: () => connectionMongo
       })

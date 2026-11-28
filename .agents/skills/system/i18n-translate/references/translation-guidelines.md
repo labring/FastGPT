@@ -33,6 +33,8 @@ For `zh-Hant`, prefer clear, region-neutral Traditional Chinese and follow termi
 
 For `ko-KR`, use the canonical Korean product terminology in `localeGlossaries.ko-KR`. Prefer concise native SaaS wording, standard Korean spacing, and consistent transliterations. In particular, preserve FastGPT's distinction between a top-level Dataset (`데이터셋`) and a Collection inside it (`컬렉션`).
 
+For `tr-TR`, use the canonical Turkish product terminology in `localeGlossaries.tr-TR`. Use the informal "sen" register, imperative button labels, and an apostrophe before suffixes on English or brand words. Never attach a suffix to a `{{placeholder}}`. Preserve FastGPT's distinction between a top-level Dataset (`veri kümesi`) and a Collection inside it (`koleksiyon`), and never use `bilgi bankası` for Dataset or `eğitim` for training (use `dizinleme`).
+
 ## Using n8n and Dify as references
 
 When a workflow, agent, node, execution, credential, plugin, or knowledge-product term remains ambiguous:

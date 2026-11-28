@@ -45,11 +45,12 @@ export const cronJob = async () => {
     await stopSandboxResources(instances);
   });
 
-  setCron('0 */12 * * *', async () => {
+  setCron('0 */1 * * *', async () => {
     if (!isAgentSandboxOpenSandboxConfigured()) return;
     const locked = await checkTimerLock({
       timerId: TimerIdEnum.archiveInactiveSandboxes,
-      lockMinuted: 11 * 60
+      // 预留 5 分钟缓冲，覆盖 MongoDB TTL 清理间隔与副本时钟偏差，避免整点误跳过下一轮。
+      lockMinuted: 55
     });
     if (!locked) return;
 

@@ -19,7 +19,8 @@ const speechVoiceLanguageMap: Record<localeType, readonly string[]> = {
   en: ['en-us', 'en-gb', 'en'],
   'zh-CN': ['zh-cn', 'zh-hans', 'zh'],
   'zh-Hant': ['zh-tw', 'zh-hk', 'zh-hant', 'zh'],
-  'ko-KR': ['ko-kr', 'ko']
+  'ko-KR': ['ko-kr', 'ko'],
+  'tr-TR': ['tr-tr', 'tr']
 };
 
 /** 按当前界面语言选择浏览器语音，优先地区精确匹配，再回退到同语言声音。 */

@@ -13,6 +13,18 @@ import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/a
 const mocks = vi.hoisted(() => ({
   metadata: {} as ProviderMetasResponse,
   language: 'zh-CN',
+  loadingProviders: false,
+  loadingModels: false,
+  useModelConfigCalls: [] as { channelType: string; language?: string; manual?: boolean }[],
+  modalIsLoading: undefined as boolean | undefined,
+  providerSelectLoading: undefined as boolean | undefined,
+  multipleSelect: undefined as
+    | undefined
+    | {
+        isLoading?: boolean;
+        list: { label: string; value: string }[];
+        onSelect?: (value: string[]) => void;
+      },
   options: [] as { label: string; value: number; icon?: string }[],
   protocol: undefined as
     | undefined
@@ -21,6 +33,22 @@ const mocks = vi.hoisted(() => ({
         list: { label: string; value: ChatUpstreamProtocol }[];
         onChange: (value: ChatUpstreamProtocol) => void;
       },
+  modelMapping: undefined as
+    | undefined
+    | {
+        value?: Record<string, string>;
+        modelOptions?: { label: string; value: string; icon?: string }[];
+        onChange?: (value: Record<string, string>) => void;
+        onValidationChange?: (state: { hasDuplicateKey: boolean; duplicateKeys: string[] }) => void;
+      },
+  secretKey: undefined as
+    | undefined
+    | {
+        value: string;
+        isConfigured: boolean;
+        onChange?: (value: string) => void;
+      },
+  toast: vi.fn(),
   submit: async () => {}
 }));
 vi.mock('@/web/core/ai/model/channel', () => ({
@@ -31,43 +59,89 @@ vi.mock('@/web/core/ai/model/channel', () => ({
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: mocks.language } })
 }));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: mocks.toast })
+}));
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
-  useModelConfig: () => ({ models: [], getModelProvider: () => undefined, loading: false })
+  useModelConfig: (params: { channelType: string; language?: string; manual?: boolean }) => {
+    mocks.useModelConfigCalls.push(params);
+    return { models: [], getModelProvider: () => undefined, loading: mocks.loadingModels };
+  }
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (request: (...args: any[]) => Promise<unknown>) => ({
+  useRequest: (
+    request: (...args: any[]) => Promise<unknown>,
+    options?: { onSuccess?: () => void }
+  ) => ({
     data: request === getChannelProviders ? mocks.metadata : undefined,
-    runAsync: request === getChannelProviders ? vi.fn() : request,
-    loading: false
+    runAsync:
+      request === getChannelProviders
+        ? vi.fn()
+        : async (...args: any[]) => {
+            const res = await request(...args);
+            options?.onSuccess?.();
+            return res;
+          },
+    loading: request === getChannelProviders ? mocks.loadingProviders : false
   })
 }));
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({
     children,
-    footer
+    footer,
+    isLoading
   }: {
     children: React.ReactNode;
+    isLoading?: boolean;
     footer: React.ReactElement<{
       children: React.ReactElement<{ onClick: () => Promise<void> }>[];
     }>;
   }) => {
+    mocks.modalIsLoading = isLoading;
     mocks.submit = footer.props.children[1].props.onClick;
     return children;
   }
 }));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
-  default: (props: { list: typeof mocks.options } | NonNullable<typeof mocks.protocol>) => {
+  default: (
+    props: { list: typeof mocks.options; isLoading?: boolean } | NonNullable<typeof mocks.protocol>
+  ) => {
     if ('value' in props) {
       // provider 的值也是 number，按选项类型区分新增的协议下拉框。
       if (typeof props.value === 'string') mocks.protocol = props;
-      else mocks.options = props.list as typeof mocks.options;
-    } else mocks.options = props.list;
+      else {
+        mocks.options = props.list as typeof mocks.options;
+        mocks.providerSelectLoading = (props as { isLoading?: boolean }).isLoading;
+      }
+    } else {
+      mocks.options = props.list;
+      mocks.providerSelectLoading = props.isLoading;
+    }
     return null;
   }
 }));
-vi.mock('@fastgpt/web/components/common/MySelect/MultipleSelect', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/Textarea/JsonEditor', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect/MultipleSelect', () => ({
+  default: (props: NonNullable<typeof mocks.multipleSelect>) => {
+    mocks.multipleSelect = props;
+    return null;
+  }
+}));
+vi.mock('@/pageComponents/model/Channel/ModelMappingInput', () => ({
+  default: (props: NonNullable<typeof mocks.modelMapping>) => {
+    mocks.modelMapping = props;
+    return null;
+  }
+}));
+vi.mock('@/components/common/secret/SecretValueInput', () => ({
+  default: (props: NonNullable<typeof mocks.secretKey>) => {
+    mocks.secretKey = props;
+    return null;
+  }
+}));
+vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
+  default: ({ label }: { label?: string }) =>
+    React.createElement('span', { 'data-question-tip': label })
+}));
 vi.mock('@fastgpt/web/components/common/String/CopyBox', () => ({
   default: ({ children }: { children: React.ReactNode }) => children
 }));
@@ -79,7 +153,15 @@ describe('EditChannelModal channel metadata', () => {
   beforeEach(() => {
     vi.stubGlobal('React', React);
     vi.clearAllMocks();
+    mocks.loadingProviders = false;
+    mocks.loadingModels = false;
+    mocks.useModelConfigCalls = [];
+    mocks.modalIsLoading = undefined;
+    mocks.providerSelectLoading = undefined;
+    mocks.multipleSelect = undefined;
     mocks.protocol = undefined;
+    mocks.modelMapping = undefined;
+    mocks.secretKey = undefined;
     mocks.language = 'zh-CN';
     mocks.options = [];
     mocks.metadata = {
@@ -99,11 +181,15 @@ describe('EditChannelModal channel metadata', () => {
   const render = ({
     channelType,
     config = {},
-    compact = false
+    compact = false,
+    onClose = vi.fn(),
+    onSuccess = vi.fn()
   }: {
     channelType: 'system' | 'team';
     config?: Partial<ChannelInfoType>;
     compact?: boolean;
+    onClose?: () => void;
+    onSuccess?: () => unknown | Promise<unknown>;
   }) =>
     renderToStaticMarkup(
       React.createElement(
@@ -113,8 +199,8 @@ describe('EditChannelModal channel metadata', () => {
           defaultConfig: { ...defaultChannel, type: 1, ...config },
           ...(compact ? { fixedModel: { model: 'gpt-5.4-nano' } } : {}),
           channelType,
-          onClose: vi.fn(),
-          onSuccess: vi.fn()
+          onClose,
+          onSuccess
         })
       )
     );
@@ -208,23 +294,58 @@ describe('EditChannelModal channel metadata', () => {
     expect(mocks.protocol?.value).toBe('chat_completions');
   });
 
-  it('sends the selected protocol and retains other configs on update', async () => {
+  it('sends only changed protocol config on update without resending untouched models or extra configs', async () => {
     render({
       channelType: 'system',
       config: {
         name: 'test-channel',
         id: 12,
         models: ['gpt-5.4-nano'],
+        model_mapping: { 'gpt-5.4-nano': 'upstream-nano' },
         configs: { responses_first_event_timeout: 10 }
       }
     });
     mocks.protocol?.onChange('chat_completions');
     await mocks.submit();
-    expect(putChannel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        configs: { chat_upstream_protocol: 'chat_completions', responses_first_event_timeout: 10 }
-      })
-    );
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 12,
+      channelType: 'system',
+      configs: { chat_upstream_protocol: 'chat_completions' }
+    });
+  });
+
+  it('sends incremental model and mapping deltas on edit instead of full stale snapshots', async () => {
+    render({
+      channelType: 'team',
+      config: {
+        id: 18,
+        name: 'team-channel',
+        models: ['gpt-4o', 'legacy-model'],
+        model_mapping: {
+          'gpt-4o': 'upstream/gpt-4o-v1',
+          'legacy-model': 'upstream/legacy'
+        }
+      }
+    });
+
+    mocks.multipleSelect?.onSelect?.(['gpt-4o', 'claude-sonnet']);
+    mocks.modelMapping?.onChange?.({
+      'gpt-4o': 'upstream/gpt-4o-v2',
+      'claude-sonnet': 'upstream/claude-sonnet'
+    });
+    await mocks.submit();
+
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 18,
+      channelType: 'team',
+      addModels: ['claude-sonnet'],
+      removeModels: ['legacy-model'],
+      setModelMapping: {
+        'gpt-4o': 'upstream/gpt-4o-v2',
+        'claude-sonnet': 'upstream/claude-sonnet'
+      },
+      removeModelMappingKeys: ['legacy-model']
+    });
   });
 
   it('submits auto by default for a newly created channel', async () => {
@@ -235,5 +356,150 @@ describe('EditChannelModal channel metadata', () => {
         configs: { chat_upstream_protocol: 'auto' }
       })
     );
+  });
+
+  it('stores model_mapping as an object, scopes keyOptions to selected models, and blocks duplicate keys', async () => {
+    render({
+      channelType: 'team',
+      config: {
+        name: 'mapping-channel',
+        models: ['gpt-4o', 'qwen-plus'],
+        model_mapping: { 'gpt-4o': 'gpt-4o-upstream' }
+      }
+    });
+    expect(mocks.modelMapping?.value).toEqual({ 'gpt-4o': 'gpt-4o-upstream' });
+    expect(mocks.modelMapping?.modelOptions?.map(({ value }) => value)).toEqual([
+      'gpt-4o',
+      'qwen-plus'
+    ]);
+
+    mocks.modelMapping?.onChange?.({ 'gpt-4o': 'gpt-4o-v2', 'qwen-plus': 'qwen-upstream' });
+    mocks.modelMapping?.onValidationChange?.({
+      hasDuplicateKey: true,
+      duplicateKeys: ['gpt-4o']
+    });
+    await expect(mocks.submit()).rejects.toBe('config_model:mapping_key_duplicate');
+    expect(postCreateChannel).not.toHaveBeenCalled();
+
+    mocks.modelMapping?.onValidationChange?.({
+      hasDuplicateKey: false,
+      duplicateKeys: []
+    });
+    await mocks.submit();
+    expect(postCreateChannel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_mapping: { 'gpt-4o': 'gpt-4o-v2', 'qwen-plus': 'qwen-upstream' }
+      })
+    );
+  });
+
+  it('uses a single mapping input with upstream model ID tooltip in single-model compact create', () => {
+    const html = render({
+      channelType: 'team',
+      config: {
+        name: 'compact-channel',
+        models: ['gpt-5.4-nano'],
+        model_mapping: { 'gpt-5.4-nano': 'upstream-nano' }
+      },
+      compact: true
+    });
+    expect(mocks.modelMapping).toBeUndefined();
+    expect(html).toContain('config_model:compact_mapping_tip');
+    expect(html).toContain('value="upstream-nano"');
+  });
+
+  it('uses SecretValueInput for configured keys and preserves untouched key on update', async () => {
+    render({
+      channelType: 'system',
+      config: {
+        id: 12,
+        name: 'keyed-channel',
+        models: ['gpt-4o'],
+        key: '',
+        keyConfigured: true
+      }
+    });
+    expect(mocks.secretKey?.isConfigured).toBe(true);
+    expect(mocks.secretKey?.value).toBe('');
+
+    await mocks.submit();
+    expect(putChannel).toHaveBeenCalledWith({
+      id: 12,
+      channelType: 'system'
+    });
+    expect(vi.mocked(putChannel).mock.calls[0]?.[0]).not.toHaveProperty('key');
+    expect(vi.mocked(putChannel).mock.calls[0]?.[0]).not.toHaveProperty('keyConfigured');
+
+    mocks.secretKey?.onChange?.('sk-new-secret');
+    await mocks.submit();
+    expect(putChannel).toHaveBeenLastCalledWith({
+      id: 12,
+      channelType: 'system',
+      key: 'sk-new-secret'
+    });
+
+    mocks.secretKey?.onChange?.('');
+    await mocks.submit();
+    expect(putChannel).toHaveBeenLastCalledWith({
+      id: 12,
+      channelType: 'system',
+      key: ''
+    });
+
+    render({
+      channelType: 'team',
+      config: {
+        id: 13,
+        name: 'unkeyed-channel',
+        models: ['gpt-4o'],
+        key: '',
+        keyConfigured: false
+      }
+    });
+    expect(mocks.secretKey?.isConfigured).toBe(false);
+  });
+
+  it('keeps provider and model loading inside their own selects without modal-level loading', () => {
+    mocks.loadingProviders = true;
+    mocks.loadingModels = true;
+    render({
+      channelType: 'system',
+      config: { id: 12, name: 'existing', models: ['gpt-4o'] }
+    });
+    expect(mocks.modalIsLoading).toBeUndefined();
+    expect(mocks.providerSelectLoading).toBe(true);
+    expect(mocks.multipleSelect?.isLoading).toBe(true);
+    expect(mocks.multipleSelect?.list.map(({ value }) => value)).toEqual(['gpt-4o']);
+    expect(mocks.useModelConfigCalls.at(-1)?.manual).toBe(false);
+
+    render({
+      channelType: 'team',
+      config: { name: 'compact', models: ['gpt-5.4-nano'] },
+      compact: true
+    });
+    expect(mocks.modalIsLoading).toBeUndefined();
+    expect(mocks.providerSelectLoading).toBe(true);
+    expect(mocks.useModelConfigCalls.at(-1)?.manual).toBe(true);
+  });
+
+  it('closes the modal and warns separately when post-update refresh fails after putChannel succeeds', async () => {
+    const onClose = vi.fn();
+    const onSuccess = vi.fn().mockRejectedValueOnce(new Error('Refresh failed'));
+
+    render({
+      channelType: 'system',
+      config: { id: 12, name: 'existing', models: ['gpt-4o'] },
+      onClose,
+      onSuccess
+    });
+
+    await expect(mocks.submit()).resolves.toBeUndefined();
+    expect(putChannel).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'warning',
+      title: 'Refresh failed'
+    });
   });
 });

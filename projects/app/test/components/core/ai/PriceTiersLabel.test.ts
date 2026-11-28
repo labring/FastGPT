@@ -25,14 +25,18 @@ vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
     React.createElement('div', null, children, label && React.createElement('aside', null, label))
 }));
 
-const render = (config: PriceType & { scope?: ModelScopeEnum }) => {
+const render = (
+  config: PriceType & { scope?: ModelScopeEnum },
+  options?: { showCachePrices?: boolean }
+) => {
   const markup = renderToStaticMarkup(
     React.createElement(
       ChakraProvider,
       null,
       React.createElement(PriceTiersLabel, {
         config,
-        unitLabel: 'points / M Tokens'
+        unitLabel: 'points / M Tokens',
+        ...options
       })
     )
   );
@@ -65,11 +69,33 @@ describe('PriceTiersLabel', () => {
     expect(visibleText).toBe('-');
     expect(tooltips).toEqual([]);
   });
-  it('shows a dash for an unavailable cache price without inheriting the input price', () => {
-    const { values } = render({
+  it('hides unavailable cache columns in the tooltip without inheriting the input price', () => {
+    const { headers, values } = render({
       pricing: { tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 }] }
     });
-    expect(values).toEqual([['0 ≤ Input', '2', '4', '0.2', '-']]);
+    expect(headers).toEqual(['Input interval: K Tokens', 'Input', 'Output', 'Cache read']);
+    expect(values).toEqual([['0 ≤ Input', '2', '4', '0.2']]);
+  });
+
+  it('hides unavailable cache summary lines and columns when showCachePrices is enabled', () => {
+    const { visibleText, headers, values } = render(
+      {
+        pricing: {
+          tiers: [
+            { maxInputTokensK: 32, inputPrice: 24, outputPrice: 96, cacheReadPrice: 4.8 },
+            { maxInputTokensK: 1000, inputPrice: 144, outputPrice: 576, cacheReadPrice: 28.8 }
+          ]
+        }
+      },
+      { showCachePrices: true }
+    );
+    expect(visibleText).toContain('Cache read: 4.8~28.8 points/M Tokens');
+    expect(visibleText).not.toContain('Cache creation');
+    expect(headers).toEqual(['Input interval: K Tokens', 'Input', 'Output', 'Cache read']);
+    expect(values).toEqual([
+      ['0 ≤ Input ≤ 32', '24', '96', '4.8'],
+      ['32 < Input ≤ 1000', '144', '576', '28.8']
+    ]);
   });
 
   it.each([{}, { cacheReadPrice: 0.004, cacheCreationPrice: 0 }])(
@@ -84,13 +110,14 @@ describe('PriceTiersLabel', () => {
     }
   );
 
-  it('shows zero cache reads as a dash and rounds positive creation prices', () => {
-    const { values } = render({
+  it('hides zero cache read column and rounds positive creation prices', () => {
+    const { headers, values } = render({
       pricing: {
         tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0, cacheCreationPrice: 0.125 }]
       }
     });
-    expect(values).toEqual([['0 ≤ Input', '2', '4', '-', '0.13']]);
+    expect(headers).toEqual(['Input interval: K Tokens', 'Input', 'Output', 'Cache creation']);
+    expect(values).toEqual([['0 ≤ Input', '2', '4', '0.13']]);
   });
 
   it('rounds summary and tooltip prices to at most two decimals', () => {
@@ -155,8 +182,8 @@ describe('PriceTiersLabel', () => {
     ]);
   });
 
-  it('shows tier details when cache prices are unavailable', () => {
-    const { visibleText, tooltips, values } = render({
+  it('hides cache columns in tier details when all cache prices are unavailable', () => {
+    const { visibleText, tooltips, headers, values } = render({
       pricing: {
         tiers: [
           { maxInputTokensK: 32, inputPrice: 0, outputPrice: 0, cacheReadPrice: 0 },
@@ -166,6 +193,7 @@ describe('PriceTiersLabel', () => {
     });
     expect(visibleText).toBe('Input: -~2 points/M TokensOutput: -~4 points/M Tokens');
     expect(tooltips).toHaveLength(1);
-    expect(values[0]).toEqual(['0 ≤ Input ≤ 32', '-', '-', '-', '-']);
+    expect(headers).toEqual(['Input interval: K Tokens', 'Input', 'Output']);
+    expect(values[0]).toEqual(['0 ≤ Input ≤ 32', '-', '-']);
   });
 });

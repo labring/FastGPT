@@ -1,4 +1,5 @@
-import { restoreHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/entity';
+import { resolveHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -139,9 +140,10 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     return {
       referenceSnapshots: compactedSnapshots,
       resources,
-      nodes: restoreHttpProxySecrets({
+      nodes: await resolveHttpProxySecrets({
         nodes: normalizedWorkflow.nodes,
-        baseline: draftVersion?.nodes
+        appId,
+        readVersions: (versionIds) => findAppVersionNodes({ appId, versionIds, session })
       })
     };
   };
@@ -155,6 +157,9 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     const workflow = normalizeAppVersionWorkflow(savedVersion, app.type);
     await rewriteAppWorkflowToDetail({
       nodes: workflow.nodes,
+      proxySource: workflow.versionId
+        ? { appId: String(app._id), versionId: workflow.versionId }
+        : undefined,
       teamId,
       viewerTmbId: tmbId,
       ownerTmbId: String(app.tmbId),

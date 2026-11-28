@@ -3,6 +3,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
+import type { BlockedToolCallReason } from '@fastgpt/service/core/ai/llm/request/types';
 import type { Mock } from 'vitest';
 
 type CreateLLMResponseArgs = {
@@ -19,6 +20,7 @@ type LLMQueueItem = {
   answerText?: string;
   reasoningText?: string;
   toolCalls?: ChatCompletionMessageToolCall[];
+  blockedToolCalls?: Record<string, BlockedToolCallReason>;
   finishReason?: 'stop' | 'tool_calls' | 'error' | 'length';
   responseEmptyTip?: string;
   error?: unknown;
@@ -116,6 +118,7 @@ export const mockCreateLLMResponseQueue = (createLLMResponseMock: Mock, queue: L
       answerText: item.answerText || '',
       reasoningText: item.reasoningText || '',
       toolCalls: item.toolCalls,
+      ...(item.blockedToolCalls ? { blockedToolCalls: item.blockedToolCalls } : {}),
       finish_reason: item.finishReason || 'stop',
       usage: {
         inputTokens: item.inputTokens ?? 0,

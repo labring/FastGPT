@@ -131,6 +131,10 @@ export const datasetConfigAuditFieldMap: Readonly<
       label: i18nT(
         'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName'
       )
+    },
+    permissionSync: {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_permissionSync'),
+      valueKind: 'boolean'
     }
   },
   [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]]: {

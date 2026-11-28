@@ -21,6 +21,8 @@
     "../plugin/model-presets",
     "../plugin/debugging-and-publishing",
     "../plugin/package-reference",
+    "---其他---",
+    "coze-migration",
     "---历史参考---",
     "../openapi/legacy"
   ]

@@ -1,5 +1,6 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { normalizeReasoningEffortList } from '@fastgpt/global/core/ai/llm/utils';
 import {
   AIModelDocumentDataSchema,
   ModelPricingSchema,
@@ -23,6 +24,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
     'video',
     'reasoning',
     'reasoningEffort',
+    'reasoningEffortList',
     'functionCall',
     'toolChoice',
     'defaultSystemChatPrompt',
@@ -44,6 +46,41 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
   [ModelTypeEnum.rerank]: ['maxToken', 'defaultConfig'],
   [ModelTypeEnum.tts]: ['voices'],
   [ModelTypeEnum.stt]: []
+};
+
+/**
+ * 文档读取边界兼容归一化：
+ * - 将历史或待回填记录中的 `reasoningEffortList: null` 归一为缺省值，避免在手动回填前阻断目录加载与 JSON 导出；
+ * - 过滤历史或高版本插件带来的未识别思考等级并按标准顺序去重，避免单个未知枚举值阻断目录、导出或模板加载；
+ * - 保留未配置时的 `undefined` 缺省语义，避免 JSON 导出保存或旧插件模板安装把运行期兜底六档固化到数据库；
+ * - 运行期空/缺省兜底由 `formatDbModelToRuntimeModel` 与 `getSupportedReasoningEfforts` 统一提供。
+ */
+const normalizeLlmConfigForRead = (
+  type: unknown,
+  config: unknown
+): Record<string, unknown> | unknown => {
+  if (
+    type !== ModelTypeEnum.llm ||
+    !config ||
+    typeof config !== 'object' ||
+    Array.isArray(config)
+  ) {
+    return config;
+  }
+  const llmConfig = config as Record<string, unknown>;
+  if (llmConfig.reasoningEffortList === null) {
+    const { reasoningEffortList: _ignored, ...restConfig } = llmConfig;
+    return restConfig;
+  }
+  if (!Array.isArray(llmConfig.reasoningEffortList)) {
+    return config;
+  }
+  return {
+    ...llmConfig,
+    reasoningEffortList: normalizeReasoningEffortList(
+      llmConfig.reasoningEffortList.filter((item): item is string => typeof item === 'string')
+    )
+  };
 };
 
 /**
@@ -69,7 +106,11 @@ export const formatDbModelToDocumentData = (
     const result = ModelPricingSchema.safeParse(pricing);
     return result.success ? result.data : undefined;
   })();
-  return AIModelDocumentDataSchema.parse({ ...dbModel, pricing });
+  return AIModelDocumentDataSchema.parse({
+    ...dbModel,
+    config: normalizeLlmConfigForRead(dbModel.type, dbModel.config),
+    pricing
+  });
 };
 
 /** 将插件扁平模型协议转换为 `ai_models` 使用的 canonical 文档。 */
@@ -80,12 +121,12 @@ export const flatModelToDocumentData = (input: Record<string, any>): AIModelDocu
   }
 
   const configKeys = configKeysMap[normalized.type as ModelTypeEnum] ?? [];
-  const config = {
+  const config = normalizeLlmConfigForRead(normalized.type, {
     ...Object.fromEntries(
       configKeys.filter((key) => normalized[key] !== undefined).map((key) => [key, normalized[key]])
     ),
     ...(normalized.config && typeof normalized.config === 'object' ? normalized.config : {})
-  };
+  });
 
   return AIModelDocumentDataSchema.parse(
     Object.fromEntries(

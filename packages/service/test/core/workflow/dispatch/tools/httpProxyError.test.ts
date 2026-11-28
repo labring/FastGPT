@@ -17,7 +17,7 @@ describe('safe HTTP proxy failure classification', () => {
       expect(error.cause).toBeUndefined();
     }
   );
-  it.each(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ERR_CANCELED'])(
+  it.each(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ERR_CANCELED', 'ERR_FR_TOO_MANY_REDIRECTS'])(
     'keeps %s as a user proxy failure',
     (code) => {
       expect(isUserConfigError(createHttpProxyRequestError({ code }, 'GET'))).toBe(true);

@@ -730,7 +730,6 @@ describe('runToolCall compression node responses', () => {
     expect(result.requestIds).toEqual(['req_main']);
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'fastAgent',
         runtime: expect.objectContaining({
           systemTools: expect.objectContaining({
             plan: { enabled: false },
@@ -890,12 +889,16 @@ describe('runToolCall compression node responses', () => {
             moduleName: AgentUsageModuleName.agentCall,
             inputTokens: 10,
             outputTokens: 5,
+            cacheReadTokens: 6,
+            cacheCreationTokens: 2,
             totalPoints: 1
           },
           {
             moduleName: 'child_tool',
             inputTokens: 30,
             outputTokens: 20,
+            cacheReadTokens: 10,
+            cacheCreationTokens: 4,
             totalPoints: 4
           }
         ]
@@ -906,6 +909,8 @@ describe('runToolCall compression node responses', () => {
 
     expect(result.toolCallInputTokens).toBe(10);
     expect(result.toolCallOutputTokens).toBe(5);
+    expect(result.cacheReadTokens).toBe(6);
+    expect(result.cacheCreationTokens).toBe(2);
     expect(result.toolCallTotalPoints).toBe(1);
   });
 

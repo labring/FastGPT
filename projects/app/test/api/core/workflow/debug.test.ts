@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HTTP_PROXY_CONFIGURED } from '@fastgpt/service/core/app/httpProxySecret';
+import { formatHttpProxySecrets } from '@fastgpt/service/core/app/httpProxySecret';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -82,48 +83,64 @@ const app = {
 const savedChatConfig = { variables: [] };
 
 describe('workflow debug API chatId', () => {
-  it('restores a masked proxy only after app authentication and masks resumed debug state', async () => {
-    const stored = {
-      nodeId: 'http',
-      name: 'HTTP',
-      flowNodeType: FlowNodeTypeEnum.httpRequest468,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.httpProxy,
-          value: encryptSecretValue({ value: 'http://user:private@proxy.example.com' })
-        }
-      ],
-      outputs: []
-    };
-    const requestNode = structuredClone(stored);
-    requestNode.inputs[0].value = { secret: HTTP_PROXY_CONFIGURED };
-    mocks.getAppDraftWorkflow.mockResolvedValue({ nodes: [stored], chatConfig: savedChatConfig });
-    mocks.dispatchWorkFlow.mockImplementationOnce(async ({ runtimeNodes }) => {
-      expect(runtimeNodes[0].inputs[0].value).toEqual(stored.inputs[0].value);
-      return {
-        debugResponse: {
-          memoryEdges: [],
-          memoryNodes: runtimeNodes,
-          entryNodeIds: [],
-          nodeResponses: {}
-        },
-        newVariables: {},
-        flatNodeResponses: []
+  it.each([false, true])(
+    'uses historical proxy credentials for debug and preserves their source in the response (deleted=%s)',
+    async (deleted) => {
+      const stored = {
+        nodeId: 'http',
+        name: 'HTTP',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.httpProxy,
+            value: encryptSecretValue({ value: 'http://old:private@proxy.example.com' })
+          }
+        ],
+        outputs: []
       };
-    });
-    const result = await handler(
-      {
-        body: { appId, nodes: [requestNode], usageId: 'usage', chatConfig: savedChatConfig },
-        headers: {}
-      } as any,
-      {} as any
-    );
-    expect(result.memoryNodes[0].inputs[0].value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
-    expect(JSON.stringify(result)).not.toContain(JSON.stringify(stored.inputs[0].value));
-    expect(mocks.authApp.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.getAppDraftWorkflow.mock.invocationCallOrder[0]
-    );
-  });
+      const version = await MongoAppVersion.create({
+        appId,
+        tmbId: 'owner-id',
+        nodes: [stored],
+        edges: []
+      });
+      const requestNodes = structuredClone([stored]);
+      formatHttpProxySecrets({
+        nodes: requestNodes,
+        project: true,
+        source: { appId, versionId: String(version._id) }
+      });
+      const changed = structuredClone(stored);
+      changed.inputs[0].value = encryptSecretValue({
+        value: 'http://new:private@proxy.example.com'
+      });
+      mocks.getAppDraftWorkflow.mockResolvedValue({
+        nodes: deleted ? [] : [changed],
+        chatConfig: savedChatConfig
+      });
+      mocks.dispatchWorkFlow.mockImplementationOnce(async ({ runtimeNodes }) => {
+        expect(runtimeNodes[0].inputs[0].value).toEqual(stored.inputs[0].value);
+        return {
+          debugResponse: {
+            memoryEdges: [],
+            memoryNodes: runtimeNodes,
+            entryNodeIds: [],
+            nodeResponses: {}
+          },
+          newVariables: {},
+          flatNodeResponses: []
+        };
+      });
+      const result = await handler(
+        {
+          body: { appId, nodes: requestNodes, usageId: 'usage', chatConfig: savedChatConfig },
+          headers: {}
+        } as any,
+        {} as any
+      );
+      expect(result.memoryNodes[0].inputs[0].value).toEqual(requestNodes[0].inputs[0].value);
+    }
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();

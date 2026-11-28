@@ -4,7 +4,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { type UploadedFileResult } from '../../worker/readFile/type';
 import { getImageBuffer } from '../../common/file/image/utils';
-import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../../common/file/parseTimeout';
 
 type TextinImageUploadHandler = (
   params:
@@ -22,12 +22,20 @@ type TextinImageUploadHandler = (
       }
 ) => Promise<UploadedFileResult>;
 
-export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
+export const useTextinServer = ({
+  appId,
+  secretCode,
+  timeoutMs
+}: {
+  appId: string;
+  secretCode: string;
+  timeoutMs?: number;
+}) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = createProxyAxios({
     baseURL: 'https://api.textin.com/ai/service/v1',
-    timeout: getBackendFileOperationTimeoutMs(),
+    timeout: timeoutMs ?? getPdfEnhancedParseTimeoutMs(),
     headers: {
       'x-ti-app-id': appId,
       'x-ti-secret-code': secretCode
@@ -37,22 +45,22 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
   // Response error handler
   const responseError = (err: any) => {
     if (!err) {
-      return Promise.reject({ message: '[Textin] Unknown error' });
+      return Promise.reject({ message: 'Unknown error' });
     }
     if (typeof err === 'string') {
-      return Promise.reject({ message: `[Textin] ${err}` });
+      return Promise.reject({ message: err });
     }
     if (err?.response?.data) {
       return Promise.reject({
-        message: `[Textin] ${getErrText(err?.response?.data)}`
+        message: getErrText(err?.response?.data)
       });
     }
     if (typeof err.message === 'string') {
-      return Promise.reject({ message: `[Textin] ${err.message}` });
+      return Promise.reject({ message: err.message });
     }
 
     logger.error('Textin request failed with unknown error', { error: err });
-    return Promise.reject({ message: `[Textin] ${getErrText(err)}` });
+    return Promise.reject({ message: getErrText(err) });
   };
 
   const parsePDF = async (
@@ -86,15 +94,13 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
 
       // Check response code
       if (data.code !== 200) {
-        return Promise.reject(
-          `[Textin] API error: ${data.message || data.code || 'Unknown error'}`
-        );
+        return Promise.reject(`API error: ${data.message || data.code || 'Unknown error'}`);
       }
 
       // Get markdown content
       const rawMarkdown = data.result?.markdown;
       if (!rawMarkdown) {
-        return Promise.reject('[Textin] No markdown content in response');
+        return Promise.reject('No markdown content in response');
       }
       logger.debug('Textin markdown content received', { length: rawMarkdown.length });
       const text = await parseMarkdownBase64Images(rawMarkdown, {

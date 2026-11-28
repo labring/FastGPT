@@ -15,13 +15,12 @@ import { importFromChannel } from '@fastgpt/service/core/ai/model/importFromChan
 async function handler(
   req: ApiRequestProps<ImportFromChannelBody>
 ): Promise<ImportFromChannelResponse> {
-  const body = parseApiInput({ req, bodySchema: ImportFromChannelBodySchema }).body;
-  const { tmbId, teamId } = await authModelScope({ req, channelType: 'system' });
-  const result = await importFromChannel({
-    ...body,
-    tmbId,
-    teamId
+  const { body } = parseApiInput({
+    req,
+    bodySchema: ImportFromChannelBodySchema
   });
+  const actor = await authModelScope({ req, channelType: body.channelType });
+  const result = await importFromChannel({ ...body, ...actor });
 
   return ImportFromChannelResponseSchema.parse(result);
 }

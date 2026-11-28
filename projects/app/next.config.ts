@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
   },
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'zh-CN', 'zh-Hant', 'ko-KR'],
+    locales: ['en', 'zh-CN', 'zh-Hant', 'ko-KR', 'tr-TR'],
     localeDetection: false
   },
   output: 'standalone',
@@ -90,8 +90,6 @@ const nextConfig: NextConfig = {
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     '@opentelemetry/api-logs',
-    '@mariozechner/pi-agent-core',
-    '@mariozechner/pi-ai',
     '@fastgpt-plugin/sdk-client'
   ],
   // 优化大库的 barrel exports tree-shaking

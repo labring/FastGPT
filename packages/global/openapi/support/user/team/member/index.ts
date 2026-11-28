@@ -80,7 +80,7 @@ export const TeamMemberPath: OpenAPIPath = {
     post: {
       summary: '获取团队成员列表',
       description:
-        '分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选，可将当前登录成员置顶',
+        '分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选；默认按状态分组后按成员名首字母/拼音排序（同首字母中文优先于英文，数字和其他字符排在后面），可将当前登录成员置顶',
       tags: [...TeamMemberTags],
       requestBody: {
         content: {

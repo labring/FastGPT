@@ -218,7 +218,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
 
           <Box>
             <Box mb={2} fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
-              {t('app:avatar_and_name')}
+              {t('common:avatar_and_name')}
             </Box>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>

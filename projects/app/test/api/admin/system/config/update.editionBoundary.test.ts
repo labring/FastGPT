@@ -67,7 +67,11 @@ describe('instance config update: plan edition boundary', () => {
 
   it('keeps ordinary community configuration updates available when subPlans is omitted', async () => {
     const items = [
-      { domain: 'feature' as const, expectedRevision: 1, overrides: { agentEngine: 'piAgent' } }
+      {
+        domain: 'feature' as const,
+        expectedRevision: 1,
+        overrides: { multipleDataToBase64: true }
+      }
     ];
     await expect(callUpdate({ items })).resolves.toEqual({ results: [] });
     expect(mocks.save).toHaveBeenCalledExactlyOnceWith({

@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type {
   AppFormEditFormType,
@@ -5,10 +6,11 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type {
-  AIChatItemValueItemType,
-  ChatHistoryItemResType,
-  ChatItemMiniType
+import {
+  ChatItemMiniSchema,
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType,
+  type ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -29,16 +31,13 @@ import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../
 import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowNodeMemoryKey } from '../../context/memory';
 import {
-  buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
-  buildAgentLoopCorePausedMemories,
   createAgentLoopCoreChildInteractiveParams,
-  prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
-  readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import { buildAgentLoopCoreDoneMemories } from '../agentLoopCore/adapter/memory/nodeMemory';
 import {
   buildAgentLoopCoreRequestMessages,
   filterAgentLoopCoreHistoryTools
@@ -55,7 +54,7 @@ import {
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
-import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
+import { createAgentSubAppLookup } from './utils';
 import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
@@ -112,7 +111,7 @@ type Response = DispatchNodeResultType<{
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, inputs, catchError },
+    node: { nodeId, inputs },
     lang,
     histories,
     query,
@@ -212,19 +211,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const parseHistoryFiles = !!fileUrlInput?.value?.length;
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
-  const provider = getWorkflowAgentLoopProvider();
   const agentMemoryContext = memoryContext.fork(`node:${nodeId}`);
+  const rawStoredMemory = memoryContext.readNodeMemory({
+    runningAppInfo,
+    nodeId
+  });
   // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
-  // 交互恢复时优先从节点作用域 memoryContext 恢复暂停前保存的完整 transcript，缺省再回退到历史。
-  const storedMemory =
-    provider === 'fastAgent' && lastInteractive
-      ? memoryContext.readNodeMemory<ChatItemMiniType[]>({
-          runningAppInfo,
-          nodeId
-        })
-      : undefined;
-  const restoredMessages =
-    Array.isArray(storedMemory) && storedMemory.length > 0 ? storedMemory : undefined;
+  // 交互恢复时优先用 ChatItemMiniSchema 校验节点作用域 memoryContext，校验失败则安全回退到历史。
+  const parsedStoredMemory = lastInteractive
+    ? z.array(ChatItemMiniSchema).min(1).safeParse(rawStoredMemory)
+    : undefined;
+  const restoredMessages = parsedStoredMemory?.success ? parsedStoredMemory.data : undefined;
+  const hasStoredNodeMemory = rawStoredMemory !== undefined;
   const getRestoredAssistantResponses = (messages?: ChatItemMiniType[]) => {
     if (!messages?.length) return [];
 
@@ -242,7 +240,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       .flatMap((item) => (item.obj === ChatRoleEnum.AI ? item.value : []));
   };
   const buildClearedNodeMemories = () =>
-    provider === 'piAgent' || restoredMessages !== undefined
+    hasStoredNodeMemory
       ? buildAgentLoopCoreDoneMemories({ memoryContext, runningAppInfo, nodeId })
       : undefined;
   const buildAgentMemories = (ownMemories?: Record<string, any>) => {
@@ -331,7 +329,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // 获取请求上下文
-    const { queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -339,10 +336,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const baseHistories = restoredMessages ?? rewrittenHistories;
 
     // 转化成请求的 messages
-    // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
-    // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
+    // 交互恢复时，agentAsk 的 query 经 ChatItem 重建为对应 tool response；子工具交互则由
+    // childrenInteractiveParams 接续，不能把用户回复重复作为新的 user message 追加。
     const requestMessages =
-      provider === 'fastAgent' && lastInteractive?.type === 'agentAsk'
+      lastInteractive?.type === 'agentAsk'
         ? [...baseHistories, { ...currentUserMessage, value: query }]
         : lastInteractive
           ? baseHistories
@@ -460,39 +457,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     });
 
-    // providerState 统一保存 provider 内部恢复信息。
-    // FastAgent 使用 ChatItem 重建消息；Pi 暂时保留其原生 providerState。
-    const restoredMemory =
-      provider === 'piAgent'
-        ? readAgentLoopCoreProviderStateMemory({
-            memoryContext,
-            runningAppInfo,
-            nodeId
-          })
-        : {};
     const activePlan = readAgentLoopCoreActivePlan({
       histories: restoredMessages ?? histories
     });
-    const { providerState: runtimeProviderState, isAskResume } =
-      prepareAgentLoopCoreProviderRunState({
-        restoredProviderState: restoredMemory.providerState,
-        hasLastInteractive: !!lastInteractive
-      });
-    const previousAssistantResponses = lastInteractive
-      ? provider === 'piAgent'
-        ? (restoredMemory.assistantResponses ?? [])
-        : getRestoredAssistantResponses(restoredMessages)
-      : [];
+    const previousAssistantResponses =
+      lastInteractive && restoredMessages ? getRestoredAssistantResponses(restoredMessages) : [];
 
     // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错
-    const hasCurrentTurnUserMessage =
-      !lastInteractive || (provider === 'fastAgent' && lastInteractive?.type === 'agentAsk');
+    const hasCurrentTurnUserMessage = !lastInteractive || lastInteractive.type === 'agentAsk';
     const contextCheck = await checkModelContextModeration({
       messages: loopMessages,
       systemPrompt: formattedUserSystemPrompt,
       includeLastUserMessage: hasCurrentTurnUserMessage,
-      extraUserText:
-        provider !== 'fastAgent' && isAskResume ? queryInput || userChatInput : undefined,
       context: getDispatchModerationContext(props)
     });
     if (contextCheck.isBlocked) {
@@ -520,21 +496,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({
-      provider,
       runtime,
       input: buildAgentLoopCoreInput({
         messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt: agentSystemPrompt,
         activePlan,
-        providerState: provider === 'fastAgent' ? undefined : runtimeProviderState,
-        userAnswer:
-          provider !== 'fastAgent' && isAskResume ? queryInput || userChatInput : undefined,
         childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
           lastInteractive
         })
       }),
       assistantResponses: {
-        persistInputContext: provider === 'fastAgent' && !lastInteractive,
+        persistInputContext: !lastInteractive,
         // Workflow Agent 的文本、普通工具和 plan/ask 元事件由 core 按事件统一维护。
         eventTarget: assistantResponses,
         showReasoning: aiChatReasoning !== false,
@@ -553,39 +525,28 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     });
     // 4. 输出归一化。
-    // done 正常落 answer；error/aborted 在未开启异常捕获时转成可见文本，开启 catchError 时仅通过 errorText 分支暴露。
-    const finalTextForBubble =
-      coreResult.status === 'error' && catchError ? '' : outputSummary.finalText;
+    // 失败错误统一经 nodeResponse.errorText（触发前端错误卡片）与工作流 error 分支暴露，
+    // 不再把错误文本混入普通答复正文，与 AI 对话节点保持一致；失败前已流出的正文仍保留在 assistantResponses 中。
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputSummary.assistantResponses,
       previousAssistantResponses,
-      finalText: finalTextForBubble,
+      finalText: coreResult.status === 'error' ? undefined : outputSummary.finalText,
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
     const outputAssistantResponses = finalOutput.assistantResponses;
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
-      const interactiveMemories = buildAgentMemories(
-        provider === 'piAgent'
-          ? buildAgentLoopCorePausedMemories({
-              memoryContext,
-              runningAppInfo,
-              nodeId,
-              providerState: outputSummary.providerState,
-              assistantResponses: [...previousAssistantResponses, ...outputAssistantResponses]
-            })
-          : {
-              [getWorkflowNodeMemoryKey({ memoryContext, runningAppInfo, nodeId })]: [
-                ...requestMessages,
-                {
-                  dataId: responseChatItemId,
-                  obj: ChatRoleEnum.AI,
-                  value: outputAssistantResponses
-                }
-              ] satisfies ChatItemMiniType[]
-            }
-      );
+      const interactiveMemories = buildAgentMemories({
+        [getWorkflowNodeMemoryKey({ memoryContext, runningAppInfo, nodeId })]: [
+          ...requestMessages,
+          {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: outputAssistantResponses
+          }
+        ] satisfies ChatItemMiniType[]
+      });
       const interactiveNodeResponse = buildAgentNodeResponse({
         textOutput: finalOutput.answerText
       });

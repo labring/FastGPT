@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -13,6 +14,26 @@ import {
 import type { TFunction } from 'next-i18next';
 
 const t = ((key: string) => key) as TFunction;
+
+it('clears portable proxy references independently of general credential filtering and preserves business fields', () => {
+  const data = [httpNode({ secret: '__fastgpt_http_proxy_configured__.source.signature' })];
+  data[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)!.defaultValue = {
+    value: 'private'
+  };
+  const business = structuredClone(data[0]);
+  business.flowNodeType = FlowNodeTypeEnum.code;
+  const result = clearHttpProxyValues([...data, business]);
+  expect(
+    result[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)
+  ).not.toHaveProperty('value');
+  expect(
+    result[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)
+  ).not.toHaveProperty('defaultValue');
+  expect(result[1]).toEqual(business);
+  expect(
+    data[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)?.value
+  ).toBeDefined();
+});
 
 const httpNode = (proxyValue?: unknown): StoreNodeItemType => ({
   nodeId: 'http',
@@ -59,7 +80,13 @@ describe('HTTP proxy editor persistence and export', () => {
     const exported = filterSensitiveNodesData([node]);
     expect(
       exported[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)
-    ).toMatchObject({ value: undefined, defaultValue: undefined });
+    ).toMatchObject({ key: NodeInputKeyEnum.httpProxy });
+    expect(
+      exported[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)?.value
+    ).toBeUndefined();
+    expect(
+      exported[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)?.defaultValue
+    ).toBeUndefined();
     expect(JSON.stringify(exported)).not.toContain('private');
     expect(node).toEqual(before);
   });

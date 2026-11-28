@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getChannelList, getChannelPageList } from '@/web/core/ai/model/channel';
+import { getChannelList, getChannelPageList, putChannel } from '@/web/core/ai/model/channel';
 import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }));
+const { get, put } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 vi.mock('@/web/common/api/request', () => ({
   GET: get,
   POST: vi.fn(),
-  PUT: vi.fn(),
+  PUT: put,
   DELETE: vi.fn()
 }));
 
 describe('channel list requests', () => {
-  beforeEach(() => get.mockReset());
+  beforeEach(() => {
+    get.mockReset();
+    put.mockReset();
+  });
 
   it('loads every channel for filters even when the API defaults to a single page', async () => {
     const channels: ChannelListItem[] = Array.from(
@@ -55,5 +58,24 @@ describe('channel list requests', () => {
     const params = { channelType: 'system' as const, pageNum: 3, pageSize: 2 };
     expect(await getChannelPageList(params)).toBe(empty);
     expect(get).toHaveBeenLastCalledWith('/core/ai/model/channel/list', params);
+  });
+
+  it('omits undefined key in putChannel while preserving explicit empty string to clear key', async () => {
+    put.mockResolvedValue(undefined);
+
+    await putChannel({ id: 12, channelType: 'team', name: 'renamed' });
+    expect(put).toHaveBeenLastCalledWith('/core/ai/model/channel/update', {
+      id: 12,
+      channelType: 'team',
+      name: 'renamed'
+    });
+    expect(put.mock.calls[0]?.[1]).not.toHaveProperty('key');
+
+    await putChannel({ id: 12, channelType: 'team', key: '' });
+    expect(put).toHaveBeenLastCalledWith('/core/ai/model/channel/update', {
+      id: 12,
+      channelType: 'team',
+      key: ''
+    });
   });
 });

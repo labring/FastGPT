@@ -466,4 +466,41 @@ describe('FixedTableLayout', () => {
     expect(onScroll).toHaveBeenCalledTimes(1);
     await act(async () => root.unmount());
   });
+
+  it('syncs horizontal scroll bidirectionally between header and body without leaving drift', async () => {
+    const { host, root } = createTestRoot();
+    const bodyRef = React.createRef<HTMLDivElement>();
+    await renderLayout(root, bodyRef, 'normal');
+
+    const header = host.querySelector<HTMLDivElement>('[data-fixed-table-header]');
+    const body = bodyRef.current;
+    expect(header).not.toBeNull();
+    expect(body).not.toBeNull();
+
+    // 1. 表体横向滚动同步到表头
+    body!.scrollLeft = 180;
+    await act(async () => body!.dispatchEvent(new Event('scroll')));
+    expect(header!.scrollLeft).toBe(180);
+
+    // 2. 键盘聚焦屏外交互表头触发 header 独立滚动时，反向同步到表体
+    header!.scrollLeft = 320;
+    await act(async () => header!.dispatchEvent(new Event('scroll')));
+    expect(body!.scrollLeft).toBe(320);
+
+    // 3. 若表体横向滚动上限被浏览器夹紧，回写表头消除偏移差
+    let clampedBodyScrollLeft = 320;
+    Object.defineProperty(body!, 'scrollLeft', {
+      configurable: true,
+      get: () => clampedBodyScrollLeft,
+      set: (value: number) => {
+        clampedBodyScrollLeft = Math.min(value, 260);
+      }
+    });
+    header!.scrollLeft = 400;
+    await act(async () => header!.dispatchEvent(new Event('scroll')));
+    expect(body!.scrollLeft).toBe(260);
+    expect(header!.scrollLeft).toBe(260);
+
+    await act(async () => root.unmount());
+  });
 });

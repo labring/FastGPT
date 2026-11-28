@@ -119,6 +119,7 @@ describe('resolveModelTestTarget', () => {
     const catalog = { templateMap: new Map() };
     const target = resolveModelTestTarget({
       row,
+      channelType: 'system',
       ...resolveRowSelection({ row, catalog }),
       createModelData
     });
@@ -143,6 +144,7 @@ describe('resolveModelTestTarget', () => {
     const catalog = { templateMap: new Map([['llm:manual-template', sourceModel]]) };
     const target = resolveModelTestTarget({
       row,
+      channelType: 'system',
       ...resolveRowSelection({ row, catalog, selection: { presetKey: 'llm:manual-template' } }),
       createModelData
     });
@@ -168,6 +170,7 @@ describe('resolveModelTestTarget', () => {
     const catalog = { templateMap: new Map() };
     const target = resolveModelTestTarget({
       row,
+      channelType: 'system',
       ...resolveRowSelection({
         row,
         catalog,

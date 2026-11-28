@@ -5,6 +5,7 @@ import { Types } from '../../../common/mongo';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoAppVersion } from '../../app/version/schema';
 import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
+import { normalizeOriginIp } from '@fastgpt/global/core/app/logs/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { FilterQuery } from 'mongoose';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
@@ -97,7 +98,7 @@ export type AppChatLogExportDoc = Pick<
 > & {
   appVersionId?: string | Types.ObjectId;
   variables?: Record<string, any>;
-  metadata?: { originIp?: string };
+  metadata?: { originIp?: unknown };
 };
 
 export type ExportChatItemBatchStats = {
@@ -492,7 +493,7 @@ export const findAppChatLogPage = async ({
       outLinkUid: chat.outLinkUid,
       tmbId: chat.tmbId === null || chat.tmbId === undefined ? null : String(chat.tmbId),
       versionName,
-      region: chat.metadata?.originIp
+      region: normalizeOriginIp(chat.metadata?.originIp)
     };
   });
 };

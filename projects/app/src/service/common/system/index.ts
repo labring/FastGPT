@@ -15,8 +15,6 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
-import { configureLLMRequestRecordTTLIndex } from '@fastgpt/service/core/ai/record/schema';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -52,11 +50,7 @@ export function initGlobalVariables() {
 }
 
 /* Init system data(Need to connected db). It only needs to run once */
-export async function getInitConfig({
-  refreshLLMRequestRecordTTL = true
-}: {
-  refreshLLMRequestRecordTTL?: boolean;
-} = {}) {
+export async function getInitConfig() {
   const getSystemVersion = async () => {
     if (global.systemVersion) return;
     try {
@@ -75,7 +69,7 @@ export async function getInitConfig({
     }
   };
 
-  await Promise.all([initSystemConfig({ refreshLLMRequestRecordTTL }), getSystemVersion()]);
+  await Promise.all([initSystemConfig(), getSystemVersion()]);
 }
 
 async function getPluginRemoteDebugEnabled() {
@@ -97,21 +91,13 @@ let storageRefreshPending = false;
  * 重新加载并应用全站系统配置。
  * 使用串行队列排队执行，确保并发重载按序完成，避免较早的重载在外部 I/O 慢时逆序覆写较新的运行时状态。
  */
-export function initSystemConfig({
-  refreshLLMRequestRecordTTL = true
-}: {
-  refreshLLMRequestRecordTTL?: boolean;
-} = {}): Promise<void> {
-  const current = initConfigQueue.then(() => doInitSystemConfig({ refreshLLMRequestRecordTTL }));
+export function initSystemConfig(): Promise<void> {
+  const current = initConfigQueue.then(() => doInitSystemConfig());
   initConfigQueue = current.catch(() => {});
   return current;
 }
 
-async function doInitSystemConfig({
-  refreshLLMRequestRecordTTL: shouldRefreshLLMRequestRecordTTL
-}: {
-  refreshLLMRequestRecordTTL: boolean;
-}) {
+async function doInitSystemConfig() {
   const pluginRemoteDebug = await getPluginRemoteDebugEnabled();
   systemInstanceConfig.setFrontendContext({
     pluginRemoteDebug,
@@ -123,20 +109,6 @@ async function doInitSystemConfig({
   const instanceConfig = await systemInstanceConfig.initialize();
 
   // 快照已经完整发布；资源应用失败保留待重试状态，不能撤销已保存的配置。
-  // 日志 TTL 仅在启动期（shouldRefreshLLMRequestRecordTTL=true）及配置保存事务内操作日志库，
-  // 普通重载仅同步内存 Schema 声明，避免轮询与无关保存查询独立日志库。
-  if (shouldRefreshLLMRequestRecordTTL) {
-    await refreshLLMRequestRecordTTL();
-  } else {
-    const expireAfterSeconds = instanceConfig.performance.tracking.retentionHours * 60 * 60;
-    if (
-      Number.isSafeInteger(expireAfterSeconds) &&
-      expireAfterSeconds > 0 &&
-      expireAfterSeconds <= 2_147_483_647
-    ) {
-      configureLLMRequestRecordTTLIndex(expireAfterSeconds);
-    }
-  }
   storageRefreshPending ||= applyRuntimeStorageConfig(instanceConfig.storage);
   if (storageRefreshPending) {
     initS3Buckets();

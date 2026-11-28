@@ -1,3 +1,5 @@
+import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import {
   Types,
   type AnyBulkWriteOperation,
@@ -168,13 +170,15 @@ export const resourcePermissionRepo = {
     resourceType,
     resourceIds,
     collaborators,
-    session
+    session,
+    tx
   }: {
     teamId: string;
     resourceType: PerResourceTypeEnum;
     resourceIds: string[];
     collaborators: CollaboratorIdType[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (resourceIds.length === 0 || collaborators.length === 0) return Promise.resolve([]);
 
@@ -182,6 +186,8 @@ export const resourcePermissionRepo = {
       .map(pickCollaboratorIdFields)
       .filter((filter) => Object.keys(filter).length === 1);
     if (collaboratorFilters.length === 0) return Promise.resolve([]);
+
+    const mongoSession = session ?? unwrapMongoSession(tx);
 
     return MongoResourcePermission.find(
       {
@@ -191,7 +197,7 @@ export const resourcePermissionRepo = {
         $or: collaboratorFilters
       },
       'resourceId permission tmbId groupId orgId',
-      withSession(session)
+      withSession(mongoSession)
     ).lean();
   },
 
@@ -612,6 +618,33 @@ export const resourcePermissionRepo = {
       withSession(session)
     ),
 
+  /** 按团队集合（可选）与资源 ID 批量清理 ACL，支持显式 `tx: DbSession`。 */
+  deleteByResourceIdsForTeams: async ({
+    teamIds,
+    resourceType,
+    resourceIds,
+    tx
+  }: {
+    teamIds?: string[];
+    resourceType: PerResourceTypeEnum;
+    resourceIds: string[];
+    tx?: DbSession;
+  }): Promise<void> => {
+    if (resourceIds.length === 0) return;
+
+    const mongoSession = unwrapMongoSession(tx);
+    await MongoResourcePermission.deleteMany(
+      {
+        resourceType,
+        ...(teamIds && teamIds.length > 0
+          ? { teamId: { $in: teamIds.map((id) => new Types.ObjectId(id)) } }
+          : {}),
+        resourceId: { $in: resourceIds }
+      },
+      withSession(mongoSession)
+    );
+  },
+
   /** 资源本体删除后的全团队清理；仅用于全局唯一资源 ID，不能用于普通团队权限操作。 */
   deleteByResourceIdsAcrossTeams: ({
     resourceType,
@@ -720,13 +753,16 @@ export const resourcePermissionRepo = {
     teamId,
     resourceType,
     resources,
-    session
+    session,
+    tx
   }: ResourcePermissionQuery & {
     resources: ResourcePermissionSnapshot[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (resources.length === 0) return;
 
+    const mongoSession = session ?? unwrapMongoSession(tx);
     const snapshots = new Map(
       resources.map((resource) => [String(resource.resourceId), resource.collaborators])
     );
@@ -734,7 +770,7 @@ export const resourcePermissionRepo = {
 
     await MongoResourcePermission.deleteMany(
       { teamId, resourceType, resourceId: { $in: resourceIds } },
-      withSession(session)
+      withSession(mongoSession)
     );
 
     await insertResourcePermissionSnapshots({
@@ -744,7 +780,7 @@ export const resourcePermissionRepo = {
         resourceId,
         collaborators
       })),
-      session
+      session: mongoSession
     });
   },
 
@@ -753,15 +789,18 @@ export const resourcePermissionRepo = {
     teamId,
     resourceType,
     patches,
-    session
+    session,
+    tx
   }: {
     teamId: string;
     resourceType: PerResourceTypeEnum;
     patches: ResourcePermissionPatch[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (patches.length === 0) return;
 
+    const mongoSession = session ?? unwrapMongoSession(tx);
     const patchesByKey = new Map<string, ResourcePermissionPatch>();
     for (const patch of patches) {
       const collaborator = pickCollaboratorIdFields(patch.collaborator);
@@ -810,7 +849,7 @@ export const resourcePermissionRepo = {
       for (let index = 0; index < operations.length; index += batchSize) {
         await MongoResourcePermission.bulkWrite(
           operations.slice(index, index + batchSize),
-          withSession(session)
+          withSession(mongoSession)
         );
       }
     };
@@ -819,7 +858,7 @@ export const resourcePermissionRepo = {
 
     for (let index = 0; index < updateOperations.length; index += batchSize) {
       const operations = updateOperations.slice(index, index + batchSize);
-      const result = await MongoResourcePermission.bulkWrite(operations, withSession(session));
+      const result = await MongoResourcePermission.bulkWrite(operations, withSession(mongoSession));
       if (result.matchedCount !== operations.length) {
         throw new MongoTransactionConflictError(
           new Error('Resource permission update matched fewer rows than expected')
@@ -830,7 +869,7 @@ export const resourcePermissionRepo = {
     try {
       for (let index = 0; index < insertDocuments.length; index += batchSize) {
         await MongoResourcePermission.insertMany(insertDocuments.slice(index, index + batchSize), {
-          ...(session ? { session } : {}),
+          ...(mongoSession ? { session: mongoSession } : {}),
           ordered: true
         });
       }

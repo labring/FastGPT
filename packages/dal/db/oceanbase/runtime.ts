@@ -1,6 +1,61 @@
-import { Kysely, MysqlDialect, type MysqlPool } from 'kysely';
+import {
+  AliasNode,
+  Kysely,
+  MysqlDialect,
+  TableNode,
+  type CompiledQuery,
+  type LogEvent,
+  type MysqlPool,
+  type OperationNode,
+  type RootOperationNode
+} from 'kysely';
 import { createPool } from 'mysql2';
+import { DbConfigurationError } from '../errors';
+import { getConfiguredDbRuntime, type DbRuntime } from '../runtime';
 import type { DbDatasource, DbTransactionRunner, OceanBaseExecutorResolver } from '../types';
+
+export type NormalizedOceanBaseTopologyUrls = {
+  mainWriteUrl: string;
+  mainReadUrl?: string;
+  logWriteUrl?: string;
+};
+
+const normalizeOptionalDistinctOceanBaseUrl = (
+  mainWriteUrl: string,
+  rawUrl?: string
+): string | undefined => {
+  if (rawUrl === undefined) {
+    return undefined;
+  }
+  const trimmed = rawUrl.trim();
+  return trimmed.length > 0 && trimmed !== mainWriteUrl ? trimmed : undefined;
+};
+
+/**
+ * 统一归一化 OceanBase 连接拓扑（唯一事实源，供上层 `configureDalRuntime` 与 `createOceanBaseRuntimeDeps` 共享）：
+ * - `mainWriteUrl` 必填且去除首尾空白；
+ * - `mainReadUrl` 与 `logWriteUrl` 为空或与主库 URI 相同时归一为 `undefined`（复用主池）。
+ */
+export const normalizeOceanBaseTopologyUrls = ({
+  mainWriteUrl,
+  mainReadUrl,
+  logWriteUrl
+}: {
+  mainWriteUrl?: string;
+  mainReadUrl?: string;
+  logWriteUrl?: string;
+}): NormalizedOceanBaseTopologyUrls => {
+  const normalizedMainWriteUrl = mainWriteUrl?.trim() ?? '';
+  if (normalizedMainWriteUrl.length === 0) {
+    throw new DbConfigurationError('OceanBase mainWriteUrl must be a non-empty string');
+  }
+
+  return {
+    mainWriteUrl: normalizedMainWriteUrl,
+    mainReadUrl: normalizeOptionalDistinctOceanBaseUrl(normalizedMainWriteUrl, mainReadUrl),
+    logWriteUrl: normalizeOptionalDistinctOceanBaseUrl(normalizedMainWriteUrl, logWriteUrl)
+  };
+};
 
 export type OceanBaseRuntimeDeps = {
   transactionRunner: DbTransactionRunner;
@@ -10,64 +65,237 @@ export type OceanBaseRuntimeDeps = {
 
 const DEFAULT_OCEANBASE_POOL_LIMIT = 10;
 
+const KYSELY_KIND_TO_OPERATION: Partial<Record<RootOperationNode['kind'], string>> = {
+  SelectQueryNode: 'select',
+  InsertQueryNode: 'insert',
+  UpdateQueryNode: 'update',
+  DeleteQueryNode: 'delete',
+  CreateTableNode: 'create_table',
+  AlterTableNode: 'alter_table',
+  DropTableNode: 'drop_table',
+  MergeQueryNode: 'merge'
+};
+
+const extractTableNameFromNode = (node: OperationNode | undefined): string | undefined => {
+  if (node === undefined) {
+    return undefined;
+  }
+  if (AliasNode.is(node)) {
+    return extractTableNameFromNode(node.node);
+  }
+  if (TableNode.is(node)) {
+    return node.table.identifier.name;
+  }
+  return undefined;
+};
+
+const extractTableFromQueryNode = (node: RootOperationNode): string | undefined => {
+  switch (node.kind) {
+    case 'SelectQueryNode':
+    case 'DeleteQueryNode':
+      return extractTableNameFromNode(node.from?.froms[0]);
+    case 'InsertQueryNode':
+      return extractTableNameFromNode(node.into);
+    case 'UpdateQueryNode':
+      return extractTableNameFromNode(node.table) ?? extractTableNameFromNode(node.from?.froms[0]);
+    default:
+      return undefined;
+  }
+};
+
+const SQL_OPERATION_PREFIX_RE =
+  /^(select|insert|update|delete|create|alter|drop|replace|with|show|begin|commit|rollback)\b/i;
+const SQL_TABLE_FALLBACK_RE =
+  /\b(?:from|into|update|table(?:\s+if\s+(?:not\s+)?exists)?)\s+(?:`?([a-zA-Z0-9_]+)`?\.)?`?([a-zA-Z0-9_]+)`?/i;
+
+/** 从 Kysely 编译产物提取表名与操作名（仅用于观测打点，不读取绑定参数）。 */
+export const extractOceanBaseQueryMeta = (
+  query: CompiledQuery
+): { table?: string; operation: string } => {
+  const queryNode: RootOperationNode | undefined = query.query;
+  const sanitizedSql = query.sql.replace(/^\s*(?:\/\*[\s\S]*?\*\/\s*)*/, '');
+  const sqlOpMatch = sanitizedSql.match(SQL_OPERATION_PREFIX_RE);
+  const operation =
+    (queryNode !== undefined ? KYSELY_KIND_TO_OPERATION[queryNode.kind] : undefined) ??
+    sqlOpMatch?.[1]?.toLowerCase() ??
+    'query';
+
+  const astTable = queryNode !== undefined ? extractTableFromQueryNode(queryNode) : undefined;
+  const sqlTableMatch = sanitizedSql.match(SQL_TABLE_FALLBACK_RE);
+  const table = astTable ?? sqlTableMatch?.[2];
+
+  return {
+    operation,
+    ...(table !== undefined ? { table } : {})
+  };
+};
+
+/**
+ * 构建 Kysely `log` 回调，将 OceanBase SQL 执行耗时与成败直通上报至 `DbRuntime.recordOperation()`。
+ * 严格隔离绑定参数（不记录 `query.parameters`）并吞掉观测异常，避免影响主查询。
+ */
+export const createOceanBaseKyselyLogger = ({
+  datasource,
+  getRuntime = getConfiguredDbRuntime
+}: {
+  datasource: DbDatasource;
+  getRuntime?: () => DbRuntime | undefined;
+}): ((event: LogEvent) => void) => {
+  return (event: LogEvent) => {
+    try {
+      const runtime = getRuntime();
+      if (runtime === undefined) {
+        return;
+      }
+
+      const { table, operation } = extractOceanBaseQueryMeta(event.query);
+      const durationMs = Number.isFinite(event.queryDurationMillis)
+        ? Math.max(0, event.queryDurationMillis)
+        : 0;
+
+      runtime.recordOperation({
+        datasource,
+        table,
+        operation,
+        durationMs,
+        success: event.level === 'query'
+      });
+    } catch {
+      // 观测打点异常不得中断数据库执行路径
+    }
+  };
+};
+
 const createOceanBaseKysely = ({
   url,
-  connectionLimit
+  connectionLimit,
+  datasource,
+  assertOpen
 }: {
   url: string;
   connectionLimit: number;
+  datasource: DbDatasource;
+  assertOpen: () => void;
 }): Kysely<any> =>
   new Kysely<any>({
     dialect: new MysqlDialect({
-      pool: createPool({
-        uri: url,
-        connectionLimit,
-        waitForConnections: true,
-        timezone: 'Z',
-        charset: 'utf8mb4',
-        supportBigNumbers: true,
-        bigNumberStrings: true
-      }) as unknown as MysqlPool
-    })
+      // 交由 Kysely 驱动在首次执行 SQL 时延迟建池，避免未执行查询即 close() 时跳过 destroy() 泄露连接池与 maxIdle 定时器。
+      pool: async () => {
+        assertOpen();
+        return createPool({
+          uri: url,
+          connectionLimit,
+          waitForConnections: true,
+          timezone: 'Z',
+          charset: 'utf8mb4',
+          supportBigNumbers: true,
+          bigNumberStrings: true
+        }) as unknown as MysqlPool;
+      }
+    }),
+    log: createOceanBaseKyselyLogger({ datasource })
   });
 
 /**
- * 构建基于 `mysql2` + Kysely 的轻量 OceanBase 运行时依赖（当前用于测试与契约验证）。
- * 遵循日志双态拓扑：配置 `logWriteUrl` 进入独立池，未配置则透明复用主池。
+ * 构建基于 `mysql2` + Kysely 的轻量 OceanBase 运行时依赖。
+ *
+ * - 连接池采用驱动级懒创建策略，并受 Runtime 关闭态同步门禁约束，避免关闭前后泄露或重建 `mysql2` Pool；
+ * - 遵循日志双态拓扑：配置与主库不同的 `logWriteUrl` 进入独立池，否则透明复用主池；
+ * - 支持可选 `mainReadUrl` 只读副本路由（仅非事务且 `useReadReplica: true` 生效，事务内强制走写池）。
  */
 export const createOceanBaseRuntimeDeps = ({
   mainWriteUrl,
+  mainReadUrl,
   logWriteUrl,
   maxConnections = DEFAULT_OCEANBASE_POOL_LIMIT
 }: {
   mainWriteUrl: string;
+  mainReadUrl?: string;
   logWriteUrl?: string;
   maxConnections?: number;
 }): OceanBaseRuntimeDeps => {
-  const mainDb = createOceanBaseKysely({ url: mainWriteUrl, connectionLimit: maxConnections });
-  const logDb =
-    logWriteUrl !== undefined && logWriteUrl.trim().length > 0
-      ? createOceanBaseKysely({ url: logWriteUrl, connectionLimit: maxConnections })
-      : undefined;
+  const topology = normalizeOceanBaseTopologyUrls({
+    mainWriteUrl,
+    mainReadUrl,
+    logWriteUrl
+  });
 
-  const resolvePoolDb = (datasource: DbDatasource): Kysely<any> =>
-    datasource === 'log' && logDb !== undefined ? logDb : mainDb;
+  let closed = false;
+  let closePromise: Promise<void> | undefined;
+  const pools = new Map<'main' | 'mainRead' | 'log', Kysely<any>>();
+
+  const assertOpen = (): void => {
+    if (closed) {
+      throw new DbConfigurationError('OceanBase runtime is closing or has been closed');
+    }
+  };
+
+  /**
+   * 按数据源与读副本意图选择目标池并懒创建：独立日志库优先，其次非事务只读副本，否则统一回退主写池。
+   */
+  const resolvePoolDb = ({
+    datasource,
+    useReadReplica = false
+  }: {
+    datasource: DbDatasource;
+    useReadReplica?: boolean;
+  }): Kysely<any> => {
+    const target =
+      datasource === 'log' && topology.logWriteUrl !== undefined
+        ? { key: 'log' as const, url: topology.logWriteUrl, datasource: 'log' as const }
+        : useReadReplica && topology.mainReadUrl !== undefined
+          ? { key: 'mainRead' as const, url: topology.mainReadUrl, datasource: 'main' as const }
+          : { key: 'main' as const, url: topology.mainWriteUrl, datasource: 'main' as const };
+
+    let db = pools.get(target.key);
+    if (db === undefined) {
+      db = createOceanBaseKysely({
+        url: target.url,
+        connectionLimit: maxConnections,
+        datasource: target.datasource,
+        assertOpen
+      });
+      pools.set(target.key, db);
+    }
+    return db;
+  };
 
   return {
-    oceanBaseExecutorResolver: ({ datasource, nativeTx }) =>
-      nativeTx !== undefined ? (nativeTx as Kysely<any>) : resolvePoolDb(datasource),
+    oceanBaseExecutorResolver: ({ datasource, nativeTx, useReadReplica }) => {
+      assertOpen();
+      return nativeTx !== undefined
+        ? (nativeTx as Kysely<any>)
+        : resolvePoolDb({ datasource, useReadReplica });
+    },
 
-    transactionRunner: async ({ datasource, execute }) =>
-      resolvePoolDb(datasource)
+    transactionRunner: async ({ datasource, execute }) => {
+      assertOpen();
+      return resolvePoolDb({ datasource, useReadReplica: false })
         .transaction()
-        .execute((trx) => execute(trx)),
+        .execute((trx) => execute(trx));
+    },
 
     closeHandler: async () => {
-      await Promise.all(
-        [mainDb, logDb]
-          .filter((db): db is Kysely<any> => db !== undefined)
-          .map((db) => db.destroy())
-      );
+      // 关闭开始即同步拒绝新执行器分配与延迟建池，避免并发关闭或残留回调重建连接池。
+      closed = true;
+      if (closePromise !== undefined) {
+        return closePromise;
+      }
+
+      const createdPools = [...pools.values()];
+      pools.clear();
+
+      closePromise = (async () => {
+        const results = await Promise.allSettled(createdPools.map((db) => db.destroy()));
+        const firstRejected = results.find(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+        if (firstRejected !== undefined) {
+          throw firstRejected.reason;
+        }
+      })();
+
+      return closePromise;
     }
   };
 };

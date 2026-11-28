@@ -213,6 +213,149 @@ const getValidator = (schema: object) => {
 const formatValidationErrors = (errors?: ErrorObject[] | null) =>
   (errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const decodeJsonPointerSegment = (segment: string): string | undefined => {
+  try {
+    return decodeURIComponent(segment).replace(/~1/g, '/').replace(/~0/g, '~');
+  } catch {
+    return undefined;
+  }
+};
+
+/** 解析指向根 Schema 内部的 JSON Pointer `$ref`（如 `#/$defs/foo`、`#/properties/bar`）。 */
+export const resolveLocalJsonSchemaRef = ({
+  rootSchema,
+  ref
+}: {
+  rootSchema?: Record<string, unknown>;
+  ref: string;
+}): unknown => {
+  if (!rootSchema || !ref.startsWith('#')) return undefined;
+  if (ref === '#') return rootSchema;
+  if (!ref.startsWith('#/')) return undefined;
+
+  let current: unknown = rootSchema;
+  for (const rawSegment of ref.slice(2).split('/')) {
+    const decodedSegment = decodeJsonPointerSegment(rawSegment);
+    if (decodedSegment === undefined) return undefined;
+
+    if (Array.isArray(current)) {
+      const index = Number(decodedSegment);
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) return undefined;
+      current = current[index];
+      continue;
+    }
+
+    if (!isRecord(current) || !Object.prototype.hasOwnProperty.call(current, decodedSegment)) {
+      return undefined;
+    }
+    current = current[decodedSegment];
+  }
+
+  return current;
+};
+
+/** 收集目标属性及其可达 `$ref` 链条依赖的顶层同级属性名，避免无关损坏属性导致 AJV 编译失败。 */
+const collectReferencedRootProperties = ({
+  schema,
+  rootSchema
+}: {
+  schema: unknown;
+  rootSchema: Record<string, unknown>;
+}): Set<string> => {
+  const visitedRefs = new Set<string>();
+  const referencedPropertyKeys = new Set<string>();
+
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    if (!isRecord(node)) return;
+
+    if (typeof node.$ref === 'string' && !visitedRefs.has(node.$ref)) {
+      visitedRefs.add(node.$ref);
+      if (node.$ref.startsWith('#/properties/')) {
+        const rawKey = node.$ref.slice('#/properties/'.length).split('/')[0];
+        const decodedKey = decodeJsonPointerSegment(rawKey);
+        if (decodedKey !== undefined) {
+          referencedPropertyKeys.add(decodedKey);
+        }
+      }
+      const target = resolveLocalJsonSchemaRef({ rootSchema, ref: node.$ref });
+      if (target !== undefined) visit(target);
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (key === 'const' || key === 'enum' || key === 'default' || key === 'examples') continue;
+      visit(child);
+    }
+  };
+
+  visit(schema);
+  return referencedPropertyKeys;
+};
+
+/**
+ * 仅携带 `$schema`、`definitions`、`$defs` 及当前属性可达的同级 `properties` 校验单个顶层属性值，
+ * 不复制根级 `$ref`、`required`、`allOf` 等对象整体约束，避免对象级规则污染单属性判定。
+ * 用于需要区分“确定拒绝”与“Schema 无法编译”的边界场景，无法隔离或编译失败时返回 `'error'` 以保留原值。
+ */
+export const validateToolPropertyValue = ({
+  rootSchema,
+  propertyKey,
+  propertySchema,
+  value
+}: {
+  rootSchema?: Record<string, unknown>;
+  propertyKey: string;
+  propertySchema: unknown;
+  value: unknown;
+}): 'valid' | 'invalid' | 'error' => {
+  try {
+    const normalizedRoot = rootSchema ? normalizeJsonSchema({ schema: rootSchema }) : undefined;
+    const normalizedProperty = normalizeJsonSchema({ schema: propertySchema });
+    const wrapperProperties: Record<string, unknown> = {
+      [propertyKey]: normalizedProperty
+    };
+
+    if (isRecord(normalizedRoot) && isRecord(normalizedRoot.properties)) {
+      const referencedKeys = collectReferencedRootProperties({
+        schema: normalizedProperty,
+        rootSchema: normalizedRoot
+      });
+      for (const refKey of referencedKeys) {
+        if (
+          refKey !== propertyKey &&
+          Object.prototype.hasOwnProperty.call(normalizedRoot.properties, refKey)
+        ) {
+          wrapperProperties[refKey] = normalizedRoot.properties[refKey];
+        }
+      }
+    }
+
+    const wrapperSchema: Record<string, unknown> = {
+      ...(isRecord(normalizedRoot) && typeof normalizedRoot.$schema === 'string'
+        ? { $schema: normalizedRoot.$schema }
+        : {}),
+      ...(isRecord(normalizedRoot) && isRecord(normalizedRoot.definitions)
+        ? { definitions: normalizedRoot.definitions }
+        : {}),
+      ...(isRecord(normalizedRoot) && isRecord(normalizedRoot.$defs)
+        ? { $defs: normalizedRoot.$defs }
+        : {}),
+      type: 'object',
+      properties: wrapperProperties
+    };
+    const validator = getValidator(wrapperSchema);
+    return validator({ [propertyKey]: value }) ? 'valid' : 'invalid';
+  } catch {
+    return 'error';
+  }
+};
+
 /** 使用原始 JSON Schema property 校验单个手工配置值。 */
 export const validateToolInputValue = ({
   schema,

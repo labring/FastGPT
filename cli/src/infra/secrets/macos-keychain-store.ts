@@ -1,6 +1,6 @@
 import type { ExecCommandFn } from './exec-command';
 import { getKeychainAccountKey, KEYCHAIN_SERVICE } from './keychain-common';
-import type { SecretStoreStrategy } from './secret-store';
+import type { SecretStoreStrategy } from './types';
 
 /**
  * macOS Keychain 凭据策略：通过 `security -i` + `-X <hex>` 从 stdin 写入密钥，绝不在 argv 暴露明文。

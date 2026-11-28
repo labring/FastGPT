@@ -6,6 +6,7 @@ import enChat from '@fastgpt/web/i18n/en/chat.json';
 import zhCNChat from '@fastgpt/web/i18n/zh-CN/chat.json';
 import zhHantChat from '@fastgpt/web/i18n/zh-Hant/chat.json';
 import koKRChat from '@fastgpt/web/i18n/ko-KR/chat.json';
+import trTRChat from '@fastgpt/web/i18n/tr-TR/chat.json';
 
 /**
  * 会话标题固定文案的双份一致性校验。
@@ -18,7 +19,8 @@ const chatResources: Record<localeType, Record<string, string>> = {
   en: enChat,
   'zh-CN': zhCNChat,
   'zh-Hant': zhHantChat,
-  'ko-KR': koKRChat
+  'ko-KR': koKRChat,
+  'tr-TR': trTRChat
 };
 
 const i18nKeyMap: Record<ChatFixedTitleKey, string> = {

@@ -5,7 +5,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { CompleteResponse, LLMAccumulatedUsage } from '../types';
+import type { BlockedToolCallReason, CompleteResponse, LLMAccumulatedUsage } from '../types';
 import { normalizeLLMCacheUsage } from '../response/normalize';
 
 const createEmptyUsage = (): LLMAccumulatedUsage => ({
@@ -30,6 +30,9 @@ export const useLLMResponseAccumulator = ({
   let answerText = '';
   let reasoningText = '';
   let toolCalls: ChatCompletionMessageToolCall[] | undefined;
+  let rawToolCalls: ChatCompletionMessageToolCall[] | undefined;
+  let errorRecordToolCalls: ChatCompletionMessageToolCall[] | undefined;
+  const blockedToolCalls: Record<string, BlockedToolCallReason> = {};
   let finishReason: CompletionFinishReason = 'stop';
   let error: any = undefined;
   let isStreamResponse = false;
@@ -37,15 +40,23 @@ export const useLLMResponseAccumulator = ({
   const usage = createEmptyUsage();
 
   /**
-   * 工具续轮和长度续写共用协议消息；思考模型即使没有思考文本，也必须保留空字段。
+   * 构造 assistant 协议消息；思考模型即使没有思考文本，也必须保留空字段。
    * 非空思考沿用原始内容，非思考模型不额外生成空字段。
    */
-  const getAssistantMessage = (): ChatCompletionAssistantMessageParam => ({
+  const buildAssistantMessage = (
+    overrideToolCalls: ChatCompletionMessageToolCall[] | undefined = toolCalls
+  ): ChatCompletionAssistantMessageParam => ({
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
     ...(answerText && { content: answerText }),
     ...((supportReason || reasoningText) && { reasoning_content: reasoningText }),
-    ...(toolCalls?.length && { tool_calls: toolCalls })
+    ...(overrideToolCalls?.length && { tool_calls: overrideToolCalls })
   });
+
+  const appendToolCalls = (
+    current: ChatCompletionMessageToolCall[] | undefined,
+    incoming: ChatCompletionMessageToolCall[] | undefined
+  ): ChatCompletionMessageToolCall[] | undefined =>
+    incoming?.length ? [...(current ?? []), ...incoming] : current;
 
   return {
     /**
@@ -59,21 +70,43 @@ export const useLLMResponseAccumulator = ({
 
     /**
      * 合并一次底层 LLM 返回，包含文本、reasoning、工具调用、finish reason 和 usage。
+     * - rawToolCalls：收敛/脱敏前的原始调用，仅用于缺失 usage 时的计费估算；
+     * - errorRecordToolCalls：调用方已按当轮审核脱敏的排障调用，仅用于 error 请求追踪落库。
      */
-    appendResponse(response: CompleteResponse) {
+    appendResponse(
+      response: CompleteResponse & {
+        rawToolCalls?: ChatCompletionMessageToolCall[];
+        errorRecordToolCalls?: ChatCompletionMessageToolCall[];
+      }
+    ) {
       answerText += response.answerText;
       reasoningText += response.reasoningText;
-      const formatToolCalls = response.toolCalls?.map((tool) => ({
-        ...tool,
-        function: {
-          ...tool.function,
-          arguments: tool.function.arguments || '{}'
-        }
-      }));
+      toolCalls = (() => {
+        if (response.toolCalls === undefined) return toolCalls;
+        const normalized = response.toolCalls.map((tool) => ({
+          ...tool,
+          function: {
+            ...tool.function,
+            arguments: tool.function.arguments || '{}'
+          }
+        }));
+        return normalized.length ? [...(toolCalls ?? []), ...normalized] : (toolCalls ?? []);
+      })();
 
-      if (formatToolCalls?.length) {
-        toolCalls = [...(toolCalls || []), ...formatToolCalls];
+      const incomingRawToolCalls = response.rawToolCalls ?? response.toolCalls;
+      rawToolCalls = appendToolCalls(rawToolCalls, incomingRawToolCalls);
+      errorRecordToolCalls = appendToolCalls(
+        errorRecordToolCalls,
+        response.errorRecordToolCalls ?? incomingRawToolCalls
+      );
+
+      for (const [id, reason] of Object.entries(response.blockedToolCalls ?? {})) {
+        // 跨轮复用同 ID 时不降级已有的审核拦截标记。
+        if (blockedToolCalls[id] !== 'moderation') {
+          blockedToolCalls[id] = reason;
+        }
       }
+
       // 后一轮 finish reason 代表最终状态；中间 length 只用于决定是否继续。
       finishReason = response.finish_reason;
       error = response.error;
@@ -97,16 +130,18 @@ export const useLLMResponseAccumulator = ({
     },
 
     /**
-     * 输出截断后补一轮“继续输出”请求，只保留原始上下文并追加已生成的 assistant 内容。
+     * 输出截断后补一轮“继续输出”请求，只保留原始上下文并追加已生成的可回放正文（及关联思考）：
+     * 省略无回执的 tool_calls；无正文（含仅有思考）时省略整条 assistant 避免触发上游 400。
      */
     buildContinuationMessages({
       baseMessages
     }: {
       baseMessages: ChatCompletionMessageParam[];
     }): ChatCompletionMessageParam[] {
+      const continuationAssistant = answerText ? buildAssistantMessage([]) : undefined;
       return [
         ...baseMessages,
-        getAssistantMessage(),
+        ...(continuationAssistant ? [continuationAssistant] : []),
         {
           role: ChatCompletionRequestMessageRoleEnum.User as 'user',
           content: '[继续输出]'
@@ -115,14 +150,23 @@ export const useLLMResponseAccumulator = ({
     },
 
     /**
+     * 按最终收敛后的 toolCalls 构造统一的 assistant 协议消息，保持与续写路径同源。
+     */
+    buildAssistantMessage,
+
+    /**
      * 返回聚合结果，由入口判断异常结束、补 token 并保存详情。
      */
     getResponse() {
       return {
-        assistantMessage: getAssistantMessage(),
+        assistantMessage: buildAssistantMessage(),
+        rawAssistantMessage: buildAssistantMessage(rawToolCalls),
         answerText,
         reasoningText,
         toolCalls,
+        rawToolCalls,
+        errorRecordToolCalls,
+        blockedToolCalls: { ...blockedToolCalls },
         finish_reason: finishReason,
         usage,
         error,

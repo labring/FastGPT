@@ -24,7 +24,7 @@ import apply from '@/pages/api/core/ai/model/importFromChannel';
 
 describe('system channel import authorization', () => {
   const actor = { tmbId: 'member', teamId: 'team' };
-  const query = { channelId: 1 };
+  const query = { channelId: 1, channelType: 'system' };
   const body = { ...query, models: [] };
 
   beforeEach(() => {
@@ -73,7 +73,16 @@ describe('system channel import authorization', () => {
     await expect(
       apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
     ).resolves.toEqual({ results: [] });
-    expect(mocks.preview).toHaveBeenCalledExactlyOnceWith({ channelId: 1, tmbId: actor.tmbId });
-    expect(mocks.apply).toHaveBeenCalledExactlyOnceWith({ channelId: 1, models: [], ...actor });
+    expect(mocks.preview).toHaveBeenCalledExactlyOnceWith({
+      channelId: 1,
+      channelType: 'system',
+      ...actor
+    });
+    expect(mocks.apply).toHaveBeenCalledExactlyOnceWith({
+      channelId: 1,
+      channelType: 'system',
+      models: [],
+      ...actor
+    });
   });
 });

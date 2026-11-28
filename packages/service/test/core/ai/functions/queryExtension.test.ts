@@ -41,7 +41,8 @@ const llmModel = {
     maxContext: 4000,
     maxResponse: 1000,
     quoteMaxToken: 2000,
-    reasoning: true
+    reasoning: true,
+    reasoningEffort: true
   }
 } satisfies LLMModelDataType;
 const embeddingModel = {
@@ -69,7 +70,7 @@ describe('queryExtension', () => {
     });
   });
 
-  it('disables reasoning when the query extension model supports it', async () => {
+  it('uses the lowest supported reasoning effort when the query extension model supports it', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: '[]',
       requestId: 'req_query_extension_reasoning',
@@ -89,9 +90,25 @@ describe('queryExtension', () => {
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('none');
+
+    await queryExtension({
+      query: 'original query',
+      histories: [],
+      llmModel: {
+        ...llmModel,
+        config: {
+          ...llmModel.config,
+          reasoningEffortList: ['low', 'high']
+        }
+      },
+      embeddingModel,
+      teamId: 'team_1'
+    });
+
+    expect(createLLMResponseMock.mock.calls[1][0].body.reasoning_effort).toBe('low');
   });
 
-  it('does not send reasoning effort when the query extension model does not support it', async () => {
+  it('does not send reasoning effort when reasoning or reasoningEffort is unsupported', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: '[]',
       requestId: 'req_query_extension_without_reasoning',
@@ -102,15 +119,21 @@ describe('queryExtension', () => {
       }
     });
 
-    await queryExtension({
-      query: 'original query',
-      histories: [],
-      llmModel: { ...llmModel, config: { ...llmModel.config, reasoning: false } },
-      embeddingModel,
-      teamId: 'team_1'
-    });
+    for (const configOverride of [
+      { reasoning: false },
+      { reasoning: true, reasoningEffort: false }
+    ]) {
+      createLLMResponseMock.mockClear();
+      await queryExtension({
+        query: 'original query',
+        histories: [],
+        llmModel: { ...llmModel, config: { ...llmModel.config, ...configOverride } },
+        embeddingModel,
+        teamId: 'team_1'
+      });
 
-    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+      expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+    }
   });
 
   it('returns LLM request id for node response tracing', async () => {

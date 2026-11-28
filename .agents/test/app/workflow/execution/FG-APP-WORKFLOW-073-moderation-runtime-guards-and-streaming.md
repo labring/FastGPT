@@ -32,8 +32,7 @@ sources:
   - packages/service/core/workflow/dispatch/interactive/userSelect.ts
   - packages/service/core/workflow/dispatch/interactive/formInput.ts
   - packages/service/core/ai/llm/request/createLLMResponse.ts
-  - packages/service/core/ai/llm/agentLoop/provider/piAgent/run.ts
-  - packages/service/core/ai/llm/agentLoop/provider/piAgent/tool/build.ts
+  - packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts
 routes:
   - POST /api/v1/chat/completions
   - POST /api/v2/chat/completions
@@ -74,7 +73,7 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 | C3 | 基础（Agent / ToolCall 工具调用结果整体屏蔽）；开启 `hooks.modelInput: true` | 运行 `W_agent`：1) 让模型调用内置 `read_files` 读取包含 `[F_safe.txt, F_blk.txt]` 的文件列表；2) 让模型调用普通工具 `T_echo` 或子工作流，返回含 `BLK_WORD` 的结果，观察工具结果屏蔽与 Agent 后续规划状态。 |
 | C4 | 异常（非流式输出与交互节点拦截）；仅开启 `hooks.finalOutput: true` | 以 `stream: false` 运行 `W_chat`：分别触发 AI 对话输出、`answerNode` 回复、`userSelect` 选项、`formInput` 提示/选项、`queryExtension` 输出包含 `BLK_WORD`。 |
 | C5 | 边界（流式分块输出截断）；仅开启 `hooks.finalOutput: true, streamInterval: 20` | 以 `stream: true` 运行 `W_chat` / `W_agent`：让模型先流式输出 25 个正常字符（超过第一个 20 字符窗口），随后在第二段输出或思考链（`reasoning`）中生成 `BLK_WORD`，后续还有剩余文本。捕获完整 SSE 事件流与最终落库消息。 |
-| C6 | 边界（工具调用参数违规脱敏回传与 Loop 续跑）；仅开启 `hooks.finalOutput: true` | 在 `W_agent`（覆盖普通 Agent Loop 与 PiAgent provider）中：1) 模型生成调用普通工具 `T_echo` 且参数含 `BLK_WORD`；2) 模型生成调用控制工具 `ask_user` 或 `set_plan` 且参数含 `BLK_WORD`。检查底层工具是否执行、SSE 事件、客户端是否出现报错卡片及 Agent Loop 后续运行状态。 |
+| C6 | 边界（工具调用参数违规脱敏回传与 Loop 续跑）；仅开启 `hooks.finalOutput: true` | 在 `W_agent` 中：1) 模型生成调用普通工具 `T_echo` 且参数含 `BLK_WORD`；2) 模型生成调用控制工具 `ask_user` 或 `set_plan` 且参数含 `BLK_WORD`。检查底层工具是否执行、SSE 事件、客户端是否出现报错卡片及 Agent Loop 后续运行状态。 |
 | C7 | 边界（策略切换与异常降级）；基于 `P0` 切换策略 | 1) 将 `suspectedRiskAction` 分别设为 `blockAndLog` 与 `passAndLog`，输入含 `SUS_WORD` 的请求；2) 将 `serviceExceptionAction` 分别设为 `pass` 与 `block`，触发 `ERR_WORD`（插件返回 `verdict: 'error'`）或模拟插件运行时不可用；3) 将总开关 `policy.enabled` 设为 `false`，再次发送含 `BLK_WORD` 的请求。 |
 
 ## 预期结果

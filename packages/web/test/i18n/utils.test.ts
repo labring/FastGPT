@@ -79,7 +79,7 @@ describe('getRequiredI18nLanguages', () => {
     expect(getRequiredI18nLanguages(LangEnum.zh_CN)).toEqual([LangEnum.zh_CN]);
   });
 
-  it.each([LangEnum.en, LangEnum.zh_Hant, LangEnum.ko_KR])(
+  it.each([LangEnum.en, LangEnum.zh_Hant, LangEnum.ko_KR, LangEnum.tr_TR])(
     'appends Simplified Chinese fallback for %s',
     (language) => {
       expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.zh_CN]);
@@ -97,6 +97,13 @@ describe('getLangMapping', () => {
   it.each(['ko', 'ko-KR', 'ko-kr', 'KO_KR'])('maps Korean locale variant %s to ko-KR', (locale) => {
     expect(getLangMapping(locale)).toBe(LangEnum.ko_KR);
   });
+
+  it.each(['tr', 'tr-TR', 'tr-tr', 'TR_TR'])(
+    'maps Turkish locale variant %s to tr-TR',
+    (locale) => {
+      expect(getLangMapping(locale)).toBe(LangEnum.tr_TR);
+    }
+  );
 
   it('falls back to English for unsupported locale', () => {
     expect(getLangMapping('fr-FR')).toBe(LangEnum.en);

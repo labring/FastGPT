@@ -161,4 +161,30 @@ describe('formatDatasetDataValue', () => {
       }
     ]);
   });
+
+  it('should sign authorized inline images in answer when chunk also has an independent imageId', async () => {
+    const result = await formatDatasetDataValues(
+      [
+        {
+          q: 'Main photo caption',
+          imageId: 'dataset/dataset-1/main.png',
+          a: 'See ![Figure [1]](dataset/dataset-1/chunk-images/col1/file/ans.png) and ![foreign](dataset/dataset-2/other.png)'
+        }
+      ],
+      { datasetIds: ['dataset-1'] }
+    );
+
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
+      'dataset/dataset-1/chunk-images/col1/file/ans.png',
+      'dataset/dataset-1/main.png'
+    ]);
+    expect(result).toEqual([
+      {
+        q: '![Main photo caption](https://files.test/dataset/dataset-1/main.png)',
+        a: 'See ![Figure [1]](https://files.test/dataset/dataset-1/chunk-images/col1/file/ans.png) and ![foreign](dataset/dataset-2/other.png)',
+        imagePreivewUrl: 'https://files.test/dataset/dataset-1/main.png'
+      }
+    ]);
+  });
 });

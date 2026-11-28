@@ -21,7 +21,6 @@ import {
   getTrainingTaskReadyUpdate
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   bridgeClientSessionToDbSession,
   mongoSessionRun
@@ -34,6 +33,8 @@ import {
   buildCollectionAuditResource,
   buildDatasetAuditResource
 } from '@fastgpt/global/support/user/audit/type';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
+import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -162,7 +163,32 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       : undefined;
 
   const readyUpdate = getTrainingTaskReadyUpdate();
+  // 只转存本次提交字段；未提交的已有字段通过 existingContent 仅参与受管内联图计数，避免误上传或拒绝历史 Base64。
+  const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
+    q !== undefined || a !== undefined
+      ? await normalizeDatasetDataImages({
+          teamId: String(collection.teamId),
+          datasetId: String(collection.datasetId),
+          collectionId: String(collection._id),
+          data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }],
+          existingContent: [
+            { ...(q === undefined && { q: data.q }), ...(a === undefined && { a: data.a }) }
+          ]
+        })
+      : { data: [{}], imageUploadKeys: [] };
+  const submittedFields = normalized.data[0];
   await mongoSessionRun(async (session) => {
+    // 以事务内当前任务合并部分编辑，未提交的字段同样参与归属与 3 张数量上限校验。
+    const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();
+    if (!current) throw new Error('Training data no longer exists');
+    await persistChunkImageReferences({
+      teamId: String(collection.teamId),
+      datasetId: String(collection.datasetId),
+      collectionId: String(collection._id),
+      data: [{ ...current, ...submittedFields }],
+      imageUploadKeys: normalized.imageUploadKeys,
+      tx: bridgeClientSessionToDbSession(session)
+    });
     if (data.dataId) {
       await MongoDatasetData.updateOne(
         {
@@ -189,8 +215,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         $set: {
           ...readyUpdate.$set,
           ...(nextMode && { mode: nextMode }),
-          ...(q !== undefined && { q }),
-          ...(a !== undefined && { a }),
+          ...submittedFields,
           ...(chunkIndex !== undefined && { chunkIndex })
         }
       },

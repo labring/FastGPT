@@ -141,6 +141,8 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     'tokens',
     'inputTokens',
     'outputTokens',
+    'cacheReadTokens',
+    'cacheCreationTokens',
     'contextTotalLen',
     'totalPoints',
     'childResponseCount',

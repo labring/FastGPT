@@ -11,13 +11,28 @@ import { MongoDataset } from '../schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { JobSchedulerJson } from '@fastgpt/dal/redis/bullmq';
 import { datasetSyncMQService, type DatasetSyncJobData } from '@fastgpt/dal/redis/bullmq';
+import { enqueueDatasetPermissionSync } from '../datasetPermissionSync';
 
 export const addDatasetSyncJob = (data: DatasetSyncJobData) => datasetSyncMQService.addJob(data);
 export const getDatasetSyncDatasetStatus = (datasetId: string) =>
   datasetSyncMQService.getDatasetStatus(datasetId);
+/**
+ * 注册内容同步 worker，并在结束后补一轮文件权限同步。
+ *
+ * 权限同步的触发放在这一层而不是 processor 内：旧版 pro 的每日同步不会主动入队，
+ * 按旧指针部署时由这里保证外部撤权仍能收敛。入队自身会校验 `permissionSync` 并吞掉错误；
+ * 新版 pro 的重复入队由 datasetId 去重键吸收。
+ */
 export const getDatasetSyncWorker = (
   processor: Parameters<typeof datasetSyncMQService.getWorker>[0]
-) => datasetSyncMQService.getWorker(processor);
+) =>
+  datasetSyncMQService.getWorker(async (job, token) => {
+    try {
+      return await processor(job, token);
+    } finally {
+      await enqueueDatasetPermissionSync({ datasetId: String(job.data.datasetId) });
+    }
+  });
 export const getDatasetSyncJobScheduler = (datasetId: string) =>
   datasetSyncMQService.getScheduler(datasetId);
 export const removeDatasetSyncJobScheduler = (datasetId: string) =>

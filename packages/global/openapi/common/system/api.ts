@@ -89,16 +89,10 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
       example: false
     }),
     // SSO 根地址只在服务端访问；客户端通过能力标志展示入口，点击后按需获取授权地址。
-    // isWecom 为纯运行时客户端投影（不属于可存储配置），undefined 表示未探测或无法确认 provider 类型。
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
-        isWecom: BoolSchema.optional().meta({
-          description:
-            '当前 SSO 是否为企业微信 provider；undefined 表示未探测或旧版/自建 SSO 无法确认',
-          example: false
-        })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -115,8 +109,7 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description:
-      '当前系统配置缓存标识；未登录时以 unAuth_v12_sso_ 开头，包含 SSO 能力及企业微信类型状态'
+    description: '当前系统配置缓存标识；未登录时以 unAuth_v13_sso_ 开头，包含 SSO 能力状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

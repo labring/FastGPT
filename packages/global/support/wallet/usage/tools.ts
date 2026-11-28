@@ -15,6 +15,25 @@ export const formatStorePrice2Read = (val = 0, multiple = 1) => {
 export const getUsedCacheTokens = (tokens = 0) =>
   tokens > 0 && Number.isFinite(tokens) ? tokens : undefined;
 
+/** 提取正值缓存 Token 字段，省略零值与未定义项，供节点响应构造统一复用。 */
+export const pickUsedCacheTokens = ({
+  cacheReadTokens,
+  cacheCreationTokens
+}: {
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+}) => {
+  const usedCacheReadTokens = getUsedCacheTokens(cacheReadTokens);
+  const usedCacheCreationTokens = getUsedCacheTokens(cacheCreationTokens);
+
+  return {
+    ...(usedCacheReadTokens !== undefined ? { cacheReadTokens: usedCacheReadTokens } : {}),
+    ...(usedCacheCreationTokens !== undefined
+      ? { cacheCreationTokens: usedCacheCreationTokens }
+      : {})
+  };
+};
+
 export const getUsageSourceByAuthType = ({
   shareId,
   authType

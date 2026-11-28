@@ -21,6 +21,59 @@ const nodes = (value: unknown, defaultValue?: unknown) => [
 ];
 
 describe('HTTP proxy credential lifecycle', () => {
+  it('restores the selected historical version even when the latest draft changed or deleted the node', () => {
+    const old = nodes({ value: url });
+    formatHttpProxySecrets({ nodes: old });
+    const detail = structuredClone(old);
+    formatHttpProxySecrets({
+      nodes: detail,
+      project: true,
+      source: { appId: 'app', versionId: 'old' }
+    });
+    const restored = restoreHttpProxySecrets({
+      nodes: detail,
+      appId: 'app',
+      versions: new Map([
+        ['old', old],
+        ['latest', []]
+      ])
+    });
+    expect(restored).toEqual(old);
+  });
+  it('rejects tampering, app/node/field substitution and a source version overwritten in place', () => {
+    const old = nodes({ value: url });
+    formatHttpProxySecrets({ nodes: old });
+    const detail = structuredClone(old);
+    formatHttpProxySecrets({
+      nodes: detail,
+      project: true,
+      source: { appId: 'app', versionId: 'old' }
+    });
+    const versions = new Map([['old', old]]);
+    expect(() => restoreHttpProxySecrets({ nodes: detail, appId: 'other', versions })).toThrow(
+      'does not match'
+    );
+    const moved = structuredClone(detail);
+    moved[0].nodeId = 'different-node';
+    expect(() => restoreHttpProxySecrets({ nodes: moved, appId: 'app', versions })).toThrow(
+      'does not match'
+    );
+    const altered = structuredClone(detail);
+    altered[0].inputs[0].value = {
+      secret: (detail[0].inputs[0].value as { secret: string }).secret + '0'
+    };
+    expect(() => restoreHttpProxySecrets({ nodes: altered, appId: 'app', versions })).toThrow(
+      'Invalid'
+    );
+    const shifted = nodes(undefined, detail[0].inputs[0].value);
+    expect(() => restoreHttpProxySecrets({ nodes: shifted, appId: 'app', versions })).toThrow(
+      'does not match'
+    );
+    versions.set('old', nodes({ value: 'http://changed@proxy.example.com' }));
+    expect(() => restoreHttpProxySecrets({ nodes: detail, appId: 'app', versions })).toThrow(
+      'no longer available'
+    );
+  });
   it('preserves structured secret references and selected input references', () => {
     const data = nodes({ ref: ['global', 'proxy'] });
     formatHttpProxySecrets({ nodes: data, project: true });
@@ -48,18 +101,28 @@ describe('HTTP proxy credential lifecycle', () => {
     expect(decryptSecretValue(data[0].inputs[0].value)).toBe(url);
     expect(decryptSecretValue(data[0].inputs[0].defaultValue)).toBe(url);
   });
-  it('projects only configured state and restores unchanged values from the current transaction baseline', () => {
+  it('projects source references and restores unchanged values from the selected snapshot', () => {
     const stored = nodes(url, { value: url });
     formatHttpProxySecrets({ nodes: stored });
     const detail = structuredClone(stored);
-    formatHttpProxySecrets({ nodes: detail, project: true });
-    expect(detail[0].inputs[0].value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
-    expect(detail[0].inputs[0].defaultValue).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+    formatHttpProxySecrets({
+      nodes: detail,
+      project: true,
+      source: { appId: 'app', versionId: 'version' }
+    });
+    expect(
+      (detail[0].inputs[0].value as { secret: string }).secret.startsWith(
+        HTTP_PROXY_CONFIGURED + '.'
+      )
+    ).toBe(true);
     expect(JSON.stringify(detail)).not.toContain(JSON.stringify(stored[0].inputs[0].value));
-    expect(restoreHttpProxySecrets({ nodes: detail, baseline: stored })).toEqual(stored);
-    const latest = nodes({ value: 'http://new:updated@proxy.example.com' }, { value: url });
-    formatHttpProxySecrets({ nodes: latest });
-    expect(restoreHttpProxySecrets({ nodes: detail, baseline: latest })).toEqual(latest);
+    expect(
+      restoreHttpProxySecrets({
+        nodes: detail,
+        appId: 'app',
+        versions: new Map([['version', stored]])
+      })
+    ).toEqual(stored);
   });
   it.each([
     undefined,
@@ -67,14 +130,14 @@ describe('HTTP proxy credential lifecycle', () => {
     { value: '' },
     { value: 'http://replacement:secret@proxy.example.com' }
   ])('preserves explicit replacement or clearing: %j', (value) => {
-    const restored = restoreHttpProxySecrets({ nodes: nodes(value), baseline: nodes(url) });
+    const restored = restoreHttpProxySecrets({ nodes: nodes(value) });
     expect(decryptSecretValue(restored[0].inputs[0].value)).toEqual(
       value === null ? '' : value && typeof value === 'object' ? value.value : value
     );
   });
-  it('rejects configured markers without an owned baseline and when creating another app', () => {
+  it('requires reloading legacy markers and rejects them when creating another app', () => {
     const data = nodes({ secret: HTTP_PROXY_CONFIGURED });
-    expect(() => restoreHttpProxySecrets({ nodes: data })).toThrow('no longer available');
+    expect(() => restoreHttpProxySecrets({ nodes: data })).toThrow('Reload');
     expect(() => formatHttpProxySecrets({ nodes: data })).toThrow('creating an app');
   });
   it('does not treat same-key business fields on other node types as credentials', () => {

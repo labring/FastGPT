@@ -81,9 +81,8 @@ describe('runAgentLoopApplication tool visibility', () => {
     withEmitter?: boolean;
   } = {}) => {
     const forwarded: AgentLoopEvent[] = [];
-    const providerState = { messages };
     const result = await runAgentLoopApplication({
-      input: { messages, providerState },
+      input: { messages },
       runtime: {
         teamId: 'team',
         llmParams: { model: {} as AgentLoopRuntime['llmParams']['model'] },
@@ -100,7 +99,6 @@ describe('runAgentLoopApplication tool visibility', () => {
         name: 'fastAgent',
         run: async ({ input, runtime }) => {
           expect(input.messages).toBe(messages);
-          expect(input.providerState).toBe(providerState);
           for (const [index, event] of events.entries()) {
             runtime.emitEvent?.(event);
             onEvent?.(index, forwarded);
@@ -112,14 +110,11 @@ describe('runAgentLoopApplication tool visibility', () => {
             assistantMessages: messages,
             requestIds: [],
             finishReason: 'stop',
-            usages: [],
-            providerState
+            usages: []
           };
         }
       }
     });
-    expect(providerState.messages).toBe(messages);
-    expect(result.providerState).toBe(reject ? undefined : providerState);
     return { result, forwarded };
   };
 
@@ -382,7 +377,6 @@ describe('runAgentLoopApplication tool visibility', () => {
       );
       expect(result.completeMessages).toEqual(hidden ? [messages[2]] : messages);
       expect(result.assistantMessages).toEqual(hidden ? [messages[2]] : messages);
-      expect(result.providerState).toEqual({ messages });
     }
   );
 
@@ -410,7 +404,6 @@ describe('runAgentLoopApplication tool visibility', () => {
     });
     expect(result.completeMessages).toEqual([]);
     expect(result.assistantMessages).toEqual([]);
-    expect(result.providerState).toEqual({ messages });
   });
 
   it.each([
@@ -462,7 +455,7 @@ describe('runAgentLoopApplication tool visibility', () => {
       tool_calls: [internalCall],
       ...output
     };
-    // 无事件的恢复路径也应清理对外消息，providerState 中的原始调用仍保留。
+    // 无事件的恢复路径也应清理对外消息。
     const { result } = await run({ messages: [message] });
     expect(result.completeMessages).toEqual(visible ? [{ role: 'assistant', ...output }] : []);
   });
@@ -522,6 +515,5 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect(result.status).toBe('error');
     expect(result.completeMessages).toEqual([]);
     expect(forwarded).toEqual([]);
-    expect(result.providerState).toBeUndefined();
   });
 });

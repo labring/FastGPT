@@ -33,6 +33,9 @@ async function handler(
 
   await rewriteAppWorkflowToDetail({
     nodes: version.nodes,
+    proxySource: version.versionId
+      ? { appId: String(app._id), versionId: version.versionId }
+      : undefined,
     teamId,
     isRoot,
     viewerTmbId: tmbId,

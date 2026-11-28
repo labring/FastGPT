@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-11-20
+最后核对：2026-11-27
 
 ## 目标
 
@@ -38,12 +38,12 @@
 
 扫描与元数据解析规则各只有一份实现：
 
-- 入口扫描与元数据解析：`packages/service/core/ai/skill/utils.ts`（`RUNTIME_SKILL_SCAN_PRUNE_DIRS` / `findSkillMdEntries` / `extractSkillMetadataFromMarkdown`），包级聚合入口为 `packages/service/core/ai/skill/package/runtimeMetadata.ts`（`extractRuntimeSkillsFromPackage`）。
+- 入口扫描与元数据解析：`packages/service/core/ai/skill/utils.ts`（`RUNTIME_SKILL_SCAN_PRUNE_DIRS` / `findSkillMdEntries` / `extractSkillMetadataFromMarkdown`），包级聚合入口为 `packages/service/core/ai/skill/package/runtimeMetadata.ts`（`extractRuntimeSkillsFromSkillMdFiles`）。
 
-发布结构校验、版本元数据解析和运行态扫描共用同一套口径：运行时把版本包整包解压到 `projects/<versionId>/` 后，
-用 `find ... -type f -iname "SKILL.md"` 递归扫描（同样跳过 `node_modules/.venv/venv`），跳过解析失败或缺少 `name` 的文件，
-每个有效 `SKILL.md` 目录即一个可执行 Skill。路径只按 `/` 解释（Unix `unzip` 保留字面反斜杠），目录条目不算入口。
-编辑调试工作区与内置技能目录采用完全相同的递归扫描规则；工作区根目录 `.gitignore` 与默认忽略规则仅在 Skill 发布打包时生效，Skill 导出完整打包当前编辑工作区（会包含默认忽略的文件，但排除临时 `package.zip` 与符号链接——依赖目录常见，不要求存在 `SKILL.md`，仍受整包大小与 ZIP 安全校验），App 发布及其他扫描阶段均不处理 `.gitignore`。
+发布结构校验、版本元数据解析和运行态扫描共用同一套口径：运行时通过 `fastgpt-ide-agent` 将 `.tar.zst` 版本包流式解压到 `projects/<versionId>/` 后，
+用 `find ... -type f -iname "SKILL.md"` 递归扫描（跳过 `node_modules`、`.venv`、`venv` 以及沙盒保留目录 `.fastgpt`、`lost+found`），跳过解析失败或缺少 `name` 的文件，
+每个有效 `SKILL.md` 目录即一个可执行 Skill。归档与运行态路径均按 POSIX `/` 解释（保留字面反斜杠），目录条目不算入口。
+编辑调试工作区与内置技能目录采用完全相同的递归扫描规则；工作区根目录 `.gitignore` 与默认忽略规则仅在 Skill 发布打包时生效，Skill 导出完整打包当前编辑工作区（会包含默认忽略的文件，但排除临时 `package.zip`、`.fastgpt/` 与符号链接——依赖目录常见，不要求存在 `SKILL.md`，仍受整包大小与 ZIP 安全校验），App 发布及其他扫描阶段均不处理 `.gitignore`。
 
 导入 Skill 包时**原样入库**：平台不做布局校验、不重排目录、不改写文件，导入阶段仅执行请求/权限校验与流式上传大小限制并保存原始字节；归档路径与大小安全校验在后续解压、发布、导出或读取版本元数据等包使用阶段执行。
 

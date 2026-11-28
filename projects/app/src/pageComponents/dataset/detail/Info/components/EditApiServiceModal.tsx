@@ -18,6 +18,18 @@ export type EditAPIDatasetInfoFormType = {
   apiDatasetServer?: ApiDatasetServerType;
 };
 
+/**
+ * 连接配置编辑弹窗不管理 `permissionSync`（该开关由 Info 页独立二次确认控件维护）；
+ * 剥离 `permissionSync` 避免旧表单快照在保存连接字段时覆盖并发切换的权限同步状态。
+ */
+export const stripPermissionSyncFromApiDatasetServer = (
+  apiDatasetServer?: ApiDatasetServerType
+): ApiDatasetServerType | undefined => {
+  if (!apiDatasetServer) return undefined;
+  const { permissionSync: _permissionSync, ...connectionConfig } = apiDatasetServer;
+  return connectionConfig;
+};
+
 const EditAPIDatasetInfoModal = ({
   onClose,
   onEdit,
@@ -35,11 +47,18 @@ const EditAPIDatasetInfoModal = ({
   const type = datasetDetail.type;
 
   const form = useForm<EditAPIDatasetInfoFormType>({
-    defaultValues: defaultForm
+    defaultValues: {
+      ...defaultForm,
+      apiDatasetServer: stripPermissionSyncFromApiDatasetServer(defaultForm.apiDatasetServer)
+    }
   });
 
   const { runAsync: onSave, loading } = useRequest(
-    (data: EditAPIDatasetInfoFormType) => onEdit(data),
+    (data: EditAPIDatasetInfoFormType) =>
+      onEdit({
+        ...data,
+        apiDatasetServer: stripPermissionSyncFromApiDatasetServer(data.apiDatasetServer)
+      }),
     {
       onSuccess: () => {
         toast({

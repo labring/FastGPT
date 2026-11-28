@@ -141,15 +141,26 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => {
 });
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({
-    t: (key: string, options?: { count: number }) => (options ? `${key}: ${options.count}` : key)
+    t: (key: string, options?: { count?: number; max?: number }) =>
+      options ? `${key}: ${options.count ?? options.max}` : key
   })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
   useToast: () => ({ toast: apiMocks.toast })
 }));
 vi.mock('@/pageComponents/model/ModelChannelModal', () => {
-  const MockModelChannelSelector = ({ onChange }: { onChange: (channelIds: number[]) => void }) =>
-    React.createElement('button', { onClick: () => onChange([1]) }, 'choose channel');
+  const MockModelChannelSelector = ({
+    channelType,
+    onChange
+  }: {
+    channelType: string;
+    onChange: (channelIds: number[]) => void;
+  }) =>
+    React.createElement(
+      'button',
+      { onClick: () => onChange([1]), 'data-channel-type': channelType },
+      'choose channel'
+    );
   MockModelChannelSelector.displayName = 'MockModelChannelSelector';
   return { ModelChannelSelector: MockModelChannelSelector };
 });
@@ -164,9 +175,9 @@ vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
 }));
 vi.mock('@/web/core/ai/model/api', () => apiMocks);
 vi.mock('@/pageComponents/model/useModelChannelTest', () => ({
-  useModelChannelTest: () => ({
+  useModelChannelTest: ({ channelType }: { channelType: string }) => ({
     testingChannelIds: new Set<number>(),
-    testModelChannel: apiMocks.testModelChannel
+    testModelChannel: (channelId: number) => apiMocks.testModelChannel({ channelId, channelType })
   })
 }));
 
@@ -240,6 +251,77 @@ afterEach(async () => {
 const flush = async () => new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 
 describe('ImportModelFromChannelModal', () => {
+  it('warns only when trying to select more than 100 models', async () => {
+    const template: AIModelDocumentDataType = {
+      model: 'preset',
+      name: 'Preset',
+      provider: 'openai',
+      scope: ModelScopeEnum.team,
+      type: ModelTypeEnum.llm,
+      config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 800 }
+    };
+    apiMocks.getImportPreviewFromChannel.mockResolvedValue({
+      items: Array.from({ length: 101 }, (_, index) => ({
+        providerModelSlug: `upstream-model-${index}`,
+        candidate: {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: 'preset' },
+          modelData: template
+        }
+      }))
+    });
+    apiMocks.getModelTemplates.mockResolvedValue({ models: [] });
+    const getButton = (text: string) =>
+      [...host.querySelectorAll('button')].find((button) => button.textContent === text)!;
+
+    await act(async () => {
+      root.render(
+        React.createElement(ImportModelFromChannelModal, {
+          channelType: 'team',
+          channels: [],
+          installedModels: [],
+          providers: [],
+          createModelData: () => template,
+          onSuccess: async () => {},
+          onClose: () => {}
+        })
+      );
+    });
+    await act(async () => getButton('choose channel').click());
+    await act(async () => {
+      getButton('config_model:next_step').click();
+      await flush();
+    });
+    const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
+    Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 10_000 });
+    await act(async () => {
+      scrollContainer.dispatchEvent(new Event('scroll'));
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    });
+
+    const checkboxes = [
+      ...host.querySelectorAll<HTMLInputElement>(
+        'input[aria-label^="config_model:channel_import_model upstream-model-"]'
+      )
+    ];
+    expect(checkboxes).toHaveLength(101);
+    await act(async () => checkboxes.slice(0, 100).forEach((checkbox) => checkbox.click()));
+    expect(getButton('config_model:next_step').disabled).toBe(false);
+    expect(apiMocks.toast).not.toHaveBeenCalled();
+    await act(async () => checkboxes[100].click());
+    expect(checkboxes[100].checked).toBe(false);
+    expect(getButton('config_model:next_step').disabled).toBe(false);
+    expect(apiMocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'warning',
+      title: 'config_model:channel_import_selection_limit: 100'
+    });
+
+    await act(async () => checkboxes[0].click());
+    await act(async () => checkboxes[100].click());
+    expect(checkboxes[100].checked).toBe(true);
+    expect(apiMocks.toast).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     {
       title: 'shows an unsupported message with a back action',
@@ -260,6 +342,7 @@ describe('ImportModelFromChannelModal', () => {
     apiMocks.getImportPreviewFromChannel.mockRejectedValue(error);
     const onClose = vi.fn();
     const props = {
+      channelType: 'system' as const,
       channels: [],
       installedModels: [],
       providers: [],
@@ -286,14 +369,15 @@ describe('ImportModelFromChannelModal', () => {
     expect(getButton(buttonKey)).not.toBeUndefined();
   });
 
-  it('retains selections across steps and closes with a toast after successful import', async () => {
+  it.each(['system', 'team'] as const)('imports into %s scope', async (channelType) => {
+    const scope = ModelScopeEnum[channelType];
     const installedModel = {
       modelId: 'installed-model-id',
       model: 'installed-model',
       name: 'Installed model',
       provider: 'openai',
       type: ModelTypeEnum.llm,
-      scope: ModelScopeEnum.system,
+      scope,
       isActive: false
     } as ModelConfigListItem;
     const template: AIModelDocumentDataType = {
@@ -327,17 +411,18 @@ describe('ImportModelFromChannelModal', () => {
     apiMocks.getModelTemplates.mockResolvedValue({ models: [] });
 
     const props = {
+      channelType,
       channels: [
         {
           id: 1,
-          name: 'System channel',
+          name: 'Import channel',
           status: 1,
           protocol: { name: { en: 'OpenAI', 'zh-CN': 'OpenAI' }, avatar: 'model/openai' }
         }
       ],
       installedModels: [installedModel],
       providers: [],
-      createModelData: () => template,
+      createModelData: () => ({ ...template, scope }),
       onSuccess: vi.fn(() => new Promise<void>(() => {})),
       onClose: vi.fn(() => root.render(null))
     };
@@ -356,6 +441,7 @@ describe('ImportModelFromChannelModal', () => {
     const modal = host.querySelector('[role="dialog"]');
     expect(modal?.textContent).toContain('config_model:channel_import_import_step');
     expect(modal?.textContent).not.toContain('common:Cancel');
+    expect(getButton('choose channel').dataset.channelType).toBe(channelType);
     await act(async () => getButton('choose channel').click());
     await act(async () => {
       getButton('config_model:next_step').click();
@@ -364,6 +450,8 @@ describe('ImportModelFromChannelModal', () => {
 
     expect(host.querySelector('[role="dialog"]')).toBe(modal);
     expect(modal?.querySelector('h2')?.textContent).toBe('config_model:channel_import_import_step');
+    const modalTitle = modal?.querySelector('h2 [tabindex="-1"]');
+    expect(document.activeElement).toBe(modalTitle);
     const selectedCount = modal?.querySelector('[aria-live="polite"]');
     expect(selectedCount?.textContent).toBe('config_model:channel_import_selected_count: 0');
     const searchInput = modal?.querySelector(
@@ -371,7 +459,7 @@ describe('ImportModelFromChannelModal', () => {
     );
     const toolbar = searchInput?.parentElement?.parentElement;
     expect(toolbar?.firstElementChild?.textContent).toBe(
-      'config_model:channel_import_channel:System channel'
+      'config_model:channel_import_channel:Import channel'
     );
     expect(toolbar?.lastElementChild?.textContent).toBe('common:model.model_type');
     expect(host.textContent).not.toContain('installed-model');
@@ -394,7 +482,10 @@ describe('ImportModelFromChannelModal', () => {
         ?.click();
       testButton.click();
     });
-    expect(apiMocks.testModelChannel).toHaveBeenCalledExactlyOnceWith(1);
+    expect(apiMocks.testModelChannel).toHaveBeenCalledExactlyOnceWith({
+      channelId: 1,
+      channelType
+    });
     expect(firstRowCheckbox.checked).toBe(true);
     await act(async () => firstRowCheckbox.click());
     expect(firstRowCheckbox.checked).toBe(false);
@@ -411,7 +502,12 @@ describe('ImportModelFromChannelModal', () => {
     expect(host.querySelector('[role="dialog"]')).toBe(modal);
     expect(getButton('common:Confirm')).toBeDefined();
     await act(async () => getButton('config_model:previous_step').click());
-    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(modalTitle);
+    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledExactlyOnceWith({
+      channelId: 1,
+      channelType
+    });
+    expect(apiMocks.getModelTemplates).toHaveBeenCalledExactlyOnceWith({ channelType });
     expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
 
     apiMocks.postImportModelsFromChannel.mockResolvedValueOnce({
@@ -427,7 +523,8 @@ describe('ImportModelFromChannelModal', () => {
     await act(async () => getButton('common:Confirm').click());
     expect(apiMocks.postImportModelsFromChannel).toHaveBeenCalledWith({
       channelId: 1,
-      models: [{ ...template, model: 'upstream-model-0', isActive: false }]
+      channelType,
+      models: [{ ...template, scope, model: 'upstream-model-0', isActive: false }]
     });
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(props.onSuccess).toHaveBeenCalledOnce();
@@ -456,6 +553,7 @@ describe('ImportResultsStep', () => {
       root.render(
         React.createElement(ImportResultsStep, {
           channelId: 1,
+          channelType: 'system',
           models,
           onSubmittingChange: vi.fn(),
           onPrevious: vi.fn(),
@@ -493,6 +591,7 @@ describe('ImportResultsStep', () => {
         root.render(
           React.createElement(ImportResultsStep, {
             channelId: 1,
+            channelType: 'system',
             models,
             onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),
@@ -513,6 +612,20 @@ describe('ImportResultsStep', () => {
   );
 
   it.each([
+    {
+      error: undefined,
+      response: {
+        results: [
+          {
+            status: 'unknown',
+            model: 'upstream-model',
+            modelId: 'created',
+            error: 'connection interrupted'
+          }
+        ]
+      },
+      expected: ['config_model:channel_import_result_unknown', 'connection interrupted']
+    },
     {
       error: undefined,
       response: {
@@ -567,6 +680,7 @@ describe('ImportResultsStep', () => {
         root.render(
           React.createElement(ImportResultsStep, {
             channelId: 1,
+            channelType: 'system',
             models,
             onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),

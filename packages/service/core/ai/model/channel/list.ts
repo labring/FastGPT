@@ -20,6 +20,7 @@ const buildChannelListItem = (
   name: channel.name,
   type: channel.type,
   status: channel.status,
+  keyConfigured: Boolean(channel.key?.trim()),
   models: channel.models ?? [],
   // 渠道配置可能包含凭证，只投影已配置的协议；缺失时由表单提供默认值。
   configs:

@@ -1,5 +1,6 @@
 import { serviceEnv } from '../../env';
 import { MongoTeamMember } from './team/teamMemberSchema';
+import { buildTeamMemberNameSortKey } from './team/sortKey';
 import { MongoUser } from './schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -133,6 +134,7 @@ const executeSystemUserCreation = async (): Promise<void> => {
           teamId: rootTeamId,
           userId: user._id,
           name: user.username,
+          nameSortKey: buildTeamMemberNameSortKey(user.username),
           isSetMemberName: true,
           status: TeamMemberStatusEnum.active,
           createTime: now

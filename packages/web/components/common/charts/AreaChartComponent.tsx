@@ -13,6 +13,7 @@ import {
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FillRowTabs from '../Tabs/FillRowTabs';
+import QuestionTip from '../MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import { cloneDeep } from 'lodash-es';
 
@@ -36,6 +37,7 @@ type TooltipItem = {
 type AreaChartComponentProps = {
   data: Record<string, any>[];
   title: string;
+  titleTip?: string;
   HeaderLeftChildren?: React.ReactNode;
   lines: AreaConfig[];
   tooltipItems?: TooltipItem[];
@@ -82,6 +84,7 @@ const CustomTooltip = ({
 const AreaChartComponent = ({
   data,
   title,
+  titleTip,
   HeaderLeftChildren,
   lines,
   tooltipItems,
@@ -174,9 +177,12 @@ const AreaChartComponent = ({
   return (
     <>
       <HStack mb={4} justifyContent={'space-between'} alignItems={'flex-start'}>
-        <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
-          {title}
-        </Box>
+        <HStack spacing={1} alignItems={'center'}>
+          <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
+            {title}
+          </Box>
+          {titleTip && <QuestionTip label={titleTip} />}
+        </HStack>
         <HStack spacing={2}>
           {HeaderLeftChildren}
           {tabList.length > 1 && (
@@ -212,7 +218,7 @@ const AreaChartComponent = ({
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
-          {lines.map((line, index) => (
+          {lines.map((line) => (
             <Area
               key={line.dataKey}
               type="monotone"

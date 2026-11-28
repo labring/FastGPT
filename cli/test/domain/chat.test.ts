@@ -12,6 +12,8 @@ function makeClient(response: unknown = null): FastGptHttpClient {
     request: vi.fn().mockResolvedValue(response),
     requestRaw: vi.fn(),
     uploadMultipart: vi.fn(),
+    uploadBinary: vi.fn(),
+    putPresignedUrl: vi.fn(),
     streamSse: vi.fn()
   };
 }
@@ -77,7 +79,7 @@ describe('createChatService', () => {
     const client = makeClient();
     await expect(
       service.execute({ operation: 'history list', client, credential: { kind }, input: {} })
-    ).rejects.toThrow('--appId');
+    ).rejects.toThrow('--id');
     expect(client.request).not.toHaveBeenCalled();
   });
 

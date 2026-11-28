@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   isNestedParentNodeType,
@@ -25,7 +26,6 @@ import {
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
 import { useWorkflowUtils } from './useUtils';
 import {
-  useWorkflowIssueFocusRef,
   useWorkflowHistory,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
@@ -49,7 +49,6 @@ export const useKeyboard = () => {
   const actions = useWorkflowActions();
   const clearCanvasSelection = useClearCanvasSelection();
   const runtime = useWorkflowRuntime();
-  const issueFocusRef = useWorkflowIssueFocusRef();
 
   const hasInputtingElement = useCallback((event?: KeyboardEvent) => {
     return isWorkflowShortcutInputtingTarget(event?.target);
@@ -61,7 +60,7 @@ export const useKeyboard = () => {
     if (!runtime) return;
 
     const selectedNodes = nodes.flatMap((node) => {
-      if (!node.selected || node.id === issueFocusRef.current || node.data?.unique === true) {
+      if (!node.selected || node.data?.unique === true) {
         return [];
       }
 
@@ -74,14 +73,14 @@ export const useKeyboard = () => {
           id: node.id,
           type: node.type,
           // 只序列化 Runtime canonical data；overlay 和 ReactFlow 投影字段不进入剪贴板。
-          data,
+          data: clearHttpProxyValues([data])[0],
           position: runtime.getNodeView(node.id)?.position ?? node.position
         }
       ];
     });
     if (selectedNodes.length === 0) return;
     copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
-  }, [copyData, getNodes, hasInputtingElement, issueFocusRef, runtime, t]);
+  }, [copyData, getNodes, hasInputtingElement, runtime, t]);
 
   const onPaste = useCallback(async () => {
     if (hasInputtingElement()) return;
@@ -121,7 +120,7 @@ export const useKeyboard = () => {
           ...item,
           id: nodeId,
           data: {
-            ...item.data,
+            ...clearHttpProxyValues([item.data])[0],
             name: computedNewNodeName({
               templateName: item.data?.name || '',
               flowNodeType: item.data?.flowNodeType || '',

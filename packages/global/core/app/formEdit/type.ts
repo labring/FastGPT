@@ -3,6 +3,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../type';
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
+import { AiChatQuoteRoleSchema } from '../../workflow/template/system/aiChat/type';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
 import { AgentToolSchema } from '../tool/type';
 import { AgentSkillSourceSchema } from '../../ai/skill/type';
@@ -47,6 +48,7 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),
     [NodeInputKeyEnum.aiChatMaxToken]: z.number().optional(),
     [NodeInputKeyEnum.aiChatIsResponseText]: z.boolean(),
+    [NodeInputKeyEnum.aiChatQuoteRole]: AiChatQuoteRoleSchema.optional(),
     maxHistories: z.int().min(0).max(100),
     [NodeInputKeyEnum.aiChatVision]: z.boolean().optional(),
     [NodeInputKeyEnum.aiChatAudio]: z.boolean().optional(),

@@ -35,6 +35,9 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
   const normalizedWorkflow = normalizeAppVersionWorkflow(result, app.type);
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
+    proxySource: normalizedWorkflow.versionId
+      ? { appId: String(app._id), versionId: normalizedWorkflow.versionId }
+      : undefined,
     teamId,
     viewerTmbId: tmbId,
     ownerTmbId: app.tmbId,

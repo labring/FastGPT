@@ -38,7 +38,8 @@ export const UserSchema = z.object({
   username: z.string(),
   avatar: z.string().nullish(),
   timezone: z.string(),
-  language: LanguageSchema.optional(),
+  // 会话读取兼容历史 null/空串及未知语言偏好，回退英文而不阻断登录恢复。
+  language: LanguageSchema.catch('en').optional(),
   accountCancellation: AccountCancellationSummarySchema.optional(),
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),

@@ -88,6 +88,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   enableSaasAdminConfig: z.boolean().optional().meta({
     description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
   }),
+  enableSangforAdminConfig: z.boolean().optional().meta({
+    description: '是否在管理端展示深信服专用配置项，默认为 false（默认隐藏）'
+  }),
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
   }),

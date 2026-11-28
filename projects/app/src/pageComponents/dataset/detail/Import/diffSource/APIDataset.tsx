@@ -1,25 +1,35 @@
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  getApiDatasetFileList,
-  getApiDatasetFileListExistId
-} from '@/web/core/dataset/api/apiDataset';
+import { getApiDatasetFileList, getApiDatasetSyncState } from '@/web/core/dataset/api/apiDataset';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+import {
+  buildApiDatasetSyncIndex,
+  buildEnteredFolderPaths,
+  buildSelectionAfterDeselectAll,
+  getApiDatasetItemState,
+  resolveApiFileAncestorPath
+} from './apiDatasetUtils';
+
+const SYNC_ALL_SOURCE_ID = '__SYNC_ALL__';
+
+type SelectedApiFile = {
+  file: APIFileItemType;
+  ancestorIds: string[];
+};
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -50,7 +60,7 @@ const CustomAPIFileInput = () => {
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
-  const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
+  const [selectFiles, setSelectFiles] = useState<SelectedApiFile[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
@@ -75,58 +85,80 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const { data: existIdList = new Set() } = useRequest(
+  const { data: syncState } = useRequest(
     async () => {
-      return new Set<string>(await getApiDatasetFileListExistId({ datasetId: datasetDetail._id }));
+      if (!datasetDetail._id) return undefined;
+      return getApiDatasetSyncState({ datasetId: datasetDetail._id });
     },
     {
+      refreshDeps: [datasetDetail._id],
       manual: false
     }
   );
 
+  const syncIndex = useMemo(() => buildApiDatasetSyncIndex(syncState), [syncState]);
+  const { serverSyncAll, ancestorPathBySourceId } = syncIndex;
+
+  const canSelectSyncAll = Boolean(datasetDetail.permission?.hasManagePer);
+
+  /** 解析指定条目的可校验祖先路径；若递归搜索返回未知深层目录，返回 null 禁止盲挂根目录。 */
+  const resolveItemAncestorPath = useCallback(
+    (item: APIFileItemType): ParentTreePathItemType[] | null =>
+      resolveApiFileAncestorPath({
+        item,
+        currentParentId: parent?.parentId || '',
+        currentPaths: paths,
+        searchKey,
+        ancestorPathBySourceId
+      }),
+    [ancestorPathBySourceId, parent?.parentId, paths, searchKey]
+  );
+
   // Init selected files
   useMount(() => {
-    const hasRootFolder = sources.some((item) => item.apiFile?.id === RootCollectionId);
-    if (hasRootFolder) {
+    const hasSyncAll = sources.some((item) => item.isSyncAll);
+    if (hasSyncAll) {
       setIsSelectAll(true);
       setSelectFiles([]);
     } else {
-      setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
+      setSelectFiles(
+        sources
+          .filter((item) => Boolean(item.apiFile))
+          .map((item) => ({
+            file: item.apiFile!,
+            ancestorIds: item.ancestorIds ?? []
+          }))
+      );
     }
   });
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest(
     async () => {
-      const finalSelectedFiles: APIFileItemType[] = await (async () => {
-        if (isSelectAll) {
-          return [
-            {
-              id: RootCollectionId,
-              rawId: RootCollectionId,
-              parentId: '',
-              name: 'ROOT_FOLDER',
-              type: 'folder',
-              hasChild: true,
-              updateTime: new Date(),
-              createTime: new Date()
-            }
-          ];
-        }
-
-        return selectFiles;
-      })();
+      if (isSelectAll) {
+        setSources([
+          {
+            id: SYNC_ALL_SOURCE_ID,
+            isSyncAll: true,
+            createStatus: 'waiting',
+            sourceName: t('dataset:Select_all'),
+            icon: 'common/folderFill'
+          }
+        ]);
+        return;
+      }
 
       setSources(
-        finalSelectedFiles.map((item) => ({
-          id: item.id,
-          apiFileId: item.id,
-          apiFile: item,
+        selectFiles.map(({ file, ancestorIds }) => ({
+          id: file.id,
+          apiFileId: file.id,
+          apiFile: file,
+          ancestorIds: ancestorIds.length > 0 ? ancestorIds : undefined,
           createStatus: 'waiting',
-          sourceName: item.name,
+          sourceName: file.name,
           icon:
-            item.type === 'folder'
+            file.type === 'folder'
               ? 'common/folderFill'
-              : (getSourceNameIcon({ sourceName: item.name }) as any)
+              : (getSourceNameIcon({ sourceName: file.name }) as any)
         }))
       );
     },
@@ -138,7 +170,7 @@ const CustomAPIFileInput = () => {
   );
 
   const handleSelectAll = useCallback(() => {
-    if (parent?.parentId) return;
+    if (parent?.parentId || serverSyncAll || !canSelectSyncAll) return;
 
     if (isSelectAll) {
       // cancel the selection of the root directory
@@ -149,7 +181,7 @@ const CustomAPIFileInput = () => {
       setIsSelectAll(true);
       setSelectFiles([]);
     }
-  }, [isSelectAll, parent?.parentId]);
+  }, [canSelectSyncAll, isSelectAll, parent?.parentId, serverSyncAll]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -200,8 +232,9 @@ const CustomAPIFileInput = () => {
               ) : (
                 <Checkbox
                   className="checkbox"
-                  isChecked={isSelectAll}
-                  onChange={(e) => {
+                  isChecked={serverSyncAll || isSelectAll}
+                  isDisabled={serverSyncAll || !canSelectSyncAll}
+                  onChange={() => {
                     handleSelectAll();
                   }}
                 >
@@ -211,10 +244,43 @@ const CustomAPIFileInput = () => {
             </Flex>
 
             {fileList.map((item) => {
-              const isExists = existIdList.has(item.id);
-              const isChecked =
-                isExists || selectFiles.some((file) => file.id === item.id) || isSelectAll;
-              const canEnter = item.hasChild && !isChecked;
+              const resolvedAncestorPath = resolveItemAncestorPath(item);
+              const resolvedAncestorIds = resolvedAncestorPath
+                ? resolvedAncestorPath
+                    .map((entry) => entry.parentId)
+                    .filter((id): id is string => Boolean(id))
+                : null;
+              const isSelected = selectFiles.some((entry) => entry.file.id === item.id);
+              const { isExists, canSelectItem, isChecked, isIndeterminate, canEnter } =
+                getApiDatasetItemState({
+                  item,
+                  syncIndex,
+                  isSelectAll,
+                  isSelected,
+                  resolvedAncestorPath
+                });
+
+              const toggleSelect = () => {
+                if (isExists || !canSelectItem || !resolvedAncestorIds) return;
+                if (isSelectAll) {
+                  setIsSelectAll(false);
+                  setSelectFiles(
+                    buildSelectionAfterDeselectAll({
+                      fileList,
+                      excludeItemId: item.id,
+                      syncIndex,
+                      resolveAncestorPath: resolveItemAncestorPath
+                    })
+                  );
+                } else if (isSelected) {
+                  setSelectFiles((state) => state.filter((entry) => entry.file.id !== item.id));
+                } else {
+                  setSelectFiles((state) => [
+                    ...state,
+                    { file: item, ancestorIds: resolvedAncestorIds }
+                  ]);
+                }
+              };
 
               return (
                 <Flex
@@ -228,26 +294,22 @@ const CustomAPIFileInput = () => {
                       return;
                     }
                     if (item.hasChild) {
-                      if (!canEnter) return;
-                      setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
-                      return setParent({
+                      if (!canEnter || !resolvedAncestorPath) return;
+                      const nextPaths = buildEnteredFolderPaths({
+                        item,
+                        resolvedAncestorPath
+                      });
+                      setPaths(nextPaths);
+                      setParent({
                         parentId: item.id,
                         parentName: item.name
                       });
-                    } else {
-                      // when choose single file, cancel the selection of the root directory
-                      if (isSelectAll) {
-                        // if in root selection mode, select all files except the clicked one
-                        setIsSelectAll(false);
-                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
-                      } else {
-                        // normal selection mode
-                        if (isChecked) {
-                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
-                        } else {
-                          setSelectFiles((state) => [...state, item]);
-                        }
+                      if (searchKey) {
+                        setSearchKey('');
                       }
+                      return;
+                    } else {
+                      toggleSelect();
                     }
                   }}
                 >
@@ -255,22 +317,11 @@ const CustomAPIFileInput = () => {
                     className="checkbox"
                     mr={2.5}
                     isChecked={isChecked}
-                    isDisabled={isExists}
+                    isIndeterminate={isIndeterminate}
+                    isDisabled={isExists || !canSelectItem}
                     onChange={(e) => {
                       e.stopPropagation();
-                      // when choose single file, cancel the selection of the root directory
-                      if (isSelectAll) {
-                        // if in root selection mode, select all files except the clicked one
-                        setIsSelectAll(false);
-                        setSelectFiles(fileList.filter((file) => file.id !== item.id));
-                      } else {
-                        // normal selection mode
-                        if (isChecked) {
-                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
-                        } else {
-                          setSelectFiles((state) => [...state, item]);
-                        }
-                      }
+                      toggleSelect();
                     }}
                   />
                   <MyIcon

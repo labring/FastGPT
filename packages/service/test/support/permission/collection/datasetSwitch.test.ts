@@ -7,7 +7,8 @@ import {
   getDatasetCollectionPermissionEnabled,
   lockDatasetCollectionPermissionState,
   setDatasetCollectionPermissionEnabled,
-  assertDatasetCollectionPermissionEnabled
+  assertDatasetCollectionPermissionEnabled,
+  assertCollectionPermissionEditable
 } from '@fastgpt/service/support/permission/collection/datasetSwitch';
 
 const createDataset = async (enabled: boolean) => {
@@ -103,5 +104,90 @@ describe('setDatasetCollectionPermissionEnabled / assertDatasetCollectionPermiss
       setDatasetCollectionPermissionEnabled({ datasetId: props.datasetId, enabled: false, session })
     );
     expect(await getDatasetCollectionPermissionEnabled(props)).toBe(false);
+  });
+});
+
+describe('assertCollectionPermissionEditable', () => {
+  const enablePermissionSync = (datasetId: string) =>
+    MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        $set: {
+          'apiDatasetServer.apiServer': { baseUrl: 'https://example.com' },
+          'apiDatasetServer.permissionSync': true
+        }
+      }
+    );
+
+  it('无 session 时只读断言托管状态', async () => {
+    const props = await createDataset(false);
+    await expect(assertCollectionPermissionEditable(props)).resolves.toBeUndefined();
+
+    await enablePermissionSync(props.datasetId);
+    await expect(assertCollectionPermissionEditable(props)).rejects.toBe(
+      DatasetErrEnum.permissionSyncManaged
+    );
+    await expect(
+      assertCollectionPermissionEditable({
+        teamId: props.teamId,
+        datasetId: String(new Types.ObjectId())
+      })
+    ).rejects.toBe(DatasetErrEnum.unExist);
+  });
+
+  it('事务内递增版本作为锁点；托管拒绝时整笔事务回滚，版本不变', async () => {
+    const props = await createDataset(false);
+    await realTransaction((session) => assertCollectionPermissionEditable({ ...props, session }));
+    expect(
+      await MongoDataset.findById(props.datasetId).select('collectionPermissionVersion').lean()
+    ).toMatchObject({ collectionPermissionVersion: 1 });
+
+    await enablePermissionSync(props.datasetId);
+    await expect(
+      realTransaction((session) => assertCollectionPermissionEditable({ ...props, session }))
+    ).rejects.toBe(DatasetErrEnum.permissionSyncManaged);
+    expect(
+      await MongoDataset.findById(props.datasetId).select('collectionPermissionVersion').lean()
+    ).toMatchObject({ collectionPermissionVersion: 1 });
+  });
+
+  it('与开启托管的事务互斥：守卫持锁期间开启事务无法提交', async () => {
+    const props = await createDataset(false);
+    let markGuardPassed!: () => void;
+    let releaseCollaborator!: () => void;
+    const guardPassed = new Promise<void>((resolve) => (markGuardPassed = resolve));
+    const collaboratorGate = new Promise<void>((resolve) => (releaseCollaborator = resolve));
+
+    const collaboratorTx = realTransaction(async (session) => {
+      await assertCollectionPermissionEditable({ ...props, session });
+      markGuardPassed();
+      await collaboratorGate;
+    });
+
+    await guardPassed;
+
+    // 修正前守卫是只读查询：开启托管的事务会在协作者事务仍打开时提交，
+    // 已放行的 ACL 写入随后照常落地。现在两者争用同一 dataset 文档的写锁。
+    const enableTx = realTransaction((session) =>
+      MongoDataset.updateOne(
+        { _id: props.datasetId },
+        { $set: { 'apiDatasetServer.permissionSync': true } },
+        { session }
+      )
+    );
+    const raced = await Promise.race([
+      enableTx.then(() => 'committed'),
+      new Promise((resolve) => setTimeout(() => resolve('waiting'), 300))
+    ]);
+    expect(raced).toBe('waiting');
+
+    releaseCollaborator();
+    await collaboratorTx;
+    await expect(enableTx).resolves.toMatchObject({ acknowledged: true });
+
+    // 托管已生效：之后新开的写事务重试后读到新状态并被拒绝
+    await expect(
+      realTransaction((session) => assertCollectionPermissionEditable({ ...props, session }))
+    ).rejects.toBe(DatasetErrEnum.permissionSyncManaged);
   });
 });

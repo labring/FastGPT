@@ -1,7 +1,8 @@
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/entity';
 import {
   formatHttpProxySecrets,
   hasConfiguredHttpProxy,
-  restoreHttpProxySecrets
+  resolveHttpProxySecrets
 } from '@fastgpt/service/core/app/httpProxySecret';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -55,9 +56,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     authApp({ req, authToken: true, appId, per: WritePermissionVal })
   ]);
   const nodes = hasConfiguredHttpProxy(requestNodes)
-    ? restoreHttpProxySecrets({
+    ? await resolveHttpProxySecrets({
         nodes: requestNodes,
-        baseline: (await getAppDraftWorkflow(appId, app)).nodes
+        appId,
+        readVersions: (versionIds) => findAppVersionNodes({ appId, versionIds })
       })
     : requestNodes;
   // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
@@ -140,7 +142,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     currentNodeResponses: debugResponse?.nodeResponses ?? {}
   });
 
-  if (debugResponse) formatHttpProxySecrets({ nodes: debugResponse.memoryNodes, project: true });
+  if (debugResponse)
+    formatHttpProxySecrets({
+      nodes: debugResponse.memoryNodes,
+      project: true,
+      references: requestNodes
+    });
   return WorkflowDebugResponseSchema.parse({
     ...debugResponse!,
     nodeResponses,

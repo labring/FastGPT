@@ -134,7 +134,12 @@ describe('runFastAgentLoop', () => {
       systemTools: { ask: { enabled: true, validate } }
     });
     mockCreateLLMResponseQueue(createLLMResponseMock, [
-      { ...truncated, finishReason: 'length', toolCalls: calls },
+      {
+        ...truncated,
+        finishReason: 'length',
+        toolCalls: calls,
+        blockedToolCalls: Object.fromEntries(calls.map((c) => [c.id, 'length' as const]))
+      },
       ({ body }) => {
         expect(runtime.executeTool).not.toHaveBeenCalled();
         expect(validate).not.toHaveBeenCalled();
@@ -988,7 +993,7 @@ describe('runFastAgentLoop', () => {
           answerText: '',
           reasoningText: '',
           toolCalls: calls,
-          moderatedToolCallIds: ['call_param_mod'],
+          blockedToolCalls: { call_param_mod: 'moderation' },
           finish_reason: 'tool_calls',
           usage: { inputTokens: 10, outputTokens: 10, usedUserOpenAIKey: false },
           requestMessages: [],

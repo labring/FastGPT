@@ -24,6 +24,7 @@ import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
 import { publishTrainingWakeup } from './wakeup';
+import { persistChunkImageReferences } from '../data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -229,6 +230,7 @@ export const pushDataListToTrainingQueue = async ({
   vlmModel,
   vlmModelConfigured = !!vlmModel,
   data,
+  imageUploadKeys,
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
@@ -240,6 +242,7 @@ export const pushDataListToTrainingQueue = async ({
   collectionId: string;
 
   data: PushDataChunkWithDataIdType[];
+  imageUploadKeys?: string[];
   mode?: TrainingModeEnum;
 
   agentModel?: LLMModelDataType;
@@ -278,6 +281,14 @@ export const pushDataListToTrainingQueue = async ({
     dataToInsert: typeof data,
     session: ClientSession
   ): Promise<number> => {
+    await persistChunkImageReferences({
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      data: dataToInsert,
+      imageUploadKeys,
+      tx: bridgeClientSessionToDbSession(session)
+    });
     let insertedCount = 0;
     const insertedModes = new Set<TrainingModeEnum>();
 
@@ -423,6 +434,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   vlmModel,
   vlmModelConfigured = !!vlmModel,
   data,
+  imageUploadKeys,
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
@@ -434,6 +446,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   collectionId: string;
 
   data: PushDataChunkType[];
+  imageUploadKeys?: string[];
   mode?: TrainingModeEnum;
 
   agentModel?: LLMModelDataType;
@@ -514,6 +527,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured,
     data: dataWithIds,
+    imageUploadKeys,
     mode,
     indexSize,
     billId,

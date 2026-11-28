@@ -15,11 +15,11 @@ import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import {
-  createNodeOutboundProxyAgent,
   createOutboundProxyConfigError,
   parseSupportedOutboundProxyUrl,
   PROXY_AUTHORIZATION_HEADER
-} from '../proxy/utils';
+} from '@fastgpt/global/common/proxy/utils';
+import { createNodeOutboundProxyAgent } from '../proxy/utils';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 import { getServiceAxiosMaxContentLength } from '../system/constants';
 
@@ -76,7 +76,11 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
     }
 
     if (redirectState.count >= redirectState.maxRedirects) {
-      return Promise.reject(new Error(`Maximum redirects exceeded: ${redirectState.maxRedirects}`));
+      return Promise.reject(
+        Object.assign(new Error(`Maximum redirects exceeded: ${redirectState.maxRedirects}`), {
+          code: 'ERR_FR_TOO_MANY_REDIRECTS'
+        })
+      );
     }
 
     const redirectUrl = resolveRedirectUrl(response.headers.location, currentUrl);
@@ -271,6 +275,87 @@ const resolveProxyUrl = (
   }
 };
 
+const createSingleHopAgent = async ({
+  parsedUrl,
+  proxyUrl,
+  rejectUnauthorized,
+  proxyAuthorization
+}: {
+  parsedUrl: URL;
+  proxyUrl?: URL;
+  rejectUnauthorized: boolean;
+  proxyAuthorization?: string;
+}): Promise<http.Agent> => {
+  if (proxyUrl) {
+    return createNodeOutboundProxyAgent({
+      targetUrl: parsedUrl,
+      proxyUrl,
+      rejectUnauthorized,
+      proxyAuthorization
+    });
+  }
+
+  const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
+  const lookup = createPinnedLookup(resolved);
+  return parsedUrl.protocol === 'https:'
+    ? new https.Agent({ lookup, rejectUnauthorized })
+    : new http.Agent({ lookup });
+};
+
+export type SafeRequestAgents = {
+  http?: http.Agent;
+  https?: https.Agent;
+  http2?: undefined;
+};
+
+/**
+ * 为单跳 HTTP/HTTPS 请求执行统一 SSRF 预检并构造对应的 Node Agent（适用于 crawlee/got 等非 Axios 客户端）。
+ *
+ * 与 safe axios 保持同一出站语义：
+ * - 仅允许 http/https 协议，并先执行本机 isInternalAddress() best-effort 预检；
+ * - 命中环境代理时复用 createNodeOutboundProxyAgent（支持 http/https/socks/socks5/socks5h），
+ *   非法或不支持的代理配置统一抛出脱敏后的 ServerConfigError；
+ * - 直连（含命中 NO_PROXY）时固定解析并二次校验后的目标 IP，防止 DNS rebinding。
+ * 返回完整包含 http/https/http2 三个槽位的对象，方便重定向时整组覆盖，避免残留上一跳的代理状态。
+ */
+export const resolveSafeRequestAgents = async ({
+  url,
+  rejectUnauthorized = true
+}: {
+  url: string;
+  rejectUnauthorized?: boolean;
+}): Promise<SafeRequestAgents> => {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error('Invalid request URL');
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error(`Unsupported request protocol: ${parsedUrl.protocol}`);
+  }
+
+  if (await isInternalAddress(url)) {
+    throw new Error(PRIVATE_URL_TEXT);
+  }
+
+  const rawProxyUrl = getProxyForUrl(url) || undefined;
+  const proxyUrl = rawProxyUrl ? parseSupportedOutboundProxyUrl(rawProxyUrl) : undefined;
+  const isHttps = parsedUrl.protocol === 'https:';
+  const agent = await createSingleHopAgent({
+    parsedUrl,
+    proxyUrl,
+    rejectUnauthorized
+  });
+
+  return {
+    http: isHttps ? undefined : agent,
+    https: isHttps ? (agent as https.Agent) : undefined,
+    http2: undefined
+  };
+};
+
 const attachRequestAgent = async (
   config: SafeRedirectInternalConfig,
   requestUrl: string
@@ -294,19 +379,12 @@ const attachRequestAgent = async (
   const proxyAuthorization = getRequestProxyAuthorization(config, proxyUrl);
 
   const isHttps = parsedUrl.protocol === 'https:';
-  const agent = await (async () => {
-    if (proxyUrl) {
-      return createNodeOutboundProxyAgent({
-        proxyUrl,
-        rejectUnauthorized,
-        proxyAuthorization
-      });
-    }
-
-    const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
-    const lookup = createPinnedLookup(resolved);
-    return isHttps ? new https.Agent({ lookup, rejectUnauthorized }) : new http.Agent({ lookup });
-  })();
+  const agent = await createSingleHopAgent({
+    parsedUrl,
+    proxyUrl,
+    rejectUnauthorized,
+    proxyAuthorization
+  });
 
   return {
     ...config,

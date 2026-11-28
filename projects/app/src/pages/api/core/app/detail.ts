@@ -42,6 +42,9 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
   const workflow = await getAppDraftWorkflow(app._id, app);
   await rewriteAppWorkflowToDetail({
     nodes: workflow.nodes,
+    proxySource: workflow.versionId
+      ? { appId: String(app._id), versionId: workflow.versionId }
+      : undefined,
     teamId,
     viewerTmbId: tmbId,
     ownerTmbId: app.tmbId,

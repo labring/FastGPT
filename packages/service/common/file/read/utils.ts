@@ -1,23 +1,21 @@
-import FormData from 'form-data';
 import path from 'node:path';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
-import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
 import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
-import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
+import { requestMultipartDocumentParse } from './customPdf';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
-import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
+import { getPdfEnhancedParseTimeoutMs } from '../parseTimeout';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -263,26 +261,14 @@ const readFileContent = async ({
     const start = Date.now();
     logger.info('Start parsing file via external service', { extension, filename });
 
-    const data = new FormData();
-    data.append('file', buffer, {
-      filename
+    const response = await requestMultipartDocumentParse({
+      url,
+      key: token,
+      fileBuffer: buffer,
+      filename,
+      timeoutMs: getPdfEnhancedParseTimeoutMs(),
+      sangforFileParseConfig
     });
-    appendIultmzhFileParseFields(data, sangforFileParseConfig);
-    const { data: response } = await axios.post<{
-      pages: number;
-      markdown: string;
-      error?: object | string;
-    }>(url, data, {
-      timeout: getBackendFileOperationTimeoutMs(),
-      headers: {
-        ...data.getHeaders(),
-        Authorization: token ? `Bearer ${token}` : undefined
-      }
-    });
-
-    if (response.error) {
-      return Promise.reject(response.error);
-    }
 
     logger.info('External file parsing completed', {
       extension,
@@ -300,11 +286,15 @@ const readFileContent = async ({
     };
   };
   const parsePdfFromSomark = async (): Promise<ReadFileResponse> => {
-    const apiKey = getSystemInstanceConfig().providers.documentParse.customPdf?.somarkApiKey;
+    const customPdf = getSystemInstanceConfig().providers.documentParse.customPdf;
+    const apiKey = customPdf?.somarkApiKey;
     if (!apiKey) return systemParse();
 
     const { buffer } = await getMaterializedFile();
-    const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
+    const { pages, text: rawText } = await useSomarkServer({
+      apiKey,
+      baseUrl: customPdf?.somarkBaseUrl
+    }).parsePDF(buffer);
     const text = await parseMarkdownImages(rawText);
 
     reportPdfParseUsage(pages);
@@ -426,6 +416,10 @@ const readFileContent = async ({
           value: documentParse.customPdf.key
         },
         {
+          path: 'providers.documentParse.customPdf.somarkBaseUrl',
+          value: documentParse.customPdf.somarkBaseUrl
+        },
+        {
           path: 'providers.documentParse.customPdf.somarkApiKey',
           value: documentParse.customPdf.somarkApiKey
         },
@@ -436,6 +430,10 @@ const readFileContent = async ({
         {
           path: 'providers.documentParse.customPdf.textinSecretCode',
           value: documentParse.customPdf.textinSecretCode
+        },
+        {
+          path: 'providers.documentParse.customPdf.timeoutSeconds',
+          value: documentParse.customPdf.timeoutSeconds
         },
         {
           path: 'providers.documentParse.customPdf.doc2xKey',

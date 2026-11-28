@@ -252,9 +252,11 @@ describe('dispatchRunTools', () => {
       ];
       runToolCallMock.mockResolvedValueOnce({
         toolRunTimes: 3,
-        toolCallInputTokens: 0,
-        toolCallOutputTokens: 0,
-        toolCallTotalPoints: 0,
+        toolCallInputTokens: 10,
+        toolCallOutputTokens: 5,
+        cacheReadTokens: 40,
+        cacheCreationTokens: 12,
+        toolCallTotalPoints: 1.5,
         completeMessages: [],
         finish_reason: 'stop',
         requestIds: [],
@@ -265,6 +267,13 @@ describe('dispatchRunTools', () => {
       const result = await dispatchRunTools(createProps());
 
       expect(result.runTimes).toBe(3);
+      expect(result.responseData).toMatchObject({
+        toolCallInputTokens: 10,
+        toolCallOutputTokens: 5,
+        cacheReadTokens: 40,
+        cacheCreationTokens: 12,
+        totalPoints: 1.5
+      });
       expect(result.assistantResponses).toEqual(assistantResponses);
       const messages = buildAgentLoopCoreRequestMessages({
         messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses ?? [] }]

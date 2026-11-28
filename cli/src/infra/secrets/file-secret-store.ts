@@ -6,7 +6,7 @@ import {
   ensureSecureDir,
   writeSecureJsonFile
 } from '../config/config-repository';
-import type { SecretStoreStrategy } from './secret-store';
+import type { SecretStoreStrategy } from './types';
 
 /**
  * 基于 `0600` 权限 `credentials.json` 的凭据存储策略，用于 Headless/容器或显式文件模式。

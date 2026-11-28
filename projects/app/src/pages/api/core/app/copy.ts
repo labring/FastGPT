@@ -1,3 +1,4 @@
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { NextAPI } from '@/service/middleware/entry';
 import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -72,7 +73,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       intro: app.intro,
       avatar,
       type: app.type,
-      nodes: draftWorkflow.nodes,
+      nodes: clearHttpProxyValues(draftWorkflow.nodes),
       storageNodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,

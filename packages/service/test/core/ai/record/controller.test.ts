@@ -1,16 +1,32 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import {
   getLLMRequestRecord,
   getLLMRequestRecords,
   sanitizeLLMRequestRecordPayload,
   saveLLMRequestRecord
 } from '@fastgpt/service/core/ai/record/controller';
-import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
+import {
+  LLMRequestRecordExpiredTimeIndexName,
+  MongoLLMRequestRecord
+} from '@fastgpt/service/core/ai/record/schema';
+
+const originalSnapshot = global.systemInstanceConfig;
+const setRetentionHours = (hours: number) => {
+  const snapshot = resolveSystemInstanceConfig({});
+  snapshot.performance.tracking.retentionHours = hours;
+  global.systemInstanceConfig = snapshot;
+};
 
 const createBase64 = (length = 320) => 'a'.repeat(length);
 
 beforeEach(async () => {
+  setRetentionHours(6);
   await MongoLLMRequestRecord.deleteMany({});
+});
+
+afterEach(() => {
+  global.systemInstanceConfig = originalSnapshot;
 });
 
 describe('sanitizeLLMRequestRecordPayload', () => {
@@ -290,5 +306,80 @@ describe('LLM request record team isolation', () => {
       response: { answerText: 'team b answer' }
     });
     expect(String(teamBRecord?.teamId)).toBe('507f1f77bcf86cd799439012');
+  });
+
+  it('writes expiredTime without createdAt from retentionHours, clamps legacy out-of-range values, and declares a fixed TTL index', async () => {
+    const ttlIndex = MongoLLMRequestRecord.schema
+      .indexes()
+      .find(([key]) => Object.keys(key).length === 1 && key.expiredTime === 1);
+    expect(ttlIndex?.[1]).toMatchObject({
+      name: LLMRequestRecordExpiredTimeIndexName,
+      expireAfterSeconds: 0
+    });
+
+    const t1Before = Date.now();
+    setRetentionHours(12);
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_12h',
+      body: { prompt: '12h' },
+      response: { ok: true }
+    });
+    const t1After = Date.now();
+
+    // 调大保留时长只影响后续新落库记录，不修改已入库记录的 expiredTime。
+    setRetentionHours(48);
+    const t2Before = Date.now();
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_48h',
+      body: { prompt: '48h' },
+      response: { ok: true }
+    });
+    const t2After = Date.now();
+
+    // 历史越界保留时长（如旧版 0 或 1440）就近收口到 [1, 1000]。
+    setRetentionHours(0);
+    const tZeroBefore = Date.now();
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_legacy_zero',
+      body: { prompt: '0h' },
+      response: { ok: true }
+    });
+    const tZeroAfter = Date.now();
+
+    setRetentionHours(1440);
+    const tOverBefore = Date.now();
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_legacy_over',
+      body: { prompt: '1440h' },
+      response: { ok: true }
+    });
+    const tOverAfter = Date.now();
+
+    const first = await MongoLLMRequestRecord.collection.findOne({ requestId: 'req_12h' });
+    const second = await MongoLLMRequestRecord.collection.findOne({ requestId: 'req_48h' });
+    const legacyZero = await MongoLLMRequestRecord.collection.findOne({
+      requestId: 'req_legacy_zero'
+    });
+    const legacyOver = await MongoLLMRequestRecord.collection.findOne({
+      requestId: 'req_legacy_over'
+    });
+
+    // 新记录不写入 createdAt，确保旧版 createdAt_1 TTL 索引不会提前删除新记录。
+    expect(first?.createdAt).toBeUndefined();
+    expect(second?.createdAt).toBeUndefined();
+    expect(first?.expiredTime).toBeInstanceOf(Date);
+    expect(second?.expiredTime).toBeInstanceOf(Date);
+    expect(first!.expiredTime.getTime()).toBeGreaterThanOrEqual(t1Before + 12 * 3600_000);
+    expect(first!.expiredTime.getTime()).toBeLessThanOrEqual(t1After + 12 * 3600_000);
+    expect(second!.expiredTime.getTime()).toBeGreaterThanOrEqual(t2Before + 48 * 3600_000);
+    expect(second!.expiredTime.getTime()).toBeLessThanOrEqual(t2After + 48 * 3600_000);
+    expect(legacyZero!.expiredTime.getTime()).toBeGreaterThanOrEqual(tZeroBefore + 1 * 3600_000);
+    expect(legacyZero!.expiredTime.getTime()).toBeLessThanOrEqual(tZeroAfter + 1 * 3600_000);
+    expect(legacyOver!.expiredTime.getTime()).toBeGreaterThanOrEqual(tOverBefore + 1000 * 3600_000);
+    expect(legacyOver!.expiredTime.getTime()).toBeLessThanOrEqual(tOverAfter + 1000 * 3600_000);
   });
 });

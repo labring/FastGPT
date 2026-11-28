@@ -4,7 +4,12 @@ import {
   getChatPublishSourceName,
   getChatPublishSourceType
 } from '@fastgpt/global/common/chat/publishSource';
-import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
+import {
+  formatAppLogRegion,
+  getLogIdentity,
+  normalizeAppLogKeys,
+  type AppLogIpDisplayType
+} from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
@@ -61,7 +66,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
-import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
+import UserIpTypeFilter from './UserIpTypeFilter';
 import ErrorCountFilter from './ErrorCountFilter';
 import UserFilter, { parseUserKey } from './UserFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -159,7 +164,7 @@ const LogTable = ({
   }>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
-  const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
+  const [userIpType, setUserIpType] = useState<AppLogIpDisplayType>('all');
   const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
 
@@ -578,15 +583,11 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.REGION]: (
         <Td key={AppLogKeysEnum.REGION}>
-          {userIpType === 'only_ip'
-            ? item.originIp || '-'
-            : userIpType === 'only_region'
-              ? item.originIp !== item.region
-                ? item.region || '-'
-                : '-'
-              : item.originIp
-                ? `${item.region || '-'}: ${item.originIp}`
-                : '-'}
+          {formatAppLogRegion({
+            originIp: item.originIp,
+            region: item.region,
+            displayType: userIpType
+          })}
         </Td>
       ),
       [AppLogKeysEnum.TITLE]: (

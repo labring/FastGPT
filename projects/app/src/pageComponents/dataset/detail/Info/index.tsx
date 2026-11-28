@@ -12,7 +12,11 @@ import { postDisableCollectionPermission } from '@/web/core/dataset/api';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { Box, Flex, Input, Switch, Skeleton, SkeletonText } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  ApiDatasetTypeMap,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -25,6 +29,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useState } from 'react';
@@ -38,6 +43,7 @@ const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServic
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const {
     datasetDetail,
     loadDatasetDetail,
@@ -46,6 +52,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     refreshCollectionList
   } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -71,6 +78,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     useConfirm({
       title: t('common:action_confirm')
     });
+  const { openConfirm: onOpenConfirmPermissionSync, ConfirmModal: ConfirmPermissionSyncModal } =
+    useConfirm({
+      title: t('common:action_confirm')
+    });
 
   const {
     openConfirm: openConfirmDisableCollectionPer,
@@ -88,6 +99,49 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     async () => {
       await postDisableCollectionPermission({ datasetId });
       await loadDatasetDetail(datasetId);
+    }
+  );
+
+  const { runAsync: onToggleSyncAll, loading: isUpdatingSyncAll } = useRequest(
+    async (syncAll: boolean) => {
+      await updateDataset({
+        id: datasetId,
+        syncAll
+      });
+      return syncAll;
+    },
+    {
+      onSuccess(syncAll) {
+        toast({
+          status: 'success',
+          title: syncAll
+            ? t('dataset:sync_root_enabled_next_sync_tip')
+            : t('dataset:sync_root_paused_tip')
+        });
+      }
+    }
+  );
+
+  const { runAsync: onTogglePermissionSync, loading: isUpdatingPermissionSync } = useRequest(
+    async (permissionSync: boolean) => {
+      await updateDataset({
+        id: datasetId,
+        apiDatasetServer: {
+          permissionSync
+        }
+      });
+      refreshCollectionList();
+      return permissionSync;
+    },
+    {
+      onSuccess(permissionSync) {
+        toast({
+          status: 'success',
+          title: permissionSync
+            ? t('dataset:permission_sync_enabled_tip')
+            : t('dataset:permission_sync_disabled_tip')
+        });
+      }
     }
   );
 
@@ -326,6 +380,45 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Flex>
         )}
 
+        {isApiDataset && (
+          <Flex alignItems={'center'} pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:sync_root_new_items')}
+            </FormLabel>
+            <QuestionTip ml={1} label={t('dataset:sync_root_new_items_tip')} />
+            <Box flex={1} />
+            <Switch
+              isChecked={!!datasetDetail.syncAll}
+              isDisabled={!datasetDetail.permission.hasManagePer || isUpdatingSyncAll}
+              onChange={(e) => onToggleSyncAll(e.target.checked)}
+            />
+          </Flex>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.apiDataset && (
+          <Flex alignItems={'center'} pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:permission_sync')}
+            </FormLabel>
+            <QuestionTip ml={1} label={t('dataset:permission_sync_tip')} />
+            <Box flex={1} />
+            <Switch
+              isChecked={Boolean(datasetDetail.apiDatasetServer?.permissionSync)}
+              isDisabled={!datasetDetail.permission.hasManagePer || isUpdatingPermissionSync}
+              onChange={(e) => {
+                e.preventDefault();
+                const permissionSync = e.target.checked;
+                onOpenConfirmPermissionSync({
+                  onConfirm: () => onTogglePermissionSync(permissionSync),
+                  customContent: permissionSync
+                    ? t('dataset:open_permission_sync_confirm')
+                    : t('dataset:close_permission_sync_confirm')
+                })();
+              }}
+            />
+          </Flex>
+        )}
+
         {datasetDetail.type === DatasetTypeEnum.externalFile && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
@@ -457,27 +550,33 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         datasetDetail.collectionPermissionEnabled === true && (
           <>
             <MyDivider my={4} h={'2px'} maxW={'500px'} />
-            <Box fontSize={'mini'} color={'myGray.500'}>
-              {t('common:permission.collection_permission_enabled_tip')}
-              <Box
-                as={'span'}
-                ml={1}
-                textDecoration={'underline'}
-                cursor={'pointer'}
-                _hover={{ color: 'primary.600' }}
-                onClick={() =>
-                  !isDisablingCollectionPer &&
-                  openConfirmDisableCollectionPer({
-                    onConfirm: () => {
-                      // 确认框先关闭，清理流程独立执行，避免弹窗退出期间的状态刷新打断关闭动画。
-                      disableCollectionPer().catch(() => undefined);
-                    }
-                  })()
-                }
-              >
-                {t('common:permission.collection_permission_disable_action')}
+            {datasetDetail.apiDatasetServer?.permissionSync === true ? (
+              <Box fontSize={'mini'} color={'myGray.500'}>
+                {t('dataset:permission_sync_managed_tip')}
               </Box>
-            </Box>
+            ) : (
+              <Box fontSize={'mini'} color={'myGray.500'}>
+                {t('common:permission.collection_permission_enabled_tip')}
+                <Box
+                  as={'span'}
+                  ml={1}
+                  textDecoration={'underline'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() =>
+                    !isDisablingCollectionPer &&
+                    openConfirmDisableCollectionPer({
+                      onConfirm: () => {
+                        // 确认框先关闭，清理流程独立执行，避免弹窗退出期间的状态刷新打断关闭动画。
+                        disableCollectionPer().catch(() => undefined);
+                      }
+                    })()
+                  }
+                >
+                  {t('common:permission.collection_permission_disable_action')}
+                </Box>
+              </Box>
+            )}
           </>
         )}
 
@@ -504,6 +603,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />
+      <ConfirmPermissionSyncModal />
       <ConfirmDisableCollectionPerModal />
       {editedDataset && (
         <EditResourceModal

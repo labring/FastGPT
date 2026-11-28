@@ -1,8 +1,8 @@
+import { findAppVersionNodes } from '@fastgpt/service/core/app/version/entity';
 import {
   hasConfiguredHttpProxy,
-  restoreHttpProxySecrets
+  resolveHttpProxySecrets
 } from '@fastgpt/service/core/app/httpProxySecret';
-import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
@@ -99,9 +99,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       per: WritePermissionVal
     });
     const nodes = hasConfiguredHttpProxy(requestNodes)
-      ? restoreHttpProxySecrets({
+      ? await resolveHttpProxySecrets({
           nodes: requestNodes,
-          baseline: (await getAppDraftWorkflow(appId, app)).nodes
+          appId,
+          readVersions: (versionIds) => findAppVersionNodes({ appId, versionIds })
         })
       : requestNodes;
     const resources = await prepareAppWorkflowResources({
@@ -327,7 +328,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
-      metadata: {
+      systemMetadata: {
         originIp,
         // 本轮根节点配置与会话累计启用事实分开保存，子流程成功状态由 summary 承担。
         [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)

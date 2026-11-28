@@ -187,13 +187,15 @@ export const CHAT_FIXED_TITLE_I18N = {
     en: 'AUTO EXECUTE',
     'zh-CN': '自动执行',
     'zh-Hant': '自動執行',
-    'ko-KR': '자동 실행'
+    'ko-KR': '자동 실행',
+    'tr-TR': 'OTOMATİK ÇALIŞTIR'
   },
   uploadFile: {
     en: 'File Upload',
     'zh-CN': '上传文件',
     'zh-Hant': '檔案上傳',
-    'ko-KR': '파일 업로드'
+    'ko-KR': '파일 업로드',
+    'tr-TR': 'Dosya Yükleme'
   }
 } satisfies Record<ChatFixedTitleKey, I18nStringType>;
 

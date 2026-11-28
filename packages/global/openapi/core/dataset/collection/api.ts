@@ -45,6 +45,10 @@ export const UpdateDatasetCollectionBodySchema = z
       .optional()
       .describe('标签列表（支持 String 旧格式 或 { tag, value } 新格式）'),
     forbid: z.boolean().optional().describe('是否禁用'),
+    syncChildren: z
+      .boolean()
+      .optional()
+      .describe('是否自动同步该 API 目录下的新增子级（仅 API 目录生效）'),
     createTime: z.coerce.date().optional().describe('创建时间'),
     datasetId: z.string().optional().describe('数据集ID，配合 externalFileId 使用'),
     externalFileId: z.string().optional().describe('外部文件ID，配合 datasetId 使用')
@@ -250,6 +254,8 @@ export const DatasetCollectionsListItemSchema = z
     tags: DatasetCollectionItemSchema.shape.tags,
 
     externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
+    apiFileId: DatasetCollectionSchema.shape.apiFileId,
+    syncChildren: DatasetCollectionSchema.shape.syncChildren,
 
     fileId: z.string().optional().meta({ description: '文件 ID' }),
     rawLink: z.string().optional().meta({ description: '原始链接' }),

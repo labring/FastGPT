@@ -4,5 +4,3 @@ export enum CollectionSourcePrefixEnum {
   link = 'link',
   external = 'external'
 }
-
-export const RootCollectionId = 'SYSTEM_ROOT';

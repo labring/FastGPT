@@ -1,6 +1,5 @@
 import deleteHandler from '@/pages/api/core/dataset/collection/delete';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
@@ -17,22 +16,10 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-
-// delCollection 会调用 deleteDatasetFilesByKeys，而全局 s3 mock 未提供该方法；本地补齐。
-const { mockDeleteDatasetFilesByKeys } = vi.hoisted(() => ({
-  mockDeleteDatasetFilesByKeys: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    createGetDatasetFileURL: vi.fn(),
-    createUploadDatasetFileURL: vi.fn(),
-    deleteDatasetFile: vi.fn(),
-    deleteDatasetFilesByKeys: mockDeleteDatasetFilesByKeys
-  })
-}));
+import { s3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 /**
  * 建立 dataset 与一个 file collection：dataset owner 与 collection owner 分离，用于验证删除门槛。
@@ -70,9 +57,9 @@ const createDatasetWithCollection = async ({
 
 describe('delete collection permission', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it('records each selected collection once without expanding implicitly deleted descendants', async () => {
     const { owner } = await getFakeUsers(1);
@@ -148,34 +135,44 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     // 外库 key 不进入删除名单，避免跨库物理删除
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([]);
+    expect(s3FileDeleteMQService.addJob).not.toHaveBeenCalled();
     expect(String(dataset._id)).toBeTruthy();
   });
 
-  it('deletes S3 files owned by the collection dataset', async () => {
-    const users = await getFakeUsers(1);
-    const member = users.members[0];
-    const { dataset, collection } = await createDatasetWithCollection({
-      teamId: users.owner.teamId,
-      datasetTmbId: member.tmbId,
-      collectionTmbId: member.tmbId
-    });
-    const ownFileId = `dataset/${dataset._id}/own.pdf`;
-    await MongoDatasetCollection.updateOne(
-      { _id: collection._id },
-      { $set: { fileId: ownFileId } }
-    );
+  it.each([false, true])(
+    'keeps source-file deletion separate from another collection image (managed: %s)',
+    async (managed) => {
+      const users = await getFakeUsers(1);
+      const member = users.members[0];
+      const { dataset, collection } = await createDatasetWithCollection({
+        teamId: users.owner.teamId,
+        datasetTmbId: member.tmbId,
+        collectionTmbId: member.tmbId
+      });
+      const ownFileId = managed
+        ? `dataset/${dataset._id}/chunk-images/${'1'.repeat(24)}/file/${'a'.repeat(32)}.png`
+        : `dataset/${dataset._id}/own.pdf`;
+      await MongoDatasetCollection.updateOne(
+        { _id: collection._id },
+        { $set: { fileId: ownFileId } }
+      );
 
-    const response = await Call(deleteHandler, {
-      auth: member,
-      body: { collectionIds: [String(collection._id)] }
-    });
+      const response = await Call(deleteHandler, {
+        auth: member,
+        body: { collectionIds: [String(collection._id)] }
+      });
 
-    expect(response.code).toBe(200);
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([ownFileId]);
-  });
+      expect(response.code, JSON.stringify(response)).toBe(200);
+      if (managed) expect(s3FileDeleteMQService.addJob).not.toHaveBeenCalled();
+      else
+        expect(s3FileDeleteMQService.addJob).toHaveBeenCalledWith({
+          bucketName: S3Buckets.private,
+          keys: [ownFileId]
+        });
+    }
+  );
 
   it('deletes S3 images owned by the image collection and excludes foreign images', async () => {
     const users = await getFakeUsers(1);
@@ -224,9 +221,12 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(imgCollection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     // 仅删除自有 dataset 的 imageId，排除外库 key
-    expect(mockDeleteDatasetFilesByKeys).toHaveBeenCalledWith([ownImageId]);
+    expect(s3FileDeleteMQService.addJob).toHaveBeenCalledWith({
+      bucketName: S3Buckets.private,
+      keys: [ownImageId]
+    });
   });
 
   it('deletes the collection when the caller is the collection owner (permission enabled)', async () => {
@@ -251,7 +251,7 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
     // 删除只作用于集合同身，dataset 保留
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.not.toBeNull();
@@ -280,7 +280,7 @@ describe('delete collection permission', () => {
       body: { collectionIds: [String(collection._id)] }
     });
 
-    expect(response.code).toBe(200);
+    expect(response.code, JSON.stringify(response)).toBe(200);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
   });
 
@@ -344,9 +344,9 @@ describe('delete collection permission', () => {
 
 describe('delete collection by body locating mode', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   const fixture = async () => {
     const users = await getFakeUsers(1);
@@ -510,9 +510,9 @@ describe('delete collection by body locating mode', () => {
 
 describe('delete collection by apiFileId', () => {
   beforeEach(() => {
-    mockDeleteDatasetFilesByKeys.mockReset();
-    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockResolvedValue(undefined);
   });
+  afterEach(() => vi.restoreAllMocks());
 
   const fixture = async () => {
     const users = await getFakeUsers(1);
@@ -930,21 +930,296 @@ describe('delete collection by apiFileId', () => {
     expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
   });
 
-  it('rejects the virtual root apiFileId', async () => {
+  it('flips parent folder syncChildren and Dataset.syncAll to false when deleting a child API collection', async () => {
     const { member, dataset, createCollection } = await fixture();
-    const root = await createCollection({
-      name: 'api-root',
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const folder = await createCollection({
+      name: 'api-folder',
       type: DatasetCollectionTypeEnum.folder,
-      apiFileId: RootCollectionId
+      apiFileId: 'dir-1',
+      syncChildren: true
+    });
+    const child = await createCollection({
+      name: 'child-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'dir-1',
+      parentId: folder._id
     });
 
     const response = await Call(deleteHandler, {
       auth: member,
-      body: { datasetId: String(dataset._id), apiFileIds: [RootCollectionId] }
+      body: { collectionIds: [String(child._id)] }
     });
 
-    expect(response.code).not.toBe(200);
-    expect(response.error).toBe(CommonErrEnum.invalidParams);
-    await expect(MongoDatasetCollection.findById(root._id).lean()).resolves.not.toBeNull();
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(folder._id).lean())?.syncChildren).toBe(false);
+    // 任意层级的 API 节点删除都会先关闭知识库级全量同步总开关
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('flips Dataset.syncAll to false when deleting a root-level API collection', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const rootFile = await createCollection({
+      name: 'root-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'root-doc-1'
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(rootFile._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(rootFile._id).lean()).resolves.toBeNull();
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('does not flip syncAll or parent syncChildren when deleting non-API collections', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const apiFolder = await createCollection({
+      name: 'api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-keep',
+      syncChildren: true
+    });
+    const manualFile = await createCollection({
+      name: 'manual-file',
+      type: DatasetCollectionTypeEnum.file,
+      parentId: apiFolder._id
+    });
+    const rootManualFile = await createCollection({
+      name: 'root-manual-file',
+      type: DatasetCollectionTypeEnum.file
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(manualFile._id), String(rootManualFile._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(apiFolder._id).lean())?.syncChildren).toBe(true);
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(true);
+  });
+
+  it('retains derived docA#dir folder with syncChildren=false when deleting its children', async () => {
+    const { member, createCollection } = await fixture();
+    const derivedDir = await createCollection({
+      name: 'docA',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'docA#dir',
+      syncChildren: true,
+      metadata: { apiFileSourceId: 'docA' }
+    });
+    const body = await createCollection({
+      name: 'docA',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'docA',
+      parentId: derivedDir._id
+    });
+    const subDoc = await createCollection({
+      name: 'sub',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'sub-1',
+      apiFileParentId: 'docA',
+      parentId: derivedDir._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(subDoc._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(subDoc._id).lean()).resolves.toBeNull();
+    const savedDir = await MongoDatasetCollection.findById(derivedDir._id).lean();
+    expect(savedDir?.syncChildren).toBe(false);
+    expect(String((await MongoDatasetCollection.findById(body._id).lean())?.parentId)).toBe(
+      String(derivedDir._id)
+    );
+  });
+
+  it('pauses remote source API parent folder when deleting an API file moved into a manual folder', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const remoteParent = await createCollection({
+      name: 'remote-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-id',
+      syncChildren: true
+    });
+    const manualFolder = await createCollection({
+      name: 'manual-dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movedFile = await createCollection({
+      name: 'moved-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'remote-dir-id',
+      parentId: manualFolder._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(movedFile._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(movedFile._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(remoteParent._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('pauses derived doc#dir folder when deleting its body moved into a manual folder', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const derivedDir = await createCollection({
+      name: 'docB',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'docB#dir',
+      syncChildren: true,
+      metadata: { apiFileSourceId: 'docB' }
+    });
+    const manualFolder = await createCollection({
+      name: 'manual-dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movedBody = await createCollection({
+      name: 'docB',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'docB',
+      parentId: manualFolder._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(movedBody._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(movedBody._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(derivedDir._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('pauses remote source folder and syncAll when deleting an entire manual folder containing moved API files', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const remoteParent = await createCollection({
+      name: 'remote-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-id',
+      syncChildren: true
+    });
+    const manualFolder = await createCollection({
+      name: 'manual-dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movedFile = await createCollection({
+      name: 'moved-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'remote-dir-id',
+      parentId: manualFolder._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(manualFolder._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(manualFolder._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(movedFile._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(remoteParent._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('pauses only derived doc#dir without pausing outer parent when deleting body inside outer/doc#dir', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const outer = await createCollection({
+      name: 'outer',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'outer-id',
+      syncChildren: true
+    });
+    const derivedDir = await createCollection({
+      name: 'docC',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'docC#dir',
+      apiFileParentId: 'outer-id',
+      parentId: outer._id,
+      syncChildren: true,
+      metadata: { apiFileSourceId: 'docC' }
+    });
+    const body = await createCollection({
+      name: 'docC',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'docC',
+      apiFileParentId: 'outer-id',
+      parentId: derivedDir._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(body._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(body._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(derivedDir._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDatasetCollection.findById(outer._id).lean())?.syncChildren).toBe(true);
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('cleans legacy SYSTEM_ROOT sentinel and reparents surviving children when deleting an API file', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    const sentinel = await createCollection({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const deletedDoc = await createCollection({
+      name: 'deleted-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-del',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+    const survivingDoc = await createCollection({
+      name: 'surviving-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-keep',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(deletedDoc._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(deletedDoc._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
+    const savedSurviving = await MongoDatasetCollection.findById(survivingDoc._id).lean();
+    expect(savedSurviving?.parentId).toBeNull();
+    expect(savedSurviving?.apiFileParentId).toBeUndefined();
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
   });
 });

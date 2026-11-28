@@ -1,5 +1,7 @@
 import handler from '@/pages/api/core/app/version/publish';
 import appDetailHandler from '@/pages/api/core/app/detail';
+import createAppHandler from '@/pages/api/core/app/create';
+import { clearHttpProxyValues } from '@fastgpt/global/common/workflow/httpProxy';
 import { HTTP_PROXY_CONFIGURED } from '@fastgpt/service/core/app/httpProxySecret';
 import { decryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import versionDetailHandler from '@/pages/api/core/app/version/detail';
@@ -1589,8 +1591,8 @@ describe('HTTP node proxy credential save and detail boundaries', () => {
       const input = detail.data.nodes[0].inputs.find(
         (item: any) => item.key === NodeInputKeyEnum.httpProxy
       );
-      expect(input.value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
-      expect(input.defaultValue).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+      expect(input.value.secret.startsWith(HTTP_PROXY_CONFIGURED + '.')).toBe(true);
+      expect(input.defaultValue.secret.startsWith(HTTP_PROXY_CONFIGURED + '.')).toBe(true);
       expect(JSON.stringify(detail.data)).not.toContain('private');
       const unchanged = await save(detail.data.nodes);
       expect(unchanged.code, JSON.stringify(unchanged)).toBe(200);
@@ -1606,6 +1608,107 @@ describe('HTTP node proxy credential save and detail boundaries', () => {
       input.defaultValue = undefined;
       expect((await save(detail.data.nodes)).code).toBe(200);
       expect(decryptSecretValue((await readStored())!.nodes[0].inputs[0].value)).toBe('');
+    }
+  );
+});
+
+describe('historical HTTP proxy source ownership', () => {
+  it('saves a copied node and imports a portable export after removing proxy values and defaults', async () => {
+    const auth = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'Portable proxy',
+      type: AppTypeEnum.workflow,
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+    const nodes = [
+      {
+        nodeId: 'http',
+        name: 'HTTP',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.httpProxy,
+            label: 'Proxy',
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            value: { secret: HTTP_PROXY_CONFIGURED },
+            defaultValue: { secret: HTTP_PROXY_CONFIGURED }
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const portable = clearHttpProxyValues(nodes);
+    portable[0].nodeId = 'copied-http';
+    const saved = await Call<PublishAppBodyType>(handler, {
+      auth,
+      query: { appId: String(app._id) },
+      body: { nodes: portable, edges: [], isPublish: false }
+    });
+    expect(saved.code, JSON.stringify(saved)).toBe(200);
+    const imported = await Call(createAppHandler, {
+      auth,
+      body: {
+        name: 'Imported',
+        type: AppTypeEnum.workflow,
+        nodes: JSON.parse(JSON.stringify(portable)),
+        edges: []
+      }
+    });
+    expect(imported.code, JSON.stringify(imported)).toBe(200);
+    expect(nodes[0].inputs[0].value).toEqual({ secret: HTTP_PROXY_CONFIGURED });
+    expect(JSON.stringify(portable)).not.toContain(HTTP_PROXY_CONFIGURED);
+  });
+  it.each(['save', 'publish', 'autosave'])(
+    'restores the selected snapshot for %s after the draft proxy changed or the node was deleted',
+    async (mode) => {
+      const auth = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Historical proxy',
+        type: AppTypeEnum.workflow,
+        teamId: auth.teamId,
+        tmbId: auth.tmbId
+      });
+      const oldUrl = 'http://old:private@proxy.example.com';
+      const node = {
+        nodeId: 'http',
+        name: 'HTTP',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.httpProxy,
+            label: 'Proxy',
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            value: { value: oldUrl }
+          }
+        ],
+        outputs: []
+      };
+      const save = (nodes: any[], isPublish = false, autoSave = false) =>
+        Call<PublishAppBodyType>(handler, {
+          auth,
+          query: { appId: String(app._id) },
+          body: { nodes, edges: [], isPublish, autoSave, returnWorkflow: true }
+        });
+      expect((await save([node], true)).code).toBe(200);
+      const old = await MongoAppVersion.findOne({ appId: app._id }).lean();
+      for (const deleted of [false, true]) {
+        const changed = structuredClone(node);
+        changed.inputs[0].value = { value: 'http://new:private@proxy.example.com' };
+        expect((await save(deleted ? [] : [changed])).code).toBe(200);
+        const historical = await Call(versionDetailHandler, {
+          auth,
+          query: { appId: String(app._id), versionId: String(old!._id) }
+        });
+        expect(historical.code, JSON.stringify(historical)).toBe(200);
+        const result = await save(historical.data.nodes, mode === 'publish', mode === 'autosave');
+        expect(result.code, JSON.stringify(result)).toBe(200);
+        const restored = await MongoAppVersion.findOne({ appId: app._id })
+          .sort({ time: -1, _id: -1 })
+          .lean();
+        expect(decryptSecretValue(restored!.nodes[0].inputs[0].value)).toBe(oldUrl);
+        expect(JSON.stringify(historical.data)).not.toContain('private');
+      }
     }
   );
 });

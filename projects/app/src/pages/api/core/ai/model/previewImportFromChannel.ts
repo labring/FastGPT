@@ -15,9 +15,12 @@ import { previewImportFromChannel } from '@fastgpt/service/core/ai/model/importF
 async function handler(
   req: ApiRequestProps<Record<string, never>, PreviewImportFromChannelQuery>
 ): Promise<PreviewImportFromChannelResponse> {
-  const query = parseApiInput({ req, querySchema: PreviewImportFromChannelQuerySchema }).query;
-  const { tmbId } = await authModelScope({ req, channelType: 'system' });
-  const result = await previewImportFromChannel({ channelId: query.channelId, tmbId });
+  const { channelId, channelType } = parseApiInput({
+    req,
+    querySchema: PreviewImportFromChannelQuerySchema
+  }).query;
+  const actor = await authModelScope({ req, channelType });
+  const result = await previewImportFromChannel({ channelId, channelType, ...actor });
 
   return PreviewImportFromChannelResponseSchema.parse(result);
 }

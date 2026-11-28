@@ -5,6 +5,7 @@ import { PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 /** 分类后再裁剪代理异常；未知底层故障保留系统告警，绝不保留可能含凭据的原始 cause/config。 */
 export const createHttpProxyRequestError = (error: unknown, method: string) => {
   const networkCodes = new Set([
+    'ERR_FR_TOO_MANY_REDIRECTS',
     'ECONNABORTED',
     'ETIMEDOUT',
     'ECONNRESET',

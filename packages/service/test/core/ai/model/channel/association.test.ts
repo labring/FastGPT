@@ -393,4 +393,25 @@ describe('channel controller — list views with relatedModelCount', () => {
     expect(member.total).toBe(0);
     expect(member.list).toEqual([]);
   });
+
+  it('projects keyConfigured boolean without leaking raw channel keys', async () => {
+    axiosMock.mockResolvedValueOnce(
+      okEnvelope({
+        channels: [
+          { id: 1, name: 'with-key', type: 1, status: 1, key: 'sk-secret-value', models: [] },
+          { id: 2, name: 'blank-key', type: 1, status: 1, key: '   ', models: [] },
+          { id: 3, name: 'no-key', type: 1, status: 1, models: [] }
+        ],
+        total: 3
+      })
+    );
+
+    const result = await getSystemChannelList();
+    expect(result.list.map((c) => ({ id: c.id, keyConfigured: c.keyConfigured }))).toEqual([
+      { id: 1, keyConfigured: true },
+      { id: 2, keyConfigured: false },
+      { id: 3, keyConfigured: false }
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sk-secret-value');
+  });
 });

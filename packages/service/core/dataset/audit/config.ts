@@ -61,6 +61,7 @@ export const buildDatasetUpdateAuditLogs = ({
     externalReadUrl?: string;
     apiDatasetServer: { enabled: boolean; value?: unknown };
     autoSync?: boolean;
+    syncAll?: boolean;
     chunkSettings?: unknown;
     chunkSettingsEnabled: boolean;
     fileParseConfig?: unknown;
@@ -167,6 +168,12 @@ export const buildDatasetUpdateAuditLogs = ({
       oldValue: dataset.autoSync,
       newValue: update.autoSync,
       enabled: typeof update.autoSync === 'boolean'
+    }),
+    ...buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.SYNC_ALL,
+      oldValue: Boolean(dataset.syncAll),
+      newValue: update.syncAll,
+      enabled: typeof update.syncAll === 'boolean'
     }),
     ...buildDatasetConfigAuditChanges({
       item: DatasetConfigAuditItemEnum.CHUNK_SETTINGS,

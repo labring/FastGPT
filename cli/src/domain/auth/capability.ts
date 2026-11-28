@@ -1,5 +1,4 @@
-import type { ResolvedAuthContext } from './auth-resolver';
-import type { WhoamiProbeResult } from './probe/probe-chain';
+import type { ResolvedCredential } from '../../shared/types';
 
 export type CapabilitySummary = {
   credentialKind: string;
@@ -14,8 +13,8 @@ export function buildCapabilitySummary({
   probe,
   resolved
 }: {
-  probe?: WhoamiProbeResult;
-  resolved?: ResolvedAuthContext;
+  probe?: { authType: 'token' | 'apikey'; apiKeyType?: 'personal' | 'app' };
+  resolved?: { credential?: Pick<ResolvedCredential, 'kind'> };
 }): CapabilitySummary {
   const kind = (() => {
     if (probe?.authType === 'token') return 'token';

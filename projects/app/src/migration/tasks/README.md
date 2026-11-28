@@ -9,9 +9,12 @@
 | `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
+| `20261120_clean_api_dataset_system_root` | 手动执行 | 待所有主服务与 Pro 升级至新版后手动触发，清理 API 知识库历史 `SYSTEM_ROOT` 哨兵节点并回填 `Dataset.syncAll` |
 | `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
 | `20261117_migrate_sandbox_to_opensandbox` | 手动触发 | 存量 Sealos Devbox、旧 OpenSandbox 持久卷与 `.zip` 流式转码迁移至 OpenSandbox `.tar.zst` |
 | `20261117_cleanup_legacy_sandbox_resources` | 手动触发 | 核验并清理历史 Sealos Devbox、旧持久卷与旧 `.zip` 遗留资源 |
+| `20261125_backfill_model_reasoning_effort_list` | 手动触发 | 按插件预设回填存量 LLM 缺失的可用思考等级（`reasoningEffortList`），保留已手工配置项 |
+| `20261127_cleanup_agent_engine_config` | 独立执行 | 清理实例功能配置（`feature`）中已下线的 `agentEngine` 覆盖项与默认值标记 |
 
 ## 废弃 MongoDB 索引按版本清理约定
 

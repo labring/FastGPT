@@ -1,20 +1,15 @@
 import { DatasetSearchFilterSchema } from '@fastgpt/global/core/dataset/search/type';
-import { Option } from 'commander';
 import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
   parseIdListOption,
+  parseOptionalBooleanFlag,
+  parseOptionalNumber,
   parseParentIdOption,
   resolveJsonObjectPayload
 } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
-import {
-  confirmDestructiveAction,
-  parseOptionalBooleanFlag,
-  parseOptionalNumber,
-  requireActiveClient,
-  resolveIdArg
-} from './shared';
+import { confirmDestructiveAction, requireActiveClient, resolveIdArg } from '../shared/helpers';
 
 /**
  * 知识库主资源命令组（System OpenAPI）：list / get / create / update / delete / search / batch-move / batch-delete。
@@ -52,18 +47,6 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           description: 'Comma-separated dataset ObjectIds to query exactly'
         },
         {
-          name: 'withAppCount',
-          flags: '--with-app-count',
-          takesValue: false,
-          description: 'Include app reference count'
-        },
-        {
-          name: 'withFileCount',
-          flags: '--with-file-count',
-          takesValue: false,
-          description: 'Include dataset file count'
-        },
-        {
           name: 'page',
           flags: '--page <n>',
           takesValue: true,
@@ -74,12 +57,6 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           flags: '--page-size <n>',
           takesValue: true,
           description: 'Items per page (default 20, max 500)'
-        },
-        {
-          name: 'offset',
-          flags: '--offset <n>',
-          takesValue: true,
-          description: 'Offset pagination start (takes precedence over --page)'
         }
       ],
       examples: [
@@ -103,11 +80,8 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
             parentId: parseParentIdOption(options.parentId),
             type: typeof options.type === 'string' ? options.type : undefined,
             datasetIds: parseIdListOption(options.datasetIds),
-            withAppCount: options.withAppCount === true ? true : undefined,
-            withFileCount: options.withFileCount === true ? true : undefined,
             page: parseOptionalNumber(options.page),
-            pageSize: parseOptionalNumber(options.pageSize),
-            offset: parseOptionalNumber(options.offset)
+            pageSize: parseOptionalNumber(options.pageSize)
           }
         });
       }
@@ -172,6 +146,12 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           flags: '--intro <text>',
           takesValue: true,
           description: 'Dataset description or introduction'
+        },
+        {
+          name: 'avatar',
+          flags: '--avatar <path>',
+          takesValue: true,
+          description: 'Dataset avatar path (e.g. from "fastgpt file upload-avatar")'
         },
         {
           name: 'type',
@@ -266,6 +246,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           ...(filePayload ?? {}),
           name,
           ...(typeof options.intro === 'string' ? { intro: options.intro } : {}),
+          ...(typeof options.avatar === 'string' ? { avatar: options.avatar } : {}),
           ...(typeof options.type === 'string' ? { type: options.type } : {}),
           ...(typeof options.vectorModel === 'string'
             ? { vectorModelId: options.vectorModel }
@@ -503,13 +484,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           name: 'topk',
           flags: '--topk <count>',
           takesValue: true,
-          description: 'Return the top 1-100 chunks (default 20); takes precedence over --maxTokens'
-        },
-        {
-          name: 'maxTokens',
-          flags: '--maxTokens <tokens>',
-          takesValue: true,
-          description: 'Use a token budget instead of topk (positive integer)'
+          description: 'Return the top 1-100 chunks (default 20)'
         },
         {
           name: 'similarity',
@@ -521,113 +496,32 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           name: 'mode',
           flags: '--mode <mode>',
           takesValue: true,
-          description: 'Recall mode: embedding, fullTextRecall, or mixedRecall (default embedding)'
-        },
-        {
-          name: 'usageScene',
-          flags: '--usageScene <scene>',
-          takesValue: true,
-          description:
-            'Billing label only: search or searchTest (default search); does not affect retrieval'
-        },
-        {
-          name: 'embeddingWeight',
-          flags: '--embeddingWeight <weight>',
-          takesValue: true,
-          description: 'Embedding fusion weight for mixedRecall (0-1, default 0.5)'
+          description: 'Recall mode: embedding (default), fullTextRecall, or mixedRecall'
         },
         {
           name: 'collectionIds',
-          flags: '--collectionIds <ids>',
+          flags: '--collection-ids <ids>',
           takesValue: true,
           description: 'Restrict to comma-separated collection or folder IDs (up to 500)'
-        },
-        {
-          name: 'createTimeGte',
-          flags: '--createTimeGte <datetime>',
-          takesValue: true,
-          description: 'Inclusive collection creation time lower bound (ISO 8601 with timezone)'
-        },
-        {
-          name: 'createTimeLte',
-          flags: '--createTimeLte <datetime>',
-          takesValue: true,
-          description: 'Inclusive collection creation time upper bound (ISO 8601 with timezone)'
-        },
-        {
-          name: 'tagsAnd',
-          flags: '--tagsAnd <json>',
-          takesValue: true,
-          description: 'JSON array of tag conditions that must all match (1-50 conditions)'
-        },
-        {
-          name: 'tagsOr',
-          flags: '--tagsOr <json>',
-          takesValue: true,
-          description:
-            'JSON array of tag conditions of which at least one must match (1-50 conditions)'
         },
         {
           name: 'rerank',
           flags: '--rerank',
           takesValue: false,
-          description: 'Enable rerank model scoring'
-        },
-        {
-          name: 'noRerank',
-          flags: '--no-rerank',
-          takesValue: false,
-          description: 'Disable rerank model scoring (default)'
-        },
-        {
-          name: 'rerankModelId',
-          flags: '--rerankModelId <id>',
-          takesValue: true,
-          description: 'Rerank model ID; requires --rerank (default: authorized default model)'
-        },
-        {
-          name: 'rerankCandidateNum',
-          flags: '--rerankCandidateNum <count>',
-          takesValue: true,
-          description: 'Rerank candidate count (10-100, default 100); requires --rerank'
-        },
-        {
-          name: 'rerankWeight',
-          flags: '--rerankWeight <weight>',
-          takesValue: true,
-          description: 'Rerank fusion weight (0-1, default 0.5); requires --rerank'
+          description: 'Enable rerank model scoring using default rerank model'
         },
         {
           name: 'queryExtension',
-          flags: '--queryExtension',
+          flags: '--query-extension',
           takesValue: false,
-          description: 'Enable query extension'
-        },
-        {
-          name: 'noQueryExtension',
-          flags: '--no-queryExtension',
-          takesValue: false,
-          description: 'Disable query extension (default)'
-        },
-        {
-          name: 'queryExtensionModelId',
-          flags: '--queryExtensionModelId <id>',
-          takesValue: true,
-          description:
-            'Query extension model ID; requires --queryExtension (default: authorized default model)'
-        },
-        {
-          name: 'queryExtensionBackground',
-          flags: '--queryExtensionBackground <text>',
-          takesValue: true,
-          description:
-            'Query extension background (up to 100000 characters); requires --queryExtension'
+          description: 'Enable query extension using default model'
         },
         {
           name: 'file',
           flags: '--file <path>',
           takesValue: true,
-          description: 'Read structured /core/dataset/search JSON payload from file ("-" for stdin)'
+          description:
+            'Read structured /core/dataset/search JSON payload (for advanced filters/tuning) from file ("-" for stdin)'
         },
         {
           name: 'stdin',
@@ -636,22 +530,6 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           description: 'Read structured /core/dataset/search JSON payload from stdin'
         }
       ],
-      configure: (cmd) => {
-        // 兼容 kebab-case 别名参数（不污染默认 --help 与 commands 清单）
-        for (const aliasFlag of [
-          '--dataset-ids <ids>',
-          '--max-tokens <tokens>',
-          '--embedding-weight <weight>',
-          '--rerank-model <id>',
-          '--rerank-candidate-num <count>',
-          '--rerank-weight <weight>',
-          '--extension-model <id>',
-          '--extension-bg <text>'
-        ]) {
-          cmd.addOption(new Option(aliasFlag).hideHelp());
-        }
-        cmd.addOption(new Option('--extension-query').hideHelp());
-      },
       examples: [
         {
           description: 'Search a dataset with query text',
@@ -683,65 +561,19 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
 
         const readString = (name: string) =>
           typeof options[name] === 'string' ? options[name] : undefined;
-        /** JSON 语法错误归为命令参数错误；标签操作符及值类型继续由共享 Schema 校验。 */
-        const readJson = (name: string): unknown => {
-          const value = readString(name);
-          if (value === undefined) return undefined;
-          try {
-            return JSON.parse(value);
-          } catch {
-            throw new CliArgumentError(`--${name} must be valid JSON.`);
-          }
-        };
 
-        // 2. 合并搜索范围与筛选条件（保留逗号拆分空项以便共享 Schema 拒绝非法末尾逗号）
+        // 2. 合并搜索范围与筛选条件
         const rawIdsInput =
-          positional[0] ??
-          (typeof options.id === 'string' ? options.id : undefined) ??
-          (typeof options.datasetIds === 'string' ? options.datasetIds : undefined);
+          positional[0] ?? (typeof options.id === 'string' ? options.id : undefined);
 
-        const hasFilterFlags = [
-          'collectionIds',
-          'createTimeGte',
-          'createTimeLte',
-          'tagsAnd',
-          'tagsOr'
-        ].some((name) => options[name] !== undefined);
         const cliFilter = (() => {
-          if (!hasFilterFlags) return undefined;
-
-          /** 只合并对象，避免局部 flag 静默丢弃文件中类型错误的配置。 */
-          const readFilterObject = (value: unknown, field: string): Record<string, unknown> => {
-            if (value === undefined) return {};
-            if (!isPlainObject(value)) {
-              throw new CliArgumentError(`${field} must be an object.`);
-            }
-            return value;
-          };
+          if (options.collectionIds === undefined) return undefined;
           const fileScope = isPlainObject(filePayload?.scope) ? filePayload.scope : undefined;
-          const filter = { ...readFilterObject(fileScope?.filter, 'scope.filter') };
-
-          // 仅覆盖显式筛选项，保留文件中的其他限制，以及时间/标签的另一侧条件。
-          if (options.collectionIds !== undefined) {
-            filter.collectionIds = readString('collectionIds')
-              ?.split(',')
-              .map((id) => id.trim());
-          }
-          if (options.createTimeGte !== undefined || options.createTimeLte !== undefined) {
-            filter.createTime = {
-              ...readFilterObject(filter.createTime, 'scope.filter.createTime'),
-              ...(options.createTimeGte !== undefined ? { gte: readString('createTimeGte') } : {}),
-              ...(options.createTimeLte !== undefined ? { lte: readString('createTimeLte') } : {})
-            };
-          }
-          if (options.tagsAnd !== undefined || options.tagsOr !== undefined) {
-            filter.tags = {
-              ...readFilterObject(filter.tags, 'scope.filter.tags'),
-              ...(options.tagsAnd !== undefined ? { and: readJson('tagsAnd') } : {}),
-              ...(options.tagsOr !== undefined ? { or: readJson('tagsOr') } : {})
-            };
-          }
-          return DatasetSearchFilterSchema.parse(filter);
+          const baseFilter = isPlainObject(fileScope?.filter) ? { ...fileScope.filter } : {};
+          baseFilter.collectionIds = readString('collectionIds')
+            ?.split(',')
+            .map((id) => id.trim());
+          return DatasetSearchFilterSchema.parse(baseFilter);
         })();
 
         const scope = (() => {
@@ -781,7 +613,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           );
         })();
 
-        // 3. 合并查询文本（显式传入时覆盖，否则保留文件载荷中的 query 原值）
+        // 3. 合并查询文本
         const explicitText =
           positional[1] !== undefined
             ? positional[1]
@@ -822,85 +654,36 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           );
         })();
 
-        // 4. 未传 flag 时保留文件原值；显式关闭清除继承配置，同次传入的矛盾子参数仍由 Schema 拒绝。
-        const embeddingWeight = parseOptionalNumber(options.embeddingWeight);
-        const hasRetrievalFlags = options.mode !== undefined || embeddingWeight !== undefined;
+        // 4. 合并召回模式、重排、问题扩展与结果预算
         const retrieval = (() => {
-          if (hasRetrievalFlags) {
+          if (options.mode !== undefined) {
             return {
               ...(isPlainObject(filePayload?.retrieval) ? filePayload.retrieval : {}),
-              ...(options.mode !== undefined ? { mode: options.mode } : {}),
-              ...(embeddingWeight !== undefined ? { embeddingWeight } : {})
+              mode: options.mode
             };
           }
           return filePayload && 'retrieval' in filePayload ? filePayload.retrieval : undefined;
         })();
 
-        const usingReRank = parseOptionalBooleanFlag({
-          positive: options.rerank,
-          negative: options.noRerank
-        });
-        const rerankModelId =
-          typeof options.rerankModelId === 'string'
-            ? options.rerankModelId
-            : typeof options.rerankModel === 'string'
-              ? options.rerankModel
-              : undefined;
-        const rerankWeight = parseOptionalNumber(options.rerankWeight);
-        const rerankCandidateNum = parseOptionalNumber(options.rerankCandidateNum);
-        const hasRerankFlags =
-          usingReRank !== undefined ||
-          rerankModelId !== undefined ||
-          rerankWeight !== undefined ||
-          rerankCandidateNum !== undefined;
-
         const rerank = (() => {
-          if (hasRerankFlags) {
+          if (options.rerank === true) {
             const fileRerank = isPlainObject(filePayload?.rerank) ? filePayload.rerank : undefined;
-            const enabled = usingReRank ?? fileRerank?.enabled ?? false;
             return {
-              ...(usingReRank === false ? {} : (fileRerank ?? {})),
-              enabled,
-              ...(rerankModelId !== undefined ? { modelId: rerankModelId } : {}),
-              ...(rerankCandidateNum !== undefined ? { candidateNum: rerankCandidateNum } : {}),
-              ...(rerankWeight !== undefined ? { weight: rerankWeight } : {})
+              ...(fileRerank ?? {}),
+              enabled: true
             };
           }
           return filePayload && 'rerank' in filePayload ? filePayload.rerank : undefined;
         })();
 
-        const usingQueryExt = parseOptionalBooleanFlag({
-          positive: options.queryExtension === true || options.extensionQuery === true || undefined,
-          negative: options.queryExtension === false ? true : undefined
-        });
-        const extensionModelId =
-          typeof options.queryExtensionModelId === 'string'
-            ? options.queryExtensionModelId
-            : typeof options.extensionModel === 'string'
-              ? options.extensionModel
-              : undefined;
-        const extensionBg =
-          typeof options.queryExtensionBackground === 'string'
-            ? options.queryExtensionBackground
-            : typeof options.extensionBg === 'string'
-              ? options.extensionBg
-              : undefined;
-        const hasExtFlags =
-          usingQueryExt !== undefined ||
-          extensionModelId !== undefined ||
-          extensionBg !== undefined;
-
         const queryExtension = (() => {
-          if (hasExtFlags) {
+          if (options.queryExtension === true) {
             const fileExt = isPlainObject(filePayload?.queryExtension)
               ? filePayload.queryExtension
               : undefined;
-            const enabled = usingQueryExt ?? fileExt?.enabled ?? false;
             return {
-              ...(usingQueryExt === false ? {} : (fileExt ?? {})),
-              enabled,
-              ...(extensionModelId !== undefined ? { modelId: extensionModelId } : {}),
-              ...(extensionBg !== undefined ? { background: extensionBg } : {})
+              ...(fileExt ?? {}),
+              enabled: true
             };
           }
           return filePayload && 'queryExtension' in filePayload
@@ -908,14 +691,10 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
             : undefined;
         })();
 
-        // 5. 合并结果预算（双传与优先级统一交由共享 SearchDatasetRequestBodySchema 执行 topk 优先归一化）
         const topk = parseOptionalNumber(options.topk);
-        const maxTokens = parseOptionalNumber(options.maxTokens);
         const similarity = parseOptionalNumber(options.similarity);
-        const hasResultFlags =
-          topk !== undefined || maxTokens !== undefined || similarity !== undefined;
         const result = (() => {
-          if (!hasResultFlags) {
+          if (topk === undefined && similarity === undefined) {
             return filePayload && 'result' in filePayload ? filePayload.result : undefined;
           }
           const baseResult: Record<string, unknown> = isPlainObject(filePayload?.result)
@@ -924,27 +703,13 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           if (similarity !== undefined) {
             baseResult.similarity = similarity;
           }
-          if (topk !== undefined && maxTokens !== undefined) {
-            baseResult.topk = topk;
-            baseResult.maxTokens = maxTokens;
-          } else if (topk !== undefined) {
+          if (topk !== undefined) {
             delete baseResult.maxTokens;
             baseResult.topk = topk;
-          } else if (maxTokens !== undefined) {
-            delete baseResult.topk;
-            baseResult.maxTokens = maxTokens;
           }
           return baseResult;
         })();
 
-        const usageScene =
-          options.usageScene !== undefined
-            ? readString('usageScene')
-            : filePayload && 'usageScene' in filePayload
-              ? filePayload.usageScene
-              : undefined;
-
-        // 6. 组装最终载荷并交由领域服务执行 SearchDatasetRequestBodySchema 校验与请求
         const payload = {
           ...(filePayload ?? {}),
           scope,
@@ -952,8 +717,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           ...(retrieval !== undefined ? { retrieval } : {}),
           ...(rerank !== undefined ? { rerank } : {}),
           ...(queryExtension !== undefined ? { queryExtension } : {}),
-          ...(result !== undefined ? { result } : {}),
-          ...(usageScene !== undefined ? { usageScene } : {})
+          ...(result !== undefined ? { result } : {})
         };
 
         return container.datasetService.search({
