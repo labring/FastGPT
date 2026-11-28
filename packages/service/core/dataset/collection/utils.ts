@@ -1,5 +1,6 @@
 import { isProVersion } from '../../../common/system/constants';
 import { MongoDatasetCollection } from './schema';
+import { readChunkImagePrefixIdForRebuild } from './entity';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
@@ -21,7 +22,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { readDatasetSourceRawText } from '../read';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 import { getCollectionCollaborators } from '../../../support/permission/collection/collaborator';
@@ -373,6 +374,12 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText !== collection.hashRawText) {
     await mongoSessionRun(async (session) => {
+      const chunkImagePrefixId = await readChunkImagePrefixIdForRebuild({
+        teamId: String(collection.teamId),
+        datasetId: String(collection.datasetId),
+        collectionId: String(collection._id),
+        tx: bridgeClientSessionToDbSession(session)
+      });
       // 同步同样以新 _id 重建 collection：删除前留存权限快照，创建后写回，避免协作者配置丢失。
       const collaborators = await getCollectionCollaborators({
         teamId: collection.teamId,
@@ -395,6 +402,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         rawText: rawText,
         createCollectionParams: {
           ...collection,
+          chunkImagePrefixId,
           name: title || collection.name,
           updateTime: new Date(),
           tags: await collectionTagsToTagLabel({

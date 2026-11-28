@@ -1,6 +1,9 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { Types } from '../../../common/mongo';
+import { bridgeDbSessionToClientSession } from '../../../common/mongo/sessionRun';
 import { MongoDatasetCollection } from './schema';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /**
  * 批量统计指定团队知识库内所有层级的非目录 collection 数量，不按文件权限过滤。
@@ -34,4 +37,78 @@ export const countDatasetCollectionsByDatasetIds = async ({
 
   rows.forEach((row) => counts.set(String(row._id), row.count));
   return counts;
+};
+
+/** 首次直接上传时原子初始化稳定图片目录；重训继承该值，不依赖当前集合 _id 清理旧目录。 */
+export const getOrCreateChunkImagePrefixId = async ({
+  teamId,
+  datasetId,
+  collectionId,
+  tx
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  tx?: DbSession;
+}) => {
+  const session = bridgeDbSessionToClientSession(tx);
+  const filter = { _id: collectionId, teamId, datasetId };
+  await MongoDatasetCollection.updateOne(
+    { ...filter, chunkImagePrefixId: { $exists: false } },
+    // 从 Mongo 的 _id 生成规范值，避免合法的大写 ObjectId 入参形成另一条目录。
+    [{ $set: { chunkImagePrefixId: { $toString: '$_id' } } }],
+    session ? { session } : undefined
+  );
+  const query = MongoDatasetCollection.findOne(filter).select('chunkImagePrefixId');
+  if (session) query.session(session);
+  const collection = await query.lean();
+  if (!collection?.chunkImagePrefixId) throw new UserError('Collection no longer exists');
+  return collection.chunkImagePrefixId;
+};
+
+/** 校验指定集合是否持有给定的正文图片目录标识；用于同事务内联图片归属核验。 */
+export const hasCollectionChunkImagePrefix = async ({
+  teamId,
+  datasetId,
+  collectionId,
+  chunkImagePrefixId,
+  tx
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  chunkImagePrefixId: string;
+  tx?: DbSession;
+}): Promise<boolean> => {
+  const session = bridgeDbSessionToClientSession(tx);
+  const query = MongoDatasetCollection.findOne({
+    _id: collectionId,
+    teamId,
+    datasetId,
+    chunkImagePrefixId
+  }).select('_id');
+  if (session) query.session(session);
+  return Boolean(await query.lean());
+};
+
+/** 重建前从删除事务读取最新目录；鉴权或远端拉取期间可能刚发生首次上传，不能沿用旧快照。 */
+export const readChunkImagePrefixIdForRebuild = async ({
+  teamId,
+  datasetId,
+  collectionId,
+  tx
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  tx?: DbSession;
+}) => {
+  const session = bridgeDbSessionToClientSession(tx);
+  const query = MongoDatasetCollection.findOne({ _id: collectionId, teamId, datasetId }).select(
+    'chunkImagePrefixId'
+  );
+  if (session) query.session(session);
+  const collection = await query.lean();
+  if (!collection) throw new UserError('Collection no longer exists');
+  return collection.chunkImagePrefixId;
 };

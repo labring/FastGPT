@@ -23,6 +23,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { dispatchDatasetStorageCleanup } from '@fastgpt/service/core/dataset/controller';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema
@@ -154,7 +155,7 @@ async function handler(req: ApiRequestProps) {
   );
 
   // delete
-  await mongoSessionRun(async (session) => {
+  const cleanupJobs = await mongoSessionRun(async (session) => {
     const disableFolderIds = new Set<string>();
     const disableSyncAllDatasetIds = new Set<string>();
     let hasLegacySystemRootRefs = false;
@@ -224,7 +225,7 @@ async function handler(req: ApiRequestProps) {
       }
     }
 
-    await delCollection({
+    const jobs = await delCollection({
       collections,
       delImg: true,
       delFile: true,
@@ -255,7 +256,10 @@ async function handler(req: ApiRequestProps) {
         });
       }
     }
+
+    return jobs;
   });
+  await dispatchDatasetStorageCleanup(cleanupJobs);
 
   // 仅记录实际删除的显式选中项；隐式删除的后代不展开，避免大型目录生成过大的日志。
   const deletedCollections = new Map(collections.map((item) => [String(item._id), item]));

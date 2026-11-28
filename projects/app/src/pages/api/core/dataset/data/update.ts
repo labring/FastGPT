@@ -26,6 +26,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { addHours } from 'date-fns';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
   const { dataId, q, a, indexes } = parseApiInput({
@@ -64,8 +65,24 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     authorizedIds
   });
   const vectorModel = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
-  const nextQ = q ?? datasetData.q ?? '';
-  const nextA = a ?? datasetData.a ?? '';
+  // 仅转存本次提交字段；未提交字段只参与已有受管内联图计数，避免误处理未编辑的历史 Base64。
+  const normalized: { data: Array<{ q?: string; a?: string }>; imageUploadKeys: string[] } =
+    q !== undefined || a !== undefined
+      ? await normalizeDatasetDataImages({
+          teamId: String(teamId),
+          datasetId: String(collection.datasetId),
+          collectionId: String(collection._id),
+          data: [{ ...(q !== undefined && { q }), ...(a !== undefined && { a }) }],
+          existingContent: [
+            {
+              ...(q === undefined && { q: datasetData.q }),
+              ...(a === undefined && { a: datasetData.a })
+            }
+          ]
+        })
+      : { data: [{}], imageUploadKeys: [] };
+  const nextQ = normalized.data[0].q ?? datasetData.q ?? '';
+  const nextA = normalized.data[0].a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {
     addAuditLog({
       tmbId,
@@ -90,6 +107,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       dataId,
       q: nextQ,
       a: nextA,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       indexes: manualIndexes || [],
@@ -111,6 +129,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       dataId,
       q: nextQ,
       a: nextA,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       model: vectorModel,

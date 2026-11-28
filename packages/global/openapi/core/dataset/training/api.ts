@@ -25,11 +25,13 @@ export const UpdateTrainingDataBodySchema = z
     }),
     q: z.string().optional().meta({
       example: '什么是 FastGPT？',
-      description: '问题/主文本，仅非重建任务允许编辑'
+      description:
+        '问题/主文本，仅非重建任务允许编辑；内嵌 Base64 图片会转存（q+a 最多 3 张，单图上限 10MB）'
     }),
     a: z.string().optional().meta({
       example: 'FastGPT 是一个 AI Agent 构建平台',
-      description: '回答/补充文本，仅非重建任务允许编辑，空串表示清空'
+      description:
+        '回答/补充文本，仅非重建任务允许编辑，空串表示清空；内嵌 Base64 图片会转存（q+a 最多 3 张，单图上限 10MB）'
     }),
     chunkIndex: z.int().min(0).optional().meta({
       example: 0,

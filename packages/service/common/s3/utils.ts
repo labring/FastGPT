@@ -1,7 +1,9 @@
 import { isAfter } from 'date-fns';
 import { createHash } from 'node:crypto';
 import type { ClientSession } from 'mongoose';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import type { MongoDeleteResult } from '../mongo';
+import { bridgeDbSessionToClientSession } from '../mongo/sessionRun';
 import { buffer as consumeStreamToBuffer } from 'node:stream/consumers';
 import type { Readable } from 'node:stream';
 import { MongoS3TTL } from './models/ttl';
@@ -123,16 +125,65 @@ export function truncateFilename(
   return truncatedName + extension;
 }
 
+/** 登记 S3 临时对象的过期回收记录；支持通过可选 `tx` 加入业务事务。 */
+export async function registerS3TTL({
+  key,
+  bucketName,
+  expiredTime,
+  tx
+}: {
+  key: string;
+  bucketName: keyof typeof S3Buckets;
+  expiredTime: Date;
+  tx?: DbSession;
+}): Promise<void> {
+  const session = bridgeDbSessionToClientSession(tx);
+  const record = {
+    minioKey: key,
+    bucketName: S3Buckets[bucketName],
+    expiredTime
+  };
+  if (session) {
+    await MongoS3TTL.create([record], { session });
+    return;
+  }
+  await MongoS3TTL.create(record);
+}
+
+/** 查询指定对象键集合中仍处于未提升（TTL 存在）状态的 key 列表。 */
+export async function findPendingS3TTLKeys({
+  keys,
+  bucketName,
+  tx
+}: {
+  keys: string[];
+  bucketName: keyof typeof S3Buckets;
+  tx?: DbSession;
+}): Promise<string[]> {
+  if (keys.length === 0) return [];
+  const session = bridgeDbSessionToClientSession(tx);
+  const query = MongoS3TTL.find({
+    bucketName: S3Buckets[bucketName],
+    minioKey: { $in: keys }
+  }).select('minioKey');
+  if (session) query.session(session);
+  const pending = await query.lean();
+  return pending.map((file) => file.minioKey);
+}
+
 export function removeS3TTL({
   key,
   bucketName,
-  session
+  session,
+  tx
 }: {
   key: string[] | string;
   bucketName: keyof typeof S3Buckets;
   session?: ClientSession;
+  tx?: DbSession;
 }): Promise<MongoDeleteResult> | undefined {
   if (!key) return;
+  const resolvedSession = session ?? bridgeDbSessionToClientSession(tx);
 
   if (Array.isArray(key)) {
     return MongoS3TTL.deleteMany(
@@ -140,7 +191,7 @@ export function removeS3TTL({
         minioKey: { $in: key },
         bucketName: S3Buckets[bucketName]
       },
-      { session }
+      { session: resolvedSession }
     );
   }
 
@@ -150,11 +201,12 @@ export function removeS3TTL({
         minioKey: key,
         bucketName: S3Buckets[bucketName]
       },
-      { session }
+      { session: resolvedSession }
     );
   }
 }
 
+/** 上传图片并透传可选截止时间；调用方可在上传前登记临时回收记录。 */
 export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams
@@ -165,7 +217,8 @@ export async function uploadImage2S3Bucket(
     filename,
     mimetype,
     uploadKey,
-    expiredTime
+    expiredTime,
+    uploadTimeoutMs
   } = UploadImage2S3BucketParamsSchema.parse(params);
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
@@ -182,6 +235,7 @@ export async function uploadImage2S3Bucket(
   await bucket.client.uploadObject({
     key: uploadKey,
     body: buffer,
+    ...(uploadTimeoutMs !== undefined && { abortSignal: AbortSignal.timeout(uploadTimeoutMs) }),
     contentType: mimetype,
     contentDisposition: getS3UploadContentDisposition({ filename, type: 'attachment' }),
     metadata: {

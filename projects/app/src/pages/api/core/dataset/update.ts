@@ -15,7 +15,10 @@ import {
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
+import {
+  delDatasetRelevantData,
+  dispatchDatasetStorageCleanup
+} from '@fastgpt/service/core/dataset/controller';
 import {
   removeDatasetSyncJobScheduler,
   upsertDatasetSyncJobScheduler
@@ -230,6 +233,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 
   const onUpdate = async (session: ClientSession) => {
+    let storageCleanup: Awaited<ReturnType<typeof delDatasetRelevantData>> | undefined;
     // 资源范围以 dataset 归属为准：root 可以跨团队，用 header 的 teamId 锁不到目标库。
     const datasetTeamId = String(dataset.teamId);
     // 事务外的 dataset 快照可能已被并发关闭改写：用旧开关决策会跳过物化却提交
@@ -286,7 +290,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       lockedApiDatasetServer?.permissionSync === true &&
       (lockedDataset.apiDatasetServer?.permissionSync !== true ||
         lockedDataset.collectionPermissionEnabled !== true);
-
     // Website dataset update chunkSettings, need to clean up dataset
     if (
       dataset.type === DatasetTypeEnum.websiteDataset &&
@@ -320,7 +323,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       // web 站点改分块大小 = 数据重建而非删除知识库：传 keepSynonyms 让
       // delDatasetRelevantData 跳过同义词配置与映射的删除（配置与当前版本映射
       // 原地保留，历史残留映射由清理器按版本条件回收）。真实删除知识库路径不变。
-      await delDatasetRelevantData({ datasets: [dataset], session }, { keepSynonyms: true });
+      storageCleanup = await delDatasetRelevantData(
+        { datasets: [dataset], session },
+        { keepSynonyms: true }
+      );
     }
 
     const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
@@ -372,9 +378,11 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     });
 
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
+    return storageCleanup;
   };
 
-  await mongoSessionRun((session) => onUpdate(session));
+  const storageCleanup = await mongoSessionRun((session) => onUpdate(session));
+  await dispatchDatasetStorageCleanup(storageCleanup);
 
   // 刚开启同步时补一轮全量：存量 collection 还没有任何外部快照。
   // 入队在提交后执行，避免事务回滚却把任务发出去。
