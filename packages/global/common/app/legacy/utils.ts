@@ -17,6 +17,9 @@ export const resolveLegacyWelcomeConfig = ({
 }): AppWelcomeConfigType => ({
   welcomeText:
     storeWelcomeText ?? chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText,
+  ...(storeWelcomeText == null && chatConfig?.welcomeConfig?.byVariable
+    ? { byVariable: chatConfig.welcomeConfig.byVariable }
+    : {}),
   welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
 });
 

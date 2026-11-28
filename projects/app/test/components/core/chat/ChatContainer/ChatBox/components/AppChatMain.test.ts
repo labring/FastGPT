@@ -3,6 +3,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { useForm } from 'react-hook-form';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useContextSelector } from 'use-context-selector';
+import { defaultChatData } from '@/global/core/chat/constants';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import AppChatMain from '@/components/core/chat/ChatContainer/ChatBox/components/AppChatMain';
 import type { ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -43,7 +46,8 @@ vi.mock('@chakra-ui/react', () => {
   return { Box, Flex: Box };
 });
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/WelcomeBox', () => ({
-  default: () => null
+  default: ({ welcomeText }: { welcomeText: string }) =>
+    React.createElement('span', { 'data-welcome': '' }, welcomeText)
 }));
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/VariableInputForm', () => ({
   default: () => React.createElement('input', { defaultValue: 'draft' })
@@ -80,7 +84,9 @@ describe('AppChatMain pagination through memo and chat context', () => {
     new Promise((resolve) => requests.push({ params, resolve }));
 
   /** 使用真实 Context、hook 和 memo 主体，只替换与分页无关的消息及表单 UI。 */
+  let resetVariables: (value: string) => void;
   const Harness = () => {
+    const item = useContextSelector(ChatItemContext, (v) => v);
     const value = useContextSelector(ChatRecordContext, (value) => value);
     records = value;
     const { chatRecords, itemRefs } = value;
@@ -100,7 +106,7 @@ describe('AppChatMain pagination through memo and chat context', () => {
       }),
       [chatRecords, itemRefs]
     );
-    return React.createElement(AppChatMain, {
+    const main = React.createElement(AppChatMain, {
       ScrollData: records.ScrollData,
       ScrollContainerRef: scrollRef,
       isLoading: records.isInitialLoadingRecords,
@@ -111,6 +117,30 @@ describe('AppChatMain pagination through memo and chat context', () => {
       chatType: ChatTypeEnum.chat,
       recordsListProps,
       boxBodyProps
+    });
+    resetVariables = (locale) => chatForm.reset({ variables: { locale } });
+    // eslint-disable-next-line react/no-children-prop -- Provider requires an explicit children prop.
+    return React.createElement(ChatItemContext.Provider, {
+      value: {
+        ...item,
+        variablesForm: chatForm,
+        chatBoxData: {
+          ...defaultChatData,
+          app: {
+            ...defaultChatData.app,
+            chatConfig: {
+              variables: [
+                { key: 'locale', label: 'Language', description: '', type: VariableInputEnum.input }
+              ],
+              welcomeConfig: {
+                welcomeText: 'Default',
+                byVariable: { key: 'locale', cases: [{ value: 'en', text: 'Hello' }] }
+              }
+            }
+          }
+        }
+      },
+      children: main
     });
   };
 
@@ -163,6 +193,16 @@ describe('AppChatMain pagination through memo and chat context', () => {
     vi.unstubAllGlobals();
   });
   afterAll(() => dom.window.close());
+
+  it('updates the welcome text when the share or preview form is reset before sending', async () => {
+    await render(false, false);
+    const welcome = () => container.querySelector('[data-welcome]')?.textContent;
+    expect(welcome()).toBe('Default');
+    await act(async () => resetVariables('en'));
+    expect(welcome()).toBe('Hello');
+    await act(async () => resetVariables('unknown'));
+    expect(welcome()).toBe('Default');
+  });
 
   it('滚动容器占满宽度，聊天内容保持居中限宽', async () => {
     const viewport = await render(false, false);

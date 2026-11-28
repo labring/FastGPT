@@ -304,6 +304,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     };
     const preparedRound = await profileStage({ event: 'chat.prepare' }, () =>
       preChatRound({
+        appChatConfig: chatConfig,
         ...chatSource,
         chatId,
         teamId: String(app.teamId),

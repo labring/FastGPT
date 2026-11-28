@@ -1,3 +1,5 @@
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { resolveWelcomeText } from '@fastgpt/global/common/app/chat';
 import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import { updateChatPublishSource } from '../publishSource/service';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -72,6 +74,7 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   chatId?: string;
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
+  appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   requestId?: string;
   fixedTitle?: string;
@@ -261,6 +264,9 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
   if (!releaseGenerationLease) throw ChatErrEnum.chatIsGenerating;
 
   try {
+    const initialWelcomeText = params.appChatConfig?.welcomeConfig?.byVariable
+      ? (resolveWelcomeText(params.appChatConfig, params.variables) ?? '')
+      : undefined;
     if (isInteractiveContinue) {
       const previousAiItem = await MongoChatItem.findOne(
         {
@@ -279,7 +285,11 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       }
 
       // 交互续跑复用原 AI，先确认记录有效，再在 preChat 中记录本次来源。
-      const publishSource = await updateChatPublishSource({ ...params, chatId });
+      const publishSource = await updateChatPublishSource({
+        ...params,
+        chatId,
+        initialWelcomeText
+      });
 
       return {
         chatId,
@@ -299,7 +309,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       responseChatItemId
     });
 
-    const publishSource = await updateChatPublishSource({ ...params, chatId });
+    const publishSource = await updateChatPublishSource({ ...params, chatId, initialWelcomeText });
 
     const preparedChatRound = await prepareChatRound({
       ...params,

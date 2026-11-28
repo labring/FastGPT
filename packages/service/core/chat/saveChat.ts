@@ -15,7 +15,7 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
+import { getAppChatConfig, resolveWelcomeText } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
@@ -443,7 +443,7 @@ export const finalizeChatRound = async (props: Props) => {
           appVersionId: versionId,
           chatId,
           variableList,
-          welcomeText,
+          ...(appChatConfig?.welcomeConfig?.byVariable ? {} : { welcomeText }),
           variables: variables || {},
           pluginInputs,
           outLinkUid,
@@ -687,7 +687,7 @@ export const pushChatRecords = async (props: Props) => {
             appVersionId: versionId,
             chatId,
             variableList,
-            welcomeText,
+            ...(appChatConfig?.welcomeConfig?.byVariable ? {} : { welcomeText }),
             variables: variables || {},
             pluginInputs,
             outLinkUid,
@@ -696,6 +696,9 @@ export const pushChatRecords = async (props: Props) => {
             updateTime: new Date()
           },
           $setOnInsert: {
+            ...(appChatConfig?.welcomeConfig?.byVariable
+              ? { welcomeText: resolveWelcomeText(appChatConfig, variables) ?? '' }
+              : {}),
             createTime: new Date()
           },
           $inc: {

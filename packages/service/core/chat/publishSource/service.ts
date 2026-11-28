@@ -27,6 +27,7 @@ export const updateChatPublishSource = async (
     source: string;
     publishSource?: ChatPublishSourceType;
     sourceName?: string;
+    initialWelcomeText?: string;
     outLinkUid?: string;
   }
 ) => {
@@ -90,7 +91,7 @@ export const updateChatPublishSource = async (
     }
 
     try {
-      await MongoChat.create({ ...$set, createTime: now });
+      await MongoChat.create({ ...$set, createTime: now, welcomeText: params.initialWelcomeText });
       return current;
     } catch (error) {
       if ((error as { code?: number }).code !== 11000) throw error;
