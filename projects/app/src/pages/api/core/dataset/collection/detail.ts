@@ -7,7 +7,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
@@ -21,70 +22,13 @@ import {
   GetCollectionDetailQuerySchema,
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { getCollectionTrainingStatusFromCounts } from '@fastgpt/service/core/dataset/training/query';
 import {
-  getCollectionTrainingStatusFromCounts,
-  getCollectionTrainingModeCountsPipeline,
-  type CollectionTrainingModeCount
-} from '@fastgpt/service/core/dataset/training/query';
-import {
-  datasetDataRebuildStatusCountFields,
-  type DatasetDataRebuildStatusCounts
+  datasetDataTrainingStatusCountFields,
+  datasetDataTrainingStatusMatch,
+  type DatasetDataTrainingStatusCounts
 } from '@fastgpt/service/core/dataset/data/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import {
-  datasetDataRebuildIndexProcessingStatuses,
-  datasetDataRebuildSynonymProcessingStatuses,
-  datasetDataRebuildFailedStatuses
-} from '@fastgpt/global/core/dataset/data/utils';
-
-/**
- * 获取数据集集合的训练状态统计信息
- * @param teamId - 团队ID
- * @param datasetId - 数据集ID
- * @param collectionId - 集合ID
- * @returns 包含训练数量、活跃训练数、错误数及最慢训练状态的统计对象
- */
-const getCollectionTrainingStatus = async ({
-  teamId,
-  datasetId,
-  collectionId
-}: {
-  teamId: Types.ObjectId;
-  datasetId: Types.ObjectId;
-  collectionId: Types.ObjectId;
-}) => {
-  const [[trainingStatus], [dataStatus]] = await Promise.all([
-    MongoDatasetTraining.aggregate<{ modeCounts: CollectionTrainingModeCount[] }>(
-      getCollectionTrainingModeCountsPipeline({ teamId, datasetId, collectionId }),
-      readFromSecondary
-    ),
-    MongoDatasetData.aggregate<DatasetDataRebuildStatusCounts>(
-      [
-        {
-          $match: {
-            teamId,
-            datasetId,
-            collectionId,
-            indexStatus: {
-              $in: [
-                ...datasetDataRebuildIndexProcessingStatuses,
-                ...datasetDataRebuildSynonymProcessingStatuses,
-                ...datasetDataRebuildFailedStatuses
-              ]
-            }
-          }
-        },
-        { $group: { _id: null, ...datasetDataRebuildStatusCountFields } }
-      ],
-      readFromSecondary
-    )
-  ]);
-
-  return getCollectionTrainingStatusFromCounts({
-    modeCounts: trainingStatus?.modeCounts,
-    rebuildCounts: dataStatus
-  });
-};
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionDetailResponseType> {
   const { id } = parseApiInput({ req, querySchema: GetCollectionDetailQuerySchema }).query;
@@ -108,6 +52,42 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
     return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
+  /** 按集合查询解析、QA 和分块状态，再统一计算前端展示的训练进度。 */
+  const getCollectionTrainingStatus = async () => {
+    const match = {
+      teamId: new Types.ObjectId(collection.teamId),
+      datasetId: new Types.ObjectId(collection.datasetId),
+      collectionId: new Types.ObjectId(collection._id)
+    };
+    const [document, [dataCounts], [qaCounts]] = await Promise.all([
+      MongoDatasetCollection.findOne(
+        { _id: match.collectionId, teamId: match.teamId, datasetId: match.datasetId },
+        { 'training.parse.status': 1, 'training.status': 1 },
+        readFromSecondary
+      ).lean(),
+      MongoDatasetData.aggregate<DatasetDataTrainingStatusCounts>(
+        [
+          { $match: { ...match, ...datasetDataTrainingStatusMatch } },
+          { $group: { _id: null, ...datasetDataTrainingStatusCountFields } }
+        ],
+        readFromSecondary
+      ),
+      countDatasetQaTrainingByCollection({
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionIds: [collection._id],
+        useReadReplica: true
+      })
+    ]);
+
+    return getCollectionTrainingStatusFromCounts({
+      dataCounts,
+      qaCounts,
+      parseStatus: document?.training?.parse?.status,
+      pausedUnpaid: document?.training?.status === 'paused_unpaid'
+    });
+  };
+
   const [file, indexAmount, trainingStatus] = await Promise.all([
     fileId ? getS3DatasetSource().getFileMetadata(fileId) : undefined,
     getVectorCount({
@@ -115,11 +95,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
       datasetId: collection.datasetId,
       collectionId: collection._id
     }),
-    getCollectionTrainingStatus({
-      teamId: new Types.ObjectId(collection.teamId),
-      datasetId: new Types.ObjectId(collection.datasetId),
-      collectionId: new Types.ObjectId(collection._id)
-    })
+    getCollectionTrainingStatus()
   ]);
 
   return GetCollectionDetailResponseSchema.parse({

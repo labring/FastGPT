@@ -36,6 +36,66 @@ import {
 
 const objectId = '68ad85a7463006c963799a05';
 
+it('documents legacy scheduling fields in the collection training error response', () => {
+  const response =
+    openAPIDocument.paths?.['/core/dataset/training/getTrainingError']?.post?.responses?.[200];
+
+  expect(response).toMatchObject({
+    content: {
+      'application/json': {
+        schema: {
+          properties: {
+            list: {
+              items: {
+                required: expect.arrayContaining(['expireAt', 'lockTime', 'weight', 'retryCount']),
+                properties: {
+                  expireAt: { type: 'string', deprecated: true },
+                  lockTime: {
+                    type: 'string',
+                    deprecated: true,
+                    description: expect.stringContaining('2050-01-01T00:00:00.000Z')
+                  },
+                  weight: { type: 'number', deprecated: true },
+                  retryCount: { type: 'number', deprecated: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+it('preserves the chunk status contract in System OpenAPI', () => {
+  const paths = apiDocOpenAPIDocument.paths;
+  const state = {
+    properties: {
+      indexStatus: {
+        enum: [
+          'indexing',
+          'indexed',
+          'error',
+          'rebuildIndexPending',
+          'rebuildIndexRunning',
+          'rebuildIndexFailed',
+          'rebuildSynonymPending',
+          'rebuildSynonymRunning',
+          'rebuildSynonymFailed'
+        ]
+      }
+    }
+  };
+  expect(paths?.['/core/dataset/data/v2/list']?.post?.responses?.[200]).toMatchObject({
+    content: {
+      'application/json': { schema: { properties: { list: { items: state } } } }
+    }
+  });
+  expect(paths?.['/core/dataset/data/detail']?.get?.responses?.[200]).toMatchObject({
+    content: { 'application/json': { schema: state } }
+  });
+});
+
 it.each([
   ['DevAPI', openAPIDocument],
   ['System OpenAPI', apiDocOpenAPIDocument]

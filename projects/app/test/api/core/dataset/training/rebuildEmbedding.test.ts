@@ -1,22 +1,24 @@
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
+import { datasetTrainingMQService } from '@fastgpt/dal/redis/bullmq/services/datasetTraining';
 import type {
   EmbeddingModelDataType,
   LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import * as modelCatalogService from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { MongoUsageItem } from '@fastgpt/service/support/wallet/usage/usageItemSchema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { getRootUser } from '@test/datas/users';
 import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
@@ -24,6 +26,13 @@ import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 vi.unmock('@fastgpt/service/core/ai/model/catalog/service');
 vi.unmock('@fastgpt/service/support/user/audit/util');
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+vi.mock('@fastgpt/dal/redis/bullmq/services/datasetTraining', () => ({
+  datasetTrainingMQService: {
+    enqueue: vi.fn().mockResolvedValue({ id: 'document-job' }),
+    enqueueBatch: vi.fn().mockResolvedValue([])
+  }
+}));
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let visionEmbeddingModel: EmbeddingModelDataType;
@@ -61,6 +70,7 @@ const createDatasetContext = async ({
 
 describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     testRoot = await getRootUser();
     getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     const { llm, embedding: defaultEmbeddingModel } = getModelTestDefaults();
@@ -144,7 +154,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
 
     const updatedDataset = await MongoDataset.findById(dataset._id).lean();
     const updatedCollection = await MongoDatasetCollection.findById(collection._id).lean();
-    const training = await MongoDatasetTraining.findOne({ dataId: data._id }).lean();
+    const pending = await MongoDatasetData.findById(data._id).lean();
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
@@ -152,14 +162,17 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(getTeamModelHandleSpy).toHaveBeenCalledTimes(1);
     expect(String(updatedDataset?.vectorModelId)).toBe(visionEmbeddingModel.modelId);
     expect(updatedCollection?.imageIndex).toBe(true);
-    expect(training).toEqual(
-      expect.objectContaining({
-        mode: TrainingModeEnum.rebuildIndex,
-        q: '',
-        retryCount: 3
-      })
-    );
-    expect(training?.indexes).toEqual([]);
+    expect(updatedCollection?.training).toMatchObject({
+      status: 'active',
+      usageId: expect.any(String)
+    });
+    expect(pending).toMatchObject({
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending,
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.custom, text: 'manual index', dataId: 'manual_id' }
+      ]
+    });
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
 
     // 审计在重建任务落库后异步写入：正文用模型展示名，内部 ID 单独保留以便排查改名。
     await vi.waitFor(
@@ -205,19 +218,15 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
 
     const updatedDataset = await MongoDataset.findById(dataset._id).lean();
     const updatedCollection = await MongoDatasetCollection.findById(collection._id).lean();
-    const training = await MongoDatasetTraining.findOne({ dataId: data._id }).lean();
 
     expect(res.code).toBe(200);
     expect(String(updatedDataset?.vectorModelId)).toBe(textOnlyEmbeddingModel.modelId);
     expect(updatedDataset?.chunkSettings?.imageIndex).toBe(false);
     expect(updatedCollection?.imageIndex).toBe(false);
-    expect(training).toEqual(
-      expect.objectContaining({
-        mode: TrainingModeEnum.rebuildIndex,
-        retryCount: 3
-      })
-    );
-    expect(training?.q).toBe('');
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
+    });
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
 
   it('should enqueue only rebuild mode for image data when VLM is configured', async () => {
@@ -249,15 +258,11 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       }
     });
 
-    const training = await MongoDatasetTraining.findOne({ dataId: data._id }).lean();
-
     expect(res.code).toBe(200);
-    expect(training).toEqual(
-      expect.objectContaining({
-        mode: TrainingModeEnum.rebuildIndex,
-        retryCount: 3
-      })
-    );
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
+    });
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
 
   it('should reject model rebuilding while the shared rebuild queue is busy', async () => {
@@ -269,7 +274,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       collectionId: collection._id,
       q: 'pending',
       indexes: [],
-      indexStatus: 'rebuildIndexPending'
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
     });
 
     const res = await Call(handler, {
@@ -287,7 +292,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 
-  it('should keep the committed model switch and rebuild markers when seed creation fails', async () => {
+  it('keeps the committed model switch and rebuild markers when Redis publication fails', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -297,24 +302,8 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       q: 'original',
       indexes: []
     });
-    const mongoSessionRunMock = vi.mocked(mongoSessionRun);
-    const runWithoutTransaction = mongoSessionRunMock.getMockImplementation();
-    if (!runWithoutTransaction) throw new Error('mongoSessionRun mock is not initialized');
-
-    mongoSessionRunMock
-      // createTrainingUsage 会先占用一次调用，后续重建事务使用真实 session。
-      .mockImplementationOnce(runWithoutTransaction)
-      .mockImplementation(async (fn) => {
-        const session = await connectionMongo.startSession();
-        try {
-          return await session.withTransaction(() => fn(session));
-        } finally {
-          await session.endSession();
-        }
-      });
-    const createTrainingSpy = vi
-      .spyOn(MongoDatasetTraining, 'create')
-      .mockRejectedValue(new Error('training insert failed'));
+    const publish = vi.mocked(datasetTrainingMQService.enqueueBatch);
+    publish.mockRejectedValueOnce(new Error('Redis publication failed'));
 
     const res = await Call(handler, {
       auth: root,
@@ -323,15 +312,16 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
         vectorModelId: visionEmbeddingModel.modelId
       }
     });
-    createTrainingSpy.mockRestore();
-    mongoSessionRunMock.mockImplementation(runWithoutTransaction);
-
     expect(res.code).toBe(200);
+    expect(publish).toHaveBeenCalledWith([String(collection._id)]);
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
       vectorModelId: visionEmbeddingModel.modelId
     });
     await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
-      indexStatus: 'rebuildIndexPending'
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending
+    });
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toMatchObject({
+      training: { status: 'active', usageId: expect.any(String) }
     });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
@@ -359,5 +349,66 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
 
     expect(res.error).toBeDefined();
     expect(res.code).toBe(500);
+  });
+
+  it('starts a new billing round with the new vector model when the previous round is not yet closed', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const { usageId: previousUsageId } = await createTrainingUsage({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      appName: collection.name,
+      billSource: UsageSourceEnum.training,
+      trainingCollectionId: String(collection._id),
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+    await collection.updateOne({
+      $set: {
+        training: {
+          status: 'active',
+          revision: 3,
+          usageId: previousUsageId,
+          runId: 'previous-run'
+        }
+      }
+    });
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'already indexed chunk',
+      indexes: []
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    const updatedCollection = await MongoDatasetCollection.findById(collection._id).lean();
+    expect(updatedCollection?.training).toEqual({
+      status: 'active',
+      revision: 4,
+      usageId: expect.any(String)
+    });
+    const nextUsageId = updatedCollection?.training?.usageId;
+    expect(nextUsageId).not.toBe(previousUsageId);
+
+    const oldVectorItem = await MongoUsageItem.findOne({
+      teamId: root.teamId,
+      usageId: previousUsageId,
+      itemType: UsageItemTypeEnum.training_vector
+    }).lean();
+    const newVectorItem = await MongoUsageItem.findOne({
+      teamId: root.teamId,
+      usageId: nextUsageId,
+      itemType: UsageItemTypeEnum.training_vector
+    }).lean();
+    expect(String(oldVectorItem?.modelId)).toBe(textOnlyEmbeddingModel.modelId);
+    expect(String(newVectorItem?.modelId)).toBe(visionEmbeddingModel.modelId);
   });
 });

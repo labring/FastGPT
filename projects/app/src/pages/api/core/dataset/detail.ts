@@ -16,7 +16,7 @@ import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { getDatasetPermissionSyncStatus } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/orchestration';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';

@@ -125,5 +125,12 @@
   "migrations.20261127_backfill_name_sort_key.members": "Backfill member sort keys",
   "migrations.20261127_backfill_name_sort_key.collections": "Backfill collection sort keys",
   "migrations.20261127_backfill_name_sort_key.validation": "Validate sort key backfill",
-  "migrations.20261127_backfill_name_sort_key.result": "Scanned {{memberScannedCount}} team members (backfilled {{memberBackfilledCount}}) and {{collectionScannedCount}} dataset collections (backfilled {{collectionBackfilledCount}})."
+  "migrations.20261127_backfill_name_sort_key.result": "Scanned {{memberScannedCount}} team members (backfilled {{memberBackfilledCount}}) and {{collectionScannedCount}} dataset collections (backfilled {{collectionBackfilledCount}}).",
+  "migrations.20261125_migrate_dataset_document_training.name": "Migrate existing knowledge base training",
+  "migrations.20261125_migrate_dataset_document_training.description": "Stop legacy training and pause the new training queue before running this migration. Legacy tasks and completed indexes are retained for review.",
+  "migrations.20261125_migrate_dataset_document_training.result": "Checked {{legacyTasks}} legacy tasks and {{candidateData}} chunks, restored training for {{documents}} documents, and skipped {{duplicateParse}} duplicate parse tasks.",
+  "migrations.20261125_migrate_dataset_document_training.preflight": "Check cutover conditions and snapshot sources",
+  "migrations.20261125_migrate_dataset_document_training.legacyTasks": "Migrate legacy training tasks",
+  "migrations.20261125_migrate_dataset_document_training.remainingData": "Migrate remaining chunks and rebuild states",
+  "migrations.20261125_migrate_dataset_document_training.validation": "Validate migrated data and team balances"
 }

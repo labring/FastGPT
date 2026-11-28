@@ -125,5 +125,12 @@
   "migrations.20261127_backfill_name_sort_key.members": "멤버 정렬 키 백필",
   "migrations.20261127_backfill_name_sort_key.collections": "컬렉션 정렬 키 백필",
   "migrations.20261127_backfill_name_sort_key.validation": "정렬 키 백필 검증",
-  "migrations.20261127_backfill_name_sort_key.result": "팀 멤버 {{memberScannedCount}}건(백필 {{memberBackfilledCount}}건)과 지식 베이스 컬렉션 {{collectionScannedCount}}건(백필 {{collectionBackfilledCount}}건)을 검사했습니다."
+  "migrations.20261127_backfill_name_sort_key.result": "팀 멤버 {{memberScannedCount}}건(백필 {{memberBackfilledCount}}건)과 지식 베이스 컬렉션 {{collectionScannedCount}}건(백필 {{collectionBackfilledCount}}건)을 검사했습니다.",
+  "migrations.20261125_migrate_dataset_document_training.name": "기존 지식 베이스 학습 마이그레이션",
+  "migrations.20261125_migrate_dataset_document_training.description": "기존 학습을 중지하고 새 학습 대기열을 일시 중지한 뒤 수동으로 실행하세요. 기존 작업과 완료된 인덱스는 확인할 수 있도록 유지됩니다.",
+  "migrations.20261125_migrate_dataset_document_training.result": "기존 작업 {{legacyTasks}}개와 청크 {{candidateData}}개를 확인하고, 문서 {{documents}}개의 학습을 복원했으며, 중복 파싱 작업 {{duplicateParse}}개를 건너뛰었습니다.",
+  "migrations.20261125_migrate_dataset_document_training.preflight": "전환 조건 확인 및 원본 스냅샷 저장",
+  "migrations.20261125_migrate_dataset_document_training.legacyTasks": "기존 학습 작업 마이그레이션",
+  "migrations.20261125_migrate_dataset_document_training.remainingData": "남은 청크와 재구축 상태 마이그레이션",
+  "migrations.20261125_migrate_dataset_document_training.validation": "마이그레이션 결과와 팀 잔액 확인"
 }

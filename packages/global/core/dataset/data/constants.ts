@@ -10,7 +10,20 @@ export enum DatasetDataIndexTypeEnum {
   custom = 'custom'
 }
 
-/** 数据索引状态。新数据先写入 indexing，向量和全文索引完成后变为 indexed。 */
+/** 文档训练写入 Mongo 的工作阶段。完成后移除字段，失败时保留阶段。 */
+export enum DatasetDataIndexStageEnum {
+  imageParse = 'imageParse',
+  image = 'image',
+  auto = 'auto',
+  /** 文档 Worker 的最终写入阶段，生成向量与全文索引。 */
+  index = 'index',
+  rebuildIndexPending = 'rebuildIndexPending',
+  rebuildIndexRunning = 'rebuildIndexRunning',
+  rebuildSynonymPending = 'rebuildSynonymPending',
+  rebuildSynonymRunning = 'rebuildSynonymRunning'
+}
+
+/** @deprecated 兼容现有分块 API 和前端。新训练流程使用 DatasetDataIndexStageEnum。 */
 export enum DatasetDataIndexStatusEnum {
   indexing = 'indexing',
   indexed = 'indexed',
@@ -22,6 +35,9 @@ export enum DatasetDataIndexStatusEnum {
   rebuildSynonymRunning = 'rebuildSynonymRunning',
   rebuildSynonymFailed = 'rebuildSynonymFailed'
 }
+
+/** 已完成索引和迁移前的历史记录保留旧值。 */
+export type DatasetDataStoredIndexStatus = DatasetDataIndexStageEnum | DatasetDataIndexStatusEnum;
 
 export const DatasetDataIndexMap: Record<
   `${DatasetDataIndexTypeEnum}`,

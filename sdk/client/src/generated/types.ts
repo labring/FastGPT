@@ -8082,6 +8082,8 @@ export type DatasetsDetailRes = {
       video?: boolean;
       reasoning?: boolean;
       reasoningEffort?: boolean;
+      /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+      reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
       functionCall?: boolean;
       toolChoice?: boolean;
       defaultSystemChatPrompt?: string;
@@ -8138,6 +8140,8 @@ export type DatasetsDetailRes = {
       video?: boolean;
       reasoning?: boolean;
       reasoningEffort?: boolean;
+      /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+      reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
       functionCall?: boolean;
       toolChoice?: boolean;
       defaultSystemChatPrompt?: string;
@@ -8762,6 +8766,8 @@ export type ModelsCatalogRes = {
             video?: boolean;
             reasoning?: boolean;
             reasoningEffort?: boolean;
+            /** 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置 */
+            reasoningEffortList?: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'>;
             functionCall?: boolean;
             toolChoice?: boolean;
           };

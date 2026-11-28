@@ -1,5 +1,5 @@
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -14,15 +14,14 @@ import {
   type GetCollectionTrainingDetailResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
-  remainingTrainingMatch
-} from '@fastgpt/service/core/dataset/training/query';
-import { datasetDataStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
-import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
+  datasetDataRunningRebuildCountFields,
+  datasetDataStatusCountFields,
+  documentIndexTrainingModes,
+  type DatasetDataStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
-  chunk: 0, // 兼容尚未迁移的历史任务统计
+  chunk: 0, // 保留公开接口的阶段键
   parse: 0,
   qa: 0,
   rebuildIndex: 0,
@@ -33,7 +32,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   imageParse: 0
 };
 
-/** 汇总普通训练阶段；重建按 data 状态区分待重建、重建中和失败，一次聚合获取。 */
+/** 汇总各阶段的排队、处理中和失败数量。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
     req,
@@ -54,84 +53,98 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     collectionId: new Types.ObjectId(collection._id)
   };
 
-  const leaseExpiredAt = new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS);
-  const [modeCounts, [dataStatus]] = await Promise.all([
-    MongoDatasetTraining.aggregate<{
-      _id: TrainingModeEnum;
-      queuedCount: number;
-      trainingCount: number;
-      errorCount: number;
-    }>([
+  const [document, [dataStatus], [qaCounts]] = await Promise.all([
+    MongoDatasetCollection.findOne(
+      { _id: match.collectionId, teamId: match.teamId, datasetId: match.datasetId },
       {
-        $match: {
-          ...match,
-          ...remainingTrainingMatch,
-          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          queuedCount: {
-            $sum: {
-              $cond: [{ $and: [activeTrainingExpr, { $lte: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
-            }
-          },
-          trainingCount: {
-            $sum: {
-              $cond: [{ $and: [activeTrainingExpr, { $gt: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
-            }
-          },
-          errorCount: { $sum: { $cond: [finalErrorTrainingExpr, 1, 0] } }
-        }
+        'training.status': 1,
+        'training.parse.status': 1,
+        'training.runId': 1,
+        'training.runningItems': 1
       }
-    ]),
-    MongoDatasetData.aggregate([
+    )
+      .read('primary')
+      .lean(),
+    MongoDatasetData.aggregate<
+      DatasetDataStatusCounts & {
+        rebuildIndexRunningCount: number;
+        rebuildSynonymRunningCount: number;
+      }
+    >([
       { $match: match },
       {
         $group: {
           _id: null,
           ...datasetDataStatusCountFields,
-          rebuildIndexPendingCount: {
-            $sum: {
-              $cond: [
-                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexPending] },
-                1,
-                0
-              ]
-            }
-          },
-          rebuildSynonymPendingCount: {
-            $sum: {
-              $cond: [
-                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildSynonymPending] },
-                1,
-                0
-              ]
-            }
-          }
+          ...datasetDataRunningRebuildCountFields
         }
       }
-    ])
+    ]),
+    countDatasetQaTrainingByCollection({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      collectionIds: [collection._id]
+    })
   ]);
 
   const queuedCounts = { ...defaultCounts };
   const trainingCounts = { ...defaultCounts };
   const errorCounts = { ...defaultCounts };
-  for (const item of modeCounts) {
-    queuedCounts[item._id] = item.queuedCount;
-    trainingCounts[item._id] = item.trainingCount;
-    errorCounts[item._id] = item.errorCount;
+  const runningCounts = { ...defaultCounts };
+  if (document?.training?.runId) {
+    for (const mode of Object.values(document.training.runningItems ?? {})) {
+      runningCounts[mode]++;
+    }
   }
-
-  queuedCounts.rebuildIndex = dataStatus?.rebuildIndexPendingCount ?? 0;
-  trainingCounts.rebuildIndex =
-    (dataStatus?.rebuildIndexActiveCount ?? 0) - queuedCounts.rebuildIndex;
-  errorCounts.rebuildIndex = dataStatus?.rebuildIndexFailedCount ?? 0;
-  queuedCounts.rebuildSynonym = dataStatus?.rebuildSynonymPendingCount ?? 0;
-  trainingCounts.rebuildSynonym =
-    (dataStatus?.rebuildSynonymActiveCount ?? 0) - queuedCounts.rebuildSynonym;
-  errorCounts.rebuildSynonym = dataStatus?.rebuildSynonymFailedCount ?? 0;
+  const addDocumentCounts = ({
+    mode,
+    active = 0,
+    failed = 0,
+    running = runningCounts[mode]
+  }: {
+    mode: TrainingModeEnum;
+    active?: number;
+    failed?: number;
+    running?: number;
+  }) => {
+    if (document?.training?.status === 'paused_unpaid') {
+      errorCounts[mode] = active + failed;
+      return;
+    }
+    // 分块可能在读取集合进度和汇总期间完成，处理中数不能超过该阶段的待办总数。
+    trainingCounts[mode] = Math.min(active, running);
+    queuedCounts[mode] = active - trainingCounts[mode];
+    errorCounts[mode] = failed;
+  };
+  for (const mode of documentIndexTrainingModes) {
+    addDocumentCounts({
+      mode,
+      active: dataStatus?.[`${mode}ActiveCount`],
+      failed: dataStatus?.[`${mode}ErrorCount`]
+    });
+  }
+  addDocumentCounts({
+    mode: TrainingModeEnum.qa,
+    active: qaCounts?.activeCount,
+    failed: qaCounts?.finalErrorCount
+  });
+  addDocumentCounts({
+    mode: TrainingModeEnum.parse,
+    active: document?.training?.parse?.status === 'active' ? 1 : 0,
+    failed: document?.training?.parse?.status === 'error' ? 1 : 0
+  });
+  addDocumentCounts({
+    mode: TrainingModeEnum.rebuildIndex,
+    active: dataStatus?.rebuildIndexActiveCount,
+    failed: dataStatus?.rebuildIndexFailedCount,
+    running: dataStatus?.rebuildIndexRunningCount ?? 0
+  });
+  addDocumentCounts({
+    mode: TrainingModeEnum.rebuildSynonym,
+    active: dataStatus?.rebuildSynonymActiveCount,
+    failed: dataStatus?.rebuildSynonymFailedCount,
+    running: dataStatus?.rebuildSynonymRunningCount ?? 0
+  });
 
   return GetCollectionTrainingDetailResponseSchema.parse({
     trainingType: collection.trainingType,

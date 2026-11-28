@@ -7,8 +7,10 @@ import deleteCollectionHandler from '@/pages/api/core/dataset/collection/delete'
 import updateTrainingHandler from '@/pages/api/core/dataset/training/updateTrainingData';
 import { Call } from '@test/utils/request';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -121,7 +123,10 @@ describe('direct data image ingestion', () => {
       });
       expect(result.code, String(result.error?.message ?? JSON.stringify(result))).toBe(200);
       expect(result.data.insertLen).toBe(2);
-      const tasks = await MongoDatasetTraining.find({ collectionId: scope.collectionId }).lean();
+      const tasks =
+        trainingType === 'qa'
+          ? await datasetQaTrainingService.list({ collectionId: String(scope.collectionId) })
+          : await MongoDatasetData.find({ collectionId: scope.collectionId }).lean();
       expect(tasks).toHaveLength(2);
       expect(tasks[0].q).toBe(tasks[1].q);
       expect(tasks[0].q).not.toContain('base64,');
@@ -132,12 +137,23 @@ describe('direct data image ingestion', () => {
 
   it('normalizes a failed training task edit while preserving its unsubmitted answer', async () => {
     const { root, scope } = await createContext();
-    const task = await MongoDatasetTraining.create({
+    await MongoDatasetCollection.updateOne(
+      { _id: scope.collectionId },
+      {
+        $set: {
+          training: {
+            status: 'active',
+            usageId: new Types.ObjectId().toHexString(),
+            revision: 1
+          }
+        }
+      }
+    );
+    const task = await MongoDatasetData.create({
       ...scope,
-      billId: 'failed-image-edit',
-      mode: 'index',
-      retryCount: 0,
-      errorMsg: 'failed',
+      indexStatus: DatasetDataIndexStageEnum.index,
+      indexError: true,
+      indexErrorMsg: 'failed',
       q: 'old question',
       a: 'keep original answer'
     });
@@ -146,11 +162,11 @@ describe('direct data image ingestion', () => {
       body: { dataId: String(task._id), q: imageText }
     });
     expect(result.code, String(result.error?.message ?? JSON.stringify(result))).toBe(200);
-    const updated = (await MongoDatasetTraining.findById(task._id).lean())!;
+    const updated = (await MongoDatasetData.findById(task._id).lean())!;
     expect(updated.q).toContain(`/chunk-images/${scope.collectionId}/`);
     expect(updated.q).not.toContain('base64,');
     expect(updated.a).toBe('keep original answer');
-    expect(updated.retryCount).toBe(3);
+    expect(updated.indexError).toBeUndefined();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
 
     // 若未提交的回答中已有 3 张受管内联图，单独编辑问题新增第 4 张图应在上传前被拒绝且保留原回答
@@ -158,9 +174,15 @@ describe('direct data image ingestion', () => {
       (n) =>
         `dataset/${scope.datasetId}/chunk-images/${scope.collectionId}/file/${String(n).repeat(32)}.png`
     );
-    await MongoDatasetTraining.updateOne(
+    await MongoDatasetData.updateOne(
       { _id: task._id },
-      { $set: { a: existingKeys.map((k, i) => `![e${i}](${k})`).join(' ') } }
+      {
+        $set: {
+          indexError: true,
+          indexErrorMsg: 'failed',
+          a: existingKeys.map((k, i) => `![e${i}](${k})`).join(' ')
+        }
+      }
     );
     storage.uploadObject.mockClear();
     const rejected = await Call(updateTrainingHandler, {
@@ -175,12 +197,11 @@ describe('direct data image ingestion', () => {
     expect(await MongoS3TTL.countDocuments()).toBe(0);
 
     // 历史任务或分块未提交字段含旧 Base64（合法或非法）时，仅编辑另一字段不应上传未提交字段或拒绝编辑
-    const legacyValidTask = await MongoDatasetTraining.create({
+    const legacyValidTask = await MongoDatasetData.create({
       ...scope,
-      billId: 'legacy-valid-base64-edit',
-      mode: 'index',
-      retryCount: 0,
-      errorMsg: 'failed',
+      indexStatus: DatasetDataIndexStageEnum.index,
+      indexError: true,
+      indexErrorMsg: 'failed',
       q: 'old q',
       a: imageText
     });
@@ -192,16 +213,15 @@ describe('direct data image ingestion', () => {
     expect(editOnlyQ.code, String(editOnlyQ.error?.message ?? JSON.stringify(editOnlyQ))).toBe(200);
     expect(storage.uploadObject).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
-    const savedLegacyValid = (await MongoDatasetTraining.findById(legacyValidTask._id).lean())!;
+    const savedLegacyValid = (await MongoDatasetData.findById(legacyValidTask._id).lean())!;
     expect(savedLegacyValid.q).toBe('plain text updated q');
     expect(savedLegacyValid.a).toBe(imageText);
 
-    const legacyInvalidTask = await MongoDatasetTraining.create({
+    const legacyInvalidTask = await MongoDatasetData.create({
       ...scope,
-      billId: 'legacy-invalid-base64-edit',
-      mode: 'index',
-      retryCount: 0,
-      errorMsg: 'failed',
+      indexStatus: DatasetDataIndexStageEnum.index,
+      indexError: true,
+      indexErrorMsg: 'failed',
       q: 'old q',
       a: '![broken](data:image/png;base64,@@@)'
     });
@@ -217,7 +237,7 @@ describe('direct data image ingestion', () => {
     ).toBe(200);
     expect(storage.uploadObject).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
-    const savedLegacyInvalid = (await MongoDatasetTraining.findById(legacyInvalidTask._id).lean())!;
+    const savedLegacyInvalid = (await MongoDatasetData.findById(legacyInvalidTask._id).lean())!;
     expect(savedLegacyInvalid.q).toBe('fixed q only');
     expect(savedLegacyInvalid.a).toBe('![broken](data:image/png;base64,@@@)');
 
@@ -281,7 +301,9 @@ describe('direct data image ingestion', () => {
     });
     expect(result.code).toBe(200);
     expect(result.data.insertLen).toBe(0);
-    expect(await MongoDatasetTraining.countDocuments({ collectionId: scope.collectionId })).toBe(0);
+    expect(await datasetQaTrainingService.count({ collectionId: String(scope.collectionId) })).toBe(
+      0
+    );
     expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
 

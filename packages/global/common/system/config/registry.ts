@@ -357,6 +357,8 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'parse.xlsxMaxCells',
       'parse.xlsxMaxMergedCells',
       'parse.maxHtmlTransformChars',
+      'dataset.documentMaxProcess',
+      'dataset.documentChunkMaxProcess',
       'dataset.parseMaxProcess',
       'dataset.vectorMaxProcess',
       'dataset.qaMaxProcess',

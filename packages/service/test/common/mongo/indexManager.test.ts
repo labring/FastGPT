@@ -713,7 +713,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 });
 
 describe('dataset collection index consolidation', () => {
-  it('replaces three managed indexes via explicit cleanup without growing the index count or breaking legacy hints', async () => {
+  it('consolidates obsolete indexes and adds a partial index for document training', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
@@ -737,8 +737,16 @@ describe('dataset collection index consolidation', () => {
       ),
       collectionOverrides: { dataset_collections: model.collection.collectionName }
     });
-    const names = await getIndexNames(model);
-    expect(names.size).toBe(11); // 10 条内置索引（含 _id 与 fg_dataset_col_parent_name_sort）及 1 条客户索引。
+    const indexes = await model.collection.indexes();
+    const names = new Set(indexes.map(({ name }) => name));
+    expect(names.size).toBe(12); // 11 条内置索引（含 _id、fg_dataset_col_parent_name_sort 与 fg_dataset_collection_training_pause）及 1 条客户索引。
+    expect(indexes).toContainEqual(
+      expect.objectContaining({
+        name: 'fg_dataset_collection_training_pause',
+        key: { 'training.status': 1, 'training.pausedAt': 1, _id: 1 },
+        partialFilterExpression: { 'training.status': { $exists: true } }
+      })
+    );
     expect(names).toContain('teamId_1_fileId_1');
     expect(names).toContain('fg_dataset_col_parent_name_sort');
     expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1');

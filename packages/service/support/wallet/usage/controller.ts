@@ -1,3 +1,5 @@
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { AIModelDataType, STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
@@ -13,8 +15,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { type ClientSession } from '../../../common/mongo';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeDbSessionToClientSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { MongoUsage } from './schema';
 import { MongoUsageItem } from './usageItemSchema';
@@ -101,7 +102,7 @@ export const pushLLMTrainingUsage = async ({
   type: UsageItemTypeEnum;
 }) => {
   // Compute points
-  const { totalPoints } = formatModelChars2Points({
+  const { modelId, totalPoints } = formatModelChars2Points({
     model,
     inputTokens,
     outputTokens,
@@ -113,6 +114,7 @@ export const pushLLMTrainingUsage = async ({
     usageId,
     teamId,
     itemType: type,
+    modelId,
     totalPoints,
     inputTokens,
     outputTokens,
@@ -229,28 +231,166 @@ export const pushSTTUsage = async ({
   });
 };
 
-// Dataset training
+type TrainingUsageModelIds = {
+  vectorModelId: string;
+  agentModelId?: string;
+  vllmModelId?: string;
+};
+
+const trainingUsageItemNames = {
+  [UsageItemTypeEnum.training_vector]: i18nT('account_usage:embedding_index'),
+  [UsageItemTypeEnum.training_paragraph]: i18nT('account_usage:llm_paragraph'),
+  [UsageItemTypeEnum.training_qa]: i18nT('account_usage:qa'),
+  [UsageItemTypeEnum.training_autoIndex]: i18nT('account_usage:auto_index'),
+  [UsageItemTypeEnum.training_imageIndex]: i18nT('account_usage:image_index'),
+  [UsageItemTypeEnum.training_imageParse]: i18nT('account_usage:image_parse')
+};
+
+/** 复用账单的 Mongo 版本号串行化明细补齐和计费，零积分写入也占同一把锁。 */
+export const buildTrainingUsageBillIncrement = (totalPoints: number) => ({
+  $inc: { totalPoints, __v: 1 }
+});
+
+/** 累加实际模型的明细。模型可以在建单后变更，因此允许在同一账单内按需创建明细。 */
+export const buildUsageItemIncrement = ({
+  teamId,
+  usageId,
+  itemType,
+  modelId,
+  totalPoints,
+  inputTokens,
+  outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
+  charsLength,
+  duration,
+  pages,
+  count
+}: ConcatUsageProps) => {
+  const names: Partial<Record<UsageItemTypeEnum, string>> = trainingUsageItemNames;
+  const name = modelId ? names[itemType] : undefined;
+
+  return {
+    filter: { teamId, usageId, itemType, ...(name && { modelId }) },
+    update: {
+      ...(name && { $setOnInsert: { name } }),
+      $inc: {
+        amount: totalPoints,
+        ...(inputTokens !== undefined && { inputTokens }),
+        ...(outputTokens !== undefined && { outputTokens }),
+        ...(cacheReadTokens !== undefined && { cacheReadTokens }),
+        ...(cacheCreationTokens !== undefined && { cacheCreationTokens }),
+        ...(charsLength && { charsLength }),
+        ...(duration && { duration }),
+        ...(pages && { pages }),
+        ...(count && { count })
+      }
+    },
+    upsert: name !== undefined
+  };
+};
+
+/** 统一业务建单、补齐明细和历史迁移的训练计费项。 */
+export const getTrainingUsageItems = ({
+  teamId,
+  usageId,
+  vectorModelId,
+  agentModelId,
+  vllmModelId
+}: TrainingUsageModelIds & { teamId: string; usageId: string }) => [
+  {
+    teamId,
+    usageId,
+    itemType: UsageItemTypeEnum.training_vector,
+    name: trainingUsageItemNames[UsageItemTypeEnum.training_vector],
+    modelId: vectorModelId,
+    amount: 0,
+    inputTokens: 0
+  },
+  ...(agentModelId
+    ? [
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_paragraph,
+          name: trainingUsageItemNames[UsageItemTypeEnum.training_paragraph],
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_qa,
+          name: trainingUsageItemNames[UsageItemTypeEnum.training_qa],
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_autoIndex,
+          name: trainingUsageItemNames[UsageItemTypeEnum.training_autoIndex],
+          modelId: agentModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        }
+      ]
+    : []),
+  ...(vllmModelId
+    ? [
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_imageIndex,
+          name: trainingUsageItemNames[UsageItemTypeEnum.training_imageIndex],
+          modelId: vllmModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.training_imageParse,
+          name: trainingUsageItemNames[UsageItemTypeEnum.training_imageParse],
+          modelId: vllmModelId,
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0
+        }
+      ]
+    : [])
+];
+
 export const createTrainingUsage = async ({
   teamId,
   tmbId,
   appName,
   billSource,
+  trainingCollectionId,
   vectorModelId,
   agentModelId,
   vllmModelId,
-  session
+  tx
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
   billSource: UsageSourceEnum;
+  trainingCollectionId?: string;
 
   vectorModelId: string;
   agentModelId?: string;
   vllmModelId?: string;
-  session?: ClientSession;
-}) => {
-  const create = async (session: ClientSession) => {
+  tx?: DbSession;
+}): Promise<{ usageId: string }> => {
+  const create = async (tx: DbSession) => {
+    const session = bridgeDbSessionToClientSession(tx);
     const [result] = await MongoUsage.create(
       [
         {
@@ -258,91 +398,72 @@ export const createTrainingUsage = async ({
           tmbId,
           source: billSource,
           appName,
+          ...(trainingCollectionId && { trainingCollectionId }),
           totalPoints: 0
         }
       ],
       { session, ordered: true }
     );
     await MongoUsageItem.create(
-      [
-        {
-          teamId,
-          usageId: result._id,
-          itemType: UsageItemTypeEnum.training_vector,
-          name: i18nT('account_usage:embedding_index'),
-          modelId: vectorModelId,
-          amount: 0,
-          inputTokens: 0
-        },
-        ...(agentModelId
-          ? [
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_paragraph,
-                name: i18nT('account_usage:llm_paragraph'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_qa,
-                name: i18nT('account_usage:qa'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_autoIndex,
-                name: i18nT('account_usage:auto_index'),
-                modelId: agentModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              }
-            ]
-          : []),
-        ...(vllmModelId
-          ? [
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_imageIndex,
-                name: i18nT('account_usage:image_index'),
-                modelId: vllmModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_imageParse,
-                name: i18nT('account_usage:image_parse'),
-                modelId: vllmModelId,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
-              }
-            ]
-          : [])
-      ],
-      {
-        session,
-        ordered: true
-      }
+      getTrainingUsageItems({
+        teamId,
+        usageId: String(result._id),
+        vectorModelId,
+        agentModelId,
+        vllmModelId
+      }),
+      { session, ordered: true }
     );
 
     return { usageId: String(result._id) };
   };
-  if (session) return create(session);
-  return mongoSessionRun(create);
+  return tx ? create(tx) : runInTransaction(create, { dialect: 'mongo' });
+};
+
+/** 批量建立文档训练账单，明细和账户由调用方事务一起提交。 */
+export const createTrainingUsages = async (
+  {
+    teamId,
+    tmbId,
+    bills,
+    ...models
+  }: TrainingUsageModelIds & {
+    teamId: string;
+    tmbId: string;
+    bills: { appName: string; trainingCollectionId: string }[];
+  },
+  tx?: DbSession
+): Promise<string[]> => {
+  if (bills.length === 0) return [];
+  if (!tx) {
+    return runInTransaction((tx) => createTrainingUsages({ teamId, tmbId, bills, ...models }, tx), {
+      dialect: 'mongo'
+    });
+  }
+  const session = bridgeDbSessionToClientSession(tx);
+  const ids: string[] = [];
+  const batchSize = 1000;
+
+  for (let offset = 0; offset < bills.length; offset += batchSize) {
+    const usages = await MongoUsage.insertMany(
+      bills.slice(offset, offset + batchSize).map((bill) => ({
+        ...bill,
+        teamId,
+        tmbId,
+        source: UsageSourceEnum.training,
+        totalPoints: 0
+      })),
+      { session, ordered: true }
+    );
+    const usageIds = usages.map(({ _id }) => String(_id));
+    await MongoUsageItem.insertMany(
+      usageIds.flatMap((usageId) => getTrainingUsageItems({ teamId, usageId, ...models })),
+      { session, ordered: true }
+    );
+    ids.push(...usageIds);
+  }
+
+  return ids;
 };
 
 // Evaluation

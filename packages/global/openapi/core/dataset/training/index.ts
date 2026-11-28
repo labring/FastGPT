@@ -6,8 +6,11 @@ import {
   DeleteTrainingDataBodySchema,
   GetTrainingDataDetailBodySchema,
   GetTrainingErrorBodySchema,
+  GetTrainingErrorResponseSchema,
   GetDatasetTrainingErrorBodySchema,
+  GetDatasetTrainingErrorResponseSchema,
   HasDatasetTrainingErrorQuerySchema,
+  HasDatasetTrainingErrorResponseSchema,
   GetDatasetTrainingQueueQuerySchema,
   GetDatasetTrainingQueueResponseSchema
 } from './api';
@@ -109,7 +112,10 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回错误数据分页列表'
+          description: '成功返回错误数据分页列表',
+          content: {
+            'application/json': { schema: GetTrainingErrorResponseSchema }
+          }
         }
       }
     }
@@ -119,7 +125,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '获取知识库训练错误列表',
       description:
-        '分页查询知识库内存在最终/阻塞异常的集合，并返回每个集合内的部分异常 chunk；传 collectionId 时加载该集合更多异常 chunk',
+        '分页查询当前用户可读集合内的最终或阻塞异常。指定 collectionId 时校验集合读权限，并分页返回该集合的异常分块。',
       tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
@@ -130,7 +136,10 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库错误数据分页列表'
+          description: '成功返回知识库错误数据分页列表',
+          content: {
+            'application/json': { schema: GetDatasetTrainingErrorResponseSchema }
+          }
         }
       }
     }
@@ -139,14 +148,17 @@ export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/hasDatasetTrainingError': {
     get: {
       summary: '检查知识库是否存在训练错误',
-      description: '轻量检查知识库内是否存在最终/阻塞异常训练记录，用于列表徽章状态探测',
+      description: '检查当前用户可读集合内是否存在最终或阻塞的训练异常，用于列表状态提示。',
       tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: HasDatasetTrainingErrorQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回是否存在训练错误'
+          description: '成功返回是否存在训练错误',
+          content: {
+            'application/json': { schema: HasDatasetTrainingErrorResponseSchema }
+          }
         }
       }
     }

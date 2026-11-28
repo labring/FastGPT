@@ -22,7 +22,11 @@ import {
   YuqueServerSchema
 } from './apiDataset/type';
 import { SourceMemberSchema } from '../../support/user/type';
-import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './data/constants';
+import {
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from './data/constants';
 import { FolderAccessModeSchema, ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
@@ -215,6 +219,19 @@ export const DatasetSchema = z
 export type DatasetSchemaType = z.infer<typeof DatasetSchema>;
 
 /* ===== Collection ===== */
+/** 文档本轮训练的持久状态，仅供训练写入、消费与对账读取。 */
+export const DatasetCollectionTrainingSchema = z.object({
+  status: z.enum(['active', 'paused_unpaid']),
+  pausedAt: z.date().optional(),
+  parse: z
+    .object({ status: z.enum(['active', 'error']), errorMsg: z.string().optional() })
+    .optional(),
+  usageId: ObjectIdSchema,
+  runId: z.string().optional(),
+  runningItems: z.record(ObjectIdSchema, z.enum(TrainingModeEnum)).optional(),
+  revision: z.int().nonnegative()
+});
+
 export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   trainingType: true
 }).extend({
@@ -266,7 +283,9 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
     .optional()
     .meta({ description: '训练类型' })
 });
-export type DatasetCollectionSchemaType = z.infer<typeof DatasetCollectionSchema>;
+export type DatasetCollectionSchemaType = z.infer<typeof DatasetCollectionSchema> & {
+  training?: z.infer<typeof DatasetCollectionTrainingSchema>;
+};
 
 export const DatasetCollectionTagsSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
@@ -298,9 +317,10 @@ export const DatasetDataIndexItemSchema = z.object({
 imageEmbedding - 图片的 objectKey/url`
   })
 });
-const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({
+const DatasetDataDraftIndexSchema = DatasetDataIndexItemSchema.omit({
   dataId: true
-}).extend({
+});
+const DatasetDataIndexOptionalSchema = DatasetDataDraftIndexSchema.extend({
   dataId: z.string().optional().meta({
     example: '68ad85a7463006c963799a05',
     description: '向量库里数据 ID（可选），可用于相同索引不重复创建，节省一次向量更新'
@@ -337,11 +357,14 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  draftIndexes: z.array(DatasetDataDraftIndexSchema).optional(),
   indexStatus: z
-    .enum(DatasetDataIndexStatusEnum)
+    .union([z.enum(DatasetDataIndexStageEnum), z.enum(DatasetDataIndexStatusEnum)])
     .optional()
-    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+    .meta({ description: '索引阶段或历史索引状态，字段缺失表示已完成索引' }),
+  indexError: z.boolean().optional(),
   indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
+  trainingIndexSize: z.number().optional().meta({ description: '训练阶段索引大小' }),
   synonymVersion: z.number().int().nonnegative().optional().meta({ description: '同义词索引版本' }),
   synonymRebuildingVersion: z
     .number()
@@ -365,6 +388,9 @@ export const DatasetDataTextSchema = z.object({
 export type DatasetDataTextSchemaType = z.infer<typeof DatasetDataTextSchema>;
 
 /* ===== Training ===== */
+export type DatasetTrainingAppendResultType = { insertLen: number; dataIds: string[] };
+
+/** @deprecated 旧 `dataset_trainings` 记录结构，仅供存量迁移和接口兼容投影。 */
 export const DatasetTrainingSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '训练 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
@@ -392,6 +418,7 @@ export const DatasetTrainingSchema = z.object({
 
   userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true })
 });
+/** @deprecated 旧 `dataset_trainings` 记录类型，仅供存量迁移和兼容代码。 */
 export type DatasetTrainingSchemaType = z.infer<typeof DatasetTrainingSchema>;
 
 export const CollectionWithDatasetSchema = DatasetCollectionSchema.extend({

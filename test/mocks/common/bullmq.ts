@@ -6,14 +6,17 @@ vi.mock('@fastgpt/dal/redis/bullmq', async (importOriginal) => {
 
   const mockQueue = {
     add: vi.fn().mockResolvedValue({ id: '1' }),
+    addBulk: vi.fn(async (jobs: unknown[]) => jobs.map((_, index) => ({ id: String(index + 1) }))),
     getJob: vi.fn().mockResolvedValue(undefined),
     getDeduplicationJobId: vi.fn().mockResolvedValue(undefined),
+    setGlobalConcurrency: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
     on: vi.fn()
   };
 
   const mockWorker = {
     close: vi.fn().mockResolvedValue(undefined),
+    off: vi.fn().mockReturnThis(),
     on: vi.fn()
   };
 

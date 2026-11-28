@@ -93,6 +93,10 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   API_FILE_FILE_COMMIT_TIMEOUT_MS: 5 * 60 * 1000
 }));
 
+vi.mock('@fastgpt/service/core/dataset/training/runtime', () => ({
+  enqueueDatasetTrainingBatch: vi.fn()
+}));
+
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 

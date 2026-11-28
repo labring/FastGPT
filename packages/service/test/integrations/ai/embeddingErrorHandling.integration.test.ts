@@ -1,20 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Types } from '@fastgpt/service/common/mongo';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import { createApiI18n } from '@fastgpt/service/common/i18n/request';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { EmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { findAndLockTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
-import { createTrainingTaskLease } from '@fastgpt/service/core/dataset/training/service';
 import { probeModelStatus } from '@fastgpt/service/core/ai/modelStatus/service';
 
 vi.unmock('@fastgpt/service/core/ai/embedding');
@@ -48,41 +40,11 @@ const model: EmbeddingModelDataType = {
 };
 const inputs = [{ type: 'text' as const, input: 'hello' }];
 
-const rateLimitResponse = (retryAfter: string) =>
-  Response.json(
-    { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
-    { status: 429, headers: { 'retry-after': retryAfter } }
-  );
-
 const authFailureResponse = () =>
   Response.json(
     { error: { message: 'Incorrect API key provided: sk-xxx', code: 'invalid_api_key' } },
     { status: 401 }
   );
-
-const createIndexTrainingTask = async () => {
-  const context = {
-    teamId: new Types.ObjectId(),
-    tmbId: new Types.ObjectId(),
-    datasetId: new Types.ObjectId(),
-    collectionId: new Types.ObjectId()
-  };
-  const data = await MongoDatasetData.create({
-    ...context,
-    q: 'sample chunk',
-    a: '',
-    indexes: [],
-    indexStatus: DatasetDataIndexStatusEnum.indexing
-  });
-  return MongoDatasetTraining.create({
-    ...context,
-    dataId: data._id,
-    billId: 'integration-bill',
-    mode: TrainingModeEnum.index,
-    retryCount: 3,
-    lockTime: new Date()
-  });
-};
 
 describe('Embedding error handling integration', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -96,120 +58,6 @@ describe('Embedding error handling integration', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-  });
-
-  it('terminates index training and persists safe messages for a permanent image download failure', async () => {
-    const signedUrl = 'https://internal-bucket.example/500/img.png?token=sig';
-    fetchMock.mockImplementation(async () =>
-      Response.json(
-        {
-          error: {
-            message: `Failed to download images: 404, message='Not Found', url='${signedUrl}'`,
-            type: 'upstream_error',
-            code: 'BadRequest'
-          }
-        },
-        { status: 400 }
-      )
-    );
-    const error = await getVectors({ model, inputs }).catch((error: unknown) => error);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(error).toBeInstanceOf(EmbeddingRequestError);
-    expect(error).toMatchObject({
-      retryable: false,
-      errorCode: ModelErrEnum.imageDownloadFailed
-    });
-
-    const task = await createIndexTrainingTask();
-    const lease = createTrainingTaskLease(task);
-    try {
-      await lease.fail(error);
-    } finally {
-      await lease.stop();
-    }
-
-    const safeMessage = ERROR_RESPONSE[ModelErrEnum.imageDownloadFailed].message;
-    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
-      retryCount: 0,
-      expireAt: null,
-      errorMsg: safeMessage
-    });
-    expect(await MongoDatasetData.findById(task.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.error,
-      indexErrorMsg: safeMessage
-    });
-  });
-
-  it('honors the final HTTP 429 Retry-After in the Mongo queue and caps the delay at 24h', async () => {
-    const retryAfterSeconds = 10 * 24 * 60 * 60;
-    fetchMock
-      .mockImplementationOnce(async () => rateLimitResponse('0'))
-      .mockImplementationOnce(async () => rateLimitResponse('0'))
-      .mockImplementation(async () => rateLimitResponse(String(retryAfterSeconds)));
-
-    const error = await getVectors({ model, inputs }).catch((error: unknown) => error);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(error).toBeInstanceOf(EmbeddingRequestError);
-    expect(error).toMatchObject({
-      retryable: true,
-      retryAfterMs: retryAfterSeconds * 1000
-    });
-
-    const task = await createIndexTrainingTask();
-    // 只固定应用时钟，Mongo 驱动与事务相关的定时器仍使用真实时间。
-    vi.useFakeTimers({ toFake: ['Date'] });
-    const nextClaimableAt = Date.now() + 24 * 60 * 60 * 1000;
-    const lease = createTrainingTaskLease(task);
-    try {
-      await lease.fail(error);
-    } finally {
-      await lease.stop();
-    }
-
-    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
-      retryCount: 2,
-      lockTime: new Date(nextClaimableAt - TRAINING_LEASE_TIMEOUT_MS),
-      expireAt: new Date(nextClaimableAt),
-      errorMsg: ERROR_RESPONSE[ModelErrEnum.rateLimited].message
-    });
-    expect(await MongoDatasetData.findById(task.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
-
-    const claimOptions = { mode: TrainingModeEnum.index, filter: { _id: task._id } };
-    // 默认退避早已结束，此时仍不能在上游退避结束前领取任务。
-    vi.setSystemTime(nextClaimableAt - 1);
-    expect(await findAndLockTrainingTask(claimOptions)).toBeNull();
-    vi.setSystemTime(nextClaimableAt);
-    expect(await findAndLockTrainingTask(claimOptions)).toMatchObject({
-      _id: task._id.toString(),
-      retryCount: 2,
-      lockTime: new Date(nextClaimableAt)
-    });
-  });
-
-  it('keeps index training retryable when the embedding request is already aborted', async () => {
-    const controller = new AbortController();
-    controller.abort();
-    const error = await getVectors({ model, inputs, signal: controller.signal }).catch(
-      (error: unknown) => error
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(error).toBeInstanceOf(Error);
-    expect(error).not.toBeInstanceOf(EmbeddingRequestError);
-
-    const task = await createIndexTrainingTask();
-    const lease = createTrainingTaskLease(task);
-    try {
-      await lease.fail(error);
-    } finally {
-      await lease.stop();
-    }
-
-    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 2 });
-    expect(await MongoDatasetData.findById(task.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
   });
 
   it.each([

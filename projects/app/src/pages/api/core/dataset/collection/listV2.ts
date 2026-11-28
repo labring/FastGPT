@@ -24,18 +24,16 @@ import {
   type CollectionTagLabelType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import type { DatasetQaTrainingCounts } from '@fastgpt/dal/db/repos/datasetQaTraining/repo.type';
+import { countDatasetQaTrainingByCollection } from '@fastgpt/service/core/dataset/training/qaService';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getCollectionTrainingStatusFromCounts } from '@fastgpt/service/core/dataset/training/query';
 import {
-  getCollectionTrainingStatusFromCounts,
-  getCollectionTrainingModeCountsPipeline,
-  type CollectionTrainingModeCount
-} from '@fastgpt/service/core/dataset/training/query';
-import {
-  datasetDataRebuildStatusCountFields,
-  type DatasetDataRebuildStatusCounts
+  datasetDataTrainingStatusCountFields,
+  datasetDataTrainingStatusMatch,
+  type DatasetDataTrainingStatusCounts
 } from '@fastgpt/service/core/dataset/data/query';
 import {
   ListCollectionV2BodySchema,
@@ -63,11 +61,6 @@ import {
 } from '@/service/core/dataset/collectionVisibleList';
 
 const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({});
-
-type TrainingAmountAggregateItem = {
-  _id: string;
-  modeCounts: CollectionTrainingModeCount[];
-};
 
 /**
  * 列表范围谓词。
@@ -391,6 +384,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     createTime: 1,
     updateTime: 1,
     trainingType: 1,
+    'training.status': 1,
+    'training.parse.status': 1,
     fileId: 1,
     rawLink: 1,
     tags: 1,
@@ -516,37 +511,32 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     queryCollectionPage(),
     MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
   ]);
-  const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
+  const collectionIds = collections.map(({ _id }) => String(_id));
+  const trainingMatch = {
+    teamId: new Types.ObjectId(scopeTeamId),
+    datasetId: new Types.ObjectId(datasetId),
+    collectionId: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }
+  };
 
-  // Compute data amount
-  const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
-    TrainingAmountAggregateItem[],
-    (DatasetDataRebuildStatusCounts & { _id: string; count: number })[],
+  const [dataAmount, dataTraining, qaAmount, collectionPermissionMap, tags]: [
+    { _id: string; count: number }[],
+    (DatasetDataTrainingStatusCounts & { _id: string })[],
+    DatasetQaTrainingCounts[],
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
-    MongoDatasetTraining.aggregate(
-      getCollectionTrainingModeCountsPipeline({
-        teamId: new Types.ObjectId(scopeTeamId),
-        datasetId: new Types.ObjectId(datasetId),
-        collectionId: { $in: collectionIds }
-      }),
+    MongoDatasetData.aggregate(
+      [{ $match: trainingMatch }, { $group: { _id: '$collectionId', count: { $sum: 1 } } }],
       readFromSecondary
     ),
+    // 总量可从索引统计。只对仍在训练的数据回表读取逐条错误标记。
     MongoDatasetData.aggregate(
       [
-        {
-          $match: {
-            teamId: new Types.ObjectId(scopeTeamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds }
-          }
-        },
+        { $match: { ...trainingMatch, ...datasetDataTrainingStatusMatch } },
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 },
-            ...datasetDataRebuildStatusCountFields
+            ...datasetDataTrainingStatusCountFields
           }
         }
       ],
@@ -554,22 +544,30 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         ...readFromSecondary
       }
     ),
+    countDatasetQaTrainingByCollection({
+      teamId: scopeTeamId,
+      datasetId,
+      collectionIds,
+      useReadReplica: true
+    }),
     loadCollectionPermissionMap(collections),
     Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  const trainingAmountMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
   const dataAmountMap = new Map(dataAmount.map((item) => [String(item._id), item]));
+  const dataTrainingMap = new Map(dataTraining.map((item) => [String(item._id), item]));
+  const qaAmountMap = new Map(qaAmount.map((item) => [String(item._id), item]));
   const list = collections.map((item, index) => {
     const collectionId = String(item._id);
-    const dataCounts = dataAmountMap.get(collectionId);
     return projectCollectionItem({
       item,
       tags: tags[index],
-      dataAmount: dataCounts?.count ?? 0,
+      dataAmount: dataAmountMap.get(collectionId)?.count ?? 0,
       trainingStatus: getCollectionTrainingStatusFromCounts({
-        modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
-        rebuildCounts: dataCounts
+        dataCounts: dataTrainingMap.get(collectionId),
+        qaCounts: qaAmountMap.get(collectionId),
+        parseStatus: item.training?.parse?.status,
+        pausedUnpaid: item.training?.status === 'paused_unpaid'
       }),
       collectionPermissionMap
     });

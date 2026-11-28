@@ -2,9 +2,9 @@ import {
   matchMarkdownImages,
   unescapeMarkdownImageUrl
 } from '@fastgpt/global/common/string/markdown';
-import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { isDatasetDataProcessing } from '@fastgpt/global/core/dataset/data/utils';
+import { isDatasetDataIndexActive } from '@fastgpt/global/core/dataset/data/utils';
 
 export type DatasetDataMarkdownImageItem = {
   raw: string;
@@ -58,13 +58,14 @@ export const uniqueDatasetDataMarkdownImageUrls = (texts: Array<string | null | 
 /**
  * 待索引数据的写保护断言。
  *
- * indexing 或重建中的向量和全文记录正在产出，允许数据级写操作会与在途索引任务
- * 争抢同一条数据。字段缺失的历史数据按已索引处理。
+ * 排队和执行中的分块由 Worker 写入向量及全文索引，数据级编辑要等待索引完成或失败。
  *
  * 只由数据级写接口触发；读取、集合删除和 Worker 内部的状态推进不经过该断言。
  */
-export const assertDatasetDataWritable = (indexStatus?: DatasetDataIndexStatusEnum) => {
-  if (!isDatasetDataProcessing(indexStatus)) return;
+export const assertDatasetDataWritable = (
+  data: Pick<DatasetDataSchemaType, 'indexStatus' | 'indexError'>
+) => {
+  if (!isDatasetDataIndexActive(data)) return;
 
   return Promise.reject(DatasetErrEnum.dataNotIndexed);
 };

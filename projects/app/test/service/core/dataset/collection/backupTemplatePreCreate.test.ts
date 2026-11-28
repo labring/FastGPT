@@ -1,13 +1,11 @@
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { serviceEnv } from '@fastgpt/service/env';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
@@ -43,13 +41,12 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', async (importOriginal) 
 }));
 vi.mock('@fastgpt/service/support/wallet/usage/controller', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/support/wallet/usage/controller')>()),
-  createTrainingUsage: vi.fn().mockResolvedValue({ usageId: 'test-usage-id' })
-}));
-vi.mock('@/service/core/dataset/queues/utils', () => ({
-  checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
+  createTrainingUsage: vi.fn().mockResolvedValue({ usageId: '507f1f77bcf86cd799439070' })
 }));
 
-import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
+import { initDatasetTrainingWorker } from '@/service/core/dataset/training/documentWorker';
+import { bullMQ } from '@fastgpt/dal/redis/bullmq';
+import { closeRedisRuntime, configureRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
@@ -65,73 +62,6 @@ const buildBackupCsv = (rows: { q: string; a?: string; index?: string }[]) => {
     );
   });
   return lines.join('\n');
-};
-
-/**
- * 把向量队列排空。
- *
- * 队列的领取条件是全局的（不带数据集过滤），且要求任务 lockTime 早于 3 分钟；生产由每分钟的
- * cron 反复驱动。测试里只调用一次时，任何一次「已领取但未处理完」都会让任务在 3 分钟内不可再
- * 领取，数据停留在待索引状态。这里按生产的重试语义重开锁并重试，失败时把任务错误抛出来。
- */
-const drainVectorQueue = async (collectionId: string) => {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await generatePreCreatedData();
-
-    if ((await MongoDatasetTraining.countDocuments({ collectionId })) === 0) return;
-
-    await MongoDatasetTraining.updateMany(
-      { collectionId },
-      { $set: { lockTime: new Date('2000-01-01') } }
-    );
-  }
-
-  const stuck = await MongoDatasetTraining.find({ collectionId }).lean();
-  throw new Error(
-    `向量队列未排空，剩余 ${stuck.length} 条任务：` +
-      JSON.stringify(
-        stuck.map((task) => ({
-          mode: task.mode,
-          retryCount: task.retryCount,
-          errorMsg: task.errorMsg
-        }))
-      )
-  );
-};
-
-/**
- * 断言数据全部完成索引；失败时把数据与任务的实际状态带出来。
- *
- * 该断言此前只报 `expected false to be true`，无法区分「路由走错」与「队列没跑完」，
- * 因此把可观测状态一并抛出，便于定位。
- */
-const expectAllIndexed = async ({
-  collectionId,
-  rows
-}: {
-  collectionId: string;
-  rows: { _id: unknown; indexStatus?: DatasetDataIndexStatusEnum; indexes?: unknown[] }[];
-}) => {
-  const notIndexed = rows.filter((row) => row.indexStatus !== DatasetDataIndexStatusEnum.indexed);
-  if (notIndexed.length === 0) return;
-
-  const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
-  throw new Error(
-    `存在未完成索引的数据：${JSON.stringify(
-      notIndexed.map((row) => ({
-        id: String(row._id),
-        indexStatus: row.indexStatus ?? null,
-        indexCount: (row.indexes ?? []).length
-      }))
-    )}；剩余训练任务：${JSON.stringify(
-      tasks.map((task) => ({
-        mode: task.mode,
-        dataId: task.dataId ?? null,
-        retryCount: task.retryCount,
-        errorMsg: task.errorMsg ?? null
-      }))
-    )}`
-  );
 };
 
 const createDataset = async () => {
@@ -178,7 +108,6 @@ const insertCollection = async ({
 describe('backup / template pre-created data', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = false;
-    global.vectorQueueLen = 0;
     resetVectorMocks();
     mockCountPromptTokens.mockReset();
     mockCountPromptTokens.mockImplementation(async (text: string) =>
@@ -208,17 +137,13 @@ describe('backup / template pre-created data', () => {
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows).toHaveLength(2);
-    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStageEnum.index)).toBe(true);
     // 待索引数据尚无向量，索引数组应为空。
     expect(rows.every((row) => (row.indexes ?? []).length === 0)).toBe(true);
 
-    const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
-    expect(tasks).toHaveLength(2);
-    expect(tasks.every((task) => Boolean(task.dataId))).toBe(true);
-
-    // 每条任务指向一条已存在的预落库数据，不能有悬空 dataId。
-    const rowIds = new Set(rows.map((row) => String(row._id)));
-    expect(tasks.every((task) => rowIds.has(String(task.dataId)))).toBe(true);
+    expect(await MongoDatasetCollection.findById(collectionId).lean()).toHaveProperty(
+      'training.usageId'
+    );
   });
 
   it('rejects unauthorized embedding before creating a collection', async () => {
@@ -252,11 +177,11 @@ describe('backup / template pre-created data', () => {
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows).toHaveLength(2);
-    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStageEnum.index)).toBe(true);
 
-    const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
-    expect(tasks).toHaveLength(2);
-    expect(tasks.every((task) => Boolean(task.dataId))).toBe(true);
+    expect(await MongoDatasetCollection.findById(collectionId).lean()).toHaveProperty(
+      'training.usageId'
+    );
   });
 
   /** 普通 rawText 分块同样统一先落库再更新索引。 */
@@ -269,36 +194,44 @@ describe('backup / template pre-created data', () => {
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStageEnum.index)).toBe(true);
 
-    const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
-    expect(tasks.length).toBe(rows.length);
-    expect(tasks.every((task) => Boolean(task.dataId))).toBe(true);
-    expect(tasks.every((task) => task.mode === TrainingModeEnum.index)).toBe(true);
+    expect(await MongoDatasetCollection.findById(collectionId).lean()).toHaveProperty(
+      'training.usageId'
+    );
   });
 
   /** 备份携带的自定义索引必须活到索引完成，一条不少。 */
-  it('preserves backup custom indexes through the vector stage', async () => {
-    const { collectionId } = await insertCollection({
-      trainingType: DatasetCollectionDataProcessModeEnum.backup,
-      name: 'backup-indexes.csv',
-      rawText: buildBackupCsv([
-        { q: '带索引的问题一', index: '补充索引甲' },
-        { q: '带索引的问题二', index: '补充索引乙' }
-      ])
-    });
-
-    await drainVectorQueue(collectionId);
-
-    const rows = await MongoDatasetData.find({ collectionId }).lean();
-    expect(rows).toHaveLength(2);
-    await expectAllIndexed({ collectionId, rows });
-
-    const indexTexts = rows.flatMap((row) => (row.indexes ?? []).map((index) => index.text));
-    expect(indexTexts).toContain('补充索引甲');
-    expect(indexTexts).toContain('补充索引乙');
-    // 数据行仍是预落库时的同一条，没有新建重复行。
-    expect(new Set(rows.map((row) => String(row._id))).size).toBe(2);
-    expect(await MongoDatasetTraining.countDocuments({ collectionId })).toBe(0);
+  const redisUrl = process.env.FASTGPT_TEST_REDIS_URL;
+  it.skipIf(!redisUrl)('preserves backup custom indexes through the vector stage', async () => {
+    if (!redisUrl) throw new Error('Dedicated Redis is required');
+    await closeRedisRuntime();
+    configureRedisRuntime({ redisUrl });
+    vi.mocked(bullMQ.getQueue).mockRestore();
+    vi.mocked(bullMQ.getWorker).mockRestore();
+    try {
+      const { collectionId } = await insertCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.backup,
+        name: 'backup-indexes.csv',
+        rawText: buildBackupCsv([
+          { q: '带索引的问题一', index: '补充索引甲' },
+          { q: '带索引的问题二', index: '补充索引乙' }
+        ])
+      });
+      await initDatasetTrainingWorker();
+      await vi.waitFor(
+        async () => {
+          const rows = await MongoDatasetData.find({ collectionId }).lean();
+          expect(rows).toHaveLength(2);
+          expect(rows.every(({ indexStatus }) => indexStatus === undefined)).toBe(true);
+          expect(rows.flatMap(({ indexes }) => indexes.map(({ text }) => text))).toEqual(
+            expect.arrayContaining(['补充索引甲', '补充索引乙'])
+          );
+        },
+        { timeout: 10_000 }
+      );
+    } finally {
+      await closeRedisRuntime();
+    }
   });
 });

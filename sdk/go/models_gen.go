@@ -6470,19 +6470,21 @@ type DatasetsDetailResAgentModelPricing struct {
 }
 
 type DatasetsDetailResAgentModelConfig struct {
-	MaxContext              float64           `json:"maxContext"`
-	MaxResponse             float64           `json:"maxResponse"`
-	QuoteMaxToken           float64           `json:"quoteMaxToken"`
-	MaxTemperature          *float64          `json:"maxTemperature,omitempty"`
-	ShowTopP                *bool             `json:"showTopP,omitempty"`
-	ResponseFormatList      []string          `json:"responseFormatList,omitempty"`
-	ShowStopSign            *bool             `json:"showStopSign,omitempty"`
-	Censor                  *bool             `json:"censor,omitempty"`
-	Vision                  *bool             `json:"vision,omitempty"`
-	Audio                   *bool             `json:"audio,omitempty"`
-	Video                   *bool             `json:"video,omitempty"`
-	Reasoning               *bool             `json:"reasoning,omitempty"`
-	ReasoningEffort         *bool             `json:"reasoningEffort,omitempty"`
+	MaxContext         float64  `json:"maxContext"`
+	MaxResponse        float64  `json:"maxResponse"`
+	QuoteMaxToken      float64  `json:"quoteMaxToken"`
+	MaxTemperature     *float64 `json:"maxTemperature,omitempty"`
+	ShowTopP           *bool    `json:"showTopP,omitempty"`
+	ResponseFormatList []string `json:"responseFormatList,omitempty"`
+	ShowStopSign       *bool    `json:"showStopSign,omitempty"`
+	Censor             *bool    `json:"censor,omitempty"`
+	Vision             *bool    `json:"vision,omitempty"`
+	Audio              *bool    `json:"audio,omitempty"`
+	Video              *bool    `json:"video,omitempty"`
+	Reasoning          *bool    `json:"reasoning,omitempty"`
+	ReasoningEffort    *bool    `json:"reasoningEffort,omitempty"`
+	// 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置
+	ReasoningEffortList     []string          `json:"reasoningEffortList,omitempty"`
 	FunctionCall            *bool             `json:"functionCall,omitempty"`
 	ToolChoice              *bool             `json:"toolChoice,omitempty"`
 	DefaultSystemChatPrompt *string           `json:"defaultSystemChatPrompt,omitempty"`
@@ -7319,8 +7321,10 @@ type ModelsCatalogResDataModelsItemLLMConfig struct {
 	Video              *bool    `json:"video,omitempty"`
 	Reasoning          *bool    `json:"reasoning,omitempty"`
 	ReasoningEffort    *bool    `json:"reasoningEffort,omitempty"`
-	FunctionCall       *bool    `json:"functionCall,omitempty"`
-	ToolChoice         *bool    `json:"toolChoice,omitempty"`
+	// 模型可用的思考等级列表，取值对齐 AI Proxy 思考等级配置
+	ReasoningEffortList []string `json:"reasoningEffortList,omitempty"`
+	FunctionCall        *bool    `json:"functionCall,omitempty"`
+	ToolChoice          *bool    `json:"toolChoice,omitempty"`
 }
 
 type ModelsCatalogResDataModelsItemLLM struct {

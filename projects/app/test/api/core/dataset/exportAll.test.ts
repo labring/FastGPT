@@ -1,5 +1,9 @@
 import handler from '@/pages/api/core/dataset/exportAll';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   OwnerRoleVal,
@@ -192,6 +196,33 @@ describe('export dataset respects collection permission', () => {
 
     expect(res.code).toBe(200);
     expect(res.raw).toContain('open-file-q');
+  });
+
+  it('omits index drafts from CSV rows and header columns', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await createDataset({ name: 'training-dataset', owner });
+    const datasetId = String(dataset._id);
+    const collection = await createFileCollection({ name: 'training-file', owner, datasetId });
+    await MongoDatasetData.updateOne(
+      { collectionId: collection._id },
+      {
+        $set: {
+          indexStatus: DatasetDataIndexStageEnum.index,
+          indexes: [
+            { type: DatasetDataIndexTypeEnum.custom, text: 'Indexed heading', dataId: 'saved' }
+          ],
+          draftIndexes: [
+            { type: DatasetDataIndexTypeEnum.custom, text: 'Draft heading' },
+            { type: DatasetDataIndexTypeEnum.custom, text: 'Another draft' }
+          ]
+        }
+      }
+    );
+
+    const res = await StreamCall(handler, { auth: owner, query: { datasetId } });
+
+    expect(res.code).toBe(200);
+    expect(res.raw).toBe('\uFEFFq,a,index\ntraining-file-q,training-file-a,Indexed heading');
   });
 
   it('does not filter for the team owner', async () => {

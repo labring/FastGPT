@@ -6,11 +6,10 @@ const mocks = vi.hoisted(() => ({
   exit: vi.fn(() => {
     throw new Error('App exited before readiness');
   }),
-  watch: vi.fn(),
   configPolling: vi.fn(),
   workers: vi.fn(),
   cron: vi.fn(),
-  training: vi.fn(),
+  reconcileTraining: vi.fn().mockResolvedValue(undefined),
   tracks: vi.fn(),
   opsPerf: vi.fn(),
   loadModels: vi.fn(),
@@ -86,13 +85,14 @@ vi.mock('@fastgpt/service/common/s3', async () => {
     })
   };
 });
-vi.mock('@/service/common/system/sync', () => ({ startSystemSync: mocks.watch }));
 vi.mock('@/service/common/system/configPolling', () => ({
   startAppConfigPolling: mocks.configPolling
 }));
 vi.mock('@/service/common/bullmq', () => ({ initBullMQWorkers: mocks.workers }));
 vi.mock('@/service/common/system/cron', () => ({ startCron: mocks.cron }));
-vi.mock('@/service/core/dataset/training/utils', () => ({ startTrainingQueue: mocks.training }));
+vi.mock('@/service/core/dataset/training/documentReconcile', () => ({
+  reconcileDatasetTrainingDocuments: mocks.reconcileTraining
+}));
 vi.mock('@fastgpt/service/common/middle/tracks/processor', () => ({
   trackTimerProcess: mocks.tracks
 }));
@@ -192,10 +192,9 @@ describe('registerNodeInstrumentation', () => {
       expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(true);
       for (const consumer of [
         mocks.configPolling,
-        mocks.watch,
         mocks.workers,
         mocks.cron,
-        mocks.training,
+        mocks.reconcileTraining,
         mocks.tracks
       ])
         expect(consumer).toHaveBeenCalledTimes(1);
@@ -309,10 +308,9 @@ describe('registerNodeInstrumentation', () => {
         expect((await MongoAIModel.findById(modelId).lean())?.pricing).toEqual(pricing);
         for (const consumer of [
           mocks.configPolling,
-          mocks.watch,
           mocks.workers,
           mocks.cron,
-          mocks.training,
+          mocks.reconcileTraining,
           mocks.tracks
         ])
           expect(consumer).toHaveBeenCalledTimes(1);

@@ -19,6 +19,7 @@ import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_leg
 import { backfillModelReasoningEffortListMigration } from './tasks/4180/20261125_backfill_model_reasoning_effort_list';
 import { cleanupAgentEngineConfig } from './tasks/4180/20261127_cleanup_agent_engine_config';
 import { backfillNameSortKey } from './tasks/4180/20261127_backfill_name_sort_key';
+import { migrateDatasetDocumentTraining } from './tasks/4180/20261125_migrate_dataset_document_training';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -459,6 +460,45 @@ export const systemMigrations = [
       }
     ],
     run: backfillNameSortKey
+  },
+  {
+    id: '20261125_migrate_dataset_document_training',
+    version: '4.18.0',
+    manual: true,
+    nameKey: i18nT('system_migration:migrations.20261125_migrate_dataset_document_training.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261125_migrate_dataset_document_training.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261125_migrate_dataset_document_training.result'
+    ),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_migrate_dataset_document_training.preflight'
+        )
+      },
+      {
+        key: 'legacyTasks',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_migrate_dataset_document_training.legacyTasks'
+        )
+      },
+      {
+        key: 'remainingData',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_migrate_dataset_document_training.remainingData'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261125_migrate_dataset_document_training.validation'
+        )
+      }
+    ],
+    run: migrateDatasetDocumentTraining
   }
 ] as const satisfies readonly SystemMigration[];
 

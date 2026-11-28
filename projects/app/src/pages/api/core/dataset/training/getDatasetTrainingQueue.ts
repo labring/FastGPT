@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/orchestration';
 import {
   GetDatasetTrainingQueueQuerySchema,
   GetDatasetTrainingQueueResponseSchema,

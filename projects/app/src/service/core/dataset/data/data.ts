@@ -1,5 +1,8 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import {
+  settleDatasetTrainingRoundAfterWrite,
+  touchDatasetTrainingRound
+} from '@fastgpt/service/core/dataset/training/runtime';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
@@ -17,7 +20,10 @@ import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
+  isDatasetDataDocumentWorkStatus,
   datasetDataSystemIndexTypes,
+  getDatasetDataExternalIndexes,
+  isDatasetDataDocumentTrainingStatus,
   isDatasetDataFailed,
   isDatasetDataSystemIndexType
 } from '@fastgpt/global/core/dataset/data/utils';
@@ -25,10 +31,7 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
-import {
-  DatasetDataIndexStatusEnum,
-  DatasetDataIndexTypeEnum
-} from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   getCachedDatasetSynonymConfig,
   getDatasetSynonymMatcher,
@@ -278,8 +281,6 @@ export class DatasetDataOperation {
                 ...(metadata && { metadata }),
                 chunkIndex,
                 indexes: results,
-                // 同步写完向量和全文即已就绪；显式置状态，避免落入历史数据 missing 的兼容语义。
-                indexStatus: DatasetDataIndexStatusEnum.indexed,
                 ...(synonymContext && { synonymVersion: synonymContext.version })
               }
             ],
@@ -372,9 +373,10 @@ export class DatasetDataOperation {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
     // API 鉴权后可能已被重试接管；Worker 自带租约提交边界，不走手动编辑写保护。
-    if (!commit) await assertDatasetDataWritable(mongoData.indexStatus);
+    if (!commit) await assertDatasetDataWritable(mongoData);
 
-    const isFailed = isDatasetDataFailed(mongoData.indexStatus);
+    const isDocumentTraining = isDatasetDataDocumentWorkStatus(mongoData.indexStatus);
+    const isFailed = isDatasetDataFailed(mongoData);
     // 获取新的索引组合
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
@@ -439,12 +441,19 @@ export class DatasetDataOperation {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
           }
+          const tx = bridgeClientSessionToDbSession(mongoSession);
+          const documentTraining =
+            !commit && isDocumentTraining && (await touchDatasetTrainingRound(mongoData, tx));
           // 重试只改变状态、不更新 updateTime；失败修复还需校验状态，不能覆盖已恢复的任务。
           const updateResult = await MongoDatasetData.updateOne(
             {
               _id: mongoData._id,
               ...((synonymContext || isFailed) && { updateTime }),
-              ...(isFailed && { indexStatus: mongoData.indexStatus })
+              ...(isFailed && { indexStatus: mongoData.indexStatus }),
+              ...(isDocumentTraining && {
+                indexStatus: mongoData.indexStatus,
+                indexError: isFailed ? true : { $ne: true }
+              })
             },
             {
               $set: {
@@ -462,7 +471,6 @@ export class DatasetDataOperation {
                 ...(metadata !== undefined ? { metadata } : {}),
                 ...(imageDescMap !== undefined ? { imageDescMap } : {}),
                 indexes: newIndexes,
-                indexStatus: DatasetDataIndexStatusEnum.indexed,
                 ...((synonymContext || isFailed) && {
                   synonymVersion: synonymContext?.version ?? 0
                 }),
@@ -470,13 +478,17 @@ export class DatasetDataOperation {
               },
               $unset: {
                 ...(synonymContext || isFailed ? { synonymRebuildingVersion: '' } : {}),
+                draftIndexes: '',
+                indexStatus: '',
+                indexError: '',
+                trainingIndexSize: '',
                 indexErrorMsg: ''
               }
             },
             { session: mongoSession }
           );
           if (
-            (synonymContext || isFailed || imageUploadKeys?.length) &&
+            (synonymContext || isFailed || imageUploadKeys?.length || isDocumentTraining) &&
             updateResult.modifiedCount !== 1
           ) {
             throw new Error('数据已变化，请重试索引更新');
@@ -507,16 +519,7 @@ export class DatasetDataOperation {
             tx: bridgeClientSessionToDbSession(mongoSession)
           });
 
-          if (!commit && isFailed) {
-            await MongoDatasetTraining.deleteMany(
-              {
-                teamId: mongoData.teamId,
-                datasetId: mongoData.datasetId,
-                dataId: mongoData._id
-              },
-              { session: mongoSession }
-            );
-          }
+          if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, tx);
         }
       });
     } catch (error) {
@@ -532,7 +535,7 @@ export class DatasetDataOperation {
       throw error;
     }
 
-    // lease.complete 包含 training 删除和事务提交；此前必须保留旧向量供回滚或重跑使用。
+    // Mongo 事务提交后再清理旧向量，提交失败时保留现有索引。
     await this.cleanupReplacedVectors({
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
@@ -661,12 +664,14 @@ export class DatasetDataOperation {
             {
               $set: {
                 indexes,
-                indexStatus: DatasetDataIndexStatusEnum.indexed,
                 // 索引未变化时保留原更新时间，避免同义词版本推进被误读为内容修改。
                 ...(hasIndexChanges && { updateTime: new Date() }),
                 ...(synonymContext && { synonymVersion: synonymContext.version })
               },
               $unset: {
+                indexStatus: '',
+                indexError: '',
+                trainingIndexSize: '',
                 indexErrorMsg: '',
                 ...(synonymContext && { synonymRebuildingVersion: '' })
               }
@@ -744,9 +749,10 @@ export class DatasetDataOperation {
   }: UpdateDatasetDataSystemIndexesProps) {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
-    await assertDatasetDataWritable(mongoData.indexStatus);
+    await assertDatasetDataWritable(mongoData);
 
-    const isFailed = isDatasetDataFailed(mongoData.indexStatus);
+    const isDocumentTraining = isDatasetDataDocumentWorkStatus(mongoData.indexStatus);
+    const isFailed = isDatasetDataFailed(mongoData);
     const embModel = model;
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
@@ -759,7 +765,7 @@ export class DatasetDataOperation {
       : undefined;
     indexSize = Math.min(embModel.config.maxToken, indexSize);
 
-    const systemIndexes = await this.indexOperation.getSystemIndexes({
+    const indexInput = {
       q: nextQ,
       a: nextA,
       imageId: nextImageId,
@@ -767,23 +773,33 @@ export class DatasetDataOperation {
       indexSize,
       maxIndexSize: embModel.config.maxToken,
       indexPrefix
-    });
-    // 系统索引文本没变化时复用旧 dataId，避免无意义的向量重建。
-    const nextSystemIndexDrafts = this.indexOperation.mergeExistingSystemIndexIds({
-      currentIndexes: mongoData.indexes,
-      nextSystemIndexes: systemIndexes
-    });
+    };
+    const getNextIndexes = async () => {
+      // 首次训练的草稿还未过索引格式化，手工恢复时也按模型上限完整切分。
+      if (isDatasetDataDocumentTrainingStatus(mongoData.indexStatus)) {
+        return this.indexOperation.formatIndexes({
+          ...indexInput,
+          indexes: getDatasetDataExternalIndexes(mongoData.draftIndexes)
+        });
+      }
+      const externalIndexes = isFailed
+        ? getDatasetDataExternalIndexes(mongoData.indexes).map(({ type, text, dataId }) => ({
+            type,
+            text,
+            dataId
+          }))
+        : [];
+      // 系统索引文本没变化时复用旧 dataId。
+      const nextSystemIndexes = this.indexOperation.mergeExistingSystemIndexIds({
+        currentIndexes: mongoData.indexes,
+        nextSystemIndexes: await this.indexOperation.getSystemIndexes(indexInput)
+      });
+      return [...externalIndexes, ...nextSystemIndexes];
+    };
 
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
-      nextIndexes: isFailed
-        ? [
-            ...mongoData.indexes
-              .filter((index) => !isDatasetDataSystemIndexType(index.type))
-              .map(({ type, text, dataId }) => ({ type, text, dataId })),
-            ...nextSystemIndexDrafts
-          ]
-        : nextSystemIndexDrafts,
+      nextIndexes: await getNextIndexes(),
       currentIndexFilter: isFailed
         ? undefined
         : (index) => isDatasetDataSystemIndexType(index.type),
@@ -819,11 +835,15 @@ export class DatasetDataOperation {
         if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
+        const tx = bridgeClientSessionToDbSession(session);
+        const documentTraining =
+          isDocumentTraining && (await touchDatasetTrainingRound(mongoData, tx));
         const updateResult = await MongoDatasetData.updateOne(
           {
             _id: mongoData._id,
             ...((synonymContext || isFailed) && { updateTime }),
-            ...(isFailed && { indexStatus: mongoData.indexStatus })
+            ...(isFailed && { indexStatus: mongoData.indexStatus }),
+            ...(isDocumentTraining && { indexError: true })
           },
           [
             {
@@ -860,7 +880,10 @@ export class DatasetDataOperation {
                         { $literal: nextIndexes }
                       ]
                     },
-                indexStatus: { $literal: DatasetDataIndexStatusEnum.indexed },
+                draftIndexes: '$$REMOVE',
+                indexStatus: '$$REMOVE',
+                indexError: '$$REMOVE',
+                trainingIndexSize: '$$REMOVE',
                 indexErrorMsg: '$$REMOVE',
                 ...((synonymContext || isFailed) && {
                   synonymVersion: synonymContext?.version ?? 0,
@@ -918,16 +941,7 @@ export class DatasetDataOperation {
           tx: bridgeClientSessionToDbSession(session)
         });
 
-        if (isFailed) {
-          await MongoDatasetTraining.deleteMany(
-            {
-              teamId: mongoData.teamId,
-              datasetId: mongoData.datasetId,
-              dataId: mongoData._id
-            },
-            { session }
-          );
-        }
+        if (documentTraining) await settleDatasetTrainingRoundAfterWrite(mongoData, tx);
       });
     } catch (error) {
       if (newVectorIdList.length > 0) {
@@ -969,8 +983,9 @@ export class DatasetDataOperation {
     await this.commitDataWrite({
       session,
       fn: async (session) => {
+        const tx = bridgeClientSessionToDbSession(session);
+        const inTraining = await touchDatasetTrainingRound(data, tx);
         await MongoDatasetData.deleteOne({ _id: data.id }, { session });
-        await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
         // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
         await getFullTextStore().deleteByDataId(data.id, session);
 
@@ -991,6 +1006,7 @@ export class DatasetDataOperation {
           datasetId: data.datasetId,
           idList: data.indexes.map((item) => item.dataId)
         });
+        if (inTraining) await settleDatasetTrainingRoundAfterWrite(data, tx);
       }
     });
 
@@ -1043,7 +1059,7 @@ export const updateDatasetDataSystemIndexes = async (
 };
 
 /**
- * 删除 dataset data 及其全文索引、图片和向量等派生资源，可复用上层事务。
+ * 删除 dataset data 及其全文索引、图片和向量等派生资源。
  */
 export const deleteDatasetData = async (data: DeleteDatasetDataProps, session?: ClientSession) => {
   return new DatasetDataOperation().delete(data, session);

@@ -9,7 +9,8 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, vi } from 'vitest';
@@ -39,13 +40,12 @@ describe('get training data detail test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id
     });
-    const trainingData = await MongoDatasetTraining.create({
+    const trainingData = await MongoDatasetData.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.rebuildIndex,
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending,
       q: 'test',
       a: 'test'
     });
@@ -91,13 +91,12 @@ describe('get training data detail test', () => {
       datasetId: dataset._id
     });
     const ownImageId = `dataset/${dataset._id}/image.png`;
-    const trainingData = await MongoDatasetTraining.create({
+    const trainingData = await MongoDatasetData.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.rebuildIndex,
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending,
       q: 'test',
       a: 'test',
       imageId: ownImageId
@@ -141,13 +140,12 @@ describe('get training data detail test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id
     });
-    const trainingData = await MongoDatasetTraining.create({
+    const trainingData = await MongoDatasetData.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.rebuildIndex,
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending,
       q: 'test',
       a: 'test',
       imageId: 'dataset/foreign-dataset/secret.png'
@@ -204,13 +202,12 @@ describe('get training data detail test', () => {
         datasetId: foreignDataset._id
       })
     ]);
-    const foreignTrainingData = await MongoDatasetTraining.create({
+    const foreignTrainingData = await MongoDatasetData.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.rebuildIndex,
+      indexStatus: DatasetDataIndexStageEnum.rebuildIndexPending,
       q: 'foreign',
       a: 'foreign'
     });

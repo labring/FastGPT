@@ -11,22 +11,23 @@ import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { datasetDataDocumentTrainingStatusByMode } from '@fastgpt/global/core/dataset/data/utils';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { Types } from '../../../common/mongo';
 import type { ClientSession } from '../../../common/mongo';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
-import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { createTrainingUsages } from '../../../support/wallet/usage/controller';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
 import { rawText2Chunks } from '../read';
-import { MongoDatasetTraining } from '../training/schema';
+import { datasetQaTrainingService } from '../training/qaService';
 import { MongoDatasetCollection } from './schema';
 import { createOrGetCollectionTags } from './utils';
 
@@ -53,10 +54,11 @@ import {
 } from '../../../support/permission/collection/controller';
 import { getFullTextStore } from '../data/textStore';
 import {
-  preCreateDatasetDataAndPushToTrainingQueue,
-  pushDataListToTrainingQueue,
-  pushDatasetToParseQueue
-} from '../training/controller';
+  appendDatasetIndexTraining,
+  appendDatasetQaTraining,
+  ensureDatasetCollectionTraining
+} from '../training/orchestration';
+import { enqueueDatasetTrainingBatch } from '../training/runtime';
 import { getDatasetImageIndexCapability } from '../utils';
 import { getTrainingModeByCollection } from './utils';
 
@@ -490,7 +492,6 @@ export const createCollectionAndInsertData = async ({
   imageIds,
   createCollectionParams,
   backupParse = false,
-  billId,
   session,
   modelAuthContext
 }: {
@@ -502,7 +503,6 @@ export const createCollectionAndInsertData = async ({
 
   backupParse?: boolean;
 
-  billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
   const {
@@ -579,132 +579,76 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
-  const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
-    // 3. Create collection
-    const { _id: collectionId } = await createOneCollection({
+  const needsParse = !rawText && !imageIds;
+  const formattedData = chunks.map((item, chunkIndex) => ({
+    ...item,
+    indexes: item.indexes?.map((text) => ({ type: DatasetDataIndexTypeEnum.custom, text })),
+    chunkIndex
+  }));
+
+  const create = async (session: ClientSession) => {
+    const collection = await createOneCollection({
       ...formatCreateCollectionParams,
-      // name 不参与公共参数计算（批量路径下逐文件不同），此处补回
       name: createCollectionParams.name,
       trainingType,
       chunkSize,
       indexSize,
-
       hashRawText: rawText ? hashStr(rawText) : undefined,
       rawTextLength: rawText?.length,
       session
     });
 
-    // 4. create training bill
-    const traingUsageId = await (async () => {
-      if (billId) return billId;
-      const { usageId: newUsageId } = await createTrainingUsage({
-        teamId,
-        tmbId,
-        appName: createCollectionParams.name,
-        billSource: UsageSourceEnum.training,
-        vectorModelId: embeddingModelData.modelId!,
-        agentModelId: agentModelData.modelId,
-        vllmModelId: vlmModelData?.modelId,
-        session
-      });
-      return newUsageId;
-    })();
-
-    // 5. insert to training queue
-    const insertResults = await (async () => {
-      if (imageIds) {
-        // 图片先落库为 indexing 数据，再由 ImageParse/向量处理接力更新同一条数据。
-        return preCreateDatasetDataAndPushToTrainingQueue({
-          teamId,
-          tmbId,
-          datasetId: dataset._id,
-          collectionId,
-          agentModel: agentModelData,
-          vectorModel: embeddingModelData,
-          vlmModel: vlmModelData,
-          indexSize,
-          mode: trainingMode,
-          billId: traingUsageId,
-          data: chunks.map((item, index) => ({
-            ...item,
-            indexes: item.indexes?.map((text) => ({
-              type: DatasetDataIndexTypeEnum.custom,
-              text
-            })),
-            chunkIndex: index
-          })),
-          session
-        });
+    const collectionId = String(collection._id);
+    const tx = bridgeClientSessionToDbSession(session);
+    const scope = { teamId, tmbId, datasetId: String(dataset._id), collectionId };
+    const models = {
+      vectorModelId: embeddingModelData.modelId!,
+      agentModelId: agentModelData.modelId,
+      vlmModelId: vlmModelData?.modelId
+    };
+    const { insertLen } = await (async () => {
+      const input = { ...scope, ...models };
+      if (needsParse) {
+        await ensureDatasetCollectionTraining({ ...input, parse: true }, tx);
+        return { insertLen: 0 };
       }
-      if (rawText) {
-        const formattedData = chunks.map((item, index) => ({
-          ...item,
-          indexes: item.indexes?.map((text) => ({
-            type: DatasetDataIndexTypeEnum.custom,
-            text
-          })),
-          chunkIndex: index
-        }));
+      if (trainingMode === TrainingModeEnum.qa) {
+        return appendDatasetQaTraining(
+          { ...input, data: formattedData, agentModel: agentModelData },
+          tx
+        );
+      }
+      const indexStatus = datasetDataDocumentTrainingStatusByMode[trainingMode];
+      if (!indexStatus) throw new Error(`Unsupported collection training mode: ${trainingMode}`);
 
-        // QA 模式在生成前不预落库，由 downstream generateQA 拆分叶子分块后批量落库
-        if (trainingMode === TrainingModeEnum.qa) {
-          return pushDataListToTrainingQueue({
-            teamId,
-            tmbId,
-            datasetId: dataset._id,
-            collectionId,
-            agentModel: agentModelData,
-            vectorModel: embeddingModelData,
-            vlmModel: vlmModelData,
-            indexSize,
-            mode: trainingMode,
-            billId: traingUsageId,
-            data: formattedData,
-            session
-          });
-        }
-
-        // rawText（手动输入文本、备份、模板、集合同步等）均先落库为 indexing 数据，再派发索引任务
-        return preCreateDatasetDataAndPushToTrainingQueue({
-          teamId,
-          tmbId,
-          datasetId: dataset._id,
-          collectionId,
-          agentModel: agentModelData,
-          vectorModel: embeddingModelData,
-          vlmModel: vlmModelData,
-          indexSize,
-          mode: trainingMode,
-          billId: traingUsageId,
+      return appendDatasetIndexTraining(
+        {
+          ...input,
           data: formattedData,
-          session
-        });
-      }
-      await pushDatasetToParseQueue({
-        teamId,
-        tmbId,
-        datasetId: dataset._id,
-        collectionId,
-        billId: traingUsageId,
-        session
-      });
-      return {
-        insertLen: 0
-      };
+          indexSize,
+          indexStatus,
+          agentModel: agentModelData,
+          vlmModel: vlmModelData,
+          supportImageEmbedding: isImageEmbeddingModel(embeddingModelData)
+        },
+        tx
+      );
     })();
 
     return {
-      collectionId: String(collectionId),
-      results: {
-        insertLen: insertResults.insertLen
-      }
+      collectionId,
+      results: { insertLen }
     };
   };
 
-  if (session) {
-    return fn(session);
+  // 外层事务还能写 ACL 或其他集合，只能由拥有事务的调用方投递。
+  if (session) return create(session);
+
+  const result = await mongoSessionRun(create);
+  if (needsParse || result.results.insertLen > 0) {
+    await enqueueDatasetTrainingBatch({ teamId, collectionIds: [result.collectionId] });
   }
-  return mongoSessionRun(fn);
+  return result;
 };
 
 export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
@@ -740,6 +684,7 @@ export async function createCollections({
 }: {
   collections: (Omit<CreateOneCollectionParams, 'session'> & {
     _id?: Types.ObjectId;
+    training?: DatasetCollectionSchemaType['training'];
     /** 可信内部兼容转换：复用同位置旧节点，或其目录内正文的 owner 与完整权限。 */
     permissionSourceCollectionId?: string;
   })[];
@@ -913,7 +858,7 @@ export async function createCollections({
 /** 单条创建复用批量持久化，返回原有集合文档；外部传入的 _id 不得用于普通创建。 */
 export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
   const [collection] = await createCollections({
-    collections: [{ ...props, _id: undefined }],
+    collections: [{ ...props, _id: undefined, training: undefined }],
     session
   });
   return collection;
@@ -942,14 +887,13 @@ export type CreateApiFileCollectionItem = {
 
 /**
  * 批量创建进入解析队列的 API 文件；模型参数只计算一次，集合、ACL 和队列批量写入。
- * 首次导入默认整批共用账单；同步通过 perFile 保留逐文件账单，且可保留原额度估算。
+ * 每篇文档独立绑定账单，解析完成后按集合设置选择下游阶段。
  * 全部写入共享事务，任一失败整体回滚；文件正文由解析队列处理，不在这里切块。
  */
 export const createApiFileCollectionsBatch = async ({
   dataset,
   files,
   createCollectionParams,
-  billing = { mode: 'shared' },
   indexLimitEstimate,
   session,
   modelAuthContext
@@ -961,7 +905,6 @@ export const createApiFileCollectionsBatch = async ({
     CreateOneCollectionParams,
     'name' | 'apiFileId' | 'apiFileParentId' | 'parentId' | 'session' | 'inheritPermission'
   >;
-  billing?: { mode: 'shared'; billId?: string } | { mode: 'perFile' };
   /** 缺省按文件数预估；同步的旧解析路径没有已知分块，传 0 保留其原估算契约。 */
   indexLimitEstimate?: number;
   session?: ClientSession;
@@ -982,10 +925,33 @@ export const createApiFileCollectionsBatch = async ({
   await checkDatasetIndexLimit({ teamId, insertLen: indexLimitEstimate ?? files.length });
 
   const create = async (s: ClientSession) => {
+    // 预分配集合 ID，批量账单和集合在一个事务写入，避免按文件逐条往返 MongoDB。
+    const ids = files.map(() => new Types.ObjectId());
+    const usageIds = await createTrainingUsages(
+      {
+        teamId,
+        tmbId,
+        vectorModelId: embeddingModelData.modelId!,
+        agentModelId: agentModelData.modelId,
+        vllmModelId: vlmModelData?.modelId,
+        bills: files.map(({ name }, index) => ({
+          appName: name,
+          trainingCollectionId: String(ids[index])
+        }))
+      },
+      bridgeClientSessionToDbSession(s)
+    );
     // 2. 复用通用持久化：标签、字段与 ACL 初始化不再维护单独的 API 文件实现。
     const collections = await createCollections({
-      collections: files.map((file) => ({
+      collections: files.map((file, index) => ({
         ...formatCreateCollectionParams,
+        _id: ids[index],
+        training: {
+          status: 'active',
+          usageId: usageIds[index],
+          revision: 1,
+          parse: { status: 'active' }
+        },
         name: file.name,
         type: DatasetCollectionTypeEnum.apiFile,
         datasetId: String(dataset._id),
@@ -1004,47 +970,17 @@ export const createApiFileCollectionsBatch = async ({
       session: s
     });
 
-    // 3. 账单归属独立于批量写入：同步仍是一文件一账单，首次导入可整批共用。
-    const createBill = async (appName: string) =>
-      (
-        await createTrainingUsage({
-          teamId,
-          tmbId,
-          appName,
-          billSource: UsageSourceEnum.training,
-          vectorModelId: embeddingModelData.modelId!,
-          agentModelId: agentModelData.modelId,
-          vllmModelId: vlmModelData?.modelId,
-          session: s
-        })
-      ).usageId;
-    const billIds = await (async () => {
-      if (billing.mode === 'shared') {
-        const billId =
-          billing.billId ??
-          (await createBill(
-            files.length > 1 ? `${files[0].name} +${files.length - 1}` : files[0].name
-          ));
-        return files.map(() => billId);
-      }
-      // 保留既有账单条数与名称；同一 Mongo 事务内顺序执行写入。
-      const ids: string[] = [];
-      for (const file of files) ids.push(await createBill(file.name));
-      return ids;
-    })();
-
-    // 4. 即使逐文件账单不同，解析队列仍可一次写入，避免逐文件往返数据库。
     const collectionIds = collections.map((collection) => String(collection._id));
-    await pushDatasetToParseQueue({
-      teamId,
-      tmbId,
-      datasetId: String(dataset._id),
-      items: collectionIds.map((collectionId, index) => ({ collectionId, billId: billIds[index] })),
-      session: s
-    });
     return { collectionIds };
   };
-  return session ? create(session) : mongoSessionRun(create);
+  if (session) return create(session);
+
+  const result = await mongoSessionRun(create);
+  await enqueueDatasetTrainingBatch({
+    teamId,
+    collectionIds: result.collectionIds
+  });
+  return result;
 };
 
 /* delete collection related images/files */
@@ -1161,10 +1097,14 @@ export async function delCollection({
       ...(delImg && imageIds.length ? [{ bucketName: S3Buckets.private, keys: imageIds }] : [])
     ];
     // 同一 session 不并行发起 Mongo 写入；重建失败时旧分块和旧任务必须随集合一起恢复。
-    await MongoDatasetTraining.deleteMany(
-      { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
-      { session }
-    );
+    // 先写集合记录，使删除与文档 Worker 的 runId 提交互斥。
+    await MongoDatasetCollection.deleteMany({ teamId, _id: { $in: collectionIds } }, { session });
+    await datasetQaTrainingService.deleteMany({
+      teamId: String(teamId),
+      datasetIds: datasetIds.map(String),
+      collectionIds: collectionIds.map(String),
+      tx: bridgeClientSessionToDbSession(session)
+    });
     await getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session);
     await MongoDatasetData.deleteMany(
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
@@ -1186,15 +1126,6 @@ export async function delCollection({
       // Delete vector data
       deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
     ]);
-
-    // delete collections
-    await MongoDatasetCollection.deleteMany(
-      {
-        teamId,
-        _id: { $in: collectionIds }
-      },
-      { session }
-    ).lean();
 
     // delete collection permission snapshots (same transaction)
     await deleteCollectionPermissions({ teamId, collectionIds, session });

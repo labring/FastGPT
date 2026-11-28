@@ -1,9 +1,8 @@
-import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import type { ClientSession } from '../../../common/mongo';
 import { normalizePagination } from '../../../common/api/pagination';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
-import { MongoDatasetTraining } from '../training/schema';
+import { hasDatasetTrainingTask } from '../training/orchestration';
 import { assertDatasetSynonymEnabled, invalidateDatasetSynonymMatcherCache } from './entity';
 import { serviceEnv } from '../../../env';
 
@@ -45,7 +44,7 @@ export const cleanupUnusedDatasetSynonymMappings = async (
 
 /**
  * 获取当前同义词配置及其重建进度。
- * 进度直接由 data 的重建状态和关联 training 派生，不维护第二份状态表；
+ * 进度直接由文档的训练记录派生；
  * 管理页面只需读取该接口，无需引擎提供专用进度 API 或状态字段。
  */
 export const getDatasetSynonymDetail = async ({
@@ -57,14 +56,13 @@ export const getDatasetSynonymDetail = async ({
 }) => {
   assertDatasetSynonymEnabled();
 
-  const [file, rebuildingData, training] = await Promise.all([
+  const [file, rebuilding] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    MongoDatasetData.exists({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
-    MongoDatasetTraining.exists({ teamId, datasetId })
+    hasDatasetTrainingTask({ teamId, datasetId })
   ]);
   return {
     file: file ?? undefined,
-    rebuilding: !!rebuildingData || !!training
+    rebuilding
   };
 };
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -9,6 +10,7 @@ import {
   datasetDeleteProcessor,
   deleteTeamAllDatasets
 } from '@fastgpt/service/core/dataset/delete/processor';
+import { markDatasetsForDeletion } from '@fastgpt/service/core/dataset/delete/mongo/mark';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/schemaV2';
@@ -58,6 +60,37 @@ describe('datasetDeleteProcessor', () => {
   });
   afterEach(() => {
     Reflect.set(serviceEnv, 'DATASET_SYNONYM_ENABLED', originalDatasetSynonymEnabled);
+  });
+
+  it('rolls back the deletion marker and training ownership together', async () => {
+    const { scope } = await createDatasetCollectionFixture();
+    const training = {
+      status: 'active',
+      revision: 1,
+      usageId: String(new Types.ObjectId()),
+      runId: 'in-flight',
+      runningItems: { [scope.collectionId]: TrainingModeEnum.parse }
+    };
+    await MongoDatasetCollection.updateOne({ _id: scope.collectionId }, { $set: { training } });
+    const abort = new Error('Abort dataset deletion');
+
+    await expect(
+      runInTransaction(
+        async (tx) => {
+          await markDatasetsForDeletion(
+            { teamId: scope.teamId, datasetIds: [scope.datasetId] },
+            tx
+          );
+          throw abort;
+        },
+        { dialect: 'mongo' }
+      )
+    ).rejects.toBe(abort);
+
+    expect(await MongoDataset.exists({ _id: scope.datasetId, deleteTime: null })).toBeTruthy();
+    expect(await MongoDatasetCollection.findById(scope.collectionId).lean()).toMatchObject({
+      training
+    });
   });
 
   it('waits for index removal before deleting vectors or the dataset record', async () => {

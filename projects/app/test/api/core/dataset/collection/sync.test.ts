@@ -4,6 +4,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
+  ChunkTriggerConfigTypeEnum,
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum
@@ -15,6 +16,7 @@ import * as collectionUtils from '@fastgpt/service/core/dataset/collection/utils
 import * as datasetPermissionSync from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import * as trainingRuntime from '@fastgpt/service/core/dataset/training/runtime';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { getFakeUsers, getRootUser } from '@test/datas/users';
@@ -48,6 +50,7 @@ const fixture = async (type = DatasetCollectionTypeEnum.link) => {
     datasetId: dataset._id,
     rawLink,
     hashRawText: hashStr(rawText),
+    chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
     metadata: { webPageSelector: 'main' }
   });
   return { owner, member: members[0], dataset, collection };
@@ -132,33 +135,50 @@ describe('sync collection audit', () => {
     expect(await MongoTeamAudit.countDocuments({ teamId: root.teamId })).toBe(0);
   });
 
-  it('keeps the original audit snapshot when changed content rebuilds the collection', async () => {
-    const context = await fixture();
-    vi.mocked(webFetch.urlsFetch).mockResolvedValue([
-      { url: rawLink, title: 'Updated collection', content: 'Updated body', selector: 'main' }
-    ]);
-    // 补齐全局 S3 替身的批量清理接口；集合重建和审计仍使用真实 Mongo 事务及存储。
-    const source = datasetS3.getS3DatasetSource();
-    source.deleteDatasetFilesByKeys = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(datasetS3, 'getS3DatasetSource').mockReturnValue(source);
+  it.each([
+    { content: 'Updated body', hasChunks: true },
+    { content: ' \n ', hasChunks: false }
+  ])(
+    'preserves the audit snapshot and enqueues only when changed content yields chunks ($hasChunks)',
+    async ({ content, hasChunks }) => {
+      const context = await fixture();
+      vi.mocked(webFetch.urlsFetch).mockResolvedValue([
+        { url: rawLink, title: 'Updated collection', content, selector: 'main' }
+      ]);
+      // 补齐全局 S3 替身的批量清理接口；集合重建和审计仍使用真实 Mongo 事务及存储。
+      const source = datasetS3.getS3DatasetSource();
+      source.deleteDatasetFilesByKeys = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(datasetS3, 'getS3DatasetSource').mockReturnValue(source);
+      const enqueue = vi
+        .spyOn(trainingRuntime, 'enqueueDatasetTrainingBatch')
+        .mockResolvedValue(undefined);
 
-    const response = await Call(handler, {
-      auth: context.owner,
-      body: { collectionId: String(context.collection._id) }
-    });
+      const response = await Call(handler, {
+        auth: context.owner,
+        body: { collectionId: String(context.collection._id) }
+      });
 
-    expect(response.code).toBe(200);
-    expect(response.data).toBe(DatasetCollectionSyncResultEnum.success);
-    expect(await MongoDatasetCollection.findById(context.collection._id).lean()).toBeNull();
-    const replacement = await MongoDatasetCollection.findOne({
-      datasetId: context.dataset._id
-    }).lean();
-    expect(replacement).toMatchObject({
-      name: 'Updated collection',
-      hashRawText: hashStr('Updated body')
-    });
-    await expectSyncAudit(context);
-  });
+      expect(response.code).toBe(200);
+      expect(response.data).toBe(DatasetCollectionSyncResultEnum.success);
+      expect(await MongoDatasetCollection.findById(context.collection._id).lean()).toBeNull();
+      const replacement = await MongoDatasetCollection.findOne({
+        datasetId: context.dataset._id
+      })
+        .lean()
+        .orFail();
+      expect(replacement).toMatchObject({
+        name: 'Updated collection',
+        hashRawText: hashStr(content)
+      });
+      expect(Boolean(replacement.training)).toBe(hasChunks);
+      expect(enqueue.mock.calls).toEqual(
+        hasChunks
+          ? [[{ teamId: context.owner.teamId, collectionIds: [String(replacement._id)] }]]
+          : []
+      );
+      await expectSyncAudit(context);
+    }
+  );
 
   it('records an attempt when a failed fetch returns empty content and preserves the error', async () => {
     const context = await fixture();

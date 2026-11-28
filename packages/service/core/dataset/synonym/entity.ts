@@ -9,8 +9,6 @@ import {
   type DatasetSynonymMatcherMapping
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
-import { logInstanceConfigRead } from '../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../env';
 
 type DatasetSynonymMatcherSnapshot = DatasetSynonymMatcher & { hasMappings: boolean };
@@ -50,7 +48,7 @@ const getMatcherCacheKey = ({
 
 /**
  * 合并短时间内同一知识库的配置读取，包括未配置结果。
- * 供 embedding 快照与检索装饰判断空词表版本共用；提交前的版本校验始终直查 MongoDB。
+ * 检索装饰和差量重建用它判断历史空词表版本。
  */
 export const getCachedDatasetSynonymConfig = ({
   teamId,
@@ -94,7 +92,7 @@ const toMatcherMapping = (mapping: DatasetSynonymMappingType): DatasetSynonymMat
   normalizedSynonymTerms: mapping.normalizedSynonymTerms
 });
 
-/** 读取知识库同义词配置；未配置时返回 null。 */
+/** 从主库读取知识库同义词配置；未配置时返回 null。 */
 export const getDatasetSynonymConfig = async ({
   teamId,
   datasetId
@@ -102,7 +100,7 @@ export const getDatasetSynonymConfig = async ({
   teamId: string;
   datasetId: string;
 }): Promise<DatasetSynonymConfigType | null> => {
-  return MongoDatasetSynonym.findOne({ teamId, datasetId }).lean();
+  return MongoDatasetSynonym.findOne({ teamId, datasetId }).read('primary').lean();
 };
 
 /** 读取指定不可变版本的 mappings，结果按标准词匹配键稳定排序。 */
@@ -118,6 +116,7 @@ export const getDatasetSynonymMappings = async ({
   if (fileVersion <= 0) return [];
 
   return MongoDatasetSynonymMapping.find({ teamId, datasetId, fileVersion })
+    .read('primary')
     .sort({ normalizedStandardizedTerm: 1 })
     .lean();
 };
@@ -232,7 +231,8 @@ export const getDatasetSynonymTransformContext = async ({
     };
   }
 
-  const config = await getCachedDatasetSynonymConfig({ teamId, datasetId });
+  // 保存词表的 API 与执行重建的 Worker 可能在不同进程，写入快照以数据库为准。
+  const config = await getDatasetSynonymConfig({ teamId, datasetId });
   const matcher = config?.enabled
     ? await getDatasetSynonymMatcher({
         teamId,

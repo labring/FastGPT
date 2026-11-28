@@ -57,6 +57,7 @@ export const pushGenerateVectorUsage = ({
       totalPoints,
       usageId,
       inputTokens,
+      modelId: vectorModelId,
       itemType: UsageItemTypeEnum.training_vector
     });
   } else {

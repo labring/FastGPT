@@ -70,7 +70,7 @@ export const CommonSystemPath: OpenAPIPath = {
   '/common/system/unlockTask': {
     get: {
       summary: '唤醒训练队列',
-      description: '尝试鉴权并唤醒当前实例的知识库训练队列',
+      description: '鉴权成功后尝试恢复当前团队因欠费暂停的知识库文档训练',
       tags: [DevApiTagsMap.commonSystem],
       requestParams: {
         query: UnlockSystemTaskQuerySchema

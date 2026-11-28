@@ -1,7 +1,10 @@
 import { vi, describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
-import { clampLlmTraceRetentionHours } from '@fastgpt/global/common/system/config/schemas/performance';
+import {
+  clampLlmTraceRetentionHours,
+  PerformanceConfigSchema
+} from '@fastgpt/global/common/system/config/schemas/performance';
 import {
   getSomarkRegionPreset,
   resolveSomarkBaseUrl,
@@ -204,12 +207,33 @@ describe('Domain default config and overrides validation', () => {
 
   it('ignores the retired retrieval log limit while preserving dataset concurrency', () => {
     const overrides = { dataset: { retrievalResultsLimit: 20, vectorMaxProcess: 3 } };
+    expect(PerformanceConfigSchema.parse(overrides).dataset).toEqual({
+      ...getDomainDefaultConfig('performance').dataset,
+      vectorMaxProcess: 3
+    });
     expect(
       parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
     ).toEqual({
       dataset: { vectorMaxProcess: 3 }
     });
     expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('resolves document and per-document chunk concurrency independently', () => {
+    expect(getDomainDefaultConfig('performance').dataset).toMatchObject({
+      documentMaxProcess: 10,
+      documentChunkMaxProcess: 2
+    });
+    const overrides = { dataset: { documentMaxProcess: 4, documentChunkMaxProcess: 3 } };
+    expect(
+      resolveDomainEffectiveConfig({ domain: 'performance', overrides }).dataset
+    ).toMatchObject(overrides.dataset);
+    expect(() =>
+      parseDomainOverrides({
+        domain: 'performance',
+        overrides: { dataset: { documentChunkMaxProcess: 0 } }
+      })
+    ).toThrow();
   });
 
   it('ignores retired stream resume settings and rejects configuring them again', () => {

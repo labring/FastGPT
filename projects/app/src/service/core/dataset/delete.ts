@@ -1,17 +1,20 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
-import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
+import { removeDatasetSyncSchedulers } from '@fastgpt/service/core/dataset/delete/processor';
+import { markDatasetsForDeletion } from '@fastgpt/service/core/dataset/delete/mongo/mark';
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /**
- * 删除单个知识库或文件夹及其子树，同步即时清理，投递异步清理队列，并记录审计日志。
+ * 删除知识库或文件夹子树：移除同步调度、标记删除、投递清理任务并记录审计日志。
  * 返回被删除的知识库与文件夹 ID 列表。
  */
 export const deleteDataset = async ({
@@ -35,13 +38,9 @@ export const deleteDataset = async ({
   });
   const datasetIds = datasets.map((item) => item._id);
 
-  await deleteDatasetsImmediate({ teamId, datasetIds });
+  await removeDatasetSyncSchedulers(datasetIds);
   await mongoSessionRun(async (session) => {
-    await MongoDataset.updateMany(
-      { _id: { $in: datasetIds }, teamId },
-      { deleteTime: new Date() },
-      { session }
-    );
+    await markDatasetsForDeletion({ teamId, datasetIds }, bridgeClientSessionToDbSession(session));
     await addDatasetDeleteJob({ teamId, datasetId: id });
   });
 

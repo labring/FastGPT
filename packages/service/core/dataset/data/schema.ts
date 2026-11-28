@@ -8,12 +8,25 @@ import {
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 import {
+  DatasetDataIndexStageEnum,
   DatasetDataIndexStatusEnum,
   DatasetDataIndexTypeEnum
 } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
 
 export const DatasetDataCollectionName = 'dataset_datas';
+
+const indexFields = {
+  type: {
+    type: String,
+    enum: Object.values(DatasetDataIndexTypeEnum),
+    default: DatasetDataIndexTypeEnum.custom
+  },
+  text: {
+    type: String,
+    required: true
+  }
+};
 
 const DatasetDataSchema = new Schema({
   teamId: {
@@ -61,22 +74,19 @@ const DatasetDataSchema = new Schema({
         defaultIndex: {
           type: Boolean
         },
-        type: {
-          type: String,
-          enum: Object.values(DatasetDataIndexTypeEnum),
-          default: DatasetDataIndexTypeEnum.custom
-        },
+        ...indexFields,
         dataId: {
-          type: String,
-          required: true
-        },
-        text: {
           type: String,
           required: true
         }
       }
     ],
     default: []
+  },
+  // 首次训练提交正式索引时删除草稿。
+  draftIndexes: {
+    type: [indexFields],
+    default: undefined
   },
   createTime: {
     type: Date,
@@ -92,9 +102,15 @@ const DatasetDataSchema = new Schema({
   },
   indexStatus: {
     type: String,
-    enum: Object.values(DatasetDataIndexStatusEnum)
+    // 新写入只使用工作阶段，兼容读取迁移前的历史记录。
+    enum: [
+      ...Object.values(DatasetDataIndexStageEnum),
+      ...Object.values(DatasetDataIndexStatusEnum)
+    ]
   },
+  indexError: Boolean,
   indexErrorMsg: String,
+  trainingIndexSize: Number,
   synonymVersion: Number,
   synonymRebuildingVersion: Number,
 

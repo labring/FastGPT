@@ -125,5 +125,12 @@
   "migrations.20261127_backfill_name_sort_key.members": "回填成員排序鍵",
   "migrations.20261127_backfill_name_sort_key.collections": "回填集合排序鍵",
   "migrations.20261127_backfill_name_sort_key.validation": "驗證排序鍵回填結果",
-  "migrations.20261127_backfill_name_sort_key.result": "已掃描 {{memberScannedCount}} 筆團隊成員（回填 {{memberBackfilledCount}} 筆）及 {{collectionScannedCount}} 筆知識庫集合（回填 {{collectionBackfilledCount}} 筆）。"
+  "migrations.20261127_backfill_name_sort_key.result": "已掃描 {{memberScannedCount}} 筆團隊成員（回填 {{memberBackfilledCount}} 筆）及 {{collectionScannedCount}} 筆知識庫集合（回填 {{collectionBackfilledCount}} 筆）。",
+  "migrations.20261125_migrate_dataset_document_training.name": "遷移既有知識庫訓練",
+  "migrations.20261125_migrate_dataset_document_training.description": "請先停止舊版訓練並暫停新版訓練佇列，再手動執行。舊任務和已完成的索引會保留供複核。",
+  "migrations.20261125_migrate_dataset_document_training.result": "已檢查 {{legacyTasks}} 條舊任務和 {{candidateData}} 個分塊，恢復 {{documents}} 個文件輪次，略過 {{duplicateParse}} 條重複解析。",
+  "migrations.20261125_migrate_dataset_document_training.preflight": "檢查切換條件並儲存來源快照",
+  "migrations.20261125_migrate_dataset_document_training.legacyTasks": "遷移舊訓練任務",
+  "migrations.20261125_migrate_dataset_document_training.remainingData": "遷移剩餘分塊及重建狀態",
+  "migrations.20261125_migrate_dataset_document_training.validation": "核對遷移結果和團隊餘額"
 }

@@ -2,13 +2,10 @@ import handler, {
   type hasDatasetTrainingErrorQuery,
   type hasDatasetTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/hasDatasetTrainingError';
-import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { datasetQaTrainingService } from '@fastgpt/service/core/dataset/training/qaService';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -33,30 +30,18 @@ describe('dataset training error existence test', () => {
       datasetId: dataset._id
     });
 
-    await MongoDatasetTraining.create([
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        retryCount: 3,
-        errorMsg: 'temporary failed',
-        chunkIndex: 0
-      },
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        billId: 'test',
-        mode: TrainingModeEnum.qa,
-        retryCount: 0,
-        errorMsg: '   ',
-        chunkIndex: 1
-      }
-    ]);
+    const [qa] = await datasetQaTrainingService.createMany({
+      items: [
+        {
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'a QA source',
+          status: 'active'
+        }
+      ]
+    });
 
     const noFinalErrorRes = await Call<
       EmptyBody,
@@ -72,16 +57,12 @@ describe('dataset training error existence test', () => {
     expect(noFinalErrorRes.code).toBe(200);
     expect(noFinalErrorRes.data.hasError).toBe(false);
 
-    await MongoDatasetTraining.create({
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id,
-      billId: 'test',
-      mode: TrainingModeEnum.parse,
-      retryCount: 0,
-      errorMsg: 'parse failed',
-      chunkIndex: 2
+    await datasetQaTrainingService.markFailed({
+      teamId: String(root.teamId),
+      datasetId: String(dataset._id),
+      collectionId: String(collection._id),
+      id: qa._id,
+      errorMsg: 'QA failed'
     });
 
     const finalErrorRes = await Call<

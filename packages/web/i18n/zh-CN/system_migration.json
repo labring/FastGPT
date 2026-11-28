@@ -125,5 +125,12 @@
   "migrations.20261127_backfill_name_sort_key.members": "回填成员排序键",
   "migrations.20261127_backfill_name_sort_key.collections": "回填集合排序键",
   "migrations.20261127_backfill_name_sort_key.validation": "校验排序键回填结果",
-  "migrations.20261127_backfill_name_sort_key.result": "已扫描 {{memberScannedCount}} 条团队成员（回填 {{memberBackfilledCount}} 条）及 {{collectionScannedCount}} 条知识库集合（回填 {{collectionBackfilledCount}} 条）。"
+  "migrations.20261127_backfill_name_sort_key.result": "已扫描 {{memberScannedCount}} 条团队成员（回填 {{memberBackfilledCount}} 条）及 {{collectionScannedCount}} 条知识库集合（回填 {{collectionBackfilledCount}} 条）。",
+  "migrations.20261125_migrate_dataset_document_training.name": "迁移存量知识库训练",
+  "migrations.20261125_migrate_dataset_document_training.description": "请先停止旧版训练并暂停新版训练队列，再手动执行。旧任务和已完成的索引保留供复核。",
+  "migrations.20261125_migrate_dataset_document_training.result": "已检查 {{legacyTasks}} 条旧任务和 {{candidateData}} 条分块，恢复 {{documents}} 个文档轮次，跳过 {{duplicateParse}} 条重复解析。",
+  "migrations.20261125_migrate_dataset_document_training.preflight": "检查切换条件并保存源快照",
+  "migrations.20261125_migrate_dataset_document_training.legacyTasks": "迁移旧训练任务",
+  "migrations.20261125_migrate_dataset_document_training.remainingData": "迁移剩余分块及重建状态",
+  "migrations.20261125_migrate_dataset_document_training.validation": "核对迁移结果和团队余额"
 }

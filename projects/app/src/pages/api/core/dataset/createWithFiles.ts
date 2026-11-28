@@ -32,6 +32,7 @@ import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { enqueueDatasetTrainingBatch } from '@fastgpt/service/core/dataset/training/runtime';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -203,6 +204,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         },
         createdCollections
       };
+    });
+
+    await enqueueDatasetTrainingBatch({
+      teamId,
+      collectionIds: createdCollections.map(({ _id }) => _id)
     });
 
     // Track and audit log

@@ -281,6 +281,7 @@ export const PushDataBodySchema = z.object({
   prompt: z.string().optional().meta({
     description: '自定义提示词'
   }),
+  // System OpenAPI 已公开此参数，保留以兼容显式传入账单 ID 的调用。
   billId: z.string().optional().meta({
     description: '可选的训练账单 ID；不传时自动创建'
   }),

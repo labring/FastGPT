@@ -11,10 +11,15 @@ import { ReadPreference } from '../../common/mongo';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 
-export const checkTeamAIPoints = async (teamId: string) => {
+export const checkTeamAIPoints = async (
+  teamId: string,
+  { refreshBalance = false }: { refreshBalance?: boolean } = {}
+) => {
   if (!getSystemInstanceConfig().commercial.subPlans?.standard) return;
 
-  const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
+  const { totalPoints, usedPoints } = refreshBalance
+    ? await getTeamPlanStatus({ teamId })
+    : await teamPoint.getTeamPoints({ teamId });
 
   if (usedPoints !== null && totalPoints !== null && usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);

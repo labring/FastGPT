@@ -1,7 +1,10 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTrainingSchema,
+  type DatasetCollectionSchemaType
+} from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionTypeMap, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ChunkSettings, DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
@@ -20,6 +23,40 @@ export const DatasetColCollectionName = 'dataset_collections';
 export type DatasetCollectionMongoSchemaType = DatasetCollectionSchemaType & {
   nameSortKey?: string;
 };
+
+const CollectionParseSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: DatasetCollectionTrainingSchema.shape.parse.unwrap().shape.status.options,
+      required: true
+    },
+    errorMsg: String
+  },
+  { _id: false }
+);
+
+const CollectionTrainingSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: DatasetCollectionTrainingSchema.shape.status.options,
+      required: true
+    },
+    pausedAt: Date,
+    parse: CollectionParseSchema,
+    usageId: {
+      type: String,
+      required: true,
+      validate: (value: string) =>
+        DatasetCollectionTrainingSchema.shape.usageId.safeParse(value).success
+    },
+    runId: String,
+    runningItems: { type: Map, of: { type: String, enum: Object.values(TrainingModeEnum) } },
+    revision: { type: Number, required: true }
+  },
+  { _id: false }
+);
 
 const DatasetCollectionSchema = new Schema({
   parentId: {
@@ -112,6 +149,7 @@ const DatasetCollectionSchema = new Schema({
   apiFileParentId: String,
   // API 目录/节点级同步范围标记；缺省（undefined）兼容存量视为 true，显式 false 表示不自动拉取新增直属子级
   syncChildren: Boolean,
+  training: CollectionTrainingSchema,
 
   // Chunk settings
   ...ChunkSettings
@@ -196,6 +234,14 @@ defineIndex(DatasetCollectionSchema, {
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, forbid: 1, _id: 1 },
   options: { partialFilterExpression: { forbid: true } }
+});
+
+defineIndex(DatasetCollectionSchema, {
+  key: { 'training.status': 1, 'training.pausedAt': 1, _id: 1 },
+  options: {
+    name: 'fg_dataset_collection_training_pause',
+    partialFilterExpression: { 'training.status': { $exists: true } }
+  }
 });
 
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionMongoSchemaType>(

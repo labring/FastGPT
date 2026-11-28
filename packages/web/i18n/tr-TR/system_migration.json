@@ -125,5 +125,12 @@
   "migrations.20261127_backfill_name_sort_key.members": "Üye sıralama anahtarlarını geriye dönük doldur",
   "migrations.20261127_backfill_name_sort_key.collections": "Koleksiyon sıralama anahtarlarını geriye dönük doldur",
   "migrations.20261127_backfill_name_sort_key.validation": "Sıralama anahtarı geriye dönük doldurma sonucunu doğrula",
-  "migrations.20261127_backfill_name_sort_key.result": "{{memberScannedCount}} ekip üyesi ({{memberBackfilledCount}} geriye dönük dolduruldu) ve {{collectionScannedCount}} veri kümesi koleksiyonu ({{collectionBackfilledCount}} geriye dönük dolduruldu) tarandı."
+  "migrations.20261127_backfill_name_sort_key.result": "{{memberScannedCount}} ekip üyesi ({{memberBackfilledCount}} geriye dönük dolduruldu) ve {{collectionScannedCount}} veri kümesi koleksiyonu ({{collectionBackfilledCount}} geriye dönük dolduruldu) tarandı.",
+  "migrations.20261125_migrate_dataset_document_training.name": "Mevcut bilgi tabanı eğitimini taşı",
+  "migrations.20261125_migrate_dataset_document_training.description": "Bu geçişi çalıştırmadan önce eski eğitimi durdurun ve yeni eğitim kuyruğunu duraklatın. Eski görevler ve tamamlanan dizinler inceleme için korunur.",
+  "migrations.20261125_migrate_dataset_document_training.result": "{{legacyTasks}} eski görev ve {{candidateData}} parça kontrol edildi, {{documents}} belge için eğitim geri yüklendi ve {{duplicateParse}} yinelenen ayrıştırma görevi atlandı.",
+  "migrations.20261125_migrate_dataset_document_training.preflight": "Geçiş koşullarını kontrol et ve kaynak anlık görüntüsünü kaydet",
+  "migrations.20261125_migrate_dataset_document_training.legacyTasks": "Eski eğitim görevlerini taşı",
+  "migrations.20261125_migrate_dataset_document_training.remainingData": "Kalan parçaları ve yeniden oluşturma durumlarını taşı",
+  "migrations.20261125_migrate_dataset_document_training.validation": "Taşınan verileri ve ekip bakiyelerini doğrula"
 }

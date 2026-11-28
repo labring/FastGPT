@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStageEnum,
+  DatasetDataIndexStatusEnum,
+  type DatasetDataStoredIndexStatus
+} from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { getRootUser } from '@test/datas/users';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
@@ -25,7 +29,7 @@ import detailHandler from '@/pages/api/core/dataset/data/detail';
 import getQuoteDataHandler from '@/pages/api/core/dataset/data/getQuoteData';
 
 /** 建立真实的数据行，用于验证 authDatasetData 的状态判断本身。 */
-const createData = async (indexStatus?: DatasetDataIndexStatusEnum) => {
+const createData = async (indexStatus?: DatasetDataStoredIndexStatus, indexError?: boolean) => {
   const { root, dataset, collection } = await createDatasetCollectionFixture();
   const data = await MongoDatasetData.create({
     teamId: root.teamId,
@@ -34,7 +38,8 @@ const createData = async (indexStatus?: DatasetDataIndexStatusEnum) => {
     collectionId: collection._id,
     q: 'chunk',
     indexes: [],
-    ...(indexStatus && { indexStatus })
+    indexStatus,
+    indexError
   });
 
   return { root, dataset, collection, data };
@@ -67,20 +72,33 @@ describe('pending index data write protection', () => {
     authDatasetData = (await getRealAuthDatasetData()) as typeof mockedAuthDatasetData;
   });
 
-  it.each([DatasetDataIndexStatusEnum.indexing])(
-    'rejects data-level writes for %s data',
-    async (indexStatus) => {
-      const { root, data } = await createData(indexStatus);
+  it.each([
+    DatasetDataIndexStageEnum.index,
+    DatasetDataIndexStageEnum.rebuildIndexPending,
+    DatasetDataIndexStatusEnum.indexing
+  ])('rejects data-level writes for %s data', async (indexStatus) => {
+    const { root, data } = await createData(indexStatus);
 
-      await expect(
-        authDatasetData({
-          ...(buildAuthReq(root) as any),
-          dataId: String(data._id),
-          assertWritable: true
-        })
-      ).rejects.toBe('dataNotIndexed');
-    }
-  );
+    await expect(
+      authDatasetData({
+        ...(buildAuthReq(root) as any),
+        dataId: String(data._id),
+        assertWritable: true
+      })
+    ).rejects.toBe('dataNotIndexed');
+  });
+
+  it('allows a failed rebuild to be edited and returns the compatible status', async () => {
+    const { root, data } = await createData(DatasetDataIndexStageEnum.rebuildIndexPending, true);
+    const result = await authDatasetData({
+      ...(buildAuthReq(root) as any),
+      dataId: String(data._id),
+      assertWritable: true
+    });
+    expect(result.datasetData).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    });
+  });
 
   it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.error, undefined])(
     'allows data-level writes for %s data',
@@ -101,7 +119,7 @@ describe('pending index data write protection', () => {
 
   /** DS-13：读接口不传 assertWritable，待索引数据仍可查看。 */
   it('keeps read access for pending index data', async () => {
-    const { root, data } = await createData(DatasetDataIndexStatusEnum.indexing);
+    const { root, data } = await createData(DatasetDataIndexStageEnum.index);
 
     const result = await authDatasetData({
       ...(buildAuthReq(root) as any),

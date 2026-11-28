@@ -1,6 +1,11 @@
 import { DevApiTagsMap } from '../../../tag';
 import type { OpenAPIPath } from '../../../type';
-import { AdminLlmParagraphBodySchema, AdminLlmParagraphResponseSchema } from './api';
+import {
+  AdminDatasetTrainingEnhanceBodySchema,
+  AdminDatasetTrainingEnhanceResponseSchema,
+  AdminLlmParagraphBodySchema,
+  AdminLlmParagraphResponseSchema
+} from './api';
 
 export const AdminDatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/llmPargraph': {
@@ -22,6 +27,28 @@ export const AdminDatasetTrainingPath: OpenAPIPath = {
             'application/json': {
               schema: AdminLlmParagraphResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/training/enhance': {
+    post: {
+      summary: '计算知识库分块增强结果',
+      description:
+        '供 FastGPT App 的文档训练 Worker 调用，返回新增草稿与描述，并在 Pro 内直接登记模型用量。',
+      tags: [DevApiTagsMap.subserviceProDataset],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: AdminDatasetTrainingEnhanceBodySchema }
+        }
+      },
+      responses: {
+        200: {
+          description: '计算完成或跳过该增强阶段',
+          content: {
+            'application/json': { schema: AdminDatasetTrainingEnhanceResponseSchema }
           }
         }
       }

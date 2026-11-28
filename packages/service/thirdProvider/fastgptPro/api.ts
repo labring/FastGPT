@@ -1,7 +1,9 @@
 import type { AxiosRequestConfig, Method } from 'axios';
-import type {
-  AdminLlmParagraphBody,
-  AdminLlmParagraphResponse
+import {
+  AdminDatasetTrainingEnhanceResponseSchema,
+  type AdminDatasetTrainingEnhanceBody,
+  type AdminLlmParagraphBody,
+  type AdminLlmParagraphResponse
 } from '@fastgpt/global/openapi/admin/dataset/training/api';
 import type {
   ConcatUsageProps,
@@ -43,6 +45,12 @@ export const postCreateParagraphTitle = (data: CreateParagraphTitleRequest) =>
   POST<AdminLlmParagraphResponse>('/core/dataset/training/llmPargraph', data, {
     timeout: 600000
   });
+
+/** 计算当前文档分块的增强结果，服务异常与成功返回的 skipped 分开处理。 */
+export const postDatasetTrainingEnhance = async (data: AdminDatasetTrainingEnhanceBody) =>
+  AdminDatasetTrainingEnhanceResponseSchema.parse(
+    await POST<unknown>('/core/dataset/training/enhance', data, { timeout: 600000 })
+  );
 
 const forwardOutLink = ({
   path,

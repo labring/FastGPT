@@ -1,5 +1,5 @@
 import { setCron } from '@fastgpt/service/common/system/cron';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
+import { reconcileDatasetTrainingDocuments } from '@/service/core/dataset/training/documentReconcile';
 import { clearTmpUploadFiles } from '@fastgpt/service/common/file/utils';
 import { checkInvalidDatasetData, checkInvalidVector } from './cronTask';
 import { checkTimerLock, deleteTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
@@ -10,11 +10,15 @@ import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/appl
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
 import { wechatPollingReconcileCron } from '@fastgpt/service/support/outLink/wechat/mq';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-// Try to run train every minute
-const setTrainingQueueCron = () => {
-  setCron('*/1 * * * *', () => {
-    startTrainingQueue();
+const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
+
+const setTrainingReconcileCron = () => {
+  setCron('*/30 * * * *', async () => {
+    await reconcileDatasetTrainingDocuments().catch((error) => {
+      logger.error('Dataset training reconciliation failed', { error });
+    });
   });
 };
 
@@ -85,7 +89,7 @@ const modelStatusProbeCron = () => {
 };
 
 export const startCron = () => {
-  setTrainingQueueCron();
+  setTrainingReconcileCron();
   setClearTmpUploadFilesCron();
   clearInvalidDataCron();
   scheduleTriggerAppCron();

@@ -5,11 +5,11 @@ import { vi } from 'vitest';
  * Mock Vector Controller for testing
  */
 
-export const mockVectorInsert = vi.fn().mockResolvedValue({
+export const mockVectorInsert = vi.fn(async () => ({
   insertIds: ['id_1', 'id_2', 'id_3']
-});
+}));
 
-export const mockVectorDelete = vi.fn().mockResolvedValue(undefined);
+export const mockVectorDelete = vi.fn(async () => undefined);
 export const mockVectorRefreshCreateTime = vi.fn().mockResolvedValue(undefined);
 
 export const mockVectorEmbRecall = vi.fn().mockResolvedValue({

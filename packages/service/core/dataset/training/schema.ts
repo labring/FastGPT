@@ -12,8 +12,10 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetDataCollectionName } from '../data/schema';
 
+/** @deprecated 旧训练集合名称，保留至存量迁移和切换完成。 */
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
+/** @deprecated 旧训练集合的 Mongo Schema，保留至存量迁移和切换完成。 */
 const TrainingDataSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
@@ -138,6 +140,7 @@ defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
   options: { expireAfterSeconds: 7 * 24 * 60 * 60 }
 });
+/** @deprecated 旧训练集合模型，保留至存量迁移和切换完成。 */
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,
   TrainingDataSchema

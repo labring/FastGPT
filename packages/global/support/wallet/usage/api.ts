@@ -1,5 +1,5 @@
 import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
-import type { UsageItemCountType, UsageItemType, UsageListItemType, UsageSchemaType } from './type';
+import type { UsageItemCountType, UsageItemType, UsageSchemaType } from './type';
 
 export type GetUsageProps = {
   dateStart: string;
@@ -23,6 +23,8 @@ export type ConcatUsageProps = {
   usageId: string;
   totalPoints: number;
   itemType: UsageItemTypeEnum;
+  /** 训练用量按实际模型归集。旧版调用和评测明细允许省略。 */
+  modelId?: string;
 } & UsageItemCountType;
 export type PushUsageItemsProps = {
   teamId: string;

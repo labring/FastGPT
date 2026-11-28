@@ -1,4 +1,4 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStageEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -10,9 +10,8 @@ const {
   mockReadFile,
   mockGetFileS3Key,
   mockUploadImage2S3Bucket,
-  mockMongoSessionRun,
-  mockCreateTrainingUsage,
-  mockPreCreateDatasetDataAndPushToTrainingQueue,
+  mockAppendDatasetIndexTraining,
+  mockEnqueueDatasetTrainingBatch,
   mockGetDatasetImageIndexCapability,
   mockGetDatasetEmbeddingModel,
   mockGetDatasetAgentModel,
@@ -29,9 +28,8 @@ const {
     dataset: vi.fn()
   },
   mockUploadImage2S3Bucket: vi.fn(),
-  mockMongoSessionRun: vi.fn(),
-  mockCreateTrainingUsage: vi.fn(),
-  mockPreCreateDatasetDataAndPushToTrainingQueue: vi.fn(),
+  mockAppendDatasetIndexTraining: vi.fn(),
+  mockEnqueueDatasetTrainingBatch: vi.fn(),
   mockGetDatasetImageIndexCapability: vi.fn(),
   mockGetDatasetEmbeddingModel: vi.fn(),
   mockGetDatasetAgentModel: vi.fn(),
@@ -89,16 +87,12 @@ vi.mock('@fastgpt/service/common/s3/utils', () => ({
   uploadImage2S3Bucket: mockUploadImage2S3Bucket
 }));
 
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: mockMongoSessionRun
+vi.mock('@fastgpt/service/core/dataset/training/orchestration', () => ({
+  appendDatasetIndexTraining: mockAppendDatasetIndexTraining
 }));
 
-vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createTrainingUsage: mockCreateTrainingUsage
-}));
-
-vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
-  preCreateDatasetDataAndPushToTrainingQueue: mockPreCreateDatasetDataAndPushToTrainingQueue
+vi.mock('@fastgpt/service/core/dataset/training/runtime', () => ({
+  enqueueDatasetTrainingBatch: mockEnqueueDatasetTrainingBatch
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
@@ -187,35 +181,28 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     mockReadFile.mockResolvedValue(pngBuffer);
     mockGetFileS3Key.dataset.mockReturnValue({ fileKey: 'dataset/team/cat.png' });
     mockUploadImage2S3Bucket.mockResolvedValue('dataset/team/cat.png');
-    mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
-    mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-id' });
-    mockPreCreateDatasetDataAndPushToTrainingQueue.mockResolvedValue({ insertLen: 1 });
+    mockAppendDatasetIndexTraining.mockResolvedValue({ insertLen: 1 });
   });
 
   it('should upload images with index mode when only native image embedding is available', async () => {
     const result = await handler({} as any);
 
     expect(result).toBeUndefined();
-    expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        vectorModelId: vectorModelData.modelId,
-        agentModelId: agentModelData.modelId,
-        vllmModelId: undefined,
-        session: 'session'
-      })
-    );
-    expect(mockPreCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalledWith({
+    expect(mockAppendDatasetIndexTraining).toHaveBeenCalledWith({
       teamId: 'team-id',
       tmbId: 'tmb-id',
       datasetId,
       collectionId,
-      agentModel: agentModelData,
-      vectorModel: vectorModelData,
+      indexStatus: DatasetDataIndexStageEnum.index,
+      vectorModelId: vectorModelData.modelId,
+      agentModelId: agentModelData.modelId,
+      vlmModelId: undefined,
       vlmModel: undefined,
-      mode: TrainingModeEnum.index,
-      billId: 'usage-id',
-      data: [{ imageId: 'dataset/team/cat.png' }],
-      session: 'session'
+      data: [{ imageId: 'dataset/team/cat.png' }]
+    });
+    expect(mockEnqueueDatasetTrainingBatch).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      collectionIds: [collectionId]
     });
     expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
       buffer: pngBuffer,
@@ -244,8 +231,33 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     await expect(handler({} as any)).rejects.toBeTruthy();
 
     expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
-    expect(mockPreCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
+    expect(mockAppendDatasetIndexTraining).not.toHaveBeenCalled();
+    expect(mockEnqueueDatasetTrainingBatch).not.toHaveBeenCalled();
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
+  });
+
+  it('queues the image parse stage when a VLM is available', async () => {
+    const vlmModel = { modelId: '68ad85a7463006c963799a10', name: 'Vision', model: 'vision' };
+    mockGetDatasetVlmModel.mockReturnValueOnce(vlmModel);
+    mockGetDatasetImageIndexCapability.mockReturnValueOnce({
+      availableVlmModel: vlmModel,
+      supportVlm: true,
+      supportImageEmbedding: false,
+      supportImageIndex: true
+    });
+
+    await expect(handler({} as any)).resolves.toBeUndefined();
+    expect(mockAppendDatasetIndexTraining).toHaveBeenCalledWith(
+      expect.objectContaining({
+        indexStatus: DatasetDataIndexStageEnum.imageParse,
+        vlmModelId: vlmModel.modelId,
+        vlmModel
+      })
+    );
+    expect(mockEnqueueDatasetTrainingBatch).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      collectionIds: [collectionId]
+    });
   });
 
   it('rejects empty image files', async () => {

@@ -20,6 +20,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
 import { resourcePermissionRepo } from '../../../support/permission/repository/resourcePermissionRepo';
+import { enqueueDatasetTrainingBatch } from '../training/runtime';
 import { getApiDatasetRequest } from './index';
 
 const datasetRepo = injectRepo(DatasetApiSyncRepoToken);
@@ -773,10 +774,11 @@ export const createApiDatasetCollection = async ({
   }
 
   if (writable.length > 0) {
+    let createdCollectionIds: string[] = [];
     try {
-      await mongoSessionRun(
-        async (session) => {
-          await createApiFileCollectionsBatch({
+      const result = await mongoSessionRun(
+        (session) =>
+          createApiFileCollectionsBatch({
             dataset,
             files: writable.map(({ record, parentId }) => ({
               name: record.name,
@@ -797,12 +799,12 @@ export const createApiDatasetCollection = async ({
             },
             modelAuthContext,
             session
-          });
-        },
+          }),
         // 整批（4w 量级）一个事务，默认 60s 提交上限不够
         { maxCommitTimeMS: API_FILE_FILE_COMMIT_TIMEOUT_MS }
       );
       successCount += writable.length;
+      createdCollectionIds = result.collectionIds;
     } catch (error) {
       // 事务已整体回滚，无部分成功（含配额不足、模型解析失败、事务超时）：整批计入失败。
       // 必须抛出让调用方感知 —— 客户端只在请求 reject 时才把文件标为失败，返回 200 会让
@@ -816,6 +818,11 @@ export const createApiDatasetCollection = async ({
       });
       throw error;
     }
+
+    await enqueueDatasetTrainingBatch({
+      teamId,
+      collectionIds: createdCollectionIds
+    });
   }
 
   // 7. 导入完成后落盘同步范围状态：
